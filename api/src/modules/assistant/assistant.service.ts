@@ -10,6 +10,10 @@ import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-word
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
 import { BoardService } from '../board/board.service';
+import { ContributionKind } from '@prisma/client';
+import {
+  Load, Waiting, theOneMove, theMirror, goingCold, bankedWins, sayTheMoves,
+} from '../coaching/the-four-converting-moves';
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { Prisma } from '@prisma/client';
@@ -281,6 +285,8 @@ export class AssistantService {
       select: { currentStep: true, staircase: true },
     });
 
+    const moves = await this.theConvertingMoves(organizationId, who);
+
     if (!state?.currentStep) {
       /*
        * No step is a real answer and a common one. The engine only offers one when the record has
@@ -288,14 +294,70 @@ export class AssistantService {
        * an absence - the exact thing this lane must not do.
        */
       return rules('how_am_i_doing', text(
-        'There is no step waiting for you. That is not a verdict either way - the coaching in your check-in only offers one when there is something specific worth doing, and right now there is not.',
+        'There is no step waiting for you. That is not a verdict either way - the coaching in your check-in only offers one when there is something specific worth doing, and right now there is not.'
+        + moves,
       ));
     }
 
     return rules('how_am_i_doing', text(
       `One thing, from your last check-in: ${state.currentStep}\n\n`
-      + 'That is the whole of it. It is meant to be small enough to actually happen this week, and if it is not, saying so in your next check-in changes it rather than repeating it.',
+      + 'That is the whole of it. It is meant to be small enough to actually happen this week, and if it is not, saying so in your next check-in changes it rather than repeating it.'
+      + moves,
     ));
+  }
+
+  /**
+   * THE FOUR CONVERTING MOVES, UNDERNEATH THE STEP RATHER THAN INSTEAD OF IT.
+   *
+   * The check-in coach decides the step; nothing here overrides it. What these add is the context a
+   * step cannot carry on its own - what they finished since, how much of the load is actually theirs
+   * to move, and what has quietly stopped coming up.
+   *
+   * They live in the chat because that is where coaching lives in this product. A board of these
+   * numbers is a scoreboard about a person however carefully it is worded, and the numbers here are
+   * counts precisely so they cannot be ranked between people.
+   */
+  private async theConvertingMoves(organizationId: string, personExternalId: string): Promise<string> {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const commitments = await this.prisma.commitment.findMany({
+      where: { organizationId, personExternalId },
+      select: { id: true, text: true, state: true, statedAt: true, dueAt: true, lastFollowedUpAt: true },
+    });
+    if (!commitments.length) return '';
+
+    const load: Load[] = commitments.map((c) => ({
+      id: c.id, text: c.text, state: c.state, statedAt: c.statedAt, dueAt: c.dueAt,
+      /*
+       * `lastFollowedUpAt` is the closest record of "last time this came up", and it is not the same
+       * thing - it is when the assistant raised it, not when they mentioned it. Using it means a
+       * commitment the assistant has nagged about looks warm. Named here rather than papered over;
+       * the honest fix is a mention timestamp, which does not exist yet.
+       */
+      lastMentionedAt: c.lastFollowedUpAt,
+    }));
+
+    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: personExternalId }, select: { email: true },
+    });
+    const key = person?.email?.toLowerCase() ?? null;
+    const theirs: Waiting[] = key
+      ? waiting.filter((w) => w.fromPersonKey === key)
+        .map((w) => ({ what: w.what, status: w.status, onPersonKey: w.onPersonKey, waitingDays: w.waitingDays }))
+      : [];
+
+    const unblocked = await this.prisma.contribution.aggregate({
+      where: { organizationId, personExternalId, kind: ContributionKind.UNBLOCKING },
+      _sum: { weight: true },
+    });
+
+    const said = sayTheMoves({
+      move: theOneMove(load, theirs),
+      mirror: theMirror(load, theirs),
+      cold: goingCold(load, new Date()),
+      wins: bankedWins(load, unblocked._sum.weight ?? 0, since),
+    });
+    return said ? `\n\n${said}` : '';
   }
 
   /**

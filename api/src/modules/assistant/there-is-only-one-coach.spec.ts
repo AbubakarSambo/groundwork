@@ -15,7 +15,14 @@ import { route } from './the-router-is-deterministic';
  */
 const SRC = readFileSync(join(__dirname, 'assistant.service.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const LANE = SRC.slice(SRC.indexOf('private async howAmIDoing('), SRC.indexOf('private async whatDidISay('));
+/*
+ * The lane itself, stopping where the converting-moves helper begins. That helper legitimately maps
+ * over commitments to work out which single one to offer, and a source-level "no .map(" check
+ * cannot tell that apart from handing somebody a list. What it actually produces is asserted
+ * behaviourally in the-four-converting-moves.spec.ts, which is the right place for it.
+ */
+const LANE = SRC.slice(SRC.indexOf('private async howAmIDoing('), SRC.indexOf('private async theConvertingMoves('));
+const MOVES = SRC.slice(SRC.indexOf('private async theConvertingMoves('), SRC.indexOf('private async whatDidISay('));
 
 describe('there is only one coach', () => {
   it('reads the existing state and computes no step of its own', () => {
@@ -50,10 +57,18 @@ describe('a question about how somebody is doing gets a step, not an assessment'
     expect(LANE).not.toMatch(/\.map\(|join\('\\n'\)/);
   });
 
-  it('carries no score, streak or count anywhere', () => {
+  it('carries no score, streak or rating anywhere - nor does what it appends', () => {
     for (const word of ['score', 'streak', 'rating', 'percent', 'rank', 'grade']) {
       expect(LANE.toLowerCase()).not.toContain(word);
+      expect(MOVES.toLowerCase()).not.toContain(word);
     }
+  });
+
+  it('and the converting moves sit under the step rather than replacing it', () => {
+    /* The check-in coach decides the step. These add the context a step cannot carry on its own -
+       what they finished, how much of the load is theirs, what has stopped coming up. */
+    expect(LANE).toMatch(/\+ moves,/);
+    expect(MOVES).toMatch(/sayTheMoves\(/);
   });
 
   it('and tells them how to change a step that does not fit', () => {
