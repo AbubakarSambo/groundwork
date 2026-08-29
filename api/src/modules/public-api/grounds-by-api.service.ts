@@ -4,6 +4,7 @@ import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from '../reports/reports.service';
 import { ObjectiveKind, ProposedChangeState } from '@prisma/client';
 import { textAfter } from './six-is-still-the-target';
+import { Fence, isFenced, mayTouch, mayReadGround, OUTSIDE_THE_FENCE } from './a-fence-around-a-credential';
 import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
 
 /**
@@ -39,7 +40,8 @@ export class GroundsByApiService {
    * directory who has never signed in has no `User` - and that is a real answer with a fixable
    * cause, so it says which of the two is missing rather than "not found".
    */
-  private async actingUser(organizationId: string, personExternalId: string) {
+  private async actingUser(organizationId: string, personExternalId: string, fence?: Fence) {
+    if (fence && !mayTouch(fence, personExternalId)) throw new ForbiddenException(OUTSIDE_THE_FENCE);
     const person = await this.prisma.person.findFirst({
       where: { organizationId, externalId: personExternalId },
       select: { email: true, displayName: true, active: true },
@@ -93,12 +95,13 @@ export class GroundsByApiService {
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
       leadRemit?: string;
     },
+    fence: Fence = { boundToPersonExternalIds: [] },
   ) {
     if (!dto?.actingPersonExternalId) throw new BadRequestException('actingPersonExternalId is required.');
     if (!dto?.label?.trim()) throw new BadRequestException('label is required - it is what people see.');
     if (!dto?.scenario) throw new BadRequestException('scenario is required. A check-in without a situation is a form.');
 
-    const acting = await this.actingUser(organizationId, dto.actingPersonExternalId);
+    const acting = await this.actingUser(organizationId, dto.actingPersonExternalId, fence);
     const lead = dto.leadPersonExternalId
       ? await this.actingUser(organizationId, dto.leadPersonExternalId)
       : acting;
@@ -110,6 +113,8 @@ export class GroundsByApiService {
      */
     const participants: { email: string; roleAsDescribed?: string }[] = [];
     for (const p of dto.participants ?? []) {
+      /* Every participant, so a fenced credential cannot open a check-in that reaches outside it. */
+      if (!mayTouch(fence, p.personExternalId)) throw new ForbiddenException(OUTSIDE_THE_FENCE);
       const row = await this.prisma.person.findFirst({
         where: { organizationId, externalId: p.personExternalId, active: true },
         select: { email: true },
@@ -148,19 +153,40 @@ export class GroundsByApiService {
    * belongs to no one - a permission no human in the customer's company has. Naming the reader means
    * the API can never see more than a person could, and the audit trail says who it was for.
    */
-  async report(organizationId: string, groundId: string, asPersonExternalId: string) {
+  async report(
+    organizationId: string,
+    groundId: string,
+    asPersonExternalId: string,
+    fence: Fence = { boundToPersonExternalIds: [] },
+  ) {
     if (!asPersonExternalId) {
       throw new BadRequestException(
         'as is required: name the person this report is being read for. The API reads as somebody, never as nobody.',
       );
     }
-    const user = await this.actingUser(organizationId, asPersonExternalId);
+    const user = await this.actingUser(organizationId, asPersonExternalId, fence);
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
-      select: { id: true },
+      select: { id: true, participants: { select: { email: true } } },
     });
     /* Scoped, so a guessed id from another tenant resolves to nothing rather than to their ground. */
     if (!ground) throw new NotFoundException('No such check-in.');
+
+    /*
+     * EVERY PARTY INSIDE THE FENCE, not any. A report is the synthesis of what several people
+     * independently said, so one containing somebody outside the boundary hands over their account
+     * through a credential that was never allowed near them.
+     */
+    if (isFenced(fence)) {
+      const emails = ground.participants.map((p) => p.email).filter(Boolean) as string[];
+      const ids = await Promise.all(emails.map(async (email) => {
+        const row = await this.prisma.person.findFirst({
+          where: { organizationId, email }, select: { externalId: true },
+        });
+        return row?.externalId ?? null;
+      }));
+      if (!mayReadGround(fence, ids)) throw new ForbiddenException(OUTSIDE_THE_FENCE);
+    }
 
     return this.reports.get(groundId, user.id, organizationId);
   }

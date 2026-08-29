@@ -105,7 +105,12 @@ export class PublicApiController {
     await this.credentials.stampUse(cred.id);
 
     const access_token = await this.jwt.signAsync(
-      { sub: cred.clientId, org: cred.organizationId, scopes: granted.scopes, typ: 'machine' },
+      {
+        sub: cred.clientId, org: cred.organizationId, scopes: granted.scopes, typ: 'machine',
+        /* The fence travels IN the token, so it cannot be stale relative to the scopes it came with
+           and a revoked-then-reissued credential cannot keep an old boundary. */
+        fence: cred.boundToPersonExternalIds ?? [],
+      },
       { expiresIn: TOKEN_TTL_SECONDS },
     );
     return { access_token, token_type: 'Bearer', expires_in: TOKEN_TTL_SECONDS, scope: granted.scopes.join(' ') };
@@ -411,7 +416,7 @@ export class PublicApiController {
   @RequiresScope('grounds:write')
   @ApiOperation({ summary: 'Open a check-in. Same engine, same scenario setup, same report as one opened in the product.' })
   async openGround(@Req() req: { machine: MachineCaller }, @Body() dto: any) {
-    return this.groundsByApi.open(req.machine.organizationId, dto);
+    return this.groundsByApi.open(req.machine.organizationId, dto, req.machine);
   }
 
   /**
@@ -430,7 +435,7 @@ export class PublicApiController {
     @Param('groundId') groundId: string,
     @Query('as') asPersonExternalId: string,
   ) {
-    return this.groundsByApi.report(req.machine.organizationId, groundId, asPersonExternalId);
+    return this.groundsByApi.report(req.machine.organizationId, groundId, asPersonExternalId, req.machine);
   }
 
   /**

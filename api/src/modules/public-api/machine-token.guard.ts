@@ -10,6 +10,14 @@ export interface MachineCaller {
   organizationId: string;
   clientId: string;
   scopes: string[];
+  /**
+   * WHOSE WORK THIS CREDENTIAL MAY SEE. Empty means the whole organisation.
+   *
+   * Carried on the caller rather than looked up per route, so a route added next year is fenced by
+   * whatever the credential says without anybody remembering to check. The failure mode of the other
+   * arrangement is silent: a new endpoint that simply forgets, and reads everything.
+   */
+  boundToPersonExternalIds: string[];
 }
 
 /**
@@ -60,7 +68,12 @@ export class MachineTokenGuard implements CanActivate {
       throw new ForbiddenException(`This token does not hold the ${required} scope.`);
     }
 
-    req.machine = { organizationId: claims.org, clientId: claims.sub, scopes } satisfies MachineCaller;
+    req.machine = {
+      organizationId: claims.org,
+      clientId: claims.sub,
+      scopes,
+      boundToPersonExternalIds: Array.isArray(claims.fence) ? claims.fence : [],
+    } satisfies MachineCaller;
     return true;
   }
 }

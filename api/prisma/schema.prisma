@@ -1381,6 +1381,17 @@ model ApiCredential {
   /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
   /// a subset of what its credential already holds.
   scopes           String[]
+
+  /// WHOSE WORK THIS CREDENTIAL MAY SEE, when it should not see all of it.
+  ///
+  /// Scopes say what a token may DO. They said nothing about whom to, so a credential that could read
+  /// findings read every finding in the organisation - and a sales integration and an engineering one
+  /// were the same integration with different names.
+  ///
+  /// Empty means the whole organisation, which is what every existing credential means and what a
+  /// single-team customer wants. A non-empty list is a fence: only these people's records, and only
+  /// check-ins they are on.
+  boundToPersonExternalIds String[] @default([]) @map("bound_to_person_external_ids")
   /// Last authenticated use, for the console. Written on token issue rather than on every call:
   /// the question it answers is "is this integration alive", and per-request writes would put a
   /// write on the hot path of every read.

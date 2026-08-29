@@ -17,7 +17,7 @@ export class CredentialsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async issue(organizationId: string, name: string, scopes: string[], createdByUserId?: string) {
+  async issue(organizationId: string, name: string, scopes: string[], createdByUserId?: string, boundToPersonExternalIds: string[] = []) {
     if (!name?.trim()) throw new BadRequestException('A credential needs a name, so it can be revoked on purpose later.');
     const bad = (scopes ?? []).filter((s) => !isScope(s));
     if (bad.length) throw new BadRequestException(`Unknown scope(s): ${bad.join(', ')}`);
@@ -33,6 +33,7 @@ export class CredentialsService {
 
     const row = await this.prisma.apiCredential.create({
       data: {
+        boundToPersonExternalIds,
         organizationId,
         name: name.trim(),
         clientId,
@@ -40,7 +41,7 @@ export class CredentialsService {
         scopes,
         createdByUserId: createdByUserId ?? null,
       },
-      select: { id: true, name: true, clientId: true, scopes: true, createdAt: true },
+      select: { id: true, name: true, clientId: true, scopes: true, boundToPersonExternalIds: true, createdAt: true },
     });
 
     this.logger.log(`Issued credential ${clientId} ("${row.name}") for org ${organizationId}`);
@@ -51,7 +52,7 @@ export class CredentialsService {
   async list(organizationId: string) {
     return this.prisma.apiCredential.findMany({
       where: { organizationId },
-      select: { id: true, name: true, clientId: true, scopes: true, lastUsedAt: true, revokedAt: true, createdAt: true },
+      select: { id: true, name: true, clientId: true, scopes: true, boundToPersonExternalIds: true, lastUsedAt: true, revokedAt: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
   }
