@@ -613,6 +613,9 @@ model Ground {
 
   @@index([organizationId])
   @@index([status])
+  /// A ground SUMMONED against an imported objective. Declared here as well as created in SQL,
+  /// because an index Prisma does not know about is one the next generated migration drops.
+  @@index([organizationId, subjectExternalId])
   @@map("grounds")
 }
 
@@ -1021,6 +1024,10 @@ model GroundDependency {
   onParticipant   GroundParticipant? @relation("DependencyOn", fields: [onParticipantId], references: [id], onDelete: SetNull)
 
   @@index([groundId])
+  /// The escalation sweep asks for open handoffs not yet escalated, oldest first. Declared here as
+  /// well as created in SQL - an index Prisma does not know about is one the next generated
+  /// migration drops.
+  @@index([status, escalatedAt, createdAt])
   @@map("ground_dependencies")
 }
 
@@ -1917,6 +1924,15 @@ model KnowledgeCard {
 
   @@index([organizationId, kind])
   @@index([organizationId, key, effectiveFrom])
+  /// TRIGRAM, WHICH IS WHY THIS NEEDS SAYING TWICE.
+  ///
+  /// Retrieval matches a question against card titles and bodies with `pg_trgm` - a plain btree
+  /// index cannot serve that, and without these it is a sequential scan over every card in the
+  /// organisation. They lived only in SQL, so Prisma did not know they existed and the next
+  /// generated migration would have dropped them: the product would simply have got slower, with
+  /// nothing to point at.
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([body(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("knowledge_cards")
 }
 
@@ -1965,6 +1981,9 @@ model AssistantTurn {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, personExternalId, createdAt])
+  /// Trigram, for recall over what somebody said. Same reason as the knowledge cards above: SQL-only
+  /// meant Prisma would have dropped it.
+  @@index([content(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("assistant_turns")
 }
 
