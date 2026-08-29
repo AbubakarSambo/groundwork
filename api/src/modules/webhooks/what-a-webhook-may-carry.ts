@@ -115,6 +115,36 @@ export function blockerPayload(args: {
   };
 }
 
+export interface HandoverReadyPayload {
+  roleAssignmentId: string;
+  /** Whether the role had nothing outstanding - different from a brief that failed to build. */
+  empty: boolean;
+  occurredAt: string;
+  permalink: string;
+}
+
+/**
+ * THE ROLE NAME DOES NOT TRAVEL, AND NOR DOES ANYTHING IN THE BRIEF.
+ *
+ * "Head of Partnerships changed hands today" in somebody's gateway log is a fact about a person's
+ * employment leaving the boundary for no reason - the receiver knows their own org chart. And the
+ * brief itself is a list of what is outstanding on a specific desk, which is the last thing that
+ * should be forwarded by an alerting rule.
+ */
+export function handoverReadyPayload(args: {
+  roleAssignmentId: string;
+  empty: boolean;
+  occurredAt: Date;
+  appUrl: string;
+}): HandoverReadyPayload {
+  return {
+    roleAssignmentId: args.roleAssignmentId,
+    empty: args.empty,
+    occurredAt: args.occurredAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/handovers/${args.roleAssignmentId}`,
+  };
+}
+
 /**
  * The words a payload must never contain, checked in the spec that guards these builders. Kept here
  * beside the builders so the rule and the thing it governs are read together.

@@ -11,6 +11,13 @@ export const SCOPES = [
   'knowledge:write',
   'checkins:write',
   'findings:read',
+  /*
+   * Its own scope rather than folded into findings:read. A handover brief is the list of what is
+   * outstanding on one named person's desk, which is a good deal more than a finding - so granting
+   * an integration the right to read findings must not silently grant it this too. Adding a scope
+   * is additive; the note above about renaming still holds.
+   */
+  'handovers:read',
   'proposals:read',
   'proposals:write',
   'chat:write',

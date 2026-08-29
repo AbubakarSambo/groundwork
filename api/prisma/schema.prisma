@@ -286,6 +286,7 @@ model Organization {
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
   detectorResults     DetectorResult[]
+  roleAssignments     RoleAssignment[]
   contributions       Contribution[]
   recommendations     Recommendation[]
   objectiveDrafts     ObjectiveDraft[]
@@ -2808,4 +2809,50 @@ model OrganizationMembership {
   @@unique([userId, organizationId])
   @@index([userId])
   @@map("organization_memberships")
+}
+
+/// WHO HELD THIS ROLE, AND WHEN THEY STOPPED.
+///
+/// The spec keys this to a `role` record. There is no `role` table here - roles exist as a static
+/// library of functions and as free text on a participant - so this holds the NAME the organisation
+/// already uses, the same way `roleAsDescribed` does. Inventing half a role model to satisfy a
+/// foreign key would have been the worse of the two: a table nothing populates, joined to by a
+/// thing that works, is how a schema starts lying.
+///
+/// Two jobs, and the second is the one nobody asks for until it is too late. It is the trigger for
+/// a handover brief; and `startedAt` is the real onboarding window that `no_checkin` currently
+/// approximates with how long somebody has been in the directory.
+model RoleAssignment {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  /// The person holding it, by their identity system's id - the same key every org-scoped record uses.
+  personExternalId String @map("person_external_id")
+  /// The role as the organisation names it. Free text on purpose - see the note above.
+  roleName         String @map("role_name")
+
+  startedAt DateTime  @default(now()) @map("started_at")
+  endedAt   DateTime? @map("ended_at")
+
+  /// The assignment this one takes over from. Set on the INCOMING assignment, so a handover is
+  /// something the successor has rather than something the leaver is owed - which is the right way
+  /// round, because the leaver has gone.
+  predecessorAssignmentId String? @unique @map("predecessor_assignment_id")
+
+  /// Stamped when the brief has been built, so it is built once. §13's ageing rule makes this
+  /// load-bearing: turn content ages out, and a brief built afterwards is built from data already
+  /// gone.
+  handoverReadyAt DateTime? @map("handover_ready_at")
+  /// The brief itself, generated at handover and then immutable - it describes a moment.
+  handoverBrief   Json?     @map("handover_brief")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  predecessor  RoleAssignment? @relation("Succession", fields: [predecessorAssignmentId], references: [id], onDelete: SetNull)
+  successor    RoleAssignment? @relation("Succession")
+
+  @@index([organizationId, personExternalId])
+  @@index([organizationId, roleName, endedAt])
+  @@map("role_assignments")
 }

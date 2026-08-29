@@ -482,6 +482,27 @@ export class DetectorsService {
       people.filter((p) => !p.email || emails.has(p.email.toLowerCase())).map((p) => p.externalId),
     );
 
+    /*
+     * THE REAL ONBOARDING WINDOW, NOW THAT ONE EXISTS.
+     *
+     * `no_checkin` used how long somebody had been in the DIRECTORY, which was a stand-in named as
+     * such: it says nothing about when they started the job. Somebody moved into a new role after
+     * three years at the company was, by that measure, three years overdue on their first day in it.
+     *
+     * `RoleAssignment.startedAt` is the real thing. Falls back to the directory date where no
+     * assignment exists, because most organisations will not populate this on day one and the
+     * weaker test is better than none.
+     */
+    const assignments = await this.prisma.roleAssignment.findMany({
+      where: { organizationId, endedAt: null },
+      select: { personExternalId: true, startedAt: true },
+      orderBy: { startedAt: 'desc' },
+    });
+    const startedInRole = new Map<string, Date>();
+    for (const a of assignments) {
+      if (!startedInRole.has(a.personExternalId)) startedInRole.set(a.personExternalId, a.startedAt);
+    }
+
     const now = new Date();
     let n = 0;
 
@@ -506,7 +527,11 @@ export class DetectorsService {
     for (const u of findNoLead(people)) {
       await write('no_lead', u.personExternalId, 'medium', sayNoLead(u));
     }
-    for (const u of findNoCheckIn(people, checkedIn, now)) {
+    const withWindow = people.map((p) => ({
+      ...p,
+      createdAt: startedInRole.get(p.externalId) ?? p.createdAt,
+    }));
+    for (const u of findNoCheckIn(withWindow, checkedIn, now)) {
       await write('no_checkin', u.personExternalId, 'low', sayNoCheckIn(u), { knownForDays: u.knownForDays });
     }
     return n;

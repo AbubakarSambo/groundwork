@@ -16,6 +16,7 @@ import { BulkImportService } from '../subjects/bulk-import.service';
 import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard, PanelCaller } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
+import { HandoverService } from '../grounds/handover.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -57,6 +58,7 @@ export class PublicApiController {
     private readonly bulk: BulkImportService,
     private readonly embed: EmbedService,
     private readonly assistant: AssistantService,
+    private readonly handover: HandoverService,
   ) {}
 
   /**
@@ -219,6 +221,55 @@ export class PublicApiController {
   @ApiOperation({ summary: 'Ask the assistant. Returns typed blocks, not a string.' })
   async chat(@Req() req: { panel: PanelCaller }, @Body() dto: { message?: string }) {
     return this.assistant.respond(req.panel.organizationId, req.panel.personId, dto?.message ?? '');
+  }
+
+  /**
+   * A ROLE CHANGING HANDS.
+   *
+   * The brief is built the moment the assignment ends, because §13's ageing rule removes turn
+   * content after its window - a brief built later is built from data already gone. So this is a
+   * write that produces a record, not a request for one to be generated on read.
+   */
+  @Post('role-assignments')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Record who holds a role. Ending one with a successor builds their handover brief.' })
+  async createRoleAssignment(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { personExternalId: string; roleName: string; startedAt?: string },
+  ) {
+    if (!dto?.personExternalId || !dto?.roleName) {
+      throw new BadRequestException('personExternalId and roleName are both required.');
+    }
+    return this.handover.startAssignment(
+      req.machine.organizationId, dto.personExternalId, dto.roleName,
+      dto.startedAt ? new Date(dto.startedAt) : undefined,
+    );
+  }
+
+  @Post('role-assignments/:id/end')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'End an assignment. With a successor, the handover brief is built now.' })
+  async endRoleAssignment(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { successorPersonExternalId?: string; endedAt?: string },
+  ) {
+    return this.handover.endAssignment(req.machine.organizationId, id, {
+      successorPersonExternalId: dto?.successorPersonExternalId,
+      ...(dto?.endedAt ? { endedAt: new Date(dto.endedAt) } : {}),
+    });
+  }
+
+  @Get('handovers/:roleAssignmentId')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('handovers:read')
+  @ApiOperation({ summary: 'The brief as it was built. Never regenerated - it describes a moment.' })
+  async getHandover(@Req() req: { machine: MachineCaller }, @Param('roleAssignmentId') id: string) {
+    return this.handover.get(req.machine.organizationId, id);
   }
 
   /**

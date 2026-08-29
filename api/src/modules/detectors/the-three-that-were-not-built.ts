@@ -145,9 +145,11 @@ export function sayNoLead(u: Unled): string {
  * their onboarding window - because in both cases the honest answer is "not yet", and a product
  * that opens by telling a new joiner they have failed to do something is not one they will use.
  *
- * The onboarding window does not exist as a record yet, so this uses the only equivalent that does:
- * how long the person has been in the directory. That is a weaker test than the real one and it is
- * named as such rather than dressed up - when the window lands, this reads it instead.
+ * The caller passes the date the window starts from. That is now `RoleAssignment.startedAt` where
+ * an assignment exists, which is the real thing: somebody who moved into a new role after three
+ * years at the company was, by the directory date, three years overdue on their first day in it. It
+ * falls back to the directory date where no assignment exists, because most organisations will not
+ * populate assignments on day one and the weaker test beats none.
  */
 export const SETTLING_IN_DAYS = 21;
 

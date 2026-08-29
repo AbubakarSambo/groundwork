@@ -174,3 +174,42 @@ describe('an organisation with no imported objectives still hears about its peop
     expect(out).not.toContain('no_checkin:nomail');
   });
 });
+
+describe('the onboarding window is when they started the ROLE, not when they joined', () => {
+  it('so somebody who moved internally is not three years overdue on day one', async () => {
+    /*
+     * The directory date was a stand-in and it fails on the commonest case there is: an internal
+     * move. Somebody three years at the company who changed jobs last week has, by that measure,
+     * never checked in for three years - and would be told so in their first fortnight.
+     */
+    const created: any[] = [];
+    const empty = { findMany: async () => [], findFirst: async () => null,
+      create: async () => ({}), update: async () => ({}), upsert: async () => ({}) };
+    const mocked: any = {
+      detectionQuietPeriod: { findMany: async () => [] },
+      subject: { findMany: async () => [] },
+      assistantTurn: { findMany: async () => [] },
+      person: { findMany: async () => [
+        { externalId: 'mover', managerExternalId: 'boss', active: true,
+          createdAt: new Date('2023-01-01'), email: 'mover@x.com' },
+        { externalId: 'boss', managerExternalId: null, active: true,
+          createdAt: new Date('2023-01-01'), email: 'boss@x.com' },
+      ] },
+      roleAssignment: { findMany: async () => [
+        { personExternalId: 'mover', startedAt: new Date(Date.now() - 5 * 86_400_000) },
+      ] },
+      groundParticipant: { findMany: async () => [] },
+      detectorResult: { findMany: async () => [], findFirst: async () => null, update: async () => ({}),
+        create: async (a: any) => { created.push(a.data); return {}; } },
+    };
+    const prisma: any = new Proxy(mocked, { get: (t, k: string) => t[k] ?? empty });
+    const { DetectorsService } = require('./detectors.service');
+    await new DetectorsService(prisma).run('org-a');
+
+    const keys = created.map((c) => `${c.key}:${c.personExternalId}`);
+    expect(keys).not.toContain('no_checkin:mover');
+    /* And somebody with no assignment still falls back to the directory date, so the weaker test
+       is not silently lost for orgs that never populate assignments. */
+    expect(keys).toContain('no_checkin:boss');
+  });
+});

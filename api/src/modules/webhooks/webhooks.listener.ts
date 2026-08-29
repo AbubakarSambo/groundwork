@@ -3,8 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WebhooksService } from './webhooks.service';
-import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, BlockerEvent } from '../../common/events';
-import { roundCompletedPayload, checkInCompletedPayload, blockerPayload } from './what-a-webhook-may-carry';
+import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, BlockerEvent, HandoverReadyEvent } from '../../common/events';
+import { roundCompletedPayload, checkInCompletedPayload, blockerPayload, handoverReadyPayload } from './what-a-webhook-may-carry';
 
 /**
  * WHERE `round.completed` FINALLY REACHES SOMEBODY.
@@ -121,6 +121,25 @@ export class WebhooksListener {
       );
     } catch (err: any) {
       this.logger.warn(`Could not queue ${event} for ${e.blockerId}: ${err.message}`);
+    }
+  }
+
+
+  @OnEvent(GroundworkEvents.HANDOVER_READY)
+  async onHandoverReady(e: HandoverReadyEvent) {
+    try {
+      await this.webhooks.emit(
+        e.organizationId,
+        'handover.ready',
+        handoverReadyPayload({
+          roleAssignmentId: e.roleAssignmentId,
+          empty: e.empty,
+          occurredAt: new Date(),
+          appUrl: this.appUrl(),
+        }) as any,
+      );
+    } catch (err: any) {
+      this.logger.warn(`Could not queue handover.ready for ${e.roleAssignmentId}: ${err.message}`);
     }
   }
 

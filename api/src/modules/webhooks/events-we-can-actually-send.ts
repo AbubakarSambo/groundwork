@@ -32,6 +32,8 @@ export const SENDABLE_EVENTS = [
   'blocker.raised',
   /* It has been open past the threshold. Fires once per handoff, never nightly. */
   'blocker.escalated',
+  /* A role changed hands and the incoming holder has a brief waiting. */
+  'handover.ready',
 ] as const;
 
 export type SendableEvent = (typeof SENDABLE_EVENTS)[number];
@@ -45,7 +47,6 @@ export const NOT_YET_EMITTED = [
   'finding.escalated',
   'proposal.created',
   'scenario.proposed',
-  'handover.ready',
   'graph.conflict_detected',
 ] as const;
 
