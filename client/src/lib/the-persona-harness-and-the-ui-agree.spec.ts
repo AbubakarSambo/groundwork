@@ -27,6 +27,18 @@ import { describe, it, expect } from 'vitest'
  * get a runner - three days before anybody saw it.
  */
 
+/**
+ * WHAT THIS DELIBERATELY DOES NOT COVER, so nobody reads it as more than it is.
+ *
+ * The harness also selects on placeholders - `input[placeholder*='your@email']`, `placeholder*='org'`
+ * and nine others. They are substring matches by design and every one currently resolves, so they
+ * are far more robust than an exact text match: 'org' survives almost any rewording of "Organisation
+ * name". Pinning them would add false failures without removing real ones - `'name'` alone matches
+ * half the forms in the app, so the check would pass whatever anybody renamed.
+ *
+ * The selectors that broke are the exact-text ones, and those are what is pinned. If a placeholder
+ * ever does break, the honest fix is to pin that one rather than all of them.
+ */
 const ROOT = resolve(__dirname, '../../..')
 const HARNESS = join(ROOT, 'groundwork_local_test/_ui_strings.py')
 
