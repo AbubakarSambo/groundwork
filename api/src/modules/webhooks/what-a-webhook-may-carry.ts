@@ -145,6 +145,36 @@ export function handoverReadyPayload(args: {
   };
 }
 
+export interface ScenarioProposedPayload {
+  candidateId: string;
+  scenario: string;
+  occurredAt: string;
+  permalink: string;
+}
+
+/**
+ * THE SCENARIO TRAVELS, THE PERSON AND THE EVIDENCE DO NOT.
+ *
+ * The kind of conversation is a category and carries nobody. Who it is about, and why, is the exact
+ * combination that must not leave: "a performance improvement conversation has been suggested about
+ * Naomi, because of these findings" is an accusation, in a gateway log, forwarded by an alerting
+ * rule, before a single human has even read it. The permalink is where that lives, behind the
+ * authorisation that governs it.
+ */
+export function scenarioProposedPayload(args: {
+  candidateId: string;
+  scenario: string;
+  occurredAt: Date;
+  appUrl: string;
+}): ScenarioProposedPayload {
+  return {
+    candidateId: args.candidateId,
+    scenario: args.scenario,
+    occurredAt: args.occurredAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/suggestions/${args.candidateId}`,
+  };
+}
+
 /**
  * The words a payload must never contain, checked in the spec that guards these builders. Kept here
  * beside the builders so the rule and the thing it governs are read together.

@@ -8,6 +8,12 @@ import { GroundScenario } from '@prisma/client';
  * the ground is about, the decision belongs to whoever holds it in real life.
  */
 export const END_STATES: Record<GroundScenario, { value: string; label: string; description?: string }[]> = {
+  ROLE_HANDOVER: [
+    { value: 'HANDED_OVER', label: 'Handed over' },
+    { value: 'GAPS_REMAIN', label: 'Handed over with named gaps', description: 'The successor has it, and both sides named what was not transferred rather than pretending it was.' },
+    { value: 'NEEDS_MORE_TIME', label: 'Not finished - extend it' },
+    { value: 'PREDECESSOR_GONE', label: 'Ended without the predecessor', description: 'They left before this finished. Recorded honestly so the gaps are attributed to the circumstance rather than to the successor.' },
+  ],
   NEW_HIRE: [
     { value: 'KEEP', label: 'Keep the hire' },
     { value: 'RESTRUCTURE', label: 'Restructure the role' },

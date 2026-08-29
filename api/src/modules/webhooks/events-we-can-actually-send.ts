@@ -34,6 +34,9 @@ export const SENDABLE_EVENTS = [
   'blocker.escalated',
   /* A role changed hands and the incoming holder has a brief waiting. */
   'handover.ready',
+  /* The record suggests a conversation. Emitted at the PROPOSAL, never at a launch - there is no
+     launch to emit, because a human opens it. */
+  'scenario.proposed',
 ] as const;
 
 export type SendableEvent = (typeof SENDABLE_EVENTS)[number];
@@ -46,7 +49,6 @@ export const NOT_YET_EMITTED = [
   'finding.created',
   'finding.escalated',
   'proposal.created',
-  'scenario.proposed',
   'graph.conflict_detected',
 ] as const;
 

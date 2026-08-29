@@ -18,6 +18,7 @@ import { EmbedSessionGuard, PanelCaller } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
 import { HandoverService } from '../grounds/handover.service';
 import { OnboardingService } from '../grounds/onboarding.service';
+import { ScenariosService } from '../detectors/scenarios.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -61,6 +62,7 @@ export class PublicApiController {
     private readonly assistant: AssistantService,
     private readonly handover: HandoverService,
     private readonly onboarding: OnboardingService,
+    private readonly scenarios: ScenariosService,
   ) {}
 
   /**
@@ -312,6 +314,35 @@ export class PublicApiController {
     return this.onboarding.mark(
       req.machine.organizationId, personExternalId, gateKey, state as any, dto?.evidenceRef,
     );
+  }
+
+  @Get('suggestions')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Conversations the record suggests, waiting on this person to decide.' })
+  async suggestions(@Req() req: { panel: PanelCaller }) {
+    return this.scenarios.pendingFor(req.panel.organizationId, req.panel.externalId);
+  }
+
+  /**
+   * A HUMAN SAYING YES OR NO. The only thing that turns a suggestion into a conversation.
+   *
+   * Guarded by the PANEL session rather than a machine credential, which is the whole point: a
+   * machine token carries an organisation and nobody in particular, and "a human opens it" cannot be
+   * satisfied by a server-to-server call.
+   */
+  @Post('suggestions/:id')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Accept or decline a suggested conversation.' })
+  async decideSuggestion(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @Body() dto: { accept?: boolean },
+  ) {
+    if (typeof dto?.accept !== 'boolean') {
+      throw new BadRequestException('accept must be true or false. There is no third answer.');
+    }
+    return this.scenarios.decide(req.panel.organizationId, id, req.panel.externalId, dto.accept);
   }
 
   /**

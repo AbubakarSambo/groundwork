@@ -116,11 +116,15 @@ describe('only events that can fire are offered', () => {
      * cannot fire is a promise the product cannot keep, made in the one place a customer builds
      * against.
      *
-     * This test used to name blocker.raised, and it failed the day that event started firing -
-     * which is the guard doing its job. The example moved to one that is still unemitted rather
-     * than the assertion being loosened, because the assertion is the point.
+     * This has now needed repointing three times, as blocker.raised, blocker.escalated and
+     * scenario.proposed each started firing. Each edit was the guard working - and three identical
+     * edits is a signal that the example should come from the list rather than be typed out.
+     *
+     * If NOT_YET_EMITTED is ever empty, every named event fires and there is nothing to refuse; the
+     * skip below says so rather than the test quietly asserting nothing.
      */
-    const r = validateEvents(['scenario.proposed']);
+    if (!NOT_YET_EMITTED.length) return;
+    const r = validateEvents([NOT_YET_EMITTED[0]]);
     expect(r.ok).toBe(false);
     expect((r as any).message).toMatch(/not emitted yet/i);
   });

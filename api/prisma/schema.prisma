@@ -53,6 +53,10 @@ enum GroundScenario {
   BOARD_STRATEGY
   COHORT_CHECK
   ACUTE_SHOCK // a jarring event just happened; build the shared picture before any decision
+  /// A role changing hands. The only scenario the spec names that this enum did not already have -
+  /// the rest were here, so detection proposes from the vocabulary that already exists rather than
+  /// a parallel set of its own.
+  ROLE_HANDOVER
   /// The honest default when a described situation matches no card.
   ///
   /// Before this, "Describe your own situation" carried REALIGN_TEAM in its card config, so a routing
@@ -285,6 +289,7 @@ model Organization {
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
+  scenarioCandidates  ScenarioCandidate[]
   detectorResults     DetectorResult[]
   roleAssignments     RoleAssignment[]
   onboardingTracks    OnboardingTrack[]
@@ -2934,4 +2939,62 @@ model OnboardingStatus {
   @@unique([personExternalId, gateId])
   @@index([organizationId, personExternalId])
   @@map("onboarding_statuses")
+}
+
+/// PROPOSED, ACCEPTED, DECLINED, EXPIRED - and never "launched".
+enum ScenarioCandidateState {
+  PROPOSED
+  ACCEPTED
+  DECLINED
+  /// Nobody answered before the evidence went stale. Not a decline: it is asked again if the
+  /// situation is still there, because silence is not a no.
+  EXPIRED
+}
+
+/// A CONVERSATION THE RECORD SUGGESTS IS NEEDED. NOTHING MORE THAN THAT.
+///
+/// The spec's own sentence is the design: "detection is a proposal, never a launch", and it says
+/// where that matters most - a system that silently opens a performance improvement conversation
+/// because a detector crossed a line is a system nobody will let near their staff.
+///
+/// So this table holds a suggestion addressed to a named person, with the evidence that produced it
+/// and how sure it is. A ground is created when they say yes and not before, which is why there is
+/// no groundId here until there is.
+model ScenarioCandidate {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  scenario       GroundScenario
+
+  /// What it is about. Both nullable: a NEW_HIRE is about a person, a DRIFT is about a subject,
+  /// and REALIGN_TEAM is about a subject and several people at once.
+  subjectExternalId String? @map("subject_external_id")
+  personExternalId  String? @map("person_external_id")
+
+  /// Why, in the shape the detector produced it. Never anybody's words - see the payload rules.
+  evidence   Json
+  /// How sure, 0 to 1. Shown rather than thresholded away, so somebody can decline a weak one
+  /// knowing it was weak.
+  confidence Float
+
+  /// The appropriate authority: the subject owner, the lead, or the person themselves.
+  proposedToPersonExternalId String   @map("proposed_to_person_external_id")
+  proposedAt                 DateTime @default(now()) @map("proposed_at")
+
+  state      ScenarioCandidateState @default(PROPOSED)
+  resolvedAt DateTime?              @map("resolved_at")
+  /// After this, it stops asking. Silence is not consent and it is not refusal either.
+  expiresAt  DateTime               @map("expires_at")
+
+  /// Set when accepting created one. Null everywhere else, which is most of the time.
+  groundId String? @map("ground_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, state, expiresAt])
+  @@index([organizationId, scenario, subjectExternalId])
+  @@index([organizationId, proposedToPersonExternalId, state])
+  @@map("scenario_candidates")
 }

@@ -32,6 +32,9 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   /** Short on purpose: nobody has named the situation yet, so committing months to it is a guess. */
   OPEN_READ: 30,
   NEW_HIRE: 90,
+  /** Short, and deliberately shorter than onboarding. A handover that is still running in three
+      months is not a handover, it is the leaver still doing the job. */
+  ROLE_HANDOVER: 30,
   NEW_COFOUNDER: 90,
   NEW_ADVISOR: 365,
   NEW_PROJECT: 90,
@@ -100,6 +103,7 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
 export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   // Nothing has happened yet. The expectations are what is being set.
   NEW_HIRE: GroundMoment.STARTING,
+  ROLE_HANDOVER: GroundMoment.STARTING,
   NEW_PROJECT: GroundMoment.STARTING,
   NEW_COFOUNDER: GroundMoment.STARTING,
   NEW_MANAGER: GroundMoment.STARTING,
@@ -134,6 +138,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
 
 export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   NEW_HIRE: Cadence.FORTNIGHTLY,
+  /** Weekly, because the window is 30 days and the leaver is walking out of it. */
+  ROLE_HANDOVER: Cadence.WEEKLY,
   NEW_PROJECT: Cadence.FORTNIGHTLY,
   NEW_COFOUNDER: Cadence.FORTNIGHTLY,
   NEW_MANAGER: Cadence.FORTNIGHTLY,

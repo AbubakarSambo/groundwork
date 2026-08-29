@@ -22,6 +22,8 @@ export const GroundworkEvents = {
   BLOCKER_ESCALATED: 'blocker.escalated',
   /** A role changed hands and the incoming holder has a brief waiting. */
   HANDOVER_READY: 'handover.ready',
+  /** The record suggests a conversation. A human still has to say yes. */
+  SCENARIO_PROPOSED: 'scenario.proposed',
 } as const;
 
 export interface CheckInCompletedEvent {
@@ -47,6 +49,12 @@ export interface GroundActivatedEvent {
  * said, and who it sits between names two people - neither belongs in an event that a listener may
  * forward outside the boundary. A listener that needs more can read it under authorisation.
  */
+export interface ScenarioProposedEvent {
+  candidateId: string;
+  organizationId: string;
+  scenario: string;
+}
+
 export interface HandoverReadyEvent {
   roleAssignmentId: string;
   organizationId: string;

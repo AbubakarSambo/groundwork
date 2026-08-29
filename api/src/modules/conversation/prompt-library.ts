@@ -1883,7 +1883,7 @@ IF AN EXPECTATION ALREADY EXISTS FOR SOMEBODY - it will be in EXISTING_EXPECTATI
 If what they say matches what is already there, do not ask. Repeating an expectation is not changing it.`;
 
 // Role-specific opening questions - exact wording (Part 3 tables).
-const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL', { initiator: string; participant: string }> = {
+const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL' | 'ROLE_HANDOVER', { initiator: string; participant: string }> = {
   NEW_HIRE: {
     initiator: `"Who have you just hired and what did you bring them in to do? What does early success look like for you - not the job description, your version. If you have a timeframe in mind, tell me it. What would have to exist for you to know this hire is working?"`,
     participant: `"What do you want to get out of this role - not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"
@@ -1891,6 +1891,22 @@ const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISO
 DISCOVERY DEPENDENCY: For senior or executive hires, ask: "What do you need to understand, learn, or have access to before you can deliver on your mandate - and by when do you need it?" Record the answer as a named dependency. If the person cannot name it, ask what would block them in the first sixty days.
 
 AUTHORITY CLARITY: If the person describes a mandate that comes from more than one person or layer - a board, a chair, an investor, a parent company - ask: "If the people giving you this mandate disagree with each other, who has the final word?" If they cannot name one person, record that explicitly. This is often the most important thing in the ground.`,
+  },
+  /*
+   * A HANDOVER CONVERSATION, WHICH IS NOT A HANDOVER DOCUMENT.
+   *
+   * The brief already lists what is outstanding. What it cannot carry is WHY any of it is where it
+   * is - that was the leaver's judgement, and it is the part that is genuinely lost when somebody
+   * goes. So neither side is asked to restate the list. Both are asked the things a list cannot
+   * hold: what is fragile, what is owed to whom, and what the successor has not thought to ask.
+   */
+  ROLE_HANDOVER: {
+    initiator: `"You are handing this over. Start with what is genuinely fragile - the thing that works because you have been watching it, not because it is set up to work. Then: who is relying on you personally rather than on the role? And what did you decide that somebody could easily undo without knowing they were undoing it?"`,
+    participant: `"What have you inherited that you do not yet understand? Do not list what is outstanding - you have that. Name the thing you would be guessing about if you had to act on it this week.
+
+RELATIONSHIP HANDOVER: Ask separately: "Which relationships come with this role, and which of them have you not met yet?" A handover that transfers work and not relationships is the one that quietly fails a month later.
+
+WHAT YOU WOULD CHANGE: Ask: "What looks wrong to you from outside it?" Ask this EARLY, before they have been in the seat long enough to stop noticing. It is the only moment anybody gets an outside view of the role, and it is gone within weeks."`,
   },
   NEW_COFOUNDER: {
     initiator: `"Who is joining and what is the arrangement? What are they contributing that nobody else in the founding team can contribute? What are you relying on them to cover that you have not explicitly agreed yet?"`,
@@ -2350,6 +2366,7 @@ RECORD: From the first session - the person's first-hand account, the known-vers
 // Legacy combined packs - used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
+  ROLE_HANDOVER: composeStartingPack('ROLE_HANDOVER'),
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
   NEW_ADVISOR: composeStartingPack('NEW_ADVISOR'),
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
