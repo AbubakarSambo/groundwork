@@ -81,6 +81,7 @@ async def provision_ground(browser):
     # first, so the tripwire below still sees the real success-or-failure screen for this arrival -
     # but the harness has to get past the step the way a person does.
     await complete_password_step(page)
+    await complete_org_setup(page, EMAIL)
     # GW-REPORTSUMMARY-DTO-DRIFT tripwire: this initiator's session was closed
     # with a real generated report before saving, so /entry/commit carries a
     # reportSummary payload - the exact shape that 400'd with "property

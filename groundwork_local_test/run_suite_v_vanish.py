@@ -42,6 +42,7 @@ from _runner import (
     mail_link,
     seed_closed_entry_session,
     complete_password_step,
+    complete_org_setup,
     ground_reached,
 )
 from _ui_strings import (  # UI copy the product owns - see the guard in
@@ -204,6 +205,7 @@ async def main() -> int:
         # step (it must be - putting the step first is what made this suite fail), so this is a
         # detour on the way to the same place, not a change to what V2 is checking.
         await complete_password_step(page_b)
+        await complete_org_setup(page_b, EMAIL)
         if await ground_reached(page_b):
             rec.record("V2", "OK", "fresh context: the ground is there after the magic link")
             await rec.step(page_b, "FRESH CONTEXT: ground survived the magic link", "persona A (new browser)")
