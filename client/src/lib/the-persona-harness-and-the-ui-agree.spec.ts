@@ -246,8 +246,13 @@ describe('the persona harness and the UI agree', () => {
      * The guard is only worth having if the strings it checks are the strings the suites use. A
      * suite with its own inline copy is outside it, which is exactly how this broke.
      */
+    /*
+     * `_runner.py` IS IN THIS LIST, and leaving it out is what let the whole failure happen. It
+     * holds the shared provisioning helpers every suite calls, it typed its own copy of the UI
+     * text, and so it sat outside the one check that would have caught the rename.
+     */
     const suites = readdirSync(join(ROOT, 'groundwork_local_test'))
-      .filter(f => f.startsWith('run_suite_') && f.endsWith('.py'))
+      .filter(f => f.endsWith('.py') && (f.startsWith('run_suite_') || f === '_runner.py'))
     const offenders: string[] = []
     for (const f of suites) {
       const src = readFileSync(join(ROOT, 'groundwork_local_test', f), 'utf8')

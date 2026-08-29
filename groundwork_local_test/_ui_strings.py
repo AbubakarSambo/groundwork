@@ -39,6 +39,14 @@ GO_TO_YOUR_GROUND = "Go to your check-in"
 WAITING_TO_SEND = "Waiting to send"
 INCLUDED_IN_PLAN = "Included in your plan"
 
+# The organisation gate, /org/setup. An ADMIN whose organisation has no contact email is redirected
+# here from every route, so a brand-new admin meets it on the way to their first check-in. The two
+# placeholders are how the fields are found: the labels here are plain text beside the input rather
+# than bound to it, so get_by_label matches nothing.
+ORG_SETUP_HEADING = "Set up your organization"
+ORG_SETUP_NAME_PLACEHOLDER = "Acme Inc."
+ORG_SETUP_EMAIL_PLACEHOLDER = "hello@acme.com"
+
 # Everything the guard checks. Kept as a list rather than read by reflection so that a string can be
 # added here deliberately rather than by accident.
 PINNED = [
@@ -52,4 +60,7 @@ PINNED = [
     GO_TO_YOUR_GROUND,
     WAITING_TO_SEND,
     INCLUDED_IN_PLAN,
+    ORG_SETUP_HEADING,
+    ORG_SETUP_NAME_PLACEHOLDER,
+    ORG_SETUP_EMAIL_PLACEHOLDER,
 ]
