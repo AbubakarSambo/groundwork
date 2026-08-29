@@ -505,6 +505,22 @@ export class PublicApiController {
   }
 
   /**
+   * WHAT NEEDS SOMEBODY, IN FOUR BUCKETS.
+   *
+   * So nobody has to read every check-in. Each item says where it came from - somebody proposed it,
+   * several people independently agreed it, Groundwork worked it out, or the customer's own evidence
+   * shows it - because those four are not the same and acting on one thinking it was another is how
+   * a feed loses its reader.
+   */
+  @Get('findings/structured')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Findings with provenance, bucketed by what they need from a human.' })
+  async structuredFindings(@Req() req: { machine: MachineCaller }) {
+    return this.groundsByApi.structuredFindings(req.machine.organizationId, req.machine);
+  }
+
+  /**
    * SCIM 2.0. The path is theirs, not ours - an IdP is configured with a base URL and appends
    * /Users itself, so the shape has to be exactly what the standard says.
    */

@@ -17,7 +17,9 @@ function svc(o: { person?: any; user?: any; people?: Record<string, any> } = {})
   const grounds: any = { createForLead: async (org: string, uid: string, dto: any) => {
     calls.push({ org, uid, dto }); return { id: 'g1', ...dto }; } };
   const reports: any = { get: async (gid: string, uid: string) => ({ gid, readAs: uid }) };
-  return { service: new GroundsByApiService(prisma, grounds, reports), calls };
+  const board: any = { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) };
+  const config: any = { get: () => 'https://app' };
+  return { service: new GroundsByApiService(prisma, grounds, reports, board, config), calls };
 }
 
 const base = { actingPersonExternalId: 'ada', label: 'Q4 leadership', scenario: 'OKR_ALIGNMENT', moment: 'STARTING' };

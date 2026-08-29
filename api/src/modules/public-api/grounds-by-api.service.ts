@@ -5,6 +5,9 @@ import { ReportsService } from '../reports/reports.service';
 import { ObjectiveKind, ProposedChangeState } from '@prisma/client';
 import { textAfter } from './six-is-still-the-target';
 import { Fence, isFenced, mayTouch, mayReadGround, OUTSIDE_THE_FENCE } from './a-fence-around-a-credential';
+import { Finding, Attention, attentionFor, ATTENTION_MEANS } from './where-a-finding-came-from';
+import { BoardService } from '../board/board.service';
+import { ConfigService } from '@nestjs/config';
 import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
 
 /**
@@ -31,6 +34,8 @@ export class GroundsByApiService {
     private readonly prisma: PrismaService,
     private readonly grounds: GroundsService,
     private readonly reports: ReportsService,
+    private readonly board: BoardService,
+    private readonly config: ConfigService,
   ) {}
 
   /**
@@ -455,6 +460,86 @@ export class GroundsByApiService {
 
     this.logger.log(`Proposed change ${row.id} ${state.toLowerCase()} by ${dto.decidedByExternalId}.`);
     return { change: updated, agreedNow: textAfter(state, row.personObjective.text, row.proposedText) };
+  }
+
+
+  /**
+   * WHAT NEEDS SOMEBODY, ACROSS THE WHOLE ORGANISATION.
+   *
+   * Assembled from what already exists rather than computed afresh: detector results, open handoffs,
+   * and proposed changes waiting on an approver. Nothing new is inferred here - if a thing is not
+   * already a finding, this is not the place it becomes one.
+   *
+   * Every item carries where it came from, because an inference and a verified fact arriving in the
+   * same list looking identical is the fastest way to lose trust in the whole feed.
+   */
+  async structuredFindings(organizationId: string, fence: Fence = { boundToPersonExternalIds: [] }) {
+    const appUrl = (this.config.get<string>('resend.frontendUrl') ?? 'http://localhost:5173').replace(/\/$/, '');
+    const out: (Finding & { attention: Attention })[] = [];
+    const add = (f: Finding) => {
+      /* One place decides the bucket, so a caller cannot disagree with the rule. */
+      out.push({ ...f, attention: attentionFor(f) });
+    };
+
+    const findings = await this.prisma.detectorResult.findMany({
+      where: { organizationId, resolvedAt: null },
+      select: { key: true, personExternalId: true, subjectExternalId: true, evidence: true,
+        firstSeenAt: true, lastSeenAt: true },
+    });
+    for (const f of findings) {
+      if (!mayTouch(fence, f.personExternalId ?? undefined) && f.personExternalId) continue;
+      const says = (f.evidence as any)?.says;
+      if (typeof says !== 'string') continue;
+      add({
+        kind: f.key === 'goal_divergence' ? 'divergence'
+          : f.key === 'unowned_gap' ? 'responsibility_unclear' : 'unresolved_question',
+        /* A detector is Groundwork working something out. Labelled as the weakest thing here, on
+           purpose - it is the category most likely to be wrong. */
+        provenance: 'groundwork_inferred',
+        says,
+        subjectExternalId: f.subjectExternalId,
+        peopleInvolved: typeof (f.evidence as any)?.diverging === 'number' ? (f.evidence as any).diverging : undefined,
+        firstSeenAt: f.firstSeenAt.toISOString(),
+        lastSeenAt: f.lastSeenAt.toISOString(),
+        permalink: `${appUrl}/findings`,
+      });
+    }
+
+    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
+    for (const w of waiting) {
+      if (!mayTouch(fence, w.fromPersonKey)) continue;
+      add({
+        kind: 'blocker',
+        /* Somebody said it about their own work. One person's account, and labelled as one. */
+        provenance: 'participant_proposed',
+        says: `Waiting ${w.waitingDays} ${w.waitingDays === 1 ? 'day' : 'days'} on somebody else.`,
+        permalink: `${appUrl}/grounds/${w.groundId}`,
+      });
+    }
+
+    const pending = await this.prisma.proposedChange.findMany({
+      where: { organizationId, state: ProposedChangeState.AWAITING_APPROVAL },
+      include: { personObjective: { select: { text: true, externalId: true } } },
+    });
+    for (const c of pending) {
+      if (!mayTouch(fence, c.proposedByExternalId)) continue;
+      add({
+        kind: 'objective_change_proposed',
+        /* A person asked for this, in so many words. Not a guess and not an agreement. */
+        provenance: 'participant_proposed',
+        says: `A change has been asked for and is waiting on ${c.approverExternalId} to decide.`,
+        objectiveExternalId: c.personObjective.externalId,
+        permalink: `${appUrl}/proposed-changes/${c.id}`,
+      });
+    }
+
+    const byAttention = {
+      decision_required: out.filter((f) => f.attention === 'decision_required'),
+      needs_clarification: out.filter((f) => f.attention === 'needs_clarification'),
+      watch: out.filter((f) => f.attention === 'watch'),
+      none: out.filter((f) => f.attention === 'none'),
+    };
+    return { findings: out, byAttention, meaning: ATTENTION_MEANS };
   }
 
 }
