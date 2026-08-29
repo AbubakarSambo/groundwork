@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith } from './the-router-is-deterministic';
 import { Reply, rules, text, picker } from './a-reply-is-a-payload-not-a-string';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
@@ -207,8 +208,19 @@ export class AssistantService {
      * cannot support - it does not know what a reasonable wait is for any of these - and eleven days
      * is a fact the reader can weigh for themselves.
      */
+    /*
+     * THE DRAFT NAMES THE STATUS, BECAUSE A GAP IS WHAT THE MODEL FILLS.
+     *
+     * The first version left severity out and the composer supplied it - a WAITING handoff came back
+     * as "has been blocked for 2 days". That distinction is load-bearing here: the quick read counts
+     * only BLOCKING, and the decisions list promotes only BLOCKING, labelled as something nobody can
+     * move past. Instructing the composer not to embellish would not have helped, and cutting it off
+     * from the model would have traded a better sentence for a bug left in place. Stating the status
+     * leaves nothing to invent.
+     */
     const line = (w: (typeof waiting)[number]) =>
-      `- ${w.what} (${w.groundLabel}) - ${w.waitingDays} ${w.waitingDays === 1 ? 'day' : 'days'}`;
+      `- ${w.what} (${w.groundLabel}) - ${w.status === DependencyStatus.BLOCKING ? 'hard blocker' : 'waiting'}, `
+      + `${w.waitingDays} ${w.waitingDays === 1 ? 'day' : 'days'}`;
 
     /*
      * ANSWER THE QUESTION THEY ASKED FIRST, EVEN WHEN THE ANSWER IS NOTHING.
