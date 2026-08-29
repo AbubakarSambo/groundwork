@@ -181,10 +181,40 @@ describe('the persona harness and the UI agree', () => {
   it('and every card label the suites pin is still somewhere in the product', () => {
     expect(CREATE_CARDS.length).toBeGreaterThanOrEqual(15)
     expect(ENTRY_CARDS.length).toBeGreaterThanOrEqual(10)
+    /*
+     * A WHOLE LABEL, NOT A FRAGMENT OF ONE, and this is the hole that let the suite fail while this
+     * file agreed. The check was "does this text appear anywhere in the source", lowercased - so
+     * `suite_s` pinning "New hire" passed against a product that renders "A new hire starting",
+     * because one contains the other. Playwright matches the whole label, so the suite reported all
+     * eighteen cards missing while the guard reported agreement.
+     *
+     * A label now has to appear as a complete string: a quoted literal, or the entire text of a JSX
+     * node. Both are how a card label is actually written, and neither matches half of a longer one.
+     */
     const norm = (c: string) => c.replace(/\s+/g, ' ').toLowerCase()
+    const wholeLabels = (src: string): Set<string> => {
+      const out = new Set<string>()
+      for (const m of src.matchAll(/'([^'\n]{3,80})'|"([^"\n]{3,80})"|`([^`\n$]{3,80})`/g)) {
+        /*
+         * A KEY IS NOT A LABEL. `SCENARIO_FROM_LABEL` maps old picker wording to enum values, so
+         * 'new hire' is a quoted literal in the create page and is never rendered anywhere. It made
+         * a stale pin pass the tightened check on the first attempt - caught by breaking the guard
+         * on purpose and finding it still green, which is the only reason it is not still there.
+         * What follows the closing quote is what tells them apart.
+         */
+        const after = src.slice(m.index! + m[0].length).match(/^\s*(.)/)
+        if (after?.[1] === ':') continue
+        out.add(norm(m[1] ?? m[2] ?? m[3]))
+      }
+      /* JSX text nodes: >Describe your own situation< */
+      for (const m of src.matchAll(/>([^<>{}\n]{3,80})</g)) out.add(norm(m[1]))
+      return out
+    }
+    const createLabels = wholeLabels(CREATE_PAGE)
+    const startLabels = wholeLabels(START_PAGE)
     const missing = [
-      ...CREATE_CARDS.filter(c => !CREATE_PAGE.includes(norm(c))).map(c => `create picker: ${c}`),
-      ...ENTRY_CARDS.filter(c => !START_PAGE.includes(norm(c))).map(c => `/start picker: ${c}`),
+      ...CREATE_CARDS.filter(c => !createLabels.has(norm(c))).map(c => `create picker: ${c}`),
+      ...ENTRY_CARDS.filter(c => !startLabels.has(norm(c))).map(c => `/start picker: ${c}`),
     ]
     expect(missing, [
       'run_suite_s_scenarios.py pins create-picker labels the product no longer renders.',

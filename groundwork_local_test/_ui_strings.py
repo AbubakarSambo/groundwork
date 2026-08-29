@@ -28,8 +28,15 @@ SENT_A_LINK = "We sent a link to"
 GROUND_IS_SET_UP = "Your check-in is set up"
 NO_SESSION_ON_DEVICE = "We couldn't find your session on this device"
 
-# Create flow, /grounds/new. The heading is the harness's proof the page rendered at all - a
-# sentinel, so if it drifts every check after it reports something misleading rather than nothing.
+# Create flow, /grounds/new.
+#
+# CREATE_STEP_ONE is the sentinel - the proof the page rendered at all, so a drift here fails
+# honestly instead of every check after it reporting something misleading. It has to be a string
+# from the FIRST step, which is the mistake that was here: CREATE_PAGE_HEADING renders on step 6,
+# at the end of a six step wizard, and was being used to prove that step 1 had loaded. It never
+# had. The guard could not catch it either - the string does exist in the component, just not on
+# the screen the harness was looking at.
+CREATE_STEP_ONE = "First: where do you sit in this?"
 CREATE_PAGE_HEADING = "What is this about?"
 
 # Post-verification. "ground" became "check-in" across these too - the same rename as the save
@@ -55,6 +62,7 @@ PINNED = [
     SENT_A_LINK,
     GROUND_IS_SET_UP,
     NO_SESSION_ON_DEVICE,
+    CREATE_STEP_ONE,
     CREATE_PAGE_HEADING,
     ONE_LAST_STEP,
     GO_TO_YOUR_GROUND,
