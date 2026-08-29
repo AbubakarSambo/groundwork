@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import {
-  restoreTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
+  restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
@@ -415,7 +415,9 @@ export class EntryService {
   }
 
   async faq(question: string): Promise<string> {
-    return forHumans(await this.anthropic.respond(FAQ_PROMPT, [{ role: 'user', content: question }]));
+    /* Prose, to a person, containing whatever they typed - so it needs the same guard as every
+       other reply. It was the fourth path found without one. */
+    return this.guardedReply(FAQ_PROMPT, [{ role: 'user', content: question }]);
   }
 
   async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario }> {
@@ -446,6 +448,11 @@ Description: "${description.slice(0, 400)}"
 Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
 
     try {
+      /*
+       * NOT-A-REPLY: this returns a scenario key that is parsed out of JSON, and nothing here
+       * reaches a person as prose. The marker is at the call site rather than in a list somewhere,
+       * so whoever adds the next direct call has to decide in the open which kind theirs is.
+       */
       const raw = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
       const match = raw.match(/"scenario"\s*:\s*"([A-Z_]+)"/);
       if (match && Object.values(GroundScenario).includes(match[1] as GroundScenario)) {
@@ -585,8 +592,16 @@ Rules:
     /**
      * Through the boundary before anything else touches it. This reply reached the screen raw,
      * which is how `[[SESSION_COMPLETE]]` and `**Outreach:**` were photographed in a chat bubble.
+     *
+     * AND THROUGH `guardedReply`, WHICH IT WAS NOT.
+     *
+     * The comment on that helper says a new exit should be guarded by default and forgetting should
+     * be the unusual act. It says that because the word-restoration had already been fixed once and
+     * missed the entry path. It then missed this one: `chat()` was routed through the helper and
+     * `onboard()` was left calling the model directly - in the flow every single new person meets
+     * first, and the same flow the original "microchipshit" bug was found in.
      */
-    const reply = forHumans(await this.anthropic.respond(ONBOARD_SYSTEM, messages));
+    const reply = await this.guardedReply(ONBOARD_SYSTEM, messages);
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -773,6 +788,22 @@ STRICT RULES:
     const invented = causalClaimNobodyMade(restored, personSaid);
     if (invented.length) {
       this.logger.warn(`Causal claim nobody made on the entry path: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`);
+    }
+
+    /* The two the substitution above cannot reach: a name invented whole, which has nothing of
+       theirs underneath to put back, and one of their own words quietly shortened. Reported rather
+       than edited, on the same reasoning as the check-in path - the point is that the rate stops
+       being unknowable. */
+    const stillInvented = namesWorthReporting(restored, personSaid);
+    if (stillInvented.length) {
+      this.logger.warn(
+        `Invented proper noun survived on the entry path: ${stillInvented.join(', ')}. `
+        + 'Nothing the person typed matches it, so it was not substituted.',
+      );
+    }
+    const shortened = truncationsOfTheirWords(restored, personSaid);
+    if (shortened.length) {
+      this.logger.warn(`Shortened one of their own words on the entry path: ${shortened.join(', ')}.`);
     }
     /**
      * Last, after the word-restoration and the causal check, because both of those reason about

@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { CheckInStatus, GroundStatus, PatternStatus } from '@prisma/client';
+import { forbiddenNames, namesAnyone } from '../reports/guide-sanitiser';
 
 /**
  * The learning loop + cross-org intelligence. When a ground resolves, its
@@ -342,6 +343,31 @@ export class IntelligenceService {
     ]);
 
     if (!narrative?.trim()) return;
+
+    /*
+     * THE "NO NAMES" RULE WAS A LINE IN THE PROMPT, WHICH IS A REQUEST.
+     *
+     * This codebase has learned that twice already and written it down both times: the post-report
+     * guide named a participant despite a prompt forbidding it, and the `atStake` pass was only
+     * fixed by never handing the model the names at all. Here the instruction was the whole of the
+     * protection, on the one record in the product that is org-wide and marked `anonymised: true` -
+     * a flag that would have been false the first time a name came through, with nothing checking.
+     *
+     * DROP, NEVER REDACT, the same as the guide sanitiser. A summary with a name cut out of it still
+     * says a specific person was discussed, and the org has other summaries. Losing one costs
+     * nothing next to a name appearing under a heading that promises there are none.
+     */
+    const people = await this.prisma.user.findMany({
+      where: { organizationId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    const names = forbiddenNames(people);
+    if (namesAnyone(narrative, names)) {
+      this.logger.warn(
+        `Org narrative named somebody despite the prompt forbidding it - dropped for org ${organizationId}.`,
+      );
+      return;
+    }
 
     await this.prisma.orgIntelligence.create({
       data: {

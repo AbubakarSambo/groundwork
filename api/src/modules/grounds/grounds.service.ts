@@ -23,6 +23,9 @@ import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-con
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isSubscribed } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
+import {
+  restoreTheirWords, namesWorthReporting, truncationsOfTheirWords,
+} from '../conversation/the-record-holds-what-was-said';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1547,12 +1550,29 @@ export class GroundsService {
     }
 
     const systemPrompt = contextChatPrompt(ground.label, ground.scenario, gaps);
-    const reply = await this.anthropic.respond(
+    const raw = await this.anthropic.respond(
       systemPrompt,
       history.length
         ? history.map((h) => ({ role: h.role === 'user' ? ('user' as const) : ('assistant' as const), content: h.content }))
         : [{ role: 'user' as const, content: 'Start.' }],
     );
+
+    /*
+     * THE SAME GUARD AS EVERY OTHER PLACE A MODEL TALKS TO A PERSON.
+     *
+     * This is prose, to the lead, built out of what the lead typed - which is the exact shape that
+     * turned "microchipshit" into "Microchip Solutions" on the entry path. The guard has now been
+     * missed in five separate flows, each time because it was added where the bug was found rather
+     * than everywhere the shape occurs.
+     */
+    const leadSaid = history.filter((h) => h.role === 'user').map((h) => h.content ?? '');
+    const reply = restoreTheirWords(raw, leadSaid);
+    for (const [what, found] of [
+      ['Invented proper noun survived', namesWorthReporting(reply, leadSaid)],
+      ['Shortened one of their own words', truncationsOfTheirWords(reply, leadSaid)],
+    ] as [string, string[]][]) {
+      if (found.length) this.logger.warn(`${what} in the context chat for ground ${ground.id}: ${found.join(', ')}.`);
+    }
 
     /**
      * WHAT IT HEARD, AND WHAT IT PROPOSES DOING WITH IT. Stage 3.

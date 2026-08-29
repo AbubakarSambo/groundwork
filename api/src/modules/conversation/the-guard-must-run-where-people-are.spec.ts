@@ -1,5 +1,7 @@
 import { readFileSync } from 'fs';
-import { truncationsOfTheirWords } from './the-record-holds-what-was-said';
+import {
+  truncationsOfTheirWords, namesNobodySaid, namesWorthReporting, restoreTheirWords,
+} from './the-record-holds-what-was-said';
 import { join } from 'path';
 
 /**
@@ -42,7 +44,7 @@ describe('both paths repair what the model invented', () => {
      * nothing recorded it - so a fabricated colleague reached somebody with no trace it happened,
      * and the rate stayed unknowable.
      */
-    expect(body(sig)).toMatch(/namesNobodySaid\(/);
+    expect(body(sig)).toMatch(/namesWorthReporting\(/);
   });
 
   it.each(paths)('%s records a causal claim nobody made', (_name, sig) => {
@@ -97,5 +99,36 @@ describe('a tidy-up of their own word, in lower case', () => {
     for (const sig of ['async *sendMessageStream(', 'async sendMessage(']) {
       expect(body(sig)).toMatch(/truncationsOfTheirWords\(/);
     }
+  });
+});
+
+describe('the two callers want different strictness, and mixing them broke restoration', () => {
+  /*
+   * I applied the sentence-start exemption inside `namesNobodySaid` to quiet a noisy log, and it
+   * silently stopped "Microchip Solutions signed up afterwards" being restored - the name was in
+   * first position, so the exemption dropped it. Their own report test caught it on the next run.
+   *
+   * Repairing wants few false NEGATIVES, because the cost lands on the page. Reporting wants few
+   * false POSITIVES, because a log nobody trusts is a log nobody reads. One function cannot be
+   * tuned for both, so there are two.
+   */
+  const hers = ['we sell to microchipshit and it went fine'];
+
+  it('restoration still sees a mangled name at the start of a sentence', () => {
+    expect(namesNobodySaid('Microchip Solutions signed up afterwards.', hers)).toContain('Microchip Solutions');
+    expect(restoreTheirWords('Microchip Solutions signed up afterwards.', hers))
+      .toBe('microchipshit signed up afterwards.');
+  });
+
+  it('while reporting stays quiet about a word capitalised only by grammar', () => {
+    /* "Starting" was reported as an invented name on a real check-in, because the exemption list
+       was a hand-written list of English words and nobody had added it. */
+    expect(namesWorthReporting('Starting with what went badly.', hers)).toEqual([]);
+    expect(namesNobodySaid('Starting with what went badly.', hers)).toContain('Starting');
+  });
+
+  it('and reporting still catches an invented name that is not the opener', () => {
+    expect(namesWorthReporting('Did Alex Smith get back to you?', hers)).toContain('Alex Smith');
+    expect(namesWorthReporting('The client name: Alex Smith.', hers)).toContain('Alex Smith');
   });
 });

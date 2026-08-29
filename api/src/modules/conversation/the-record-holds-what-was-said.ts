@@ -57,40 +57,64 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
  */
 export function namesNobodySaid(reply: string, personSaid: string[]): string[] {
   const said = personSaid.map(norm).join(' ');
+  const found = reply.match(/\b[A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*\b/g) ?? [];
   const out: string[] = [];
 
-  /*
-   * THE FIRST WORD OF A SENTENCE IS CAPITALISED BY GRAMMAR, NOT BY BEING A NAME.
-   *
-   * Handling that positionally rather than by listing English words is what stops this needing
-   * maintenance every time a model opens with a verb nobody thought of. It does leave one gap - an
-   * invented name in the first position is missed - and the same gap is documented in the
-   * assistant's composer check, for the same reason and with the same bound: what follows is a
-   * report, never a rewrite, so a miss costs a log line and not a wrong sentence.
-   */
-  /* A COLON IS NOT A SENTENCE BOUNDARY. Splitting on one made "the client name: Microchip
-     Solutions" look like a name in first position and the guard stopped catching the exact case it
-     was written for - which its own test noticed immediately. */
-  for (const sentence of reply.split(/(?<=[.!?\n])\s+/)) {
-    const found = sentence.match(/\b[A-Z][a-zA-Z0-9]+(?:\s+[A-Z][a-zA-Z0-9]+)*\b/g) ?? [];
-    for (const raw of found) {
-      const atSentenceStart = sentence.trimStart().startsWith(raw);
-      const words = raw.split(/\s+/)
-        .filter((w, i) => !(atSentenceStart && i === 0))
-        .filter((w) => !NOT_A_NAME.has(w));
-      if (!words.length) continue;
-      const candidate = words.join(' ');
-      const key = norm(candidate);
-      if (key.length < 4) continue;
-      if (said.includes(key)) continue;
-      // Any single word of it that the person did type makes it theirs, mangled at
-      // worst. "Microchip Solutions" against "microchipshit" is a partial match on
-      // the first word and is not an invention, it is a tidy-up - still wrong, but
-      // caught by the whole-phrase check below rather than reported twice.
-      out.push(candidate);
-    }
+  for (const raw of found) {
+    // Strip leading sentence-openers so "Got it, Daisy" tests "Daisy".
+    const words = raw.split(/\s+/).filter((w) => !NOT_A_NAME.has(w));
+    if (!words.length) continue;
+    const candidate = words.join(' ');
+    const key = norm(candidate);
+    if (key.length < 4) continue;
+    if (said.includes(key)) continue;
+    // Any single word of it that the person did type makes it theirs, mangled at
+    // worst. "Microchip Solutions" against "microchipshit" is a partial match on
+    // the first word and is not an invention, it is a tidy-up - still wrong, but
+    // caught by the whole-phrase check below rather than reported twice.
+    out.push(candidate);
   }
   return [...new Set(out)];
+}
+
+/**
+ * THE SAME LIST, MINUS THE ONES THAT ARE ONLY CAPITALISED BECAUSE A SENTENCE STARTED.
+ *
+ * `namesNobodySaid` deliberately keeps them. It feeds `restoreTheirWords`, and there a false
+ * positive is harmless - substitution only happens when a word of theirs is recognisably underneath,
+ * so "Starting" matches nothing and nothing is changed. A false NEGATIVE there is what costs: a real
+ * mangled name at the start of a sentence would stop being put back.
+ *
+ * I learned that by breaking it. Applying this filter inside `namesNobodySaid` fixed a noisy log and
+ * silently stopped "Microchip Solutions signed up afterwards" being restored, because the name was
+ * in first position. Their own report test caught it immediately.
+ *
+ * So the strictness differs by what the caller does with the answer. Reporting wants few false
+ * positives, because a log nobody trusts is a log nobody reads. Repairing wants few false negatives,
+ * because the cost lands on the page.
+ */
+export function namesWorthReporting(reply: string, personSaid: string[]): string[] {
+  const out = new Set<string>();
+  /* A colon introduces a clause, not a sentence: splitting on one would put "the client name:
+     Microchip Solutions" in first position, which is the easiest place to hide the thing this is
+     looking for. */
+  for (const sentence of reply.split(/(?<=[.!?\n])\s+/)) {
+    const opener = (sentence.trimStart().match(/^[A-Z][a-zA-Z0-9]*/) ?? [''])[0];
+    for (const name of namesNobodySaid(sentence, personSaid)) {
+      /*
+       * Capitalised by grammar rather than by being a name - and a list of English words to exempt
+       * is a chore that is always one word out of date. It was: "Starting".
+       *
+       * The opener is TRIMMED rather than the whole candidate dropped, because a run can begin with
+       * one and continue into a real name: "Did Alex Smith get back to you" is exactly the fault
+       * being looked for, and reporting it as "Did Alex Smith" makes the log read like a mistake in
+       * the tool rather than a name that was invented.
+       */
+      const trimmed = name === opener ? '' : name.replace(new RegExp(`^${opener}\\s+`), '');
+      if (trimmed) out.add(trimmed);
+    }
+  }
+  return [...out];
 }
 
 /**

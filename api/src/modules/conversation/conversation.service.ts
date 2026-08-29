@@ -34,7 +34,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
-import { restoreTheirWords, namesNobodySaid, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
+import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -703,7 +703,7 @@ export class ConversationService {
        * This does not decide what to DO about it, which is a real question with costs on every
        * side. It makes the rate knowable, which is the precondition for deciding.
        */
-      const stillInvented = namesNobodySaid(reply, personWords);
+      const stillInvented = namesWorthReporting(reply, personWords);
       if (stillInvented.length) {
         this.logger.warn(
           `Invented proper noun survived on check-in ${checkIn.id}: ${stillInvented.join(', ')}. `
@@ -872,7 +872,7 @@ export class ConversationService {
         .concat(message);
       const reply = restoreTheirWords(streamedText, streamPersonWords);
 
-      const streamInvented = namesNobodySaid(reply, streamPersonWords);
+      const streamInvented = namesWorthReporting(reply, streamPersonWords);
       if (streamInvented.length) {
         this.logger.warn(
           `Invented proper noun survived on check-in ${checkIn.id}: ${streamInvented.join(', ')}. `
