@@ -86,6 +86,12 @@ export type NewDetector = (typeof GENUINELY_NEW)[number];
  */
 export const IMPLEMENTED: NewDetector[] = ['undeclared_dependency', 'objective_unmentioned', 'goal_divergence',
   'unrecognised_contributor', 'nominal_only', 'unowned_gap',
+  /*
+   * These three were reported as blocked on machinery that does not exist - role benchmarks, an
+   * onboarding window - and only one of those was true. `no_lead` reads `managerExternalId`, which
+   * SCIM has written since the day it landed. A blocker nobody rechecks outlives its cause.
+   */
+  'unattached_work', 'no_lead', 'no_checkin',
 ];
 
 export function isImplemented(key: string): boolean {

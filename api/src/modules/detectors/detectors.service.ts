@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DependencyStatus } from '@prisma/client';
+import { CheckInStatus, DependencyStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { findUndeclaredDependencies, SubjectRef, Mention, sayIt } from './nobody-wrote-the-dependency-down';
 import { ClearedHandoff, unblockingCredits } from './somebody-else-says-you-unblocked-them';
+import {
+  Turn, findUnattachedWork, findNoLead, findNoCheckIn, sayUnattached, sayNoLead, sayNoCheckIn,
+} from './the-three-that-were-not-built';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { STOPWORDS } from '../knowledge/knowledge.service';
 import { findGoalDivergence, sayIt as sayDivergence } from './describing-the-same-goal-differently';
@@ -445,6 +448,70 @@ export class DetectorsService {
    * objectives, no conversations, nothing linked - and a wall of dependency findings on day one is
    * how a customer decides the tool is broken.
    */
+
+  /**
+   * THE THREE THAT READ THE DIRECTORY RATHER THAN THE CONVERSATIONS.
+   *
+   * `unattached_work` needs both; the other two need only `Person`, which is why they could have
+   * been built the day SCIM landed. They were reported as blocked on role benchmarks and an
+   * onboarding window, and neither was true of `no_lead`.
+   *
+   * All three are keyed on the person with no subject, because none of them is about a piece of
+   * work - they are about somebody having no manager, no account of themselves, or work attached
+   * to nothing at all.
+   */
+  private async aboutPeople(organizationId: string, subjects: SubjectRef[], turns: Turn[]): Promise<number> {
+    const people = await this.prisma.person.findMany({
+      where: { organizationId },
+      select: { externalId: true, managerExternalId: true, active: true, createdAt: true, email: true },
+    });
+    if (!people.length) return 0;
+
+    /*
+     * Who has ever given their own account, matched by email - the only identifier a participant
+     * row and a Person reliably share. Somebody unmatchable is treated as HAVING checked in rather
+     * than as having not: the failure of a join must never become an accusation about a person.
+     */
+    const emails = new Set(
+      (await this.prisma.groundParticipant.findMany({
+        where: { ground: { organizationId }, checkIns: { some: { status: CheckInStatus.COMPLETED } } },
+        select: { email: true },
+      })).map((p) => p.email?.toLowerCase()).filter(Boolean) as string[],
+    );
+    const checkedIn = new Set(
+      people.filter((p) => !p.email || emails.has(p.email.toLowerCase())).map((p) => p.externalId),
+    );
+
+    const now = new Date();
+    let n = 0;
+
+    const write = async (key: string, personExternalId: string, severity: string, says: string, extra: any = {}) => {
+      const existing = await this.prisma.detectorResult.findFirst({
+        where: { organizationId, key, personExternalId, resolvedAt: null },
+      });
+      const evidence = { says, ...extra } as any;
+      if (existing) {
+        await this.prisma.detectorResult.update({ where: { id: existing.id }, data: { evidence, lastSeenAt: now } });
+      } else {
+        await this.prisma.detectorResult.create({
+          data: { organizationId, personExternalId, key, severity, evidence, firstSeenAt: now, lastSeenAt: now },
+        });
+      }
+      n += 1;
+    };
+
+    for (const u of findUnattachedWork(subjects, turns)) {
+      await write('unattached_work', u.personExternalId, 'medium', sayUnattached(u), { mentions: u.mentions });
+    }
+    for (const u of findNoLead(people)) {
+      await write('no_lead', u.personExternalId, 'medium', sayNoLead(u));
+    }
+    for (const u of findNoCheckIn(people, checkedIn, now)) {
+      await write('no_checkin', u.personExternalId, 'low', sayNoCheckIn(u), { knownForDays: u.knownForDays });
+    }
+    return n;
+  }
+
   async run(organizationId: string) {
     const quiet = quietUntil(
       await this.prisma.detectionQuietPeriod.findMany({ where: { organizationId }, select: { endsAt: true } }),
@@ -466,14 +533,27 @@ export class DetectorsService {
       contributorExternalIds: Array.isArray(r.contributorExternalIds) ? (r.contributorExternalIds as string[]) : [],
       parentExternalId: r.parentExternalId,
     }));
-    if (!subjects.length) return { ran: true, found: 0 };
-
     const turns = await this.prisma.assistantTurn.findMany({
       where: { organizationId, role: 'person' },
       select: { personExternalId: true, content: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
       take: 2_000,
     });
+
+    /*
+     * TWO OF THE PEOPLE DETECTORS DO NOT NEED A SINGLE SUBJECT, so they run before the early exit
+     * rather than after it. `no_lead` and `no_checkin` read the directory; an organisation that has
+     * connected its identity provider but not yet imported any objectives is exactly the one that
+     * most wants to hear its reporting lines are broken, and it would have heard nothing.
+     *
+     * This early return used to sit above everything, which is the same shape as the bug found in
+     * `findNoLead` an hour earlier: a guard clause for one thing quietly gating another.
+     */
+    const aboutPeople = await this.aboutPeople(organizationId, subjects, turns);
+    if (!subjects.length) {
+      this.logger.log(`Org ${organizationId}: no subjects imported; ${aboutPeople} people findings.`);
+      return { ran: true, found: aboutPeople };
+    }
 
     const found = findUndeclaredDependencies(subjects, this.mentionsOf(subjects, turns));
     const titleOf = (id: string) => subjects.find((s) => s.externalId === id)?.title ?? id;
@@ -522,7 +602,7 @@ export class DetectorsService {
     const contribution = await this.contribution(organizationId, subjects, turns);
     const proposed = await this.recommend(organizationId, subjects);
 
-    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings, ${proposed} recommendations.`);
-    return { ran: true, found: found.length + unmentioned + diverging + contribution, recommended: proposed };
+    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings, ${aboutPeople} about people, ${proposed} recommendations.`);
+    return { ran: true, found: found.length + unmentioned + diverging + contribution + aboutPeople, recommended: proposed };
   }
 }
