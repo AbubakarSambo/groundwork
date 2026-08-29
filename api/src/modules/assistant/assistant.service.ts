@@ -8,6 +8,7 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { STYLE, STYLE_VERSION, safeToUse, composePrompt } from './the-model-words-it-and-nothing-more';
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
+import { BoardService } from '../board/board.service';
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { Prisma } from '@prisma/client';
@@ -38,6 +39,7 @@ export class AssistantService {
      */
     private readonly engine: AnthropicService,
     private readonly knowledge: KnowledgeService,
+    private readonly board: BoardService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -97,6 +99,8 @@ export class AssistantService {
         return this.compose(await this.whoIs(organizationId, routed.subject ?? ''));
       case 'what_did_i_commit_to':
         return this.compose(await this.myCommitments(organizationId, personId));
+      case 'what_is_stuck':
+        return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
       case 'what_did_i_say':
@@ -163,6 +167,73 @@ export class AssistantService {
       this.logger.warn(`Composition unavailable for lane ${reply.lane}: ${err?.message}`);
       return reply;
     }
+  }
+
+  /**
+   * WHAT IS WAITING, ACROSS EVERY GROUND, WITH HOW LONG.
+   *
+   * The handoff record has existed for a long time and the board reads it well - but only ever one
+   * ground at a time, which is the boundary the question does not respect. Somebody waiting three
+   * weeks on the same person appears as a mild note on three separate boards and as nothing anywhere.
+   *
+   * Two answers come out of the same read, and which one somebody gets depends on the question they
+   * asked. "What am I waiting on" is theirs to chase. "Who is waiting on me" is the one that usually
+   * lands as news, because the person holding things up is normally the last to know.
+   */
+  private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
+    const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId);
+
+    const person = who
+      ? await this.prisma.person.findFirst({
+          where: { organizationId, externalId: who },
+          select: { email: true },
+        })
+      : null;
+    const key = person?.email?.toLowerCase() ?? null;
+
+    const mine = key ? waiting.filter((w) => w.fromPersonKey === key) : [];
+    const onMe = key ? (waitedOn.find((p) => p.personKey === key)?.waiting ?? []) : [];
+
+    if (!mine.length && !onMe.length) {
+      return rules('what_is_stuck', text(
+        key
+          ? 'Nothing is recorded as waiting on you, and you have not named anything you are waiting on.'
+          : 'I cannot match you to a check-in, so I cannot tell you what is waiting on you.',
+      ));
+    }
+
+    /*
+     * The days are stated rather than turned into a word. "Long overdue" is a judgement the record
+     * cannot support - it does not know what a reasonable wait is for any of these - and eleven days
+     * is a fact the reader can weigh for themselves.
+     */
+    const line = (w: (typeof waiting)[number]) =>
+      `- ${w.what} (${w.groundLabel}) - ${w.waitingDays} ${w.waitingDays === 1 ? 'day' : 'days'}`;
+
+    /*
+     * ANSWER THE QUESTION THEY ASKED FIRST, EVEN WHEN THE ANSWER IS NOTHING.
+     *
+     * Driving this found it: asked "what am I waiting on", somebody with nothing of their own but
+     * one handoff sitting with them got back a list headed "Waiting on you". Both facts are true and
+     * the second is the more useful one, but leading with it silently answers a different question,
+     * and the reader has to work out that the swap happened. Saying so costs one line.
+     */
+    const askedAboutTheirOwn = /waiting on\b/i.test(question) && !/on me\b/i.test(question);
+
+    const parts: string[] = [];
+    if (askedAboutTheirOwn && !mine.length && onMe.length) {
+      parts.push('You have not named anything you are waiting on. What I do have is the other direction.');
+    }
+    if (onMe.length) {
+      parts.push(
+        `Waiting on you:\n${onMe.map(line).join('\n')}\n\n`
+        + 'That is from what other people said about their own work, not from anyone assigning it to you.',
+      );
+    }
+    if (mine.length) {
+      parts.push(`You said you are waiting on:\n${mine.map(line).join('\n')}`);
+    }
+    return rules('what_is_stuck', text(parts.join('\n\n')));
   }
 
   /**

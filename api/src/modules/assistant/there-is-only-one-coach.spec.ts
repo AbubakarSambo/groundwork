@@ -72,3 +72,31 @@ describe('the question routes before the recall lane', () => {
     expect(route('what did I say about the vendor').lane).toBe('what_did_i_say');
   });
 });
+
+describe('the waiting lane sits above the two lanes that would swallow it', () => {
+  /*
+   * FOUND BY DRIVING THE ROUTER, NOT BY TESTING IT.
+   *
+   * Every lane's own patterns were correct here. Only the ORDER between them was wrong, which is a
+   * property of the assembled router and of nothing smaller - so no test of a single rule could have
+   * seen it. "Who is waiting on me" begins with "who is", and the directory lane, sitting higher,
+   * answered a question about a stuck handoff by looking a person up.
+   */
+  it('so "who is waiting on me" is a handoff question, not a directory lookup', () => {
+    expect(route('who is waiting on me').lane).toBe('what_is_stuck');
+    expect(route('who is waiting on me?').lane).toBe('what_is_stuck');
+  });
+
+  it('while the directory lane keeps every question that is actually about a person', () => {
+    expect(route('who is Ada').lane).toBe('who_is');
+    expect(route('who is on the renewal push').lane).toBe('who_is');
+  });
+
+  it('and being stuck still reaches the coach', () => {
+    expect(route("I'm stuck").lane).toBe('how_am_i_doing');
+  });
+
+  it('and "what am I waiting on" does not reach the coach', () => {
+    expect(route('what am I waiting on').lane).toBe('what_is_stuck');
+  });
+});

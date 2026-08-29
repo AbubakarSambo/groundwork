@@ -18,6 +18,7 @@ export type Lane =
   | 'how_we_work'
   | 'what_did_i_say'
   | 'how_am_i_doing'
+  | 'what_is_stuck'
   | 'unplaced';
 
 export interface Routed {
@@ -41,6 +42,22 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('what_is_stuck', [
+    /*
+     * ABOVE BOTH `who_is` AND THE COACHING LANE, and driving it is how that was found. "Who is
+     * waiting on me" begins with "who is", so the directory lane matched it first and answered a
+     * question about a handoff by looking somebody up. Unit tests did not catch it because each
+     * lane's own patterns were right - only the order between them was wrong, which is a thing
+     * only the assembled router can be asked about.
+     *
+     * It also sits above coaching, because "I'm stuck" and "what am I waiting on" want different
+     * answers - the first a step, the second a name and a number of days.
+     */
+    /\bwhat\s+(?:am\s+i|are\s+we)\s+waiting\s+on\b/i,
+    /\bwho\s+is\s+waiting\s+on\s+me\b/i,
+    /\bwhat'?s?\s+(?:blocked|stuck|held\s+up)\b/i,
+    /\bwhat\s+is\s+(?:blocked|stuck)\b/i,
+  ]),
   rule('who_is', [
     /\bwho(?:'s| is)\s+(.+?)\s*\??$/i,
     /\bwho\s+does\s+(.+?)\s+report\s+to\s*\??$/i,
