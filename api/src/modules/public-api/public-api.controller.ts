@@ -19,6 +19,7 @@ import { AssistantService } from '../assistant/assistant.service';
 import { HandoverService } from '../grounds/handover.service';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { ScenariosService } from '../detectors/scenarios.service';
+import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -63,6 +64,7 @@ export class PublicApiController {
     private readonly handover: HandoverService,
     private readonly onboarding: OnboardingService,
     private readonly scenarios: ScenariosService,
+    private readonly digests: RoundDigestService,
   ) {}
 
   /**
@@ -343,6 +345,39 @@ export class PublicApiController {
       throw new BadRequestException('accept must be true or false. There is no third answer.');
     }
     return this.scenarios.decide(req.panel.organizationId, id, req.panel.externalId, dto.accept);
+  }
+
+  @Get('email-preferences')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'What somebody has chosen to receive by mail.' })
+  async getEmailPreferences(
+    @Req() req: { machine: MachineCaller },
+    @Query('participantExternalId') id: string,
+  ) {
+    if (!id) throw new BadRequestException('participantExternalId is required.');
+    const p = await this.digests.prefsFor(req.machine.organizationId, id);
+    /*
+     * The token never leaves. It is the whole of the authentication on a link that works without
+     * signing in, so handing it to an integration would let anybody holding a machine credential
+     * unsubscribe anybody - which is the one thing §13D.3 says an admin may not do.
+     */
+    const { unsubscribeToken, ...safe } = p;
+    return safe;
+  }
+
+  @Post('email-preferences')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Set what somebody receives by mail. Cannot re-subscribe somebody who opted out.' })
+  async setEmailPreferences(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { participantExternalId: string; roundDigest?: boolean; nudges?: boolean;
+      quietBeforeHour?: number; quietAfterHour?: number },
+  ) {
+    if (!dto?.participantExternalId) throw new BadRequestException('participantExternalId is required.');
+    return this.digests.setPreferences(req.machine.organizationId, dto.participantExternalId, dto);
   }
 
   /**

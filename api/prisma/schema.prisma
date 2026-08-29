@@ -290,6 +290,7 @@ model Organization {
   knowledgeCards      KnowledgeCard[]
   knowledgeRetrievals KnowledgeRetrieval[]
   scenarioCandidates  ScenarioCandidate[]
+  emailPreferences    EmailPreference[]
   detectorResults     DetectorResult[]
   roleAssignments     RoleAssignment[]
   onboardingTracks    OnboardingTrack[]
@@ -2997,4 +2998,39 @@ model ScenarioCandidate {
   @@index([organizationId, scenario, subjectExternalId])
   @@index([organizationId, proposedToPersonExternalId, state])
   @@map("scenario_candidates")
+}
+
+/// WHAT SOMEBODY WANTS BY MAIL, AND THE ONE THING AN ADMIN CANNOT OVERRIDE.
+///
+/// §13D.3: per-participant and per-lead opt-out, honoured WITHOUT an admin override. That sentence
+/// is why this is a record keyed to the person rather than a setting on the organisation - a
+/// preference an admin can flip is not a preference, and the whole reason people answer honestly
+/// here is that the product does what it said it would.
+model EmailPreference {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  personExternalId String @map("person_external_id")
+
+  /// One mail per round with the headline and a link. Never a mail per finding.
+  roundDigest Boolean @default(true) @map("round_digest")
+  /// A commitment they said they would do and have not. Shares the §12 budget with the panel.
+  nudges      Boolean @default(true)
+
+  /// Their local hours, so nothing lands at 3am. Null means the organisation default is used.
+  quietBeforeHour Int? @map("quiet_before_hour")
+  quietAfterHour  Int? @map("quiet_after_hour")
+
+  /// The link on every mail. Long, random, and it works without signing in - somebody who wants to
+  /// stop hearing from us must not have to remember a password to do it.
+  unsubscribeToken String    @unique @map("unsubscribe_token")
+  /// Set when they used it. Turns everything off at once and outranks the individual flags.
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId])
+  @@map("email_preferences")
 }
