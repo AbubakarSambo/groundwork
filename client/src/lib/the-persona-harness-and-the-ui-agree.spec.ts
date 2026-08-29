@@ -194,6 +194,53 @@ describe('the persona harness and the UI agree', () => {
     ].join('\n')).toEqual([])
   })
 
+  it('and what ground_reached() waits for is text the product still renders', () => {
+    /*
+     * This one is here because it is what actually broke. `_runner.py` decides the magic link
+     * worked by waiting for the confirmation copy - but it does it inside a JS regex inside a
+     * Python string, so it is not a get_by_text() call, it is not in a pinned list, and no
+     * search for either found it. The strings went stale at the rename and every suite that
+     * provisions a ground failed with "magic link reached neither the confirmation nor a
+     * ground", which reads as the ground never being created.
+     *
+     * So: pull the alternatives straight out of that regex and hold each to the same rule as
+     * the pinned lists. Regex alternation is expanded, since the fix accepts both spellings.
+     */
+    const runner = readFileSync(join(ROOT, 'groundwork_local_test', '_runner.py'), 'utf8')
+    const line = runner.split('\n').find(l => l.includes('is set up') && l.includes('test(t)'))
+    expect(line, '_runner.py no longer has the ground_reached() confirmation check').toBeTruthy()
+
+    const source = /\/([^/]+)\/i\.test\(t\)/.exec(line as string)?.[1]
+    expect(source, 'could not read the regex out of ground_reached()').toBeTruthy()
+
+    /* Expand `(a|b)` groups into every spelling. A loop, not recursion: an unbalanced paren
+       would leave a recursive version replacing nothing and calling itself forever. */
+    const expand = (pattern: string): string[] => {
+      let out = [pattern]
+      for (let guard = 0; guard < 8; guard++) {
+        const m = /\(([^()]*)\)/.exec(out[0])
+        if (!m) break
+        out = out.flatMap(one => {
+          const hit = /\(([^()]*)\)/.exec(one)
+          if (!hit) return [one]
+          return hit[1].split('|').map(o => one.slice(0, hit.index) + o + one.slice(hit.index + hit[0].length))
+        })
+      }
+      return out
+    }
+
+    const confirmation = renderedBy('pages/auth/MagicVerifyPage.tsx', 'pages/grounds/GroundPage.tsx')
+    /* Groups first, then top-level alternation - splitting on `|` first cuts groups in half. */
+    const stale = expand(source as string)
+      .flatMap(alt => alt.split('|'))
+      .filter(alt => !confirmation.includes(alt.replace(/\s+/g, ' ').toLowerCase()))
+    expect(stale, [
+      'ground_reached() waits for copy the product no longer renders, so every suite that',
+      'provisions a ground will fail as though the ground was never created.',
+      'Fix the regex in _runner.py, not the component.',
+    ].join('\n')).toEqual([])
+  })
+
   it('and the suites use the shared constants rather than typing the text again', () => {
     /*
      * The guard is only worth having if the strings it checks are the strings the suites use. A

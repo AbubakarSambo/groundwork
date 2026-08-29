@@ -294,7 +294,13 @@ async def ground_reached(page, timeout_ms: int = 25000) -> bool:
         await page.wait_for_function(
             """() => {
                  const t = document.body ? document.body.innerText : '';
-                 if (/Your ground is set up|Go to your ground/i.test(t)) return true;
+                 // Renamed 2026-08-26 - "ground" became "check-in" on both. The old spellings
+                 // lived here inside a JS regex inside a Python string, which is why no search
+                 // for get_by_text() found them and why provision_ground kept failing after the
+                 // button itself was fixed. Only the live copy is accepted: carrying the dead
+                 // spelling alongside is how it went stale unnoticed the first time. A client
+                 // guard now reads these alternatives and checks each against what renders.
+                 if (/Your check-in is set up|Go to your check-in/i.test(t)) return true;
                  return /^\\/grounds\\/[^/]+/.test(location.pathname) && /My check-ins|Opened for/i.test(t);
                }""",
             timeout=timeout_ms,
