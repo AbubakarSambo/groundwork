@@ -741,6 +741,9 @@ export class AuthService {
         name: user.organization.name,
         slug: user.organization.slug,
         careFeeStatus: user.organization.careFeeStatus,
+        email: user.organization.email,
+        companyStage: user.organization.companyStage,
+        subscriptionPlan: user.organization.subscriptionPlan,
       },
     };
   }
@@ -834,6 +837,7 @@ export class AuthService {
 
     const orgUpdate: Record<string, unknown> = {};
     if (dto.orgName !== undefined) orgUpdate.name = dto.orgName.trim();
+    if (dto.orgEmail !== undefined) orgUpdate.email = dto.orgEmail.trim();
     if (dto.orgSlug !== undefined) {
       const slug = dto.orgSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const existing = await this.prisma.organization.findUnique({ where: { slug } });

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength, IsEnum, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsEmail, MaxLength, IsEnum, IsBoolean } from 'class-validator';
 import { CompanyStage } from '@prisma/client';
 
 export class UpdateProfileDto {
@@ -7,6 +7,7 @@ export class UpdateProfileDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) lastName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) jobTitle?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) orgName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsEmail() @MaxLength(255) orgEmail?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) orgSlug?: string;
   @ApiPropertyOptional({ enum: CompanyStage }) @IsOptional() @IsEnum(CompanyStage) companyStage?: CompanyStage;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() emailNotifications?: boolean;

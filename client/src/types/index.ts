@@ -1,3 +1,13 @@
+export interface UserOrganization {
+  id: string
+  name: string
+  slug: string
+  careFeeStatus: string
+  email: string | null
+  companyStage: string | null
+  subscriptionPlan: string | null
+}
+
 export interface User {
   id: string
   email: string
@@ -6,6 +16,7 @@ export interface User {
   role: 'ADMIN' | 'MEMBER'
   organizationId: string
   organizationName?: string
+  organization?: UserOrganization
   jobTitle?: string
   isPlatformAdmin?: boolean
   emailNotifications?: boolean
