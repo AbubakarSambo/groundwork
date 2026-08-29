@@ -13,6 +13,7 @@ function svc(o: { person?: any; user?: any; people?: Record<string, any> } = {})
         ? { email: `${where.externalId}@x.com`, displayName: where.externalId, active: true } : o.person) },
     user: { findFirst: async () => (o.user === undefined ? { id: `u-${Math.min(1,1)}`, email: 'ada@x.com' } : o.user) },
     ground: { findFirst: async () => ({ id: 'g1' }) },
+    groundParticipant: { findMany: async () => [{ email: 'lin@x.com', inviteToken: 'tok-lin', inviteTokenExpiresAt: null }] },
   };
   const grounds: any = { createForLead: async (org: string, uid: string, dto: any) => {
     calls.push({ org, uid, dto }); return { id: 'g1', ...dto }; } };
@@ -102,5 +103,33 @@ describe('reading a report through the API', () => {
     /* reports.get already refuses somebody with no standing. The API must go through it rather
        than around it. */
     expect(SRC).toMatch(/this\.reports\.get\(groundId, user\.id, organizationId\)/);
+  });
+});
+
+describe('the integration can deliver its own invitations', () => {
+  it('gets a link back per participant, in its own vocabulary', async () => {
+    /*
+     * Not a defect in the invite flow: a participant added by anybody, in the product or here, is
+     * linked to an account only when they accept, and that is consent. What was missing is that
+     * nothing handed the links back - so Lovedida would have had to rely on Groundwork's emails
+     * arriving in their people's inboxes, which is exactly what an embedded integration exists to
+     * avoid.
+     */
+    const { service } = svc();
+    const out: any = await service.open('org-a', {
+      ...base, participants: [{ personExternalId: 'lin', roleAsDescribed: 'Sales' }],
+    } as any);
+    expect(out.invitations).toEqual([
+      { personExternalId: 'lin', url: 'https://app/invite?token=tok-lin', expiresAt: null },
+    ]);
+  });
+
+  it('and never hands back an email address they did not send', () => {
+    /* They sent directory ids and were careful not to send addresses. Giving addresses back would
+       make them match on the one thing they kept on their side. */
+    const SRC = readFileSync(join(__dirname, 'grounds-by-api.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const block = SRC.slice(SRC.indexOf('const invitations'), SRC.indexOf('return { ...ground, invitations }'));
+    expect(block).not.toMatch(/email: i\.email/);
   });
 });

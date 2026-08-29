@@ -521,6 +521,21 @@ export class PublicApiController {
   }
 
   /**
+   * SENSE-CHECK THE OBJECTIVES, INCLUDING THE ONES SET FROM ABOVE.
+   *
+   * Everything else here examines how work is going. This examines whether what is being asked for
+   * holds together - the individual targets against the shared one, a commitment nobody is waiting
+   * on, a standard nobody has shown the person it is about.
+   */
+  @Get('grounds/:groundId/sense-check')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Questions about the objectives themselves, before a quarter is spent on them.' })
+  async senseCheck(@Req() req: { machine: MachineCaller }, @Param('groundId') groundId: string) {
+    return this.groundsByApi.senseCheckGround(req.machine.organizationId, groundId, req.machine);
+  }
+
+  /**
    * SCIM 2.0. The path is theirs, not ours - an IdP is configured with a base URL and appends
    * /Users itself, so the shape has to be exactly what the standard says.
    */

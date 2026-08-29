@@ -6,6 +6,7 @@ import { ObjectiveKind, ProposedChangeState } from '@prisma/client';
 import { textAfter } from './six-is-still-the-target';
 import { Fence, isFenced, mayTouch, mayReadGround, OUTSIDE_THE_FENCE } from './a-fence-around-a-credential';
 import { Finding, Attention, attentionFor, ATTENTION_MEANS } from './where-a-finding-came-from';
+import { Objective, senseCheck } from '../detectors/nobody-checked-the-management';
 import { BoardService } from '../board/board.service';
 import { ConfigService } from '@nestjs/config';
 import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
@@ -117,6 +118,8 @@ export class GroundsByApiService {
      * addresses around is a copy of somebody's contact list nobody asked for.
      */
     const participants: { email: string; roleAsDescribed?: string }[] = [];
+    /** email -> the caller's own id for that person, so invitations go back in their vocabulary. */
+    const idByEmail = new Map<string, string>();
     for (const p of dto.participants ?? []) {
       /* Every participant, so a fenced credential cannot open a check-in that reaches outside it. */
       if (!mayTouch(fence, p.personExternalId)) throw new ForbiddenException(OUTSIDE_THE_FENCE);
@@ -128,6 +131,7 @@ export class GroundsByApiService {
         throw new NotFoundException(`No active person with externalId "${p.personExternalId}".`);
       }
       participants.push({ email: row.email, roleAsDescribed: p.roleAsDescribed });
+      idByEmail.set(row.email, p.personExternalId);
     }
 
     const ground = await this.grounds.createForLead(organizationId, acting.id, {
@@ -142,8 +146,41 @@ export class GroundsByApiService {
       participants,
     } as any);
 
+    /*
+     * THE INVITATION LINKS, WHICH THE INTEGRATION HAS TO BE ABLE TO DELIVER ITSELF.
+     *
+     * Not a defect in the invite flow - a participant added by anybody, in the product or through
+     * here, gets an invite token and is linked to an account only when they accept. That is consent
+     * and it should stay.
+     *
+     * What was missing is that nothing gave the links back. Lovedida would have had to rely on
+     * Groundwork's own emails arriving in their people's inboxes, which is precisely the thing an
+     * embedded integration exists to avoid: the invitation belongs in the product those people
+     * already have open.
+     *
+     * Groundwork still sends its own email as well. Suppressing that is a setting nobody has asked
+     * for yet, and two invitations reaching somebody is a smaller problem than none.
+     */
+    const invited = await this.prisma.groundParticipant.findMany({
+      where: { groundId: ground.id, inviteToken: { not: null } },
+      select: { email: true, inviteToken: true, inviteTokenExpiresAt: true },
+    });
+    const base = (this.config.get<string>('resend.frontendUrl') ?? 'http://localhost:5173').replace(/\/$/, '');
+    const invitations = invited
+      .filter((i) => !!i.email && idByEmail.has(i.email))
+      .map((i) => ({
+        /*
+         * Back in the caller's own vocabulary. They sent directory ids and deliberately never sent
+         * an email address; handing addresses back would make them match on the one thing they were
+         * careful to keep on their side.
+         */
+        personExternalId: idByEmail.get(i.email!)!,
+        url: `${base}/invite?token=${i.inviteToken}`,
+        expiresAt: i.inviteTokenExpiresAt,
+      }));
+
     this.logger.log(`Ground opened by API for org ${organizationId} as ${dto.actingPersonExternalId}.`);
-    return ground;
+    return { ...ground, invitations };
   }
 
   /**
@@ -540,6 +577,73 @@ export class GroundsByApiService {
       none: out.filter((f) => f.attention === 'none'),
     };
     return { findings: out, byAttention, meaning: ATTENTION_MEANS };
+  }
+
+
+  /**
+   * SENSE-CHECK THE OBJECTIVES BEFORE A QUARTER IS SPENT ON THEM.
+   *
+   * Read-only, and every answer is a question addressed to whoever set the objective. Nothing here
+   * corrects anybody's management - §13 asks for ambiguity to be flagged, not rewritten, and the
+   * difference is the whole reason a customer would let this near their planning.
+   */
+  async senseCheckGround(organizationId: string, groundId: string, fence: Fence = { boundToPersonExternalIds: [] }) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true },
+    });
+    if (!ground) throw new NotFoundException('No such check-in.');
+
+    const rows = await this.prisma.personObjective.findMany({
+      where: { groundId },
+      include: { participant: { select: { email: true } } },
+    });
+    if (!rows.length) {
+      return {
+        questions: [],
+        note: 'Nothing has been seeded onto this check-in yet, so there is nothing to sense-check.',
+      };
+    }
+
+    /* Participants resolve to directory ids so the questions come back in the caller's vocabulary,
+       and so a fenced credential can be told which ones are not its business. */
+    const idFor = async (email: string | null | undefined) => {
+      if (!email) return null;
+      const row = await this.prisma.person.findFirst({
+        where: { organizationId, email }, select: { externalId: true },
+      });
+      return row?.externalId ?? null;
+    };
+
+    const objectives: Objective[] = [];
+    for (const r of rows) {
+      const personExternalId = await idFor(r.participant?.email);
+      if (!personExternalId) continue;
+      objectives.push({
+        externalId: r.externalId,
+        personExternalId,
+        text: r.text,
+        kind: r.kind,
+        scope: r.scope,
+        check: r.check,
+        dueKind: r.dueKind,
+        /* No relation named for the owed-to side, so it is resolved by id in a second step - the
+           column is a participant id, not an email. */
+        owedToPersonExternalId: r.owedToParticipantId
+          ? await idFor((await this.prisma.groundParticipant.findUnique({
+            where: { id: r.owedToParticipantId }, select: { email: true },
+          }))?.email)
+          : null,
+        seenBySubject: r.seenBySubject,
+      });
+    }
+
+    const questions = senseCheck(objectives)
+      /* A question about one person is theirs; a question about the plan belongs to nobody and is
+         shown to anybody who may see the check-in at all. */
+      .filter((q) => !q.personExternalId || mayTouch(fence, q.personExternalId));
+
+    return { questions };
   }
 
 }
