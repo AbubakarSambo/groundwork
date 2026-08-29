@@ -2,13 +2,14 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { ObjectiveKind, ObjectiveScope, ObjectiveCheck, ObjectiveDue } from '@prisma/client';
 import {
-  senseCheck, arithmetic, unseen, unowned, unmeasurable, noDate, duplicateResponsibility, Objective,
+  senseCheck, arithmetic, unseen, unowned, unmeasurable, noDate, duplicateResponsibility, addressee, Objective,
 } from './nobody-checked-the-management';
 
 const o = (x: Partial<Objective> = {}): Objective => ({
   externalId: 'okr:1', personExternalId: 'lv-sahar', text: 'Bring in six paying clients',
   kind: ObjectiveKind.TARGET, scope: ObjectiveScope.ONE_PERSON, check: ObjectiveCheck.A_NUMBER,
-  dueKind: ObjectiveDue.A_CYCLE, owedToPersonExternalId: null, seenBySubject: true, ...x,
+  dueKind: ObjectiveDue.A_CYCLE, owedToPersonExternalId: null, seenBySubject: true,
+  authoredBy: 'lead', approvedByExternalId: null, managerExternalId: null, ...x,
 });
 
 describe('the six-each versus ten-collective problem', () => {
@@ -41,7 +42,7 @@ describe('the six-each versus ten-collective problem', () => {
       o({ externalId: 'b', personExternalId: 'b', text: '6 clients' }),
       o({ externalId: 'c', scope: ObjectiveScope.WHOLE_CHECK_IN, text: '10 clients' }),
     ]);
-    expect(q.personExternalId).toBeNull();
+    expect(q.aboutPersonExternalId).toBeNull();
   });
 });
 
@@ -117,14 +118,84 @@ describe('it asks, it never rewrites', () => {
     expect(SRC).not.toMatch(/\.update\(|\.create\(|\.upsert\(/);
   });
 
-  it('and management is checked on the same terms as everybody else', () => {
+  it('and authorship decides WHO is asked, never WHETHER', () => {
     /*
-     * §14. A product that checks contributors' claims and takes the chief executive's on trust is
-     * not a fair one, and everybody in it works that out quickly. Nothing here looks at who set an
-     * objective before deciding whether to ask about it.
+     * THE TEST THIS REPLACES WAS THE MISTAKE. It asserted this file never reads `authoredBy`,
+     * reasoning from §14 - do not assume management is correct - to "do not look at who wrote it".
+     * Those are opposite things. You can only check management's assumptions if you know which
+     * assumptions are management's, and §14 gets sharper with authorship rather than weaker.
+     *
+     * What actually has to hold is that no check is SKIPPED because of who set the objective. The
+     * same objective, authored three different ways, still produces the same finding - only the
+     * addressee moves.
      */
-    const SRC = readFileSync(join(__dirname, 'nobody-checked-the-management.ts'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(SRC).not.toMatch(/authoredBy|isLead|isManager|role ===/);
+    const shared = { text: 'grow the pipeline', check: ObjectiveCheck.A_JUDGEMENT };
+    const bySelf = unmeasurable([o({ ...shared, authoredBy: 'self' })], 'lv-hafsah');
+    const byLead = unmeasurable([o({ ...shared, authoredBy: 'lead' })], 'lv-hafsah');
+    const bySystem = unmeasurable([o({ ...shared, authoredBy: 'lovedida', approvedByExternalId: 'lv-hafsah' })], null);
+
+    for (const [q] of [bySelf, byLead, bySystem]) expect(q.kind).toBe('unmeasurable');
+    expect(bySelf[0].addressedTo).toBe('lv-sahar');
+    expect(byLead[0].addressedTo).toBe('lv-hafsah');
+    expect(bySystem[0].addressedTo).toBe('lv-hafsah');
+  });
+
+  it('and falls back through approver, then manager, then the lead', () => {
+    /* Four steps because each is a real situation, and a question must never be dropped for want of
+       somebody to ask. */
+    expect(addressee(o({ authoredBy: 'self' }), 'lead-1').personExternalId).toBe('lv-sahar');
+    expect(addressee(o({ authoredBy: 'lovedida', approvedByExternalId: 'lv-hafsah' }), 'lead-1').personExternalId).toBe('lv-hafsah');
+    expect(addressee(o({ authoredBy: 'lovedida', managerExternalId: 'lv-boss' }), 'lead-1').personExternalId).toBe('lv-boss');
+    expect(addressee(o({ authoredBy: 'lovedida' }), 'lead-1').personExternalId).toBe('lead-1');
+    expect(addressee(o({ authoredBy: 'lovedida' }), 'lead-1').because).toMatch(/nobody is recorded as having set it/);
+  });
+});
+
+describe('it proposes as well as asks', () => {
+  it('and every number in a proposal comes from somewhere real', () => {
+    /*
+     * "Coach them towards accuracy, not falsified ones." The one thing worse than a vague target is
+     * a specific one somebody made up - so a proposal only appears when existing material supplies
+     * the number, and the basis says where each part came from.
+     */
+    const [q] = unmeasurable([
+      o({ externalId: 'a', text: 'grow the pipeline', check: ObjectiveCheck.A_JUDGEMENT }),
+      o({ externalId: 'c', scope: ObjectiveScope.WHOLE_CHECK_IN, text: 'collectively bring in 10 clients' }),
+    ], 'lv-hafsah');
+    expect(q.proposes).toMatch(/measured against the shared target of 10/);
+    expect(q.basis[0]).toMatch(/comes from the shared target/);
+  });
+
+  it('and stays a question when nothing supplies the number', () => {
+    const [q] = unmeasurable([o({ text: 'grow the pipeline', check: ObjectiveCheck.A_JUDGEMENT })], 'lv-hafsah');
+    expect(q.proposes).toBeNull();
+    expect(q.basis).toEqual([]);
+    expect(q.asks).toMatch(/What number, and who reads it\?/);
+  });
+
+  it('and never proposes who is owed a commitment', () => {
+    /* Guessing that invents a relationship between two people, which is the worst thing here to be
+       wrong about. */
+    const [q] = unowned([o({ kind: ObjectiveKind.COMMITMENT })], 'lv-hafsah');
+    expect(q.proposes).toBeNull();
+  });
+
+  it('and never proposes which of two people owns a duplicated responsibility', () => {
+    /* That is the decision, not the wording. */
+    const [q] = duplicateResponsibility([
+      o({ externalId: 'a', personExternalId: 'lv-sahar', kind: ObjectiveKind.ROLE_EXPECTATION, text: 'own client onboarding' }),
+      o({ externalId: 'b', personExternalId: 'lv-adam', kind: ObjectiveKind.ROLE_EXPECTATION, text: 'own client onboarding' }),
+    ], 'lv-hafsah');
+    expect(q.proposes).toBeNull();
+  });
+
+  it('and on the arithmetic, proposes saying which is which rather than changing either number', () => {
+    const [q] = arithmetic([
+      o({ externalId: 'a', personExternalId: 'a', text: 'bring in 6 clients' }),
+      o({ externalId: 'b', personExternalId: 'b', text: 'bring in 6 clients' }),
+      o({ externalId: 'c', scope: ObjectiveScope.WHOLE_CHECK_IN, text: 'collectively bring in 10 clients' }),
+    ], 'lv-hafsah');
+    expect(q.proposes).toMatch(/whether the individual targets of 12 are a stretch above it/);
+    expect(q.basis).toContain('neither number is changed - what is proposed is saying which is which');
   });
 });

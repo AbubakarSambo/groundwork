@@ -276,6 +276,29 @@ export class GroundsByApiService {
         : null;
       const shape = normalise(item);
 
+      /*
+       * ONE OF EACH KIND PER PERSON, PER CHECK-IN. A product constraint, not a bug in this route:
+       * `@@unique([groundId, participantId, kind])` is what stops the check-in engine writing two
+       * competing expectations for one person.
+       *
+       * It bites an integration in a way it never bites the product, because a planning system
+       * genuinely holds several targets for one person. Raised as something a developer can act on -
+       * the raw constraint violation names three columns they have never heard of - and flagged as a
+       * real limitation rather than worked around, because loosening it would let the conversation
+       * write two contradictory expectations with nothing to say which held.
+       */
+      const clash = await this.prisma.personObjective.findFirst({
+        where: { groundId, participantId: participant.id, kind: shape.kind },
+        select: { externalId: true },
+      });
+      if (clash && clash.externalId !== item.externalId) {
+        throw new BadRequestException(
+          `${item.personExternalId} already has a ${shape.kind} on this check-in`
+          + `${clash.externalId ? ` ("${clash.externalId}")` : ''}. A person can hold one of each kind `
+          + 'per check-in, so send this as a different kind or put it on its own check-in.',
+        );
+      }
+
       const row = await this.prisma.personObjective.upsert({
         where: {
           groundId_sourceSystem_externalId: {
@@ -635,15 +658,41 @@ export class GroundsByApiService {
           }))?.email)
           : null,
         seenBySubject: r.seenBySubject,
+        /* Who set it, so the question goes to them rather than to the person it is about. */
+        authoredBy: r.authoredBy,
+        approvedByExternalId: r.approvedByExternalId,
+        managerExternalId: await this.managerOf(organizationId, personExternalId),
       });
     }
 
-    const questions = senseCheck(objectives)
+    /* The lead is the last resort for a question nobody else can be asked - never the first. */
+    const leadRow = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, partyType: 'INITIATOR' }, select: { email: true },
+    });
+    const leadExternalId = await idFor(leadRow?.email);
+
+    const questions = senseCheck(objectives, leadExternalId)
       /* A question about one person is theirs; a question about the plan belongs to nobody and is
          shown to anybody who may see the check-in at all. */
-      .filter((q) => !q.personExternalId || mayTouch(fence, q.personExternalId));
+      /*
+       * ONLY THE AUTHOR SEES IT UNTIL IT IS DECIDED. Sahar reading a proposed rewrite of her own
+       * target before her manager has answered is worse than her not seeing it - the transparency
+       * this product is for is about what was agreed and what happened, not about watching somebody
+       * think. Once decided it goes back through the normal proposal path, in the open.
+       */
+      .filter((q) => !q.addressedTo || mayTouch(fence, q.addressedTo));
 
     return { questions };
+  }
+
+
+  /** Their manager's directory id, for a question nobody else can be asked. */
+  private async managerOf(organizationId: string, personExternalId: string): Promise<string | null> {
+    const row = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: personExternalId },
+      select: { managerExternalId: true },
+    });
+    return row?.managerExternalId ?? null;
   }
 
 }

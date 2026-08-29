@@ -203,3 +203,15 @@ describe('words do not fuse across a delta boundary', () => {
     expect(body('async *sendMessageStream(')).toMatch(/forHumans\(raw\)\.slice\(cleanEmitted\)/);
   });
 });
+
+describe('who set an objective is read from what the column holds', () => {
+  it('and not compared to a participant id, which it never contains', () => {
+    /*
+     * `authoredBy` holds 'self' or 'lead'. It was compared to `checkIn.participantId`, a uuid, so
+     * the comparison was false for every objective ever written and the interview told everybody
+     * their own objective had been set for them. No test failed: the branch simply never ran.
+     */
+    expect(SRC).toMatch(/authoredByThem: personObjective\.authoredBy === 'self'/);
+    expect(SRC).not.toMatch(/authoredBy === checkIn\.participantId/);
+  });
+});

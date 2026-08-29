@@ -1230,7 +1230,12 @@ export class ConversationService {
             text: personObjective.text,
             authoredBy: personObjective.authoredBy,
             seenBySubject: personObjective.seenBySubject,
-            authoredByThem: personObjective.authoredBy === checkIn.participantId,
+            /*
+             * `authoredBy` holds 'self' or 'lead', never a participant id - so comparing it to one
+             * was false for every objective ever written, and the interview told everybody their own
+             * objective had been set for them. Found while routing sense-check questions by author.
+             */
+            authoredByThem: personObjective.authoredBy === 'self',
             /* Seeded by an integration rather than written by anybody here. */
             fromTheirSystem: !!(personObjective as any).sourceSystem,
           }
