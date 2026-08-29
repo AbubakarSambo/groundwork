@@ -18,6 +18,7 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
+import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
   Suggestible, fromRow, suggestionLine, askAbout, acceptedLine, declinedLine, NOTHING_PENDING,
@@ -38,6 +39,12 @@ import { Prisma } from '@prisma/client';
  * The lanes that do not exist yet are not stubbed. A stub is a lane that answers, badly, and gets
  * believed - `unplaced` says plainly what it can do instead.
  */
+/**
+ * How many finished check-ins a recall carries. A person in eight of them asked what was agreed
+ * does not want eight reports pasted at them - they want the recent ones and a pointer to the rest.
+ */
+const ROUNDS_RECALLED = 3;
+
 @Injectable()
 export class AssistantService {
   private readonly logger = new Logger(AssistantService.name);
@@ -126,6 +133,8 @@ export class AssistantService {
         return this.whereAmIUpTo(organizationId, who).then((r) => this.compose(r, roleNameIn(r)));
       case 'what_should_we_talk_about':
         return this.whatShouldWeTalkAbout(organizationId, who);
+      case 'what_came_of_it':
+        return this.whatCameOfIt(organizationId, personId);
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
@@ -726,6 +735,86 @@ export class AssistantService {
     } catch {
       return rules('what_should_we_talk_about', text('That suggestion is no longer open, so there was nothing for me to record. Ask me what is waiting on you and I will tell you what still stands.'));
     }
+  }
+
+  /**
+   * WHAT THE CHECK-INS PRODUCED, WHICH THE ASSISTANT HAD NO WAY OF KNOWING.
+   *
+   * Every table this service reads is about the present: objectives, commitments, contributions,
+   * its own turns. The product's actual output - a released report with a question a group agreed
+   * was the central one - was invisible to it, so "what did we decide about the platform work" was
+   * answered from a handbook or not at all.
+   *
+   * SCOPED BY PARTICIPATION, THROUGH THE PARTICIPANT ROW, and this is the only reason a query here
+   * is acceptable at all. A person reaches a report because they were in that check-in - the same
+   * bridge `whereAmIUpTo` already uses, matching a `Person` to a `GroundParticipant` by email,
+   * which is the one identifier the two share. Somebody who was not in it does not select the row,
+   * so there is nothing to filter afterwards.
+   *
+   * RELEASED ONLY. An unreleased report exists in the database before its parties may read it -
+   * `releasedAt` is set once, atomically, for everybody at the same moment, and a recall that ran
+   * ahead of it would hand one person a report the others cannot see yet.
+   *
+   * NARROWER THAN THE REPORT PAGE, DELIBERATELY. That page also lets an org admin read with the
+   * lead's eyes. This does not: asking a chat window one question and receiving every check-in in
+   * the organisation is a different act from opening one report, and the narrower default is the
+   * one to start from. It is a decision to revisit, not a limitation to work around.
+   *
+   * NOT COMPOSED. The agreements are what a group settled on, in the words the report recorded, and
+   * the composer's job is wording - it would rewrite the one thing here that has to be quotable.
+   */
+  private async whatCameOfIt(organizationId: string, personId: string): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { email: true },
+    });
+    if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent us.'));
+
+    const mine = await this.prisma.groundParticipant.findMany({
+      where: { email: me.email, ground: { organizationId } },
+      select: {
+        ground: {
+          select: {
+            label: true,
+            /*
+             * AN ALLOWLIST, NOT A ROW. `Report` also carries `engagement`, `finalSynthesis`,
+             * `arcSignals` and `inferences` - per-person material that `own-reads-only.ts` exists
+             * because it once went to everybody. Selecting the four shared fields by name means a
+             * field added to the model later cannot arrive here by accident.
+             */
+            report: { select: { releasedAt: true, centralQuestion: true, agreements: true, divergences: true } },
+          },
+        },
+      },
+    });
+
+    const finished = mine
+      .map((p) => p.ground)
+      .filter((g): g is NonNullable<typeof g> & { report: { releasedAt: Date } } => Boolean(g?.report?.releasedAt))
+      .sort((a, b) => b.report.releasedAt!.getTime() - a.report.releasedAt!.getTime());
+
+    if (!finished.length) {
+      /* Two different silences, and which one it is is the useful part. */
+      return rules('what_came_of_it', text(mine.length ? NOTHING_FINISHED : NOTHING_AT_ALL));
+    }
+
+    const now = new Date();
+    const body: string[] = [];
+    for (const g of finished.slice(0, ROUNDS_RECALLED)) {
+      const r = recall({
+        groundLabel: g.label,
+        releasedAt: g.report.releasedAt!,
+        centralQuestion: g.report.centralQuestion,
+        agreements: (g.report as any).agreements,
+        divergences: (g.report as any).divergences,
+      });
+      body.push(...saidOf(r, howLongAgo(r.when, now)), '');
+    }
+    if (finished.length > ROUNDS_RECALLED) {
+      body.push(`${finished.length - ROUNDS_RECALLED} earlier check-ins are on your check-ins page.`);
+    }
+
+    return rules('what_came_of_it', text(body.join('\n').trim()));
   }
 
   /** The running history, scoped to one person and never anybody else's turns. */
