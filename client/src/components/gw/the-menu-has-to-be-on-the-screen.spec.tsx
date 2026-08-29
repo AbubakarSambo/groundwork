@@ -40,9 +40,9 @@ describe('the menu has to be on the screen', () => {
   })
 
   it('an admin on their check-ins can see the menu', () => {
-    shell('/grounds')
+    const { container } = shell('/grounds')
     /* The rail's own element, so this cannot pass on a link that happens to be somewhere else. */
-    expect(document.querySelector('.gw-sidebar-desktop')).not.toBeNull()
+    expect(container.querySelector('.gw-sidebar-desktop')).not.toBeNull()
   })
 
   it('and every admin destination is in it, by name', () => {
@@ -54,14 +54,14 @@ describe('the menu has to be on the screen', () => {
 
   it('is not there on the pages that are deliberately bare', () => {
     /* Those carry their own header - see a-page-with-no-way-out. Being bare there is the design. */
-    shell('/org/setup')
-    expect(document.querySelector('.gw-sidebar-desktop')).toBeNull()
+    const { container } = shell('/org/setup')
+    expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
   })
 
   it('is not there for somebody who is not signed in', () => {
     useAuthStore.setState({ user: null, token: null, isAuthenticated: false } as any)
-    shell('/grounds')
-    expect(document.querySelector('.gw-sidebar-desktop')).toBeNull()
+    const { container } = shell('/grounds')
+    expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
   })
 })
 
@@ -88,7 +88,11 @@ describe('and it appears when you move, not only when you arrive', () => {
     }
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    render(
+    /*
+       Scoped to this render's own container rather than `document`. Querying the document passes
+       alone and fails in the full run, because another suite's leftover markup is still in it -
+       which is a test that reports on whatever ran before it. */
+    const { container } = render(
       <QueryClientProvider client={qc}>
         {/* Starts on a deliberately bare page, exactly as somebody signing in does. */}
         <MemoryRouter initialEntries={['/auth']}>
@@ -102,9 +106,9 @@ describe('and it appears when you move, not only when you arrive', () => {
       </QueryClientProvider>,
     )
 
-    expect(document.querySelector('.gw-sidebar-desktop')).toBeNull()
+    expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
     screen.getByText('go').click()
     await screen.findByText('check-ins')
-    expect(document.querySelector('.gw-sidebar-desktop')).not.toBeNull()
+    expect(container.querySelector('.gw-sidebar-desktop')).not.toBeNull()
   })
 })

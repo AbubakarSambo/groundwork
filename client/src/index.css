@@ -595,8 +595,17 @@ body {
 .cg-group-head h3 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
 .cg-group-head span { font-size: 11px; font-weight: 700; color: var(--gw-muted); font-variant-numeric: tabular-nums; }
 .cg-group-q { font-size: 12.5px; color: var(--gw-sub); line-height: 1.55; margin: 4px 0 12px; max-width: 62ch; }
-.cg-group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(275px, 1fr)); gap: 10px; }
-.cg-group-grid.one { grid-template-columns: 1fr; }
+/* THE SITUATION PICKER: FOUR ACROSS, SAID RATHER THAN INFERRED.
+   auto-fill with a 275px minimum worked out to three columns inside a 1160px body, because the
+   body's own padding comes off the width first and 4 x 275 plus gaps no longer fits. Counting
+   columns explicitly means the layout is what it says it is and cannot drift when padding changes.
+   Twenty-one situations at four across is five rows and a bit, instead of one very long scroll. */
+.cg-group-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 700px)  { .cg-group-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .cg-group-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1240px) { .cg-group-grid { grid-template-columns: repeat(4, 1fr); } }
+/* A group with one situation in it does not want three empty columns beside it. */
+.cg-group-grid.one { grid-template-columns: 1fr !important; }
 
 /* The card face: title, then the one moment a person recognises themselves in.
    The left rule replaces a heading - it says "this is an example" without a label. */
