@@ -378,7 +378,7 @@ export function GroundsListPage() {
               onClick={() => navigate('/grounds/new')}
               style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              <span>What's going on?</span>
+              <span>Start a check-in</span>
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
             </button>
 

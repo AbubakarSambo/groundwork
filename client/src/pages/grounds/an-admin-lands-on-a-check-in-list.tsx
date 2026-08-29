@@ -28,11 +28,19 @@ export function AdminFirstRun() {
   const plan = user.organization?.subscriptionPlan
   const orgName = user.organization?.name?.trim()
 
+  /*
+   * FOUR LINKS NEED FOUR LABELS, NOT FOUR SENTENCES.
+   *
+   * The first version wrote a line of prose under each one and three sentences above them, and the
+   * verdict was "sounds like AI". It was: every card explained itself at the length of a paragraph
+   * when the word on the card already said it. Say what the page is for in three or four words, or
+   * say nothing.
+   */
   const cards: { label: string; body: string; to: string }[] = [
-    { label: 'People', body: 'Everyone with an account, and who leads what.', to: '/org/members' },
-    { label: 'Connect', body: 'Bring your own systems in, or send Groundwork out.', to: '/org/integrations' },
-    { label: 'Billing', body: plan ? 'Your plan, invoices, and the card on file.' : 'Move off the free tier when your team outgrows it.', to: '/billing' },
-    { label: 'Settings', body: 'Your organisation, notifications, and what people see.', to: '/settings' },
+    { label: 'People', body: 'Add your team', to: '/org/members' },
+    { label: 'Connect', body: 'API and integrations', to: '/org/integrations' },
+    { label: 'Billing', body: plan ? 'Plan and invoices' : 'Free plan, 10 check-ins', to: '/billing' },
+    { label: 'Settings', body: 'Org details and notifications', to: '/settings' },
   ]
 
   return (
@@ -56,8 +64,10 @@ export function AdminFirstRun() {
         </button>
       </div>
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>
-        Setting up a check-in is one part of this, and it does not have to be the first. These are yours to
-        set up whenever you want them, and they are always in the menu on the left.
+        {/* This said the menu is "always in the menu on the left" while the menu was not rendering
+            at all, which is the worst kind of wrong copy: confident about the thing in front of you
+            that is not there. */}
+        Also in the menu, any time.
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
         {cards.map(c => (

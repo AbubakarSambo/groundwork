@@ -23,16 +23,16 @@ function Tab0({ onNext }: { onNext: () => void }) {
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-navy)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>A shared record of contribution</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Everybody checks in independently. Nobody sees what anybody else wrote. The report shows every account at the same time. The gap between them is usually the conversation that needed to happen months earlier.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes about two minutes.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-green-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>The record belongs to you. Permanently.</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Not the organisation. Not the platform. The person. Your words are private until everybody activates the report. Your record survives the relationship, and you keep it.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>2. Everyone answers on their own</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and a conversation of their own. Nobody sees anybody else's answers, including you.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-amber-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>This tells you where things stand</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Every check-in carries an alignment status: Unresolved, Mixed, Emerging, Clear, or Aligned. It is a plain summary of how many areas are settled and how many are still open.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>3. Read the report together</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>It releases to everyone at once and shows where the accounts agree and where they do not. The gaps are the conversation.</div>
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
@@ -175,8 +175,16 @@ export function HelpModal() {
             </svg>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'white', letterSpacing: '-.01em' }}>Groundwork</span>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>A shared picture, built from both sides.</div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Everybody checks in independently. The report shows where you align, where you differ, and what the gap means.</div>
+          {/*
+            * THE ? BUTTON IS PRESSED BY SOMEBODY WHO IS STUCK, NOT BY SOMEBODY BROWSING.
+            *
+            * This opened on a slogan and three cards about what the product believes. The verdict
+            * was "tells me nothing of what I should do and sounds like generic AI BS", and that is
+            * a fair reading of an answer that starts with "A shared picture, built from both
+            * sides." Say what to do first. The philosophy is still here, one tab across.
+            */}
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>How this works</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Start a check-in, add the people in it, and everyone answers on their own. You get one report showing all the accounts side by side.</div>
           <button
             onClick={hide}
             style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.1)', border: 'none', color: 'white', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}

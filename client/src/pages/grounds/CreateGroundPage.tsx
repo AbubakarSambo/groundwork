@@ -432,6 +432,22 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 const TOTAL_STEPS = 6
 
 /**
+ * What each step is asking, in the words already on that step's own heading.
+ *
+ * Taken from the headings rather than invented, so the header and the page cannot say two
+ * different things about the same screen. Step 5 is the one that no longer renders - see the note
+ * on the end-state step - and is skipped rather than renumbered, because renumbering would break
+ * every link and saved position that already exists.
+ */
+const STEP_NAMES: Record<number, string> = {
+  1: 'What is this about',
+  2: 'Your plan',
+  3: 'How long it runs',
+  4: 'Who is in it',
+  6: 'The brief',
+}
+
+/**
  * The shortest description the router can do anything with. Named, because it is enforced on the
  * button, dimmed on the button's style, and now counted down in the hint - three places that were
  * three separate literals.
@@ -720,11 +736,33 @@ export function CreateGroundPage() {
         {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
               chrome could usefully carry. W13-11. */}
-              <span className="gw-logo">What's going on?</span>
+              {/*
+                * THE HEADER NAMES THE PAGE AND WHERE YOU ARE IN IT.
+                *
+                * It said "What's going on?" on all six steps - the name of the first question, on
+                * screens that were asking five other things. A person halfway through had no way to
+                * tell how far in they were except by counting six grey dots.
+                */}
+              <span className="gw-logo">Set up a check-in</span>
+              <span style={{ fontSize: 13, color: 'var(--gw-sub)', marginLeft: 10 }}>
+                Step {displayStep} of {TOTAL_STEPS} · {STEP_NAMES[displayStep] ?? ''}
+              </span>
         <button className="gw-back" onClick={back}>← Back</button>
       </div>
 
-      <div className="gw-bd" style={{ maxWidth: 540, margin: '0 auto', width: '100%' }}>
+      {/*
+        * THE PICKER GETS THE WHOLE WIDTH. EVERY OTHER STEP STAYS NARROW.
+        *
+        * The grid was already `repeat(auto-fill, minmax(275px, 1fr))` and could have laid out four
+        * across the whole time - it never did, because the body is capped at 540px, which fits
+        * exactly one column. So twenty-one situations came down as one column and one very long
+        * scroll, and the jump bar above them exists because of it.
+        *
+        * Only step one. The other five are a form - a timeline, a list of people, a brief - and a
+        * form read across 1160px is worse, not better: the eye has to travel the width of the
+        * screen between a label and its field. 1160 is four 275px cards and their gaps.
+        */}
+      <div className="gw-bd" style={{ maxWidth: step === 1 ? 1160 : 540, margin: '0 auto', width: '100%' }}>
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
