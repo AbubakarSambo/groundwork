@@ -74,6 +74,12 @@ const REACHED_FROM_OUTSIDE = [
    * (`stripe.callbackUrl`), so nothing in this codebase navigates to it and nothing should.
    */
   '/billing/callback',
+  /**
+   * `RequireOrgSetup` and `RootRoute` redirect an admin with an incomplete org here - both live in
+   * App.tsx, which this scan excludes on purpose (every route would trivially "link" to itself
+   * otherwise). Nothing should link to it directly; arriving is the redirect's job, not a click's.
+   */
+  '/org/setup',
 ]
 
 describe('every route the app serves has a way in', () => {
