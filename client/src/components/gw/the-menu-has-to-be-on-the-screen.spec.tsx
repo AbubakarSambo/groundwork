@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
@@ -33,11 +33,19 @@ function shell(path: string) {
   )
 }
 
+/*
+ * SIGNED IN BEFORE EVERY TEST IN THIS FILE, not just the first block.
+ *
+ * A `beforeEach` inside one describe does not run for the next one, so the signed-out test left the
+ * store empty and the navigation test below it rendered a shell for somebody who was not signed in.
+ * It failed about one run in three, which reads as flakiness and is really ordering.
+ */
+beforeEach(() => {
+  vi.restoreAllMocks()
+  useAuthStore.setState({ user: ADMIN, token: 't', isAuthenticated: true } as any)
+})
+
 describe('the menu has to be on the screen', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
-    useAuthStore.setState({ user: ADMIN, token: 't', isAuthenticated: true } as any)
-  })
 
   it('an admin on their check-ins can see the menu', () => {
     const { container } = shell('/grounds')
@@ -74,12 +82,14 @@ describe('the menu has to be on the screen', () => {
  */
 describe('and it appears when you move, not only when you arrive', () => {
   it('shows the menu after signing in and going to the check-ins', async () => {
-    const { AppShell } = await import('./AppShell')
-    const { MemoryRouter, Routes, Route, useNavigate } = await import('react-router-dom')
-    const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query')
-    const { render, screen } = await import('@testing-library/react')
-    const { useAuthStore } = await import('@/stores/auth')
-
+    /*
+     * THE STORE FROM THE TOP OF THIS FILE, NOT A DYNAMIC RE-IMPORT.
+     *
+     * `await import('@/stores/auth')` can resolve to a different module instance from the one
+     * AppShell closed over, so `setState` wrote to a store the component was not reading and the
+     * shell rendered signed-out. It passed most runs and failed about one in three - which is the
+     * worst kind of test, because the next red is assumed to be noise.
+     */
     useAuthStore.setState({ user: ADMIN, token: 't', isAuthenticated: true } as any)
 
     function GoToGrounds() {
@@ -107,8 +117,18 @@ describe('and it appears when you move, not only when you arrive', () => {
     )
 
     expect(container.querySelector('.gw-sidebar-desktop')).toBeNull()
-    screen.getByText('go').click()
+    /* fireEvent, not a raw .click(). A raw DOM click happens outside React's act(), so the state
+       update it causes may not be flushed before the assertion runs - which is the remaining one-run-
+       in-five failure after the ordering fix, and is a property of the test rather than the product. */
+    fireEvent.click(screen.getByText('go'))
     await screen.findByText('check-ins')
-    expect(container.querySelector('.gw-sidebar-desktop')).not.toBeNull()
+
+    /*
+     * WAITED FOR, NOT ASSERTED ONCE. The route content and the shell's own re-render are not
+     * guaranteed to land in the same commit, so a bare expect here passed alone and failed in the
+     * full suite - a flake, and a flake in the test guarding the bug it was written for is worse
+     * than no test, because the next person to see it red will assume it is noise.
+     */
+    await waitFor(() => expect(container.querySelector('.gw-sidebar-desktop')).not.toBeNull())
   })
 })

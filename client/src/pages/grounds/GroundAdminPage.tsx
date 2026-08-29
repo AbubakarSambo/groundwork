@@ -148,11 +148,30 @@ export function GroundAdminPage() {
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingRoleValue, setEditingRoleValue] = useState('')
 
-  const { data: ground, isLoading } = useQuery({
+  /*
+   * "A PAGE FLASHES FOR A SECOND AND THEN GOES TO THE CHECK-IN PAGE."
+   *
+   * The flashing page is this one's not-found state. `isLoading` is only true while a fetch is
+   * actually in flight - a request that fails, or one that has not started yet, leaves `isLoading`
+   * false with no data, and the render below falls straight through to GroundGone. React Query then
+   * refetches on mount or focus, it succeeds, and the real page replaces it. From the outside that
+   * is a strange screen appearing for about a second immediately after opening a check-in.
+   *
+   * `isError` is what separates the two states that were being treated as one: nothing here yet,
+   * and definitely not there. Only the second is GroundGone.
+   */
+  const { data: ground, isLoading, isError, error } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
   })
+
+  /*
+   * A check-in that is genuinely gone answers 404. Anything else - a dropped connection, a token
+   * being refreshed, a cold server - is a failure to load, and telling somebody their check-in does
+   * not exist because their wifi blinked is the wrong sentence at the worst moment.
+   */
+  const definitelyGone = isError && (error as any)?.response?.status === 404
 
   const { data: report } = useQuery({
     queryKey: ['report', id],
@@ -443,9 +462,11 @@ export function GroundAdminPage() {
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
   }, [ground?.label, ground?.scenario])
 
-  if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
   // Was the bare words "Ground not found." with nothing to press. W8-65.
-  if (!ground) return <Shell><GroundGone /></Shell>
+  if (definitelyGone) return <Shell><GroundGone /></Shell>
+  /* Everything that is not a 404 is "not here yet", including a failed request about to be retried.
+     This used to be `!ground`, which said "gone" for both. */
+  if (isLoading || !ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
 
   /**
    * REFUSED OUT LOUD, WITH SOMEWHERE TO GO.
