@@ -82,12 +82,13 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
   return children
 }
 
-/** An org created before it has a contact email, growth stage, or plan can't run check-ins yet - only
- * the admin who created it can fix that, so only ADMIN is gated here. */
+/** An org created before it has a contact email can't run check-ins yet - only the admin who
+ * created it can fix that, so only ADMIN is gated here. `subscriptionPlan` is deliberately NOT
+ * part of this check: staying on the free tier means it is null forever - that's the free tier,
+ * not an unfinished step - and /pricing has no "confirm free" action to ever set it. */
 function isOrgSetupComplete(user: User | null | undefined) {
   if (!user) return true // let RequireAuth handle the unauthenticated case
-  const org = user.organization
-  return !!(org?.email && org?.companyStage && org?.subscriptionPlan)
+  return !!user.organization?.email
 }
 
 function RequireOrgSetup({ children }: { children: JSX.Element }) {
@@ -200,8 +201,9 @@ export default function App() {
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
-            {/* Billing/pricing stay on plain RequireAuth (not RequireOrgSetup): completing org
-                setup routes an incomplete admin through exactly these pages to pick a plan. */}
+            {/* Billing/pricing stay on plain RequireAuth (not RequireOrgSetup): choosing a paid
+                plan is optional, not part of org setup - the free tier is the default, not a
+                step anyone completes. */}
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
