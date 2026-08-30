@@ -314,7 +314,22 @@ model Organization {
   /// Named leads by default. An organisation that has thought about it can open the door; one that
   /// has not should not discover it was open by finding a check-in nobody sanctioned. See
   /// `who-may-open-a-check-in.ts`, which is the only place the rule is expressed.
-  whoMayOpenCheckIns  String                   @default("NAMED_LEADS") @map("who_may_open_check_ins")
+  /// THE PERSON WHO SET THIS ORGANISATION UP.
+  ///
+  /// Other admins cannot take their role or their account away; they can take anybody's. One
+  /// asymmetry, not a hierarchy - every admin is otherwise an admin. See
+  /// `the-person-who-set-this-up.ts`.
+  ///
+  /// Nullable, and null means nobody is protected rather than everybody. That is what was true for
+  /// every existing organisation a minute before this shipped; reading it the other way would
+  /// freeze their admin lists. The migration fills it in with each organisation's first admin.
+  ///
+  /// Not a relation: a `User` row can be soft-deleted and anonymised, and a foreign key would make
+  /// that a choice between breaking the constraint and cascading away the record of who set the
+  /// place up.
+  ownerUserId         String?                  @map("owner_user_id")
+
+  whoMayOpenCheckIns String @default("NAMED_LEADS") @map("who_may_open_check_ins")
 
   /// Whether a check-in somebody opens waits for an admin before anybody is invited.
   ///

@@ -129,6 +129,31 @@ export function OrgMembersPage() {
    * guarded routes on the API, nineteen checks in this client - and none by not being a MEMBER. So
    * a LEAD inherits nothing, and one field that says what somebody is beats two that must agree.
    */
+  /*
+   * WHO SET THIS ORGANISATION UP.
+   *
+   * Other admins cannot change their role or deactivate them - the server refuses it. This is here
+   * so the page does not offer a control that exists to be refused, and so the position is visible:
+   * an admin who cannot see who holds it has no way to understand the refusal.
+   */
+  const ownerQuery = useQuery({
+    queryKey: ['org-owner'],
+    queryFn: () => apiClient.get('/users/organization/owner').then(r => r.data.data ?? r.data),
+    enabled: isAdmin,
+    retry: false,
+  })
+  const ownerId: string | null = ownerQuery.data?.ownerUserId ?? null
+  const iAmTheOwner = !!ownerId && ownerId === user?.id
+
+  const handOverMut = useMutation({
+    mutationFn: (userId: string) => apiClient.patch('/users/organization/owner', { userId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org-owner'] })
+      toast.success('Handed over. They now hold this account.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not hand that over.'),
+  })
+
   const roleMut = useMutation({
     mutationFn: ({ id, what }: { id: string; what: 'MEMBER' | 'LEAD' | 'ADMIN' }) =>
       apiClient.patch(`/users/${id}`, { role: what }),
@@ -397,12 +422,25 @@ export function OrgMembersPage() {
                     * demoting themselves; showing a control that exists to be refused is worse
                     * than not showing one.
                     */}
+                  {/*
+                    * WHOEVER HOLDS THIS ACCOUNT IS SHOWN AND NOT OFFERED.
+                    *
+                    * Their row carries no control for anybody else: the server refuses it, and a
+                    * dropdown that exists to be refused is worse than none. Their own row still
+                    * shows "You", as every admin's does.
+                    */}
+                  {m.id === ownerId && m.id !== user?.id && (
+                    <span style={{
+                      fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
+                      background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
+                    }}>Holds this account</span>
+                  )}
                   {m.id === user?.id ? (
                     <span style={{
                       fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
                       background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)', border: '1px solid var(--gw-blue-b)',
-                    }}>You</span>
-                  ) : (
+                    }}>{iAmTheOwner ? 'You, and you hold this account' : 'You'}</span>
+                  ) : m.id === ownerId ? null : (
                     <select
                       value={m.role}
                       disabled={roleMut.isPending}
@@ -418,6 +456,29 @@ export function OrgMembersPage() {
                       <option value="LEAD">Can open check-ins</option>
                       <option value="ADMIN">Admin</option>
                     </select>
+                  )}
+                  {/*
+                    * HANDING IT ON, which is what stops the protection becoming a hostage the day
+                    * that person leaves. Offered only by the holder, and only on another admin's
+                    * row, because it can only go to somebody who can manage the organisation.
+                    */}
+                  {iAmTheOwner && m.id !== user?.id && m.role === 'ADMIN' && (
+                    <button
+                      onClick={() => {
+                        const who = `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
+                        if (window.confirm(
+                          `Hand this account to ${who}?\n\nThey become the person who cannot be `
+                          + 'removed by other admins, and you stop being that person. You stay an admin.',
+                        )) handOverMut.mutate(m.id)
+                      }}
+                      style={{
+                        fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        borderRadius: 6, padding: '3px 8px', background: 'white',
+                        color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Hand over
+                    </button>
                   )}
                 </div>
               </div>

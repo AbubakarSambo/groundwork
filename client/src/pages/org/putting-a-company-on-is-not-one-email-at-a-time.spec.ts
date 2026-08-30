@@ -95,6 +95,11 @@ describe('what somebody is here', () => {
     /* The server refuses the last admin demoting themselves. A control that exists to be refused
        is worse than no control. */
     expect(control).toContain('m.id === user?.id')
-    expect(control).toContain('>You<')
+    expect(control).toContain("{iAmTheOwner ? 'You, and you hold this account' : 'You'}")
+  })
+
+  it('and no control at all on the row of whoever holds this account', () => {
+    /* Another admin cannot change them - the server refuses it - so the page does not offer it. */
+    expect(control).toContain('m.id === ownerId ? null :')
   })
 })

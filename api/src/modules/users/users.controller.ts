@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
@@ -148,6 +148,28 @@ export class UsersController {
   @ApiOperation({ summary: 'Whether a call has already been asked for' })
   async callRequested(@CurrentUser('organizationId') organizationId: string) {
     return this.usersService.callAlreadyRequested(organizationId);
+  }
+
+  /**
+   * WHO SET THIS ORGANISATION UP, and handing that on.
+   *
+   * The read is available to any admin, because the People page has to know whose row it must not
+   * offer to change. The write is owner-only, enforced in the service rather than by a decorator:
+   * `@Roles` knows about roles and this is not one.
+   */
+  @Get('organization/owner')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Who set this organisation up' })
+  async whoSetThisUp(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.whoSetThisUp(organizationId);
+  }
+
+  @Patch('organization/owner')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Hand the organisation to another admin' })
+  async handOver(@CurrentUser() user: CurrentUserData, @Body() body: { userId?: string }) {
+    if (!body?.userId) throw new BadRequestException('Say who you are handing it to.');
+    return this.usersService.handOverTheOrganisation(user.organizationId, user.id, body.userId);
   }
 
   @Get('rollout')

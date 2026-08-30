@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -12,6 +12,7 @@ import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putti
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { isSubscribed } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 
 @Injectable()
 export class UsersService {
@@ -134,6 +135,50 @@ export class UsersService {
       },
     });
     return this.howCheckInsWork(organizationId);
+  }
+
+  /**
+   * HAND THE POSITION ON, which is what stops the protection becoming a hostage.
+   *
+   * Without this, the day the founder leaves the company the account has an owner who no longer
+   * works there and nobody able to change it.
+   *
+   * It GIVES the position away rather than sharing it. Two protected people would be two people who
+   * cannot remove each other, which is a deadlock rather than a safeguard.
+   */
+  async handOverTheOrganisation(organizationId: string, actingUserId: string, toUserId: string) {
+    const [org, acting, target] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { ownerUserId: true } }),
+      this.prisma.user.findUnique({ where: { id: actingUserId }, select: { id: true, role: true } }),
+      this.prisma.user.findFirst({
+        where: { id: toUserId, organizationId, deletedAt: null },
+        select: { id: true, role: true, firstName: true },
+      }),
+    ]);
+    if (!target) throw new NotFoundException('That person is not on this account.');
+
+    const allowed = mayHandOver(
+      { id: acting?.id ?? actingUserId, role: acting?.role ?? 'MEMBER' },
+      { id: target.id, role: target.role },
+      org?.ownerUserId ?? null,
+    );
+    if (!allowed.may) throw new ForbiddenException(allowed.because);
+
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { ownerUserId: target.id },
+    });
+    this.logger.log(`Organisation ${organizationId} handed over to ${target.id}.`);
+    return { ownerUserId: target.id };
+  }
+
+  /** Who set this organisation up, so the People page can say so and hide what it must. */
+  async whoSetThisUp(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { ownerUserId: true },
+    });
+    return { ownerUserId: org?.ownerUserId ?? null };
   }
 
   /** The organisation's own name, which is what an invitation says it is from. */
@@ -288,6 +333,29 @@ export class UsersService {
       if (taken) throw new ConflictException('Email already in use');
     }
 
+    /*
+     * THE PERSON WHO SET THIS UP CANNOT BE DEMOTED OR DEACTIVATED BY ANOTHER ADMIN.
+     *
+     * Before the last-admin check, because it is the stronger rule: even with six other admins on
+     * the account, this one is not theirs to change. See `the-person-who-set-this-up.ts`.
+     */
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { ownerUserId: true },
+    });
+    const acting = await this.prisma.user.findUnique({
+      where: { id: _actingUserId },
+      select: { id: true, role: true },
+    });
+    if (dto.role !== undefined || dto.isActive !== undefined) {
+      const allowed = mayChange(
+        { id: acting?.id ?? _actingUserId, role: acting?.role ?? 'MEMBER' },
+        { id: user.id, role: user.role },
+        org?.ownerUserId ?? null,
+      );
+      if (!allowed.may) throw new ForbiddenException(allowed.because);
+    }
+
     // Last-admin safeguard: this user's own role/active state can't be removed
     // if they're the org's only remaining active admin - otherwise the org is
     // left with nobody able to manage it at all.
@@ -362,6 +430,22 @@ export class UsersService {
     if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
     if (!user) throw new NotFoundException('User not found');
+
+    /* The same protection as `update`, on the path that deactivates and anonymises somebody. */
+    const orgForRemoval = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { ownerUserId: true },
+    });
+    const remover = await this.prisma.user.findUnique({
+      where: { id: actingUserId },
+      select: { id: true, role: true },
+    });
+    const allowedToRemove = mayChange(
+      { id: remover?.id ?? actingUserId, role: remover?.role ?? 'MEMBER' },
+      { id: user.id, role: user.role },
+      orgForRemoval?.ownerUserId ?? null,
+    );
+    if (!allowedToRemove.may) throw new ForbiddenException(allowedToRemove.because);
 
     // Last-admin safeguard - see update() above for the same rule.
     if (user.role === 'ADMIN') {
