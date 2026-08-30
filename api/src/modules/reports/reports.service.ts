@@ -26,6 +26,7 @@ import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferra
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
+import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -1468,7 +1469,125 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // the profile stays as-is.
     this.extractAndStoreLeadSignals(groundId, ground.initiatorId).catch(() => null);
 
+    /*
+     * KEEP WHAT THIS ROUND SAID, so day 14 still exists at day 90.
+     *
+     * After the live report is written, never instead of it: everything that reads a report still
+     * reads the same row it always did, and this is a copy taken when a round closes.
+     *
+     * Best-effort on purpose. A failure to keep the history must never fail the synthesis somebody
+     * is waiting on - the picture they are about to read matters more than the copy of it.
+     */
+    this.keepThisRound(groundId, {
+      sharedPicture: result.sharedPicture,
+      agreements: result.agreements,
+      divergences: result.divergences,
+      centralQuestion: result.centralQuestion,
+    }).catch((err: any) =>
+      this.logger.warn(`Keeping the round for ground ${groundId} failed: ${err.message}`),
+    );
+
     return report;
+  }
+
+  /**
+   * WHICH ROUND THIS IS, AND KEEPING IT.
+   *
+   * A round is a session number every party has completed - the same test the release path uses,
+   * asked here rather than invented a second time. Synthesis runs whenever anybody finishes, so
+   * most calls find no completed round and do nothing at all.
+   *
+   * The highest complete round is the one kept: a late correction to session 2 in a ground now on
+   * session 4 amends round 2, because that is the round it belongs to.
+   */
+  /**
+   * WHAT THE REPORT SAID AT THE END OF EACH ROUND, for somebody entitled to read it.
+   *
+   * The same permission test as the report itself, asked the same way: a party to the check-in, or
+   * an admin of the organisation it belongs to. This is the same content at an earlier moment, so
+   * it cannot be readable by anybody the current one is not.
+   *
+   * ONLY RELEASED ROUNDS. A round is kept when it closes, and released is a separate step - the
+   * mutual reveal that stops one person reading the picture before the other has finished. Handing
+   * back an unreleased round here would be a way round that, so the gate is asked once, at the top,
+   * exactly as `get` asks it.
+   */
+  async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        organizationId: true,
+        initiatorId: true,
+        report: { select: { releasedAt: true } },
+        participants: { select: { userId: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const isParty = ground.participants.some((p) => p.userId === requestingUserId);
+    const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+
+    /* Nothing has been revealed yet, so there is nothing anybody may read. */
+    if (!ground.report?.releasedAt) return { rounds: [] };
+
+    const kept = await this.prisma.reportRound.findMany({
+      where: { groundId },
+      orderBy: { round: 'asc' },
+      select: {
+        round: true,
+        sharedPicture: true,
+        agreements: true,
+        divergences: true,
+        centralQuestion: true,
+        takenAt: true,
+        amendedAt: true,
+        amendedNote: true,
+      },
+    });
+
+    /*
+     * Named, not spread. The same rule the rest of this API follows, and the reason is the same:
+     * a column added to this table later must not appear in somebody's report by accident.
+     */
+    return { rounds: kept };
+  }
+
+  private async keepThisRound(groundId: string, now: RoundPicture): Promise<void> {
+    const sessions = await this.prisma.checkIn.findMany({
+      where: { participant: { groundId } },
+      select: { sessionNumber: true },
+      distinct: ['sessionNumber'],
+      orderBy: { sessionNumber: 'desc' },
+    });
+
+    let round: number | null = null;
+    for (const s of sessions) {
+      if (await this.grounds.isSessionReadyForReport(groundId, s.sessionNumber)) {
+        round = s.sessionNumber;
+        break;
+      }
+    }
+    if (round === null) return;
+
+    const kept = await this.prisma.reportRound.findUnique({
+      where: { groundId_round: { groundId, round } },
+    });
+    const answer = decide(now, kept as any);
+    if (!answer.keep) return;
+
+    if (answer.as === 'new') {
+      await this.prisma.reportRound.create({
+        data: { groundId, round, ...(now as any), takenAt: new Date() },
+      });
+      return;
+    }
+
+    await this.prisma.reportRound.update({
+      where: { groundId_round: { groundId, round } },
+      data: { ...(now as any), amendedAt: new Date(), amendedNote: answer.note },
+    });
   }
 
   /**

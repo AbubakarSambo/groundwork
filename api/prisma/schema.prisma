@@ -622,6 +622,7 @@ model Ground {
   accessCode                 ContributorCode?            @relation("GroundAccessCode", fields: [accessCodeId], references: [id])
   participants               GroundParticipant[]
   checkIns                   CheckIn[]
+  reportRounds               ReportRound[]
   report                     Report?
   patternDetections          PatternDetection[]
   resolution                 Resolution?
@@ -2727,6 +2728,57 @@ model LeadContextNote {
 enum ReportActivationStatus {
   PENDING // party has not yet activated
   ACTIVATED // party pressed "release report"
+}
+
+/// WHAT THE REPORT SAID AT THE END OF ONE ROUND.
+///
+/// `Report` is one row per check-in and every round overwrites it, so the shared picture is always
+/// the current one and the day-14 picture is gone the moment day 30 runs. That is right for a
+/// living document and wrong for a record: a ninety-day account of somebody's first quarter was
+/// being re-derived from transcripts at the end rather than read back from what was actually said
+/// at the time, and nothing could show that an earlier account had changed.
+///
+/// SO THE CURRENT REPORT IS LEFT EXACTLY AS IT IS and each completed round is copied here. Every
+/// existing read path - the ground page, the board, the admin view - still reads `Report` and did
+/// not change. This is additive, and it is the smaller half of the two ways to fix it.
+///
+/// READABLE, NOT JUST FUEL. Hafsah's call: the people who were in a round can read that round's
+/// report afterwards. A report somebody read at day 14 stays what they read, which is a stronger
+/// promise than the product made before.
+///
+/// AMENDED IN PLACE AND MARKED, also her call. A late correction changes the round it belongs to
+/// rather than creating a second version of the same round - the product already tells people when
+/// something was "updated after sign-off", and two rows for one round would say the same thing
+/// worse.
+model ReportRound {
+  id       String @id @default(uuid())
+  groundId String @map("ground_id")
+  /// The session number every party had completed when this was taken.
+  round    Int
+
+  /// The report as it stood, in the same shape the live one holds.
+  sharedPicture   String @map("shared_picture") @db.Text
+  agreements      Json
+  divergences     Json
+  centralQuestion String @map("central_question") @db.Text
+
+  /// When the round closed. Not when this row was written - a retry days later is still that round.
+  takenAt DateTime @map("taken_at")
+
+  /// Set when a late correction changed this round after it was first taken. Null on every round
+  /// that has not been touched since, which is almost all of them.
+  amendedAt   DateTime? @map("amended_at")
+  /// One line on what changed, in the product's own words. Shown wherever the round is read.
+  amendedNote String?   @map("amended_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  /// One row per round. A second synthesis of the same round amends this one.
+  @@unique([groundId, round])
+  @@index([groundId, round])
+  @@map("report_rounds")
 }
 
 model ReportActivation {
