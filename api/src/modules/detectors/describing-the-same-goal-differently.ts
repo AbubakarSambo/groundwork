@@ -26,7 +26,11 @@ export interface Account {
 /** Words that carry no meaning about the work. Shared with retrieval for the same reason. */
 import { STOPWORDS } from '../knowledge/knowledge.service';
 
-function meaningfulWords(s: string): Set<string> {
+/*
+ * Exported so the measure check uses the SAME idea of a meaningful word. Two files each deciding
+ * what counts as a word is two products disagreeing about whether somebody mentioned something.
+ */
+export function meaningfulWords(s: string): Set<string> {
   return new Set(
     s.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
       .filter((w) => w.length >= 4 && !STOPWORDS.has(w)),

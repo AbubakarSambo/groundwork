@@ -14,6 +14,7 @@ import {
   ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
 } from './who-is-actually-carrying-it';
 import { SubjectFacts, whatIsMissing, unownedGaps } from './what-this-objective-is-missing';
+import { findMeasureGaps, sayIt as sayMeasureGap, Mention as MeasureMention } from './nobody-mentions-what-it-is-measured-by';
 import { findNeglectedPrimary, sayNeglectedPrimary, Cadence as ActionCadenceValue } from './the-one-action-that-converts';
 
 /**
@@ -64,6 +65,66 @@ export class DetectorsService {
       }
     }
     return out;
+  }
+
+  /**
+   * THE OBJECTIVE IS DISCUSSED AND ITS MEASURE IS NOT.
+   *
+   * Deliberately next to `objectiveUnmentioned`, because they read the same two inputs and answer
+   * opposite questions. That one fires when nobody has said a word about an objective. This one
+   * needs it to be talked about, repeatedly, with the number on it never coming up.
+   *
+   * It carries the TEXT of what was said, which `mentionsOf` throws away - it only needs to know
+   * that a mention happened. Nothing is quoted out of here; the text is read and discarded.
+   */
+  private async measureUnmentioned(
+    organizationId: string,
+    subjects: SubjectRef[],
+    turns: { personExternalId: string; content: string; createdAt: Date }[],
+  ): Promise<number> {
+    const measured = await this.prisma.subject.findMany({
+      where: { organizationId, sourceDeletedAt: null, measure: { not: null } },
+      select: { externalId: true, title: true, measure: true, target: true },
+    });
+    if (!measured.length) return 0;
+
+    /* The same title match `mentionsOf` uses, keeping what was said. */
+    const keyed = subjects.map((sub) => ({
+      externalId: sub.externalId,
+      words: sub.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+        .filter((w) => w.length >= 3 && !STOPWORDS.has(w)),
+    })).filter((k) => k.words.length > 0);
+
+    const mentions: MeasureMention[] = [];
+    for (const t of turns) {
+      const flat = t.content.toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const k of keyed) {
+        if (k.words.every((w) => flat.includes(w))) {
+          mentions.push({ subjectExternalId: k.externalId, text: t.content, at: t.createdAt });
+        }
+      }
+    }
+
+    let n = 0;
+    for (const gap of findMeasureGaps(measured, mentions)) {
+      const says = sayMeasureGap(gap);
+      const existing = await this.prisma.detectorResult.findFirst({
+        where: { organizationId, key: 'measure_unmentioned', resolvedAt: null, subjectExternalId: gap.subjectExternalId },
+      });
+      const evidence = { says, measure: gap.measure, target: gap.target, mentions: gap.mentions, lastMentionedAt: gap.lastMentionedAt } as any;
+      if (existing) {
+        await this.prisma.detectorResult.update({ where: { id: existing.id }, data: { evidence, lastSeenAt: new Date() } });
+      } else {
+        await this.prisma.detectorResult.create({
+          data: {
+            organizationId, subjectExternalId: gap.subjectExternalId, key: 'measure_unmentioned',
+            severity: 'medium', evidence, firstSeenAt: new Date(), lastSeenAt: new Date(),
+          },
+        });
+      }
+      n += 1;
+    }
+    return n;
   }
 
   /**
@@ -689,11 +750,13 @@ export class DetectorsService {
       }
     }
     const unmentioned = await this.objectiveUnmentioned(organizationId, subjects, turns);
+    /* Its opposite: talked about repeatedly, never by the number on it. */
+    const measureGaps = await this.measureUnmentioned(organizationId, subjects, turns);
     const diverging = await this.goalDivergence(organizationId, subjects);
     const contribution = await this.contribution(organizationId, subjects, turns);
     const proposed = await this.recommend(organizationId, subjects);
 
-    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${diverging} diverging, ${contribution} contribution findings, ${aboutPeople} about people, ${proposed} recommendations.`);
-    return { ran: true, found: found.length + unmentioned + diverging + contribution + aboutPeople, recommended: proposed };
+    this.logger.log(`Org ${organizationId}: ${found.length} undeclared dependencies, ${unmentioned} unmentioned, ${measureGaps} with a measure nobody mentions, ${diverging} diverging, ${contribution} contribution findings, ${aboutPeople} about people, ${proposed} recommendations.`);
+    return { ran: true, found: found.length + unmentioned + measureGaps + diverging + contribution + aboutPeople, recommended: proposed };
   }
 }
