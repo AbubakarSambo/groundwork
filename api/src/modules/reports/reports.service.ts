@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { whatTheRecordsReach, NEVER_CONCLUDE_ABOUT_SHIPPING } from '../public-api/what-shipped-actually-means';
 import { whatCouldBeChecked, AClaim, COULD_NOT_WORK_IT_OUT } from './what-nothing-here-could-check';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
@@ -1759,8 +1760,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * certainty invented, and the person reading this is in a position to ask - which the product
      * is not.
      */
+    /* Read once. It was inlined inside the where clause and a second reader needed it too. */
+    const orgId = (await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } }))?.organizationId ?? '';
+
     const theirAccounts = await this.prisma.interaction.findMany({
-      where: { organizationId: (await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } }))?.organizationId ?? '', strength: 'SELF_REPORTED' as any },
+      where: { organizationId: orgId, strength: 'SELF_REPORTED' as any },
       orderBy: { happenedAt: 'desc' },
       take: 20,
       select: { personExternalId: true, counterpartyExternalId: true, kind: true, happenedAt: true, note: true },
@@ -1776,6 +1780,34 @@ Close the report by framing - neutrally, without recommending one - the choice n
           + 'That is their account, and a missing record is not evidence it did not happen.',
         );
       }
+    }
+
+    /*
+     * HOW FAR TECHNICAL WORK HAS ACTUALLY GOT, WHICH IS NOT WHAT ANYBODY CALLS IT.
+     *
+     * "Shipped" is one word for eight states, and a leader who cannot read the code has no way to
+     * tell which one they were told. This states the furthest state anything is evidenced at and -
+     * the part that does the work - which states nothing here can see at all.
+     *
+     * ORGANISATION-WIDE, LIKE THE ACCOUNTS ABOVE IT. A merge record is pushed against the company,
+     * not against one check-in, and the same read that already brings somebody's own account of a
+     * call brings these.
+     */
+    const technical = await this.prisma.interaction.findMany({
+      where: {
+        organizationId: orgId,
+        kind: { in: ['MERGE', 'TEST_RUN', 'DEPLOY', 'RELEASE'] as any },
+      },
+      orderBy: { happenedAt: 'desc' },
+      take: 40,
+      select: { kind: true },
+    }).catch(() => [] as any[]);
+
+    if (technical.length) {
+      const reach = whatTheRecordsReach(technical.map((t) => String(t.kind)));
+      lines.push('');
+      lines.push('HOW FAR THE TECHNICAL RECORDS REACH:');
+      for (const said of reach.says) lines.push(`- ${said}`);
     }
 
     /* Blockers nobody has an objective for still matter - somebody is still waiting. */
@@ -1800,6 +1832,7 @@ not from anything you inferred. Their actual sentence is deliberately NOT given 
 not guess at it or invent one - somebody not knowing how is a thing to show them, and somebody
 putting a thing off is a conversation about what makes it hard.
 A blocker is a reason, not an excuse, and neither is it a complaint about the person it names.
+${NEVER_CONCLUDE_ABOUT_SHIPPING}
 Never write that somebody failed, underperformed, or is not capable. Say what was agreed, what
 happened, and what is in the way.`;
   }

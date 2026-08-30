@@ -32,7 +32,13 @@ const svc = (over: { objectives?: any[]; blockers?: any[]; deliveries?: any[]; s
     checkIn: { findMany: async () => over.saidWhy ?? [] },
     /* Somebody's own account of work no system recorded - see `theirAccounts` in the service. */
     ground: { findUnique: async () => ({ organizationId: 'org1' }) },
-    interaction: { findMany: async () => (over as any).theirAccounts ?? [] },
+    interaction: {
+      /* Honours the where clause: the technical read and the self-reported read hit the same table
+         and a stub returning everything to both would prove nothing about either. */
+      findMany: async ({ where }: any) => (where?.kind
+        ? (over as any).technical ?? []
+        : (over as any).theirAccounts ?? []),
+    },
   };
   return s;
 };
@@ -110,6 +116,32 @@ describe('what the model is given', () => {
 
   it('and nothing at all when there is nothing on the record', async () => {
     expect(await svc().whatTheRecordShows('g1', labels)).toBe('');
+  });
+});
+
+describe('how far the technical records reach', () => {
+  it('states the furthest state, and what nothing can see beyond it', async () => {
+    const out = await svc({
+      objectives: [objective()],
+      technical: [{ kind: 'MERGE' }, { kind: 'DEPLOY' }],
+    } as any).whatTheRecordShows('g1', labels);
+    expect(recorded(out)).toContain('HOW FAR THE TECHNICAL RECORDS REACH');
+    expect(recorded(out)).toContain('deployed');
+    /* The sentence that stops deployment quietly becoming the meaning of done. */
+    expect(recorded(out)).toContain('working end to end');
+  });
+
+  it('says nothing at all when no technical record exists', async () => {
+    const out = await svc({ objectives: [objective()] }).whatTheRecordShows('g1', labels);
+    expect(out).not.toContain('HOW FAR THE TECHNICAL RECORDS REACH');
+  });
+
+  it('tells the model the three shipping rules', async () => {
+    const out = await svc({ objectives: [objective()] }).whatTheRecordShows('g1', labels);
+    const flat = out.replace(/\s+/g, ' ');
+    expect(flat).toContain('A merge is not a deployment');
+    expect(flat).toContain('most work is unrecorded');
+    expect(flat).toContain('never as a claim that somebody is overstating');
   });
 });
 

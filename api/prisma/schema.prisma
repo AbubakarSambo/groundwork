@@ -2080,6 +2080,22 @@ enum InteractionKind {
   MEETING
   PROPOSAL
   TRANSACTION
+
+  /// TECHNICAL WORK, WHICH IS THE SAME PROBLEM AS A CUSTOMER VISIT AND WAS NOT ASKED ABOUT.
+  ///
+  /// "The feature is shipped" is one sentence covering eight different states, and a company whose
+  /// leaders cannot read the code has no way to tell which one is meant. These are the states that
+  /// leave a record somebody else wrote: a merge happened, a test run happened, a deploy happened.
+  ///
+  /// They are kinds of Interaction rather than a new table because an interaction is already
+  /// exactly this - a thing that happened, at a time, with a strength saying how well it is
+  /// evidenced. A deploy log is a system's own record; a screenshot of one is somebody's account.
+  /// That distinction is `EvidenceStrength` and it needed no changing at all.
+  MERGE
+  TEST_RUN
+  DEPLOY
+  RELEASE
+  INCIDENT
 }
 
 /// SOMETHING THAT HAPPENED WITH A CUSTOMER, AND WHAT WE ACTUALLY KNOW ABOUT IT.

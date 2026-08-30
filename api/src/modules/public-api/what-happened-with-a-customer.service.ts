@@ -23,7 +23,16 @@ export class WhatHappenedWithACustomerService {
 
   constructor(private prisma: PrismaService) {}
 
-  private static readonly KINDS = ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'];
+  /*
+   * The technical kinds are here for the same reason the customer ones are: a thing that happened,
+   * at a time, with a strength saying how well it is evidenced. A deploy log is a system's own
+   * record; a screenshot of one is somebody's account. `EvidenceStrength` already knew the
+   * difference and needed no changing.
+   */
+  private static readonly KINDS = [
+    'VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION',
+    'MERGE', 'TEST_RUN', 'DEPLOY', 'RELEASE', 'INCIDENT',
+  ];
   private static readonly STRENGTHS = ['COMPLETED', 'RECORDED', 'ARRANGED', 'SELF_REPORTED'];
 
   /** A note is a line, not a transcript. Past this, somebody is sending the conversation. */
