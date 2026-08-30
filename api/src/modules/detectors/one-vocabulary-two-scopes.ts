@@ -78,6 +78,18 @@ export const GENUINELY_NEW = [
    * the vocabulary rather than in a list of exceptions.
    */
   'neglected_primary',
+  /*
+   * NOT FROM THE SPEC, AND SAID SO RATHER THAN SLIPPED IN.
+   *
+   * Every other key here answers a line in the document. This one came from a question about the
+   * API - "how can our tool auto detect what they measure" - and the answer that we cannot invent a
+   * measure but can notice when the one they sent never comes up in the conversation.
+   *
+   * The reconciliation guard checks that every SPEC key is accounted for, not that every key is in
+   * the spec, so a detector the document did not think of belongs here in the open rather than
+   * living outside the vocabulary where nothing reconciles it.
+   */
+  'measure_unmentioned',
 ] as const;
 
 export type NewDetector = (typeof GENUINELY_NEW)[number];
@@ -103,6 +115,7 @@ export const IMPLEMENTED: NewDetector[] = ['undeclared_dependency', 'objective_u
    * not exist - see the note on NEEDS_ROLES below, which is now history rather than a caveat.
    */
   'neglected_primary',
+  'measure_unmentioned',
 ];
 
 export function isImplemented(key: string): boolean {
