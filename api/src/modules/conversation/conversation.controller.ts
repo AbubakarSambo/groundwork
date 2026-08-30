@@ -13,6 +13,20 @@ class SendMessageDto {
   message: string;
 }
 
+class WhatWorkedDto {
+  /* What they were stuck on, in their words. Short, because it is what matching happens on. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(300)
+  about: string;
+
+  /* What they did. Their words, kept exactly - a summary of a method is not the method. */
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  what: string;
+}
+
 @ApiTags('Conversation')
 @ApiBearerAuth()
 // JwtAuthGuard is also applied globally via APP_GUARD in app.module.ts.
@@ -45,6 +59,21 @@ export class ConversationController {
   @ApiOperation({ summary: 'Open the check-in - the engine delivers the opening' })
   async open(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.open(id, userId);
+  }
+
+  @Post(':id/what-worked')
+  @ApiOperation({ summary: 'Write down what worked, for whoever hits the same thing next' })
+  async whatWorked(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: WhatWorkedDto,
+  ) {
+    /*
+     * A DELIBERATE ACT, WHICH IS THE WHOLE DESIGN. Nothing lifts this out of a check-in on somebody's
+     * behalf: a note reaches other people because its author wrote it for them, which is also why
+     * nobody has to wonder whether today's answer is going on a noticeboard.
+     */
+    return this.conversation.offerWhatWorked(id, userId, dto.about, dto.what);
   }
 
   @Post(':id/messages')

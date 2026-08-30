@@ -996,6 +996,45 @@ export class ConversationService {
    * that they have never done one has said it, whatever Tuesday is about, and a failure to record
    * why beats losing the turn that said it.
    */
+  /**
+   * THEY WRITE IT DOWN FOR OTHER PEOPLE, DELIBERATELY.
+   *
+   * The only thing in this product that crosses from one person's check-in to another's, and it
+   * crosses because its author sent it. Nothing harvests a method out of somebody who happened to
+   * find one - a team of twelve solving the same problem twelve times is a real cost, and the fix
+   * for it is still not to take what works from the people it works for.
+   *
+   * Their name goes on it, which is the one place a name attaches to somebody's work by default
+   * here. Safe for the reason it is unsafe elsewhere: they wrote it to be read, and a tip from
+   * nobody cannot be asked a follow-up question.
+   */
+  async offerWhatWorked(checkInId: string, userId: string, about: string, what: string) {
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: { participantId: true, ground: { select: { organizationId: true } } },
+    });
+    if (!checkIn) throw new NotFoundException('No such check-in.');
+
+    /* Theirs and nobody else's, checked the same way every other write in this file is. */
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { id: checkIn.participantId, user: { id: userId } },
+      /* A participant has no display name of its own; the account behind it does. */
+      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    if (!participant) throw new ForbiddenException('This check-in is not yours.');
+
+    return this.prisma.whatWorked.create({
+      data: {
+        organizationId: checkIn.ground.organizationId,
+        byParticipantId: participant.id,
+        byName: [participant.user?.firstName, participant.user?.lastName].filter(Boolean).join(' ').trim() || participant.email,
+        about: about.trim(),
+        what: what.trim(),
+      },
+      select: { id: true, about: true, what: true, offeredAt: true },
+    });
+  }
+
   private async noteIfTheySaidWhy(checkIn: { id: string; saidWhy?: string | null }, message: string) {
     if (checkIn.saidWhy) return;
     const said = whatTheySaidAboutWhy([message]);

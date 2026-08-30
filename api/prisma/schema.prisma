@@ -255,10 +255,11 @@ model PricingPlan {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id    String  @id @default(uuid())
-  name  String
-  slug  String  @unique
-  email String?
+  whatWorked WhatWorked[]
+  id         String       @id @default(uuid())
+  name       String
+  slug       String       @unique
+  email      String?
 
   // Billing (Stripe, USD). Care fee is the always-on commitment device.
   stripeCustomerId       String?       @map("stripe_customer_id")
@@ -748,6 +749,7 @@ model CoachingState {
 }
 
 model GroundParticipant {
+  whatWorked                 WhatWorked[]
   id                         String         @id @default(uuid())
   groundId                   String         @map("ground_id")
   userId                     String?        @map("user_id") // null until they accept the invite
@@ -941,6 +943,31 @@ model ConversationTurn {
 
   @@index([checkInId])
   @@map("conversation_turns")
+}
+
+/// A note somebody deliberately wrote for other people who get stuck on the same thing. It is here
+/// rather than lifted out of a check-in on their behalf: a team of twelve solves the same problem
+/// twelve times, and the fix is not to harvest what works from the people it works for. See
+/// what-worked-for-somebody-else.ts for why every obvious version of this is a league table.
+model WhatWorked {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  /// The participant who wrote it, so it can be removed by them and nobody else.
+  byParticipantId String   @map("by_participant_id")
+  /// Their name at the time of writing. Shown, because they wrote it for other people to read and
+  /// a tip from nobody cannot be asked a follow-up question.
+  byName          String   @map("by_name")
+  /// What they were stuck on, in their words. Matching happens on this.
+  about           String   @db.Text
+  /// What they did, in their words. Never a summary: a summary of a method is not the method.
+  what            String   @db.Text
+  offeredAt       DateTime @default(now()) @map("offered_at")
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  byParticipant GroundParticipant @relation(fields: [byParticipantId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("what_worked")
 }
 
 model RecordEntry {
