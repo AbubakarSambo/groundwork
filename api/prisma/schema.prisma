@@ -2519,6 +2519,19 @@ model PersonObjective {
   /// relative to the day it was said.
   dueDate DateTime?       @map("due_date")
 
+  /// THE NUMBER, WHERE THE PROMISE HAS ONE, PULLED OUT OF THE SENTENCE.
+  ///
+  /// "£150k of qualified pipeline by October" is one sentence, and the sentence is what a person
+  /// reads. But nothing could compare it to anything: a report could say the promise existed and
+  /// never that forty of the hundred and fifty had arrived.
+  ///
+  /// `text` is untouched and stays what somebody said. These two are a reading of it, set only when
+  /// the promise is checked by a number and that number is unambiguous. Null everywhere else,
+  /// which is most expectations - a judgement is a real answer and always was.
+  target  String? @map("target")
+  /// What is being counted, in their words: "qualified pipeline", "proposals", "days".
+  measure String? @map("measure")
+
   /// WHERE THIS HAS GOT TO. OPEN until somebody says otherwise.
   ///
   /// Nothing could end before this. An expectation set on day one looked identical on day ninety

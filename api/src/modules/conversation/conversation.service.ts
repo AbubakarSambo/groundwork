@@ -39,7 +39,7 @@ import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
-import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA } from './prompt-library';
+import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA } from './prompt-library';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 
@@ -2215,6 +2215,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * GW-EXP-7. Fire-and-forget beside the others: an objection somebody raised must never be the
      * reason their session fails to complete. Returns immediately when nothing is expected of them.
      */
+    this.extractProgress(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Progress extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     this.extractOperatingDifferences(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Operating-difference extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -2774,6 +2778,76 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }
   }
 
+  /**
+   * WHAT THEY SAID THEY HAD DONE, WRITTEN AGAINST THE PROMISE IT IS ABOUT.
+   *
+   * The record could hold a promise and a date and had no way to hear the answer: progress existed
+   * only if somebody typed it into a form. So a person could describe two proposals at length and
+   * the record would still say nothing had been done.
+   *
+   * That is not just a missing feature. The report's reading that "the agreed thing is not being
+   * done" rests on nothing being recorded as done - so an empty progress list turned every passed
+   * date into that reading, for somebody who had been getting on with it and saying so.
+   *
+   * IT REUSES `Delivery`, which has always been the record of what somebody delivered against an
+   * expectation. It only ever had a form behind it and never a conversation.
+   *
+   * FINISHED IS A HIGH BAR. Marking a promise complete when they only said they had started is
+   * worse than marking nothing: they lose the credit for what is genuinely still outstanding, and
+   * the record stops matching what they said.
+   */
+  async extractProgress(checkInId: string, participantId: string, groundId: string) {
+    const mine = await this.prisma.personObjective.findMany({
+      where: { groundId, participantId, status: 'OPEN' },
+      select: { id: true, text: true },
+    });
+    if (!mine.length) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const said = turns.map((t) => t.content).join('\n').trim();
+    if (said.length < 80) return;
+
+    const result = await this.anthropic.extract<{
+      progress: { promise: string; whatTheyDid: string; finished?: boolean }[];
+    }>(
+      PROGRESS_PROMPT,
+      [{ role: 'user', content: `THEIR PROMISES:\n${mine.map((m) => `- ${m.text}`).join('\n')}\n\nTHEIR CHECK-IN:\n${said}` }],
+      PROGRESS_SCHEMA as any,
+    ).catch(() => null);
+    if (!result?.progress?.length) return;
+
+    for (const p of result.progress) {
+      const did = (p.whatTheyDid ?? '').trim();
+      if (!did) continue;
+
+      /*
+       * Matched on the promise's own words, and dropped when it matches none. A piece of progress
+       * filed against the wrong promise is worse than one filed against nothing: it marks the
+       * wrong thing as moving, and quietly leaves the real one looking untouched.
+       */
+      const wanted = (p.promise ?? '').trim().toLowerCase();
+      const hit = mine.find((m) => m.text.trim().toLowerCase() === wanted)
+        ?? mine.find((m) => wanted.length > 12 && m.text.toLowerCase().includes(wanted))
+        ?? null;
+      if (!hit) continue;
+
+      await this.prisma.delivery.create({
+        data: { groundId, participantId, objectiveId: hit.id, text: did, carriedIntoCheckInId: checkInId },
+      }).catch(() => undefined);
+
+      if (p.finished === true) {
+        await this.prisma.personObjective.update({
+          where: { id: hit.id },
+          data: { status: 'MET', statusChangedAt: new Date() },
+        }).catch(() => undefined);
+      }
+    }
+  }
+
   private async writeTheirOwnPromises(
     participantId: string,
     groundId: string,
@@ -2782,7 +2856,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     participants: { id: string; managingOnly: boolean; email: string | null; roleAsDescribed: string | null; user: { firstName: string | null; lastName: string | null } | null }[],
   ) {
     const result = await this.anthropic.extract<{
-      promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string }[];
+      promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
     }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA as any);
     if (!result?.promises?.length) return;
 
@@ -2815,8 +2889,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       /* A commitment with nobody waiting is a to-do, whatever the model called it. */
       const owedTo = kind === 'COMMITMENT' ? resolve(p.owedTo ?? '') : null;
 
+      /* Only where they stated a number. A promise nobody counted does not become one here. */
+      const target = (p.target ?? '').trim() || null;
+      const measure = (p.measure ?? '').trim() || null;
+
       const data = {
         text,
+        target: target && measure ? target : null,
+        measure: target && measure ? measure : null,
         authoredBy: 'self',
         kind: (kind === 'COMMITMENT' && !owedTo ? 'TODO' : kind) as any,
         check,
@@ -3026,9 +3106,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        */
       const dueDate = whenTheyMeant(dueSaid, saidOn);
 
+      const eTarget = ((e as any).target ?? '').trim() || null;
+      const eMeasure = ((e as any).measure ?? '').trim() || null;
+
       const shared = {
         text,
         dueDate,
+        /* Both or neither: a number with nothing named is not a target anybody can check. */
+        target: eTarget && eMeasure ? eTarget : null,
+        measure: eTarget && eMeasure ? eMeasure : null,
         authoredBy: authoredBy as string,
         awareness,
         awarenessDetail: (e.awarenessDetail ?? '').trim() || null,

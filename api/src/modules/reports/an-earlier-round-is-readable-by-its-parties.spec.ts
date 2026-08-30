@@ -23,7 +23,9 @@ const svc = (over: { releasedAt?: Date | null; rounds?: any[] } = {}) => {
         participants: [{ userId: 'ed' }],
       }),
     },
-    reportRound: { findMany: async () => over.rounds ?? [{ round: 2, sharedPicture: 'p' }] },
+    reportRound: {
+      findMany: async () => over.rounds ?? [{ round: 2, sharedPicture: 'A picture.', divergences: [], takenAt: new Date() }],
+    },
   };
   return s;
 };
@@ -54,10 +56,18 @@ describe('before anything has been revealed', () => {
   });
 });
 
+describe('the same rounds, read as a sequence', () => {
+  it('comes back beside them, so the report can show how things moved', async () => {
+    const out = await svc().rounds('g1', 'ceo', 'org1');
+    expect((out as any).moved).toHaveLength(1);
+    expect((out as any).moved[0].says).toBe('A picture.');
+  });
+});
+
 describe('what comes back', () => {
   it('is a named list, so a column added later cannot escape into somebody\'s report', async () => {
     const out = await svc({
-      rounds: [{ round: 2, sharedPicture: 'p', agreements: [], divergences: [], centralQuestion: 'q', takenAt: new Date(), amendedAt: null, amendedNote: null }],
+      rounds: [{ round: 2, sharedPicture: 'A picture.', agreements: [], divergences: [], centralQuestion: 'q', takenAt: new Date(), amendedAt: null, amendedNote: null }],
     }).rounds('g1', 'ceo', 'org1');
     expect(Object.keys(out.rounds[0]).sort()).toEqual([
       'agreements', 'amendedAt', 'amendedNote', 'centralQuestion',
@@ -67,7 +77,7 @@ describe('what comes back', () => {
 
   it('carries the mark when a round was changed after it was taken', async () => {
     const out = await svc({
-      rounds: [{ round: 2, sharedPicture: 'p', amendedAt: new Date(), amendedNote: 'Updated after somebody corrected their own check-in.' }],
+      rounds: [{ round: 2, sharedPicture: 'A picture.', divergences: [], takenAt: new Date(), amendedAt: new Date(), amendedNote: 'Updated after somebody corrected their own check-in.' }],
     }).rounds('g1', 'ceo', 'org1');
     expect(out.rounds[0].amendedNote).toContain('corrected their own check-in');
   });

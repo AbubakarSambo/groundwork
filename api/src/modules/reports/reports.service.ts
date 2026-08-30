@@ -28,6 +28,7 @@ import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCH
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
+import { howThisHasMoved } from './how-this-has-moved';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -1572,8 +1573,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /*
      * Named, not spread. The same rule the rest of this API follows, and the reason is the same:
      * a column added to this table later must not appear in somebody's report by accident.
+     *
+     * `moved` is the same rounds read as a sequence - what each one led with, when it was taken,
+     * how many accounts differed. No score and no direction: whether that is improvement is the
+     * reader's judgement, and an arrow here would be a rating.
      */
-    return { rounds: kept };
+    return { rounds: kept, moved: howThisHasMoved(kept as any) };
   }
 
   /**

@@ -1655,6 +1655,9 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
      has no end, NOT_SAID if they did not say.
    - dueSaid: their own words for the deadline - "Thursday", "end of the quarter". Empty otherwise.
    - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+   - target and measure: ONLY when the expectation is checked by a number and that number is
+     unambiguous. "Under twenty open tickets" is target 20, measure "open tickets". Leave BOTH
+     empty for anything judged rather than counted.
 
 RULES.
 Only a real named person who is another party here. Never the speaker themselves, never a team, an organisation or a customer.
@@ -1736,6 +1739,59 @@ export const OPERATING_DIFFERENCE_SCHEMA = {
   required: ['differences'],
 } as const;
 
+/**
+ * WHAT THEY SAY THEY HAVE ACTUALLY DONE, against promises already on the record.
+ *
+ * The product could hold a promise and a date and had no way to hear the answer. Progress only
+ * existed if somebody typed it into a form, so a person could describe two proposals at length in
+ * their check-in and the record would still say nothing had been done.
+ *
+ * That is not merely a missing feature - it makes the report unfair. The reading that says "the
+ * agreed thing is not being done" rests on nothing being recorded as done, so an empty progress
+ * list turns every passed date into that reading, including for somebody who has been getting on
+ * with it and saying so.
+ *
+ * DONE IS A HIGH BAR AND MUST STAY ONE. Marking somebody's promise finished when they only said
+ * they had started is worse than marking nothing at all: they lose the credit for what is really
+ * outstanding, and the record stops matching what they said.
+ */
+export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
+
+Find what they said they have DONE against those promises. Nothing else.
+
+For each one:
+   - promise: the promise it is about, copied exactly from the list you were given.
+   - whatTheyDid: what they said they did, in their own words, one sentence.
+   - finished: true ONLY if they plainly said the whole promise is complete.
+
+RULES.
+Only against a promise on the list. If it matches none of them, leave it out.
+Only what they say they DID. A plan is not progress. "I am going to" and "I will" are not this.
+Started is not finished. Half of it is not finished. "Nearly there" is not finished.
+If they described doing some of it, record that as progress with finished false. That is the common case.
+Never infer that something is finished because time has passed or because they sound positive.
+Do not turn a difficulty into progress, and do not turn progress into a difficulty.
+Be conservative. An empty list is a correct answer and usually the right one.`;
+
+export const PROGRESS_SCHEMA = {
+  type: 'object',
+  properties: {
+    progress: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          whatTheyDid: { type: 'string' },
+          finished: { type: 'boolean' },
+        },
+        required: ['promise', 'whatTheyDid'],
+      },
+    },
+  },
+  required: ['progress'],
+} as const;
+
 export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
 
 Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
@@ -1753,6 +1809,10 @@ For each one:
      it has no end, NOT_SAID if they did not say.
    - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
    - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+   - target and measure: ONLY when the promise is checked by a number and that number is
+     unambiguous. "Three proposals" is target 3, measure "proposals". "£150k of pipeline" is target
+     "150k", measure "pipeline". Leave BOTH empty for anything judged rather than counted, and for
+     a number you had to work out - a promise nobody stated as a number does not become one here.
 
 RULES.
 Only what they said about their own work. Never what they expect of somebody else - that is not theirs to set.
@@ -1777,6 +1837,8 @@ export const OWN_PROMISE_SCHEMA = {
           dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
           dueSaid: { type: 'string' },
           owedTo: { type: 'string' },
+          target: { type: 'string' },
+          measure: { type: 'string' },
         },
         required: ['promise', 'kind', 'check', 'dueKind'],
       },
@@ -1834,6 +1896,8 @@ export const EXPECTATION_SCHEMA = {
             dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
             /** Their own words for the deadline - "Thursday", "end of the quarter". Never a parsed date. */
             dueSaid: { type: 'string' },
+            target: { type: 'string' },
+            measure: { type: 'string' },
             /** COMMITMENT only: the name of the person waiting on it, if they named one. */
             owedTo: { type: 'string' },
             /**
