@@ -26,6 +26,8 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import BASE_URL, Recorder, launch, mail_clear, new_page, provision_admin
+# UI copy the product owns - see the guard in client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
+from _ui_strings import CREATE_STEP_ONE_ANSWER, CREATE_PROJECT_CARD
 
 rec = Recorder("suite_l")
 STAMP = str(int(time.time()))
@@ -198,8 +200,18 @@ async def main() -> int:
             ok, detail = await no_horizontal_overflow(page)
             rec.check(f"L/{label}", ok, f"/grounds/new zero horizontal overflow @ {label}", detail, hard=True)
 
-            # step 1: pick a card, then the Continue must be inside the viewport
-            card = page.get_by_text("A new project starting", exact=True)
+            # Answer step one first: the situations moved to step two when setup was split so each
+            # screen asks one thing. Without this the card is never found, the guard below skips,
+            # and the fixed action bar is measured on a screen that has three radio buttons on it.
+            answer = page.get_by_text(CREATE_STEP_ONE_ANSWER, exact=False)
+            if await answer.count():
+                await answer.first.click()
+                await page.wait_for_timeout(400)
+                await page.locator("button:has-text('Continue'):visible").last.click()
+                await page.wait_for_timeout(1500)
+
+            # step 2: pick a card, then the Continue must be inside the viewport
+            card = page.get_by_text(CREATE_PROJECT_CARD, exact=True)
             if await card.count():
                 await card.first.click()
                 await page.wait_for_timeout(400)

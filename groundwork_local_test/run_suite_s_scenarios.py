@@ -24,6 +24,9 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import Recorder, api, launch, mail_clear, model_budget_take, new_page, provision_admin
+# Imported rather than typed: the client guard fails a suite that writes pinned UI copy inline,
+# because that is how the harness and the product drifted apart in the first place.
+from _ui_strings import CREATE_STEP_ONE_ANSWER
 
 rec = Recorder("suite_s")
 STAMP = str(int(time.time()))
@@ -119,6 +122,20 @@ async def main() -> int:
         page = await new_page(rec, ctx, "persona S")
         await page.goto(f"{origin}/grounds/new")
         await page.wait_for_timeout(2500)
+
+        # SETUP ASKS WHO THE CHECK-IN IS FOR BEFORE IT SHOWS THE SITUATIONS.
+        #
+        # Step one used to be four questions on one screen, so landing here and reading the body
+        # found the cards. It is now its own step and the cards are on step two - this suite went
+        # red reporting all twenty-one cards missing, which reads as the picker being broken when
+        # the picker was one click away.
+        answer = page.get_by_text(CREATE_STEP_ONE_ANSWER, exact=False)
+        if await answer.count():
+            await answer.first.click()
+            await page.wait_for_timeout(400)
+            await page.locator("button:has-text('Continue'):visible").last.click()
+            await page.wait_for_timeout(1500)
+
         body = await page.inner_text("body")
         missing = [c for c in CREATE_CARDS if c not in body]
         rec.check("S1", not missing, f"all {len(CREATE_CARDS)} create-picker cards render with exact labels",
