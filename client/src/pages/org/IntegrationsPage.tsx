@@ -672,6 +672,50 @@ export function IntegrationsPage() {
           rather than ours, so a figure that is three days old says so instead of looking current.
         </p>
         {/*
+          * OPENING A CHECK-IN, the call an embedded integration makes most and the last one with no
+          * example.
+          *
+          * THE SITUATION AND MOMENT ARE SPELLED OUT because they are fixed values with no obvious
+          * names, and a first guess at them is wrong. Driving this myself, "performance" and
+          * "underway" both looked right and neither exists. The full list is in the reference; the
+          * three here are the ones an integration opens by far the most.
+          *
+          * `actingPersonExternalId` is explained rather than listed. A machine token carries an
+          * organisation and nobody in particular, and a check-in has a real initiator whose name
+          * appears in the report - so the caller has to say who is opening it. That is a rule worth
+          * one sentence here rather than a 404 later.
+          */}
+        <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
+          Opening a check-in from inside your product:
+        </p>
+        <pre style={{ ...S.mono, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto', fontSize: 12, lineHeight: 1.65, margin: '0 0 10px' }}>
+{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/grounds \\
+  -H 'authorization: Bearer $ACCESS_TOKEN' \\
+  -H 'content-type: application/json' \\
+  -d '{"actingPersonExternalId":"ADA-1",
+       "label":"Q4 pipeline",
+       "scenario":"OKR_ALIGNMENT",
+       "moment":"STARTING",
+       "participants":[{"personExternalId":"SAM-1",
+                        "roleAsDescribed":"Runs the pipeline"}]}'`}
+        </pre>
+        <p style={{ ...S.body, marginBottom: 12, fontSize: 12.5 }}>
+          <span style={S.mono}>scenario</span> and <span style={S.mono}>moment</span> are fixed
+          values, and the common ones are <span style={S.mono}>NEW_HIRE</span>,{' '}
+          <span style={S.mono}>NEW_PROJECT</span> and <span style={S.mono}>OKR_ALIGNMENT</span>, each
+          with a moment of <span style={S.mono}>STARTING</span>,{' '}
+          <span style={S.mono}>RECOGNITION</span> or <span style={S.mono}>RESOLUTION</span>. Send one
+          we do not have and you get a list of the ones we do. Somebody has to be named as opening
+          it: a key belongs to your organisation and nobody in particular, and a check-in has a real
+          person as its initiator, whose name appears in the report.
+        </p>
+        <p style={{ ...S.body, marginBottom: 12, fontSize: 12.5 }}>
+          Back come the check-in id and one invitation link per person, addressed by your own ids
+          rather than by email, so you deliver them inside the product those people already have
+          open. We email them as well.
+        </p>
+
+        {/*
           * AND THE READ, which the plain list above describes and the engineer had no example of.
           *
           * A GET, and the only example here that returns something about a NAMED PERSON. So it is

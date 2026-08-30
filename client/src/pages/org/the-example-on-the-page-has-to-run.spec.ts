@@ -73,6 +73,28 @@ describe('the example on the page has to run', () => {
     expect(ev).toContain('matched: false')
   })
 
+  it('shows how to open a check-in, with values that exist', () => {
+    /*
+     * The call an embedded integration makes most. `scenario` and `moment` are fixed values with no
+     * guessable names - driving this, "performance" and "underway" both looked right and neither
+     * exists - so the page prints real ones rather than leaving it to a first guess.
+     */
+    /*
+     * BOUNDED TO THE CURL ITSELF, not to the paragraph around it. Slicing wider passed with
+     * "performance" pasted into the command, because the prose underneath names the real values -
+     * so the guard was reading the explanation and calling the example proven.
+     */
+    const from = PAGE.indexOf('/api/org/v1/grounds')
+    expect(from).toBeGreaterThan(0)
+    const command = PAGE.slice(from, PAGE.indexOf('</pre>', from))
+    expect(command).toContain('"scenario":"OKR_ALIGNMENT"')
+    expect(command).toContain('"moment":"STARTING"')
+    expect(command).toContain('"actingPersonExternalId"')
+    /* And the rule that a key alone cannot open one, which lives in the prose. */
+    const explained = PAGE.slice(from, PAGE.indexOf('/before-a-conversation'))
+    expect(explained).toMatch(/nobody in particular/)
+  })
+
   it('shows the read, and the three things that come back with it', () => {
     /*
      * The one example about a named person. `refusal` and `completeness` ship in the payload
