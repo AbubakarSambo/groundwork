@@ -17,6 +17,12 @@ datasource db {
 
 enum UserRole {
   ADMIN // manages grounds, billing activation, sees the alignment feed
+  /// Sets up check-ins for their own team. No admin powers of any kind: every privilege check in
+  /// this codebase asks for ADMIN specifically, so a LEAD inherits nothing by not being a MEMBER.
+  ///
+  /// This was a boolean on User for about an hour. A role is what an admin already means when they
+  /// say "my leads", and one field that says what somebody is beats two that have to agree.
+  LEAD
   MEMBER // a regular person who checks in
 }
 
@@ -326,16 +332,6 @@ model User {
   id             String @id @default(uuid())
   organizationId String @map("organization_id")
 
-  /// NAMED AS SOMEBODY WHO MAY OPEN A CHECK-IN.
-  ///
-  /// Not a role. An admin manages the organisation; a named lead runs check-ins for their own team
-  /// and has no admin powers at all, which is the whole point of it being a separate field rather
-  /// than a third value of `role`.
-  ///
-  /// Read only when `Organization.whoMayOpenCheckIns` is NAMED_LEADS. False on everybody who
-  /// existed before this, which is the safe direction: an organisation that has not named anybody
-  /// gets a refusal it can act on rather than a door it did not know was open.
-  mayOpenCheckIns    Boolean  @default(false) @map("may_open_check_ins")
   email              String   @unique
   passwordHash       String?  @map("password_hash")
   firstName          String   @map("first_name")

@@ -273,15 +273,17 @@ export class GroundsService {
      * is the existing arrangement and deliberate: a second read could disagree with the guard that
      * already let this request through.
      */
-    const [org, opener] = await Promise.all([
-      this.prisma.organization.findUnique({
-        where: { id: organizationId },
-        select: { whoMayOpenCheckIns: true, checkInsNeedApproval: true },
-      }),
-      this.prisma.user.findUnique({ where: { id: initiatorId }, select: { mayOpenCheckIns: true } }),
-    ]);
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { whoMayOpenCheckIns: true, checkInsNeedApproval: true },
+    });
     const answer = mayOpen(
-      { role: creatorRole ?? 'MEMBER', named: opener?.mayOpenCheckIns ?? false },
+      /*
+       * The role from the token, not a second read of the row. That is the existing arrangement
+       * for `creatorRole` and it is deliberate: a second read could disagree with the guard that
+       * already let this request through.
+       */
+      { role: creatorRole ?? 'MEMBER' },
       {
         whoMayOpen: (org?.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE') ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
         needsApproval: org?.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,

@@ -8,9 +8,9 @@ import { mayOpen, CANNOT_OPEN, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-chec
  * can disable these two settings and allow everyone and don't need approvals."
  */
 const strict = HOW_A_NEW_ORG_WORKS;
-const admin = { role: 'ADMIN', named: false };
-const lead = { role: 'MEMBER', named: true };
-const person = { role: 'MEMBER', named: false };
+const admin = { role: 'ADMIN' };
+const lead = { role: 'LEAD' };
+const person = { role: 'MEMBER' };
 
 describe('by default', () => {
   it('a named lead may open one, and it waits', () => {

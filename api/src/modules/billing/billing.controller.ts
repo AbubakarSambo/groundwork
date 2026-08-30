@@ -31,8 +31,23 @@ export class BillingController {
   @Get('status')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Billing status: active grounds with session balances and saved card' })
-  async status(@CurrentUser('organizationId') organizationId: string) {
-    return this.billing.getStatus(organizationId);
+  async status(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    /*
+     * USAGE IS FOR AN ADMIN. THE SEAT COUNT IS FOR EVERYBODY WHO INVITES SOMEBODY.
+     *
+     * This route has never had a role guard, and that is right: the ground page reads it to warn
+     * that a plan is full before somebody adds a participant, and a lead adding one needs the same
+     * warning an admin gets. Guarding the route would make that warning silently stop appearing for
+     * exactly the people the product now expects to run check-ins.
+     *
+     * But adding usage counts to it widened what a non-admin could read - how many check-ins this
+     * organisation has run, how many reports went out, how many people take part - which is nobody's
+     * business but the admin's. So the counts are the part that is gated, not the route.
+     */
+    return this.billing.getStatus(organizationId, role === 'ADMIN');
   }
 
   @Delete('account')

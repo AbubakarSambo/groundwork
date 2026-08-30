@@ -715,7 +715,7 @@ export class BillingService {
   /**
    * Billing status: active grounds with session balances and saved card details.
    */
-  async getStatus(organizationId: string): Promise<{
+  async getStatus(organizationId: string, includeUsage = true): Promise<{
     /**
      * THE SUBSCRIPTION BELONGS TO THE ORGANISATION, AND THIS ENDPOINT DID NOT SAY SO. W14-6.
      *
@@ -737,7 +737,8 @@ export class BillingService {
     };
     people: { count: number; cap: number | null };
     /** Counts only. See the comment where these are assembled. */
-    usage: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
+    /** Admin only. Absent for anybody else - see the controller. */
+    usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
     card?: { brand: string; last4: string } | null;
   }> {
@@ -822,13 +823,14 @@ export class BillingService {
        * Check-ins EVER rather than this month: these run for a quarter at a time, so a calendar
        * month is a window that would report zero for a healthy account most of the time.
        */
-      usage: {
+      /* Omitted rather than zeroed for a non-admin: a zero is a claim, and this is a refusal. */
+      usage: includeUsage ? {
         checkIns: usage.checkIns,
         /* Rounds where everybody finished and a report went out. The thing they are buying. */
         reportsReleased: usage.reports,
         /* People who have actually taken part, as against people who have an account. */
         peopleTakingPart: usage.participating,
-      },
+      } : undefined,
       activeGrounds: activeGrounds.map((g) => ({
         groundId: g.id,
         label: g.label,

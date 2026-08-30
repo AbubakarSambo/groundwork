@@ -17,11 +17,19 @@
  * how a product ends up refusing somebody for a reason it cannot state.
  */
 
+/**
+ * ADMIN, LEAD or MEMBER. One field, because that is what an admin already means when they say
+ * "my leads".
+ *
+ * This took a boolean alongside the role for about an hour. Two fields that have to agree is a
+ * worse version of one field that says what somebody is, and the People page proved it immediately:
+ * it had to collapse them back into three words to be usable, which is a role.
+ *
+ * A LEAD is safe as a role because no privilege in this product is granted by not being a MEMBER -
+ * all forty-two guarded routes and every check in the client name ADMIN.
+ */
 export interface WhoIsAsking {
-  /** ADMIN or MEMBER. An admin's own authority, not a setting. */
   role: string;
-  /** Whether this person has been named as somebody who may open check-ins. */
-  named: boolean;
 }
 
 export interface HowThisOrgWorks {
@@ -51,7 +59,7 @@ export type Answer =
 export function mayOpen(who: WhoIsAsking, how: HowThisOrgWorks): Answer {
   if (who.role === 'ADMIN') return { may: true, waits: false };
 
-  if (how.whoMayOpen === 'NAMED_LEADS' && !who.named) {
+  if (how.whoMayOpen === 'NAMED_LEADS' && who.role !== 'LEAD') {
     return { may: false, because: CANNOT_OPEN };
   }
   return { may: true, waits: how.needsApproval };

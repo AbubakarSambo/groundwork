@@ -80,14 +80,15 @@ describe('what somebody is here', () => {
     expect(control).toContain('>Admin<')
   })
 
-  it('keeps them two fields underneath, so a lead is not handed the organisation', () => {
+  it('writes one field, because a role is what an admin means', () => {
     /*
-     * A lead runs check-ins for their team and has no admin powers whatever. As a third value of
-     * `role` they would get billing, promotions and everybody's account.
+     * Briefly this wrote a role and a separate flag, to keep a lead from inheriting admin powers.
+     * Nothing in this product grants privilege by not being a MEMBER, so there was nothing to
+     * inherit and the second field was a second source of truth for no reason.
      */
     const write = PAGE.slice(PAGE.indexOf('const roleMut'), PAGE.indexOf('function handleInvite'))
-    expect(write).toContain("role: what === 'ADMIN' ? 'ADMIN' : 'MEMBER'")
-    expect(write).toContain("mayOpenCheckIns: what === 'LEAD'")
+    expect(write).toContain('{ role: what }')
+    expect(write).not.toContain('mayOpenCheckIns')
   })
 
   it('is a badge on your own row, not a control', () => {

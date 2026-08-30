@@ -197,7 +197,7 @@ export class UsersService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true, mayOpenCheckIns: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
       }),
       this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
     ]);
@@ -319,10 +319,8 @@ export class UsersService {
           ...(dto.firstName && { firstName: dto.firstName }),
           ...(dto.lastName && { lastName: dto.lastName }),
           ...(typeof dto.isActive === 'boolean' && { isActive: dto.isActive }),
-          /* Naming somebody as a lead. Not a role - see the DTO and the schema comment. */
-          ...(typeof dto.mayOpenCheckIns === 'boolean' && { mayOpenCheckIns: dto.mayOpenCheckIns }),
         },
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, mayOpenCheckIns: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
       });
       if (!dto.role) return updated;
       await setRole(tx, id, organizationId, dto.role as RoleWrite);
