@@ -555,10 +555,30 @@ export class GroundsByApiService {
     const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
     const side = (which: 'from' | 'on') => waiting
       .filter((w: any) => (which === 'from' ? w.fromPersonKey : w.onPersonKey) === key)
-      .map((w: any) => ({ what: w.what, status: String(w.status), waitingDays: w.waitingDays }));
+      .map((w: any) => ({
+        what: w.what,
+        status: String(w.status),
+        waitingDays: w.waitingDays,
+        onLabel: w.onLabel ?? null,
+        escalatedAt: w.escalatedAt ?? null,
+        /* Whether the claim names who and what - the board already decides this, and a read that
+           decided it again would be a second opinion on the same question. */
+        hasSubstance: w.hasSubstance ?? true,
+      }));
+
+    /*
+     * Released reports they were in. Zero is what makes the picture "nothing yet" rather than
+     * "thin" - a fact about the record, never about them.
+     */
+    const finishedCheckIns = key
+      ? await this.prisma.groundParticipant.count({
+        where: { email: key, ground: { organizationId, report: { releasedAt: { not: null } } } },
+      })
+      : 0;
 
     const read = theReadFor({
       personLabel: label,
+      finishedCheckIns,
       commitments: commitments.map((c) => ({ text: c.text, state: String(c.state), dueAt: c.dueAt, statedAt: c.statedAt })),
       waitingOnOthers: side('from'),
       othersWaiting: side('on'),
