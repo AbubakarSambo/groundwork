@@ -528,6 +528,14 @@ export function CreateGroundPage() {
   const [coachErr, setCoachErr] = useState<string | null>(null)
   const [coachBusy, setCoachBusy] = useState(false)
   const [coach, setCoach] = useState({ name: '', orgName: '', email: '', teamSize: '', intention: '', triedAlready: false })
+  /*
+   * WHEN THEY WANT THE FIRST CONVERSATION - asked here, before the check-in is set up.
+   *
+   * Her spec for this step: schedule the first conversation BEFORE you decide. A coach whose first
+   * conversation lands after the check-in is already running is help with something that has
+   * already happened. Empty is a real answer and stays one; a coach comes back to agree a time.
+   */
+  const [coachWhen, setCoachWhen] = useState('')
   const [cadence, setCadence] = useState<GroundCadence>('FORTNIGHTLY')
   const [participants, setParticipants] = useState<Participant[]>([])
   const [pEmail, setPEmail] = useState('')
@@ -1117,6 +1125,27 @@ export function CreateGroundPage() {
                         <input type="checkbox" checked={coach.triedAlready} onChange={e => setCoach({ ...coach, triedAlready: e.target.checked })} />
                         <span>I have already tried opening a check-in</span>
                       </label>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', display: 'grid', gap: 3 }}>
+                        When would you like the first conversation?
+                        <input
+                          className="gw-in"
+                          type="datetime-local"
+                          value={coachWhen}
+                          min={new Date(Date.now() + 3600_000).toISOString().slice(0, 16)}
+                          onChange={e => setCoachWhen(e.target.value)}
+                          style={{ maxWidth: 260 }}
+                        />
+                        {/*
+                          * A REQUEST, NOT A BOOKING, and it has to keep saying so. Nothing here
+                          * holds a slot in anybody's calendar - a coach confirms - and somebody
+                          * leaving this page believing they have an appointment would be worse off
+                          * than if it had never asked.
+                          */}
+                        <span style={{ fontSize: 11, color: 'var(--gw-muted)', fontWeight: 400, lineHeight: 1.5 }}>
+                          Optional, and it is a request rather than a booking - a coach confirms. Leave it
+                          empty and we will come back to you to agree a time.
+                        </span>
+                      </label>
                       <p style={{ fontSize: 11.5, color: 'var(--gw-muted)', margin: 0, lineHeight: 1.5 }}>{COACHING_PRICE.note}</p>
                       {coachErr && <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: 0 }}>{coachErr}</p>}
                       <button
@@ -1127,7 +1156,13 @@ export function CreateGroundPage() {
                         onClick={async () => {
                           setCoachBusy(true); setCoachErr(null)
                           try {
-                            await coachApi.request({ ...coach, intention: coach.intention.trim() })
+                            await coachApi.request({
+                              ...coach,
+                              intention: coach.intention.trim(),
+                              /* Sent as an instant, because a wall-clock string means a different
+                                 moment to the person asking and the coach reading it. */
+                              ...(coachWhen ? { preferredAt: new Date(coachWhen).toISOString() } : {}),
+                            })
                             setCoachSent(true)
                           } catch (e: any) {
                             setCoachErr(e?.response?.data?.message ?? 'That did not send. Try again in a moment.')

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsISO8601, IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CoachService, MIN_INTENTION_LENGTH } from './coach.service';
@@ -46,6 +46,16 @@ export class CoachRequestDto {
   @IsOptional()
   @IsBoolean()
   triedAlready?: boolean;
+
+  /**
+   * When they would like the first conversation. Optional, and validated as a date rather than
+   * accepted as any string - "next tuesday" reaching the record would be a request nobody can act
+   * on that looks like one they can.
+   */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsISO8601()
+  preferredAt?: string;
 }
 
 @ApiTags('coach')

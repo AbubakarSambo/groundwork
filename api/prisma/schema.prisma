@@ -2768,6 +2768,18 @@ model CoachRequest {
   /// Optional. Distinguishes "I cannot work out which situation this is" from "I want somebody to run
   /// it for me" - those get different first replies.
   triedAlready       Boolean?  @map("tried_already")
+  /// WHEN THEY WANT THE FIRST CONVERSATION, ASKED BEFORE THEY DECIDE.
+  ///
+  /// The point of a coach here is help shaping the check-in somebody is about to set up, which is
+  /// worth nothing if the first conversation lands after they have set it up. So the request
+  /// carries a time they are asking for rather than starting a thread that agrees one later.
+  ///
+  /// A REQUEST, NOT A BOOKING, and the wording everywhere has to keep saying so. Nothing here holds
+  /// a slot in anybody's calendar - a coach confirms - and a product that let somebody leave
+  /// believing they had an appointment would be worse than one that never offered.
+  ///
+  /// Null when they asked without naming a time, which stays a perfectly good request.
+  preferredAt        DateTime? @map("preferred_at")
   /// new | contacted | booked | done | declined. A string rather than an enum because the lifecycle of
   /// a sales conversation is not something to migrate the database over.
   status             String    @default("new")

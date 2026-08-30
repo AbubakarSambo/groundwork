@@ -41,9 +41,26 @@ export class CoachService {
     teamSize: string;
     intention: string;
     triedAlready?: boolean;
+    /** When they would like the first conversation. Optional - asking without a time is fine. */
+    preferredAt?: string;
   }) {
     const email = input.email.trim().toLowerCase();
     const intention = input.intention.trim();
+
+    /*
+     * A TIME IN THE PAST IS REFUSED RATHER THAN STORED.
+     *
+     * The whole point of asking for one here is that the first conversation happens BEFORE the
+     * check-in is set up. A request for last Tuesday is a typo or a timezone, and storing it hands
+     * a coach a queue sorted by a date that means nothing.
+     */
+    const preferredAt = input.preferredAt ? new Date(input.preferredAt) : null;
+    if (preferredAt && Number.isNaN(preferredAt.getTime())) {
+      throw new BadRequestException('That does not look like a date. Leave it empty and we will come back to you to agree a time.');
+    }
+    if (preferredAt && preferredAt.getTime() < Date.now()) {
+      throw new BadRequestException('That time has already passed. Pick one that has not, or leave it empty and we will agree a time with you.');
+    }
 
     /**
      * Validated here as well as at the DTO, because the length is the whole anti-volume mechanism and
@@ -74,6 +91,8 @@ export class CoachService {
             name: input.name.trim(),
             orgName: input.orgName.trim(),
             teamSize: input.teamSize.trim(),
+            /* The newer time, like the newer words - somebody asking again has moved on. */
+            ...(preferredAt ? { preferredAt } : {}),
             ...(input.triedAlready !== undefined && { triedAlready: input.triedAlready }),
           },
         })
@@ -85,6 +104,7 @@ export class CoachService {
             teamSize: input.teamSize.trim(),
             intention,
             isFreeMail,
+            ...(preferredAt ? { preferredAt } : {}),
             ...(input.triedAlready !== undefined && { triedAlready: input.triedAlready }),
           },
         });
