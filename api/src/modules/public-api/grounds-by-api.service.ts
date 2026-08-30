@@ -216,7 +216,33 @@ export class GroundsByApiService {
       }));
 
     this.logger.log(`Ground opened by API for org ${organizationId} as ${dto.actingPersonExternalId}.`);
-    return { ...ground, invitations };
+    /*
+     * NAMED, NOT SPREAD, which is the rule everywhere else in this API and was not followed here.
+     *
+     * `return { ...ground }` handed back forty-five columns - our initiator and creator user ids,
+     * the billing flags, the audit log, the join token. None of it is an integrator's business and
+     * some of it is a credential. Found by running the call and counting what came back.
+     *
+     * A spread is also a promise nobody meant to make: every column added to `Ground` from now on
+     * would appear in somebody's integration, and removing one later would break them.
+     *
+     * `id` STAYS, unlike in `present()` where our primary key is deliberately withheld. Here it is
+     * the handle - `/grounds/:groundId/objectives`, `/report`, `/sense-check` all take it - so
+     * withholding it would leave the caller unable to use the thing they just made.
+     */
+    return {
+      id: ground.id,
+      label: ground.label,
+      scenario: ground.scenario,
+      moment: ground.moment,
+      mode: ground.mode,
+      status: ground.status,
+      timelineDays: ground.timelineDays,
+      cadence: ground.cadence,
+      startsAt: ground.startsAt,
+      endsAt: ground.endsAt,
+      invitations,
+    };
   }
 
   /**
