@@ -1,4 +1,5 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { ConfigService } from '@nestjs/config';
@@ -1588,25 +1589,29 @@ export class ConversationService {
       : [];
     const howWeDoIt = howThisCompanyDoesIt(companyCards);
 
-    const docContext = uploadedDocs.length
-      ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
-        uploadedDocs.map((d) => {
-          /*
-           * WHAT THEY ASKED TO BE LOOKED FOR, ABOVE THE DOCUMENT ITSELF.
-           *
-           * A forty page architecture document with no instructions leaves the session guessing at
-           * what mattered about it, and guessing is how it ends up asking about the wrong half. In
-           * the chat somebody can say it as they attach the file; from the Context tab there was
-           * nowhere to put it, so it went in mute.
-           *
-           * Above rather than below, because a long document read first is a long document read
-           * without knowing what to look for.
-           */
-          const asked = d.uploaderNote?.trim()
-            ? `They asked for this to be read for: ${d.uploaderNote.trim()}\n`
-            : '';
-          return `--- ${d.fileName} ---\n${asked}${d.content}`;
-        }).join('\n\n')
+    /*
+     * BOUNDED, AND HONEST ABOUT THE BOUND.
+     *
+     * This concatenated every visible document whole, every turn. Right for a two page brief, and
+     * for a thirty page architecture document beside a twenty page spec it meant the model's
+     * attention decided what mattered rather than anything here - silently. The session still
+     * answers, still sounds informed, and has read whichever part survived.
+     *
+     * Silent is the whole problem. A session that read half a document and says so is one somebody
+     * can work with; one that read half and behaves as though it read all of it is worse than one
+     * that read none, because the person believes their document is in the room.
+     *
+     * NEWEST FIRST, because a document attached this session is almost always the one they are
+     * about to talk about. This is not retrieval and does not pretend to be - chunking these
+     * through the knowledge module is the real answer and a larger change than this one.
+     */
+    const fitted = whatFitsInTheRoom([...uploadedDocs].reverse());
+    if (fitted.leftOut.length) {
+      this.logger?.log?.(`Check-in ${checkIn.id}: documents that did not fit the prompt - ${fitted.leftOut.join(', ')}.`);
+    }
+    const docContext = fitted.block
+      ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' + fitted.block
+        + (fitted.leftOut.length ? `\n\n${tellThemWhatIsMissing(fitted.leftOut)}` : '')
       : '';
 
     // See between-session-notes.ts for why the wording is the mechanism. Kept in
