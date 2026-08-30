@@ -348,7 +348,8 @@ model Organization {
   /// control would make two of the four unreachable.
   checkInsNeedApproval Boolean @default(true) @map("check_ins_need_approval")
 
-  callRequests CallRequest[]
+  knowledgeProposals KnowledgeProposal[]
+  callRequests       CallRequest[]
 
   @@map("organizations")
 }
@@ -2003,6 +2004,54 @@ model KnowledgeCard {
 /// So an admin who thinks an answer is wrong can trace it to the card that produced it, rather than
 /// to a model that cannot be asked. Without this, "why did it say that" has no answer at all, and
 /// the honest response to a customer would be a shrug.
+/// SOMEBODY ASKING THAT A DOCUMENT BECOME "HOW WE DO IT HERE".
+///
+/// A document uploaded to a check-in belongs to that check-in and to whoever uploaded it. That is
+/// right for somebody's own evidence and wrong for the contracting process, which everybody should
+/// be working from - and until now the only way to make one organisation-wide was to push it
+/// through the machine API, which most customers will never do.
+///
+/// PROPOSING IS NOT APPROVING, and the gap between them is the point. An ordinary document is
+/// somebody's file. An approved one becomes what people's own accounts get held up against when
+/// they walk through a process, so making one is a small piece of authority and it sits with the
+/// person who holds the account.
+///
+/// WHO MAY PROPOSE: anybody who can open a check-in - an admin or a lead. They are the people
+/// describing how their part of the company works. Somebody who only takes part in check-ins is
+/// not setting process and does not propose.
+model KnowledgeProposal {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// The document being proposed. Kept as a pointer so the words stay where they were written.
+  documentId   String @map("document_id")
+  /// Who asked. Shown to the admin deciding, because who is proposing it is part of the decision.
+  proposedById String @map("proposed_by_id")
+
+  /// PENDING | APPROVED | DECLINED.
+  status String @default("PENDING")
+
+  /// The admin who decided, and when. Null while it waits.
+  decidedById   String?   @map("decided_by_id")
+  decidedAt     DateTime? @map("decided_at")
+  /// Why it was declined, in their words. Shown to whoever proposed it - a decision with no reason
+  /// reads as the product losing it.
+  declineReason String?   @map("decline_reason") @db.Text
+
+  /// The card this became, once approved. The key `KnowledgeCard` is stored under.
+  cardKey String? @map("card_key")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document     GroundDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  /// One live proposal per document. Asking twice is somebody wondering whether the first worked.
+  @@unique([documentId, status])
+  @@index([organizationId, status])
+  @@map("knowledge_proposals")
+}
+
 model KnowledgeRetrieval {
   id               String   @id @default(uuid())
   organizationId   String   @map("organization_id")
@@ -2642,6 +2691,8 @@ model GroundDocument {
 
   ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
   participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  proposals KnowledgeProposal[]
 
   @@index([groundId, participantId])
   @@map("ground_documents")

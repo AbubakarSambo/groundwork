@@ -16,7 +16,9 @@ const svc = (over: { differences?: any[]; cards?: any[]; said?: string } = {}) =
   const written: any[] = [];
   const s = Object.create(ConversationService.prototype) as any;
   s.logger = { warn: () => {} };
-  s.knowledge = { retrieve: async () => ({ cards: over.cards ?? cards }) };
+  /* `covering` rather than `retrieve`: a conversational turn needs the card-side match, not the
+     query-side one the assistant uses. See `what-they-said-touches-this.spec.ts`. */
+  s.knowledge = { covering: async () => over.cards ?? cards };
   s.anthropic = { extract: async () => ({ differences: over.differences ?? [] }) };
   s.prisma = {
     conversationTurn: { findMany: async () => [{ content: over.said ?? 'x'.repeat(400) }] },

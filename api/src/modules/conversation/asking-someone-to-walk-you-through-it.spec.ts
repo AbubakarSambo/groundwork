@@ -1,4 +1,4 @@
-import { howThisCompanyDoesIt, whatToLookUp, MOST_CARDS_IN_A_SESSION } from './how-this-company-does-it';
+import { howThisCompanyDoesIt, whatToLookUp, MOST_CARDS_IN_A_SESSION, MOST_WORDS_IN_A_LOOKUP } from './how-this-company-does-it';
 
 /**
  * THE COMPANY'S OWN PROCESS, IN THE ROOM.
@@ -62,9 +62,28 @@ describe('the line it must not cross', () => {
 });
 
 describe('what it looks up', () => {
-  it('what they just said, because that is what the check-in is about', () => {
+  it('a few words from what they just said, not the sentence', () => {
+    /*
+     * Found by running it. The retriever scores partly by what fraction of the query's words
+     * appear in a card, so a whole conversational turn buries the two words that matter under
+     * twenty that do not: this exact sentence returned nothing against a card called "How
+     * contracting works", and "contract" alone found it immediately.
+     */
     const said = 'The client wants to proceed and I was going to send them the contract myself';
-    expect(whatToLookUp(said)).toBe(said);
+    const q = whatToLookUp(said)!;
+    expect(q).toContain('client');
+    expect(q).toContain('contract');
+    expect(q.split(' ').length).toBeLessThanOrEqual(MOST_WORDS_IN_A_LOOKUP);
+  });
+
+  it('drops the words a process would never be written about', () => {
+    const q = whatToLookUp('I was going to send them the contract myself this week you know')!;
+    expect(q).not.toContain('going');
+    expect(q).not.toContain('week');
+  });
+
+  it('and says nothing when what is left is too thin to search on', () => {
+    expect(whatToLookUp('I think that we should probably just go and do that thing you said')).toBeNull();
   });
 
   it('and nothing on a short answer', () => {

@@ -38,6 +38,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { CoachModule } from './modules/coach/coach.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     WebhooksModule,
     ParticipantsModule,
     ConversationModule,
+    KnowledgeModule,
     WhatsAppModule,
     ReportsModule,
     PatternsModule,

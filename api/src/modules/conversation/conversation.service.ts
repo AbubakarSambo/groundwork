@@ -1459,8 +1459,7 @@ export class ConversationService {
     const lookUp = whatToLookUp(latestMessage);
     const companyCards = lookUp && this.knowledge
       ? await this.knowledge
-          .retrieve(ground.organizationId, checkIn.participant.userId ?? 'a participant', lookUp)
-          .then((r: any) => r?.cards ?? [])
+          .covering(ground.organizationId, lookUp)
           .catch(() => [])
       : [];
     const howWeDoIt = howThisCompanyDoesIt(companyCards);
@@ -2726,9 +2725,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     if (!ground) return;
 
-    const { cards } = await this.knowledge
-      .retrieve(ground.organizationId, participantId, said.slice(0, 2_000))
-      .catch(() => ({ cards: [] as any[] }));
+    const cards = await this.knowledge
+      .covering(ground.organizationId, said.slice(0, 4_000))
+      .catch(() => [] as any[]);
     if (!cards.length) return;
 
     const written = cards.map((c: any) => `--- ${c.title} (key: ${c.key}) ---\n${c.body}`).join('\n\n');

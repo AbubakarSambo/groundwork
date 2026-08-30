@@ -72,15 +72,54 @@ export function howThisCompanyDoesIt(cards: Card[]): string {
 /**
  * WHAT TO SEARCH THE COMPANY'S OWN WRITING FOR.
  *
- * Their last message, which is the only honest query available: it is what they are talking about
- * right now. Anything cleverer would be us deciding what a check-in is about, and a check-in is
- * about whatever the person in it says it is about.
+ * A FEW WORDS FROM WHAT THEY JUST SAID, not the whole sentence.
  *
- * Short messages retrieve nothing, deliberately. "Yes", "not yet", "I think so" are the answers
- * most likely to be hiding a gap and the least likely to name a process - pulling cards on them
- * would put three pages of handbook behind a one-word reply.
+ * Found by running it: passing the message itself returned nothing at all for a check-in that was
+ * plainly about contracting. The retriever scores partly by what fraction of the query's words
+ * appear in a card, so a long conversational turn buries the two words that matter under twenty
+ * that do not - "the client said yes to the eighty thousand piece of work" scored zero against a
+ * card titled "How contracting works", while "contract" found it immediately.
+ *
+ * So this keeps the words a process would be written about and drops the rest. It is blunt on
+ * purpose: a cleverer reading would be us deciding what a check-in is about, and a check-in is
+ * about whatever the person in it says it is.
+ *
+ * Short messages are skipped entirely. "Yes", "not yet" and "I think so" are the answers most
+ * likely to be hiding a gap and the least likely to name a process, and pulling three pages of
+ * handbook behind a one-word reply helps nobody.
  */
+const NOT_WORTH_LOOKING_UP = new Set([
+  'the', 'and', 'for', 'our', 'you', 'your', 'this', 'that', 'with', 'from', 'have', 'has', 'had',
+  'was', 'were', 'been', 'being', 'are', 'not', 'but', 'they', 'them', 'their', 'there', 'here',
+  'what', 'when', 'which', 'who', 'how', 'why', 'would', 'could', 'should', 'will', 'can', 'just',
+  'about', 'into', 'onto', 'over', 'under', 'then', 'than', 'some', 'any', 'all', 'one', 'two',
+  'got', 'get', 'going', 'went', 'said', 'say', 'says', 'think', 'thought', 'know', 'really',
+  'week', 'day', 'days', 'weeks', 'month', 'months', 'time', 'thing', 'things', 'people', 'work',
+]);
+
+/** More than this and the fraction the retriever scores by collapses. Found by running it. */
+export const MOST_WORDS_IN_A_LOOKUP = 6;
+
 export function whatToLookUp(latestMessage: string | null | undefined): string | null {
   const t = (latestMessage ?? '').trim();
-  return t.length >= 40 ? t : null;
+  if (t.length < 40) return null;
+
+  const words = t
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !NOT_WORTH_LOOKING_UP.has(w));
+
+  /* Each word once, in the order they said them, so the query reads like what they were talking
+     about rather than like a bag of terms. */
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const w of words) {
+    if (seen.has(w)) continue;
+    seen.add(w);
+    kept.push(w);
+    if (kept.length === MOST_WORDS_IN_A_LOOKUP) break;
+  }
+
+  return kept.length >= 2 ? kept.join(' ') : null;
 }
