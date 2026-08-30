@@ -27,6 +27,7 @@ import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType,
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
+import { whyNot } from './why-it-is-not-happening';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -943,11 +944,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       concernFlags?: { label: string; observation: string }[];
       specificityCauses?: { label: string; cause: string; note: string }[];
     };
+    /*
+     * WHAT IS AGREED, WHAT IS IN THE WAY, AND WHAT THE RECORD SHOWS ABOUT WHY.
+     *
+     * Added to what the model reads, never replacing it. Without this the synthesis sees only what
+     * people said in conversation, so "he could not get pricing approval" and "he did not do it"
+     * arrive looking identical - the blockers were recorded, from both sides, and never reached the
+     * report.
+     *
+     * The four explanations are worked out in code before the model sees them, and it is told it
+     * may state them and must not invent a fifth. A model asked why something is late will always
+     * produce a reason; this makes the reason a fact somebody recorded.
+     *
+     * OUTSIDE THE TRY, AND BEST-EFFORT. It sat inside it at first, where a database hiccup came
+     * back as "AI response could not be parsed" and cost the whole report. A report without its
+     * grounding is worse than one with it and far better than none.
+     */
+    const grounding = await this.whatTheRecordShows(groundId, labelById).catch((err: any) => {
+      this.logger?.warn?.(`Grounding the synthesis for ground ${groundId} failed: ${err.message}`);
+      return '';
+    });
+
     let result: SynthesisResult | null;
     try {
       result = await this.anthropic.extract<SynthesisResult>(
         systemPrompt,
-        [{ role: 'user', content: corpus }],
+        [{ role: 'user', content: grounding ? `${corpus}\n\n${grounding}` : corpus }],
         activeSchema,
       );
     } catch (err: any) {
@@ -1552,6 +1574,84 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * a column added to this table later must not appear in somebody's report by accident.
      */
     return { rounds: kept };
+  }
+
+  /**
+   * THE AGREED THINGS, WHAT IS BLOCKING THEM, AND WHAT THE RECORD SHOWS ABOUT WHY.
+   *
+   * Facts, assembled from rows somebody wrote, for the synthesis to use. Nothing here is a
+   * judgement: a blocker exists because the person waiting described it in their own account, a
+   * date exists because somebody named one, and the explanation is decided by `whyNot` from those
+   * two and nothing else.
+   *
+   * Labelled, never named. The same labels the rest of the synthesis uses, so this cannot become
+   * the one place a name reaches a stored report.
+   */
+  private async whatTheRecordShows(groundId: string, labelById: Map<string, string>): Promise<string> {
+    const [objectives, blockers, deliveries] = await Promise.all([
+      this.prisma.personObjective.findMany({
+        where: { groundId },
+        select: {
+          participantId: true, text: true, dueDate: true, dueSaid: true, status: true,
+          seenBySubject: true, awareness: true, kind: true,
+        },
+      }),
+      this.prisma.groundDependency.findMany({
+        where: { groundId, status: 'WAITING' },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true },
+      }),
+      this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
+    ]);
+    if (!objectives.length && !blockers.length) return '';
+
+    const now = new Date();
+    const lines: string[] = [];
+
+    for (const o of objectives) {
+      const who = labelById.get(o.participantId) ?? 'a party';
+      const mine = blockers.filter((b) => b.fromParticipantId === o.participantId);
+      const why = whyNot(
+        {
+          text: o.text,
+          dueDate: o.dueDate,
+          status: o.status,
+          seenBySubject: o.seenBySubject,
+          awareness: o.awareness,
+          openBlockers: mine.map((b) => ({
+            what: b.what,
+            onName: b.onParticipantId ? (labelById.get(b.onParticipantId) ?? null) : (b.onLabel ?? null),
+            escalated: !!b.escalatedAt,
+          })),
+          progress: deliveries.filter((d) => d.participantId === o.participantId).map((d) => ({ text: d.text })),
+        },
+        now,
+      );
+      const due = o.dueDate
+        ? ` Due ${o.dueDate.toISOString().slice(0, 10)}${o.dueSaid ? ` (they said "${o.dueSaid}")` : ''}.`
+        : o.dueSaid ? ` They said "${o.dueSaid}" for when, which is not a date.` : '';
+      lines.push(`- ${who}: "${o.text}".${due} What the record shows: ${why.says}`);
+    }
+
+    /* Blockers nobody has an objective for still matter - somebody is still waiting. */
+    for (const b of blockers) {
+      const from = labelById.get(b.fromParticipantId) ?? 'a party';
+      const on = b.onParticipantId ? (labelById.get(b.onParticipantId) ?? 'somebody') : (b.onLabel ?? 'somebody outside this check-in');
+      lines.push(`- ${from} is waiting on ${on} for ${b.what}${b.escalatedAt ? ', already raised' : ''}.`);
+    }
+
+    return `WHAT IS ON THE RECORD, AND WHAT IT SHOWS.
+These are rows somebody wrote, not conclusions. Each blocker exists because the person waiting
+described it in their own account of their own work - never because anybody reported anybody else.
+
+${lines.join('\n')}
+
+USING THIS.
+You may state what is written above. Do not invent a different explanation for something being
+behind: told nothing, blocked, not acted on, and too early are the only four, and where the line
+says the record cannot tell, say that rather than choosing one.
+A blocker is a reason, not an excuse, and neither is it a complaint about the person it names.
+Never write that somebody failed, underperformed, or is not capable. Say what was agreed, what
+happened, and what is in the way.`;
   }
 
   private async keepThisRound(groundId: string, now: RoundPicture): Promise<void> {
