@@ -1,9 +1,11 @@
 /**
  * WHY SOMETHING AGREED IS NOT HAPPENING - WHERE THE RECORD ACTUALLY SHOWS IT.
  *
- * "No revenue after 30 days should NOT automatically equal poor performance." The four answers are
+ * "No revenue after 30 days should NOT automatically equal poor performance." The six answers are
  * different in kind and reading one as another is the most damaging thing this product could do to
- * somebody: told nothing, blocked by the company, not acted on, or simply too early.
+ * somebody: told nothing, blocked by the company, not knowing how, putting it off, not acted on, or
+ * simply too early. The two in the middle arrived later and can only come from the person - see
+ * `they-said-why-themselves.ts`.
  *
  * THE DEFAULT IS THAT WE CANNOT TELL, and that is not a failure to try harder. Most of the time the
  * record holds a promise, a date, and silence - and "we do not know which of these it is" is the
@@ -13,8 +15,10 @@
  * reason, because producing one is what it is for. Every branch below is a fact somebody recorded -
  * an awareness answer, a blocker with two sides to it, a date that has passed - and where no branch
  * fits, nothing is said. The synthesis is given these as facts it may state and is forbidden from
- * inventing a fifth.
+ * inventing a seventh.
  */
+
+import { SAYS_SKILL, SAYS_CONFIDENCE } from '../conversation/they-said-why-themselves';
 
 export interface WhatIsKnown {
   /** What was promised, in their words. Only ever quoted back, never rewritten. */
@@ -31,11 +35,26 @@ export interface WhatIsKnown {
   openBlockers: { what: string; onName: string | null; escalated: boolean }[];
   /** Anything they have recorded as done against it. */
   progress: { text: string }[];
+  /**
+   * THEIR OWN WORDS ABOUT THIS AND NOBODY ELSE'S. Two of the explanations below can only come from
+   * the person themselves, and passing a colleague's description of them here is the one way to
+   * turn this into a product that records opinions about people. See `they-said-why-themselves.ts`.
+   */
+  saidWhy?: string | null;
+  theirQuote?: string | null;
+  /**
+   * WHETHER THE READER MAY SEE THE SENTENCE ITSELF. False everywhere it is not set, and the shared
+   * report never sets it - see the note in `they-said-why-themselves.ts`. A one-to-one surface where
+   * the reader is the person or their lead alone can turn it on deliberately.
+   */
+  mayQuoteThem?: boolean;
 }
 
 export type Why =
   | { kind: 'UNDERSTANDING'; says: string }
   | { kind: 'CONSTRAINT'; says: string }
+  | { kind: 'SKILL'; says: string }
+  | { kind: 'CONFIDENCE'; says: string }
   | { kind: 'EXECUTION'; says: string }
   | { kind: 'TOO_EARLY'; says: string }
   | { kind: 'CANNOT_TELL'; says: string };
@@ -78,6 +97,18 @@ export function whyNot(known: WhatIsKnown, now: Date): Why {
       says: `They are waiting${on} for ${b.what}${escalated}. That is in the way of this, and it is not theirs to clear alone.`,
     };
   }
+
+  /*
+   * THEY TOLD US WHY. Above EXECUTION for the same reason every other branch is: EXECUTION is the
+   * narrowest reading and everything softer is taken before it. A person who has said out loud that
+   * they do not know how, or that they have been putting it off, has given the actual answer - and
+   * a product that files that under "the agreed thing is not being done" was not listening.
+   *
+   * Below CONSTRAINT, because something genuinely in the way outranks how anybody feels about it.
+   */
+  const mayQuote = known.mayQuoteThem === true && !!known.theirQuote;
+  if (known.saidWhy === 'SKILL') return { kind: 'SKILL', says: SAYS_SKILL(known.theirQuote ?? '', mayQuote) };
+  if (known.saidWhy === 'CONFIDENCE') return { kind: 'CONFIDENCE', says: SAYS_CONFIDENCE(known.theirQuote ?? '', mayQuote) };
 
   const past = known.dueDate !== null && known.dueDate.getTime() < now.getTime();
 

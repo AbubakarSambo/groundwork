@@ -953,8 +953,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * arrive looking identical - the blockers were recorded, from both sides, and never reached the
      * report.
      *
-     * The four explanations are worked out in code before the model sees them, and it is told it
-     * may state them and must not invent a fifth. A model asked why something is late will always
+     * The six explanations are worked out in code before the model sees them, and it is told it
+     * may state them and must not invent a seventh. A model asked why something is late will always
      * produce a reason; this makes the reason a fact somebody recorded.
      *
      * OUTSIDE THE TRY, AND BEST-EFFORT. It sat inside it at first, where a database hiccup came
@@ -1593,7 +1593,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * the one place a name reaches a stored report.
    */
   private async whatTheRecordShows(groundId: string, labelById: Map<string, string>): Promise<string> {
-    const [objectives, blockers, deliveries] = await Promise.all([
+    const [objectives, blockers, deliveries, saidWhy] = await Promise.all([
       this.prisma.personObjective.findMany({
         where: { groundId },
         select: {
@@ -1606,11 +1606,30 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true },
       }),
       this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
+      /*
+       * WHAT THEY SAID ABOUT WHY, AS A CLASSIFICATION AND NEVER AS WORDS.
+       *
+       * This read the transcript at first, and a guard on a promise the marketing site makes -
+       * "it never shows anyone's raw answers" - stopped it. The promise is a bright line: the
+       * shared report may not touch the transcript at all, not even to derive something safe from
+       * it, because a line that has to be argued about each time is not a line.
+       *
+       * So the deciding happens once, in the conversation, where the person's words already live,
+       * and what crosses into a shared surface is SKILL or CONFIDENCE and nothing else. The check-in
+       * belongs to exactly one participant, so this cannot become one person's words explaining
+       * another.
+       */
+      this.prisma.checkIn.findMany({
+        where: { groundId, saidWhy: { not: null } },
+        select: { participantId: true, saidWhy: true },
+      }),
     ]);
     if (!objectives.length && !blockers.length) return '';
 
     const now = new Date();
     const lines: string[] = [];
+
+    const saidWhyByParticipant = new Map(saidWhy.map((c) => [c.participantId, c.saidWhy!]));
 
     for (const o of objectives) {
       const who = labelById.get(o.participantId) ?? 'a party';
@@ -1628,6 +1647,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             escalated: !!b.escalatedAt,
           })),
           progress: deliveries.filter((d) => d.participantId === o.participantId).map((d) => ({ text: d.text })),
+          saidWhy: saidWhyByParticipant.get(o.participantId) ?? null,
         },
         now,
       );
@@ -1682,8 +1702,12 @@ ${lines.join('\n')}
 
 USING THIS.
 You may state what is written above. Do not invent a different explanation for something being
-behind: told nothing, blocked, not acted on, and too early are the only four, and where the line
-says the record cannot tell, say that rather than choosing one.
+behind: told nothing, blocked, not knowing how, putting it off, not acted on, and too early are the
+only six, and where the line says the record cannot tell, say that rather than choosing one.
+The two about the person themselves are only ever there because THEY said so, in their own words,
+not from anything you inferred. Their actual sentence is deliberately NOT given to you and you must
+not guess at it or invent one - somebody not knowing how is a thing to show them, and somebody
+putting a thing off is a conversation about what makes it hard.
 A blocker is a reason, not an excuse, and neither is it a complaint about the person it names.
 Never write that somebody failed, underperformed, or is not capable. Say what was agreed, what
 happened, and what is in the way.`;

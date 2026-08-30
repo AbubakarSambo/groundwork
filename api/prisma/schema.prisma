@@ -886,6 +886,11 @@ model CheckIn {
   /// overdue, and never as testimony about the lead. Marked rather than inferred, because the thing it
   /// is excluded from is arithmetic in six places and a flag is checkable where a convention is not.
   isSetup                     Boolean       @default(false) @map("is_setup")
+  /// SKILL or CONFIDENCE, where the person said as much about themselves IN THIS CHECK-IN. The
+  /// classification and never the sentence: the shared report must be able to say "they said so
+  /// themselves" without any surface but this one ever touching the transcript. See
+  /// they-said-why-themselves.ts, and the bright line in no-surveillance.spec.ts that put it here.
+  saidWhy                     String?       @map("said_why")
   status                      CheckInStatus @default(NOT_STARTED)
   availableFrom               DateTime?     @map("available_from") // cadence gate — session 2+ opens after this date
   startedAt                   DateTime?     @map("started_at")

@@ -1,4 +1,5 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
@@ -672,6 +673,7 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
+    await this.noteIfTheySaidWhy(checkIn as any, message);
 
     // Rebuild history (this party only) and ask the engine for the next turn.
     // ISSUE 5: if the AI call fails, delete the orphan PERSON turn then re-throw.
@@ -849,6 +851,7 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
+    await this.noteIfTheySaidWhy(checkIn as any, message);
 
     let raw = '';
     try {
@@ -976,6 +979,32 @@ export class ConversationService {
    *   per-turn dynamic context (Agent 1 intake, trust calibration, Agent 3
    *   cross-reference). The dynamic context only runs when a message is present.
    */
+
+  /**
+   * TWO REASONS ONLY THE PERSON CAN GIVE, DECIDED HERE AND NOWHERE ELSE.
+   *
+   * Not knowing how and putting a thing off need opposite responses - one is shown, the other is
+   * talked about - and both used to land in "the agreed thing is not being done", which reads as
+   * neither. They are caught in the person's own check-in because this is the one place their words
+   * legitimately are: a shared report may not touch a transcript at all, so what leaves this module
+   * is SKILL or CONFIDENCE and never the sentence.
+   *
+   * ONE HELPER, TWO CALLERS. Both turn-persisting paths need it, and a second copy is how one of
+   * them keeps classifying after somebody narrows the other.
+   *
+   * NEVER OVERWRITTEN ONCE SET, and never allowed to break a check-in: somebody who says on Monday
+   * that they have never done one has said it, whatever Tuesday is about, and a failure to record
+   * why beats losing the turn that said it.
+   */
+  private async noteIfTheySaidWhy(checkIn: { id: string; saidWhy?: string | null }, message: string) {
+    if (checkIn.saidWhy) return;
+    const said = whatTheySaidAboutWhy([message]);
+    if (!said) return;
+    await this.prisma.checkIn
+      .update({ where: { id: checkIn.id }, data: { saidWhy: said.kind } })
+      .catch((err: any) => this.logger?.warn?.(`Recording why for check-in ${checkIn.id} failed: ${err?.message}`));
+  }
+
   private async composeSystemPrompt(
     checkIn: {
       id: string;
