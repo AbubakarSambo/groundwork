@@ -2989,6 +2989,25 @@ export function EntryChatPage() {
               </div>
             ) : !emailSent ? (
               <div style={{ marginBottom: 20 }}>
+                {/*
+                  * THE ORGANISATION'S NAME, ASKED BEFORE EITHER DOOR.
+                  *
+                  * It used to live on the panel that appears after the email is sent, which meant
+                  * only the email path ever saw it. Somebody signing up with Google left with
+                  * "Ada's Workspace" and was never offered anything else - the callback returns
+                  * before its own name step, deliberately, because interrupting between "signed
+                  * in" and "here is your check-in" to ask something already offered is the worst
+                  * moment for it. It just had not actually been offered on that path.
+                  *
+                  * So it is asked here, one step earlier, where both doors pass. Optional, and
+                  * above the email rather than below it: it is about the account being made, and
+                  * the email is the thing that makes it.
+                  */}
+                <input
+                  type="text" placeholder="Organisation name (optional)" value={orgName}
+                  onChange={e => setOrgName(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
+                />
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
@@ -3100,11 +3119,8 @@ export function EntryChatPage() {
                 onChange={e => setGroundName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
-              <input
-                type="text" placeholder="Organisation name (optional)" value={orgName}
-                onChange={e => setOrgName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
-              />
+              {/* Asked one step earlier now, where both the email and Google paths pass. */}
+
               <FieldLabel>
                 How often does everyone check in?
                 {!cadenceChosen && (

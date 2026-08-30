@@ -212,13 +212,33 @@ describe('while a ground is waiting to be accepted', () => {
 describe('the entry flow creates a ground that is ready to run', () => {
   const SRC = readFileSync(join(__dirname, '../entry/entry.service.ts'), 'utf8');
 
-  it('passes a role to grounds.create, so it is not held by the pending gate', () => {
+  /*
+   * AND THE ROLE IS NOW READ RATHER THAN ASSUMED.
+   *
+   * This used to pin the literal `'ADMIN'`, which was right for the case it was written about and
+   * wrong for one nobody had considered: `POST /entry/commit` is authenticated, so anybody already
+   * signed in can walk the entry chat. Hardcoding ADMIN meant a member refused at the create page
+   * could open a check-in here, with no approval, having skipped both settings.
+   *
+   * The protection this test exists for is untouched. Somebody coming out of the entry chat as a
+   * brand new sign-up IS the admin of the organisation made for them moments earlier, so reading
+   * their role returns ADMIN and their ground is not held for an approver who does not exist.
+   */
+  it('passes the creator\'s real role to grounds.create, not an assumption', () => {
     const call = SRC.slice(SRC.indexOf('this.grounds.create(organizationId, initiatorId, {'));
     const end = call.indexOf(');');
-    expect(call.slice(0, end)).toMatch(/\}, 'ADMIN'/);
+    expect(call.slice(0, end)).toMatch(/\}, role/);
+    expect(call.slice(0, end)).not.toMatch(/\}, 'ADMIN'/);
   });
 
-  it('and says why, because the next person will wonder', () => {
-    expect(SRC).toMatch(/nobody else to approve it/i);
+  it('reads it from the row, and treats a missing user as the weakest', () => {
+    /* Never the most powerful thing on the account, which is the direction that fails safe. */
+    expect(SRC).toMatch(/private async roleOf/);
+    expect(SRC).toMatch(/return u\?\.role \?\? 'MEMBER'/);
+  });
+
+  it('and asks whether they may open one at all, before either way out', () => {
+    /* Two ways out of commit - their own check-in, or a hand-off to a lead - and both create one. */
+    expect(SRC).toMatch(/if \(!answer\.may\) throw new ForbiddenException/);
   });
 });

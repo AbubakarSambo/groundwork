@@ -11,7 +11,10 @@ import { Cadence } from '@prisma/client';
 
 function makeService() {
   const prisma: any = {
-    organization: { update: jest.fn(async () => ({})) },
+    user: { findUnique: jest.fn(async () => ({ role: 'ADMIN' })) },
+    organization: {
+      /* `commit` now checks who may open a check-in here before either path. */
+      findUnique: jest.fn(async () => ({ whoMayOpenCheckIns: 'NAMED_LEADS', checkInsNeedApproval: true })), update: jest.fn(async () => ({})) },
     entryDraft: { findUnique: jest.fn(async () => null), updateMany: jest.fn(async () => ({ count: 0 })) },
     groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
     /* The round-closing call runs inside these flows now; see grounds/round-completion.ts. */
