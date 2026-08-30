@@ -303,6 +303,7 @@ model Organization {
   contributions       Contribution[]
   recommendations     Recommendation[]
   objectiveDrafts     ObjectiveDraft[]
+  callRequests        CallRequest[]
 
   @@map("organizations")
 }
@@ -2796,6 +2797,36 @@ model CoachRequest {
   @@index([status, createdAt])
   @@index([email])
   @@map("coach_requests")
+}
+
+/// SOMEBODY ASKING TO TALK TO US ABOUT CONNECTING THEIR SYSTEMS.
+///
+/// The Connect page explains the API well and ended at "see the plans". An admin evaluating this
+/// for a company does not want a plan, they want half an hour with their own engineers in the room,
+/// and the only way to reach anybody was a mailto on a different page.
+///
+/// NOT FEEDBACK, WHICH IS WHY IT IS NOT A FeedbackSubmission. Feedback is anonymous by design and
+/// has a fixed vocabulary of tabs and pills. A request for a call that does not say who to call
+/// back is a request nobody can act on.
+///
+/// The note is theirs, in their words, and nothing is inferred from it.
+model CallRequest {
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
+  /// Who asked. They are the one to call.
+  requestedById  String  @map("requested_by_id")
+  /// What they want to talk about. Optional: asking is the signal, the note is a courtesy.
+  note           String? @db.Text
+
+  /// new | contacted | closed. Read by whoever works through these, not by the product.
+  status String @default("new")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("call_requests")
 }
 
 model FeedbackSubmission {

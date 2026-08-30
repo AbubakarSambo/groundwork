@@ -303,6 +303,32 @@ export function OrgMembersPage() {
         )}
       </div>
 
+      {/*
+        * TRAINING, WHICH IS THE STEP BETWEEN 160 ACCOUNTS AND 160 PEOPLE WHO USE THEM.
+        *
+        * Here rather than in the rail: it is a link an admin sends other people, not a section of
+        * their own console, and this is the page they are on when they are thinking about the
+        * people they just invited.
+        */}
+      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 18px', marginBottom: 28, background: 'var(--gw-card)', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>Send your team the guide</div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            How to run a check-in, what happens to what people write, and what you can see as their admin.
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/org/guide')}
+          style={{
+            padding: '8px 16px', background: 'white', color: 'var(--gw-navy)',
+            border: '1px solid var(--gw-navy)', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >
+          Read it
+        </button>
+      </div>
+
       {/* Members list */}
       {/*
         * A FAILED LOAD IS NOT AN EMPTY COMPANY. This page rendered "No members yet" over a 400,

@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -14,6 +14,8 @@ import { isSubscribed } from '../../common/subscription';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
@@ -58,6 +60,43 @@ export class UsersService {
       paying: isSubscribed(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
       connected: keys > 0,
     };
+  }
+
+  /**
+   * ASKING TO TALK TO US, WHICH ENDS IN A ROW SOMEBODY CAN ACT ON.
+   *
+   * A mailto is a request that exists only if a message arrives, gets read, and is not filtered -
+   * three things nobody can check. This is a row with a company, a person and a date on it.
+   *
+   * IDEMPOTENT WHILE ONE IS OPEN. A second click is somebody checking the first one worked.
+   */
+  async requestACall(organizationId: string, requestedById: string, note?: string) {
+    const open = await this.prisma.callRequest.findFirst({
+      where: { organizationId, status: 'new' },
+      select: { id: true, createdAt: true },
+    });
+    if (open) return { asked: true, at: open.createdAt, alreadyOpen: true };
+
+    const row = await this.prisma.callRequest.create({
+      data: {
+        organizationId,
+        requestedById,
+        /* Their words, trimmed and bounded. Nothing is inferred from it. */
+        note: note?.trim()?.slice(0, 2000) || null,
+      },
+      select: { createdAt: true },
+    });
+    this.logger.log(`Call requested by org ${organizationId}.`);
+    return { asked: true, at: row.createdAt, alreadyOpen: false };
+  }
+
+  /** Whether one is already open, so the page says so rather than offering to ask again. */
+  async callAlreadyRequested(organizationId: string) {
+    const open = await this.prisma.callRequest.findFirst({
+      where: { organizationId, status: 'new' },
+      select: { createdAt: true },
+    });
+    return { asked: !!open, at: open?.createdAt ?? null };
   }
 
   /** The organisation's own name, which is what an invitation says it is from. */

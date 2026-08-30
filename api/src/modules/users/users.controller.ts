@@ -100,6 +100,33 @@ export class UsersController {
    * Above `:id` deliberately - a route with a literal segment has to be declared before the one
    * with a parameter, or `rollout` is read as somebody's user id and comes back 404.
    */
+  /**
+   * ASK US TO TALK TO YOUR ENGINEERS.
+   *
+   * On the users controller because that is where an organisation's own admin actions already live
+   * and it is already guarded as one. A module of its own for a single insert would be more files
+   * saying the same thing.
+   *
+   * ONE OPEN REQUEST PER ORGANISATION. Clicking twice is somebody wondering whether the first click
+   * worked, not two requests, and a queue with the same company in it four times is a queue that
+   * gets read less carefully.
+   */
+  @Post('call-request')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ask to talk to us about connecting your systems' })
+  async requestACall(@CurrentUser() user: CurrentUserData, @Body() body: { note?: string }) {
+    return this.usersService.requestACall(user.organizationId, user.id, body?.note);
+  }
+
+  /** Whether this organisation has already asked, so the page can say so rather than ask again. */
+  @Get('call-request')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Whether a call has already been asked for' })
+  async callRequested(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.callAlreadyRequested(organizationId);
+  }
+
   @Get('rollout')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'What an admin has actually done so far, as counts' })
