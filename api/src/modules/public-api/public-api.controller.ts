@@ -529,6 +529,21 @@ export class PublicApiController {
    * `graph:write`, the same scope as evidence, because it is the same kind of act: the customer's
    * own systems telling us what their own systems know.
    */
+  /**
+   * `graph:write`, the scope for facts the customer's systems assert about their own world - the
+   * same one subjects and interactions take. A metric is one more of those.
+   */
+  @Put('metrics')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Numbers from your own product, to sit beside what people say.' })
+  async pushMetrics(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { sourceSystem?: string; metrics?: any[] },
+  ) {
+    return this.groundsByApi.pushMetrics(req.machine.organizationId, dto?.sourceSystem, dto?.metrics ?? []);
+  }
+
   @Put('interactions')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)

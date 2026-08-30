@@ -257,6 +257,7 @@ model PricingPlan {
 model Organization {
   whatWorked         WhatWorked[]
   acceptanceCriteria AcceptanceCriterion[]
+  productMetrics     ProductMetric[]
   id                 String                @id @default(uuid())
   name               String
   slug               String                @unique
@@ -1075,6 +1076,33 @@ enum DependencyStatus {
   CLEARED
 }
 
+/// WHAT KIND OF THING IS IN THE WAY, WHICH THE RECORD COULD NOT SAY.
+///
+/// A handoff knew who was waiting on whom and not what for. "We cannot ship because hardware is
+/// delayed" and "both parts exist and the integration fails" and "this was known four weeks ago and
+/// nobody raised it" are three different situations with three different people who can fix them,
+/// and all three read identically as one person waiting on another. So the argument was settled by
+/// whoever described it best.
+///
+/// SAID BY THE PERSON WAITING, ABOUT THEIR OWN WORK, like everything else on a handoff. Nobody
+/// classifies somebody else's blocker.
+enum BlockerKind {
+  /// The thing does not exist yet on the other side.
+  NOT_BUILT
+  /// Both parts exist and do not work together.
+  INTEGRATION
+  /// What the two sides agreed the interface would be has changed.
+  CONTRACT_CHANGED
+  /// It cannot be tried: no rig, no environment, no access.
+  CANNOT_TEST
+  /// Somebody has to decide and has not.
+  DECISION
+  /// It was known early enough to plan around and was not raised. The only one that is about how
+  /// the work was managed rather than about the work, which is why it is never inferred - it is
+  /// recorded when the person waiting says so, and never derived from dates.
+  SEEN_COMING
+}
+
 //
 // A handoff between two people, extracted from a check-in when someone names a
 // dependency. This is the board's real differentiator: the critical path is not
@@ -1085,6 +1113,9 @@ enum DependencyStatus {
 // without it appearing in their own account of their own work.
 //
 model GroundDependency {
+  /// What kind of thing is in the way. Null is the ordinary state: most people describe a blocker
+  /// without classifying it, and an unclassified blocker is still a blocker.
+  blockerKind       BlockerKind?     @map("blocker_kind")
   id                String           @id @default(uuid())
   groundId          String           @map("ground_id")
   fromParticipantId String           @map("from_participant_id")
@@ -2323,6 +2354,43 @@ model AcceptanceCriterion {
   @@unique([organizationId, subjectExternalId, ordinal])
   @@index([organizationId, subjectExternalId])
   @@map("acceptance_criteria")
+}
+
+/// A NUMBER FROM THE CUSTOMER'S OWN PRODUCT.
+///
+/// The only evidence in this system that does not depend on somebody's account of themselves.
+/// Everything else Groundwork weighs is a description: what a person says happened, what a
+/// colleague says happened, what a document says was agreed. A crash rate is none of those, and
+/// "the product is stable" beside "crash rate 8 percent" is a conversation nobody could otherwise
+/// have.
+///
+/// IT IS NOT ANALYTICS AND MUST NOT BECOME ANALYTICS. No time series, no dimensions, no queries,
+/// no charts. One number, what it counts, when it was true, and where it came from - enough to sit
+/// beside a claim, and deliberately not enough to be the place anybody looks at their metrics.
+model ProductMetric {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  /// The customer's own name for it. "crash_rate", "active_vehicles". Their words, not ours.
+  key               String
+  /// What it counts, in words a person reads. Without this a number is a number.
+  says              String   @db.Text
+  value             Float
+  /// "percent", "vehicles", "ms". Optional, because not everything has one.
+  unit              String?
+  /// When the number was TRUE, which is not when it was sent.
+  asOf              DateTime @map("as_of")
+  /// What produced it, so a reader can weigh it. A dashboard export is not a database read.
+  sourceSystem      String   @map("source_system")
+  /// What it is about, where it is about one thing. Points at a Subject by the customer's id.
+  subjectExternalId String?  @map("subject_external_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key, asOf])
+  @@index([organizationId, subjectExternalId])
+  @@map("product_metrics")
 }
 
 model Commitment {

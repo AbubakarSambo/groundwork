@@ -564,6 +564,53 @@ export class GroundsByApiService {
 
 
   /**
+   * NUMBERS FROM THE CUSTOMER'S OWN PRODUCT.
+   *
+   * Upserted on (organisation, key, as-of), so re-sending yesterday's figure is harmless and
+   * correcting it is a re-send. A metric with no `says` is refused: a key and a number mean nothing
+   * to whoever reads the report, and "crash_rate: 8" in front of a non-technical reader is worse
+   * than silence because it looks like information.
+   */
+  async pushMetrics(
+    organizationId: string,
+    sourceSystem: string | undefined,
+    metrics: { key?: string; says?: string; value?: number; unit?: string; asOf?: string; subjectExternalId?: string }[],
+  ) {
+    const from = (sourceSystem ?? '').trim();
+    if (!from) throw new BadRequestException('Say which system these came from. A reader has to be able to weigh them.');
+    if (!Array.isArray(metrics) || !metrics.length) throw new BadRequestException('Send at least one metric.');
+
+    const results: { key: string; stored: boolean; because?: string }[] = [];
+    for (const m of metrics) {
+      const key = (m.key ?? '').trim();
+      const says = (m.says ?? '').trim();
+      const asOf = m.asOf ? new Date(m.asOf) : null;
+
+      if (!key) { results.push({ key: '', stored: false, because: 'A metric needs a key.' }); continue; }
+      if (!says) {
+        results.push({ key, stored: false, because: 'Say what this counts, in words. A key and a number mean nothing to whoever reads the report.' });
+        continue;
+      }
+      if (typeof m.value !== 'number' || !Number.isFinite(m.value)) {
+        results.push({ key, stored: false, because: 'A metric needs a number.' });
+        continue;
+      }
+      if (!asOf || Number.isNaN(asOf.getTime())) {
+        results.push({ key, stored: false, because: 'Say when this was true. A number with no date is a claim about right now.' });
+        continue;
+      }
+
+      await this.prisma.productMetric.upsert({
+        where: { organizationId_key_asOf: { organizationId, key, asOf } },
+        create: { organizationId, key, says, value: m.value, unit: m.unit?.trim() || null, asOf, sourceSystem: from, subjectExternalId: m.subjectExternalId ?? null },
+        update: { says, value: m.value, unit: m.unit?.trim() || null, sourceSystem: from, subjectExternalId: m.subjectExternalId ?? null },
+      });
+      results.push({ key, stored: true });
+    }
+    return { results };
+  }
+
+  /**
    * WHAT WOULD HAVE TO BE TRUE FOR A SUBJECT TO BE DONE.
    *
    * Pushed by the customer's own systems alongside the objective it belongs to, because the

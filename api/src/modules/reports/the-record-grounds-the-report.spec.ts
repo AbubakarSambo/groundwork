@@ -11,7 +11,7 @@ import { ReportsService } from './reports.service';
 /* Comfortably behind, and stays behind however long this repository lives. */
 const PAST = new Date('2020-10-30T00:00:00Z');
 
-const svc = (over: { objectives?: any[]; blockers?: any[]; deliveries?: any[]; saidWhy?: any[] } = {}) => {
+const svc = (over: { objectives?: any[]; blockers?: any[]; deliveries?: any[]; saidWhy?: any[]; metrics?: any[] } = {}) => {
   const s = Object.create(ReportsService.prototype) as any;
   s.logger = { warn: () => {} };
   s.prisma = {
@@ -30,6 +30,7 @@ const svc = (over: { objectives?: any[]; blockers?: any[]; deliveries?: any[]; s
      * this row is what crosses over.
      */
     checkIn: { findMany: async () => over.saidWhy ?? [] },
+    productMetric: { findMany: async () => (over as any).metrics ?? [] },
     /* Somebody's own account of work no system recorded - see `theirAccounts` in the service. */
     ground: { findUnique: async () => ({ organizationId: 'org1' }) },
     interaction: {
@@ -142,6 +143,35 @@ describe('how far the technical records reach', () => {
     expect(flat).toContain('A merge is not a deployment');
     expect(flat).toContain('most work is unrecorded');
     expect(flat).toContain('never as a claim that somebody is overstating');
+  });
+});
+
+describe('numbers from their own systems', () => {
+  const metric = { key: 'crash_rate', says: 'sessions that ended in a crash', value: 8, unit: 'percent', asOf: new Date('2026-08-20T00:00:00Z'), sourceSystem: 'sentry' }
+
+  it('states them with what they count, dated and attributed', async () => {
+    const out = await svc({ objectives: [objective()], metrics: [metric] } as any).whatTheRecordShows('g1', labels);
+    expect(recorded(out)).toContain('sessions that ended in a crash: 8 percent');
+    expect(recorded(out)).toContain('from sentry');
+  });
+
+  it('and never without the sentences that keep them evidence rather than an ambush', async () => {
+    const out = await svc({ objectives: [objective()], metrics: [metric] } as any).whatTheRecordShows('g1', labels);
+    expect(recorded(out)).toContain('nobody here has checked them');
+    expect(recorded(out)).toContain('is not proof they were wrong');
+    expect(recorded(out)).toContain('Nothing here says whether a number is good');
+  });
+
+  it('says nothing at all when there are no numbers', async () => {
+    const out = await svc({ objectives: [objective()] }).whatTheRecordShows('g1', labels);
+    expect(out).not.toContain('NUMBERS FROM THEIR OWN SYSTEMS');
+  });
+
+  it('tells the model what a number cannot settle', async () => {
+    const out = await svc({ objectives: [objective()] }).whatTheRecordShows('g1', labels);
+    const flat = out.replace(/\s+/g, ' ');
+    expect(flat).toContain('cannot tell you that somebody was wrong');
+    expect(flat).toContain('never rank or score anybody using one');
   });
 });
 
