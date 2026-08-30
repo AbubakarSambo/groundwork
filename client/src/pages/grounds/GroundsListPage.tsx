@@ -518,12 +518,12 @@ export function GroundsListPage() {
                 somebody who is already signed in. An admin who wants a ground
                 belongs in the picker at /grounds/new.
               */}
-              <button
+              {user?.mayOpenCheckIns !== false && <button
                 onClick={() => navigate('/grounds/new')}
                 style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 + New check-in
-              </button>
+              </button>}
             </div>
 
             {/* Removed: this one was shown to CONTRIBUTORS, offering to
@@ -538,12 +538,12 @@ export function GroundsListPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5, maxWidth: 280, margin: '0 auto 24px' }}>
                   You will see check-ins here when someone invites you, or when you open one yourself.
                 </div>
-                <button
+                {user?.mayOpenCheckIns !== false && <button
                   onClick={() => navigate('/grounds/new')}
                   style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Open a check-in
-                </button>
+                </button>}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

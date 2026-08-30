@@ -29,9 +29,21 @@ describe('the button is not shown to somebody it would refuse', () => {
   })
 
   it('and on the list', () => {
+    /*
+     * There is more than one way to reach /grounds/new from this page - the header action and
+     * the empty-state action both need the guard. Checking only the first occurrence let the
+     * second one through unnoticed.
+     */
     const near = strip(LIST)
-    const i = near.indexOf("navigate('/grounds/new')")
-    expect(near.slice(Math.max(0, i - 300), i)).toContain('user?.mayOpenCheckIns !== false')
+    const needle = "navigate('/grounds/new')"
+    let i = near.indexOf(needle)
+    let count = 0
+    while (i !== -1) {
+      count++
+      expect(near.slice(Math.max(0, i - 300), i)).toContain('user?.mayOpenCheckIns !== false')
+      i = near.indexOf(needle, i + needle.length)
+    }
+    expect(count).toBeGreaterThan(0)
   })
 
   it('and an older session that does not carry the answer still sees it', () => {

@@ -12,6 +12,7 @@ import { GroundChat } from '@/components/gw/GroundChat'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
+import { ReportBody } from '@/pages/report/ReportPage'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
@@ -755,24 +756,23 @@ export function GroundParticipantPage() {
                 </div>
               </div>
             ) : !report.releasedAt ? (
-              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                  {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
-                </div>
-                <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: (report as any)?.forming ? 10 : 0 }}>
-                  {(report as any)?.forming
-                    ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
-                    : 'Your report will be available once it is released.'}
+              <>
+                <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+                    {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: 0 }}>
+                    {(report as any)?.forming
+                      ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
+                      : 'Your report will be available once it is released.'}
+                  </div>
                 </div>
                 {(report as any)?.forming && (
-                  <button
-                    onClick={() => navigate(`/grounds/${id}/report`)}
-                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    View the forming picture →
-                  </button>
+                  <div style={{ marginTop: 10 }}>
+                    <ReportBody groundId={id!} embedded />
+                  </div>
                 )}
-              </div>
+              </>
             ) : !report.activated ? (
               <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
@@ -792,19 +792,7 @@ export function GroundParticipantPage() {
               </div>
             ) : (
               <>
-                <button
-                  onClick={() => navigate(`/grounds/${id}/report`)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                    background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
-                    padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>
-                    {(report as any).forming ? 'View the forming report (Venn view)' : 'View the full shared report (Venn view)'}
-                  </span>
-                  <span style={{ fontSize: 13 }}>→</span>
-                </button>
+                <ReportBody groundId={id!} embedded />
 
                 {/*
                   THE WAY INTO THE TEAM BOARD, WHICH A PARTICIPANT DID NOT HAVE.

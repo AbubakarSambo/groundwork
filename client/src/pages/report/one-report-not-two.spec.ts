@@ -20,6 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const REPORT = strip(readFileSync(path.join(__dirname, 'ReportPage.tsx'), 'utf8'))
 const ADMIN = strip(readFileSync(path.join(__dirname, '../grounds/GroundAdminPage.tsx'), 'utf8'))
+const PARTICIPANT = strip(readFileSync(path.join(__dirname, '../grounds/GroundParticipantPage.tsx'), 'utf8'))
 
 describe('one report, not two', () => {
   it('the report body is a component, not a page only', () => {
@@ -31,6 +32,16 @@ describe('one report, not two', () => {
   })
 
   /**
+   * A participant used to get the same dead-end button as the lead once did: "View the full shared
+   * report" navigated to a route that just redirects back to the tab already on screen, so nothing
+   * visibly happened when it was clicked. Fixed the same way the lead's copy was fixed - embed the
+   * real thing instead of linking to it.
+   */
+  it('and the participant page renders it too', () => {
+    expect(PARTICIPANT).toContain('<ReportBody groundId={id!} embedded />')
+  })
+
+  /**
    * The link is what made them two. "Venn view" is a word for how one diagram is drawn; it should
    * never have been the name of a destination.
    */
@@ -38,6 +49,9 @@ describe('one report, not two', () => {
     expect(ADMIN).not.toMatch(/View the full shared report/)
     expect(ADMIN).not.toMatch(/View the forming report/)
     expect(ADMIN).not.toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
+    expect(PARTICIPANT).not.toMatch(/View the full shared report/)
+    expect(PARTICIPANT).not.toMatch(/View the forming report/)
+    expect(PARTICIPANT).not.toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
   })
 
   /** A dead link to somebody's report is worse than an extra hop, so the old route still resolves. */
