@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
 import {
@@ -953,6 +954,82 @@ export class BoardService {
 
     const waiting = whatThePlaceIsWaitingOn(deps, now);
     return { waiting, waitedOn: whoIsBeingWaitedOn(waiting) };
+  }
+
+  /**
+   * WHERE A MANAGER IS NEEDED THIS WEEK.
+   *
+   * Every input already existed and nothing asked the question, which is the same gap escalation
+   * filled one level down: a careful per-person read is worth nothing to somebody with twelve people
+   * if they have to open twelve of them to find the one that matters.
+   *
+   * ASSEMBLY ONLY. Every judgement here was made somewhere else and is only being grouped - the
+   * handoffs come from the board, the ran-out cycle from the escalation rules, and asking to be
+   * shown from what the person said in their own check-in. Nothing new is decided about anybody,
+   * which is what keeps this a router rather than a second opinion.
+   *
+   * The shaping - four buckets, no score, what it refuses to mean - is in who-needs-you-this-week.ts.
+   */
+  async whoNeedsYouThisWeek(organizationId: string, managerKey: string) {
+    const key = managerKey.toLowerCase();
+    const now = new Date();
+    const { waiting } = await this.waitingAcrossTheOrg(organizationId);
+
+    const needs: Need[] = [];
+
+    for (const w of waiting as any[]) {
+      /*
+       * THE MANAGER'S OWN QUEUE FIRST. A manager reading a list of people who need attention while
+       * being the thing several of them are waiting for is the version of this that does harm.
+       */
+      if (w.onPersonKey === key) {
+        needs.push({
+          kind: 'WAITING_ON_YOU',
+          who: w.fromLabel ?? w.fromPersonKey ?? 'somebody',
+          says: `waiting on you for ${w.what}`,
+          waitingDays: w.waitingDays,
+        });
+        continue;
+      }
+      /* Raised, still open, and not theirs to clear. Long waits sort themselves to the top. */
+      if (w.escalatedAt) {
+        needs.push({
+          kind: 'STUCK_AND_RAISED',
+          who: w.fromLabel ?? w.fromPersonKey ?? 'somebody',
+          says: `raised that they are stuck on ${w.what}${w.onLabel ? ` with ${w.onLabel}` : ''}`,
+          waitingDays: w.waitingDays,
+        });
+      }
+    }
+
+    /*
+     * ASKED TO BE SHOWN. The cheapest thing on the whole list to fix and the one most likely to be
+     * read as a performance problem, which is why it carries its own sentence about what it asks
+     * for. Only ever from what the person said about themselves - see they-said-why-themselves.ts.
+     */
+    const said = await this.prisma.checkIn.findMany({
+      where: { saidWhy: 'SKILL', ground: { organizationId } },
+      /*
+       * The check-in's own completion, not a timestamp on the person. `completedAt` is when they
+       * said it; falling back to when the check-in was made keeps an in-progress one from reading
+       * as nought days old.
+       */
+      select: { completedAt: true, createdAt: true, participant: { select: { email: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    }).catch(() => [] as any[]);
+
+    for (const c of said as any[]) {
+      const who = c.participant?.email ?? 'somebody';
+      needs.push({
+        kind: 'ASKED_TO_BE_SHOWN',
+        who,
+        says: 'said themselves that they do not know how to do something they have taken on',
+        waitingDays: Math.max(0, Math.floor((now.getTime() - new Date(c.completedAt ?? c.createdAt).getTime()) / 86400000)),
+      });
+    }
+
+    return whoNeedsYou(needs);
   }
 
 }

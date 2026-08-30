@@ -64,3 +64,24 @@ describe('a report nobody has read can raise its hand', () => {
     expect(CODE).toMatch(/\(g\.overdue \?\? 0\) > 0/)
   })
 })
+
+/* -------------------------------------------------------------------------- */
+
+describe('the rollout counter and the cards it sits above', () => {
+  const SRC = readFileSync(join(__dirname, 'an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
+
+  it('says what it counts, because "1 of 4" above five cards reads as a bug', () => {
+    /*
+     * And it was not a bug. Connect is optional and the counter was right to leave it out. Being
+     * right is not enough when the two numbers a person can see disagree with each other.
+     */
+    expect(SRC).toContain('{done} of {counted.length} needed')
+    expect(SRC).toContain('plus ${steps.length - counted.length} optional')
+  })
+
+  it('marks the optional card as optional where the eye lands, not in the body text', () => {
+    expect(SRC).toContain('>Optional</span>')
+    /* The old version buried it at the start of the description, where it read as part of it. */
+    expect(SRC).not.toContain("'Optional. '")
+  })
+})

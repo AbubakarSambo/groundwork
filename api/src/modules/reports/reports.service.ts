@@ -1,4 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND } from '../board/what-kind-of-thing-is-in-the-way';
+import { howItReads, WHAT_A_NUMBER_IS_NOT, NEVER_CONCLUDE_FROM_A_NUMBER } from '../public-api/a-number-does-not-argue';
+import { whatTheRecordsReach, NEVER_CONCLUDE_ABOUT_SHIPPING } from '../public-api/what-shipped-actually-means';
+import { whatCouldBeChecked, AClaim, COULD_NOT_WORK_IT_OUT } from './what-nothing-here-could-check';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
@@ -1155,8 +1159,42 @@ Close the report by framing - neutrally, without recommending one - the choice n
         ? 'thin'
         : 'moderate';
 
+    /*
+     * WHICH CLAIMS STOOD UP AGAINST SOMETHING, AND WHICH ARE HERE BECAUSE SOMEBODY SAID THEM.
+     *
+     * The `note` below already says this report is not independently verified, and that sentence is
+     * the same whether every claim was corroborated or none was. A reader cannot act differently on
+     * the two, so in practice they act the same on both, and the caveat does no work.
+     *
+     * It matters most exactly where the reader cannot judge the content themselves. Somebody
+     * non-technical reading about technical work has no independent way to tell a claim that held
+     * from one that was repeated, and a well-written report reads equally confident about both.
+     *
+     * COMPUTED HERE, NEVER ASKED OF THE MODEL. A model asked which of its own statements are
+     * well-supported will answer, and the answer will be a feeling about its own prose. Each of the
+     * three sources below is a row that either exists or does not.
+     */
+    const claimsAndWhatBacksThem = await this.whatBacksEachClaim(groundId).catch((err: any) => {
+      this.logger?.warn?.(`Working out what backs each claim on ground ${groundId} failed: ${err?.message}`);
+      return null;
+    });
+    const partiesWhoGaveAnAccount = engagementParties.filter((e) => e.contributed).length;
+    /*
+     * FAILS TO A SENTENCE, NEVER TO SILENCE. Letting this fall away when it cannot be computed
+     * leaves the report reading exactly as confident as one where everything checked out, which is
+     * the thing being fixed.
+     */
+    const couldBeChecked = claimsAndWhatBacksThem
+      ? whatCouldBeChecked(
+        claimsAndWhatBacksThem,
+        /* Others, not everybody: a person cannot corroborate themselves. */
+        Math.max(0, partiesWhoGaveAnAccount - 1),
+      )
+      : { checked: 0, total: 0, says: [COULD_NOT_WORK_IT_OUT] };
+
     const engagement = {
       coverage,
+      whatCouldBeChecked: couldBeChecked,
       documentBacked: engagementParties.some((e) => e.documentsAttached > 0),
       specificitySignal: Object.fromEntries(engagementParties.map((p) => [p.label, p.specificityLabel])),
       sessionCounts,
@@ -1592,6 +1630,62 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * Labelled, never named. The same labels the rest of the synthesis uses, so this cannot become
    * the one place a name reaches a stored report.
    */
+
+  /**
+   * WHAT BACKS EACH THING THE RECORD HOLDS, AS THREE FACTS PER CLAIM.
+   *
+   * The claims are the objectives, because those are the things a report is read to find out about.
+   * The three sources are deliberately narrow and each is a row that exists or does not:
+   *
+   *   another account - somebody ELSE recorded something of their own about this work;
+   *   document - the claim is anchored to something attached rather than remembered;
+   *   record - a system's own record of something that happened, above plain say-so.
+   *
+   * How much detail somebody gave and how many sessions they did are not here. They describe the
+   * telling rather than the thing told, and counting them as corroboration is the exact mistake
+   * this is built to stop.
+   */
+  private async whatBacksEachClaim(groundId: string): Promise<AClaim[]> {
+    const objectives = await this.prisma.personObjective.findMany({
+      where: { groundId },
+      select: { id: true, text: true, participantId: true },
+    });
+    if (!objectives.length) return [];
+
+    const [anchored, deliveries, records] = await Promise.all([
+      /* Entries anchored to a document rather than recalled - the model already records which. */
+      this.prisma.recordEntry.findMany({
+        where: { participant: { groundId }, recallBased: false },
+        select: { participantId: true },
+      }),
+      /* Somebody's recorded progress against a specific objective, with evidence named. */
+      this.prisma.delivery.findMany({
+        where: { groundId, NOT: { objectiveId: null } },
+        select: { objectiveId: true, participantId: true, evidence: true },
+      }),
+      /* Everybody's own entries, so "somebody else said something too" can be answered per party. */
+      this.prisma.recordEntry.findMany({
+        where: { participant: { groundId } },
+        select: { participantId: true },
+      }),
+    ]);
+
+    const anchoredBy = new Set(anchored.map((a) => a.participantId));
+    const spokeAtAll = new Set(records.map((r) => r.participantId));
+
+    return objectives.map((o) => {
+      const theirs = deliveries.filter((d) => d.objectiveId === o.id);
+      return {
+        what: o.text,
+        /* Somebody OTHER than whoever owns this objective has given an account of their own. */
+        anotherAccount: [...spokeAtAll].some((pid) => pid !== o.participantId),
+        document: anchoredBy.has(o.participantId),
+        /* Progress recorded against this objective by anybody, with evidence named for it. */
+        record: theirs.some((d) => !!d.evidence?.trim()),
+      };
+    });
+  }
+
   private async whatTheRecordShows(groundId: string, labelById: Map<string, string>): Promise<string> {
     const [objectives, blockers, deliveries, saidWhy] = await Promise.all([
       this.prisma.personObjective.findMany({
@@ -1603,7 +1697,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: 'WAITING' },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, blockerKind: true },
       }),
       this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
       /*
@@ -1668,8 +1762,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * certainty invented, and the person reading this is in a position to ask - which the product
      * is not.
      */
+    /* Read once. It was inlined inside the where clause and a second reader needed it too. */
+    const orgId = (await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } }))?.organizationId ?? '';
+
     const theirAccounts = await this.prisma.interaction.findMany({
-      where: { organizationId: (await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } }))?.organizationId ?? '', strength: 'SELF_REPORTED' as any },
+      where: { organizationId: orgId, strength: 'SELF_REPORTED' as any },
       orderBy: { happenedAt: 'desc' },
       take: 20,
       select: { personExternalId: true, counterpartyExternalId: true, kind: true, happenedAt: true, note: true },
@@ -1687,11 +1784,70 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
     }
 
+    /*
+     * HOW FAR TECHNICAL WORK HAS ACTUALLY GOT, WHICH IS NOT WHAT ANYBODY CALLS IT.
+     *
+     * "Shipped" is one word for eight states, and a leader who cannot read the code has no way to
+     * tell which one they were told. This states the furthest state anything is evidenced at and -
+     * the part that does the work - which states nothing here can see at all.
+     *
+     * ORGANISATION-WIDE, LIKE THE ACCOUNTS ABOVE IT. A merge record is pushed against the company,
+     * not against one check-in, and the same read that already brings somebody's own account of a
+     * call brings these.
+     */
+    const technical = await this.prisma.interaction.findMany({
+      where: {
+        organizationId: orgId,
+        kind: { in: ['MERGE', 'TEST_RUN', 'DEPLOY', 'RELEASE'] as any },
+      },
+      orderBy: { happenedAt: 'desc' },
+      take: 40,
+      select: { kind: true },
+    }).catch(() => [] as any[]);
+
+    if (technical.length) {
+      const reach = whatTheRecordsReach(technical.map((t) => String(t.kind)));
+      lines.push('');
+      lines.push('HOW FAR THE TECHNICAL RECORDS REACH:');
+      for (const said of reach.says) lines.push(`- ${said}`);
+    }
+
+    /*
+     * NUMBERS FROM THEIR OWN PRODUCT, WHICH NOBODY IN THE ROOM WROTE.
+     *
+     * Every other line above this is somebody's account: what a person said, what a colleague said,
+     * what a system logged about an event somebody caused. A crash rate is none of those, and it is
+     * the only thing here that can sit beside "the product is stable" without being another
+     * opinion about it.
+     *
+     * MOST RECENT FIRST AND A HANDFUL ONLY. A wall of numbers in a report about a person reads as a
+     * case against them however innocent each one is, and the sentences under them are what keep
+     * this evidence rather than an ambush.
+     */
+    const metrics = await this.prisma.productMetric.findMany({
+      where: { organizationId: orgId },
+      orderBy: { asOf: 'desc' },
+      take: 6,
+      select: { key: true, says: true, value: true, unit: true, asOf: true, sourceSystem: true },
+    }).catch(() => [] as any[]);
+
+    if (metrics.length) {
+      lines.push('');
+      lines.push('NUMBERS FROM THEIR OWN SYSTEMS:');
+      for (const m of metrics) lines.push(`- ${howItReads(m as any)}`);
+      for (const said of WHAT_A_NUMBER_IS_NOT) lines.push(`- ${said}`);
+    }
+
     /* Blockers nobody has an objective for still matter - somebody is still waiting. */
     for (const b of blockers) {
       const from = labelById.get(b.fromParticipantId) ?? 'a party';
       const on = b.onParticipantId ? (labelById.get(b.onParticipantId) ?? 'somebody') : (b.onLabel ?? 'somebody outside this check-in');
-      lines.push(`- ${from} is waiting on ${on} for ${b.what}${b.escalatedAt ? ', already raised' : ''}.`);
+      /*
+       * WHAT KIND OF THING IS IN THE WAY, WHERE THE PERSON WAITING SAID. Six situations read
+       * identically as "one person waiting on another", and they need different people in the
+       * room - so the argument was being settled by whoever described it best.
+       */
+      lines.push(`- ${from}: ${howToSayIt(b.blockerKind as any, b.what, on)}${b.escalatedAt ? ' Already raised.' : ''}`);
     }
 
     return `WHAT IS ON THE RECORD, AND WHAT IT SHOWS.
@@ -1709,6 +1865,9 @@ not from anything you inferred. Their actual sentence is deliberately NOT given 
 not guess at it or invent one - somebody not knowing how is a thing to show them, and somebody
 putting a thing off is a conversation about what makes it hard.
 A blocker is a reason, not an excuse, and neither is it a complaint about the person it names.
+${NEVER_CONCLUDE_ABOUT_SHIPPING}
+${NEVER_CONCLUDE_FROM_A_NUMBER}
+${NEVER_CONCLUDE_FROM_A_KIND}
 Never write that somebody failed, underperformed, or is not capable. Say what was agreed, what
 happened, and what is in the way.`;
   }

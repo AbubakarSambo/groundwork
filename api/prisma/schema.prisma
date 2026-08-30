@@ -255,10 +255,13 @@ model PricingPlan {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id    String  @id @default(uuid())
-  name  String
-  slug  String  @unique
-  email String?
+  whatWorked         WhatWorked[]
+  acceptanceCriteria AcceptanceCriterion[]
+  productMetrics     ProductMetric[]
+  id                 String                @id @default(uuid())
+  name               String
+  slug               String                @unique
+  email              String?
 
   // Billing (Stripe, USD). Care fee is the always-on commitment device.
   stripeCustomerId       String?       @map("stripe_customer_id")
@@ -748,6 +751,7 @@ model CoachingState {
 }
 
 model GroundParticipant {
+  whatWorked                 WhatWorked[]
   id                         String         @id @default(uuid())
   groundId                   String         @map("ground_id")
   userId                     String?        @map("user_id") // null until they accept the invite
@@ -943,6 +947,31 @@ model ConversationTurn {
   @@map("conversation_turns")
 }
 
+/// A note somebody deliberately wrote for other people who get stuck on the same thing. It is here
+/// rather than lifted out of a check-in on their behalf: a team of twelve solves the same problem
+/// twelve times, and the fix is not to harvest what works from the people it works for. See
+/// what-worked-for-somebody-else.ts for why every obvious version of this is a league table.
+model WhatWorked {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  /// The participant who wrote it, so it can be removed by them and nobody else.
+  byParticipantId String   @map("by_participant_id")
+  /// Their name at the time of writing. Shown, because they wrote it for other people to read and
+  /// a tip from nobody cannot be asked a follow-up question.
+  byName          String   @map("by_name")
+  /// What they were stuck on, in their words. Matching happens on this.
+  about           String   @db.Text
+  /// What they did, in their words. Never a summary: a summary of a method is not the method.
+  what            String   @db.Text
+  offeredAt       DateTime @default(now()) @map("offered_at")
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  byParticipant GroundParticipant @relation(fields: [byParticipantId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("what_worked")
+}
+
 model RecordEntry {
   id                   String          @id @default(uuid())
   participantId        String          @map("participant_id")
@@ -1047,6 +1076,33 @@ enum DependencyStatus {
   CLEARED
 }
 
+/// WHAT KIND OF THING IS IN THE WAY, WHICH THE RECORD COULD NOT SAY.
+///
+/// A handoff knew who was waiting on whom and not what for. "We cannot ship because hardware is
+/// delayed" and "both parts exist and the integration fails" and "this was known four weeks ago and
+/// nobody raised it" are three different situations with three different people who can fix them,
+/// and all three read identically as one person waiting on another. So the argument was settled by
+/// whoever described it best.
+///
+/// SAID BY THE PERSON WAITING, ABOUT THEIR OWN WORK, like everything else on a handoff. Nobody
+/// classifies somebody else's blocker.
+enum BlockerKind {
+  /// The thing does not exist yet on the other side.
+  NOT_BUILT
+  /// Both parts exist and do not work together.
+  INTEGRATION
+  /// What the two sides agreed the interface would be has changed.
+  CONTRACT_CHANGED
+  /// It cannot be tried: no rig, no environment, no access.
+  CANNOT_TEST
+  /// Somebody has to decide and has not.
+  DECISION
+  /// It was known early enough to plan around and was not raised. The only one that is about how
+  /// the work was managed rather than about the work, which is why it is never inferred - it is
+  /// recorded when the person waiting says so, and never derived from dates.
+  SEEN_COMING
+}
+
 //
 // A handoff between two people, extracted from a check-in when someone names a
 // dependency. This is the board's real differentiator: the critical path is not
@@ -1057,6 +1113,9 @@ enum DependencyStatus {
 // without it appearing in their own account of their own work.
 //
 model GroundDependency {
+  /// What kind of thing is in the way. Null is the ordinary state: most people describe a blocker
+  /// without classifying it, and an unclassified blocker is still a blocker.
+  blockerKind       BlockerKind?     @map("blocker_kind")
   id                String           @id @default(uuid())
   groundId          String           @map("ground_id")
   fromParticipantId String           @map("from_participant_id")
@@ -2053,6 +2112,22 @@ enum InteractionKind {
   MEETING
   PROPOSAL
   TRANSACTION
+
+  /// TECHNICAL WORK, WHICH IS THE SAME PROBLEM AS A CUSTOMER VISIT AND WAS NOT ASKED ABOUT.
+  ///
+  /// "The feature is shipped" is one sentence covering eight different states, and a company whose
+  /// leaders cannot read the code has no way to tell which one is meant. These are the states that
+  /// leave a record somebody else wrote: a merge happened, a test run happened, a deploy happened.
+  ///
+  /// They are kinds of Interaction rather than a new table because an interaction is already
+  /// exactly this - a thing that happened, at a time, with a strength saying how well it is
+  /// evidenced. A deploy log is a system's own record; a screenshot of one is somebody's account.
+  /// That distinction is `EvidenceStrength` and it needed no changing at all.
+  MERGE
+  TEST_RUN
+  DEPLOY
+  RELEASE
+  INCIDENT
 }
 
 /// SOMETHING THAT HAPPENED WITH A CUSTOMER, AND WHAT WE ACTUALLY KNOW ABOUT IT.
@@ -2248,6 +2323,76 @@ enum CommitmentState {
 /// into the 30th is a guess wearing a fact's clothes. So `dueAt` is set ONLY when somebody gave a
 /// date, and everything that depends on time - slipping, following up - runs only on rows that have
 /// one. A commitment with words and no date is never reported as late, because we do not know.
+/// WHAT WOULD HAVE TO BE TRUE FOR THIS TO BE DONE, AGREED ONCE AND KEPT.
+///
+/// "Five core scenarios reliably in production" is one sentence and five things, and nothing could
+/// hold the five - so a report could say the accounts differ and never say two of five. The
+/// definition of done was re-argued every session because it lived nowhere.
+///
+/// ORDERED, because a sequence is usually what somebody means. CHECKED OFF ONLY WITH A REASON,
+/// because a tick with nothing behind it is the "shipped" problem in a smaller box.
+model AcceptanceCriterion {
+  id                String    @id @default(uuid())
+  organizationId    String    @map("organization_id")
+  /// The Subject this is part of, by the customer's own id for it.
+  subjectExternalId String    @map("subject_external_id")
+  /// What has to be true, in the words of whoever agreed it. Never rewritten.
+  text              String    @db.Text
+  ordinal           Int
+  /// MET only when somebody said what showed it. Null is the ordinary state and is not a failure.
+  metAt             DateTime? @map("met_at")
+  /// What showed it. Required to mark one met - see the guard.
+  metBecause        String?   @map("met_because") @db.Text
+  /// Who said so, by the customer's id for them.
+  metByExternalId   String?   @map("met_by_external_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, subjectExternalId, ordinal])
+  @@index([organizationId, subjectExternalId])
+  @@map("acceptance_criteria")
+}
+
+/// A NUMBER FROM THE CUSTOMER'S OWN PRODUCT.
+///
+/// The only evidence in this system that does not depend on somebody's account of themselves.
+/// Everything else Groundwork weighs is a description: what a person says happened, what a
+/// colleague says happened, what a document says was agreed. A crash rate is none of those, and
+/// "the product is stable" beside "crash rate 8 percent" is a conversation nobody could otherwise
+/// have.
+///
+/// IT IS NOT ANALYTICS AND MUST NOT BECOME ANALYTICS. No time series, no dimensions, no queries,
+/// no charts. One number, what it counts, when it was true, and where it came from - enough to sit
+/// beside a claim, and deliberately not enough to be the place anybody looks at their metrics.
+model ProductMetric {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  /// The customer's own name for it. "crash_rate", "active_vehicles". Their words, not ours.
+  key               String
+  /// What it counts, in words a person reads. Without this a number is a number.
+  says              String   @db.Text
+  value             Float
+  /// "percent", "vehicles", "ms". Optional, because not everything has one.
+  unit              String?
+  /// When the number was TRUE, which is not when it was sent.
+  asOf              DateTime @map("as_of")
+  /// What produced it, so a reader can weigh it. A dashboard export is not a database read.
+  sourceSystem      String   @map("source_system")
+  /// What it is about, where it is about one thing. Points at a Subject by the customer's id.
+  subjectExternalId String?  @map("subject_external_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key, asOf])
+  @@index([organizationId, subjectExternalId])
+  @@map("product_metrics")
+}
+
 model Commitment {
   id                String  @id @default(uuid())
   organizationId    String  @map("organization_id")
@@ -2790,6 +2935,13 @@ model GroundDocument {
   mimeType      String  @map("mime_type")
   content       String  @db.Text
   assessment    Json? // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
+  /// WHAT THE PERSON WANTS LOOKED FOR IN IT, IN THEIR WORDS.
+  ///
+  /// A file arrives with no instructions and the session has to guess what mattered about it. In
+  /// the chat the person can say so as they attach it, because there is a conversation to say it
+  /// into; on the Context tab there was nowhere to put it, so a forty page architecture document
+  /// went in mute. This is that sentence, kept with the document rather than turned into a turn.
+  uploaderNote  String? @map("uploader_note") @db.Text
 
   // WHO CAN SEE THIS. Nobody decided the current behaviour: documents.list
   // filters on participantId, so every document is private to whoever uploaded

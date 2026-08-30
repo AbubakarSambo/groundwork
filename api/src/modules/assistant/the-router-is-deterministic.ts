@@ -18,6 +18,7 @@ export type Lane =
   | 'how_we_work'
   | 'what_did_i_say'
   | 'how_am_i_doing'
+  | 'where_am_i_needed'
   | 'what_is_stuck'
   | 'where_am_i_up_to'
   | 'what_should_we_talk_about'
@@ -90,6 +91,27 @@ const RULES = [
     /\bwhat\s+(?:is|are)\s+(?:waiting|pending)\s+(?:for|on)\s+(?:my\s+)?(?:decision|answer|me\s+to\s+decide)\b/i,
     /\bwhat\s+(?:do\s+)?you\s+(?:suggest|recommend)\b/i,
     /\bwhat\s+needs\s+(?:my\s+)?deciding\b/i,
+  ]),
+  rule('where_am_i_needed', [
+    /*
+     * ABOVE `how_am_i_doing`, WHICH IS THE ONE IT ACTUALLY COLLIDES WITH.
+     *
+     * I first wrote that the collision was with `what_is_stuck` - both being about handoffs - and
+     * driving the assembled router said otherwise: with this lane removed, five of its six phrasings
+     * fall through unplaced and only "what should I focus on this week" is claimed by anything, by
+     * `how_am_i_doing`. Which makes sense read aloud. It is the same words as somebody asking after
+     * their own standing, and the two want opposite answers: one is a person's own record, the other
+     * is four lists of other people. So the order between THOSE two is what matters, and the note
+     * saying otherwise would have sent the next person to defend the wrong boundary.
+     *
+     * Narrow on purpose: it owns the shapes that ask where the ASKER should spend their attention,
+     * and nothing that merely asks about somebody's state.
+     */
+    /\bwhere\s+(?:am\s+i|should\s+i\s+be)\s+needed\b/i,
+    /\bwho\s+needs\s+(?:me|my\s+(?:help|attention|time))\b/i,
+    /\bwhat\s+(?:should|do)\s+i\s+(?:focus\s+on|do)\s+this\s+week\b/i,
+    /\bwhere\s+(?:do\s+i|should\s+i)\s+(?:start|spend\s+my\s+time)\b/i,
+    /\bmy\s+week\b/i,
   ]),
   rule('what_is_stuck', [
     /*

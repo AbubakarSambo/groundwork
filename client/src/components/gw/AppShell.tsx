@@ -16,7 +16,17 @@ import { alignmentShort } from '@/lib/alignment'
 
 const NAV_ITEMS = [
   {
-    label: 'Check-ins',
+    /*
+     * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
+     *
+     * The top of this rail is a live list of the check-ins somebody is in, and this item said
+     * "Check-ins" and went to a page of the same thing - so a person looking at their check-ins was
+     * offered a link called check-ins, and reasonably asked which one they were meant to use.
+     *
+     * The page is not redundant: it holds the ones the rail does not show and the ways in to them.
+     * What was redundant was the name.
+     */
+    label: 'All check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -751,7 +761,7 @@ export function AppSidebar() {
                         style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                       />
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div className="gw-rail-row" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         {/*
                           BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
                           Hafsah asked for the name to turn red when it is time to
@@ -778,9 +788,11 @@ export function AppSidebar() {
                           {g.label}
                         </span>
                         <button
+                          className="gw-rename"
                           onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
-                          title="Rename"
-                          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.2)', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
+                          title={`Rename ${g.label}`}
+                          aria-label={`Rename ${g.label}`}
+                          style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
                         >✎</button>
                       </div>
                     )}

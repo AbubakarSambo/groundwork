@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith } from './the-router-is-deterministic';
@@ -135,6 +136,8 @@ export class AssistantService {
         return this.whatShouldWeTalkAbout(organizationId, who);
       case 'what_came_of_it':
         return this.whatCameOfIt(organizationId, personId);
+      case 'where_am_i_needed':
+        return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
@@ -259,6 +262,41 @@ export class AssistantService {
    * asked. "What am I waiting on" is theirs to chase. "Who is waiting on me" is the one that usually
    * lands as news, because the person holding things up is normally the last to know.
    */
+  /**
+   * WHERE A MANAGER IS NEEDED, ASKED IN THE PLACE THEY ALREADY ASK THINGS.
+   *
+   * This is the lane rather than a screen because a screen would be a fifth place to look for
+   * somebody who already has too many, and because what it produces is four short lists that mean
+   * nothing without the sentences around them - which is what a conversation is good at and a panel
+   * is not.
+   *
+   * IT SAYS WHAT IT IS NOT, EVERY TIME. A manager reading a few names under a heading supplies their
+   * own meaning within about a second, and the meaning they supply is "my problem people". That is
+   * the opposite of what most of this list is: the largest bucket is usually the company owing
+   * somebody something.
+   */
+  private async whereAmINeeded(organizationId: string, who: string | null): Promise<Reply> {
+    const person = who
+      ? await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } })
+      : null;
+    const key = person?.email?.toLowerCase() ?? null;
+    if (!key) {
+      return rules('where_am_i_needed', text('I cannot match you to a check-in, so I cannot tell you where you are needed.'));
+    }
+
+    const week = await this.board.whoNeedsYouThisWeek(organizationId, key);
+    if (!week.buckets.length) return rules('where_am_i_needed', text(NOTHING_FLAGGED));
+
+    const parts = week.buckets.map((b) => [
+      b.asks,
+      ...b.needs.map((n) => `- ${n.who}: ${n.says}, ${n.waitingDays} days.`),
+    ].join('\n'));
+
+    /* Never trimmed away when the list is long. A long list is when it matters most. */
+    parts.push(week.whatThisIsNot.join(' '));
+    return rules('where_am_i_needed', text(parts.join('\n\n')));
+  }
+
   private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
     const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId);
 

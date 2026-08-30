@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { howForecastsHaveGone, NEVER_CONCLUDE_FROM_FORECASTS } from '../detectors/what-a-forecast-turned-out-to-be';
+import { whereItStands, mayMarkMet, NEVER_CONCLUDE_FROM_CRITERIA } from './what-would-have-to-be-true';
 import { theReadFor, NOTHING_ON_RECORD } from '../detectors/what-a-lead-should-read-first';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
@@ -561,6 +563,179 @@ export class GroundsByApiService {
     return { change: updated, agreedNow: textAfter(state, row.personObjective.text, row.proposedText) };
   }
 
+
+  /**
+   * HOW SOMEBODY'S DATES HAVE TURNED OUT, ACROSS THE ONES THAT FINISHED.
+   *
+   * Read from commitments, which already hold the date somebody gave and the moment they were
+   * resolved. No new table and no new writing: the two facts have sat beside each other all along
+   * and nothing compared them.
+   *
+   * Part of the same read a lead opens before a conversation, because that is where a question
+   * about somebody's estimates belongs - in a conversation with them, not on a dashboard.
+   */
+  async howTheirForecastsHaveGone(organizationId: string, personExternalId: string) {
+    const rows = await this.prisma.commitment.findMany({
+      where: {
+        organizationId,
+        personExternalId,
+        /* Only dated promises: an undated one cannot be early or late, which is a rule this
+           product enforces everywhere and would be silly to break here. */
+        dueAt: { not: null },
+        resolvedAt: { not: null },
+      },
+      orderBy: { dueAt: 'asc' },
+      take: 40,
+      select: { text: true, dueAt: true, resolvedAt: true },
+    }).catch(() => [] as any[]);
+
+    const out = howForecastsHaveGone(
+      rows.map((r) => ({ what: r.text, said: r.dueAt!, landed: r.resolvedAt })),
+    );
+    return { ...out, refusal: NEVER_CONCLUDE_FROM_FORECASTS };
+  }
+
+  /**
+   * NUMBERS FROM THE CUSTOMER'S OWN PRODUCT.
+   *
+   * Upserted on (organisation, key, as-of), so re-sending yesterday's figure is harmless and
+   * correcting it is a re-send. A metric with no `says` is refused: a key and a number mean nothing
+   * to whoever reads the report, and "crash_rate: 8" in front of a non-technical reader is worse
+   * than silence because it looks like information.
+   */
+  async pushMetrics(
+    organizationId: string,
+    sourceSystem: string | undefined,
+    metrics: { key?: string; says?: string; value?: number; unit?: string; asOf?: string; subjectExternalId?: string }[],
+  ) {
+    const from = (sourceSystem ?? '').trim();
+    if (!from) throw new BadRequestException('Say which system these came from. A reader has to be able to weigh them.');
+    if (!Array.isArray(metrics) || !metrics.length) throw new BadRequestException('Send at least one metric.');
+
+    const results: { key: string; stored: boolean; because?: string }[] = [];
+    for (const m of metrics) {
+      const key = (m.key ?? '').trim();
+      const says = (m.says ?? '').trim();
+      const asOf = m.asOf ? new Date(m.asOf) : null;
+
+      if (!key) { results.push({ key: '', stored: false, because: 'A metric needs a key.' }); continue; }
+      if (!says) {
+        results.push({ key, stored: false, because: 'Say what this counts, in words. A key and a number mean nothing to whoever reads the report.' });
+        continue;
+      }
+      if (typeof m.value !== 'number' || !Number.isFinite(m.value)) {
+        results.push({ key, stored: false, because: 'A metric needs a number.' });
+        continue;
+      }
+      if (!asOf || Number.isNaN(asOf.getTime())) {
+        results.push({ key, stored: false, because: 'Say when this was true. A number with no date is a claim about right now.' });
+        continue;
+      }
+
+      await this.prisma.productMetric.upsert({
+        where: { organizationId_key_asOf: { organizationId, key, asOf } },
+        create: { organizationId, key, says, value: m.value, unit: m.unit?.trim() || null, asOf, sourceSystem: from, subjectExternalId: m.subjectExternalId ?? null },
+        update: { says, value: m.value, unit: m.unit?.trim() || null, sourceSystem: from, subjectExternalId: m.subjectExternalId ?? null },
+      });
+      results.push({ key, stored: true });
+    }
+    return { results };
+  }
+
+  /**
+   * WHAT WOULD HAVE TO BE TRUE FOR A SUBJECT TO BE DONE.
+   *
+   * Pushed by the customer's own systems alongside the objective it belongs to, because the
+   * definition of done is a thing their planning tool already holds and this product should not be
+   * a second place to write it down. Replaces the whole set rather than merging: a criterion that
+   * disappeared upstream was deleted on purpose, and keeping it would have this arguing with the
+   * system of record about what was agreed.
+   *
+   * WHAT IS MET SURVIVES A RE-PUSH. Somebody marked it met with a reason, on a date, and a sync is
+   * not a reason to lose that - so a criterion whose text is unchanged keeps its evidence.
+   */
+  async setAcceptanceCriteria(
+    organizationId: string,
+    subjectExternalId: string,
+    criteria: { text: string }[],
+  ) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { organizationId, externalId: subjectExternalId },
+      select: { id: true },
+    });
+    if (!subject) throw new NotFoundException('No such objective in what your organisation has sent us.');
+
+    const clean = criteria
+      .map((c) => (c?.text ?? '').trim())
+      .filter((t) => t.length > 0 && t.length <= 500);
+    if (!clean.length) throw new BadRequestException('Send at least one thing that would have to be true.');
+
+    const existing = await this.prisma.acceptanceCriterion.findMany({
+      where: { organizationId, subjectExternalId },
+      select: { text: true, metAt: true, metBecause: true, metByExternalId: true },
+    });
+    const evidenceByText = new Map(existing.filter((e) => e.metAt).map((e) => [e.text, e]));
+
+    await this.prisma.$transaction([
+      this.prisma.acceptanceCriterion.deleteMany({ where: { organizationId, subjectExternalId } }),
+      this.prisma.acceptanceCriterion.createMany({
+        data: clean.map((text, i) => {
+          const kept = evidenceByText.get(text);
+          return {
+            organizationId,
+            subjectExternalId,
+            text,
+            ordinal: i + 1,
+            metAt: kept?.metAt ?? null,
+            metBecause: kept?.metBecause ?? null,
+            metByExternalId: kept?.metByExternalId ?? null,
+          };
+        }),
+      }),
+    ]);
+
+    return this.acceptanceCriteria(organizationId, subjectExternalId);
+  }
+
+  /** Where a subject stands against what was agreed. The shaping is in the module. */
+  async acceptanceCriteria(organizationId: string, subjectExternalId: string) {
+    const rows = await this.prisma.acceptanceCriterion.findMany({
+      where: { organizationId, subjectExternalId },
+      orderBy: { ordinal: 'asc' },
+      select: { text: true, ordinal: true, metAt: true, metBecause: true },
+    });
+    return { subjectExternalId, ...whereItStands(rows), refusal: NEVER_CONCLUDE_FROM_CRITERIA };
+  }
+
+  /**
+   * MARKING ONE MET, WHICH NEEDS A REASON.
+   *
+   * A tick with nothing behind it records somebody's belief as a fact and is read later by a person
+   * who cannot check it. The sentence does not make the belief true; it puts the belief and its
+   * evidence in the same place, which is what this product does everywhere else.
+   */
+  async markCriterionMet(
+    organizationId: string,
+    subjectExternalId: string,
+    ordinal: number,
+    because: string,
+    byExternalId?: string,
+  ) {
+    const answer = mayMarkMet(because);
+    if (!answer.may) throw new BadRequestException(answer.why);
+
+    const row = await this.prisma.acceptanceCriterion.findFirst({
+      where: { organizationId, subjectExternalId, ordinal },
+      select: { id: true },
+    });
+    if (!row) throw new NotFoundException('No such acceptance criterion on that objective.');
+
+    await this.prisma.acceptanceCriterion.update({
+      where: { id: row.id },
+      data: { metAt: new Date(), metBecause: because.trim(), metByExternalId: byExternalId ?? null },
+    });
+    return this.acceptanceCriteria(organizationId, subjectExternalId);
+  }
 
   /**
    * WHAT THE RECORD HOLDS ABOUT ONE PERSON, BEFORE A CONVERSATION ABOUT THEM.

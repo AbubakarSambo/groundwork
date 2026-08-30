@@ -154,7 +154,9 @@ describe('and the two words stay distinct', () => {
   const shell = readFileSync(join(SRC, 'components/gw/AppShell.tsx'), 'utf8')
 
   it('the nav names the object', () => {
-    expect(shell).toContain("label: 'Check-ins'")
+    /* Renamed to "All check-ins": the rail above it is already a list of check-ins, so the item
+       and the thing it sat under were called the same word. The word under test is still ours. */
+    expect(shell).toContain("label: 'All check-ins'")
   })
 
   it('"session" is still the word for the thing inside one', () => {

@@ -1,4 +1,5 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -996,6 +997,45 @@ export class ConversationService {
    * that they have never done one has said it, whatever Tuesday is about, and a failure to record
    * why beats losing the turn that said it.
    */
+  /**
+   * THEY WRITE IT DOWN FOR OTHER PEOPLE, DELIBERATELY.
+   *
+   * The only thing in this product that crosses from one person's check-in to another's, and it
+   * crosses because its author sent it. Nothing harvests a method out of somebody who happened to
+   * find one - a team of twelve solving the same problem twelve times is a real cost, and the fix
+   * for it is still not to take what works from the people it works for.
+   *
+   * Their name goes on it, which is the one place a name attaches to somebody's work by default
+   * here. Safe for the reason it is unsafe elsewhere: they wrote it to be read, and a tip from
+   * nobody cannot be asked a follow-up question.
+   */
+  async offerWhatWorked(checkInId: string, userId: string, about: string, what: string) {
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: { participantId: true, ground: { select: { organizationId: true } } },
+    });
+    if (!checkIn) throw new NotFoundException('No such check-in.');
+
+    /* Theirs and nobody else's, checked the same way every other write in this file is. */
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { id: checkIn.participantId, user: { id: userId } },
+      /* A participant has no display name of its own; the account behind it does. */
+      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    if (!participant) throw new ForbiddenException('This check-in is not yours.');
+
+    return this.prisma.whatWorked.create({
+      data: {
+        organizationId: checkIn.ground.organizationId,
+        byParticipantId: participant.id,
+        byName: [participant.user?.firstName, participant.user?.lastName].filter(Boolean).join(' ').trim() || participant.email,
+        about: about.trim(),
+        what: what.trim(),
+      },
+      select: { id: true, about: true, what: true, offeredAt: true },
+    });
+  }
+
   private async noteIfTheySaidWhy(checkIn: { id: string; saidWhy?: string | null }, message: string) {
     if (checkIn.saidWhy) return;
     const said = whatTheySaidAboutWhy([message]);
@@ -1445,7 +1485,7 @@ export class ConversationService {
           { participantId: checkIn.participantId, isLead: ground.initiatorId === checkIn.participant.userId },
           this.config.get<boolean>('app.contextEnabled') === true,
         ) as any,
-        select: { fileName: true, content: true },
+        select: { fileName: true, content: true, uploaderNote: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON } }),
@@ -1550,7 +1590,23 @@ export class ConversationService {
 
     const docContext = uploadedDocs.length
       ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
-        uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
+        uploadedDocs.map((d) => {
+          /*
+           * WHAT THEY ASKED TO BE LOOKED FOR, ABOVE THE DOCUMENT ITSELF.
+           *
+           * A forty page architecture document with no instructions leaves the session guessing at
+           * what mattered about it, and guessing is how it ends up asking about the wrong half. In
+           * the chat somebody can say it as they attach the file; from the Context tab there was
+           * nowhere to put it, so it went in mute.
+           *
+           * Above rather than below, because a long document read first is a long document read
+           * without knowing what to look for.
+           */
+          const asked = d.uploaderNote?.trim()
+            ? `They asked for this to be read for: ${d.uploaderNote.trim()}\n`
+            : '';
+          return `--- ${d.fileName} ---\n${asked}${d.content}`;
+        }).join('\n\n')
       : '';
 
     // See between-session-notes.ts for why the wording is the mechanism. Kept in
@@ -2640,8 +2696,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (turns.length === 0) return;
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    /* Their side alone, kept for the check after extraction. See a-record-is-what-they-said.ts. */
+    const whatTheySaid = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content).join('\n');
     const result = await this.anthropic.extract<{ entries: { type: string; text: string; verifiability: string }[] }>(
-      RECORD_EXTRACTION_PROMPT,
+      `${RECORD_EXTRACTION_PROMPT}\n\n${ONLY_THEIR_WORDS}`,
       [{ role: 'user', content: transcript }],
       RECORD_EXTRACTION_SCHEMA,
     );
@@ -2698,8 +2756,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&
-        !isNonAnswer(e.text, e.type),
+        !isNonAnswer(e.text, e.type) &&
+        /*
+         * AND IT HAS TO BE TRACEABLE TO WORDS THEY USED.
+         *
+         * A lead's report quoted "Five tabs, one design language" and "light theme only,
+         * deliberately" as her own commitments in a check-in she spent talking about testing and
+         * bugs. The transcript handed to the extractor carries both speakers, and nothing told it
+         * which one was the party - so the session's own summaries were available to be recorded
+         * as things she had committed to.
+         *
+         * The prompt now says so. This is what makes it hold, because a prompt asking a model
+         * politely not to confuse two speakers is the thing that just failed.
+         */
+        isTheirs(e.text, whatTheySaid),
     );
+
+    /*
+     * Worth a line in the log rather than silence: it is how anybody finds out that the extractor
+     * has started reaching for the session's words again.
+     */
+    const dropped = (result?.entries ?? []).length - valid.length;
+    if (dropped > 0) this.logger?.log?.(`Dropped ${dropped} extracted entr${dropped === 1 ? 'y' : 'ies'} on check-in ${checkInId} as not traceable to what the person said.`);
     if (valid.length === 0) return;
 
     // Store entries. The verifiability field is kept in the text as a prefix

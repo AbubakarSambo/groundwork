@@ -448,6 +448,57 @@ export class PublicApiController {
    * existing agreement rather than pretending none exists - and it still lets somebody say the
    * agreement is wrong, was never shown to them, or has been overtaken.
    */
+  /**
+   * WHAT WOULD HAVE TO BE TRUE FOR AN OBJECTIVE TO BE DONE.
+   *
+   * `subjects:write`, not a scope of its own: a criterion is part of the objective it belongs to,
+   * and anybody allowed to change the objective is already allowed to change what finishing it
+   * means. A separate scope would suggest these can be governed apart, and they cannot.
+   */
+  @Put('subjects/:externalId/acceptance-criteria')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('subjects:write')
+  @ApiOperation({ summary: 'Set what would have to be true for an objective to be done.' })
+  async setAcceptanceCriteria(
+    @Req() req: { machine: MachineCaller },
+    @Param('externalId') externalId: string,
+    @Body() dto: { criteria: { text: string }[] },
+  ) {
+    return this.groundsByApi.setAcceptanceCriteria(req.machine.organizationId, externalId, dto?.criteria ?? []);
+  }
+
+  @Get('subjects/:externalId/acceptance-criteria')
+  @UseGuards(MachineTokenGuard)
+  /*
+   * `findings:read`, WHICH IS THE SCOPE READING A SUBJECT ALREADY TAKES. I wrote `subjects:read`
+   * first - a scope that does not exist, so the route would have failed closed at runtime and been
+   * unreachable for anybody. Reading what an objective requires is reading the objective.
+   */
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Where an objective stands against what was agreed.' })
+  async acceptanceCriteria(
+    @Req() req: { machine: MachineCaller },
+    @Param('externalId') externalId: string,
+  ) {
+    return this.groundsByApi.acceptanceCriteria(req.machine.organizationId, externalId);
+  }
+
+  @Post('subjects/:externalId/acceptance-criteria/:ordinal/met')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('subjects:write')
+  @ApiOperation({ summary: 'Mark one criterion met, saying what showed it.' })
+  async markCriterionMet(
+    @Req() req: { machine: MachineCaller },
+    @Param('externalId') externalId: string,
+    @Param('ordinal') ordinal: string,
+    @Body() dto: { because: string; byExternalId?: string },
+  ) {
+    return this.groundsByApi.markCriterionMet(
+      req.machine.organizationId, externalId, Number(ordinal), dto?.because ?? '', dto?.byExternalId,
+    );
+  }
+
   @Post('grounds/:groundId/objectives')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)
@@ -478,6 +529,21 @@ export class PublicApiController {
    * `graph:write`, the same scope as evidence, because it is the same kind of act: the customer's
    * own systems telling us what their own systems know.
    */
+  /**
+   * `graph:write`, the scope for facts the customer's systems assert about their own world - the
+   * same one subjects and interactions take. A metric is one more of those.
+   */
+  @Put('metrics')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Numbers from your own product, to sit beside what people say.' })
+  async pushMetrics(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { sourceSystem?: string; metrics?: any[] },
+  ) {
+    return this.groundsByApi.pushMetrics(req.machine.organizationId, dto?.sourceSystem, dto?.metrics ?? []);
+  }
+
   @Put('interactions')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)
@@ -540,6 +606,21 @@ export class PublicApiController {
    * per-person read is "a good deal more than a finding" - and this is the most per-person thing
    * the API has. An integration granted findings must not get this by accident.
    */
+  /**
+   * `handovers:read`, the same scope as the per-person read this belongs beside. A question about
+   * somebody's estimates is a question about what is on their desk, and it is governed the same way.
+   */
+  @Get('people/:personExternalId/forecasts')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('handovers:read')
+  @ApiOperation({ summary: 'How the dates this person gave have turned out. Never a score.' })
+  async howTheirForecastsHaveGone(
+    @Req() req: { machine: MachineCaller },
+    @Param('personExternalId') personExternalId: string,
+  ) {
+    return this.groundsByApi.howTheirForecastsHaveGone(req.machine.organizationId, personExternalId);
+  }
+
   @Get('people/:personExternalId/before-a-conversation')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('handovers:read')

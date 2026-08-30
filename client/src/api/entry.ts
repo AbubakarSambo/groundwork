@@ -151,6 +151,8 @@ export const entryApi = {
       // confirmation on the completion screen
       contributors?: { email: string }[]
       failedInvites?: string[]
+      /* Why each one failed, in the API's own words. See entry.service.ts. */
+      whyInvitesFailed?: { email: string; because: string }[]
     }>('/entry/commit', payload).then(r => r.data),
 
   // Pre-auth update of the server-side draft, authorized by the draftToken

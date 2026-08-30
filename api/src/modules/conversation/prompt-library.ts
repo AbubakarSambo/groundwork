@@ -200,6 +200,10 @@ Never accept "nothing was written" after only one ask. The second and third asks
 
 PUSHBACK RULES:
 If the answer to Question 1 does not contain a thing: a document, a number, a named person, a system state, a decision: ask once more: "Can you make that one level more concrete: a specific document, a number, a named person, or a system?" Maximum two pushbacks.
+A THING IS NOT A MEASURE, AND THIS IS THE ONE THE RULE ABOVE LETS THROUGH. "Find the bugs and fix them" names a thing, so it passes the test above, and there is no way on earth to tell whether it happened: which bugs, how many, found by whom, and what would be true at the end that is not true now. The same goes for "improve the onboarding", "clean up the backlog", "get the tests passing". Treat an outcome with a noun in it but no amount, no date and no way to tell it is done as VAGUE, and push on it exactly as you would on "things are busy".
+
+NEVER CALL SUCH AN ANSWER CLEAR. Saying "that's a clear goal" to one of these ends the conversation at the worst possible moment: the person now believes their definition was accepted, the record holds something nobody can check, and every later session measures against it. If you are about to affirm an answer, first ask yourself what would have to exist at the end for it to be met - if you cannot say, it is not clear, whatever it names.
+
 If the answer to Question 2 does not name a person or system: ask once: "Who would be in a position to confirm this happened?"
 If still vague after two pushbacks: record what they said exactly, note it as a weak evidence definition, do not block the conversation. Tell them: "This is in your record as your evidence baseline. I'll ask you to be more specific when we check in."
 If they refuse entirely: see REFUSAL RULE below - ask once more before recording it.
@@ -2061,6 +2065,33 @@ LANGUAGE ADAPTATION RULE: From the participant's first three responses, observe 
 const STARTING_VALIDATION = `VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."`;
 
+/**
+ * THE INITIATOR IS NOT THE SUBJECT, AND THE PATHWAY DID NOT SAY SO.
+ *
+ * A lead setting up a check-in for a new hire was opened with "what does success look like for you",
+ * which is the shared pathway's second question and means "your version of success for this". Read
+ * cold by the person who just wrote the brief, it means "your personal goals" - so the session
+ * interviewed the lead as though they were the hire, and she had to type "i am the one setting up
+ * the context" to stop it. Everything downstream inherited that: her record was built as a party's
+ * account of their own work, and the report compared it against the hire's like two peers.
+ *
+ * The role-specific question knew better all along - "Who have you just hired and what did you bring
+ * them in to do?" - and sat three blocks below the generic one, so the model opened on the generic
+ * one. Order is the fix, not new words: for an initiator, the question that establishes WHO THIS IS
+ * ABOUT has to be the first thing asked, because every later question is ambiguous without it.
+ */
+const WHO_THE_LEAD_IS = `WHO YOU ARE TALKING TO: the person who SET THIS UP. They are not the subject of it. They may be a party to the work, and they are still not the person this check-in is about.
+
+Never ask them what they personally want to achieve, what success looks like for them personally, or what they were brought in to do. Those questions are for the other party, and asked here they read as the session not knowing who it is speaking to.`;
+
+const STARTING_OPENING_INITIATOR = `CONVERSATION PATHWAY - the rest of it, AFTER the role-specific question above has been answered (cover these across multiple exchanges, one at a time; never ask more than one in a single message):
+"What does success look like from where you sit - your version of what good looks like here, not the job description."
+"What would have to exist for you to know this is working?" This is the most important one - it forces a concrete definition rather than a feeling.
+
+SKIP ANY OF THESE THAT THE ALREADY ESTABLISHED BLOCK ABOVE HAS ANSWERED. Asking a person to
+describe a situation they chose from a list two screens ago is the clearest possible signal that
+nothing they do here is being read.`;
+
 const STARTING_OPENING = `CONVERSATION PATHWAY (cover these across multiple exchanges, one at a time; never ask more than one in a single message; the third is the most important - it forces a concrete definition rather than a feeling):
 "What is starting and who is involved?"
 "What does success look like for you - your version, not the brief."
@@ -2649,9 +2680,17 @@ export function buildScenarioPackForParty(
         return [
           `MOMENT: Something new is starting.`,
           STARTING_VALIDATION,
-          STARTING_OPENING,
+          /*
+           * ORDER IS THE FIX. Who it is speaking to, then the question that establishes who this is
+           * about, then everything else - which is ambiguous until that question is answered. The
+           * pathway used to lead and the role-specific question sat three blocks under it, so the
+           * model opened on "what does success look like for you" and the lead read it as being
+           * about herself. She was right to.
+           */
+          WHO_THE_LEAD_IS,
+          `ROLE-SPECIFIC QUESTIONS - initiator, and the FIRST thing to ask (one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
+          STARTING_OPENING_INITIATOR,
           STARTING_FOLLOWUP,
-          `ROLE-SPECIFIC QUESTIONS - initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
           /**
            * The per-person pass goes LAST in the pathway, deliberately: a lead who has just been made
            * to define what success looks like for the whole thing gives a far sharper answer about

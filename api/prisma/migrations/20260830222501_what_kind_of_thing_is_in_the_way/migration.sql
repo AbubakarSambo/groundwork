@@ -1,0 +1,2 @@
+CREATE TYPE "BlockerKind" AS ENUM ('NOT_BUILT', 'INTEGRATION', 'CONTRACT_CHANGED', 'CANNOT_TEST', 'DECISION', 'SEEN_COMING');
+ALTER TABLE "ground_dependencies" ADD COLUMN "blocker_kind" "BlockerKind";

@@ -18,7 +18,7 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; passwordSetupToken?: string }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
   | { kind: 'noSession' }
   | { kind: 'commitError' }
   | { kind: 'redirect'; to: string }
@@ -39,6 +39,7 @@ export function MagicVerifyPage() {
   const [noSession, setNoSession] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [failedInvites, setFailedInvites] = useState<string[]>([])
+  const [whyInvitesFailed, setWhyInvitesFailed] = useState<{ email: string; because: string }[]>([])
   const [invited, setInvited] = useState<string[]>([])
   const [nextGroundId, setNextGroundId] = useState<string | null>(null)
   // null while we do not know yet; the welcome panel waits rather than flashing.
@@ -65,6 +66,7 @@ export function MagicVerifyPage() {
     if (outcome.kind === 'success') {
       setPasswordSetupToken(outcome.passwordSetupToken ?? null)
       setFailedInvites(outcome.failedInvites)
+      setWhyInvitesFailed(outcome.whyInvitesFailed ?? [])
       setInvited(outcome.invited)
       setJoinUrl(outcome.joinUrl)
       setNextGroundId(outcome.groundId)
@@ -339,9 +341,27 @@ export function MagicVerifyPage() {
           {failedInvites.length > 0 && (
             <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your check-in page:</div>
+              {/*
+                * SAYS WHY, PER PERSON. This read "these addresses were not reached, you can resend
+                * from your check-in page", which is right for a bounced email and wrong for the
+                * commonest cause: the free plan covers five people including you, so an admin who
+                * names five colleagues here loses one. Resending will never fix a seat limit, and
+                * being told to retry something that cannot work is worse than being told the limit.
+                */}
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>
+                {whyInvitesFailed.length > 0
+                  ? 'These did not go out:'
+                  : 'These addresses were not reached. You can resend from your check-in page:'}
+              </div>
               {failedInvites.map(e => (
-                <div key={e} style={{ fontSize: 12, color: '#5A3A00', fontFamily: 'monospace' }}>{e}</div>
+                <div key={e} style={{ fontSize: 12, color: '#5A3A00', marginBottom: 5 }}>
+                  <span style={{ fontFamily: 'monospace' }}>{e}</span>
+                  {whyInvitesFailed.find(w => w.email === e) && (
+                    <div style={{ fontFamily: 'inherit', lineHeight: 1.5, marginTop: 1 }}>
+                      {whyInvitesFailed.find(w => w.email === e)!.because}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
