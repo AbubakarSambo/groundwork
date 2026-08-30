@@ -255,6 +255,59 @@ export class KnowledgeService {
    *
    * Scoped to the organisation, capped by count AND by characters, and logged.
    */
+  /**
+   * WHAT THE COMPANY HAS WRITTEN THAT TOUCHES WHAT SOMEBODY JUST SAID.
+   *
+   * `retrieve` below is for a QUESTION - "how does contracting work?" - and it scores by what
+   * fraction of the query a card covers. That is right for the assistant and exactly wrong here:
+   * a conversational turn is twenty words long, two of them matter, and the fraction collapses.
+   * Measured, not guessed - "the client said yes to the eighty thousand piece of work, so I was
+   * going to send them the contract myself" scored zero against a card titled "How contracting
+   * works", and the single word "contract" found it immediately.
+   *
+   * So this asks the question the other way round: how much of the CARD does what they said touch?
+   * A card called "How contracting works" is relevant to a sentence mentioning contracts however
+   * much else that sentence contains.
+   *
+   * IN MEMORY, AND THAT IS FINE. An organisation has tens of these, not thousands - they are
+   * written by people, one per process - and the cap below is a backstop rather than a page size.
+   * A scoring rule anybody can read beats a second piece of raw SQL nobody will.
+   */
+  async covering(organizationId: string, said: string, limit = 3) {
+    const text = (said ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+    if (text.trim().length < 20) return [];
+
+    const cards = await this.prisma.knowledgeCard.findMany({
+      where: { organizationId, effectiveTo: null },
+      select: { key: true, title: true, body: true },
+      take: 200,
+    });
+    if (!cards.length) return [];
+
+    const scored = cards.map((c) => {
+      /* The card's own words - its title first, because that is what it is about. */
+      const words = c.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+      if (!words.length) return { c, score: 0 };
+
+      /*
+       * Stems, loosely. "Contracting" in a title and "contract" in a sentence are the same subject,
+       * and a check that missed that would fail on the commonest case there is.
+       */
+      const hit = words.filter((w) => text.includes(w) || text.includes(w.slice(0, Math.max(4, w.length - 3))));
+      return { c, score: hit.length / words.length };
+    });
+
+    return scored
+      .filter((s2) => s2.score >= 0.5)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((s2) => ({ key: s2.c.key, title: s2.c.title, body: s2.c.body }));
+  }
+
   async retrieve(organizationId: string, personExternalId: string, query: string) {
     const q = (query ?? '').trim();
     if (q.length < 3) return { cards: [], truncated: false };

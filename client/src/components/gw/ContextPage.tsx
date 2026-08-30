@@ -13,6 +13,7 @@ import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
 import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
 import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
+import { whatIsOutstanding } from './where-a-promise-stands'
 
 /**
  * THE CONTEXT PAGE. ONE OF THEM, FOR EVERYBODY.
@@ -64,10 +65,31 @@ export function ContextPage({
     queryFn: () => documentsApi.list(id),
   })
 
+  /*
+   * A RECORD OF A CONVERSATION IS ASKED ABOUT BEFORE IT IS STORED.
+   *
+   * The server recognises one for itself and refuses it - so this is not the gate, it is the place
+   * the question gets asked in words a person can act on. Somebody who says no keeps their file;
+   * nothing was uploaded and nothing is pending.
+   *
+   * Asked here rather than in a settings page, because the person about to hand over a recording of
+   * somebody else is the only one who can have told them, and this is the only moment they can
+   * still go and ask.
+   */
+  const [askingConsent, setAskingConsent] = useState<File | null>(null)
+
   const uploadDoc = useMutation({
-    mutationFn: (file: File) => documentsApi.upload(id, file),
+    mutationFn: ({ file, consented }: { file: File; consented: boolean }) => documentsApi.upload(id, file, consented),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Upload failed.'),
+    onError: (e: any) => {
+      /*
+       * The server refused because it recognised a conversation and nothing had been confirmed.
+       * Ask, rather than reporting a failure at somebody who did nothing wrong.
+       */
+      const said = e?.response?.data?.message
+      if (typeof said === 'string' && said.includes('record of a conversation')) return
+      toast.error(said || 'Upload failed.')
+    },
   })
 
   const setDocVisibility = useMutation({
@@ -228,6 +250,30 @@ export function ContextPage({
               title={isLead ? 'Person by person' : 'What is expected of you'}
               src={isLead ? 'stated in your check-in, read by everyone' : 'you cannot change this here'}
             />
+            {/*
+              WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
+              
+              The line somebody reads before a conversation. It counts and never characterises -
+              three past their date is a number, and what that means is the report's business.
+              
+              Nothing at all when there is nothing to say, which is where a healthy check-in sits
+              most of the time. A panel that always carries a warning is one people stop reading.
+            */}
+            {(() => {
+              const all = (ground.participants ?? []).flatMap((p: any) => p.objective?.all ?? [])
+              const line = whatIsOutstanding(all, new Date())
+              if (!line || !isLead) return null
+              return (
+                <div style={{
+                  fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)',
+                  border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8,
+                  padding: '9px 12px', marginBottom: 10, lineHeight: 1.55,
+                }}>
+                  {line}
+                </div>
+              )
+            })()}
+
             <ExpectationsPanel
               groundId={id}
               parties={(ground.participants ?? []) as any[]}
@@ -287,6 +333,53 @@ export function ContextPage({
               heading that offers something the band cannot do is how somebody goes looking for a
               control that is not there.
             */}
+            {/*
+              THE QUESTION, IN THE WORDS SOMEBODY NEEDS TO READ.
+              
+              Not a tick-box in settings that was agreed to a year ago. The person about to hand
+              over a recording of somebody else is the only one who can have told them, and this is
+              the only moment they can still go and ask.
+              
+              Saying no keeps their file. Nothing was uploaded and nothing is waiting.
+            */}
+            {askingConsent && (
+              <div style={{
+                border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)',
+                borderRadius: 10, padding: '14px 16px', marginBottom: 12,
+              }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
+                  Other people are in this
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10, maxWidth: 520 }}>
+                  {askingConsent.name} looks like a record of a conversation. Confirm that the people
+                  in it know conversations like this may be used to help your team work better - and
+                  that you told them, rather than us. We cannot ask them ourselves.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => { uploadDoc.mutate({ file: askingConsent, consented: true }); setAskingConsent(null) }}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8, border: 'none', fontFamily: 'inherit',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      background: 'var(--gw-navy)', color: 'white',
+                    }}
+                  >
+                    They know - upload it
+                  </button>
+                  <button
+                    onClick={() => setAskingConsent(null)}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13,
+                      fontWeight: 600, cursor: 'pointer', background: 'white',
+                      color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
+                    }}
+                  >
+                    Not yet
+                  </button>
+                </div>
+              </div>
+            )}
+
             <Sec title="Documents" src="each one says who reads it" />
 
             <div
@@ -327,7 +420,21 @@ export function ContextPage({
                 </div>
               )}
               <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  /*
+                   * ASKED BEFORE IT LEAVES THE DEVICE where the name says what it is. The server
+                   * catches the rest by reading the shape, and that path opens the same question.
+                   */
+                  if (f) {
+                    if (/transcript|recording|call notes|meeting notes|whatsapp|chat|conversation|gemini|minutes/i.test(f.name)) {
+                      setAskingConsent(f)
+                    } else {
+                      uploadDoc.mutate({ file: f, consented: false })
+                    }
+                  }
+                  e.target.value = ''
+                }} />
             </div>
 
             {/*

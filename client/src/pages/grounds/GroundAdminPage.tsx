@@ -29,6 +29,7 @@ import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { ReportBody } from '@/pages/report/ReportPage'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
+import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -1880,6 +1881,15 @@ export function GroundAdminPage() {
             {(allSessionsDone || (plannedSessions != null && sessionsDone >= plannedSessions - 1) || ground.resolutionState) && (
               <ResolutionPanel groundId={ground.id} />
             )}
+
+            {/*
+              HOW THIS HAS MOVED, under the report and not on a page of its own.
+              
+              It is the same report at earlier moments, so somebody looking for it is already here.
+              Below the report and above nothing: you read the current picture first, and the
+              earlier ones are context for it rather than a competing headline.
+            */}
+            <HowThisHasMoved groundId={ground.id} />
           </div>
         )}
 

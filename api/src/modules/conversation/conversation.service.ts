@@ -1,4 +1,5 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
@@ -38,6 +39,12 @@ import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causal
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
+import { whenTheyMeant } from './when-words-mean-a-date';
+import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
+import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
+import { KnowledgeService } from '../knowledge/knowledge.service';
+import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
+import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -207,6 +214,16 @@ export class ConversationService {
     private email: EmailService,
     private usage: UsageService,
     private config: ConfigService,
+    /*
+     * THE ORGANISATION'S OWN WRITTEN PROCESS, for the one question that shows understanding rather
+     * than asking about it.
+     *
+     * Last, and optional to TypeScript. Nest injects it - the provider is registered - and the two
+     * dozen specs that build this service positionally keep compiling without a stub they would
+     * never use. Every call site treats it as absent, which is also what happens in an
+     * organisation that has written nothing down.
+     */
+    private knowledge?: KnowledgeService,
   ) {}
 
   /** Best-effort, and never the reason a refusal fails to reach the person refused. */
@@ -656,6 +673,7 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
+    await this.noteIfTheySaidWhy(checkIn as any, message);
 
     // Rebuild history (this party only) and ask the engine for the next turn.
     // ISSUE 5: if the AI call fails, delete the orphan PERSON turn then re-throw.
@@ -833,6 +851,7 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
+    await this.noteIfTheySaidWhy(checkIn as any, message);
 
     let raw = '';
     try {
@@ -960,6 +979,32 @@ export class ConversationService {
    *   per-turn dynamic context (Agent 1 intake, trust calibration, Agent 3
    *   cross-reference). The dynamic context only runs when a message is present.
    */
+
+  /**
+   * TWO REASONS ONLY THE PERSON CAN GIVE, DECIDED HERE AND NOWHERE ELSE.
+   *
+   * Not knowing how and putting a thing off need opposite responses - one is shown, the other is
+   * talked about - and both used to land in "the agreed thing is not being done", which reads as
+   * neither. They are caught in the person's own check-in because this is the one place their words
+   * legitimately are: a shared report may not touch a transcript at all, so what leaves this module
+   * is SKILL or CONFIDENCE and never the sentence.
+   *
+   * ONE HELPER, TWO CALLERS. Both turn-persisting paths need it, and a second copy is how one of
+   * them keeps classifying after somebody narrows the other.
+   *
+   * NEVER OVERWRITTEN ONCE SET, and never allowed to break a check-in: somebody who says on Monday
+   * that they have never done one has said it, whatever Tuesday is about, and a failure to record
+   * why beats losing the turn that said it.
+   */
+  private async noteIfTheySaidWhy(checkIn: { id: string; saidWhy?: string | null }, message: string) {
+    if (checkIn.saidWhy) return;
+    const said = whatTheySaidAboutWhy([message]);
+    if (!said) return;
+    await this.prisma.checkIn
+      .update({ where: { id: checkIn.id }, data: { saidWhy: said.kind } })
+      .catch((err: any) => this.logger?.warn?.(`Recording why for check-in ${checkIn.id} failed: ${err?.message}`));
+  }
+
   private async composeSystemPrompt(
     checkIn: {
       id: string;
@@ -1132,6 +1177,25 @@ export class ConversationService {
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const personObjective = personObjectives[0] ?? null;
 
+    /*
+     * WHO IS WAITING, BY NAME. A commitment's whole point is the person on the other end of it, and
+     * "somebody is waiting on this" is a weaker sentence than "Hafsah is waiting on this".
+     *
+     * Only names for people on this check-in, which is the only place `owedToParticipantId` can
+     * point - so this cannot introduce a name from anywhere else.
+     */
+    const nameByParticipantId = new Map<string, string>();
+    if (personObjectives.some((o: any) => o.owedToParticipantId)) {
+      const owed = await this.prisma.groundParticipant.findMany({
+        where: { groundId: checkIn.groundId },
+        select: { id: true, user: { select: { firstName: true } }, roleAsDescribed: true },
+      }).catch(() => [] as any[]);
+      for (const p of owed) {
+        const name = p.user?.firstName?.trim() || p.roleAsDescribed?.trim();
+        if (name) nameByParticipantId.set(p.id, name);
+      }
+    }
+
     const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
     const packParty = checkIn.participant.partyType.toLowerCase();
     const scenarioPackOverride =
@@ -1236,6 +1300,12 @@ export class ConversationService {
         seenBySubject: o.seenBySubject,
         authoredByThem: o.authoredBy === 'self',
         fromTheirSystem: !!o.sourceSystem,
+        /* Loaded from the row all along and dropped here. See `describeObjective`. */
+        kind: o.kind ?? null,
+        dueSaid: o.dueSaid ?? null,
+        dueDate: o.dueDate ?? null,
+        owedToName: o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null,
+        status: o.status ?? null,
       })),
       personObjective: personObjective
         ? {
@@ -1408,6 +1478,76 @@ export class ConversationService {
       }),
     ]);
 
+    /*
+     * WHAT THIS COMPANY SAYS ITS OWN PROCESS IS.
+     *
+     * Looked up from what they just said, which is the only honest query available - it is what the
+     * conversation is about right now. Nothing comes back for a short answer, for an organisation
+     * that has written nothing down, or when this service is not wired, and all three are ordinary.
+     *
+     * Best-effort throughout. A check-in must never fail because a handbook lookup did.
+     */
+    /*
+     * WHAT THEIR OWN SYSTEMS RECORDED THIS PERIOD.
+     *
+     * Matched by the directory id their organisation already uses - the same identifier SCIM
+     * pushes and the machine API sends - via the email their account and their `Person` row share.
+     * Nothing is recorded against somebody who is not in the directory, which is the safe
+     * direction: an unmatched record is invisible rather than attached to the wrong person.
+     *
+     * Best-effort and silent when nothing is connected, which is most organisations and every
+     * check-in this product has run until now.
+     */
+    const theirRecords = await (async () => {
+      const email = checkIn.participant.userId
+        ? (await this.prisma.user.findUnique({ where: { id: checkIn.participant.userId }, select: { email: true } }))?.email
+        : null;
+      if (!email) return [] as any[];
+      const person = await this.prisma.person.findFirst({
+        where: { organizationId: ground.organizationId, email },
+        select: { externalId: true },
+      });
+      if (!person) return [] as any[];
+
+      /* This period only. A quarter of somebody's activity is not context, it is an archive. */
+      const since = new Date(Date.now() - 45 * 86_400_000);
+      const rows = await this.prisma.interaction.findMany({
+        where: { organizationId: ground.organizationId, personExternalId: person.externalId, happenedAt: { gte: since } },
+        orderBy: { happenedAt: 'desc' },
+        take: 40,
+      });
+      if (!rows.length) return [] as any[];
+
+      /* Counterparty ids resolved to the names their own system gave them. */
+      const ids = [...new Set(rows.map((r) => r.counterpartyExternalId).filter(Boolean))] as string[];
+      const named = ids.length
+        ? await this.prisma.subject.findMany({
+          where: { organizationId: ground.organizationId, externalId: { in: ids }, type: 'COUNTERPARTY' as any },
+          select: { externalId: true, title: true },
+        })
+        : [];
+      const titleById = new Map(named.map((n) => [n.externalId, n.title]));
+
+      return rows.map((r) => ({
+        kind: r.kind as any,
+        strength: r.strength as any,
+        happenedAt: r.happenedAt,
+        note: r.note,
+        counterparty: r.counterpartyExternalId ? (titleById.get(r.counterpartyExternalId) ?? null) : null,
+        sourceSystem: r.sourceSystem,
+        disputed: !!r.disputedAt,
+      }));
+    })().catch(() => [] as any[]);
+    const theirWeek = whatTheirWeekLooksLike(theirRecords as any, new Date());
+
+    const lookUp = whatToLookUp(latestMessage);
+    const companyCards = lookUp && this.knowledge
+      ? await this.knowledge
+          .covering(ground.organizationId, lookUp)
+          .catch(() => [])
+      : [];
+    const howWeDoIt = howThisCompanyDoesIt(companyCards);
+
     const docContext = uploadedDocs.length
       ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
@@ -1552,16 +1692,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
-  /** The flag, read where it is used and failing to OFF. Same shape as the others. */
+  /**
+   * COACHING IS ON. THE FLAG IS GONE.
+   *
+   * It was built behind `app.coachingEnabled`, off in every environment, and it stayed off long
+   * enough that the best-designed thing in the check-in had never run for anybody: one step at a
+   * time, remembered across sessions, shrunk when somebody has not managed it twice.
+   *
+   * A flag that is never turned on is not caution, it is a feature nobody has to decide about. This
+   * is the decision - Hafsah's, and made once rather than per environment.
+   *
+   * NOTHING ELSE ABOUT IT CHANGED. It still adds nothing at all when there is no step to raise,
+   * which is most sessions: a coach that always has something to say is a product that always has
+   * something to say about you.
+   */
   private coachingEnabled(): boolean {
-    try {
-      return this.config?.get<boolean>('app.coachingEnabled') === true;
-    } catch {
-      return false;
-    }
+    return true;
   }
 
   /**
@@ -1722,13 +1871,54 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ? `\n\nWHAT THE PERSON RUNNING THIS GROUND HAS SAID MATTERS (most recent first). Use this ONLY to decide which behaviour above to look at first. It is not evidence, it is never the reason, and if the transcript does not show the behaviour then the answer is still none:\n${leadNotes.map((n) => `- ${n.text}`).join('\n')}`
       : '';
 
+    /*
+     * WHAT HAS ALREADY BEEN SEEN ABOUT THIS PERSON, ACROSS SESSIONS.
+     *
+     * The behavioural engine has held these all along - a code, a plain-language observation, and a
+     * count of consecutive periods before anything surfaces - and the coach could not see any of
+     * it. So the coach met somebody fresh every session while the product had been watching a
+     * pattern build for three.
+     *
+     * SURFACED ONLY. A candidate is one or two periods of something that may be nothing, and
+     * coaching somebody on it would be reading a fortnight as a trait. Three consecutive periods
+     * is the bar the engine already sets and this does not lower it.
+     *
+     * IT STEERS WHICH BEHAVIOUR TO LOOK AT, NEVER WHAT THE ANSWER IS. If the transcript does not
+     * show it, the answer is still none - the same rule the lead's steer above already carries, and
+     * for the same reason: a pattern is a place to look, not a finding to confirm.
+     */
+    const surfaced = await (this.prisma.patternDetection?.findMany({
+      where: { participantId, status: 'SURFACED' as any },
+      select: { observationText: true, periodsObserved: true },
+      orderBy: { lastSeenAt: 'desc' },
+      take: 3,
+      /*
+       * Optional chaining AND a catch, the same shape as the lead's steer above and for the reason
+       * written there: `.catch()` alone does nothing when the accessor itself is missing - that is
+       * a synchronous TypeError, not a rejected promise. A steer must never be the reason nobody
+       * gets coached.
+       */
+    }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
+      .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
+
+    const alreadySeen = surfaced.filter((p2) => p2.observationText?.trim()).length
+      ? '\n\nWHAT HAS ALREADY BEEN SEEN ACROSS SESSIONS. Use this ONLY to decide which behaviour '
+        + 'above to look at first. It is not evidence about this session, it is never the reason, and '
+        + 'if this transcript does not show it then the answer is still none. Never repeat it back to '
+        + 'them as a description of who they are:\n'
+        + surfaced
+          .filter((p2) => p2.observationText?.trim())
+          .map((p2) => `- ${p2.observationText!.trim()} (seen across ${p2.periodsObserved} periods)`)
+          .join('\n')
+      : '';
+
     const observed = await this.anthropic.extract<{
       index: number | null;
       reason: string | null;
       lastStepOutcome: string | null;
     }>(
       COACHING_OBSERVATION_PROMPT,
-      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}\n\nTRANSCRIPT:\n${transcript}` }],
+      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
       COACHING_OBSERVATION_SCHEMA as any,
     );
 
@@ -2159,6 +2349,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * GW-EXP-7. Fire-and-forget beside the others: an objection somebody raised must never be the
      * reason their session fails to complete. Returns immediately when nothing is expected of them.
      */
+    this.extractWhatTheySayHappened(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Their-own-account extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    this.extractProgress(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Progress extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
+    this.extractOperatingDifferences(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Operating-difference extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     this.extractObjection(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Objection read failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -2619,6 +2821,345 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * UPSERT, NOT CREATE. A later session where the lead restates an expectation replaces it, because
    * the current expectation is the one that counts. The transcript keeps the history.
    */
+  /**
+   * WRITE DOWN WHAT THIS PERSON SAID THEY WOULD DO.
+   *
+   * The other half of expectations, and the half that was missing. A lead's session records what
+   * they expect OF people; this records what somebody promised about their OWN work, so the next
+   * check-in can return to it by name and by date instead of asking how things are going.
+   *
+   * `authoredBy: 'self'` is what tells the interview these are theirs. `describeObjective` already
+   * renders a self-authored expectation differently from one handed down, and has since before
+   * anything could produce one.
+   *
+   * `seenBySubject: true`, and only here. That field exists to stop somebody being read against an
+   * expectation they have never laid eyes on - a real risk for something a lead wrote about them,
+   * and a nonsense for a sentence they said themselves ten minutes ago.
+   */
+  /**
+   * WHERE THEIR ACCOUNT OF A PROCESS AND THE WRITTEN ONE DIFFER.
+   *
+   * The durable half of asking somebody to walk you through something. Without it the walk-through
+   * happens, the difference is noticed in the moment, and it is gone - buried in a transcript that
+   * the next check-in reads six entries of.
+   *
+   * ONLY WHERE THE COMPANY HAS WRITTEN IT DOWN. No cards, no differences, no entries, and that is
+   * most organisations. This never invents a process to measure somebody against.
+   *
+   * `dimensionThreadKey` is the card's own key, which is what that column was built for and what
+   * nothing has ever written to it: it groups the same theme across sessions, so "contracting" at
+   * day 14 and "contracting" at day 60 are the same thread rather than two unrelated notes.
+   */
+  async extractOperatingDifferences(checkInId: string, participantId: string, groundId: string) {
+    if (!this.knowledge) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const said = turns.map((t) => t.content).join('\n').trim();
+    if (said.length < 200) return; /* Too little was said for any of this to mean anything. */
+
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true },
+    });
+    if (!ground) return;
+
+    const cards = await this.knowledge
+      .covering(ground.organizationId, said.slice(0, 4_000))
+      .catch(() => [] as any[]);
+    if (!cards.length) return;
+
+    const written = cards.map((c: any) => `--- ${c.title} (key: ${c.key}) ---\n${c.body}`).join('\n\n');
+    const result = await this.anthropic.extract<{
+      differences: { about: string; theirAccount: string; whatIsWritten: string; neverTold?: boolean }[];
+    }>(
+      OPERATING_DIFFERENCE_PROMPT,
+      [{ role: 'user', content: `WHAT IS WRITTEN:\n${written}\n\nWHAT THEY SAID:\n${said}` }],
+      OPERATING_DIFFERENCE_SCHEMA as any,
+    ).catch(() => null);
+    if (!result?.differences?.length) return;
+
+    for (const d of result.differences) {
+      const about = (d.about ?? '').trim();
+      const theirs = (d.theirAccount ?? '').trim();
+      const written = (d.whatIsWritten ?? '').trim();
+      if (!about || !theirs || !written) continue;
+
+      /*
+       * BOTH SIDES IN ONE SENTENCE, always. An entry saying only what they said would read as a
+       * quote; one saying only what is written would read as a correction. The difference is the
+       * thing, and it is only visible with both halves of it present.
+       */
+      const told = d.neverTold
+        ? ' They said nobody had told them this, so it is worth checking who should have.'
+        : '';
+      const text = `On ${about}, they described: ${theirs}. What is written here: ${written}. `
+        + `Which is right is worth settling - the written one may be out of date.${told}`;
+
+      /* The card's key groups this theme across sessions. */
+      const key = cards.find((c: any) => about.toLowerCase().includes(String(c.key).toLowerCase()))?.key
+        ?? cards[0]?.key ?? null;
+
+      await this.prisma.recordEntry.create({
+        data: {
+          participantId,
+          checkInId,
+          type: 'OPERATING_DIFFERENCE' as any,
+          text,
+          recallBased: true,
+          dimensionThreadKey: key,
+        },
+      }).catch(() => undefined);
+    }
+  }
+
+  /**
+   * WHAT THEY SAID THEY HAD DONE, WRITTEN AGAINST THE PROMISE IT IS ABOUT.
+   *
+   * The record could hold a promise and a date and had no way to hear the answer: progress existed
+   * only if somebody typed it into a form. So a person could describe two proposals at length and
+   * the record would still say nothing had been done.
+   *
+   * That is not just a missing feature. The report's reading that "the agreed thing is not being
+   * done" rests on nothing being recorded as done - so an empty progress list turned every passed
+   * date into that reading, for somebody who had been getting on with it and saying so.
+   *
+   * IT REUSES `Delivery`, which has always been the record of what somebody delivered against an
+   * expectation. It only ever had a form behind it and never a conversation.
+   *
+   * FINISHED IS A HIGH BAR. Marking a promise complete when they only said they had started is
+   * worse than marking nothing: they lose the credit for what is genuinely still outstanding, and
+   * the record stops matching what they said.
+   */
+  /**
+   * WHAT THEY SAY HAPPENED WITH A CUSTOMER, RECORDED AS THEIR OWN ACCOUNT.
+   *
+   * The other half of taking in evidence, and the half that keeps it honest. External records fail
+   * in ordinary ways - a call from a phone nothing is connected to, an app that did not sync, a
+   * shop logged twice - and in every one of those the record is silent while the work happened.
+   *
+   * Their account is written at `SELF_REPORTED`, which the report already knows how to describe
+   * without doubting it or dressing it up as corroboration. Nothing is overwritten in either
+   * direction: a discrepancy preserved is worth more than a certainty invented.
+   *
+   * ONLY THEIR OWN WORK, and only where the organisation already takes in evidence. In an
+   * organisation that connects nothing, a check-in should not quietly start building an activity
+   * log about somebody out of what they said in confidence.
+   */
+  async extractWhatTheySayHappened(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true },
+    });
+    if (!ground) return;
+
+    /*
+     * The organisation has to be taking in evidence already. Without this, a private check-in in a
+     * company that connected nothing would start producing a record of somebody's movements, which
+     * is not what anybody agreed to when they answered the questions.
+     */
+    const takesEvidence = await this.prisma.interaction.count({
+      where: { organizationId: ground.organizationId },
+      take: 1,
+    });
+    if (!takesEvidence) return;
+
+    const me = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { user: { select: { email: true } } },
+    });
+    const person = me?.user?.email
+      ? await this.prisma.person.findFirst({
+        where: { organizationId: ground.organizationId, email: me.user.email },
+        select: { externalId: true },
+      })
+      : null;
+    /* Nobody in the directory, nobody to attribute it to. Never guessed. */
+    if (!person) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const said = turns.map((t) => t.content).join('\n').trim();
+    if (said.length < 80) return;
+
+    const result = await this.anthropic.extract<{ happened: TheySay[] }>(
+      THEY_SAY_HAPPENED_PROMPT,
+      [{ role: 'user', content: said }],
+      THEY_SAY_HAPPENED_SCHEMA as any,
+    ).catch(() => null);
+    if (!result?.happened?.length) return;
+
+    /* Counterparties this organisation already knows, matched by the name their system gave them. */
+    const known = await this.prisma.subject.findMany({
+      where: { organizationId: ground.organizationId, type: 'COUNTERPARTY' as any, sourceDeletedAt: null },
+      select: { externalId: true, title: true },
+    });
+
+    for (const item of result.happened) {
+      if (!worthRecording(item)) continue;
+
+      const named = (item.counterparty ?? '').trim().toLowerCase();
+      const hit = known.find((k) => k.title.trim().toLowerCase() === named)
+        ?? known.find((k) => named.length > 4 && k.title.toLowerCase().includes(named));
+
+      await this.prisma.interaction.create({
+        data: {
+          organizationId: ground.organizationId,
+          personExternalId: person.externalId,
+          /* Unmatched stays null rather than guessing - a visit filed against the wrong shop is
+             worse than one filed against none. Their words survive in the note either way. */
+          counterpartyExternalId: hit?.externalId ?? null,
+          kind: (item.kind ?? '').toUpperCase() as any,
+          strength: 'SELF_REPORTED' as any,
+          /*
+           * The date their words meant, and today when they carry none. Unlike a promise, a thing
+           * that already happened has to sit somewhere on a calendar to be read beside the records,
+           * and "this check-in" is the honest place for it.
+           */
+          happenedAt: whenTheyMeant(item.when ?? null, new Date()) ?? new Date(),
+          note: [item.note?.trim(), hit ? null : (item.counterparty?.trim() ? `They said: ${item.counterparty.trim()}` : null)]
+            .filter(Boolean).join(' ').slice(0, 500) || null,
+          sourceSystem: 'their own account',
+          externalId: null,
+        },
+      }).catch(() => undefined);
+    }
+  }
+
+  async extractProgress(checkInId: string, participantId: string, groundId: string) {
+    const mine = await this.prisma.personObjective.findMany({
+      where: { groundId, participantId, status: 'OPEN' },
+      select: { id: true, text: true },
+    });
+    if (!mine.length) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const said = turns.map((t) => t.content).join('\n').trim();
+    if (said.length < 80) return;
+
+    const result = await this.anthropic.extract<{
+      progress: { promise: string; whatTheyDid: string; finished?: boolean }[];
+    }>(
+      PROGRESS_PROMPT,
+      [{ role: 'user', content: `THEIR PROMISES:\n${mine.map((m) => `- ${m.text}`).join('\n')}\n\nTHEIR CHECK-IN:\n${said}` }],
+      PROGRESS_SCHEMA as any,
+    ).catch(() => null);
+    if (!result?.progress?.length) return;
+
+    for (const p of result.progress) {
+      const did = (p.whatTheyDid ?? '').trim();
+      if (!did) continue;
+
+      /*
+       * Matched on the promise's own words, and dropped when it matches none. A piece of progress
+       * filed against the wrong promise is worse than one filed against nothing: it marks the
+       * wrong thing as moving, and quietly leaves the real one looking untouched.
+       */
+      const wanted = (p.promise ?? '').trim().toLowerCase();
+      const hit = mine.find((m) => m.text.trim().toLowerCase() === wanted)
+        ?? mine.find((m) => wanted.length > 12 && m.text.toLowerCase().includes(wanted))
+        ?? null;
+      if (!hit) continue;
+
+      await this.prisma.delivery.create({
+        data: { groundId, participantId, objectiveId: hit.id, text: did, carriedIntoCheckInId: checkInId },
+      }).catch(() => undefined);
+
+      if (p.finished === true) {
+        await this.prisma.personObjective.update({
+          where: { id: hit.id },
+          data: { status: 'MET', statusChangedAt: new Date() },
+        }).catch(() => undefined);
+      }
+    }
+  }
+
+  private async writeTheirOwnPromises(
+    participantId: string,
+    groundId: string,
+    transcript: string,
+    saidOn: Date,
+    participants: { id: string; managingOnly: boolean; email: string | null; roleAsDescribed: string | null; user: { firstName: string | null; lastName: string | null } | null }[],
+  ) {
+    const result = await this.anthropic.extract<{
+      promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
+    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA as any);
+    if (!result?.promises?.length) return;
+
+    /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */
+    const others = participants.filter((p) => p.id !== participantId && !p.managingOnly);
+    const resolve = (name: string): string | null => {
+      const n = (name ?? '').trim().toLowerCase();
+      if (!n) return null;
+      const hit = others.find((p) => {
+        const first = (p.user?.firstName ?? '').toLowerCase();
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
+        const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
+        const role = (p.roleAsDescribed ?? '').toLowerCase();
+        return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n) || (!!role && role === n);
+      });
+      return hit?.id ?? null;
+    };
+
+    const KINDS = ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'];
+    const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
+    const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
+
+    for (const p of result.promises) {
+      const text = (p.promise ?? '').trim();
+      if (!text) continue;
+      const kind = KINDS.includes(p.kind ?? '') ? (p.kind as any) : 'TODO';
+      const check = CHECKS.includes(p.check ?? '') ? (p.check as any) : 'NOT_CHECKABLE';
+      const dueKind = DUES.includes(p.dueKind ?? '') ? (p.dueKind as any) : 'NOT_SAID';
+      const dueSaid = (p.dueSaid ?? '').trim() || null;
+      /* A commitment with nobody waiting is a to-do, whatever the model called it. */
+      const owedTo = kind === 'COMMITMENT' ? resolve(p.owedTo ?? '') : null;
+
+      /* Only where they stated a number. A promise nobody counted does not become one here. */
+      const target = (p.target ?? '').trim() || null;
+      const measure = (p.measure ?? '').trim() || null;
+
+      const data = {
+        text,
+        target: target && measure ? target : null,
+        measure: target && measure ? measure : null,
+        authoredBy: 'self',
+        kind: (kind === 'COMMITMENT' && !owedTo ? 'TODO' : kind) as any,
+        check,
+        dueKind,
+        dueSaid,
+        dueDate: whenTheyMeant(dueSaid, saidOn),
+        owedToParticipantId: owedTo,
+        seenBySubject: true,
+      };
+
+      /*
+       * One row per kind, which is the constraint this table already holds. Restating the same
+       * kind is a REVISION - "make that four proposals, not three" - and updates in place, so a
+       * record does not fill up with every version of the same promise.
+       */
+      const prior = await this.prisma.personObjective.findFirst({
+        where: { groundId, participantId, kind: data.kind, externalId: '' },
+        select: { id: true },
+      });
+      if (prior) {
+        await this.prisma.personObjective.update({ where: { id: prior.id }, data });
+      } else {
+        await this.prisma.personObjective.create({ data: { ...data, groundId, participantId } });
+      }
+    }
+  }
+
   async extractExpectations(checkInId: string, participantId: string, groundId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2638,7 +3179,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (!ground) return;
 
     const me = ground.participants.find((p) => p.id === participantId);
-    if (me?.partyType !== PartyType.INITIATOR) return;
+    if (!me) return;
+
+    /*
+     * EVERYBODY'S PROMISES, NOT ONLY THE LEAD'S.
+     *
+     * This returned here unless the speaker was the INITIATOR, so only the person leading a
+     * check-in produced structured expectations. Everybody else's promises - the new hire's "three
+     * proposals by the 30th", the exact thing the next check-in most needs to return to - were
+     * written to `RecordEntry` as text and never became anything a question could be built from.
+     *
+     * `authoredBy` already carried the distinction and nothing was using it: 'lead' for an
+     * expectation somebody sets for another person, 'self' for one you take on yourself. The
+     * interview renders the two differently and has since before this line changed.
+     *
+     * The rules underneath are unchanged and still do the work that matters: an expectation is
+     * only ever written against a real named person on this check-in, and never against a team,
+     * a customer or an organisation.
+     */
+    const authoredBy = me.partyType === PartyType.INITIATOR ? 'lead' : 'self';
+
+    /* The day this was said, which every relative deadline is read against. */
+    const saidOn = new Date();
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2648,6 +3210,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');
+
+    /*
+     * A PARTICIPANT'S OWN PROMISES GO DOWN A DIFFERENT PROMPT.
+     *
+     * `EXPECTATION_PROMPT` reads a lead's session and its rules forbid the speaker writing anything
+     * about themselves, which is correct for what it does. Pointing it at a participant would have
+     * captured what the new hire expects of the CEO - the opposite of what is needed. So their own
+     * promises have their own prompt, their own schema, and one target: themselves.
+     */
+    if (me.partyType !== PartyType.INITIATOR) {
+      await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+      return;
+    }
 
     const result = await this.anthropic.extract<{
       groundAims: string[];
@@ -2755,9 +3330,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       const textChanged = !!prior && prior.text.trim() !== text;
 
+      /*
+       * THE DATE THOSE WORDS MEAN, WHERE THEY MEAN ONE.
+       *
+       * Read from `dueSaid` by a rule that refuses more than it accepts - see
+       * `when-words-mean-a-date.ts`. Resolved against the day this was SAID rather than now, so
+       * a re-run cannot move somebody's deadline.
+       *
+       * Null is the common case and stays comfortable: "soon" and "once procurement clears" are
+       * real answers, and the interview asks about them rather than this guessing.
+       */
+      const dueDate = whenTheyMeant(dueSaid, saidOn);
+
+      const eTarget = ((e as any).target ?? '').trim() || null;
+      const eMeasure = ((e as any).measure ?? '').trim() || null;
+
       const shared = {
         text,
-        authoredBy: 'lead',
+        dueDate,
+        /* Both or neither: a number with nothing named is not a target anybody can check. */
+        target: eTarget && eMeasure ? eTarget : null,
+        measure: eTarget && eMeasure ? eMeasure : null,
+        authoredBy: authoredBy as string,
         awareness,
         awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
         kind,

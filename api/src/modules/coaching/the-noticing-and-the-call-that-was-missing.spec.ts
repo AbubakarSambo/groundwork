@@ -205,11 +205,19 @@ describe('what the session showed', () => {
     expect(upserts[0].update.history[0].outcome).toBeNull();
   });
 
-  it('does nothing at all with the flag off', async () => {
-    const { service, prisma, anthropic } = makeService({ enabled: false });
+  /*
+   * THIS ASSERTED THAT THE FLAG TURNED IT OFF. The flag is gone - it was off in every environment
+   * for long enough that the coach had never run for anybody, which is a decision nobody was
+   * making rather than caution.
+   *
+   * What is worth proving now is the thing the flag was standing in for: the coach reads the
+   * session before it says anything, so it can be silent when there is nothing to say.
+   */
+  it('reads the session before it decides anything', async () => {
+    const { service, prisma, anthropic } = makeService({ enabled: true });
     await observe(service);
-    expect(prisma.groundParticipant.findUnique).not.toHaveBeenCalled();
-    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(prisma.groundParticipant.findUnique).toHaveBeenCalled();
+    expect(anthropic.extract).toHaveBeenCalled();
   });
 });
 

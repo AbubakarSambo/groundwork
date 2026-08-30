@@ -4,6 +4,7 @@ import { groundsApi } from '@/api/grounds'
 import { personLabel } from '@/lib/utils'
 import { scrollToId } from '@/lib/scroll-to'
 import { toast } from 'sonner'
+import { whereItStands } from './where-a-promise-stands'
 
 /**
  * WHAT THIS CHECK-IN EXPECTS OF EACH PERSON, IN PLAIN VIEW. GW-EXP-2.
@@ -56,6 +57,10 @@ type Objective = {
   check?: string | null
   dueKind?: string | null
   dueSaid?: string | null
+  /** Their words read as a date, where they carried one. Null is the common case. */
+  dueDate?: string | null
+  /** OPEN, MET, DROPPED, CHANGED. */
+  status?: string | null
   authoredBy: 'lead' | 'self' | null
   seenBySubject: boolean
   awareness: 'TOLD' | 'NOT_TOLD' | 'UNSURE' | 'NOT_ASKED' | null
@@ -418,6 +423,30 @@ export function ExpectationsPanel({
                 press on this at all. Shown even when the answer is "nothing checkable yet" - that is
                 the state the interview exists to fix, and hiding it is how it stays unfixed.
               */}
+              {/*
+                WHERE THIS STANDS, which the page could not say at all.
+                
+                It listed what was agreed and nothing about whether any of it had happened, so it
+                read as a list of sentences rather than a record somebody returns to. This reads
+                only what was written down - a date somebody named, a status somebody set.
+                
+                It is deliberately not a judgement. "Past its date" is a fact about a calendar;
+                whether it MEANS anything is the report's business, where a blocker can outrank a
+                date and where the four explanations live.
+              */}
+              {(() => {
+                const stand = whereItStands(o, new Date())
+                if (!stand.says) return null
+                const colour = stand.tone === 'late' ? 'var(--gw-amber-t)'
+                  : stand.tone === 'done' ? 'var(--gw-green-t)'
+                  : 'var(--gw-muted)'
+                return (
+                  <div style={{ fontSize: 11.5, fontWeight: stand.tone === 'late' ? 600 : 500, color: colour, marginTop: 3 }}>
+                    {stand.says}
+                  </div>
+                )
+              })()}
+
               {(o.check || o.dueSaid || o.dueKind === 'STANDING') && (
                 <div style={{ fontSize: 11.5, color: o.check === 'NOT_CHECKABLE' ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   {o.check && <span>how we&rsquo;d know: {CHECK_WORD[o.check] ?? o.check}</span>}

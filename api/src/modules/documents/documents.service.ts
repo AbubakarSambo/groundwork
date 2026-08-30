@@ -11,6 +11,7 @@ import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
+import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -185,7 +186,18 @@ export class DocumentsService {
     }
   }
 
-  async upload(groundId: string, userId: string, file: Express.Multer.File) {
+  async upload(
+    groundId: string,
+    userId: string,
+    file: Express.Multer.File,
+    /*
+     * WHETHER THEY CONFIRMED THE PEOPLE IN IT KNOW.
+     *
+     * Only ever read for something that looks like a record of a conversation. For a workplan or a
+     * job description it is not asked and not stored, because there is nobody else in those.
+     */
+    consentConfirmed = false,
+  ) {
     if (!file) throw new BadRequestException('No file provided');
     if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
     if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype)) {
@@ -194,12 +206,28 @@ export class DocumentsService {
 
     const participant = await this.assertParticipant(groundId, userId);
     const content = await this.extractContent(file);
+    /*
+     * A RECORD OF A CONVERSATION IS REFUSED UNTIL SOMEBODY CONFIRMS THE PEOPLE IN IT KNOW.
+     *
+     * Refused rather than kept pending: a transcript sitting in a database waiting for permission
+     * is exactly the thing this is meant to prevent. The content is read to recognise the shape and
+     * then dropped with the request - nothing is written.
+     *
+     * The check errs towards asking. Being asked about a strategy deck costs one click; a
+     * transcript slipping through as an ordinary document costs somebody else their privacy.
+     */
+    const isConversation = looksLikeAConversation(file.originalname, content);
+    if (isConversation && !consentConfirmed) throw new BadRequestException(NOT_CONFIRMED);
+
     const assessment = await this.assessDocument(content, file.originalname);
 
     const doc = await this.prisma.groundDocument.create({
       data: {
         groundId,
         participantId: participant.id,
+        isConversation,
+        /* Who said it, and when they said it. Null on anything that is not a conversation. */
+        ...(isConversation ? { consentConfirmedAt: new Date(), consentConfirmedById: userId } : {}),
         // G24 rule 3: private unless somebody says otherwise. See
         // a-document-is-context.ts for why the lead is not an exception.
         visibility: defaultVisibilityForUpload(),

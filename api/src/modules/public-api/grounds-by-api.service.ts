@@ -589,10 +589,17 @@ export class GroundsByApiService {
       || personExternalId;
     const key = person.email?.toLowerCase() ?? null;
 
+    const unseenObjectives = new Set<string>();
+
     const [commitments, findings, contributions] = await Promise.all([
       this.prisma.commitment.findMany({
         where: { organizationId, personExternalId, state: { in: ['OPEN', 'SLIPPED'] as any } },
-        select: { text: true, state: true, dueAt: true, statedAt: true },
+        select: {
+          text: true, state: true, dueAt: true, statedAt: true,
+          /* The bridge to how the ordinary cycle has gone on this promise: the objective it was
+             mirrored from names the participant, and the participant carries the coaching. */
+          sourcePersonObjectiveId: true,
+        },
       }),
       this.prisma.detectorResult.findMany({
         where: { organizationId, personExternalId, resolvedAt: null },
@@ -637,7 +644,78 @@ export class GroundsByApiService {
       })
       : 0;
 
+    /*
+     * HAS THE ORDINARY CYCLE BEEN TRIED AND FAILED TO MOVE THIS?
+     *
+     * Every input already existed and nothing asked the question, so a person could be coached
+     * three times about the same thing and the fourth check-in would still open as though it were
+     * the first. That is the failure the whole staircase was built to avoid, and it was happening
+     * one level up from where anybody was looking.
+     *
+     * TWO OF THESE ARE WIDER THAN THE PROMISE THEY ARE READ AGAINST, and both widen the way that
+     * says LESS:
+     *   blockers is anything they are recorded as waiting on, not just on this promise - so a
+     *     person blocked anywhere is not escalated about anything, which is the safe error;
+     *   stepsManaged counts anything they managed in that conversation - so somebody who is moving
+     *     is not escalated about the one thing that has not.
+     * The one input that would over-escalate if widened - whether coaching was offered at all - is
+     * scoped to the participant this promise came from, so a step given in a different check-in
+     * about a different thing never reads as "the cycle was tried here".
+     */
+    const fromObjectives = commitments.map((c) => c.sourcePersonObjectiveId).filter((x): x is string => !!x);
+    const coachingByObjective = new Map<string, { offered: number; managed: number }>();
+    if (fromObjectives.length) {
+      const objectives = await this.prisma.personObjective.findMany({
+        where: { id: { in: fromObjectives } },
+        select: { id: true, seenBySubject: true, participantId: true },
+      });
+      const states = objectives.length
+        ? await this.prisma.coachingState.findMany({
+          where: { participantId: { in: objectives.map((o) => o.participantId).filter(Boolean) as string[] } },
+          select: { participantId: true, currentStep: true, history: true },
+        })
+        : [];
+      const byParticipant = new Map(states.map((st) => [st.participantId, st]));
+      for (const o of objectives) {
+        const st = o.participantId ? byParticipant.get(o.participantId) : undefined;
+        const history = Array.isArray(st?.history) ? (st!.history as any[]) : [];
+        coachingByObjective.set(o.id, {
+          offered: history.length + (st?.currentStep ? 1 : 0),
+          /* Anything other than "did not" counts as movement. Slower than hoped is not stuck. */
+          managed: history.filter((h) => h && typeof h === 'object' && h.outcome && h.outcome !== 'not_done').length,
+        });
+      }
+      for (const o of objectives) if (!o.seenBySubject) coachingByObjective.set(o.id, { offered: 0, managed: 0 });
+      /*
+       * NOT SEEN READS AS NOT COACHED rather than as a separate flag, because the escalation refuses
+       * on either and this keeps one source of truth for "the cycle has not been run here".
+       */
+      for (const o of objectives) if (!o.seenBySubject) unseenObjectives.add(o.id);
+    }
+
+    /*
+     * PERIODS IS CHECK-INS THEY WERE IN SINCE THEY SAID IT, not weeks elapsed. Somebody on leave for
+     * a month has not had three chances to move something and must not read as though they had.
+     */
+    const finishedSince = async (since: Date) => (key
+      ? this.prisma.groundParticipant.count({
+        where: { email: key, ground: { organizationId, report: { releasedAt: { gt: since } } } },
+      })
+      : 0);
+    const howItHasGone = await Promise.all(commitments.map(async (c) => {
+      const coaching = c.sourcePersonObjectiveId ? coachingByObjective.get(c.sourcePersonObjectiveId) : undefined;
+      return {
+        what: c.text,
+        periods: await finishedSince(c.statedAt),
+        seen: !!c.sourcePersonObjectiveId && !unseenObjectives.has(c.sourcePersonObjectiveId),
+        blockers: side('from').length,
+        stepsOffered: coaching?.offered ?? 0,
+        stepsManaged: coaching?.managed ?? 0,
+      };
+    }));
+
     const read = theReadFor({
+      howItHasGone,
       personLabel: label,
       finishedCheckIns,
       commitments: commitments.map((c) => ({ text: c.text, state: String(c.state), dueAt: c.dueAt, statedAt: c.statedAt })),

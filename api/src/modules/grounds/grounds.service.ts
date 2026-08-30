@@ -1274,6 +1274,14 @@ export class GroundsService {
          * dressing an unmeasurable sentence up as a target.
          */
         kind: true, check: true, dueKind: true, dueSaid: true, owedToParticipantId: true,
+        /*
+         * THE DATE THOSE WORDS MEANT, AND WHETHER THIS HAS ENDED.
+         *
+         * Both are new and both are what turn this panel from a list of sentences into a record
+         * somebody returns to: "by end of October" cannot be read as late, and an expectation that
+         * was met, dropped or changed should not sit here looking outstanding forever.
+         */
+        dueDate: true, status: true,
       },
     });
     /**

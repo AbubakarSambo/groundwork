@@ -83,7 +83,13 @@ describe('the rules the three writes used to carry', () => {
   })();
 
   it('a lead states one, and it starts unseen', () => {
-    expect(EXTRACT).toMatch(/authoredBy: 'lead'/);
+    /*
+     * `authoredBy` is now read from who is speaking rather than written as a literal - 'lead' when
+     * the initiator sets an expectation of somebody, 'self' when a person records their own
+     * promise. The two paths are separate and the unseen rule below belongs to the lead's.
+     */
+    expect(EXTRACT).toMatch(/authoredBy: authoredBy as string/);
+    expect(EXTRACT).toMatch(/me\.partyType === PartyType\.INITIATOR \? 'lead' : 'self'/);
     expect(EXTRACT).toMatch(/seenBySubject: false/);
   });
 
@@ -100,8 +106,16 @@ describe('the rules the three writes used to carry', () => {
     expect(EXTRACT).toMatch(/\.\.\.\(textChanged \? \{ seenBySubject: false \} : \{\}\)/);
   });
 
-  it('stating one is the lead\'s, and only from their own check-in', () => {
-    expect(EXTRACT).toMatch(/me\?\.partyType !== PartyType\.INITIATOR\) return/);
+  it('stating one ABOUT SOMEBODY ELSE is the lead\'s, and only from their own check-in', () => {
+    /*
+     * This asserted an early return for anybody who is not the initiator, which used to mean a
+     * participant's session wrote nothing at all - including their own promises, which is what a
+     * later check-in most needs. The rule that matters is unchanged: the prompt that writes
+     * expectations ABOUT other people only ever runs for the lead. A person's own promises take a
+     * different route and land on themselves.
+     */
+    expect(EXTRACT).toMatch(/if \(me\.partyType !== PartyType\.INITIATOR\) \{/);
+    expect(EXTRACT).toMatch(/writeTheirOwnPromises\(/);
   });
 
   /**

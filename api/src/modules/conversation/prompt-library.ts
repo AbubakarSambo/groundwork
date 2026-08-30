@@ -1655,6 +1655,9 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
      has no end, NOT_SAID if they did not say.
    - dueSaid: their own words for the deadline - "Thursday", "end of the quarter". Empty otherwise.
    - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+   - target and measure: ONLY when the expectation is checked by a number and that number is
+     unambiguous. "Under twenty open tickets" is target 20, measure "open tickets". Leave BOTH
+     empty for anything judged rather than counted.
 
 RULES.
 Only a real named person who is another party here. Never the speaker themselves, never a team, an organisation or a customer.
@@ -1669,6 +1672,229 @@ TWO PEOPLE AND A DATE IS A COMMITMENT, and whoever the work is owed TO goes in o
 difference between a to-do and a commitment.
 Do not infer awareness. If they were not asked and did not volunteer it, that is NOT_ASKED.
 Be conservative. Empty lists are correct answers.`;
+
+/**
+ * WHAT THIS PERSON SAID THEY WOULD DO, from their own check-in.
+ *
+ * The sibling of EXPECTATION_PROMPT and deliberately a separate one. That prompt reads a LEAD's
+ * session and writes down what the lead expects of other people; its rules forbid the speaker
+ * recording anything about themselves, which is right for what it does. The consequence was that a
+ * new hire's own promises - "three proposals by the thirtieth", the exact thing the next check-in
+ * most needs to return to - were never written down as anything a question could be built from.
+ *
+ * ONLY WHAT THEY SAID ABOUT THEMSELVES. Not what they think somebody else should do, not what they
+ * wish would happen, and never a promise inferred from a complaint. A person's own record is the
+ * one place they should never find something they did not say.
+ *
+ * The same conservatism as its sibling: an empty list is the right answer most of the time, and
+ * NOT_CHECKABLE is a real value rather than a failure to try harder.
+ */
+/**
+ * WHERE SOMEBODY'S ACCOUNT OF A PROCESS AND THE COMPANY'S WRITTEN ONE DIFFER.
+ *
+ * Run only when the company has actually written the process down and it came up in the
+ * conversation. It records the DIFFERENCE, never a verdict: a document nobody has updated since
+ * March is at least as likely to be the wrong one, and where nobody ever told them, the finding
+ * belongs to whoever should have.
+ *
+ * The two hard rules are the ones that keep this from becoming a competency score: no marking, and
+ * both sides of the difference stated in the same entry.
+ */
+export const OPERATING_DIFFERENCE_PROMPT = `You are given a transcript and the company's own written process.
+
+Find places where what the person described DIFFERS from what is written. Nothing else.
+
+For each one:
+   - about: which written process it concerns, in a few words.
+   - theirAccount: what they described, in their own words as far as possible.
+   - whatIsWritten: what the document says, in its words.
+   - neverTold: true only if they said, or plainly implied, that nobody had told them this.
+
+RULES.
+A difference is not a mistake. Do not say who is right, and do not imply it.
+Only where they actually described something. Silence is not a difference, and neither is "I am not sure" -
+somebody saying they do not know is being honest, and it is not this.
+Only where the written process actually covers it. If the document does not say, there is no difference.
+A different emphasis is not a difference. Look for something that would lead to a different action.
+Never write that they are wrong, do not understand, or have a gap.
+Be conservative. An empty list is usually correct.`;
+
+export const OPERATING_DIFFERENCE_SCHEMA = {
+  type: 'object',
+  properties: {
+    differences: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          about: { type: 'string' },
+          theirAccount: { type: 'string' },
+          whatIsWritten: { type: 'string' },
+          neverTold: { type: 'boolean' },
+        },
+        required: ['about', 'theirAccount', 'whatIsWritten'],
+      },
+    },
+  },
+  required: ['differences'],
+} as const;
+
+/**
+ * WHAT THEY SAY THEY HAVE ACTUALLY DONE, against promises already on the record.
+ *
+ * The product could hold a promise and a date and had no way to hear the answer. Progress only
+ * existed if somebody typed it into a form, so a person could describe two proposals at length in
+ * their check-in and the record would still say nothing had been done.
+ *
+ * That is not merely a missing feature - it makes the report unfair. The reading that says "the
+ * agreed thing is not being done" rests on nothing being recorded as done, so an empty progress
+ * list turns every passed date into that reading, including for somebody who has been getting on
+ * with it and saying so.
+ *
+ * DONE IS A HIGH BAR AND MUST STAY ONE. Marking somebody's promise finished when they only said
+ * they had started is worse than marking nothing at all: they lose the credit for what is really
+ * outstanding, and the record stops matching what they said.
+ */
+/**
+ * WHAT THEY SAY HAPPENED WITH A CUSTOMER.
+ *
+ * Read from the check-in so somebody's own account of their work becomes evidence in its own right
+ * - especially the work no system recorded. A call from a phone nothing is connected to is the
+ * commonest kind of real work this product could not see.
+ *
+ * SPECIFIC THINGS ONLY. "I have been doing a lot of outreach" is a description of a week; "I called
+ * Mama Ngozi on Tuesday" is a thing that happened. Without that line the record fills with activity
+ * nobody can point at, which is the same failure as counting visits.
+ */
+export const THEY_SAY_HAPPENED_PROMPT = `You are reading a person's check-in for specific things they say happened with a customer.
+
+For each one:
+   - kind: VISIT, CALL, MESSAGE, MEETING, PROPOSAL or TRANSACTION.
+   - counterparty: the customer, shop or business, in their words. Leave out anything with no specific one.
+   - when: their words for when it happened - "Tuesday", "last week". Empty if they did not say.
+   - note: one short line on what happened, in their words.
+   - saysRecordIsWrong: true only if they said it is missing from a system, or that a system has it wrong.
+
+RULES.
+Only their OWN work. Never what a colleague did - one person's account of another's work is not evidence of it.
+Only specific things. A description of a week, an intention, or a plan is not a thing that happened.
+Only what they said happened. "I will call them" and "I should visit" are not this.
+Never infer a customer they did not name.
+Do not turn one visit into several because it was mentioned twice.
+Be conservative. An empty list is a correct answer.`;
+
+export const THEY_SAY_HAPPENED_SCHEMA = {
+  type: 'object',
+  properties: {
+    happened: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
+          counterparty: { type: 'string' },
+          when: { type: 'string' },
+          note: { type: 'string' },
+          saysRecordIsWrong: { type: 'boolean' },
+        },
+        required: ['kind', 'counterparty'],
+      },
+    },
+  },
+  required: ['happened'],
+} as const;
+
+export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
+
+Find what they said they have DONE against those promises. Nothing else.
+
+For each one:
+   - promise: the promise it is about, copied exactly from the list you were given.
+   - whatTheyDid: what they said they did, in their own words, one sentence.
+   - finished: true ONLY if they plainly said the whole promise is complete.
+
+RULES.
+Only against a promise on the list. If it matches none of them, leave it out.
+Only what they say they DID. A plan is not progress. "I am going to" and "I will" are not this.
+Started is not finished. Half of it is not finished. "Nearly there" is not finished.
+If they described doing some of it, record that as progress with finished false. That is the common case.
+Never infer that something is finished because time has passed or because they sound positive.
+Do not turn a difficulty into progress, and do not turn progress into a difficulty.
+Be conservative. An empty list is a correct answer and usually the right one.`;
+
+export const PROGRESS_SCHEMA = {
+  type: 'object',
+  properties: {
+    progress: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          whatTheyDid: { type: 'string' },
+          finished: { type: 'boolean' },
+        },
+        required: ['promise', 'whatTheyDid'],
+      },
+    },
+  },
+  required: ['progress'],
+} as const;
+
+export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
+
+Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
+
+For each one:
+   - promise: what they said they would do, in their own words, one sentence.
+   - kind:
+       TODO - something they will do, done or not.
+       COMMITMENT - a to-do a NAMED OTHER PERSON on this check-in is waiting on. Put that person in owedTo.
+       TARGET - a number has to cross a line. "Three proposals", "£150k of pipeline".
+       GOAL - a direction judged rather than counted, over a period.
+   - check: how anybody would know it had happened.
+       DONE_OR_NOT, A_NUMBER, A_JUDGEMENT, or NOT_CHECKABLE.
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if
+     it has no end, NOT_SAID if they did not say.
+   - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
+   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+   - target and measure: ONLY when the promise is checked by a number and that number is
+     unambiguous. "Three proposals" is target 3, measure "proposals". "£150k of pipeline" is target
+     "150k", measure "pipeline". Leave BOTH empty for anything judged rather than counted, and for
+     a number you had to work out - a promise nobody stated as a number does not become one here.
+
+RULES.
+Only what they said about their own work. Never what they expect of somebody else - that is not theirs to set.
+Never sharpen a vague promise. "I will get on top of the pipeline" is what it says, and its check is A_JUDGEMENT.
+NOT_CHECKABLE IS A REAL ANSWER. If nothing they said could be checked, say so rather than inventing a measure.
+A wish is not a promise. "It would be good to have three proposals out" is not "I will produce three proposals".
+Something they said they had ALREADY done is not a promise. It belongs to the record of what happened, not to this.
+Do not turn a worry or a complaint into a commitment.
+Be conservative. An empty list is usually correct.`;
+
+export const OWN_PROMISE_SCHEMA = {
+  type: 'object',
+  properties: {
+    promises: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
+          check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+          dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+          dueSaid: { type: 'string' },
+          owedTo: { type: 'string' },
+          target: { type: 'string' },
+          measure: { type: 'string' },
+        },
+        required: ['promise', 'kind', 'check', 'dueKind'],
+      },
+    },
+  },
+  required: ['promises'],
+} as const;
 
 export const EXPECTATION_SCHEMA = {
   name: 'emit_expectations',
@@ -1719,6 +1945,8 @@ export const EXPECTATION_SCHEMA = {
             dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
             /** Their own words for the deadline - "Thursday", "end of the quarter". Never a parsed date. */
             dueSaid: { type: 'string' },
+            target: { type: 'string' },
+            measure: { type: 'string' },
             /** COMMITMENT only: the name of the person waiting on it, if they named one. */
             owedTo: { type: 'string' },
             /**
@@ -2632,7 +2860,28 @@ export interface PromptContext {
    * standard they were reading for the first time. The report already refuses to read anybody against
    * an unseen objective; until now the conversation could not honour the same rule.
    */
-  personObjective?: { text: string; authoredBy: string; seenBySubject: boolean; authoredByThem: boolean; fromTheirSystem?: boolean } | null;
+  personObjective?: {
+    text: string;
+    authoredBy: string;
+    seenBySubject: boolean;
+    authoredByThem: boolean;
+    fromTheirSystem?: boolean;
+    /*
+     * WHAT KIND OF PROMISE, WHEN IT IS DUE, AND WHO IS WAITING.
+     *
+     * All three were loaded from the row and dropped before the model saw them, so the interview
+     * knew "Get three proposals out" and not that it was a number, due on the thirtieth, with
+     * somebody waiting on it. That is the difference between "how is it going" and "you said three
+     * by the thirtieth - where are they".
+     */
+    kind?: string | null;
+    dueSaid?: string | null;
+    /** Their words read as a date, where they carried one. Null is common and fine. */
+    dueDate?: Date | string | null;
+    /** The name of whoever is waiting on it, for a commitment. */
+    owedToName?: string | null;
+    status?: string | null;
+  } | null;
   /**
    * ALL of this person's objectives. `personObjective` stays for the single case and for callers
    * that predate this; when both are given, this wins.
@@ -2919,7 +3168,36 @@ function describeObjective(o: NonNullable<PromptContext['personObjective']>): st
       + 'and read nothing against it this session. '
       + 'Never imply they agreed to it. If they disagree, that is worth recording and is not an obstacle';
 
-  return `${o.text} (${whoSetIt}; ${howToUseIt})`;
+  /*
+   * WHAT KIND OF THING IT IS, WHEN IT IS DUE, AND WHO IS WAITING.
+   *
+   * All three were on the row and none reached the model, so a promise with a number and a date
+   * arrived as an undifferentiated sentence and the next check-in could only ask how it was going.
+   *
+   * The DATE is said as a date and the WORDS are kept beside it, because the words are what the
+   * person actually said and the date is our reading of them. Where the words carried no date -
+   * "soon", "once procurement clears" - there is no date here and the interview is told to ask for
+   * one rather than act as though a deadline exists.
+   */
+  const parts = [whoSetIt];
+  if (o.kind === 'COMMITMENT' && o.owedToName) parts.push(`${o.owedToName} is waiting on this`);
+  else if (o.kind === 'TARGET') parts.push('a number has to cross a line');
+  else if (o.kind === 'ROLE_EXPECTATION') parts.push('standing, with no end date');
+
+  if (o.dueDate) {
+    const d = typeof o.dueDate === 'string' ? o.dueDate : o.dueDate.toISOString().slice(0, 10);
+    parts.push(`due ${d}${o.dueSaid ? ` - they said "${o.dueSaid}"` : ''}`);
+  } else if (o.dueSaid) {
+    parts.push(
+      `they said "${o.dueSaid}" for when, which is not a date. If somebody is waiting on this, ask `
+      + 'once which day they mean, and accept that there may not be one yet',
+    );
+  }
+
+  if (o.status && o.status !== 'OPEN') parts.push(`recorded as ${o.status.toLowerCase()}`);
+  parts.push(howToUseIt);
+
+  return `${o.text} (${parts.join('; ')})`;
 }
 
 /**

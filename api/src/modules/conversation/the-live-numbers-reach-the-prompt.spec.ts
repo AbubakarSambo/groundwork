@@ -28,6 +28,9 @@ const stubPrisma = (personObjectives: any[]) => {
     'ground.findUnique': ground,
     'ground.findFirst': ground,
     'personObjective.findMany': personObjectives,
+    /* What their own systems recorded. Empty here; the sales case has its own spec. */
+    'interaction.findMany': [],
+    'person.findFirst': null,
     'proposedChange.findMany': [],
   };
   return new Proxy({}, {

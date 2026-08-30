@@ -26,6 +26,9 @@ import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferra
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
+import { decide, RoundPicture } from './what-the-report-said-at-the-time';
+import { whyNot } from './why-it-is-not-happening';
+import { howThisHasMoved } from './how-this-has-moved';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -942,11 +945,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       concernFlags?: { label: string; observation: string }[];
       specificityCauses?: { label: string; cause: string; note: string }[];
     };
+    /*
+     * WHAT IS AGREED, WHAT IS IN THE WAY, AND WHAT THE RECORD SHOWS ABOUT WHY.
+     *
+     * Added to what the model reads, never replacing it. Without this the synthesis sees only what
+     * people said in conversation, so "he could not get pricing approval" and "he did not do it"
+     * arrive looking identical - the blockers were recorded, from both sides, and never reached the
+     * report.
+     *
+     * The six explanations are worked out in code before the model sees them, and it is told it
+     * may state them and must not invent a seventh. A model asked why something is late will always
+     * produce a reason; this makes the reason a fact somebody recorded.
+     *
+     * OUTSIDE THE TRY, AND BEST-EFFORT. It sat inside it at first, where a database hiccup came
+     * back as "AI response could not be parsed" and cost the whole report. A report without its
+     * grounding is worse than one with it and far better than none.
+     */
+    const grounding = await this.whatTheRecordShows(groundId, labelById).catch((err: any) => {
+      this.logger?.warn?.(`Grounding the synthesis for ground ${groundId} failed: ${err.message}`);
+      return '';
+    });
+
     let result: SynthesisResult | null;
     try {
       result = await this.anthropic.extract<SynthesisResult>(
         systemPrompt,
-        [{ role: 'user', content: corpus }],
+        [{ role: 'user', content: grounding ? `${corpus}\n\n${grounding}` : corpus }],
         activeSchema,
       );
     } catch (err: any) {
@@ -1468,7 +1492,261 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // the profile stays as-is.
     this.extractAndStoreLeadSignals(groundId, ground.initiatorId).catch(() => null);
 
+    /*
+     * KEEP WHAT THIS ROUND SAID, so day 14 still exists at day 90.
+     *
+     * After the live report is written, never instead of it: everything that reads a report still
+     * reads the same row it always did, and this is a copy taken when a round closes.
+     *
+     * Best-effort on purpose. A failure to keep the history must never fail the synthesis somebody
+     * is waiting on - the picture they are about to read matters more than the copy of it.
+     */
+    this.keepThisRound(groundId, {
+      sharedPicture: result.sharedPicture,
+      agreements: result.agreements,
+      divergences: result.divergences,
+      centralQuestion: result.centralQuestion,
+    }).catch((err: any) =>
+      this.logger.warn(`Keeping the round for ground ${groundId} failed: ${err.message}`),
+    );
+
     return report;
+  }
+
+  /**
+   * WHICH ROUND THIS IS, AND KEEPING IT.
+   *
+   * A round is a session number every party has completed - the same test the release path uses,
+   * asked here rather than invented a second time. Synthesis runs whenever anybody finishes, so
+   * most calls find no completed round and do nothing at all.
+   *
+   * The highest complete round is the one kept: a late correction to session 2 in a ground now on
+   * session 4 amends round 2, because that is the round it belongs to.
+   */
+  /**
+   * WHAT THE REPORT SAID AT THE END OF EACH ROUND, for somebody entitled to read it.
+   *
+   * The same permission test as the report itself, asked the same way: a party to the check-in, or
+   * an admin of the organisation it belongs to. This is the same content at an earlier moment, so
+   * it cannot be readable by anybody the current one is not.
+   *
+   * ONLY RELEASED ROUNDS. A round is kept when it closes, and released is a separate step - the
+   * mutual reveal that stops one person reading the picture before the other has finished. Handing
+   * back an unreleased round here would be a way round that, so the gate is asked once, at the top,
+   * exactly as `get` asks it.
+   */
+  async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        organizationId: true,
+        initiatorId: true,
+        report: { select: { releasedAt: true } },
+        participants: { select: { userId: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const isParty = ground.participants.some((p) => p.userId === requestingUserId);
+    const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+
+    /* Nothing has been revealed yet, so there is nothing anybody may read. */
+    if (!ground.report?.releasedAt) return { rounds: [] };
+
+    const kept = await this.prisma.reportRound.findMany({
+      where: { groundId },
+      orderBy: { round: 'asc' },
+      select: {
+        round: true,
+        sharedPicture: true,
+        agreements: true,
+        divergences: true,
+        centralQuestion: true,
+        takenAt: true,
+        amendedAt: true,
+        amendedNote: true,
+      },
+    });
+
+    /*
+     * Named, not spread. The same rule the rest of this API follows, and the reason is the same:
+     * a column added to this table later must not appear in somebody's report by accident.
+     *
+     * `moved` is the same rounds read as a sequence - what each one led with, when it was taken,
+     * how many accounts differed. No score and no direction: whether that is improvement is the
+     * reader's judgement, and an arrow here would be a rating.
+     */
+    return { rounds: kept, moved: howThisHasMoved(kept as any) };
+  }
+
+  /**
+   * THE AGREED THINGS, WHAT IS BLOCKING THEM, AND WHAT THE RECORD SHOWS ABOUT WHY.
+   *
+   * Facts, assembled from rows somebody wrote, for the synthesis to use. Nothing here is a
+   * judgement: a blocker exists because the person waiting described it in their own account, a
+   * date exists because somebody named one, and the explanation is decided by `whyNot` from those
+   * two and nothing else.
+   *
+   * Labelled, never named. The same labels the rest of the synthesis uses, so this cannot become
+   * the one place a name reaches a stored report.
+   */
+  private async whatTheRecordShows(groundId: string, labelById: Map<string, string>): Promise<string> {
+    const [objectives, blockers, deliveries, saidWhy] = await Promise.all([
+      this.prisma.personObjective.findMany({
+        where: { groundId },
+        select: {
+          participantId: true, text: true, dueDate: true, dueSaid: true, status: true,
+          seenBySubject: true, awareness: true, kind: true,
+        },
+      }),
+      this.prisma.groundDependency.findMany({
+        where: { groundId, status: 'WAITING' },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true },
+      }),
+      this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
+      /*
+       * WHAT THEY SAID ABOUT WHY, AS A CLASSIFICATION AND NEVER AS WORDS.
+       *
+       * This read the transcript at first, and a guard on a promise the marketing site makes -
+       * "it never shows anyone's raw answers" - stopped it. The promise is a bright line: the
+       * shared report may not touch the transcript at all, not even to derive something safe from
+       * it, because a line that has to be argued about each time is not a line.
+       *
+       * So the deciding happens once, in the conversation, where the person's words already live,
+       * and what crosses into a shared surface is SKILL or CONFIDENCE and nothing else. The check-in
+       * belongs to exactly one participant, so this cannot become one person's words explaining
+       * another.
+       */
+      this.prisma.checkIn.findMany({
+        where: { groundId, saidWhy: { not: null } },
+        select: { participantId: true, saidWhy: true },
+      }),
+    ]);
+    if (!objectives.length && !blockers.length) return '';
+
+    const now = new Date();
+    const lines: string[] = [];
+
+    const saidWhyByParticipant = new Map(saidWhy.map((c) => [c.participantId, c.saidWhy!]));
+
+    for (const o of objectives) {
+      const who = labelById.get(o.participantId) ?? 'a party';
+      const mine = blockers.filter((b) => b.fromParticipantId === o.participantId);
+      const why = whyNot(
+        {
+          text: o.text,
+          dueDate: o.dueDate,
+          status: o.status,
+          seenBySubject: o.seenBySubject,
+          awareness: o.awareness,
+          openBlockers: mine.map((b) => ({
+            what: b.what,
+            onName: b.onParticipantId ? (labelById.get(b.onParticipantId) ?? null) : (b.onLabel ?? null),
+            escalated: !!b.escalatedAt,
+          })),
+          progress: deliveries.filter((d) => d.participantId === o.participantId).map((d) => ({ text: d.text })),
+          saidWhy: saidWhyByParticipant.get(o.participantId) ?? null,
+        },
+        now,
+      );
+      const due = o.dueDate
+        ? ` Due ${o.dueDate.toISOString().slice(0, 10)}${o.dueSaid ? ` (they said "${o.dueSaid}")` : ''}.`
+        : o.dueSaid ? ` They said "${o.dueSaid}" for when, which is not a date.` : '';
+      lines.push(`- ${who}: "${o.text}".${due} What the record shows: ${why.says}`);
+    }
+
+    /*
+     * WHERE A SYSTEM AND A PERSON DISAGREE ABOUT THE SAME WORK.
+     *
+     * The most useful thing evidence produces, and the one a report is most likely to get wrong. A
+     * salesperson's own account of a call sits beside a CRM that has no record of it, and neither
+     * settles the other: the app fails, the phone is unconnected, the shop is logged twice.
+     *
+     * Both sides are stated and nothing is resolved. A discrepancy preserved is worth more than a
+     * certainty invented, and the person reading this is in a position to ask - which the product
+     * is not.
+     */
+    const theirAccounts = await this.prisma.interaction.findMany({
+      where: { organizationId: (await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } }))?.organizationId ?? '', strength: 'SELF_REPORTED' as any },
+      orderBy: { happenedAt: 'desc' },
+      take: 20,
+      select: { personExternalId: true, counterpartyExternalId: true, kind: true, happenedAt: true, note: true },
+    }).catch(() => [] as any[]);
+
+    if (theirAccounts.length) {
+      lines.push('');
+      lines.push('WHERE SOMEBODY\'S OWN ACCOUNT IS THE ONLY RECORD:');
+      for (const t of theirAccounts.slice(0, 8)) {
+        lines.push(
+          `- A ${String(t.kind).toLowerCase()} on ${t.happenedAt.toISOString().slice(0, 10)}, `
+          + `described in a check-in and not in any connected system.${t.note ? ` They said: "${t.note}".` : ''} `
+          + 'That is their account, and a missing record is not evidence it did not happen.',
+        );
+      }
+    }
+
+    /* Blockers nobody has an objective for still matter - somebody is still waiting. */
+    for (const b of blockers) {
+      const from = labelById.get(b.fromParticipantId) ?? 'a party';
+      const on = b.onParticipantId ? (labelById.get(b.onParticipantId) ?? 'somebody') : (b.onLabel ?? 'somebody outside this check-in');
+      lines.push(`- ${from} is waiting on ${on} for ${b.what}${b.escalatedAt ? ', already raised' : ''}.`);
+    }
+
+    return `WHAT IS ON THE RECORD, AND WHAT IT SHOWS.
+These are rows somebody wrote, not conclusions. Each blocker exists because the person waiting
+described it in their own account of their own work - never because anybody reported anybody else.
+
+${lines.join('\n')}
+
+USING THIS.
+You may state what is written above. Do not invent a different explanation for something being
+behind: told nothing, blocked, not knowing how, putting it off, not acted on, and too early are the
+only six, and where the line says the record cannot tell, say that rather than choosing one.
+The two about the person themselves are only ever there because THEY said so, in their own words,
+not from anything you inferred. Their actual sentence is deliberately NOT given to you and you must
+not guess at it or invent one - somebody not knowing how is a thing to show them, and somebody
+putting a thing off is a conversation about what makes it hard.
+A blocker is a reason, not an excuse, and neither is it a complaint about the person it names.
+Never write that somebody failed, underperformed, or is not capable. Say what was agreed, what
+happened, and what is in the way.`;
+  }
+
+  private async keepThisRound(groundId: string, now: RoundPicture): Promise<void> {
+    const sessions = await this.prisma.checkIn.findMany({
+      where: { participant: { groundId } },
+      select: { sessionNumber: true },
+      distinct: ['sessionNumber'],
+      orderBy: { sessionNumber: 'desc' },
+    });
+
+    let round: number | null = null;
+    for (const s of sessions) {
+      if (await this.grounds.isSessionReadyForReport(groundId, s.sessionNumber)) {
+        round = s.sessionNumber;
+        break;
+      }
+    }
+    if (round === null) return;
+
+    const kept = await this.prisma.reportRound.findUnique({
+      where: { groundId_round: { groundId, round } },
+    });
+    const answer = decide(now, kept as any);
+    if (!answer.keep) return;
+
+    if (answer.as === 'new') {
+      await this.prisma.reportRound.create({
+        data: { groundId, round, ...(now as any), takenAt: new Date() },
+      });
+      return;
+    }
+
+    await this.prisma.reportRound.update({
+      where: { groundId_round: { groundId, round } },
+      data: { ...(now as any), amendedAt: new Date(), amendedNote: answer.note },
+    });
   }
 
   /**

@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "RecordEntryType" ADD VALUE 'OPERATING_DIFFERENCE';
+

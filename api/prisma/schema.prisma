@@ -160,6 +160,16 @@ enum RecordEntryType {
   TOLERANCE
   WORRY
   TENSION
+  /// WHERE SOMEBODY'S ACCOUNT OF A PROCESS AND THE WRITTEN ONE DIFFER.
+  ///
+  /// Not "they got it wrong". A written process nobody has updated since March is at least as
+  /// likely to be the wrong one, and where nobody ever told them, the finding belongs to whoever
+  /// should have. The entry records the difference and says both sides of it.
+  ///
+  /// It is in the person's OWN record and reaches them in their own report, like every other entry
+  /// here. A hidden read on somebody's understanding would be a management dossier, which this
+  /// product does not keep.
+  OPERATING_DIFFERENCE
 }
 
 // Three-period rule: CANDIDATE until observed in 3 consecutive periods.
@@ -338,7 +348,9 @@ model Organization {
   /// control would make two of the four unreachable.
   checkInsNeedApproval Boolean @default(true) @map("check_ins_need_approval")
 
-  callRequests CallRequest[]
+  interactions       Interaction[]
+  knowledgeProposals KnowledgeProposal[]
+  callRequests       CallRequest[]
 
   @@map("organizations")
 }
@@ -622,6 +634,7 @@ model Ground {
   accessCode                 ContributorCode?            @relation("GroundAccessCode", fields: [accessCodeId], references: [id])
   participants               GroundParticipant[]
   checkIns                   CheckIn[]
+  reportRounds               ReportRound[]
   report                     Report?
   patternDetections          PatternDetection[]
   resolution                 Resolution?
@@ -873,6 +886,11 @@ model CheckIn {
   /// overdue, and never as testimony about the lead. Marked rather than inferred, because the thing it
   /// is excluded from is arithmetic in six places and a flag is checkable where a convention is not.
   isSetup                     Boolean       @default(false) @map("is_setup")
+  /// SKILL or CONFIDENCE, where the person said as much about themselves IN THIS CHECK-IN. The
+  /// classification and never the sentence: the shared report must be able to say "they said so
+  /// themselves" without any surface but this one ever touching the transcript. See
+  /// they-said-why-themselves.ts, and the bright line in no-surveillance.spec.ts that put it here.
+  saidWhy                     String?       @map("said_why")
   status                      CheckInStatus @default(NOT_STARTED)
   availableFrom               DateTime?     @map("available_from") // cadence gate — session 2+ opens after this date
   startedAt                   DateTime?     @map("started_at")
@@ -1992,6 +2010,139 @@ model KnowledgeCard {
 /// So an admin who thinks an answer is wrong can trace it to the card that produced it, rather than
 /// to a model that cannot be asked. Without this, "why did it say that" has no answer at all, and
 /// the honest response to a customer would be a shrug.
+/// SOMEBODY ASKING THAT A DOCUMENT BECOME "HOW WE DO IT HERE".
+///
+/// A document uploaded to a check-in belongs to that check-in and to whoever uploaded it. That is
+/// right for somebody's own evidence and wrong for the contracting process, which everybody should
+/// be working from - and until now the only way to make one organisation-wide was to push it
+/// through the machine API, which most customers will never do.
+///
+/// PROPOSING IS NOT APPROVING, and the gap between them is the point. An ordinary document is
+/// somebody's file. An approved one becomes what people's own accounts get held up against when
+/// they walk through a process, so making one is a small piece of authority and it sits with the
+/// person who holds the account.
+///
+/// WHO MAY PROPOSE: anybody who can open a check-in - an admin or a lead. They are the people
+/// describing how their part of the company works. Somebody who only takes part in check-ins is
+/// not setting process and does not propose.
+/// HOW STRONG A PIECE OF EVIDENCE IS.
+///
+/// The whole point of keeping it. "A transaction completed", "the sales app recorded a visit and a
+/// note", "a calendar entry existed" and "they told us" are four different claims, and a product
+/// that flattens them into "evidence says" will tell a CEO something it cannot support.
+enum EvidenceStrength {
+  /// Something happened that could not have happened otherwise. A payment, a signed contract.
+  COMPLETED
+  /// A record in a system somebody operates, written at the time. A logged visit with a note.
+  RECORDED
+  /// Evidence that something was ARRANGED, which is not evidence that it happened. A calendar entry.
+  ARRANGED
+  /// Somebody's own account. The commonest kind, and a real kind - it is just not corroboration.
+  SELF_REPORTED
+}
+
+/// WHAT KIND OF THING HAPPENED WITH SOMEBODY OUTSIDE THE ORGANISATION.
+///
+/// Deliberately short and deliberately not a sales taxonomy. These are the shapes a piece of
+/// evidence takes, not stages of a pipeline - there is no LEAD, no QUALIFIED, no CLOSED_WON here
+/// and there must not be, because that is a CRM's job and this is not a CRM.
+enum InteractionKind {
+  VISIT
+  CALL
+  MESSAGE
+  MEETING
+  PROPOSAL
+  TRANSACTION
+}
+
+/// SOMETHING THAT HAPPENED WITH A CUSTOMER, AND WHAT WE ACTUALLY KNOW ABOUT IT.
+///
+/// The missing edge. A check-in could hold what somebody SAID they did and had no way to hold what
+/// a system recorded - so "did he visit the shop" was unanswerable, and the honest version of the
+/// product could only ever narrate self-reports.
+///
+/// THREE CLAIMS THAT MUST STAY SEPARATE. That somebody was at a shop, that a conversation happened,
+/// and that a meaningful conversation happened are three different things, and no evidence here
+/// proves the third. `kind` and `strength` together are what stop a report claiming it: a VISIT at
+/// RECORDED strength says a visit was logged, and nothing more.
+///
+/// NO CONVERSATION CONTENT. `note` is the short line somebody wrote at the time - "owner not in",
+/// "asked for pricing". What was said belongs to the people who said it.
+model Interaction {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// Whose work this was, by the customer's own id for them. Same identifier SCIM uses.
+  personExternalId       String  @map("person_external_id")
+  /// Which counterparty, by the id the customer's system knows it as. Null where none was named.
+  counterpartyExternalId String? @map("counterparty_external_id")
+
+  kind     InteractionKind
+  strength EvidenceStrength
+
+  /// When it happened, as THEIR system observed it - never when we heard about it.
+  happenedAt DateTime @map("happened_at")
+
+  /// The short line written at the time. Never a transcript and never what was said.
+  note String? @db.Text
+
+  /// WHERE THIS CAME FROM. A record with no provenance is a rumour with a timestamp.
+  sourceSystem String  @map("source_system")
+  externalId   String? @map("external_id")
+
+  /// SOMEBODY SAYS THIS IS WRONG.
+  ///
+  /// External evidence is not infallible: an app fails, a shop is duplicated, a call happens on a
+  /// phone nothing is connected to. The person's account is kept BESIDE the record and neither
+  /// overrules the other - a discrepancy preserved is worth more than a certainty invented.
+  disputedAt   DateTime? @map("disputed_at")
+  disputedById String?   @map("disputed_by_id")
+  disputeNote  String?   @map("dispute_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Pushing the same record twice updates it rather than doubling somebody's activity.
+  @@unique([organizationId, sourceSystem, externalId])
+  @@index([organizationId, personExternalId, happenedAt])
+  @@index([organizationId, counterpartyExternalId, happenedAt])
+  @@map("interactions")
+}
+
+model KnowledgeProposal {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// The document being proposed. Kept as a pointer so the words stay where they were written.
+  documentId   String @map("document_id")
+  /// Who asked. Shown to the admin deciding, because who is proposing it is part of the decision.
+  proposedById String @map("proposed_by_id")
+
+  /// PENDING | APPROVED | DECLINED.
+  status String @default("PENDING")
+
+  /// The admin who decided, and when. Null while it waits.
+  decidedById   String?   @map("decided_by_id")
+  decidedAt     DateTime? @map("decided_at")
+  /// Why it was declined, in their words. Shown to whoever proposed it - a decision with no reason
+  /// reads as the product losing it.
+  declineReason String?   @map("decline_reason") @db.Text
+
+  /// The card this became, once approved. The key `KnowledgeCard` is stored under.
+  cardKey String? @map("card_key")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document     GroundDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  /// One live proposal per document. Asking twice is somebody wondering whether the first worked.
+  @@unique([documentId, status])
+  @@index([organizationId, status])
+  @@map("knowledge_proposals")
+}
+
 model KnowledgeRetrieval {
   id               String   @id @default(uuid())
   organizationId   String   @map("organization_id")
@@ -2203,6 +2354,16 @@ enum SubjectType {
   OBJECTIVE
   PROJECT
   DECISION
+  /// A shop, a prospect, a client - somebody outside the organisation that work happens with.
+  ///
+  /// Until this existed "Shop A" was a string inside a sentence, so the same shop in week one and
+  /// week three were unrelated text and nothing could be attached to either. It is a Subject rather
+  /// than a new table because a counterparty is exactly what a Subject already is: a thing the
+  /// customer's own system names, that people do work against.
+  ///
+  /// IT IS NOT A CRM RECORD AND MUST NOT BECOME ONE. No contacts, no deal value, no stage, no
+  /// pipeline. A name and an id, so evidence and conversation can point at the same shop twice.
+  COUNTERPARTY
 }
 
 /// A PIECE OF THE CUSTOMER'S OWN WORK, HELD AS A POINTER.
@@ -2438,17 +2599,57 @@ model PersonObjective {
   /// THE PRIMITIVE. See ObjectiveKind. Every one of these is nullable and defaulted, because every
   /// row that already exists was written before any of it and none of them are wrong - they are
   /// simply untyped, and the interview fills them in when it next asks.
-  kind                ObjectiveKind?  @map("kind")
-  check               ObjectiveCheck? @map("check")
-  dueKind             ObjectiveDue?   @map("due_kind")
+  kind    ObjectiveKind?  @map("kind")
+  check   ObjectiveCheck? @map("check")
+  dueKind ObjectiveDue?   @map("due_kind")
   /// The words they used for the deadline - "Thursday", "end of the quarter". Never parsed into a
   /// date: a record of what was said, not a guess at what was meant.
-  dueSaid             String?         @map("due_said")
-  scope               ObjectiveScope  @default(ONE_PERSON) @map("scope")
+  dueSaid String?         @map("due_said")
+  /// THE DATE THOSE WORDS MEAN, WHERE THEY UNAMBIGUOUSLY MEAN ONE.
+  ///
+  /// `dueSaid` stays exactly as it was and is still what anybody is shown: it is what the person
+  /// said, and a record of the words is the thing this product is for. This is the machine's
+  /// reading of them, and it exists because words cannot answer "is this late".
+  ///
+  /// NULL IS THE COMMON CASE AND MUST STAY COMFORTABLE. "Soon", "after the holidays", "once
+  /// procurement clears" are all real answers and none of them is a date. A guess here becomes a
+  /// missed deadline on somebody's record that they never agreed to, so nothing is inferred from
+  /// a vague phrase - the interview asks instead.
+  ///
+  /// Set only from an explicit day, a named month-end, or a phrase with exactly one meaning
+  /// relative to the day it was said.
+  dueDate DateTime?       @map("due_date")
+
+  /// THE NUMBER, WHERE THE PROMISE HAS ONE, PULLED OUT OF THE SENTENCE.
+  ///
+  /// "£150k of qualified pipeline by October" is one sentence, and the sentence is what a person
+  /// reads. But nothing could compare it to anything: a report could say the promise existed and
+  /// never that forty of the hundred and fifty had arrived.
+  ///
+  /// `text` is untouched and stays what somebody said. These two are a reading of it, set only when
+  /// the promise is checked by a number and that number is unambiguous. Null everywhere else,
+  /// which is most expectations - a judgement is a real answer and always was.
+  target  String? @map("target")
+  /// What is being counted, in their words: "qualified pipeline", "proposals", "days".
+  measure String? @map("measure")
+
+  /// WHERE THIS HAS GOT TO. OPEN until somebody says otherwise.
+  ///
+  /// Nothing could end before this. An expectation set on day one looked identical on day ninety
+  /// whether it was met, quietly dropped, or replaced by a different one - so a check-in could not
+  /// tell a live promise from a dead one, and a report could not either.
+  ///
+  /// CHANGED is not MET and not DROPPED, and keeping it separate is the point: an expectation that
+  /// moved is a different thing from one that was missed, and reading the second as the first is
+  /// the unfairest mistake this product could make.
+  status              String         @default("OPEN") @map("status")
+  /// When the status last moved, so a report can say what was true at a point in time.
+  statusChangedAt     DateTime?      @map("status_changed_at")
+  scope               ObjectiveScope @default(ONE_PERSON) @map("scope")
   /// COMMITMENT only: who is waiting on it. The whole difference between a to-do and a commitment.
-  owedToParticipantId String?         @map("owed_to_participant_id")
+  owedToParticipantId String?        @map("owed_to_participant_id")
   /// 'lead' or 'self'. Who wrote the CURRENT text.
-  authoredBy          String          @map("authored_by")
+  authoredBy          String         @map("authored_by")
 
   /// WHERE THIS CAME FROM, when it did not come from the conversation.
   ///
@@ -2600,10 +2801,35 @@ model GroundDocument {
   // CONTEXT_ENABLED off is genuinely the old product. See DocumentVisibility.
   visibility DocumentVisibility @default(OWN)
 
+  /// A RECORD OF A CONVERSATION - a call transcript, a meeting summary, a message thread.
+  ///
+  /// Marked because it is a different kind of thing from a job description or a workplan, and the
+  /// difference is not about us. Other people are in it who never signed up to this product, and
+  /// the person uploading it is the only one in a position to have told them.
+  ///
+  /// False on everything uploaded before this existed, and on most things after: a strategy deck is
+  /// not a conversation and does not need any of what follows.
+  isConversation Boolean @default(false) @map("is_conversation")
+
+  /// WHO SAID THEY HAD TOLD THE PEOPLE IN IT, AND WHEN.
+  ///
+  /// Not a tick-box in a settings page somebody clicked through a year ago. The person uploading a
+  /// conversation confirms, at the moment of uploading, that the people in it know their
+  /// conversations may be used this way - because they are the only one who can have had that
+  /// conversation, and the moment they are doing it is the only moment the question lands.
+  ///
+  /// Null on anything that is not a conversation. Required before one is stored: the file is
+  /// refused rather than kept pending, because a transcript sitting in a database waiting for
+  /// permission is the thing this is meant to prevent.
+  consentConfirmedAt   DateTime? @map("consent_confirmed_at")
+  consentConfirmedById String?   @map("consent_confirmed_by_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
   participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  proposals KnowledgeProposal[]
 
   @@index([groundId, participantId])
   @@map("ground_documents")
@@ -2700,6 +2926,57 @@ model LeadContextNote {
 enum ReportActivationStatus {
   PENDING // party has not yet activated
   ACTIVATED // party pressed "release report"
+}
+
+/// WHAT THE REPORT SAID AT THE END OF ONE ROUND.
+///
+/// `Report` is one row per check-in and every round overwrites it, so the shared picture is always
+/// the current one and the day-14 picture is gone the moment day 30 runs. That is right for a
+/// living document and wrong for a record: a ninety-day account of somebody's first quarter was
+/// being re-derived from transcripts at the end rather than read back from what was actually said
+/// at the time, and nothing could show that an earlier account had changed.
+///
+/// SO THE CURRENT REPORT IS LEFT EXACTLY AS IT IS and each completed round is copied here. Every
+/// existing read path - the ground page, the board, the admin view - still reads `Report` and did
+/// not change. This is additive, and it is the smaller half of the two ways to fix it.
+///
+/// READABLE, NOT JUST FUEL. Hafsah's call: the people who were in a round can read that round's
+/// report afterwards. A report somebody read at day 14 stays what they read, which is a stronger
+/// promise than the product made before.
+///
+/// AMENDED IN PLACE AND MARKED, also her call. A late correction changes the round it belongs to
+/// rather than creating a second version of the same round - the product already tells people when
+/// something was "updated after sign-off", and two rows for one round would say the same thing
+/// worse.
+model ReportRound {
+  id       String @id @default(uuid())
+  groundId String @map("ground_id")
+  /// The session number every party had completed when this was taken.
+  round    Int
+
+  /// The report as it stood, in the same shape the live one holds.
+  sharedPicture   String @map("shared_picture") @db.Text
+  agreements      Json
+  divergences     Json
+  centralQuestion String @map("central_question") @db.Text
+
+  /// When the round closed. Not when this row was written - a retry days later is still that round.
+  takenAt DateTime @map("taken_at")
+
+  /// Set when a late correction changed this round after it was first taken. Null on every round
+  /// that has not been touched since, which is almost all of them.
+  amendedAt   DateTime? @map("amended_at")
+  /// One line on what changed, in the product's own words. Shown wherever the round is read.
+  amendedNote String?   @map("amended_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  /// One row per round. A second synthesis of the same round amends this one.
+  @@unique([groundId, round])
+  @@index([groundId, round])
+  @@map("report_rounds")
 }
 
 model ReportActivation {
