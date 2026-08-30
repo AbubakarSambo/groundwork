@@ -1,0 +1,112 @@
+/**
+ * PUTTING 160 PEOPLE ON, WHICH THE PRODUCT COULD ONLY DO ONE EMAIL AT A TIME.
+ *
+ * An HR admin rolling this out pastes a list. Everything about that is different from inviting one
+ * person, and none of the differences are cosmetic:
+ *
+ * IT MUST NOT BE ALL-OR-NOTHING. A hundred and sixty addresses will contain a typo, somebody who
+ * already has an account, and a duplicate. Failing the batch on any of those and asking them to
+ * find it is not a feature, it is homework. Every row gets its own answer.
+ *
+ * IT MUST BE PREVIEWABLE, and the preview has to be the same code path as the send. A preview that
+ * reads the list separately is a second implementation that will one day disagree with the first,
+ * and it will disagree on the screen where somebody is deciding whether to email their whole
+ * company.
+ *
+ * THE SEAT LIMIT IS THE POINT OF THE PREVIEW. `teamInvite` already refuses when the plan has no
+ * room, one at a time. Pasting 160 into a free account without a preview means the first forty
+ * land, the rest fail, and the admin has emailed a fraction of their company with no way to tell
+ * which fraction.
+ */
+
+/** What happened, or would happen, to one address. */
+export type RowResult =
+  | 'invited'      /* A new person. On a preview: would be invited. */
+  | 'already here' /* Somebody with this address is already in the record. Not an error. */
+  | 'repeated'     /* The same address twice in one paste. Counted once. */
+  | 'not an email' /* Kept out here rather than failing at the send. */
+  | 'no seat';     /* The plan has no room. The whole reason a preview exists. */
+
+export interface Row { email: string; result: RowResult }
+
+/**
+ * How many addresses one paste may carry.
+ *
+ * Not a guess at a comfortable number - it is the size of the largest organisation this is
+ * plausibly used for in one go, and past it the answer is a directory sync rather than a paste.
+ * A cap that is never hit still has to exist: without one, a paste is an unbounded fan-out of
+ * emails triggered by one request.
+ */
+export const MOST_IN_ONE_PASTE = 500;
+
+/**
+ * WHAT COUNTS AS AN ADDRESS HERE.
+ *
+ * Deliberately loose. This is not validating an email, it is separating "somebody pasted a name by
+ * accident" from "an address we can try". Being strict here rejects real addresses - plus signs,
+ * long suffixes, unusual domains - and the person it rejects is a real colleague who then never
+ * gets invited and nobody notices.
+ */
+const LOOKS_LIKE_AN_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Split whatever they pasted.
+ *
+ * Commas, semicolons, newlines, tabs and spaces, because a paste comes from a spreadsheet column,
+ * a mail client's To field, or a chat message, and all three arrive differently. Angle brackets and
+ * display names are stripped: "Ada Lovelace <ada@example.com>" is what a mail client hands over.
+ */
+export function addressesIn(pasted: string): string[] {
+  return (pasted ?? '')
+    .split(/[,;\n\r\t]+|\s{2,}/)
+    .map((part) => {
+      const angled = part.match(/<([^>]+)>/);
+      return (angled ? angled[1] : part).trim().toLowerCase();
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Decide what happens to each address, in order, against a fixed number of seats.
+ *
+ * IN ORDER AND NOT SORTED. When there are twelve seats and forty addresses, which twelve get in has
+ * to be something the admin can predict, and "the first twelve I pasted" is the only answer that is
+ * predictable from the screen they are looking at.
+ *
+ * `seats` is null for an organisation with no cap.
+ */
+export function planFor(
+  pasted: string,
+  alreadyHere: (email: string) => boolean,
+  seats: number | null,
+): Row[] {
+  const seen = new Set<string>();
+  let left = seats;
+  const rows: Row[] = [];
+
+  for (const email of addressesIn(pasted)) {
+    if (seen.has(email)) { rows.push({ email, result: 'repeated' }); continue; }
+    seen.add(email);
+
+    if (!LOOKS_LIKE_AN_ADDRESS.test(email)) { rows.push({ email, result: 'not an email' }); continue; }
+    if (alreadyHere(email)) { rows.push({ email, result: 'already here' }); continue; }
+    /* Only a new person consumes a seat, which is the same rule `canInviteMember` applies. */
+    if (left !== null && left <= 0) { rows.push({ email, result: 'no seat' }); continue; }
+    if (left !== null) left -= 1;
+    rows.push({ email, result: 'invited' });
+  }
+  return rows;
+}
+
+/** One line an admin can read before they email their company. */
+export function summarise(rows: Row[]): string {
+  const n = (r: RowResult) => rows.filter((x) => x.result === r).length;
+  const parts: string[] = [];
+  if (n('invited')) parts.push(`${n('invited')} to invite`);
+  if (n('already here')) parts.push(`${n('already here')} already here`);
+  if (n('repeated')) parts.push(`${n('repeated')} repeated`);
+  if (n('not an email')) parts.push(`${n('not an email')} not an address`);
+  /* Last and phrased as the blocker it is, because it is the one that needs a decision. */
+  if (n('no seat')) parts.push(`${n('no seat')} with no seat on your plan`);
+  return parts.length ? parts.join(', ') : 'Nothing to send';
+}

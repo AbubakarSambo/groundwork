@@ -75,6 +75,13 @@ const CHECKED_AND_FINE = new Set([
    */
   'modules/detectors/roles-and-their-action.service.ts:occurredAt',
   /*
+   * `if (!dto.role)` in `update()`. `UpdateUserDto.role` is OPTIONAL - a caller changing somebody's
+   * name sends no role at all - and the check is what stops an absent one being written as a
+   * change. It matched `User.role`, which is non-nullable, because the same file writes that column
+   * a few lines further down. The name-collision case this file's own header describes.
+   */
+  'modules/users/users.service.ts:role',
+  /*
    * Three of the name-collision false positives this file's own header warns about, all in one
    * service because it reads Person, User and PersonObjective together.
    *

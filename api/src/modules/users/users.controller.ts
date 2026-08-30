@@ -88,6 +88,24 @@ export class UsersController {
     return this.usersService.findAll(organizationId, pagination);
   }
 
+  /**
+   * PUT A WHOLE COMPANY ON, previewed first.
+   *
+   * `preview` is a query parameter rather than a second route so the two cannot drift apart: it is
+   * the same call, stopping one step earlier.
+   */
+  @Post('invitations')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Invite many people at once, or preview what would happen' })
+  async inviteMany(
+    @CurrentUser() user: CurrentUserData,
+    @Body() body: { pasted?: string; preview?: boolean },
+  ) {
+    const org = await this.usersService.organisationName(user.organizationId);
+    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Get a single user' })

@@ -275,6 +275,28 @@ export class BillingService {
   }
 
   /** Returns allowed: false if the org is at its plan member cap. */
+  /**
+   * HOW MANY MORE PEOPLE THIS ORGANISATION MAY ADD. Null when there is no cap.
+   *
+   * `canInviteMember` answers "may I add one more" and that is the wrong question for somebody
+   * pasting a list: they need to know before they send, not one refusal at a time. Same two
+   * sources, same order, so the number shown on the paste screen and the number that refuses an
+   * invitation cannot disagree - which is the failure this whole path exists to avoid.
+   */
+  async seatsLeft(organizationId: string): Promise<number | null> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: SEAT_RELATION_COUNT } },
+    });
+    if (!org) return null;
+    const cap = isSubscribed(org)
+      ? await this.pricing.memberCapFor(org.subscriptionPlan)
+      : await this.pricing.getFreeMemberLimit();
+    if (cap === null || cap === undefined) return null;
+    /* Never negative: an organisation already over its cap has no room, not room owed back. */
+    return Math.max(0, cap - (org._count.users ?? 0));
+  }
+
   async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },

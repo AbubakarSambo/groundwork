@@ -37,6 +37,26 @@
 }
 
 :root {
+  /*
+   * FIVE NAMES THAT WERE USED AND NEVER DEFINED.
+   *
+   * `--gw-card`, `--gw-slate`, `--gw-line`, `--gw-ink`, `--gw-green` and `--gw-accent` are read by
+   * pages all over this product and were declared nowhere. CSS does not complain about that - the
+   * property simply does not apply - so eleven card backgrounds rendered transparent, two buttons
+   * rendered white on white, and everything typechecked and passed.
+   *
+   * Found by looking at a screenshot of a page and asking why the primary button was missing.
+   *
+   * They are ALIASES, not new colours. Every one of them is a second name for a surface this system
+   * already has, so defining them settles the rendering without adding a decision. `--gw-accent`
+   * is not among them: two pages meant the primary colour by it and now say `--gw-navy`, which is
+   * one name for one thing rather than two.
+   */
+  --gw-card: #FFFFFF;
+  --gw-slate: #F5F3EF;
+  --gw-line: #E2E0DB;
+  --gw-ink: #1A1916;
+  --gw-green: #085041;
   --gw-navy: #0C447C;
   --gw-navy-d: #042C53;
   --gw-bg: #EDECEA;

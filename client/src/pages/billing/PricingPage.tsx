@@ -71,7 +71,7 @@ export function PricingPage() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-accent)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
             Pricing
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.02em', marginBottom: 16, lineHeight: 1.2 }}>
@@ -172,7 +172,7 @@ export function PricingPage() {
               {PLAN_DESCRIPTIONS.ENTERPRISE}
             </p>
           </div>
-          <a href="mailto:hello@myground.work" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-accent)', background: 'none', border: '1px solid var(--gw-accent)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <a href="mailto:hello@myground.work" style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 9, padding: '10px 20px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
             Contact us
           </a>
         </div>
