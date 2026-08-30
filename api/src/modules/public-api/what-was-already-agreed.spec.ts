@@ -62,7 +62,16 @@ describe('seeding informs, it never forecloses', () => {
      * defaulted true and never inferred.
      */
     expect(SVC).toMatch(/seenBySubject: item\.seenBySubject === true/);
-    expect(SVC).not.toMatch(/seenBySubject: true[,\s]/);
+    /*
+     * WRITES ONLY, and it took an unrelated change to show why. This scanned the whole file, so the
+     * first piece of code to READ the column - `select: { seenBySubject: true }`, which is Prisma
+     * for "give me this field" and asserts nothing about anybody - turned it red. A guard that
+     * cannot tell a read from a write is one a person eventually satisfies by not reading the
+     * column, and refusing to press somebody about a thing they have not seen REQUIRES reading it.
+     */
+    const writes = [...SVC.matchAll(/\b(create|createMany|update|updateMany|upsert)\s*\(\s*\{[\s\S]{0,1200}?\n {4}\}\)/g)]
+      .map((m) => m[0]).join('\n');
+    expect(writes).not.toMatch(/seenBySubject: true[,\s]/);
   });
 
   it('and a seeded objective is authored by their system, not by the acting user', () => {

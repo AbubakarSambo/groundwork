@@ -18,6 +18,8 @@
  * and a lead walking in believing otherwise is worse off than one who brought nothing.
  */
 
+import { hasCoachingRunOut, HowItHasGone, Escalation } from './when-coaching-has-stopped-being-enough';
+
 export interface CommitmentRow {
   text: string;
   state: string;
@@ -68,6 +70,12 @@ export interface Material {
   /** Handoffs somebody else is waiting on them for. */
   othersWaiting: WaitingRow[];
   findings: FindingRow[];
+  /**
+   * How the ordinary cycle has gone on each open promise: how long it has been outstanding, whether
+   * they have seen it, what is in the way, and what coaching was offered. Absent where the caller
+   * cannot tell, which reads as "say nothing" rather than as "nothing was tried".
+   */
+  howItHasGone?: HowItHasGone[];
   carrying: CarriedSubject[];
   now: Date;
 }
@@ -221,6 +229,24 @@ export function howCompleteThePictureIs(m: Material): Completeness {
 export function theReadFor(m: Material): TheRead {
   const sections: Section[] = [];
 
+  /*
+   * PUT FIRST, because it is the only part of this read that asks the lead to do something, and a
+   * recommendation four sections down is a recommendation nobody acts on. Almost every read will
+   * not have one - every condition in `hasCoachingRunOut` has to hold, and they rarely all do.
+   */
+  const ranOut = (m.howItHasGone ?? [])
+    .map(hasCoachingRunOut)
+    .filter((e): e is Extract<Escalation, { recommend: true }> => e.recommend);
+  if (ranOut.length) {
+    sections.push({
+      heading: 'Where the normal cycle has been tried and has not moved it',
+      lines: ranOut.map((e) => e.says),
+      source: 'Their own promises, the coaching steps offered on them, and whether anything was'
+        + ' recorded as blocking. This recommends a conversation. It is not a warning, it decides'
+        + ' nothing, and it does not say anybody is failing.',
+    });
+  }
+
   const late = m.commitments.filter((c) => isLate(c, m.now));
   const undated = m.commitments.filter((c) => c.dueAt === null);
   if (late.length || undated.length) {
@@ -298,6 +324,8 @@ export function theReadFor(m: Material): TheRead {
       'Why any of it happened. A missed date and a blocked week look the same from outside.',
       'Anything said in a check-in that has not been released in a report.',
       'Any view of how they are doing. That is yours to form, in the room, with them.',
+      'Why the ordinary cycle has not moved something, where it says so. That is the question to'
+        + ' walk in with, and the answer is theirs to give.',
     ],
     refusal: REFUSAL,
   };
