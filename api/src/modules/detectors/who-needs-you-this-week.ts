@@ -1,0 +1,101 @@
+/**
+ * A MANAGER WITH TWELVE PEOPLE CANNOT READ TWELVE READS.
+ *
+ * Everything built so far answers "what does the record hold about this person" and answers it well,
+ * and a sales manager on a Monday morning does not have that question. Theirs is "where am I needed",
+ * and without an answer the careful per-person read is a thing nobody opens.
+ *
+ * THIS IS THE FEATURE MOST LIKELY TO BECOME A LEAGUE TABLE, so it is built so that it cannot be one:
+ *
+ *   NOBODY IS SCORED. There is no number, so there is nothing to sort people by. The types below
+ *     have no field a future edit could quietly start ordering on.
+ *   THE BUCKETS ARE THINGS THE MANAGER DOES, not things a person is. "Somebody is waiting on you"
+ *     is a queue of the manager's own work. "The ordinary cycle has run out" is a conversation to
+ *     have. Neither is a quality of the person named.
+ *   BEING IN ONE IS NOT BAD AND BEING IN NONE IS NOT GOOD. A person blocked for three weeks is in a
+ *     bucket because their situation is urgent, and it is urgent because the company has not cleared
+ *     something. Reading that as a mark against them inverts it completely.
+ *   ORDER IS BY HOW LONG SOMETHING HAS BEEN WAITING and by nothing else, because that is a property
+ *     of the situation. Two people in the same bucket are not being compared.
+ *
+ * The most important line in the whole file is the one about an empty list: silence in a record is
+ * silence in a record, and a manager who reads "nothing flagged" as "everybody is fine" has been
+ * misled by this product rather than helped by it.
+ */
+
+export type NeedKind =
+  /* The manager is the blocker. First, because it is the only bucket that is their own work. */
+  | 'WAITING_ON_YOU'
+  /* Somebody is stuck on something the company has not cleared, and has already raised it. */
+  | 'STUCK_AND_RAISED'
+  /* The ordinary cycle has been tried on the same thing and has not moved it. */
+  | 'CYCLE_RAN_OUT'
+  /* They said themselves they do not know how. The cheapest thing on this list to fix. */
+  | 'ASKED_TO_BE_SHOWN';
+
+export interface Need {
+  kind: NeedKind;
+  /** Who it concerns. A label or a name, decided by the caller's read permissions, never by this. */
+  who: string;
+  /** What the situation is, in a sentence, founded on something somebody recorded. */
+  says: string;
+  /** How long it has been like this. The only ordering there is, and it describes the wait. */
+  waitingDays: number;
+}
+
+/**
+ * WHAT EACH BUCKET ASKS OF THE MANAGER. Written here rather than in a screen, because the whole
+ * value of splitting these up is that they need four different things, and a page that renders four
+ * lists under one heading has thrown that away.
+ */
+export const WHAT_IT_ASKS: Record<NeedKind, string> = {
+  WAITING_ON_YOU: 'This is yours to clear. Nobody else can.',
+  STUCK_AND_RAISED: 'Somebody raised this and it is still open. Either clear it or tell them it is not being cleared.',
+  CYCLE_RAN_OUT: 'Twenty minutes with them, about what is behind it. Not another check-in question.',
+  ASKED_TO_BE_SHOWN: 'They have asked to be shown. That is an hour of somebody\'s time, not a conversation about performance.',
+};
+
+/* The order the buckets are read in. The manager's own work first; the person's nerve last. */
+const ORDER: NeedKind[] = ['WAITING_ON_YOU', 'STUCK_AND_RAISED', 'CYCLE_RAN_OUT', 'ASKED_TO_BE_SHOWN'];
+
+export interface TheWeek {
+  buckets: { kind: NeedKind; asks: string; needs: Need[] }[];
+  /** Said even when there is plenty here, because it is true either way. */
+  whatThisIsNot: string[];
+}
+
+export function whoNeedsYou(needs: Need[]): TheWeek {
+  const buckets = ORDER
+    .map((kind) => ({
+      kind,
+      asks: WHAT_IT_ASKS[kind],
+      /*
+       * LONGEST WAIT FIRST, and that is the only sort in this file. It is a property of the
+       * situation - how long somebody has been waiting - and not a property of a person. Sorting by
+       * anything else here is how this becomes a ranking, whatever it gets called.
+       */
+      needs: needs.filter((n) => n.kind === kind).sort((a, b) => b.waitingDays - a.waitingDays),
+    }))
+    .filter((b) => b.needs.length);
+
+  return { buckets, whatThisIsNot: NOT_A_RANKING };
+}
+
+/**
+ * SAID ON THE SCREEN, NOT JUST IN THIS FILE.
+ *
+ * A manager reading a short list of names under a heading will supply their own meaning for it
+ * within about a second, and the meaning they supply is "these are my problem people". The only
+ * defence is to say what it is not, in the place they are reading it.
+ */
+export const NOT_A_RANKING = [
+  'Nobody is scored or ordered here. Two people in the same list are not being compared.',
+  'Being on this list is not a mark against anybody. Most of what is here is the company owing somebody something.',
+  'Not being on it does not mean somebody is fine. It means nothing in the record flagged them, and'
+    + ' most of what happens is not in the record.',
+];
+
+/** What an empty week says, which is the sentence this whole file exists to get right. */
+export const NOTHING_FLAGGED =
+  'Nothing in the record needs you this week. That is not the same as everybody being fine - it is'
+  + ' the record being quiet, and the people who most need a conversation are often the quietest in it.';
