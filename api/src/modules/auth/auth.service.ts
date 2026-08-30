@@ -29,6 +29,7 @@ import {
 } from './dto';
 import { TokenType } from '@prisma/client';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 
 type UserWithOrg = {
   id: string;
@@ -118,6 +119,8 @@ export class AuthService {
           isEmailVerified: false,
         },
       });
+      /* The first admin of a new organisation holds it. One function, five doors. */
+      await theFirstAdminHoldsIt(tx, organization.id, user.id);
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
@@ -174,6 +177,8 @@ export class AuthService {
           isEmailVerified: false,
         },
       });
+      /* The first admin of a new organisation holds it. One function, five doors. */
+      await theFirstAdminHoldsIt(tx, organization.id, user.id);
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
@@ -271,6 +276,8 @@ export class AuthService {
           },
           include: { organization: true },
         });
+        /* The first admin of a new organisation holds it. One function, five doors. */
+        await theFirstAdminHoldsIt(tx, org.id, u.id);
         if (pending.draftToken) {
           await tx.entryDraft.create({
             data: {
@@ -529,6 +536,14 @@ export class AuthService {
         const u = await tx.user.create({
           data: { organizationId, email: lower, firstName, lastName: '', role: 'MEMBER', isEmailVerified: false },
         });
+        /*
+         * ONLY WHERE WE JUST MADE THE WORKSPACE FOR THEM. This branch also runs for somebody being
+         * invited INTO an existing organisation, and claiming that one for the invitee would hand a
+         * customer's account to the newest person in it. `theFirstAdminHoldsIt` refuses to take one
+         * that is already held, but an organisation that has none yet would be taken - so it is
+         * asked only when this call created the organisation a line earlier.
+         */
+        if (!inviterOrganizationId) await theFirstAdminHoldsIt(tx, organizationId, u.id);
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
           data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
@@ -709,7 +724,7 @@ export class AuthService {
 
         user = await this.prisma.$transaction(async (tx) => {
           const organization = await tx.organization.create({ data: { name: orgName, slug } });
-          return tx.user.create({
+          const created = await tx.user.create({
             data: {
               organizationId: organization.id,
               email,
@@ -721,6 +736,9 @@ export class AuthService {
             },
             include: { organization: true },
           });
+          /* The first admin of a new organisation holds it. One function, five doors. */
+          await theFirstAdminHoldsIt(tx, organization.id, created.id);
+          return created;
         });
       }
     }

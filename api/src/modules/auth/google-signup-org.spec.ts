@@ -46,7 +46,13 @@ function makeService(over: {
         return { id: 'u-new', isActive: true, ...a.data, organization: { id: a.data.organizationId, name: 'x' } };
       }),
     },
-    organization: { create: jest.fn(async (a: any) => ({ id: 'org-new', ...a.data })), findUnique: jest.fn(async () => null) },
+    organization: {
+      create: jest.fn(async (a: any) => ({ id: 'org-new', ...a.data })),
+      findUnique: jest.fn(async () => null),
+      /* The new organisation claims a holder in the same transaction. See
+         `the-person-who-set-this-up.ts` - a workspace with nobody holding it can never get one. */
+      updateMany: jest.fn(async () => ({ count: 1 })),
+    },
     groundParticipant: { findFirst: jest.fn(async () => over.invited ?? null) },
     $transaction: jest.fn(async (fn: any) => fn(prisma)),
   };

@@ -81,3 +81,30 @@ export const NOT_YOURS_TO_GIVE =
 
 export const MUST_BE_AN_ADMIN =
   'Make them an admin first. Whoever holds this has to be able to manage the organisation.';
+
+/**
+ * THE FIRST ADMIN OF A NEW ORGANISATION HOLDS IT.
+ *
+ * Found by signing up through the entry chat and reading the row: a brand new organisation came out
+ * with no holder at all. The backfill had covered every organisation that already existed and
+ * nothing set it on the ones created from then on - so the protection would have quietly applied to
+ * yesterday's customers and to nobody after them, and they could never have claimed it, because
+ * handing it over is something only a holder can do.
+ *
+ * A FUNCTION BECAUSE THERE ARE FIVE DOORS. An organisation is created in five places - sign-up,
+ * magic link, entry chat, Google, and the standalone workspace an invitation falls back to - and a
+ * line at each is five chances to forget. This is the only way it is set.
+ *
+ * IT NEVER TAKES IT FROM SOMEBODY. `updateMany` with a null guard, so running twice, or on an
+ * organisation that already has a holder, does nothing.
+ */
+export async function theFirstAdminHoldsIt(
+  tx: { organization: { updateMany: (a: any) => Promise<unknown> } },
+  organizationId: string,
+  userId: string,
+): Promise<void> {
+  await tx.organization.updateMany({
+    where: { id: organizationId, ownerUserId: null },
+    data: { ownerUserId: userId },
+  });
+}
