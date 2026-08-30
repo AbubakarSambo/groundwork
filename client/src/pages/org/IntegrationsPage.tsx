@@ -34,7 +34,33 @@ const S = {
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--gw-bg)' } as const,
 }
 
-const SCOPES = ['graph:write', 'subjects:write', 'findings:read']
+/**
+ * EVERY SCOPE THE API HAS, WITH WHAT IT ACTUALLY LETS THROUGH.
+ *
+ * The page offered three of eleven. So a customer could not grant the right to send their handbook,
+ * open a check-in from their own system, read a handover brief, or ask a question from their own
+ * app - all of which are built and none of which they could turn on. That is the sharpest version
+ * of "either what we built is not complete or how we communicate is not complete": built, described
+ * nowhere, and ungrantable.
+ *
+ * The wording of each is taken from what the scope guards in scopes.ts, not from its name. Two
+ * pairs are deliberately separate there and stay separate here: opening a check-in is a different
+ * power from linking one to an objective, and reading a report - everybody's account of a quarter -
+ * is a different power from reading a finding.
+ */
+const SCOPES: { key: string; label: string; sub: string }[] = [
+  { key: 'graph:write',    label: 'Send people',            sub: 'Who works here and who reports to whom' },
+  { key: 'subjects:write', label: 'Send objectives',        sub: 'Objectives, projects and decisions, with their measures and owners' },
+  { key: 'knowledge:write',label: 'Send your handbook',     sub: 'Documents people can then ask in plain words' },
+  { key: 'grounds:write',  label: 'Open check-ins',         sub: 'Start one from your own system' },
+  { key: 'checkins:write', label: 'Link a check-in',        sub: 'Attach an existing one to an objective. Smaller than opening one' },
+  { key: 'findings:read',  label: 'Read findings',          sub: 'What is missing, unowned, or described two ways' },
+  { key: 'handovers:read', label: 'Read handover briefs',   sub: 'What is outstanding on one named person\'s desk' },
+  { key: 'reports:read',   label: 'Read reports',           sub: 'Everybody\'s account of a period, once released' },
+  { key: 'proposals:read', label: 'Read proposed changes',  sub: 'Changes Groundwork suggests to an objective' },
+  { key: 'proposals:write',label: 'Resolve proposed changes', sub: 'Accept or decline them from your side' },
+  { key: 'chat:write',     label: 'Ask from your own app',  sub: 'The panel you embed, asking on behalf of one person' },
+]
 
 function Pill({ tone, children }: { tone: 'ok' | 'warn' | 'bad' | 'flat'; children: React.ReactNode }) {
   const c = {
@@ -196,8 +222,35 @@ export function IntegrationsPage() {
         <p style={S.body}>Who works here, what they are called, who they report to. Sent from your HR or identity system so you are not keeping a second list. When somebody joins, moves team or leaves, that arrives too.</p>
       </div>
       <div style={S.card}>
-        <div style={S.h3}>Your objectives and work come in</div>
-        <p style={S.body}>Whatever you track in your OKR or project tool. Groundwork holds a pointer to it and the wording as it stood when you last sent it - never a second editable copy, because two versions that must agree is the problem this product exists to end. If it goes out of date, it says so rather than pretending.</p>
+        {/*
+          * IT SAID "OKR TOOL" AND THE API HAS NEVER BEEN OKR-SHAPED.
+          *
+          * Her reading: "you have okrs there but we are meant to be able to look at their crm etc
+          * and all the tools they use", and "this is a lot more than okrs". Both true of what is
+          * built - a subject is an objective, a project or a decision, with a measure, a target, an
+          * owner, contributors, a parent and dates - and the page named one tool and one shape.
+          *
+          * What follows is the whole list of what the API accepts, because the page described two
+          * of eight and the other six are the reason somebody would connect anything at all.
+          */}
+        <div style={S.h3}>What you are working towards comes in</div>
+        <p style={S.body}>Objectives, projects and decisions - from your OKR tool, your project tracker, your CRM, wherever the work actually lives. Each one can carry what it is measured by, the target, who owns it, who else is on it, and what it sits under. Groundwork holds a pointer and the wording as it stood when you last sent it - never a second editable copy, because two versions that must agree is the problem this product exists to end. If it goes out of date, it says so rather than pretending.</p>
+      </div>
+      <div style={S.card}>
+        <div style={S.h3}>Your people check in against it</div>
+        <p style={S.body}>This is the part that is not a dashboard. The objectives you send become what each person is asked about, on the cadence you set - their own account of the work, in their own words, against the thing you said mattered. The report shows where those accounts agree and where they do not.</p>
+      </div>
+      <div style={S.card}>
+        <div style={S.h3}>Roles, handovers and what each role turns on</div>
+        <p style={S.body}>Who holds which role and since when, so a handover produces a brief rather than a gap. Each role can name the one action it lives or dies by and how often it is due - the visit, the review, the presentation - and Groundwork notices when somebody active has stopped doing it. Not before the period is half gone, and never as a verdict.</p>
+      </div>
+      <div style={S.card}>
+        <div style={S.h3}>Your handbook and how you work</div>
+        <p style={S.body}>Send the documents that say how things are done here and people can ask them in plain words. Answers quote what is written rather than paraphrasing it, and a policy that changed in March still explains a finding from March.</p>
+      </div>
+      <div style={S.card}>
+        <div style={S.h3}>What a lead should read before a hard conversation</div>
+        <p style={S.body}>What is outstanding on somebody's desk, where two accounts of the same objective differ, and which objectives have no measure or nobody carrying them. Evidence with its source attached, so it can be checked. It is never a score, and nothing here decides anything about a person.</p>
       </div>
       <div style={S.card}>
         <div style={S.h3}>Invitations go out</div>
@@ -251,14 +304,21 @@ export function IntegrationsPage() {
           </div>
         )}
         <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
-          {SCOPES.map(s => (
-            <label key={s} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 6, alignItems: 'center' }}>
+          {/* The scope name is still shown - an engineer needs the exact string - but it is no
+              longer the only thing on screen, because the person choosing is usually not them. */}
+          {SCOPES.map(sc => (
+            <label key={sc.key} style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'flex-start', flex: '1 1 240px' }}>
               <input
                 type="checkbox"
-                checked={credScopes.includes(s)}
-                onChange={e => setCredScopes(v => (e.target.checked ? [...v, s] : v.filter(x => x !== s)))}
+                style={{ marginTop: 3 }}
+                checked={credScopes.includes(sc.key)}
+                onChange={e => setCredScopes(v => (e.target.checked ? [...v, sc.key] : v.filter(x => x !== sc.key)))}
               />
-              <span style={S.mono}>{s}</span>
+              <span>
+                <span style={{ fontWeight: 600, color: 'var(--gw-text)' }}>{sc.label}</span>
+                <span style={{ ...S.mono, marginLeft: 6, fontSize: 11, color: 'var(--gw-muted)' }}>{sc.key}</span>
+                <span style={{ display: 'block', lineHeight: 1.45, marginTop: 1 }}>{sc.sub}</span>
+              </span>
             </label>
           ))}
         </div>
