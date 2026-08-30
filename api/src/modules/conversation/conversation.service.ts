@@ -39,7 +39,9 @@ import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
-import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA } from './prompt-library';
+import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA } from './prompt-library';
+import { KnowledgeService } from '../knowledge/knowledge.service';
+import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -209,6 +211,16 @@ export class ConversationService {
     private email: EmailService,
     private usage: UsageService,
     private config: ConfigService,
+    /*
+     * THE ORGANISATION'S OWN WRITTEN PROCESS, for the one question that shows understanding rather
+     * than asking about it.
+     *
+     * Last, and optional to TypeScript. Nest injects it - the provider is registered - and the two
+     * dozen specs that build this service positionally keep compiling without a stub they would
+     * never use. Every call site treats it as absent, which is also what happens in an
+     * organisation that has written nothing down.
+     */
+    private knowledge?: KnowledgeService,
   ) {}
 
   /** Best-effort, and never the reason a refusal fails to reach the person refused. */
@@ -1435,6 +1447,24 @@ export class ConversationService {
       }),
     ]);
 
+    /*
+     * WHAT THIS COMPANY SAYS ITS OWN PROCESS IS.
+     *
+     * Looked up from what they just said, which is the only honest query available - it is what the
+     * conversation is about right now. Nothing comes back for a short answer, for an organisation
+     * that has written nothing down, or when this service is not wired, and all three are ordinary.
+     *
+     * Best-effort throughout. A check-in must never fail because a handbook lookup did.
+     */
+    const lookUp = whatToLookUp(latestMessage);
+    const companyCards = lookUp && this.knowledge
+      ? await this.knowledge
+          .retrieve(ground.organizationId, checkIn.participant.userId ?? 'a participant', lookUp)
+          .then((r: any) => r?.cards ?? [])
+          .catch(() => [])
+      : [];
+    const howWeDoIt = howThisCompanyDoesIt(companyCards);
+
     const docContext = uploadedDocs.length
       ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
         uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
@@ -1579,7 +1609,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */
@@ -2186,6 +2216,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * GW-EXP-7. Fire-and-forget beside the others: an objection somebody raised must never be the
      * reason their session fails to complete. Returns immediately when nothing is expected of them.
      */
+    this.extractOperatingDifferences(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Operating-difference extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     this.extractObjection(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Objection read failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -2661,6 +2695,86 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * expectation they have never laid eyes on - a real risk for something a lead wrote about them,
    * and a nonsense for a sentence they said themselves ten minutes ago.
    */
+  /**
+   * WHERE THEIR ACCOUNT OF A PROCESS AND THE WRITTEN ONE DIFFER.
+   *
+   * The durable half of asking somebody to walk you through something. Without it the walk-through
+   * happens, the difference is noticed in the moment, and it is gone - buried in a transcript that
+   * the next check-in reads six entries of.
+   *
+   * ONLY WHERE THE COMPANY HAS WRITTEN IT DOWN. No cards, no differences, no entries, and that is
+   * most organisations. This never invents a process to measure somebody against.
+   *
+   * `dimensionThreadKey` is the card's own key, which is what that column was built for and what
+   * nothing has ever written to it: it groups the same theme across sessions, so "contracting" at
+   * day 14 and "contracting" at day 60 are the same thread rather than two unrelated notes.
+   */
+  async extractOperatingDifferences(checkInId: string, participantId: string, groundId: string) {
+    if (!this.knowledge) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const said = turns.map((t) => t.content).join('\n').trim();
+    if (said.length < 200) return; /* Too little was said for any of this to mean anything. */
+
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true },
+    });
+    if (!ground) return;
+
+    const { cards } = await this.knowledge
+      .retrieve(ground.organizationId, participantId, said.slice(0, 2_000))
+      .catch(() => ({ cards: [] as any[] }));
+    if (!cards.length) return;
+
+    const written = cards.map((c: any) => `--- ${c.title} (key: ${c.key}) ---\n${c.body}`).join('\n\n');
+    const result = await this.anthropic.extract<{
+      differences: { about: string; theirAccount: string; whatIsWritten: string; neverTold?: boolean }[];
+    }>(
+      OPERATING_DIFFERENCE_PROMPT,
+      [{ role: 'user', content: `WHAT IS WRITTEN:\n${written}\n\nWHAT THEY SAID:\n${said}` }],
+      OPERATING_DIFFERENCE_SCHEMA as any,
+    ).catch(() => null);
+    if (!result?.differences?.length) return;
+
+    for (const d of result.differences) {
+      const about = (d.about ?? '').trim();
+      const theirs = (d.theirAccount ?? '').trim();
+      const written = (d.whatIsWritten ?? '').trim();
+      if (!about || !theirs || !written) continue;
+
+      /*
+       * BOTH SIDES IN ONE SENTENCE, always. An entry saying only what they said would read as a
+       * quote; one saying only what is written would read as a correction. The difference is the
+       * thing, and it is only visible with both halves of it present.
+       */
+      const told = d.neverTold
+        ? ' They said nobody had told them this, so it is worth checking who should have.'
+        : '';
+      const text = `On ${about}, they described: ${theirs}. What is written here: ${written}. `
+        + `Which is right is worth settling - the written one may be out of date.${told}`;
+
+      /* The card's key groups this theme across sessions. */
+      const key = cards.find((c: any) => about.toLowerCase().includes(String(c.key).toLowerCase()))?.key
+        ?? cards[0]?.key ?? null;
+
+      await this.prisma.recordEntry.create({
+        data: {
+          participantId,
+          checkInId,
+          type: 'OPERATING_DIFFERENCE' as any,
+          text,
+          recallBased: true,
+          dimensionThreadKey: key,
+        },
+      }).catch(() => undefined);
+    }
+  }
+
   private async writeTheirOwnPromises(
     participantId: string,
     groundId: string,

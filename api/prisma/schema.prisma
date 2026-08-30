@@ -160,6 +160,16 @@ enum RecordEntryType {
   TOLERANCE
   WORRY
   TENSION
+  /// WHERE SOMEBODY'S ACCOUNT OF A PROCESS AND THE WRITTEN ONE DIFFER.
+  ///
+  /// Not "they got it wrong". A written process nobody has updated since March is at least as
+  /// likely to be the wrong one, and where nobody ever told them, the finding belongs to whoever
+  /// should have. The entry records the difference and says both sides of it.
+  ///
+  /// It is in the person's OWN record and reaches them in their own report, like every other entry
+  /// here. A hidden read on somebody's understanding would be a management dossier, which this
+  /// product does not keep.
+  OPERATING_DIFFERENCE
 }
 
 // Three-period rule: CANDIDATE until observed in 3 consecutive periods.

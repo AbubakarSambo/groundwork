@@ -1686,6 +1686,56 @@ Be conservative. Empty lists are correct answers.`;
  * The same conservatism as its sibling: an empty list is the right answer most of the time, and
  * NOT_CHECKABLE is a real value rather than a failure to try harder.
  */
+/**
+ * WHERE SOMEBODY'S ACCOUNT OF A PROCESS AND THE COMPANY'S WRITTEN ONE DIFFER.
+ *
+ * Run only when the company has actually written the process down and it came up in the
+ * conversation. It records the DIFFERENCE, never a verdict: a document nobody has updated since
+ * March is at least as likely to be the wrong one, and where nobody ever told them, the finding
+ * belongs to whoever should have.
+ *
+ * The two hard rules are the ones that keep this from becoming a competency score: no marking, and
+ * both sides of the difference stated in the same entry.
+ */
+export const OPERATING_DIFFERENCE_PROMPT = `You are given a transcript and the company's own written process.
+
+Find places where what the person described DIFFERS from what is written. Nothing else.
+
+For each one:
+   - about: which written process it concerns, in a few words.
+   - theirAccount: what they described, in their own words as far as possible.
+   - whatIsWritten: what the document says, in its words.
+   - neverTold: true only if they said, or plainly implied, that nobody had told them this.
+
+RULES.
+A difference is not a mistake. Do not say who is right, and do not imply it.
+Only where they actually described something. Silence is not a difference, and neither is "I am not sure" -
+somebody saying they do not know is being honest, and it is not this.
+Only where the written process actually covers it. If the document does not say, there is no difference.
+A different emphasis is not a difference. Look for something that would lead to a different action.
+Never write that they are wrong, do not understand, or have a gap.
+Be conservative. An empty list is usually correct.`;
+
+export const OPERATING_DIFFERENCE_SCHEMA = {
+  type: 'object',
+  properties: {
+    differences: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          about: { type: 'string' },
+          theirAccount: { type: 'string' },
+          whatIsWritten: { type: 'string' },
+          neverTold: { type: 'boolean' },
+        },
+        required: ['about', 'theirAccount', 'whatIsWritten'],
+      },
+    },
+  },
+  required: ['differences'],
+} as const;
+
 export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
 
 Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
