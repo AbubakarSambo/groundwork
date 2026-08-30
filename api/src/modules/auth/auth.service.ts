@@ -758,31 +758,27 @@ export class AuthService {
     return { valid: true, email: tokenRecord.user.email, firstName: tokenRecord.user.firstName };
   }
 
+  /**
+   * THE SAME SHAPE AS SIGNING IN, BECAUSE IT IS THE SAME QUESTION.
+   *
+   * This built its own object beside `buildAuthResponse` and the two drifted, in the way two copies
+   * of one shape always eventually do. What it lost was `mayOpenCheckIns`, and the loss was silent
+   * and total: the client asks `user?.mayOpenCheckIns !== false`, `undefined !== false` is true, and
+   * every page load calls this - so signing in hid the button correctly and the first refresh handed
+   * it back to everybody in the organisation.
+   *
+   * The server refused what they then clicked, which is the guard working. It is not a defence:
+   * being shown a door, walking through it and being turned away is a worse experience than never
+   * seeing the door, and it teaches people the product is broken rather than that the setting is
+   * deliberate.
+   *
+   * So there is one builder now, and a field added to it cannot fail to reach this route.
+   */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
     if (!user) throw new BadRequestException('User not found');
-
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      organizationId: user.organizationId,
-      organizationName: user.organization.name,
-      orgCode: user.organization.slug,
-      isPlatformAdmin: user.isPlatformAdmin,
-      emailNotifications: user.emailNotifications,
-      organization: {
-        id: user.organization.id,
-        name: user.organization.name,
-        slug: user.organization.slug,
-        careFeeStatus: user.organization.careFeeStatus,
-        email: user.organization.email,
-        companyStage: user.organization.companyStage,
-        subscriptionPlan: user.organization.subscriptionPlan,
-      },
-    };
+    /* One builder. A field added to it cannot fail to reach this route now. */
+    return { ...this.theUserShape(user as unknown as UserWithOrg), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
   }
 
   // --- helpers ---
@@ -818,7 +814,23 @@ export class AuthService {
        */
       needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
       accessToken: this.generateToken(user),
-      user: {
+      user: this.theUserShape(user),
+    };
+  }
+
+  /**
+   * ONE SHAPE FOR WHO SOMEBODY IS, BUILT IN ONE PLACE.
+   *
+   * Signing in and `GET /auth/me` answer the same question and had two builders, which drifted the
+   * way two copies of one shape always do. `mayOpenCheckIns` reached the first and not the second,
+   * silently, so signing in hid the button correctly and the first page refresh handed it back to
+   * everybody in the organisation.
+   *
+   * SEPARATE FROM `buildAuthResponse` RATHER THAN CALLING IT, because that one also mints an access
+   * token, and fetching a profile is not a reason to issue a credential.
+   */
+  private theUserShape(user: UserWithOrg) {
+    return {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -872,8 +884,7 @@ export class AuthService {
           careFeeStatus: user.organization.careFeeStatus,
           email: user.organization.email,
           companyStage: user.organization.companyStage,
-          subscriptionPlan: user.organization.subscriptionPlan,
-        },
+        subscriptionPlan: user.organization.subscriptionPlan,
       },
     };
   }

@@ -751,7 +751,7 @@ export function AppSidebar() {
                         style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                       />
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div className="gw-rail-row" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         {/*
                           BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
                           Hafsah asked for the name to turn red when it is time to
@@ -778,9 +778,11 @@ export function AppSidebar() {
                           {g.label}
                         </span>
                         <button
+                          className="gw-rename"
                           onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
-                          title="Rename"
-                          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.2)', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
+                          title={`Rename ${g.label}`}
+                          aria-label={`Rename ${g.label}`}
+                          style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
                         >✎</button>
                       </div>
                     )}

@@ -1063,3 +1063,21 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   /* Reset page margins */
   @page { margin: 1.5cm 2cm; }
 }
+
+
+/*
+ * THE RENAME BUTTON EXISTED AND NOBODY COULD SEE IT.
+ *
+ * A pencil at 20% white on a #0D1A2B rail is invisible on any screen that is not in a dark room,
+ * so "I cannot rename the check-in" was a fair description of a feature that had been shipped. It
+ * stays quiet - a rail full of pencils is a rail of buttons rather than a list of names - but quiet
+ * now means legible-and-recessive rather than absent, and it comes forward on the row you are
+ * pointing at.
+ */
+.gw-rename {
+  opacity: 0.42;
+  transition: opacity .12s ease;
+}
+.gw-rail-row:hover .gw-rename { opacity: 0.85; }
+.gw-rename:hover,
+.gw-rename:focus-visible { opacity: 1; }

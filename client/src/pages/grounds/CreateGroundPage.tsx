@@ -5,7 +5,7 @@ import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence 
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, ASKS_WHEN_THEY_START, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -548,7 +548,6 @@ export function CreateGroundPage() {
    * their invitation until the day, because an email asking somebody to account for their work can
    * otherwise land before they have signed a contract, and cannot be recalled once read.
    */
-  const [pStartsAt, setPStartsAt] = useState('')
   const [bulkMode, setBulkMode] = useState(false)
   const [bulkText, setBulkText] = useState('')
   const [brief, setBrief] = useState('')
@@ -679,7 +678,7 @@ export function CreateGroundPage() {
             ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
             : undefined,
         })
-        return { ground, failedInvites: 0 }
+        return { ground, failed: [] as { email: string; because: string }[] }
       }
       const ground = await groundsApi.create({
         label: groundName.trim() || groundNameFallback(SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario),
@@ -706,14 +705,47 @@ export function CreateGroundPage() {
         }
       }
       const results = await Promise.allSettled(participants.map(p =>
-        groundsApi.addParticipant(ground.id, { email: p.email, roleAsDescribed: p.role || undefined, note: p.note || undefined, startsAt: p.startsAt })
+        groundsApi.addParticipant(ground.id, {
+          email: p.email,
+          roleAsDescribed: p.role || undefined,
+          note: p.note || undefined,
+          /*
+           * The check-in's start date, which is what holds an invitation until somebody's first
+           * day. Only sent when it is in the future - a past or absent date means invite now,
+           * exactly as it always did.
+           */
+          startsAt: p.startsAt ?? (startsOn && new Date(`${startsOn}T09:00:00`).getTime() > Date.now()
+            ? new Date(`${startsOn}T09:00:00`).toISOString()
+            : undefined),
+        })
       ))
-      const failed = results.filter(r => r.status === 'rejected').length
-      return { ground, failedInvites: failed }
+      /*
+       * THE SERVER'S OWN REASON, PER PERSON, RATHER THAN A COUNT.
+       *
+       * This counted rejections and said "2 invites could not be sent - retry from the check-in
+       * page", which is wrong twice over. Retrying does not help when the reason is a seat limit or
+       * an email that is already on the check-in, and the person is left guessing at a rule nobody
+       * told them: the lead who saw this concluded the product would only add people already in the
+       * organisation, which is not what it said and not what happened.
+       *
+       * The API answers every one of these with a sentence written for a person. It was being
+       * thrown away one line before it reached them.
+       */
+      const failed = results
+        .map((r, i) => ({ r, email: participants[i].email }))
+        .filter((x): x is { r: PromiseRejectedResult; email: string } => x.r.status === 'rejected')
+        .map(({ r, email }) => ({
+          email,
+          because: (r.reason as any)?.response?.data?.message
+            ?? (r.reason as any)?.message
+            ?? 'The invite did not send.',
+        }))
+      return { ground, failed }
     },
-    onSuccess: ({ ground, failedInvites }) => {
+    onSuccess: ({ ground, failed }) => {
       toast.success('Check-in opened')
-      if (failedInvites > 0) toast.warning(`${failedInvites} invite${failedInvites > 1 ? 's' : ''} could not be sent. You can retry from the check-in page.`)
+      /* One toast per person, each carrying the reason that person was refused for. */
+      for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
       navigate(`/grounds/${ground.id}`)
     },
     /*
@@ -742,8 +774,8 @@ export function CreateGroundPage() {
     const email = pEmail.trim()
     if (!email || !email.includes('@')) return
     if (participants.find(p => p.email === email)) return
-    setParticipants(v => [...v, { email, role: pRole.trim(), note: pNote.trim(), startsAt: pStartsAt || undefined }])
-    setPEmail(''); setPRole(''); setPNote(''); setPStartsAt('')
+    setParticipants(v => [...v, { email, role: pRole.trim(), note: pNote.trim(), startsAt: undefined }])
+    setPEmail(''); setPRole(''); setPNote('')
   }
 
   function addBulk() {
@@ -757,7 +789,8 @@ export function CreateGroundPage() {
   function back() {
     /* Step 4 only exists on the free-text path, so going back from 5 has to skip it there too -
        otherwise Back lands on a screen the person was never shown on the way in. */
-    if (step === 5 && selectedCard !== 'DESCRIBE_OWN') { setStep(3); return }
+    /* Back from the situation lands on the coach step only where that step was shown. */
+    if (step === 5 && selectedCard !== 'DESCRIBE_OWN') { setStep(onAPaidPlan ? 3 : 2); return }
     if (step > 1) setStep(s => s - 1)
     else navigate('/grounds')
   }
@@ -1341,7 +1374,21 @@ export function CreateGroundPage() {
                     : ''
 
                   /* Step 4 only exists for the free-text path; a card already says what this is. */
-                  const next = step === 3 ? (describing ? 4 : 5) : step + 1
+                  /*
+                   * THE COACH STEP IS SKIPPED FOR ANYBODY WHO CANNOT USE IT.
+                   *
+                   * On the free plan step three showed two things: a block saying coaching is paid,
+                   * and the coach card itself, dimmed and inert beneath it. Two cards to say one
+                   * thing, in the middle of setting a check-in up, to somebody who cannot act on
+                   * either. It read as an obstacle because it was one.
+                   *
+                   * Paid plans still get the step, with the card and without the block above it.
+                   */
+                  const next = step === 3
+                    ? (describing ? 4 : 5)
+                    : step === 2 && !onAPaidPlan
+                      ? (describing ? 4 : 5)
+                      : step + 1
 
                   return (
                     <>
@@ -1622,28 +1669,21 @@ export function CreateGroundPage() {
                 <label className="gw-label">Personal note in the invite email <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
                 <input className="gw-input" value={pNote} onChange={e => setPNote(e.target.value)} placeholder="e.g. Looking forward to building this together." onKeyDown={e => e.key === 'Enter' && addParticipant()} />
               </div>
-              {/* WHEN THEY START, only where "they have not started" is a normal answer.
-                  A future date holds their invitation until the day: an email asking somebody to
-                  account for their work can otherwise arrive before they have signed a contract, and
-                  cannot be recalled once it has been read. */}
-              {scenario && ASKS_WHEN_THEY_START.includes(scenario as never) && (
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="gw-starts">When do they start? (optional)</label>
-                <input
-                  id="gw-starts"
-                  className="gw-input"
-                  type="date"
-                  value={pStartsAt}
-                  onChange={e => setPStartsAt(e.target.value)}
-                />
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.5 }}>
-                  {pStartsAt && new Date(pStartsAt).getTime() > Date.now()
-                    ? 'They will not be invited until then, and nothing before that date is counted as theirs.'
-                    : 'Leave this blank if they have already started.'}
-                </div>
-              </div>
-              )}
-              <button onClick={addParticipant} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add to this check-in</button>
+              {/*
+                * "WHEN DO THEY START?" USED TO BE ASKED HERE, AND IT WAS THE SECOND DATE ON THE
+                * SAME FLOW.
+                *
+                * Step six asks when the check-in starts. This asked when the person starts, four
+                * steps later, and the two read as the same question asked twice - which is exactly
+                * how somebody sets one and not the other and gets a clock they did not mean.
+                *
+                * The field was doing real work: a future date holds the invitation, so an email
+                * asking a new hire to account for their work cannot land before they have signed a
+                * contract, and cannot be recalled once read. That protection is kept and the
+                * question is not: a participant now inherits the check-in's own start date, which
+                * for an onboarding IS their first day and has already been asked for once.
+                */}
+              <button onClick={addParticipant} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add this person to the list</button>
             </div>
             )}
 
@@ -1669,7 +1709,18 @@ export function CreateGroundPage() {
 
             {/* Handing the ground over needs an address to hand it to. Better to
                 stop here than to create a ground nobody is leading. */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(8)} style={{ margin: 0 }}>Continue</button>
+            {/*
+              * "+ Add to this check-in" sat directly above "Continue" and the two read as rival
+              * ways of doing the same thing - one of them adds the person in the box to a list, the
+              * other leaves the step. Now the first says which person and which list, and the
+              * second says how many it is continuing with, so neither can be mistaken for the
+              * other.
+              */}
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(8)} style={{ margin: 0 }}>
+              {participants.length === 0
+                ? 'Continue'
+                : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
+            </button>
             {/*
               THE OTHER HALF OF THE SAME REFUSAL, WHICH SAID NOTHING. W-UX-7.
               
@@ -1785,7 +1836,9 @@ export function CreateGroundPage() {
             </div>
 
             <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim()} style={{ margin: 0 }}>
-              {create.isPending ? 'Opening…' : 'Talk it through →'}
+              {/* "Talk it through" described the conversation and not the button. It opens the
+                  check-in, so it says so. */}
+              {create.isPending ? 'Opening…' : 'Start check-in →'}
             </button>
           </div>
         )}

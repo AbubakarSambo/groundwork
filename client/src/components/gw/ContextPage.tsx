@@ -80,7 +80,16 @@ export function ContextPage({
 
   const uploadDoc = useMutation({
     mutationFn: ({ file, consented }: { file: File; consented: boolean }) => documentsApi.upload(id, file, consented),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
+    /*
+     * IT SAID NOTHING ON SUCCESS. The file appeared in a list further down the page, which is real
+     * confirmation for somebody who knows to look there and none at all for somebody who has just
+     * pressed a button and is watching the button. A silent success and a silent failure look
+     * identical, so the honest reading was "I do not know whether that worked".
+     */
+    onSuccess: (_res, { file }) => {
+      toast.success(`Uploaded ${file.name}`)
+      qc.invalidateQueries({ queryKey: ['docs', id] })
+    },
     onError: (e: any) => {
       /*
        * The server refused because it recognised a conversation and nothing had been confirmed.
@@ -383,8 +392,15 @@ export function ContextPage({
             <Sec title="Documents" src="each one says who reads it" />
 
             <div
-              style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: 'var(--gw-bg)' }}
-              onClick={() => document.getElementById('ga-doc-upload')?.click()}
+              style={{
+                border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 20,
+                textAlign: 'center', marginBottom: 16, background: 'var(--gw-bg)',
+                /* A dropped file can take a moment. Without this the box looks untouched and
+                   somebody presses it again, which is how two copies of one file get attached. */
+                cursor: uploadDoc.isPending ? 'progress' : 'pointer',
+                opacity: uploadDoc.isPending ? 0.6 : 1,
+              }}
+              onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
             >
               {/*
                 LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
@@ -400,7 +416,9 @@ export function ContextPage({
                   exist, directly above a sentence correctly saying the file reaches nobody. The same
                   contradiction this box was just fixed for, reintroduced one line higher.
                 */}
-                {contextEnabled ? 'A file, private to you until you open it' : 'A file, private to you'}
+                {uploadDoc.isPending
+                  ? 'Uploading…'
+                  : contextEnabled ? 'A file, private to you until you open it' : 'A file, private to you'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{WHAT_YOU_CAN_UPLOAD}</div>
               {/*

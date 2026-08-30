@@ -52,9 +52,28 @@ describe('the setup flow asks one thing at a time', () => {
   })
 
   it('skips the free-text step when a card already said what this is', () => {
-    /* Forward and back both, or Back lands on a screen the person was never shown. */
-    expect(PAGE).toMatch(/const next = step === 3 \? \(describing \? 4 : 5\) : step \+ 1/)
-    expect(PAGE).toMatch(/if \(step === 5 && selectedCard !== 'DESCRIBE_OWN'\) \{ setStep\(3\); return \}/)
+    /*
+     * Forward and back both, or Back lands on a screen the person was never shown.
+     *
+     * ASSERTED ON THE BRANCH, NOT THE WHOLE LINE. This pinned the exact text of the `next`
+     * expression, so adding a second skip beside the first turned it red without anything about
+     * this rule having changed. A guard that fails when a neighbour moves is a guard people learn
+     * to edit rather than read.
+     */
+    const forward = PAGE.slice(PAGE.indexOf('const next = step === 3'), PAGE.indexOf('const next = step === 3') + 400)
+    expect(forward).toContain('step === 3')
+    expect(forward).toContain('(describing ? 4 : 5)')
+  })
+
+  it('and skips the coach step for anybody who cannot use it', () => {
+    /*
+     * On the free plan that step showed two cards to say one thing - coaching is paid, and a coach
+     * card dimmed and inert beneath it - in the middle of setting a check-in up, to somebody who
+     * could act on neither. Forward and back both, again.
+     */
+    const forward = PAGE.slice(PAGE.indexOf('const next = step === 3'), PAGE.indexOf('const next = step === 3') + 400)
+    expect(forward).toContain('step === 2 && !onAPaidPlan')
+    expect(PAGE).toContain("setStep(onAPaidPlan ? 3 : 2)")
   })
 
   it('asks for one thing per step rather than everything at once', () => {

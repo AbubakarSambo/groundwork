@@ -41,6 +41,27 @@ const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
 const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const;
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
+/**
+ * WHAT A BROWSER CALLS A FILE IS NOT WHAT THE FILE IS.
+ *
+ * `text/markdown` was on the allow-list and a Markdown file was still refused, because most
+ * browsers report a `.md` upload as `application/octet-stream` or as an empty string - they only
+ * know the extensions their own OS has registered. The allow-list was right about the format and
+ * never saw it.
+ *
+ * So where the browser has told us nothing useful, the extension gets a say. Only for formats that
+ * are plain text anyway: being wrong here costs a file that reads as gibberish, and being wrong the
+ * other way costs somebody the upload with a message telling them the format is unsupported when
+ * it is not.
+ */
+const UNHELPFUL_MIMES = ['', 'application/octet-stream', 'binary/octet-stream'];
+const TEXT_EXTENSIONS = ['.md', '.markdown', '.txt', '.csv', '.json', '.xml', '.yml', '.yaml', '.log', '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rb', '.java', '.sql', '.sh'];
+
+function looksLikeTextFromItsName(fileName: string): boolean {
+  const lower = (fileName ?? '').toLowerCase();
+  return TEXT_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
 /** True for any mimetype we treat as plain readable text, including ones not
  * explicitly listed above (e.g. text/x-python, text/x-java - source code
  * variants browsers report inconsistently). */
@@ -144,6 +165,10 @@ export class DocumentsService {
    * about.
    */
   private async extractContent(file: Express.Multer.File): Promise<string> {
+    /* A file the browser could not name, whose extension says it is text, is read as text. */
+    if (UNHELPFUL_MIMES.includes(file.mimetype ?? '') && looksLikeTextFromItsName(file.originalname)) {
+      return file.buffer.toString('utf8');
+    }
     if (file.mimetype === 'application/pdf') {
       const parser = new PDFParse({ data: file.buffer });
       const text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
@@ -200,8 +225,21 @@ export class DocumentsService {
   ) {
     if (!file) throw new BadRequestException('No file provided');
     if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
-    if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype)) {
-      throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
+    const browserWasNoHelp = UNHELPFUL_MIMES.includes(file.mimetype ?? '');
+    const readableByName = browserWasNoHelp && looksLikeTextFromItsName(file.originalname);
+    if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype) && !readableByName) {
+      /*
+       * NAMES THE FORMAT THAT WAS REFUSED AND THE ONES THAT WORK. "Unsupported file type" followed
+       * by a list makes somebody check their file against nine entries to find out which rule they
+       * broke. Slides are the common one and are genuinely not supported - saying so directly beats
+       * leaving them to infer it.
+       */
+      const isSlides = /\.(pptx?|key|odp)$/i.test(file.originalname ?? '');
+      throw new BadRequestException(
+        isSlides
+          ? 'Slides cannot be read yet. Export the deck as a PDF and attach that - it keeps the text and reads fine.'
+          : 'That file type cannot be read. Accepted: PDF, Word, Excel, Markdown, plain text, CSV, HTML, code files, and images.',
+      );
     }
 
     const participant = await this.assertParticipant(groundId, userId);

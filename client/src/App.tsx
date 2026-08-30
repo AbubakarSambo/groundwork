@@ -37,6 +37,7 @@ import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import { ADoorYouCannotOpen } from '@/components/gw/a-door-you-cannot-open-says-so'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
@@ -90,6 +91,17 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
 function isOrgSetupComplete(user: User | null | undefined) {
   if (!user) return true // let RequireAuth handle the unauthenticated case
   return !!user.organization?.email
+}
+
+/* The two doors. Each reads the one field that decides it, and nothing else. */
+function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+  return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
+}
+
+function AdminsOnly({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthStore()
+  return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what="add people to your organisation">{children}</ADoorYouCannotOpen>
 }
 
 function RequireOrgSetup({ children }: { children: JSX.Element }) {
@@ -180,7 +192,13 @@ export default function App() {
 
             {/* Main app - require auth, and (for an ADMIN) a completed org setup */}
             <Route path="/grounds" element={<RequireOrgSetup><GroundsListPage /></RequireOrgSetup>} />
-            <Route path="/grounds/new" element={<RequireOrgSetup><CreateGroundPage /></RequireOrgSetup>} />
+            {/*
+              * REFUSED AT THE DOOR, NOT ON SUBMIT. Both of these were behind RequireOrgSetup alone,
+              * so a member who typed the address got the whole flow and was turned away at the end.
+              * See a-door-you-cannot-open-says-so.tsx. The API refuses these again on the request
+              * itself - this is a courtesy to the person, never the permission.
+              */}
+            <Route path="/grounds/new" element={<RequireOrgSetup><MayOpenCheckIns><CreateGroundPage /></MayOpenCheckIns></RequireOrgSetup>} />
             {/**
               * ONE URL, AND IT LANDS YOU ON YOUR OWN VIEW.
               *
@@ -212,7 +230,7 @@ export default function App() {
             <Route path="/prompts" element={<RequireOrgSetup><PromptVersioningPage /></RequireOrgSetup>} />
             <Route path="/prompts/test" element={<RequireOrgSetup><PromptTestPage /></RequireOrgSetup>} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
-            <Route path="/org/members" element={<RequireOrgSetup><OrgMembersPage /></RequireOrgSetup>} />
+            <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
               * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because
               * everybody being briefed was just invited and has an account. Not admin-only: it is

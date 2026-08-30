@@ -199,10 +199,30 @@ export function IntegrationsPage() {
         * if I am setting up my API for my org's dashboard plug-in?" Yes - and it took reading four
         * cards and a numbered list to find that out.
         */}
+      {/*
+        * TWO THINGS, NOT ONE, AND THE SECOND ONE WAS INVISIBLE.
+        *
+        * This read as a data feed: send us your people and objectives, get results back. That is
+        * half of what the page does, and the half nobody arrives wanting. The other half - putting
+        * Groundwork's own check-in inside your product, so your users never leave it - was named
+        * once, in the sub-label of a permission checkbox further down.
+        *
+        * A reader who only saw the first half concluded this was somewhere to hand over data and
+        * wait, which is neither what it is nor what it costs them.
+        */}
       <p style={S.lede}>
-        <strong>Yes - this is the API page.</strong> Get a key here, point your systems at Groundwork,
-        and send events back out. Your people and objectives come in from the tools you already use;
-        check-in results go back to them.
+        <strong>Yes - this is the API page.</strong> Two separate things live here, and most teams
+        want both.
+      </p>
+      <p style={S.lede}>
+        <strong>Your data moves both ways.</strong> People and objectives come in from the tools you
+        already use, and what check-ins produce goes back out to them. You are not handing anything
+        over and waiting - you keep your systems as they are and Groundwork reads from them.
+      </p>
+      <p style={S.lede}>
+        <strong>And you can put the check-in inside your own product.</strong> An embedded panel your
+        users open without leaving your app, asking on behalf of the person already signed in to it.
+        Your engineers get a key here for both.
       </p>
 
       {/*

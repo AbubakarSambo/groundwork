@@ -90,7 +90,15 @@ export function AdminFirstRun() {
           * PROGRESS AS A FACT, not a bar. "2 of 4" is read in the time it takes to look at it, and
           * a percentage of a four-item list is a decoration pretending to be information.
           */}
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)' }}>{done} of {counted.length} done</div>
+        {/*
+          * "1 of 4" beside five cards reads as a bug, and it was not one - Connect is optional and
+          * the counter was right to leave it out. Being right is not enough when the two numbers a
+          * person can see disagree: the counter now says what it counts, and the optional card
+          * carries a visible tag, so five cards and four needed stop contradicting each other.
+          */}
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)' }}>
+          {done} of {counted.length} needed{steps.length > counted.length ? `, plus ${steps.length - counted.length} optional` : ''}
+        </div>
       </div>
       {/*
         * NOT THE NEXT STEP'S OWN WORDS. This printed `next.body` and the first card printed the
@@ -125,9 +133,16 @@ export function AdminFirstRun() {
                 border: `1px solid ${s.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
               }}>{s.done ? '✓' : ''}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{s.title}</span>
+              {s.optional && (
+                <span style={{
+                  fontSize: 9.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase',
+                  padding: '2px 6px', borderRadius: 4, background: 'var(--gw-bg)',
+                  color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
+                }}>Optional</span>
+              )}
             </div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-              {s.optional && !s.done ? 'Optional. ' : ''}{s.body}
+              {s.body}
             </div>
           </button>
         ))}
