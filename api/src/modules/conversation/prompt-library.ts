@@ -2061,6 +2061,33 @@ LANGUAGE ADAPTATION RULE: From the participant's first three responses, observe 
 const STARTING_VALIDATION = `VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."`;
 
+/**
+ * THE INITIATOR IS NOT THE SUBJECT, AND THE PATHWAY DID NOT SAY SO.
+ *
+ * A lead setting up a check-in for a new hire was opened with "what does success look like for you",
+ * which is the shared pathway's second question and means "your version of success for this". Read
+ * cold by the person who just wrote the brief, it means "your personal goals" - so the session
+ * interviewed the lead as though they were the hire, and she had to type "i am the one setting up
+ * the context" to stop it. Everything downstream inherited that: her record was built as a party's
+ * account of their own work, and the report compared it against the hire's like two peers.
+ *
+ * The role-specific question knew better all along - "Who have you just hired and what did you bring
+ * them in to do?" - and sat three blocks below the generic one, so the model opened on the generic
+ * one. Order is the fix, not new words: for an initiator, the question that establishes WHO THIS IS
+ * ABOUT has to be the first thing asked, because every later question is ambiguous without it.
+ */
+const WHO_THE_LEAD_IS = `WHO YOU ARE TALKING TO: the person who SET THIS UP. They are not the subject of it. They may be a party to the work, and they are still not the person this check-in is about.
+
+Never ask them what they personally want to achieve, what success looks like for them personally, or what they were brought in to do. Those questions are for the other party, and asked here they read as the session not knowing who it is speaking to.`;
+
+const STARTING_OPENING_INITIATOR = `CONVERSATION PATHWAY - the rest of it, AFTER the role-specific question above has been answered (cover these across multiple exchanges, one at a time; never ask more than one in a single message):
+"What does success look like from where you sit - your version of what good looks like here, not the job description."
+"What would have to exist for you to know this is working?" This is the most important one - it forces a concrete definition rather than a feeling.
+
+SKIP ANY OF THESE THAT THE ALREADY ESTABLISHED BLOCK ABOVE HAS ANSWERED. Asking a person to
+describe a situation they chose from a list two screens ago is the clearest possible signal that
+nothing they do here is being read.`;
+
 const STARTING_OPENING = `CONVERSATION PATHWAY (cover these across multiple exchanges, one at a time; never ask more than one in a single message; the third is the most important - it forces a concrete definition rather than a feeling):
 "What is starting and who is involved?"
 "What does success look like for you - your version, not the brief."
@@ -2649,9 +2676,17 @@ export function buildScenarioPackForParty(
         return [
           `MOMENT: Something new is starting.`,
           STARTING_VALIDATION,
-          STARTING_OPENING,
+          /*
+           * ORDER IS THE FIX. Who it is speaking to, then the question that establishes who this is
+           * about, then everything else - which is ambiguous until that question is answered. The
+           * pathway used to lead and the role-specific question sat three blocks under it, so the
+           * model opened on "what does success look like for you" and the lead read it as being
+           * about herself. She was right to.
+           */
+          WHO_THE_LEAD_IS,
+          `ROLE-SPECIFIC QUESTIONS - initiator, and the FIRST thing to ask (one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
+          STARTING_OPENING_INITIATOR,
           STARTING_FOLLOWUP,
-          `ROLE-SPECIFIC QUESTIONS - initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
           /**
            * The per-person pass goes LAST in the pathway, deliberately: a lead who has just been made
            * to define what success looks like for the whole thing gives a far sharper answer about

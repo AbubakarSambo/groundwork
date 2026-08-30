@@ -5,12 +5,14 @@ const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buff
 const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require('xlsx') as typeof import('xlsx');
+const JSZip = require('jszip') as typeof import('jszip');
 import { ConfigService } from '@nestjs/config';
 import { documentWhereFor } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
+import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
 
 const ALLOWED_MIME = [
@@ -30,6 +32,8 @@ const ALLOWED_MIME = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  /* Decks. A roadmap or an architecture overview usually arrives as one. */
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -38,6 +42,7 @@ const ALLOWED_MIME = [
 const TEXT_EXTRACTABLE = ['text/plain', 'text/csv', 'text/html', 'text/markdown', 'text/x-markdown', 'application/json', 'application/xml', 'text/xml', 'application/javascript', 'text/javascript'];
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const;
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -164,6 +169,29 @@ export class DocumentsService {
    * scanned meeting notes page all come back as text Groundwork can reason
    * about.
    */
+  /**
+   * SLIDE TEXT, IN SLIDE ORDER.
+   *
+   * A `.pptx` is a zip; every run of text on a slide is an `<a:t>` element in
+   * `ppt/slides/slideN.xml`. No new parser, and nothing here reconstructs layout or reads speaker
+   * notes - see slides-are-mostly-headings.ts for what it deliberately does not claim to do.
+   */
+  private async pptxToText(buffer: Buffer): Promise<string> {
+    let zip: import('jszip');
+    try {
+      zip = await JSZip.loadAsync(buffer);
+    } catch {
+      throw new BadRequestException('That presentation could not be opened. If it is an older .ppt, save it as .pptx and try again.');
+    }
+    const slides = await Promise.all(
+      slidesInOrder(Object.keys(zip.files)).map(async ({ name, number }) => ({
+        number,
+        text: textFromOneSlide((await zip.file(name)!.async('string')) ?? ''),
+      })),
+    );
+    return deckToText(slides);
+  }
+
   private async extractContent(file: Express.Multer.File): Promise<string> {
     /* A file the browser could not name, whose extension says it is text, is read as text. */
     if (UNHELPFUL_MIMES.includes(file.mimetype ?? '') && looksLikeTextFromItsName(file.originalname)) {
@@ -184,6 +212,9 @@ export class DocumentsService {
     }
     if (file.mimetype === XLSX_MIME) {
       return this.xlsxToText(file.buffer, file.originalname);
+    }
+    if (file.mimetype === PPTX_MIME || /\.pptx$/i.test(file.originalname ?? '')) {
+      return this.pptxToText(file.buffer);
     }
     if ((IMAGE_MIMES as readonly string[]).includes(file.mimetype)) {
       return this.mediaToText(file.buffer, file.mimetype, file.originalname);
@@ -234,11 +265,15 @@ export class DocumentsService {
        * broke. Slides are the common one and are genuinely not supported - saying so directly beats
        * leaving them to infer it.
        */
-      const isSlides = /\.(pptx?|key|odp)$/i.test(file.originalname ?? '');
+      /*
+       * .pptx is read now. The formats still refused are the ones nothing here can open: Keynote,
+       * OpenDocument, and the pre-2007 binary .ppt. Each gets the way through rather than a list.
+       */
+      const isOtherSlides = /\.(ppt|key|odp)$/i.test(file.originalname ?? '');
       throw new BadRequestException(
-        isSlides
-          ? 'Slides cannot be read yet. Export the deck as a PDF and attach that - it keeps the text and reads fine.'
-          : 'That file type cannot be read. Accepted: PDF, Word, Excel, Markdown, plain text, CSV, HTML, code files, and images.',
+        isOtherSlides
+          ? 'That slide format cannot be read. Save or export it as .pptx or PDF and attach that - either keeps the text.'
+          : 'That file type cannot be read. Accepted: PDF, Word, Excel, PowerPoint, Markdown, plain text, CSV, HTML, code files, and images.',
       );
     }
 

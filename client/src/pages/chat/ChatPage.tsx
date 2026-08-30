@@ -117,6 +117,18 @@ export function ChatPage() {
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
   const [msgs, setMsgs]               = useState<Msg[]>([])
+  /**
+   * WHETHER WE YET KNOW IF THIS SESSION HAS ANYTHING IN IT.
+   *
+   * The privacy screen renders when session 1 has no messages, and for up to two seconds after
+   * mount that is true of EVERY session 1 - the transcript fetch sits behind a random jitter of up
+   * to 2000ms. So a person resuming a check-in got a full-page explainer thrown in front of them
+   * and snatched away again before they could read it, which is what "it flashed and then got me
+   * into the check-in" is.
+   *
+   * Empty is a fact you have to have looked to know. This is the looking.
+   */
+  const [knowWhatIsHere, setKnowWhatIsHere] = useState(false)
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
   const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
   // #3: a normal returning session (not self-correction) gets a read-only
@@ -194,8 +206,22 @@ export function ChatPage() {
     let i = 0
     const full = last.content
     const base = msgs.slice(0, lastIdx)
+    /*
+     * THE TYPEWRITER RAN AT A FIXED RATE, SO A LONG ANSWER TOOK LONGER TO APPEAR THAN TO WRITE.
+     *
+     * Two characters every 25ms is 80 a second, which is a nice pace for a two-line reply and
+     * fifteen seconds for a twelve-hundred-character one. And this product's replies get longer
+     * exactly when they matter most - a report summary, a long probe - so the wait grew with the
+     * value of what was waiting.
+     *
+     * It is paced by the whole message now rather than per character: whatever the length, it
+     * finishes inside FINISH_WITHIN. Short answers keep the same unhurried feel they had, because
+     * the step never drops below the old two.
+     */
+    const FINISH_WITHIN = 2200
+    const step = Math.max(2, Math.ceil(full.length / (FINISH_WITHIN / 25)))
     const tick = setInterval(() => {
-      i += 2
+      i += step
       setDisplayedMsgs([...base, { ...last, content: full.slice(0, i) }])
       if (i >= full.length) {
         clearInterval(tick)
@@ -337,10 +363,15 @@ export function ChatPage() {
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
             setOpened(true)
             setOpenFailed(false)
+            setKnowWhatIsHere(true)
             return
           }
         } catch { /* no transcript yet or fetch failed - fall through to open() */ }
-        if (!cancelled) openSession.mutate()
+        /*
+         * WE HAVE NOW LOOKED, whether or not we found anything - including on the failure path,
+         * where falling through to open() is exactly the case the privacy screen is FOR.
+         */
+        if (!cancelled) { setKnowWhatIsHere(true); openSession.mutate() }
       }, jitter)
 
       /**
@@ -550,7 +581,7 @@ export function ChatPage() {
    *
    * An explainer can wait. An error cannot.
    */
-  const showPrivacyFirst = sessionNumber === 1 && !privacyAcknowledged && msgs.length === 0 && !openFailed
+  const showPrivacyFirst = knowWhatIsHere && sessionNumber === 1 && !privacyAcknowledged && msgs.length === 0 && !openFailed
 
   if (showPrivacyFirst) {
     return (

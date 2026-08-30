@@ -61,15 +61,23 @@ describe('a browser does not know what a file is', () => {
 });
 
 describe('what a refusal tells somebody', () => {
-  it('names slides directly, because slides are the common one', () => {
-    expect(SRC).toContain('Slides cannot be read yet');
-    /* And gives the way through rather than only the rule. */
-    expect(SRC).toContain('Export the deck as a PDF');
+  it('reads .pptx rather than refusing it', () => {
+    /* This asserted "Slides cannot be read yet" and gave the PDF workaround. Decks are read now,
+       so the sentence is gone and the guard says what replaced it. */
+    expect(SRC).not.toContain('Slides cannot be read yet');
+    expect(SRC).toContain('PPTX_MIME');
+  });
+
+  it('and names the slide formats that genuinely cannot be opened, with the way through', () => {
+    /* Keynote, OpenDocument and the pre-2007 binary .ppt. Each gets a route rather than a list. */
+    expect(SRC).toMatch(/\/\\\.\(ppt\|key\|odp\)\$\/i/);
+    expect(SRC).toContain('Save or export it as .pptx or PDF');
   });
 
   it('lists formats in words a person uses, not mimetypes', () => {
     const msg = SRC.slice(SRC.indexOf('That file type cannot be read'), SRC.indexOf('That file type cannot be read') + 200);
     expect(msg).toContain('Word');
+    expect(msg).toContain('PowerPoint');
     expect(msg).toContain('Markdown');
     expect(msg).not.toContain('application/');
   });
