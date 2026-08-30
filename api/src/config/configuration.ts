@@ -30,7 +30,6 @@ export const appConfig = registerAs("app", () => ({
    * The test that matters is not that it works when on. It is that a check-in
    * with this off behaves EXACTLY as it did before any of it existed.
    */
-  coachingEnabled: process.env.COACHING_ENABLED === "true",
 
   /**
    * CONTEXT. Off by default, on the same terms as the coaching flag above.
