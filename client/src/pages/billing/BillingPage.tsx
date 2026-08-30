@@ -245,14 +245,23 @@ export function BillingPage() {
           * `Stat` is the board's own component, not a copy of it, so this row cannot drift from the
           * one on the board.
           */}
-        {(isSubscribed || isPaused) && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        {/*
+          * THE ROW SHOWS FOR A FREE ACCOUNT TOO, which is the whole point of it.
+          *
+          * It was behind `isSubscribed || isPaused`, so the one number that decides whether
+          * somebody upgrades - how many people they have against what their plan covers - was
+          * hidden from every organisation that had not upgraded yet. An admin working out what 160
+          * people costs could not see their own headcount on the page selling them the plan.
+          */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+          {(isSubscribed || isPaused) && (
             <Stat
               label="Plan"
               value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
               caption={priceLabel(orgSub!.plan as SubscriptionPlan)}
               tone={isPaused ? 'warn' : undefined}
             />
+          )}
             {billingStatus?.people && (
               <Stat
                 label="People"
@@ -263,7 +272,18 @@ export function BillingPage() {
                 tone={peopleOverCap ? 'bad' : undefined}
               />
             )}
-            <Stat
+            {/*
+              * WHAT THIS ACCOUNT HAS ACTUALLY DONE. An admin asked to pay for a year needs to be
+              * able to say what was got for it, and this page could only say what it costs.
+              */}
+            {(billingStatus as any)?.usage && (
+              <Stat
+                label="Check-ins"
+                value={String((billingStatus as any).usage.checkIns)}
+                caption={`${(billingStatus as any).usage.reportsReleased} report${(billingStatus as any).usage.reportsReleased === 1 ? '' : 's'} released, ${(billingStatus as any).usage.peopleTakingPart} taking part`}
+              />
+            )}
+            {(isSubscribed || isPaused) && <Stat
               label={isPaused ? 'Paused since' : 'Renews'}
               value={orgSub?.periodEnd
                 ? new Date(orgSub.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -278,9 +298,8 @@ export function BillingPage() {
                */
               caption={isPaused ? 'Nothing is being charged' : 'Renews automatically'}
               tone={isPaused ? 'warn' : undefined}
-            />
-          </div>
-        )}
+            />}
+        </div>
 
         {/* Current plan */}
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Current plan</div>
