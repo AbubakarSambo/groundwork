@@ -39,11 +39,11 @@ const labels = (u: any) => navItemsFor(u).map(i => i.label)
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
     // Verified rendered: Grounds, then the org name, then People, Billing, Settings.
-    expect(labels(admin)).toEqual(['Check-ins', 'People', 'Connect', 'Billing', 'Settings'])
+    expect(labels(admin)).toEqual(['All check-ins', 'People', 'Connect', 'Billing', 'Settings'])
   })
 
   it('a team member sees the check-ins and their own settings, and nothing that would bounce them', () => {
-    expect(labels(member)).toEqual(['Check-ins', 'Settings'])
+    expect(labels(member)).toEqual(['All check-ins', 'Settings'])
   })
 
   it('the platform back-office is for Groundwork, not for an org admin', () => {
@@ -56,7 +56,7 @@ describe('who sees what', () => {
   })
 
   it('and somebody not signed in is not offered anything admin-shaped', () => {
-    expect(labels(null)).toEqual(['Check-ins', 'Settings'])
+    expect(labels(null)).toEqual(['All check-ins', 'Settings'])
   })
 })
 

@@ -55,7 +55,7 @@ describe('the menu has to be on the screen', () => {
 
   it('and every admin destination is in it, by name', () => {
     shell('/grounds')
-    for (const label of ['Check-ins', 'People', 'Connect', 'Billing', 'Settings']) {
+    for (const label of ['All check-ins', 'People', 'Connect', 'Billing', 'Settings']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0)
     }
   })

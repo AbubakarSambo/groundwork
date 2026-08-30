@@ -16,7 +16,17 @@ import { alignmentShort } from '@/lib/alignment'
 
 const NAV_ITEMS = [
   {
-    label: 'Check-ins',
+    /*
+     * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
+     *
+     * The top of this rail is a live list of the check-ins somebody is in, and this item said
+     * "Check-ins" and went to a page of the same thing - so a person looking at their check-ins was
+     * offered a link called check-ins, and reasonably asked which one they were meant to use.
+     *
+     * The page is not redundant: it holds the ones the rail does not show and the ways in to them.
+     * What was redundant was the name.
+     */
+    label: 'All check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
