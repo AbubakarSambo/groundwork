@@ -94,6 +94,19 @@ export class UsersController {
    * `preview` is a query parameter rather than a second route so the two cannot drift apart: it is
    * the same call, stopping one step earlier.
    */
+  /**
+   * WHERE THE ROLLOUT HAS GOT TO. Read by the screen an admin lands on.
+   *
+   * Above `:id` deliberately - a route with a literal segment has to be declared before the one
+   * with a parameter, or `rollout` is read as somebody's user id and comes back 404.
+   */
+  @Get('rollout')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'What an admin has actually done so far, as counts' })
+  async rollout(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.rolloutFacts(organizationId);
+  }
+
   @Post('invitations')
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)

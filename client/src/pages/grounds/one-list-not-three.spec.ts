@@ -39,8 +39,22 @@ describe('one list, not three', () => {
 })
 
 describe('a count of nothing does not get a tile', () => {
-  it('the stat strip drops empty numbers and always keeps the one that means something at zero', () => {
-    expect(CODE).toMatch(/\.filter\(s => s\.label === 'In progress' \|\| s\.val > 0\)/)
+  /*
+   * REVERSED, ON PURPOSE, AND THIS IS THE REASON.
+   *
+   * The rule here used to keep "In progress" at zero, on the argument that zero in progress is
+   * itself worth knowing. That held when the tile was the only thing on the screen saying so.
+   *
+   * It is not any more. On an admin's first screen the zero now sits above an empty state that says
+   * "your first check-in is one tap away" in words, and a rollout panel saying which step they are
+   * on - three things reporting the same emptiness, the largest of them a numeral. Reported as
+   * "I need to get on the landing page and know what to do".
+   *
+   * The signal is not lost: it comes back the moment there is a number to show.
+   */
+  it('the stat strip drops every empty number, the zero included', () => {
+    expect(CODE).toMatch(/\.filter\(s => s\.val > 0\)/)
+    expect(CODE).not.toMatch(/s\.label === 'In progress' \|\| s\.val > 0/)
   })
 })
 

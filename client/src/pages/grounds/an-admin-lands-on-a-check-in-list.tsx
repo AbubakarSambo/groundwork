@@ -1,86 +1,134 @@
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
 /**
- * WHAT AN ORG ADMIN SEES FIRST, WHICH WAS SOMEBODY ELSE'S JOB.
+ * WHAT AN ORG ADMIN SEES FIRST, WHICH IS A ROLLOUT AND NOT A CHECK-IN.
  *
- * Signing up as an admin put you on an empty check-in list with one button on it: "Open your first
- * check-in". That is the lead's job, not the admin's. Reported by the person who signed up:
+ * The first version of this file put People, Connect, Billing and Settings on the landing screen,
+ * because signing up as an admin dropped you on an empty check-in list with one button on it and
+ * the whole of an admin's job was behind a hamburger icon. That was right as far as it went.
  *
- *   "I didn't see where to select my plan, no admin configuration. It treats me like I am the lead
- *    coming in to set up a ground and not the org admin. No side menu."
+ * It did not go far enough, and the person who signed up said why:
  *
- * NONE OF IT WAS MISSING. People, Connect, Billing and Settings all exist and are all in the rail -
- * which collapses to a hamburger at the width they were browsing at, so the whole of an admin's job
- * was behind an icon they had no reason to press. And the plan was never named anywhere: a new
- * organisation is on the free tier, and nothing in the product said so.
+ *   "I need to come and put my whole org of 160 people on this, give leads the ability to set up
+ *    grounds, train them, pay for it, add my team as sub admins, see usage, and know if the API
+ *    will work for us."
  *
- * SO THIS DOES NOT ADD A FEATURE. It puts what already exists on the screen the admin actually
- * lands on, once, while they have nothing else. It disappears as soon as they have a check-in,
- * because at that point the rail is a thing they have seen and this would be clutter.
+ * None of that is a link to a page. It is a sequence with a finish line, and the four cards could
+ * not say which parts of it were done. So this is the same idea, doing the job properly: the steps
+ * of a rollout, each one reporting whether the thing itself actually happened.
+ *
+ * IT NO LONGER DISAPPEARS. The old one hid as soon as there was a check-in, on the grounds that it
+ * would be clutter. But the admin's job does not finish when the first check-in opens - that is step
+ * two of five - and hiding the list at that moment is hiding it exactly when it starts being useful.
+ * It shrinks instead, and goes away when the rollout is genuinely finished.
  */
+
+interface RolloutFacts {
+  people: number
+  admins: number
+  checkIns: number
+  paying: boolean
+  connected: boolean
+}
+
+interface Step { key: string; title: string; body: string; to: string; done: boolean; optional?: boolean }
+
+/*
+ * THE STEPS ARE DECIDED SERVER SIDE and this renders them. The rule for what counts as done is a
+ * product decision about somebody's rollout, not a detail of this screen, and two copies of it -
+ * one here, one there - is how a page ends up ticking a step the product does not consider done.
+ */
+function fetchRollout(): Promise<RolloutFacts> {
+  return apiClient.get('/users/rollout').then(r => r.data.data ?? r.data)
+}
+
+/* Mirrors the server's own list. Kept in one place here: see `where-a-rollout-has-got-to.ts`. */
+function theRollout(f: RolloutFacts): Step[] {
+  return [
+    { key: 'people', title: 'Get your people in', body: 'Paste your list. Nobody is emailed until you have seen what will happen.', to: '/org/members', done: f.people > 1 },
+    { key: 'pilot', title: 'Run one with somebody', body: 'Pick something real and small. You see what it produces before your team does.', to: '/grounds/new', done: f.checkIns > 0 },
+    { key: 'second-admin', title: 'Give somebody else the keys', body: 'A second admin approves check-ins and adds people when you are not there.', to: '/org/members', done: f.admins > 1 },
+    { key: 'plan', title: 'Choose your plan', body: 'What it costs for the number of people you are putting on.', to: '/billing', done: f.paying },
+    { key: 'connect', title: 'Connect your systems', body: 'Your CRM, your HR system, your own product. Your engineers will want this page.', to: '/org/integrations', done: f.connected, optional: true },
+  ]
+}
+
 export function AdminFirstRun() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const isAdmin = user?.role === 'ADMIN'
 
-  if (user?.role !== 'ADMIN') return null
+  const { data } = useQuery({ queryKey: ['rollout'], queryFn: fetchRollout, enabled: isAdmin, retry: false })
 
-  const plan = user.organization?.subscriptionPlan
+  if (!isAdmin) return null
+
   const orgName = user.organization?.name?.trim()
+  const steps = data ? theRollout(data) : []
+  const counted = steps.filter(s => !s.optional)
+  const done = counted.filter(s => s.done).length
+  const finished = counted.length > 0 && done === counted.length
 
   /*
-   * FOUR LINKS NEED FOUR LABELS, NOT FOUR SENTENCES.
-   *
-   * The first version wrote a line of prose under each one and three sentences above them, and the
-   * verdict was "sounds like AI". It was: every card explained itself at the length of a paragraph
-   * when the word on the card already said it. Say what the page is for in three or four words, or
-   * say nothing.
+   * FINISHED MEANS GONE. A checklist with every box ticked is a trophy, and a trophy at the top of
+   * a screen somebody opens every morning is clutter that used to be useful.
    */
-  const cards: { label: string; body: string; to: string }[] = [
-    { label: 'People', body: 'Add your team', to: '/org/members' },
-    { label: 'Connect', body: 'API and integrations', to: '/org/integrations' },
-    { label: 'Billing', body: plan ? 'Plan and invoices' : 'Free plan, 10 check-ins', to: '/billing' },
-    { label: 'Settings', body: 'Org details and notifications', to: '/settings' },
-  ]
+  if (!data || finished) return null
+
+  /* The next thing to do, which is the only step most people will read. */
+  const next = steps.find(s => !s.done && !s.optional)
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)', padding: '22px 24px', marginBottom: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 4 }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)', padding: '20px 22px', marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 3 }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)' }}>
-          You are the admin{orgName ? ` for ${orgName}` : ''}
+          Setting up{orgName ? ` ${orgName}` : ''}
         </div>
-        {/* THE PLAN, NAMED. There was no plan step at signup and no plan named anywhere after it. */}
-        <button
-          onClick={() => navigate('/billing')}
-          style={{
-            fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-            borderRadius: 20, padding: '4px 12px',
-            background: plan ? 'var(--gw-blue-bg)' : 'var(--gw-green-bg)',
-            color: plan ? 'var(--gw-navy)' : 'var(--gw-green-t)',
-            border: `1px solid ${plan ? 'var(--gw-blue-b)' : 'var(--gw-green-b)'}`,
-          }}
-        >
-          {plan ? `On the ${String(plan).toLowerCase().replace(/_/g, ' ')} plan` : 'On the free plan'}
-        </button>
+        {/*
+          * PROGRESS AS A FACT, not a bar. "2 of 4" is read in the time it takes to look at it, and
+          * a percentage of a four-item list is a decoration pretending to be information.
+          */}
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-sub)' }}>{done} of {counted.length} done</div>
       </div>
+      {/*
+        * NOT THE NEXT STEP'S OWN WORDS. This printed `next.body` and the first card printed the
+        * same sentence three centimetres below it - the panel introducing itself by quoting the
+        * thing it was about to show. Seen on the rendered page; it reads fine in the code.
+        */}
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>
-        {/* This said the menu is "always in the menu on the left" while the menu was not rendering
-            at all, which is the worst kind of wrong copy: confident about the thing in front of you
-            that is not there. */}
-        Also in the menu, any time.
+        Your job as the admin here. Each one is ticked by the thing actually happening, not by
+        visiting the page.
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
-        {cards.map(c => (
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(215px, 1fr))', gap: 10 }}>
+        {steps.map(s => (
           <button
-            key={c.to}
-            onClick={() => navigate(c.to)}
+            key={s.key}
+            onClick={() => navigate(s.to)}
             style={{
-              textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
-              border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '12px 14px',
+              textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', position: 'relative',
+              border: `1px solid ${s === next ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+              borderRadius: 10, background: 'white', padding: '12px 14px',
+              /* Done steps stay visible and stop competing. Removing them loses the sense of a
+                 sequence, which is the thing that tells somebody how much is left. */
+              opacity: s.done ? 0.62 : 1,
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>{c.label}</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{c.body}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+              <span style={{
+                width: 15, height: 15, borderRadius: 8, flexShrink: 0, display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700,
+                background: s.done ? 'var(--gw-green-bg)' : 'transparent',
+                color: 'var(--gw-green-t)',
+                border: `1px solid ${s.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+              }}>{s.done ? '✓' : ''}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{s.title}</span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              {s.optional && !s.done ? 'Optional. ' : ''}{s.body}
+            </div>
           </button>
         ))}
       </div>

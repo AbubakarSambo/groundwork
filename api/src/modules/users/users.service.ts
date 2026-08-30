@@ -9,6 +9,8 @@ import { setRole, RoleWrite } from './a-role-is-stored-twice';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
 import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
+import { RolloutFacts } from './where-a-rollout-has-got-to';
+import { isSubscribed } from '../../common/subscription';
 
 @Injectable()
 export class UsersService {
@@ -28,6 +30,36 @@ export class UsersService {
    * deliberate: a preview computed separately from the send is a second implementation that will
    * one day disagree, on the screen where somebody decides whether to email 160 colleagues.
    */
+  /**
+   * WHERE THIS ROLLOUT HAS GOT TO, in one request.
+   *
+   * One call rather than five, because the screen it feeds is the first thing an admin sees and a
+   * waterfall of five requests is how a landing page arrives in pieces.
+   *
+   * Counts only. No names, no emails, no plan - the console needs to know whether a step happened,
+   * and anything more than that is a second copy of data the pages themselves already serve.
+   */
+  async rolloutFacts(organizationId: string): Promise<RolloutFacts> {
+    const [people, admins, checkIns, org, keys] = await Promise.all([
+      this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
+      this.prisma.user.count({ where: { organizationId, deletedAt: null, role: 'ADMIN', isActive: true } }),
+      this.prisma.ground.count({ where: { organizationId } }),
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { subscriptionPlan: true, subscriptionStatus: true },
+      }),
+      this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
+    ]);
+    return {
+      people,
+      admins,
+      checkIns,
+      /* The one definition of paying, rather than a sixth comparison against a bare string. */
+      paying: isSubscribed(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
+      connected: keys > 0,
+    };
+  }
+
   /** The organisation's own name, which is what an invitation says it is from. */
   async organisationName(organizationId: string): Promise<string> {
     const org = await this.prisma.organization.findUnique({
