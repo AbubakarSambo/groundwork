@@ -348,6 +348,7 @@ model Organization {
   /// control would make two of the four unreachable.
   checkInsNeedApproval Boolean @default(true) @map("check_ins_need_approval")
 
+  interactions       Interaction[]
   knowledgeProposals KnowledgeProposal[]
   callRequests       CallRequest[]
 
@@ -2019,6 +2020,91 @@ model KnowledgeCard {
 /// WHO MAY PROPOSE: anybody who can open a check-in - an admin or a lead. They are the people
 /// describing how their part of the company works. Somebody who only takes part in check-ins is
 /// not setting process and does not propose.
+/// HOW STRONG A PIECE OF EVIDENCE IS.
+///
+/// The whole point of keeping it. "A transaction completed", "the sales app recorded a visit and a
+/// note", "a calendar entry existed" and "they told us" are four different claims, and a product
+/// that flattens them into "evidence says" will tell a CEO something it cannot support.
+enum EvidenceStrength {
+  /// Something happened that could not have happened otherwise. A payment, a signed contract.
+  COMPLETED
+  /// A record in a system somebody operates, written at the time. A logged visit with a note.
+  RECORDED
+  /// Evidence that something was ARRANGED, which is not evidence that it happened. A calendar entry.
+  ARRANGED
+  /// Somebody's own account. The commonest kind, and a real kind - it is just not corroboration.
+  SELF_REPORTED
+}
+
+/// WHAT KIND OF THING HAPPENED WITH SOMEBODY OUTSIDE THE ORGANISATION.
+///
+/// Deliberately short and deliberately not a sales taxonomy. These are the shapes a piece of
+/// evidence takes, not stages of a pipeline - there is no LEAD, no QUALIFIED, no CLOSED_WON here
+/// and there must not be, because that is a CRM's job and this is not a CRM.
+enum InteractionKind {
+  VISIT
+  CALL
+  MESSAGE
+  MEETING
+  PROPOSAL
+  TRANSACTION
+}
+
+/// SOMETHING THAT HAPPENED WITH A CUSTOMER, AND WHAT WE ACTUALLY KNOW ABOUT IT.
+///
+/// The missing edge. A check-in could hold what somebody SAID they did and had no way to hold what
+/// a system recorded - so "did he visit the shop" was unanswerable, and the honest version of the
+/// product could only ever narrate self-reports.
+///
+/// THREE CLAIMS THAT MUST STAY SEPARATE. That somebody was at a shop, that a conversation happened,
+/// and that a meaningful conversation happened are three different things, and no evidence here
+/// proves the third. `kind` and `strength` together are what stop a report claiming it: a VISIT at
+/// RECORDED strength says a visit was logged, and nothing more.
+///
+/// NO CONVERSATION CONTENT. `note` is the short line somebody wrote at the time - "owner not in",
+/// "asked for pricing". What was said belongs to the people who said it.
+model Interaction {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// Whose work this was, by the customer's own id for them. Same identifier SCIM uses.
+  personExternalId       String  @map("person_external_id")
+  /// Which counterparty, by the id the customer's system knows it as. Null where none was named.
+  counterpartyExternalId String? @map("counterparty_external_id")
+
+  kind     InteractionKind
+  strength EvidenceStrength
+
+  /// When it happened, as THEIR system observed it - never when we heard about it.
+  happenedAt DateTime @map("happened_at")
+
+  /// The short line written at the time. Never a transcript and never what was said.
+  note String? @db.Text
+
+  /// WHERE THIS CAME FROM. A record with no provenance is a rumour with a timestamp.
+  sourceSystem String  @map("source_system")
+  externalId   String? @map("external_id")
+
+  /// SOMEBODY SAYS THIS IS WRONG.
+  ///
+  /// External evidence is not infallible: an app fails, a shop is duplicated, a call happens on a
+  /// phone nothing is connected to. The person's account is kept BESIDE the record and neither
+  /// overrules the other - a discrepancy preserved is worth more than a certainty invented.
+  disputedAt   DateTime? @map("disputed_at")
+  disputedById String?   @map("disputed_by_id")
+  disputeNote  String?   @map("dispute_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  /// Pushing the same record twice updates it rather than doubling somebody's activity.
+  @@unique([organizationId, sourceSystem, externalId])
+  @@index([organizationId, personExternalId, happenedAt])
+  @@index([organizationId, counterpartyExternalId, happenedAt])
+  @@map("interactions")
+}
+
 model KnowledgeProposal {
   id             String @id @default(uuid())
   organizationId String @map("organization_id")
@@ -2263,6 +2349,16 @@ enum SubjectType {
   OBJECTIVE
   PROJECT
   DECISION
+  /// A shop, a prospect, a client - somebody outside the organisation that work happens with.
+  ///
+  /// Until this existed "Shop A" was a string inside a sentence, so the same shop in week one and
+  /// week three were unrelated text and nothing could be attached to either. It is a Subject rather
+  /// than a new table because a counterparty is exactly what a Subject already is: a thing the
+  /// customer's own system names, that people do work against.
+  ///
+  /// IT IS NOT A CRM RECORD AND MUST NOT BECOME ONE. No contacts, no deal value, no stage, no
+  /// pipeline. A name and an id, so evidence and conversation can point at the same shop twice.
+  COUNTERPARTY
 }
 
 /// A PIECE OF THE CUSTOMER'S OWN WORK, HELD AS A POINTER.

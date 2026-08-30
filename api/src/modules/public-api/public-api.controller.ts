@@ -23,6 +23,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
+import { WhatHappenedWithACustomerService } from './what-happened-with-a-customer.service';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
 const TOKEN_TTL_SECONDS = 900;
@@ -69,6 +70,7 @@ export class PublicApiController {
     private readonly digests: RoundDigestService,
     private readonly prisma: PrismaService,
     private readonly groundsByApi: GroundsByApiService,
+    private readonly whatHappened: WhatHappenedWithACustomerService,
   ) {}
 
   /**
@@ -466,6 +468,25 @@ export class PublicApiController {
    * has started, and with it, what makes the three untested scenarios different from the fourteen
    * that passed.
    */
+  /**
+   * WHAT HAPPENED WITH A CUSTOMER, from a system that already records it.
+   *
+   * `PUT /evidence` above attaches a figure to an objective - "committed 1.1m" against a pipeline
+   * target. This is the other half: the individual things that happened, so a check-in can ask
+   * about the nine visits with no next step rather than asking how many visits there were.
+   *
+   * `graph:write`, the same scope as evidence, because it is the same kind of act: the customer's
+   * own systems telling us what their own systems know.
+   */
+  @Put('interactions')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'What happened with a customer - visits, calls, meetings, proposals' })
+  async pushInteractions(@Req() req: { machine: MachineCaller }, @Body() dto: any) {
+    return this.whatHappened.push(req.machine.organizationId, dto?.sourceSystem, dto?.interactions ?? []);
+  }
+
   @Put('evidence')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)

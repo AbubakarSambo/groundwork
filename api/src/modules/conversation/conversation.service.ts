@@ -42,6 +42,7 @@ import { whenTheyMeant } from './when-words-mean-a-date';
 import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA } from './prompt-library';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
+import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1456,6 +1457,59 @@ export class ConversationService {
      *
      * Best-effort throughout. A check-in must never fail because a handbook lookup did.
      */
+    /*
+     * WHAT THEIR OWN SYSTEMS RECORDED THIS PERIOD.
+     *
+     * Matched by the directory id their organisation already uses - the same identifier SCIM
+     * pushes and the machine API sends - via the email their account and their `Person` row share.
+     * Nothing is recorded against somebody who is not in the directory, which is the safe
+     * direction: an unmatched record is invisible rather than attached to the wrong person.
+     *
+     * Best-effort and silent when nothing is connected, which is most organisations and every
+     * check-in this product has run until now.
+     */
+    const theirRecords = await (async () => {
+      const email = checkIn.participant.userId
+        ? (await this.prisma.user.findUnique({ where: { id: checkIn.participant.userId }, select: { email: true } }))?.email
+        : null;
+      if (!email) return [] as any[];
+      const person = await this.prisma.person.findFirst({
+        where: { organizationId: ground.organizationId, email },
+        select: { externalId: true },
+      });
+      if (!person) return [] as any[];
+
+      /* This period only. A quarter of somebody's activity is not context, it is an archive. */
+      const since = new Date(Date.now() - 45 * 86_400_000);
+      const rows = await this.prisma.interaction.findMany({
+        where: { organizationId: ground.organizationId, personExternalId: person.externalId, happenedAt: { gte: since } },
+        orderBy: { happenedAt: 'desc' },
+        take: 40,
+      });
+      if (!rows.length) return [] as any[];
+
+      /* Counterparty ids resolved to the names their own system gave them. */
+      const ids = [...new Set(rows.map((r) => r.counterpartyExternalId).filter(Boolean))] as string[];
+      const named = ids.length
+        ? await this.prisma.subject.findMany({
+          where: { organizationId: ground.organizationId, externalId: { in: ids }, type: 'COUNTERPARTY' as any },
+          select: { externalId: true, title: true },
+        })
+        : [];
+      const titleById = new Map(named.map((n) => [n.externalId, n.title]));
+
+      return rows.map((r) => ({
+        kind: r.kind as any,
+        strength: r.strength as any,
+        happenedAt: r.happenedAt,
+        note: r.note,
+        counterparty: r.counterpartyExternalId ? (titleById.get(r.counterpartyExternalId) ?? null) : null,
+        sourceSystem: r.sourceSystem,
+        disputed: !!r.disputedAt,
+      }));
+    })().catch(() => [] as any[]);
+    const theirWeek = whatTheirWeekLooksLike(theirRecords as any, new Date());
+
     const lookUp = whatToLookUp(latestMessage);
     const companyCards = lookUp && this.knowledge
       ? await this.knowledge
@@ -1608,7 +1662,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /** The flag, read where it is used and failing to OFF. Same shape as the others. */

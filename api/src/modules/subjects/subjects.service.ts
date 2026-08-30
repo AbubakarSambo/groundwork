@@ -22,6 +22,15 @@ const TYPES: Record<string, SubjectType> = {
   objective: SubjectType.OBJECTIVE,
   project: SubjectType.PROJECT,
   decision: SubjectType.DECISION,
+  /*
+   * A shop, a prospect, a client. Until this existed "Shop A" was a string inside a sentence, so
+   * the same shop in two weeks was two unrelated pieces of text and nothing could be attached to
+   * either.
+   *
+   * It is not a CRM record and must not become one - a name and an id, so evidence and a
+   * conversation can point at the same shop twice.
+   */
+  counterparty: SubjectType.COUNTERPARTY,
 };
 
 /**
@@ -53,7 +62,7 @@ export class SubjectsService {
   async push(organizationId: string, dto: SubjectPush) {
     const type = TYPES[(dto.type ?? '').toLowerCase()];
     if (!type) {
-      throw new BadRequestException(`Unknown subject type "${dto.type}". Expected objective, project or decision.`);
+      throw new BadRequestException(`Unknown subject type "${dto.type}". Expected ${Object.keys(TYPES).join(", ")}.`);
     }
     if (!dto.externalId?.trim() || !dto.sourceSystem?.trim()) {
       throw new BadRequestException('externalId and sourceSystem are required.');

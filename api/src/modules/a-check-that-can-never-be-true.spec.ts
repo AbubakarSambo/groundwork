@@ -69,6 +69,13 @@ const CHECKED_AND_FINE = new Set([
   'modules/subjects/subjects.service.ts:externalId',
   'modules/subjects/subjects.service.ts:title',
   /*
+   * The same shape a third time, and for the same reason: `personExternalId` on an INCOMING push
+   * from a customer's sales system. The column being non-nullable is what this check enforces, not
+   * something it can lean on - a record arriving with no person is exactly the case, and trusting
+   * the schema there would mean trusting a stranger's request to have obeyed it.
+   */
+  'modules/public-api/what-happened-with-a-customer.service.ts:personExternalId',
+  /*
    * Same shape again: `occurredAt` is non-nullable on the row and entirely absent from a push that
    * forgot it. Defaulting a missing one to now would date every backfilled event to the day it was
    * uploaded, which is the whole reason the check refuses instead.
