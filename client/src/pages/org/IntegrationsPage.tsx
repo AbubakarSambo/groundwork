@@ -241,6 +241,22 @@ export function IntegrationsPage() {
         <p style={S.body}>This is the part that is not a dashboard. The objectives you send become what each person is asked about, on the cadence you set - their own account of the work, in their own words, against the thing you said mattered. The report shows where those accounts agree and where they do not.</p>
       </div>
       <div style={S.card}>
+        {/*
+          * THE CRM ANSWER, DECIDED AND THEN FOUND TO BE ALREADY BUILT.
+          *
+          * "I think the CRM is evidence against objectives" - and that is exactly the shape the API
+          * already had. A deal, a stage, an amount is not a thing to check in about; it is a number
+          * that says how the thing you ARE checking in about is going. So there is no `deal` type
+          * and there should not be: it arrives as evidence against an objective that already
+          * exists, and lands in the check-in that asks about that objective.
+          *
+          * The page had never mentioned evidence at all, which is why a customer with a CRM had no
+          * idea where it goes and reasonably concluded this was an OKR tool.
+          */}
+        <div style={S.h3}>Your numbers come in as evidence, not as more things to track</div>
+        <p style={S.body}>Your CRM, your billing, your support desk, your analytics - whatever holds the number. It arrives against an objective that already exists rather than as another item on a list, so the person checking in is asked about the work with the current figure in front of them. Counts and short labels, never prose: "committed: 1.1m, stage: negotiation" against the objective it belongs to. We hold the last figure you sent and when you observed it, so a stale one says it is stale rather than pretending.</p>
+      </div>
+      <div style={S.card}>
         <div style={S.h3}>Roles, handovers and what each role turns on</div>
         <p style={S.body}>Who holds which role and since when, so a handover produces a brief rather than a gap. Each role can name the one action it lives or dies by and how often it is due - the visit, the review, the presentation - and Groundwork notices when somebody active has stopped doing it. Not before the period is half gone, and never as a verdict.</p>
       </div>
@@ -621,6 +637,39 @@ export function IntegrationsPage() {
         <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
           One bad row does not stop the rest. The others are stored, and what was skipped appears
           above with the row and the reason, so you can fix those and send them again.
+        </p>
+        {/*
+          * AND THE CRM PATH, WHICH IS THE ONE PEOPLE ASK ABOUT AND THE PAGE NEVER SHOWED.
+          *
+          * Evidence goes against an objective that already exists. It is a PUT rather than a POST
+          * because it is the current state of something rather than another entry in a log - a
+          * nightly push replaces yesterday's figure and does not stack up beside it.
+          *
+          * `matched: false` for an objective that is not on any check-in, rather than an error: a
+          * nightly push covering the whole org will name objectives nobody is checking in about,
+          * and failing the batch for that would make the integration useless. Run before it was
+          * written down, including that case.
+          */}
+        <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
+          Numbers from your CRM or anywhere else go against an objective that already exists, and
+          arrive in the check-in that asks about it:
+        </p>
+        <pre style={{ ...S.mono, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto', fontSize: 12, lineHeight: 1.65, margin: '0 0 10px' }}>
+{`curl -X PUT ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/evidence \\
+  -H 'authorization: Bearer $ACCESS_TOKEN' \\
+  -H 'content-type: application/json' \\
+  -d '{"evidence":[
+        {"objectiveExternalId":"OKR-9",
+         "observedAt":"2026-08-28T09:00:00Z",
+         "state":{"committed":"1.1m","stage":"negotiation","deals":"7"}}
+      ]}'`}
+        </pre>
+        <p style={{ ...S.body, marginBottom: 12, fontSize: 12.5 }}>
+          It answers <span style={S.mono}>matched: true</span> per item, or{' '}
+          <span style={S.mono}>matched: false</span> for an objective nobody is checking in about -
+          not an error, so a nightly push covering everything does not fail on the parts nobody is
+          discussing. Send <span style={S.mono}>observedAt</span> and we hold your observation time
+          rather than ours, so a figure that is three days old says so instead of looking current.
         </p>
         <p style={{ ...S.body, marginBottom: 8, fontSize: 12.5 }}>
           The full reference is generated from the running code rather than written by hand, so it

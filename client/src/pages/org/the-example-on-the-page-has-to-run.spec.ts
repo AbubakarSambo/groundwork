@@ -52,6 +52,27 @@ describe('the example on the page has to run', () => {
     expect(rows).toContain('"type":"objective"')
   })
 
+  it('shows the CRM path, which is evidence against an objective', () => {
+    /*
+     * The decision: a CRM is evidence against objectives, not a source of more things to track.
+     * That was already the shape the API had - there is no `deal` type and should not be - and the
+     * page had never mentioned evidence at all, which is why somebody with a CRM concluded this
+     * was an OKR tool.
+     *
+     * PUT rather than POST: it is the current state of something, not another entry in a log.
+     */
+    expect(PAGE).toContain('/api/org/v1/evidence')
+    /* From the curl, not from the URL - the verb comes before it and the slice has to include it. */
+    const ev = PAGE.slice(PAGE.indexOf('curl -X PUT'))
+    expect(ev).toContain('/api/org/v1/evidence')
+    expect(ev).toContain('"objectiveExternalId"')
+    expect(ev).toContain('"observedAt"')
+    /* Counts and short labels. The API refuses anything over 40 characters as prose. */
+    expect(ev).toContain('"state"')
+    /* And it says what a nightly push gets for an objective nobody is checking in about. */
+    expect(ev).toContain('matched: false')
+  })
+
   it('never prints a secret it cannot know', () => {
     /*
      * The client id can be the real one - it is on the credentials list. The secret is shown once
