@@ -378,14 +378,17 @@ export function GroundsListPage() {
                 confidence scores as a paid unlock, routed at a per-session
                 checkout. Neither half is real - there is no session billing,
                 and the insights were never locked. */}
-            {/* Open ground CTA */}
-            <button
+            {/*
+              * Open ground CTA - and not for somebody the rule would refuse. See AppShell: they
+              * used to fill in eight steps to be told no at the end.
+              */}
+            {user?.mayOpenCheckIns !== false && <button
               onClick={() => navigate('/grounds/new')}
               style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <span>Start a check-in</span>
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
-            </button>
+            </button>}
 
             {/* Invite a colleague - admin only, matches the backend guard on POST /auth/team-invite */}
             {isAdmin && (!showInviteColleague ? (

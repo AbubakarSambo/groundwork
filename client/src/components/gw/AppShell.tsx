@@ -616,7 +616,17 @@ export function AppSidebar() {
         */}
         {/* New ground button */}
         <div style={{ padding: collapsed ? '0 8px 10px' : '0 10px 10px', flexShrink: 0 }}>
-          <button
+          {/*
+            * NOT SHOWN TO SOMEBODY IT WOULD REFUSE.
+            *
+            * A member used to see this, fill in eight steps, and be told on submit that opening a
+            * check-in is limited to people their admin has named. The refusal was right and the
+            * journey was a waste of their afternoon.
+            *
+            * They lose nothing by not seeing it: taking part in a check-in happens by being added
+            * to one, and everything they are in is on the list below.
+            */}
+          {user?.mayOpenCheckIns !== false && <button
             onClick={() => navigate('/grounds/new')}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 7,
@@ -628,7 +638,7 @@ export function AppSidebar() {
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
             {!collapsed && <span>Start a check-in</span>}
-          </button>
+          </button>}
         </div>
 
         {/* Grounds list */}

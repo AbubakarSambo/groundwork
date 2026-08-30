@@ -39,6 +39,8 @@ export class UserResponseDto {
 
   @ApiProperty()
   isPlatformAdmin: boolean;
+  /** Whether this person may open a check-in. Computed by the rule, never a permission itself. */
+  mayOpenCheckIns?: boolean;
 
   /** The same organisation object `/auth/me` returns. See buildAuthResponse for why. */
   @ApiProperty()
@@ -50,6 +52,9 @@ export class UserResponseDto {
     email: string | null;
     companyStage: unknown;
     subscriptionPlan: unknown;
+    /* The two settings the open-a-check-in rule reads. See `who-may-open-a-check-in.ts`. */
+    whoMayOpenCheckIns?: string;
+    checkInsNeedApproval?: boolean;
   };
 }
 

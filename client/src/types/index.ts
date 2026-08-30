@@ -19,6 +19,11 @@ export interface User {
   organization?: UserOrganization
   jobTitle?: string
   isPlatformAdmin?: boolean
+  /**
+   * Whether this person may open a check-in here, decided server side by the one rule that decides
+   * it. A convenience for the screen, never a permission: the API asks again on every create.
+   */
+  mayOpenCheckIns?: boolean
   emailNotifications?: boolean
   phoneNumber?: string | null
 }

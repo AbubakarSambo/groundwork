@@ -28,6 +28,7 @@ import {
   MemberSigninDto,
 } from './dto';
 import { TokenType } from '@prisma/client';
+import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 
 type UserWithOrg = {
   id: string;
@@ -37,6 +38,8 @@ type UserWithOrg = {
   role: string;
   organizationId: string;
   isPlatformAdmin: boolean;
+  /** Whether this person may open a check-in. Computed by the rule, never a permission itself. */
+  mayOpenCheckIns?: boolean;
   /*
    * The whole organisation, not just its name. The client reads `organization.email` to decide
    * whether an admin still has to set up their org, so a builder that could only see the name
@@ -50,6 +53,9 @@ type UserWithOrg = {
     email: string | null;
     companyStage: unknown;
     subscriptionPlan: unknown;
+    /* The two settings the open-a-check-in rule reads. See `who-may-open-a-check-in.ts`. */
+    whoMayOpenCheckIns?: string;
+    checkInsNeedApproval?: boolean;
   };
 };
 
@@ -803,6 +809,28 @@ export class AuthService {
         organizationId: user.organizationId,
         organizationName: user.organization.name,
         isPlatformAdmin: user.isPlatformAdmin,
+        /**
+         * WHETHER THIS PERSON MAY OPEN A CHECK-IN, DECIDED BY THE ONE RULE THAT DECIDES IT.
+         *
+         * Without this the client cannot know, and what it did instead was show everybody the
+         * button: a member saw "Start a check-in" in the rail, filled in eight steps, and was
+         * refused on submit. The refusal was right and the journey was a waste of their afternoon.
+         *
+         * COMPUTED, NOT COPIED. Sending the role and the organisation's two settings and letting
+         * the client work it out would put a second copy of the rule in a second language, and the
+         * copy that drifts is the one deciding whether somebody sees a button.
+         *
+         * It is a convenience for the screen and never a permission: `create` asks the same
+         * function again on every request, so a stale session cannot open anything.
+         */
+        mayOpenCheckIns: mayOpen(
+          { role: user.role },
+          {
+            whoMayOpen: (user.organization.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE')
+              ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+            needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+          },
+        ).may,
         /**
          * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
          *
