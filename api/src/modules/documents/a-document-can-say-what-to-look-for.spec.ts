@@ -14,6 +14,12 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/
 const SERVICE = strip(readFileSync(join(__dirname, 'documents.service.ts'), 'utf8'));
 const CONTROLLER = strip(readFileSync(join(__dirname, 'documents.controller.ts'), 'utf8'));
 const CONVERSATION = strip(readFileSync(join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8'));
+/*
+ * The note is rendered where the documents are assembled, which moved when they were given a size
+ * bound. Same invariants, pointed at where the code now lives - the alternative is a guard that
+ * passes because it is looking at the wrong file.
+ */
+const ASSEMBLY = strip(readFileSync(join(__dirname, '..', 'conversation', 'a-prompt-that-ran-out-of-room-says-so.ts'), 'utf8'));
 
 describe('a document can say what to look for in it', () => {
   it('is accepted on the upload route', () => {
@@ -29,16 +35,18 @@ describe('a document can say what to look for in it', () => {
 
   it('reaches the session, or it is a field nobody reads', () => {
     expect(CONVERSATION).toContain('uploaderNote: true');
-    expect(CONVERSATION).toContain('They asked for this to be read for:');
+    expect(ASSEMBLY).toContain('They asked for this to be read for:');
   });
 
   it('sits above the document rather than after it', () => {
     /* A long document read first is a long document read without knowing what to look for. */
-    const line = CONVERSATION.slice(CONVERSATION.indexOf('const asked = d.uploaderNote'));
-    expect(line.slice(0, 400)).toContain('${asked}${d.content}');
+    const head = ASSEMBLY.slice(ASSEMBLY.indexOf('const head ='));
+    expect(head.slice(0, 200)).toContain('${asked}');
+    expect(ASSEMBLY).toContain('${head}${d.content}');
   });
 
   it('says nothing at all when nobody asked for anything', () => {
-    expect(CONVERSATION).toContain("d.uploaderNote?.trim()\n            ?");
+    expect(ASSEMBLY).toContain("d.uploaderNote?.trim()");
+    expect(ASSEMBLY).toContain("? `They asked");
   });
 });
