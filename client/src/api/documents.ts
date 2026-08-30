@@ -28,10 +28,12 @@ export const documentsApi = {
    * and refuses one without this, so a client that never sent it could not slip a transcript
    * through.
    */
-  upload: (groundId: string, file: File, consentConfirmed = false) => {
+  upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string) => {
     const form = new FormData()
     form.append('file', file)
     if (consentConfirmed) form.append('consentConfirmed', 'true')
+    /* What they want looked for in it. Optional, and kept in their words. */
+    if (uploaderNote?.trim()) form.append('uploaderNote', uploaderNote.trim())
     return apiClient.post<GroundDocument>(`/grounds/${groundId}/documents`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
@@ -510,6 +510,7 @@ export function CreateGroundPage() {
    * sent them - so the engine's per-scenario timeline was dead code on the path people use. A 14-day
    * shock ran for 90 days; a year-long advisory ran for 90 days.
    */
+  const qc = useQueryClient()
   const [timelineDays, setTimelineDays] = useState(90)
   /*
    * WHEN THE CHECK-IN STARTS, WHICH IS NOT ALWAYS TODAY.
@@ -744,6 +745,15 @@ export function CreateGroundPage() {
     },
     onSuccess: ({ ground, failed }) => {
       toast.success('Check-in opened')
+      /*
+       * THE RAIL DOES NOT KNOW IT EXISTS UNTIL SOMEBODY TELLS IT.
+       *
+       * The sidebar reads `['grounds']` and this navigated away without invalidating it, so a
+       * person who had just created a check-in landed on its page with the rail still showing the
+       * list from before - their new one simply absent from the place they had been told to look
+       * for it. It appeared later, whenever something else happened to refetch.
+       */
+      qc.invalidateQueries({ queryKey: ['grounds'] })
       /* One toast per person, each carrying the reason that person was refused for. */
       for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
       navigate(`/grounds/${ground.id}`)

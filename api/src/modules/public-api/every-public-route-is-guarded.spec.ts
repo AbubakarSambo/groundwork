@@ -115,6 +115,24 @@ describe('every public route is guarded', () => {
     expect(UNGUARDED_ON_PURPOSE.length).toBeLessThanOrEqual(2);
   });
 
+  it('every scope it declares is a scope that exists', () => {
+    /*
+     * A route can declare `subjects:read`, pass every check here, and be unreachable for everybody
+     * - the guard refuses a scope the credential cannot hold, so an invented one fails closed and
+     * silently. I shipped exactly that on an acceptance-criteria route and only the runtime would
+     * ever have said so.
+     */
+    const known = new Set(
+      [...readFileSync(join(__dirname, 'scopes.ts'), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .matchAll(/'([a-z]+:[a-z]+)'/g)].map((m) => m[1]),
+    );
+    expect(known.size).toBeGreaterThan(5);
+    for (const m of SRC.matchAll(/@RequiresScope\('([^']+)'\)/g)) {
+      expect(known).toContain(m[1]);
+    }
+  });
+
   it('nothing outside this controller is marked Public under the integration path', () => {
     expect(SRC).toContain("@Controller('api/org/v1')");
   });

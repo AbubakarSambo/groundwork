@@ -253,6 +253,8 @@ export class DocumentsService {
      * job description it is not asked and not stored, because there is nobody else in those.
      */
     consentConfirmed = false,
+    /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
+    uploaderNote?: string,
   ) {
     if (!file) throw new BadRequestException('No file provided');
     if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
@@ -306,10 +308,11 @@ export class DocumentsService {
         visibility: defaultVisibilityForUpload(),
         fileName: file.originalname,
         mimeType: file.mimetype,
+        uploaderNote: uploaderNote?.trim() || null,
         content,
         assessment: assessment as any,
       },
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true },
     });
 
     // Extract structured claims from the document content and write them as

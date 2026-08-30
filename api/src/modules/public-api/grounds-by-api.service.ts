@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { whereItStands, mayMarkMet, NEVER_CONCLUDE_FROM_CRITERIA } from './what-would-have-to-be-true';
 import { theReadFor, NOTHING_ON_RECORD } from '../detectors/what-a-lead-should-read-first';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
@@ -561,6 +562,101 @@ export class GroundsByApiService {
     return { change: updated, agreedNow: textAfter(state, row.personObjective.text, row.proposedText) };
   }
 
+
+  /**
+   * WHAT WOULD HAVE TO BE TRUE FOR A SUBJECT TO BE DONE.
+   *
+   * Pushed by the customer's own systems alongside the objective it belongs to, because the
+   * definition of done is a thing their planning tool already holds and this product should not be
+   * a second place to write it down. Replaces the whole set rather than merging: a criterion that
+   * disappeared upstream was deleted on purpose, and keeping it would have this arguing with the
+   * system of record about what was agreed.
+   *
+   * WHAT IS MET SURVIVES A RE-PUSH. Somebody marked it met with a reason, on a date, and a sync is
+   * not a reason to lose that - so a criterion whose text is unchanged keeps its evidence.
+   */
+  async setAcceptanceCriteria(
+    organizationId: string,
+    subjectExternalId: string,
+    criteria: { text: string }[],
+  ) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { organizationId, externalId: subjectExternalId },
+      select: { id: true },
+    });
+    if (!subject) throw new NotFoundException('No such objective in what your organisation has sent us.');
+
+    const clean = criteria
+      .map((c) => (c?.text ?? '').trim())
+      .filter((t) => t.length > 0 && t.length <= 500);
+    if (!clean.length) throw new BadRequestException('Send at least one thing that would have to be true.');
+
+    const existing = await this.prisma.acceptanceCriterion.findMany({
+      where: { organizationId, subjectExternalId },
+      select: { text: true, metAt: true, metBecause: true, metByExternalId: true },
+    });
+    const evidenceByText = new Map(existing.filter((e) => e.metAt).map((e) => [e.text, e]));
+
+    await this.prisma.$transaction([
+      this.prisma.acceptanceCriterion.deleteMany({ where: { organizationId, subjectExternalId } }),
+      this.prisma.acceptanceCriterion.createMany({
+        data: clean.map((text, i) => {
+          const kept = evidenceByText.get(text);
+          return {
+            organizationId,
+            subjectExternalId,
+            text,
+            ordinal: i + 1,
+            metAt: kept?.metAt ?? null,
+            metBecause: kept?.metBecause ?? null,
+            metByExternalId: kept?.metByExternalId ?? null,
+          };
+        }),
+      }),
+    ]);
+
+    return this.acceptanceCriteria(organizationId, subjectExternalId);
+  }
+
+  /** Where a subject stands against what was agreed. The shaping is in the module. */
+  async acceptanceCriteria(organizationId: string, subjectExternalId: string) {
+    const rows = await this.prisma.acceptanceCriterion.findMany({
+      where: { organizationId, subjectExternalId },
+      orderBy: { ordinal: 'asc' },
+      select: { text: true, ordinal: true, metAt: true, metBecause: true },
+    });
+    return { subjectExternalId, ...whereItStands(rows), refusal: NEVER_CONCLUDE_FROM_CRITERIA };
+  }
+
+  /**
+   * MARKING ONE MET, WHICH NEEDS A REASON.
+   *
+   * A tick with nothing behind it records somebody's belief as a fact and is read later by a person
+   * who cannot check it. The sentence does not make the belief true; it puts the belief and its
+   * evidence in the same place, which is what this product does everywhere else.
+   */
+  async markCriterionMet(
+    organizationId: string,
+    subjectExternalId: string,
+    ordinal: number,
+    because: string,
+    byExternalId?: string,
+  ) {
+    const answer = mayMarkMet(because);
+    if (!answer.may) throw new BadRequestException(answer.why);
+
+    const row = await this.prisma.acceptanceCriterion.findFirst({
+      where: { organizationId, subjectExternalId, ordinal },
+      select: { id: true },
+    });
+    if (!row) throw new NotFoundException('No such acceptance criterion on that objective.');
+
+    await this.prisma.acceptanceCriterion.update({
+      where: { id: row.id },
+      data: { metAt: new Date(), metBecause: because.trim(), metByExternalId: byExternalId ?? null },
+    });
+    return this.acceptanceCriteria(organizationId, subjectExternalId);
+  }
 
   /**
    * WHAT THE RECORD HOLDS ABOUT ONE PERSON, BEFORE A CONVERSATION ABOUT THEM.

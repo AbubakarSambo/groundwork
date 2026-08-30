@@ -255,11 +255,12 @@ model PricingPlan {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  whatWorked WhatWorked[]
-  id         String       @id @default(uuid())
-  name       String
-  slug       String       @unique
-  email      String?
+  whatWorked         WhatWorked[]
+  acceptanceCriteria AcceptanceCriterion[]
+  id                 String                @id @default(uuid())
+  name               String
+  slug               String                @unique
+  email              String?
 
   // Billing (Stripe, USD). Care fee is the always-on commitment device.
   stripeCustomerId       String?       @map("stripe_customer_id")
@@ -2291,6 +2292,39 @@ enum CommitmentState {
 /// into the 30th is a guess wearing a fact's clothes. So `dueAt` is set ONLY when somebody gave a
 /// date, and everything that depends on time - slipping, following up - runs only on rows that have
 /// one. A commitment with words and no date is never reported as late, because we do not know.
+/// WHAT WOULD HAVE TO BE TRUE FOR THIS TO BE DONE, AGREED ONCE AND KEPT.
+///
+/// "Five core scenarios reliably in production" is one sentence and five things, and nothing could
+/// hold the five - so a report could say the accounts differ and never say two of five. The
+/// definition of done was re-argued every session because it lived nowhere.
+///
+/// ORDERED, because a sequence is usually what somebody means. CHECKED OFF ONLY WITH A REASON,
+/// because a tick with nothing behind it is the "shipped" problem in a smaller box.
+model AcceptanceCriterion {
+  id                String    @id @default(uuid())
+  organizationId    String    @map("organization_id")
+  /// The Subject this is part of, by the customer's own id for it.
+  subjectExternalId String    @map("subject_external_id")
+  /// What has to be true, in the words of whoever agreed it. Never rewritten.
+  text              String    @db.Text
+  ordinal           Int
+  /// MET only when somebody said what showed it. Null is the ordinary state and is not a failure.
+  metAt             DateTime? @map("met_at")
+  /// What showed it. Required to mark one met - see the guard.
+  metBecause        String?   @map("met_because") @db.Text
+  /// Who said so, by the customer's id for them.
+  metByExternalId   String?   @map("met_by_external_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, subjectExternalId, ordinal])
+  @@index([organizationId, subjectExternalId])
+  @@map("acceptance_criteria")
+}
+
 model Commitment {
   id                String  @id @default(uuid())
   organizationId    String  @map("organization_id")
@@ -2833,6 +2867,13 @@ model GroundDocument {
   mimeType      String  @map("mime_type")
   content       String  @db.Text
   assessment    Json? // { suggests: string[], willDo: string[] } - Gemini's read of the doc, correctable
+  /// WHAT THE PERSON WANTS LOOKED FOR IN IT, IN THEIR WORDS.
+  ///
+  /// A file arrives with no instructions and the session has to guess what mattered about it. In
+  /// the chat the person can say so as they attach it, because there is a conversation to say it
+  /// into; on the Context tab there was nowhere to put it, so a forty page architecture document
+  /// went in mute. This is that sentence, kept with the document rather than turned into a turn.
+  uploaderNote  String? @map("uploader_note") @db.Text
 
   // WHO CAN SEE THIS. Nobody decided the current behaviour: documents.list
   // filters on participantId, so every document is private to whoever uploaded

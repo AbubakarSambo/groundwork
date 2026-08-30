@@ -448,6 +448,57 @@ export class PublicApiController {
    * existing agreement rather than pretending none exists - and it still lets somebody say the
    * agreement is wrong, was never shown to them, or has been overtaken.
    */
+  /**
+   * WHAT WOULD HAVE TO BE TRUE FOR AN OBJECTIVE TO BE DONE.
+   *
+   * `subjects:write`, not a scope of its own: a criterion is part of the objective it belongs to,
+   * and anybody allowed to change the objective is already allowed to change what finishing it
+   * means. A separate scope would suggest these can be governed apart, and they cannot.
+   */
+  @Put('subjects/:externalId/acceptance-criteria')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('subjects:write')
+  @ApiOperation({ summary: 'Set what would have to be true for an objective to be done.' })
+  async setAcceptanceCriteria(
+    @Req() req: { machine: MachineCaller },
+    @Param('externalId') externalId: string,
+    @Body() dto: { criteria: { text: string }[] },
+  ) {
+    return this.groundsByApi.setAcceptanceCriteria(req.machine.organizationId, externalId, dto?.criteria ?? []);
+  }
+
+  @Get('subjects/:externalId/acceptance-criteria')
+  @UseGuards(MachineTokenGuard)
+  /*
+   * `findings:read`, WHICH IS THE SCOPE READING A SUBJECT ALREADY TAKES. I wrote `subjects:read`
+   * first - a scope that does not exist, so the route would have failed closed at runtime and been
+   * unreachable for anybody. Reading what an objective requires is reading the objective.
+   */
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'Where an objective stands against what was agreed.' })
+  async acceptanceCriteria(
+    @Req() req: { machine: MachineCaller },
+    @Param('externalId') externalId: string,
+  ) {
+    return this.groundsByApi.acceptanceCriteria(req.machine.organizationId, externalId);
+  }
+
+  @Post('subjects/:externalId/acceptance-criteria/:ordinal/met')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('subjects:write')
+  @ApiOperation({ summary: 'Mark one criterion met, saying what showed it.' })
+  async markCriterionMet(
+    @Req() req: { machine: MachineCaller },
+    @Param('externalId') externalId: string,
+    @Param('ordinal') ordinal: string,
+    @Body() dto: { because: string; byExternalId?: string },
+  ) {
+    return this.groundsByApi.markCriterionMet(
+      req.machine.organizationId, externalId, Number(ordinal), dto?.because ?? '', dto?.byExternalId,
+    );
+  }
+
   @Post('grounds/:groundId/objectives')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)

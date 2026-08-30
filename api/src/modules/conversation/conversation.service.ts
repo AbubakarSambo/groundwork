@@ -1485,7 +1485,7 @@ export class ConversationService {
           { participantId: checkIn.participantId, isLead: ground.initiatorId === checkIn.participant.userId },
           this.config.get<boolean>('app.contextEnabled') === true,
         ) as any,
-        select: { fileName: true, content: true },
+        select: { fileName: true, content: true, uploaderNote: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON } }),
@@ -1590,7 +1590,23 @@ export class ConversationService {
 
     const docContext = uploadedDocs.length
       ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' +
-        uploadedDocs.map((d) => `--- ${d.fileName} ---\n${d.content}`).join('\n\n')
+        uploadedDocs.map((d) => {
+          /*
+           * WHAT THEY ASKED TO BE LOOKED FOR, ABOVE THE DOCUMENT ITSELF.
+           *
+           * A forty page architecture document with no instructions leaves the session guessing at
+           * what mattered about it, and guessing is how it ends up asking about the wrong half. In
+           * the chat somebody can say it as they attach the file; from the Context tab there was
+           * nowhere to put it, so it went in mute.
+           *
+           * Above rather than below, because a long document read first is a long document read
+           * without knowing what to look for.
+           */
+          const asked = d.uploaderNote?.trim()
+            ? `They asked for this to be read for: ${d.uploaderNote.trim()}\n`
+            : '';
+          return `--- ${d.fileName} ---\n${asked}${d.content}`;
+        }).join('\n\n')
       : '';
 
     // See between-session-notes.ts for why the wording is the mechanism. Kept in

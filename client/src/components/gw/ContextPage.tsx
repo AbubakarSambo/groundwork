@@ -78,8 +78,22 @@ export function ContextPage({
    */
   const [askingConsent, setAskingConsent] = useState<File | null>(null)
 
+  /*
+   * A FILE ARRIVES WITH NO INSTRUCTIONS AND THE SESSION HAS TO GUESS WHAT MATTERED ABOUT IT.
+   *
+   * In the chat somebody can say what to look for as they attach a file, because there is a
+   * conversation to say it into. Here there was nowhere to put it, so a forty page architecture
+   * document went in mute and the session asked about whichever half it happened to read.
+   *
+   * Optional, and skippable in one click: most files do not need it, and a required box in front
+   * of an upload is a reason not to upload.
+   */
+  const [askingWhatToLookFor, setAskingWhatToLookFor] = useState<{ file: File; consented: boolean } | null>(null)
+  const [whatToLookFor, setWhatToLookFor] = useState('')
+
   const uploadDoc = useMutation({
-    mutationFn: ({ file, consented }: { file: File; consented: boolean }) => documentsApi.upload(id, file, consented),
+    mutationFn: ({ file, consented, note }: { file: File; consented: boolean; note?: string }) =>
+      documentsApi.upload(id, file, consented, note),
     /*
      * IT SAID NOTHING ON SUCCESS. The file appeared in a list further down the page, which is real
      * confirmation for somebody who knows to look there and none at all for somebody who has just
@@ -366,7 +380,7 @@ export function ContextPage({
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => { uploadDoc.mutate({ file: askingConsent, consented: true }); setAskingConsent(null) }}
+                    onClick={() => { setWhatToLookFor(''); setAskingWhatToLookFor({ file: askingConsent, consented: true }); setAskingConsent(null) }}
                     style={{
                       padding: '8px 16px', borderRadius: 8, border: 'none', fontFamily: 'inherit',
                       fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -448,12 +462,57 @@ export function ContextPage({
                     if (/transcript|recording|call notes|meeting notes|whatsapp|chat|conversation|gemini|minutes/i.test(f.name)) {
                       setAskingConsent(f)
                     } else {
-                      uploadDoc.mutate({ file: f, consented: false })
+                      setWhatToLookFor(''); setAskingWhatToLookFor({ file: f, consented: false })
                     }
                   }
                   e.target.value = ''
                 }} />
             </div>
+
+            {/*
+              * WHAT TO LOOK FOR, ASKED ONCE, SKIPPABLE.
+              *
+              * The chat asks this as a file is attached and nothing here did, so a document arrived
+              * with no idea what mattered about it. Skip is a real answer and sits first, because
+              * most files need nothing said about them and a required box before an upload is a
+              * reason not to upload.
+              */}
+            {askingWhatToLookFor && (
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16, background: 'var(--gw-bg)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+                  {askingWhatToLookFor.file.name}
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 9 }}>
+                  Anything you want read out of this? One line is enough, and you can skip it.
+                </div>
+                <textarea
+                  autoFocus
+                  value={whatToLookFor}
+                  onChange={e => setWhatToLookFor(e.target.value)}
+                  placeholder="e.g. the hardware interface dates in section 4, not the rest of it"
+                  style={{ width: '100%', boxSizing: 'border-box', minHeight: 58, resize: 'none', padding: '8px 10px', fontSize: 12.5, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', marginBottom: 9 }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented })
+                      setAskingWhatToLookFor(null)
+                    }}
+                    style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >Skip and upload</button>
+                  <button
+                    type="button"
+                    disabled={!whatToLookFor.trim()}
+                    onClick={() => {
+                      uploadDoc.mutate({ file: askingWhatToLookFor.file, consented: askingWhatToLookFor.consented, note: whatToLookFor })
+                      setAskingWhatToLookFor(null)
+                    }}
+                    style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: whatToLookFor.trim() ? 'pointer' : 'not-allowed', opacity: whatToLookFor.trim() ? 1 : 0.5, fontFamily: 'inherit' }}
+                  >Upload with this</button>
+                </div>
+              </div>
+            )}
 
             {/*
               AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
