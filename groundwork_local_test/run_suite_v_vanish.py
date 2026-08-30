@@ -117,6 +117,14 @@ async def main() -> int:
         rec.check("V1", await page.get_by_text(SAVE_MY_CHECKIN).first.is_visible(),
                   "closed session restores and offers the save card", hard=True, url=f"{BASE_URL}/start")
 
+        # THE ORGANISATION'S NAME IS ASKED BEFORE THE EMAIL NOW, not after it.
+        #
+        # It used to live only on the panel shown while waiting for the link, which meant the
+        # Google path - which never sees that panel - was never offered it, and a person who
+        # signed up that way kept "Ada's Workspace" forever. It moved one step earlier, where both
+        # ways out pass. This suite filled it afterwards and timed out waiting for a field that is
+        # no longer there, which is the runner being right and out of date at the same time.
+        await page.locator("input[placeholder*='Organisation name']:visible").first.fill(ORG_NAME)
         await page.locator("input[placeholder*='your@email']:visible").first.fill(EMAIL)
         await page.get_by_text(SAVE_MY_CHECKIN).first.click()
         try:
@@ -128,9 +136,8 @@ async def main() -> int:
             await browser.close()
             return rec.finish()
 
-        # Post-email edits: org name + one contributor (the state that used to
-        # live ONLY in this browser's localStorage).
-        await page.locator("input[placeholder*='Organisation name']:visible").first.fill(ORG_NAME)
+        # Post-email edits: one contributor (the state that used to live ONLY in this
+        # browser's localStorage). The org name is set before the email now - see above.
         await page.locator("input[placeholder*='name@company']:visible").first.fill(CONTRIB)
         await page.keyboard.press("Enter")
         await page.wait_for_timeout(700)
@@ -249,8 +256,17 @@ async def main() -> int:
             code_me, me = api("GET", "/auth/me", token=token)
             if code_me == 200 and isinstance(me, dict):
                 org_name = org_name or (me.get("organizationName") or "")
+            # WHAT THIS PROVES CHANGED WHEN THE FIELD MOVED.
+            #
+            # The org name used to be typed after the email, so this checked the draft PATCH. It is
+            # asked before the email now - the Google path never sees the post-email panel, so a
+            # person signing up that way was never offered it at all. The name now rides in the
+            # entry-save payload instead, and this checks it survives from there to the ground.
+            #
+            # The PATCH is still covered: the ground label a few lines above is typed after the
+            # email and reaches the ground the same way.
             rec.check("V2", ORG_NAME in (org_name or ""),
-                      "org carries the name typed AFTER the email (draft PATCH worked)",
+                      "org carries the name typed BEFORE the email (entry-save payload carried it)",
                       f"org name is {org_name!r}, expected {ORG_NAME!r}", hard=True)
         # the contributor's invite email actually fired
         contrib_link = mail_link(CONTRIB, timeout_s=15)
