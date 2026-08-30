@@ -671,6 +671,31 @@ export function IntegrationsPage() {
           discussing. Send <span style={S.mono}>observedAt</span> and we hold your observation time
           rather than ours, so a figure that is three days old says so instead of looking current.
         </p>
+        {/*
+          * AND THE READ, which the plain list above describes and the engineer had no example of.
+          *
+          * A GET, and the only example here that returns something about a NAMED PERSON. So it is
+          * the one that has to show what comes back as well as how to ask - `refusal` and
+          * `completeness` are not decoration, they are the terms this is served on, and an
+          * integrator who does not know they are in the payload will render the sections and drop
+          * them. Run against the live API before it was written down, including the empty case.
+          */}
+        <p style={{ ...S.body, marginBottom: 10, fontSize: 12.5 }}>
+          And what a lead should read before a hard conversation, for one named person:
+        </p>
+        <pre style={{ ...S.mono, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', overflowX: 'auto', fontSize: 12, lineHeight: 1.65, margin: '0 0 10px' }}>
+{`curl ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/people/SAM-1/before-a-conversation \\
+  -H 'authorization: Bearer $ACCESS_TOKEN'`}
+        </pre>
+        <p style={{ ...S.body, marginBottom: 12, fontSize: 12.5 }}>
+          It needs the read-one-person's-desk permission, not the findings one - this is a great deal
+          more than a finding and no integration should get it by accident. What comes back carries{' '}
+          <span style={S.mono}>sections</span> with where each came from, a{' '}
+          <span style={S.mono}>completeness</span> band saying how much of a picture this is, and a{' '}
+          <span style={S.mono}>refusal</span> stating that it is not an assessment. Show all three.
+          Where the record holds nothing you get that said plainly rather than an empty page, so a
+          lead is never handed a blank screen about a person and left to read it as a verdict.
+        </p>
         <p style={{ ...S.body, marginBottom: 8, fontSize: 12.5 }}>
           The full reference is generated from the running code rather than written by hand, so it
           cannot drift from what the API actually does.

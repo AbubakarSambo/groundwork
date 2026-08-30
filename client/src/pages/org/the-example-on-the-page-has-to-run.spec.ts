@@ -73,6 +73,30 @@ describe('the example on the page has to run', () => {
     expect(ev).toContain('matched: false')
   })
 
+  it('shows the read, and the three things that come back with it', () => {
+    /*
+     * The one example about a named person. `refusal` and `completeness` ship in the payload
+     * because the read is served on those terms, and an integrator who does not know they are there
+     * will render the sections and quietly drop them - which turns "here is what the record holds"
+     * into something that reads like an assessment.
+     */
+    expect(PAGE).toContain('/before-a-conversation')
+    /*
+     * BOUNDED TO THIS EXAMPLE'S OWN TEXT. Slicing to the end of the file made the guard useless -
+     * every word it looks for appears somewhere else on the page, so it passed with this paragraph
+     * gutted. Caught by breaking it on purpose, which is the only reason it is written this way.
+     */
+    const from = PAGE.indexOf('/before-a-conversation')
+    const to = PAGE.indexOf('The full reference is generated', from)
+    expect(to).toBeGreaterThan(from)
+    const read = PAGE.slice(from, to)
+    expect(read).toContain('completeness')
+    expect(read).toContain('refusal')
+    expect(read).toContain('not an assessment')
+    /* And that it is not the findings permission, which is the mistake this endpoint invites. */
+    expect(read).toContain('not the findings one')
+  })
+
   it('never prints a secret it cannot know', () => {
     /*
      * The client id can be the real one - it is on the credentials list. The secret is shown once
