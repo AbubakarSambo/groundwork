@@ -13,6 +13,7 @@ import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
 import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
 import { WHAT_YOU_CAN_UPLOAD, UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
+import { whatIsOutstanding } from './where-a-promise-stands'
 
 /**
  * THE CONTEXT PAGE. ONE OF THEM, FOR EVERYBODY.
@@ -228,6 +229,30 @@ export function ContextPage({
               title={isLead ? 'Person by person' : 'What is expected of you'}
               src={isLead ? 'stated in your check-in, read by everyone' : 'you cannot change this here'}
             />
+            {/*
+              WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
+              
+              The line somebody reads before a conversation. It counts and never characterises -
+              three past their date is a number, and what that means is the report's business.
+              
+              Nothing at all when there is nothing to say, which is where a healthy check-in sits
+              most of the time. A panel that always carries a warning is one people stop reading.
+            */}
+            {(() => {
+              const all = (ground.participants ?? []).flatMap((p: any) => p.objective?.all ?? [])
+              const line = whatIsOutstanding(all, new Date())
+              if (!line || !isLead) return null
+              return (
+                <div style={{
+                  fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)',
+                  border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8,
+                  padding: '9px 12px', marginBottom: 10, lineHeight: 1.55,
+                }}>
+                  {line}
+                </div>
+              )
+            })()}
+
             <ExpectationsPanel
               groundId={id}
               parties={(ground.participants ?? []) as any[]}
