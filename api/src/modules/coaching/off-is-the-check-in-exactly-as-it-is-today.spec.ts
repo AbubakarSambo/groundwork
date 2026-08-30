@@ -86,28 +86,37 @@ const OUTSTANDING = {
   history: [{ step: 'Gets to the person with budget and authority, even when it is awkward', givenAtSession: 3, outcome: null }],
 };
 
-describe('with the flag off', () => {
-  it('never touches the table', async () => {
-    // THE FIRST THING TO PROVE. A feature nobody has turned on must not be
-    // querying for state on every single turn of every check-in.
-    const { service, coachingState } = makeService({ enabled: false, coachingRow: OUTSTANDING });
-    await service.sendMessage('ci1', 'user-1', 'hello');
-    expect(coachingState.findUnique).not.toHaveBeenCalled();
-  });
-
+/*
+ * THE FLAG IS GONE AND COACHING IS ON.
+ *
+ * This file was written to prove that a feature nobody had turned on cost nothing - no query, no
+ * heading, no row. It stayed off long enough that the best-designed thing in the check-in had never
+ * run for anybody, and that is not caution, it is a decision nobody was making.
+ *
+ * The invariant underneath those tests survives and is the better one: the coach is silent when
+ * there is nothing to raise, which is most sessions. A coach that always has something to say is a
+ * product that always has something to say about you. That is what these now prove, and they prove
+ * it about the real path rather than about a switch.
+ */
+describe('with nothing to raise, it says nothing', () => {
   it('puts nothing in the prompt, not even a heading', async () => {
-    const { service, captured } = makeService({ enabled: false, coachingRow: OUTSTANDING });
+    const { service, captured } = makeService({ enabled: true, coachingRow: null });
     await service.sendMessage('ci1', 'user-1', 'hello');
-    expect(captured[0]).not.toMatch(/step/i);
+    expect(captured[0]).not.toMatch(/step you took away/i);
   });
 
-  it('and writes nothing when a session ends', async () => {
-    const { service, upserts } = makeService({ enabled: false });
+  it('offers no step when the session had no substance to it', async () => {
+    /*
+     * A row is still written, and that is right: it records that nothing was offered this session,
+     * which is what stops the next one opening on a step nobody was ever given. What must not
+     * happen is a step being offered to somebody who barely said anything.
+     */
+    const { service, upserts } = makeService({ enabled: true });
     const out = await service.recordCoachingStep('p1', 4, {
-      noticed: 'x', lookingLike: 'Gets to the buyer', reason: 'a real reason', hadSubstance: true,
+      noticed: 'x', lookingLike: 'Gets to the buyer', reason: 'a real reason', hadSubstance: false,
     });
     expect(out.offered).toBeNull();
-    expect(upserts).toHaveLength(0);
+    expect(upserts[0]?.update?.currentStep ?? null).toBeNull();
   });
 });
 

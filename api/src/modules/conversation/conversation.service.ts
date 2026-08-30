@@ -1666,13 +1666,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
-  /** The flag, read where it is used and failing to OFF. Same shape as the others. */
+  /**
+   * COACHING IS ON. THE FLAG IS GONE.
+   *
+   * It was built behind `app.coachingEnabled`, off in every environment, and it stayed off long
+   * enough that the best-designed thing in the check-in had never run for anybody: one step at a
+   * time, remembered across sessions, shrunk when somebody has not managed it twice.
+   *
+   * A flag that is never turned on is not caution, it is a feature nobody has to decide about. This
+   * is the decision - Hafsah's, and made once rather than per environment.
+   *
+   * NOTHING ELSE ABOUT IT CHANGED. It still adds nothing at all when there is no step to raise,
+   * which is most sessions: a coach that always has something to say is a product that always has
+   * something to say about you.
+   */
   private coachingEnabled(): boolean {
-    try {
-      return this.config?.get<boolean>('app.coachingEnabled') === true;
-    } catch {
-      return false;
-    }
+    return true;
   }
 
   /**
@@ -1833,13 +1842,54 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ? `\n\nWHAT THE PERSON RUNNING THIS GROUND HAS SAID MATTERS (most recent first). Use this ONLY to decide which behaviour above to look at first. It is not evidence, it is never the reason, and if the transcript does not show the behaviour then the answer is still none:\n${leadNotes.map((n) => `- ${n.text}`).join('\n')}`
       : '';
 
+    /*
+     * WHAT HAS ALREADY BEEN SEEN ABOUT THIS PERSON, ACROSS SESSIONS.
+     *
+     * The behavioural engine has held these all along - a code, a plain-language observation, and a
+     * count of consecutive periods before anything surfaces - and the coach could not see any of
+     * it. So the coach met somebody fresh every session while the product had been watching a
+     * pattern build for three.
+     *
+     * SURFACED ONLY. A candidate is one or two periods of something that may be nothing, and
+     * coaching somebody on it would be reading a fortnight as a trait. Three consecutive periods
+     * is the bar the engine already sets and this does not lower it.
+     *
+     * IT STEERS WHICH BEHAVIOUR TO LOOK AT, NEVER WHAT THE ANSWER IS. If the transcript does not
+     * show it, the answer is still none - the same rule the lead's steer above already carries, and
+     * for the same reason: a pattern is a place to look, not a finding to confirm.
+     */
+    const surfaced = await (this.prisma.patternDetection?.findMany({
+      where: { participantId, status: 'SURFACED' as any },
+      select: { observationText: true, periodsObserved: true },
+      orderBy: { lastSeenAt: 'desc' },
+      take: 3,
+      /*
+       * Optional chaining AND a catch, the same shape as the lead's steer above and for the reason
+       * written there: `.catch()` alone does nothing when the accessor itself is missing - that is
+       * a synchronous TypeError, not a rejected promise. A steer must never be the reason nobody
+       * gets coached.
+       */
+    }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
+      .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
+
+    const alreadySeen = surfaced.filter((p2) => p2.observationText?.trim()).length
+      ? '\n\nWHAT HAS ALREADY BEEN SEEN ACROSS SESSIONS. Use this ONLY to decide which behaviour '
+        + 'above to look at first. It is not evidence about this session, it is never the reason, and '
+        + 'if this transcript does not show it then the answer is still none. Never repeat it back to '
+        + 'them as a description of who they are:\n'
+        + surfaced
+          .filter((p2) => p2.observationText?.trim())
+          .map((p2) => `- ${p2.observationText!.trim()} (seen across ${p2.periodsObserved} periods)`)
+          .join('\n')
+      : '';
+
     const observed = await this.anthropic.extract<{
       index: number | null;
       reason: string | null;
       lastStepOutcome: string | null;
     }>(
       COACHING_OBSERVATION_PROMPT,
-      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}\n\nTRANSCRIPT:\n${transcript}` }],
+      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
       COACHING_OBSERVATION_SCHEMA as any,
     );
 
