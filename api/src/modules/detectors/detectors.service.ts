@@ -14,7 +14,7 @@ import {
   ContributionRow, findUnrecognisedContributors, findNominalOnly, sayUnrecognised, sayNominal,
 } from './who-is-actually-carrying-it';
 import { SubjectFacts, whatIsMissing, unownedGaps } from './what-this-objective-is-missing';
-import { findMeasureGaps, sayIt as sayMeasureGap, Mention as MeasureMention } from './nobody-mentions-what-it-is-measured-by';
+import { findMeasureGaps, sayIt as sayMeasureGap, Mention as MeasureMention, TheirFigure } from './nobody-mentions-what-it-is-measured-by';
 import { findNeglectedPrimary, sayNeglectedPrimary, Cadence as ActionCadenceValue } from './the-one-action-that-converts';
 
 /**
@@ -105,20 +105,68 @@ export class DetectorsService {
       }
     }
 
+    /*
+     * WHAT THEIR OWN SYSTEMS ARE PUSHING FOR THESE OBJECTIVES.
+     *
+     * Evidence lands on the person's objective rather than on the subject, because a figure is
+     * observed against somebody's expectation and not against a row in a catalogue. So the join is
+     * by external id, which is the id the customer sent on both.
+     *
+     * Scoped through the ground to this organization: an external id is only unique inside the
+     * customer that issued it, and reading it any wider would put one customer's figure into
+     * another customer's finding.
+     */
+    const figures: TheirFigure[] = (
+      await this.prisma.personObjective.findMany({
+        where: {
+          lastSeenState: { not: null },
+          externalId: { in: measured.map((m) => m.externalId) },
+          ground: { organizationId },
+        },
+        select: { externalId: true, lastSeenState: true, lastSeenAt: true },
+      })
+    ).map((r) => ({
+      subjectExternalId: r.externalId,
+      state: r.lastSeenState as string,
+      /* Their observation time, or none. Never ours - see TheirFigure. */
+      observedAt: r.lastSeenAt,
+    }));
+
     let n = 0;
-    for (const gap of findMeasureGaps(measured, mentions)) {
+    for (const gap of findMeasureGaps(measured, mentions, figures)) {
       const says = sayMeasureGap(gap);
       const existing = await this.prisma.detectorResult.findFirst({
         where: { organizationId, key: 'measure_unmentioned', resolvedAt: null, subjectExternalId: gap.subjectExternalId },
       });
-      const evidence = { says, measure: gap.measure, target: gap.target, mentions: gap.mentions, lastMentionedAt: gap.lastMentionedAt } as any;
+      const evidence = {
+        says, measure: gap.measure, target: gap.target, mentions: gap.mentions,
+        lastMentionedAt: gap.lastMentionedAt,
+        /* Their figure, where one is arriving, so the finding can be checked against their system. */
+        theirFigure: gap.theirFigure,
+      } as any;
       if (existing) {
-        await this.prisma.detectorResult.update({ where: { id: existing.id }, data: { evidence, lastSeenAt: new Date() } });
+        /*
+         * SEVERITY IS REVISED, NOT JUST STAMPED AT BIRTH.
+         *
+         * Found by running it: a finding raised before a feed existed stayed medium forever, and
+         * the day their CRM started pushing the number - the day it became certain - nothing about
+         * it changed. A standing finding has to be allowed to get more serious.
+         */
+        await this.prisma.detectorResult.update({
+          where: { id: existing.id },
+          data: { evidence, severity: gap.theirFigure ? 'high' : 'medium', lastSeenAt: new Date() },
+        });
       } else {
         await this.prisma.detectorResult.create({
           data: {
             organizationId, subjectExternalId: gap.subjectExternalId, key: 'measure_unmentioned',
-            severity: 'medium', evidence, firstSeenAt: new Date(), lastSeenAt: new Date(),
+            /*
+             * HIGHER WHEN THEIR SYSTEM IS KEEPING THE NUMBER. Not because the gap is bigger, but
+             * because the finding is certain: with a feed running there is no reading of this where
+             * the measure is simply the wrong one and nothing is wrong.
+             */
+            severity: gap.theirFigure ? 'high' : 'medium',
+            evidence, firstSeenAt: new Date(), lastSeenAt: new Date(),
           },
         });
       }

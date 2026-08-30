@@ -3,7 +3,7 @@ import { theReadFor, NOTHING_ON_RECORD } from '../detectors/what-a-lead-should-r
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from '../reports/reports.service';
-import { ObjectiveKind, ProposedChangeState } from '@prisma/client';
+import { ObjectiveKind, ProposedChangeState, GroundScenario, GroundMoment } from '@prisma/client';
 import { textAfter } from './six-is-still-the-target';
 import { Fence, isFenced, mayTouch, mayReadGround, OUTSIDE_THE_FENCE } from './a-fence-around-a-credential';
 import { Finding, Attention, attentionFor, ATTENTION_MEANS } from './where-a-finding-came-from';
@@ -11,6 +11,16 @@ import { Objective, senseCheck } from '../detectors/nobody-checked-the-managemen
 import { BoardService } from '../board/board.service';
 import { ConfigService } from '@nestjs/config';
 import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
+
+/*
+ * THE SITUATIONS AND MOMENTS WE HAVE, taken from the enum rather than typed out here.
+ *
+ * A hand-written copy is a list that goes stale the first time somebody adds a scenario, and the
+ * failure it produces is the exact one this validation exists to stop: a valid value refused, with
+ * a helpful error naming a set that is missing it.
+ */
+const SCENARIOS = Object.values(GroundScenario);
+const MOMENTS = Object.values(GroundMoment);
 
 /**
  * OPENING A GROUNDWORK FROM SOMEBODY ELSE'S PRODUCT.
@@ -108,6 +118,31 @@ export class GroundsByApiService {
     if (!dto?.label?.trim()) throw new BadRequestException('label is required - it is what people see.');
     if (!dto?.scenario) throw new BadRequestException('scenario is required. A check-in without a situation is a form.');
 
+    /*
+     * A SCENARIO WE DO NOT HAVE IS A 400 THAT NAMES THE ONES WE DO.
+     *
+     * Found by driving it: sending `"scenario": "performance"` - a perfectly reasonable first
+     * guess - reached Prisma and came back as a 500 whose body carried a source path, a line
+     * number and the whole insert. Two things wrong at once. An integrator's opening mistake got
+     * an error that does not say what to send instead, and the error told them about the inside of
+     * this codebase, which is nobody's business but ours.
+     *
+     * Listed rather than described, because the answer to "what should I have sent" is a list.
+     */
+    const scenario = String(dto.scenario).toUpperCase();
+    if (!(SCENARIOS as readonly string[]).includes(scenario)) {
+      throw new BadRequestException(
+        `"${dto.scenario}" is not a situation we have. Send one of: ${SCENARIOS.join(', ')}.`,
+      );
+    }
+    /* Same for the moment, which fails the same way and one line later. */
+    const moment = dto.moment ? String(dto.moment).toUpperCase() : undefined;
+    if (moment && !(MOMENTS as readonly string[]).includes(moment)) {
+      throw new BadRequestException(
+        `"${dto.moment}" is not a moment we have. Send one of: ${MOMENTS.join(', ')}.`,
+      );
+    }
+
     const acting = await this.actingUser(organizationId, dto.actingPersonExternalId, fence);
     const lead = dto.leadPersonExternalId
       ? await this.actingUser(organizationId, dto.leadPersonExternalId)
@@ -138,8 +173,8 @@ export class GroundsByApiService {
     const ground = await this.grounds.createForLead(organizationId, acting.id, {
       leadEmail: lead.email,
       label: dto.label.trim(),
-      scenario: dto.scenario as any,
-      moment: dto.moment as any,
+      scenario: scenario as any,
+      moment: moment as any,
       ...(dto.mode ? { mode: dto.mode as any } : {}),
       ...(dto.timelineDays ? { timelineDays: dto.timelineDays } : {}),
       ...(dto.cadence ? { cadence: dto.cadence as any } : {}),

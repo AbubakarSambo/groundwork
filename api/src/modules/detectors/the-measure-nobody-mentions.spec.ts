@@ -1,6 +1,6 @@
 import {
   findMeasureGaps, measureCameUp, sayIt, MENTIONS_BEFORE_IT_MEANS_ANYTHING,
-  MeasuredSubject, Mention,
+  MeasuredSubject, Mention, TheirFigure,
 } from './nobody-mentions-what-it-is-measured-by';
 
 /**
@@ -121,5 +121,98 @@ describe('the measure nobody mentions', () => {
     expect(said).not.toMatch(/\b(they|he|she|nobody is|failing|behind on|has not been doing)\b/i);
     expect(said).toContain('pipeline value');
     expect(said).toContain('target of 2m');
+  });
+
+  /*
+   * WHEN THEIR OWN SYSTEM IS PUSHING THE NUMBER.
+   *
+   * This is the case the CRM path made possible and the one this detector used to get wrong. It
+   * was written to catch a measure nobody says. With a feed running, the common failure inverts:
+   * the number is known, it is current, it moves every night, and it has still never reached a
+   * conversation. Same silence, opposite cause, and the old sentence blamed the wrong thing.
+   */
+  describe('when their own system is pushing the figure', () => {
+    const figure = (over: Partial<TheirFigure> = {}): TheirFigure => ({
+      subjectExternalId: 'OKR-1',
+      state: '{"committed":"1.1m","deals":"7"}',
+      observedAt: daysAgo(1),
+      ...over,
+    });
+
+    const quiet = () => saying([
+      'We got three demos out this week and the deck is finally right.',
+      'Two more intros from the conference, both warm.',
+      'Spent most of the week on the follow-up sequence.',
+    ]);
+
+    it('carries their figure onto the gap', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [figure()]);
+      expect(gap.theirFigure?.state).toBe('{"committed":"1.1m","deals":"7"}');
+    });
+
+    it('stops hedging about whether the measure is real', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [figure()]);
+      const said = sayIt(gap);
+      /*
+       * The hedge is not caution here, it is wrong: nobody wires up a nightly feed for a measure
+       * they do not believe in. Saying it anyway teaches people to stop reading these.
+       */
+      expect(said).not.toContain('not really how this is judged');
+      expect(said).toContain('being kept and not discussed');
+      /* Their keys, their values, in a sentence rather than as a JSON dump - see `readable`. */
+      expect(said).toContain('committed 1.1m, deals 7');
+      expect(said).not.toContain('{"committed"');
+    });
+
+    it('prints a bare figure exactly as they sent it', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [figure({ state: '1.1m' })]);
+      expect(sayIt(gap)).toContain('tracking Grow the pipeline at 1.1m');
+    });
+
+    it('never renders an object at somebody', () => {
+      /* The bug this guards is "[object Object]" in a sentence about their pipeline. */
+      const [gap] = findMeasureGaps([subject()], quiet(), [
+        figure({ state: '{"nested":{"a":1},"committed":"1.1m"}' }),
+      ]);
+      const said = sayIt(gap);
+      expect(said).toContain('committed 1.1m');
+      expect(said).not.toContain('[object');
+    });
+
+    it('quotes their observation time, not ours', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [figure({ observedAt: daysAgo(30) })]);
+      /* A month-old feed has to read as a month old, or the finding launders staleness as now. */
+      expect(sayIt(gap)).toContain('last seen 2026-05-02');
+    });
+
+    it('says the figure and not the date when they sent no time', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [figure({ observedAt: null })]);
+      const said = sayIt(gap);
+      expect(said).toContain('1.1m');
+      expect(said).not.toContain('last seen');
+      /* The epoch is the bug this guards: 1970 in a sentence about their pipeline. */
+      expect(said).not.toContain('1970');
+    });
+
+    it('takes the freshest when several arrived', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [
+        figure({ state: 'old', observedAt: daysAgo(20) }),
+        figure({ state: 'current', observedAt: daysAgo(2) }),
+      ]);
+      expect(gap.theirFigure?.state).toBe('current');
+    });
+
+    it('ignores a figure for a different objective', () => {
+      const [gap] = findMeasureGaps([subject()], quiet(), [figure({ subjectExternalId: 'OKR-9' })]);
+      expect(gap.theirFigure).toBeNull();
+      expect(sayIt(gap)).toContain('not really how this is judged');
+    });
+
+    it('still says nothing when the measure did come up', () => {
+      /* A feed is not a reason to fire. The finding is about silence, not about integration. */
+      expect(findMeasureGaps([subject()], saying([
+        'pipeline value is at 1.1m now', 'two intros', 'the sequence',
+      ]), [figure()])).toEqual([]);
+    });
   });
 });
