@@ -1,4 +1,5 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -2679,8 +2680,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (turns.length === 0) return;
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
+    /* Their side alone, kept for the check after extraction. See a-record-is-what-they-said.ts. */
+    const whatTheySaid = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content).join('\n');
     const result = await this.anthropic.extract<{ entries: { type: string; text: string; verifiability: string }[] }>(
-      RECORD_EXTRACTION_PROMPT,
+      `${RECORD_EXTRACTION_PROMPT}\n\n${ONLY_THEIR_WORDS}`,
       [{ role: 'user', content: transcript }],
       RECORD_EXTRACTION_SCHEMA,
     );
@@ -2737,8 +2740,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       (e) =>
         e.text?.trim() &&
         (Object.values(RecordEntryType) as string[]).includes(e.type) &&
-        !isNonAnswer(e.text, e.type),
+        !isNonAnswer(e.text, e.type) &&
+        /*
+         * AND IT HAS TO BE TRACEABLE TO WORDS THEY USED.
+         *
+         * A lead's report quoted "Five tabs, one design language" and "light theme only,
+         * deliberately" as her own commitments in a check-in she spent talking about testing and
+         * bugs. The transcript handed to the extractor carries both speakers, and nothing told it
+         * which one was the party - so the session's own summaries were available to be recorded
+         * as things she had committed to.
+         *
+         * The prompt now says so. This is what makes it hold, because a prompt asking a model
+         * politely not to confuse two speakers is the thing that just failed.
+         */
+        isTheirs(e.text, whatTheySaid),
     );
+
+    /*
+     * Worth a line in the log rather than silence: it is how anybody finds out that the extractor
+     * has started reaching for the session's words again.
+     */
+    const dropped = (result?.entries ?? []).length - valid.length;
+    if (dropped > 0) this.logger?.log?.(`Dropped ${dropped} extracted entr${dropped === 1 ? 'y' : 'ies'} on check-in ${checkInId} as not traceable to what the person said.`);
     if (valid.length === 0) return;
 
     // Store entries. The verifiability field is kept in the text as a prefix

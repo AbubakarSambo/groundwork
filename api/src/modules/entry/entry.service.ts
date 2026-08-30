@@ -953,7 +953,7 @@ STRICT RULES:
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
     // moment). The draft is the base and whatever the browser sent overlays
     // it, so commit works no matter which browser opened the magic link.
@@ -999,7 +999,7 @@ STRICT RULES:
    * its ground, briefly waiting out an in-flight winner. */
   private async awaitConsumedDraftGround(
     userId: string,
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
@@ -1066,7 +1066,7 @@ STRICT RULES:
     organizationId: string,
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // Nothing usable from either source: the old client silently skipped this
     // case and stranded the user on /setup. Fail EXPLICITLY so the client can
     // show "we couldn't find your session on this device".
@@ -1337,6 +1337,19 @@ STRICT RULES:
     // for the second and subsequent contributors, silently dropping them.
     const inviteResults: { email: string; devUrl?: string }[] = [];
     const failedInvites: string[] = [];
+    /*
+     * WHY EACH ONE FAILED, NOT JUST THAT IT DID.
+     *
+     * The screen said "these addresses were not reached, you can resend from your check-in page",
+     * which is right for a bounced email and wrong for the commonest cause by far: the free plan
+     * covers five people including the person setting it up, so an admin who names five colleagues
+     * in the entry chat loses one and never learns why. Resending will not fix a seat limit, and
+     * being told to try again at something that cannot work is worse than being told the limit.
+     *
+     * `addParticipant` already answers with a sentence written for a person. It was being reduced
+     * to an email address one line after it arrived.
+     */
+    const whyInvitesFailed: { email: string; because: string }[] = [];
     for (const c of dto.contributors) {
       try {
         const result = await this.grounds.addParticipant(ground.id, organizationId, initiatorId, {
@@ -1348,6 +1361,7 @@ STRICT RULES:
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
         failedInvites.push(c.email);
+        whyInvitesFailed.push({ email: c.email, because: err?.message ?? 'The invite did not send.' });
       }
     }
 
@@ -1361,7 +1375,7 @@ STRICT RULES:
     }
 
     const joinToken = (await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { joinToken: true } }))?.joinToken ?? null;
-    return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites };
+    return { groundId: ground.id, joinToken, contributors: inviteResults, failedInvites, whyInvitesFailed };
   }
 
   /** Pre-auth draft update, authorized by the bearer draftToken (same pattern
