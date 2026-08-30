@@ -15,6 +15,8 @@ export interface CoachRequestInput {
   teamSize: string
   intention: string
   triedAlready?: boolean
+  /** When they would like the first conversation, as an instant. A request, never a booking. */
+  preferredAt?: string
 }
 
 export interface CoachRequestRow {
@@ -25,6 +27,13 @@ export interface CoachRequestRow {
   teamSize: string
   intention: string
   triedAlready: boolean | null
+  /**
+   * When they asked to talk. Null when they left it empty, which is a real answer.
+   *
+   * On the ROW as well as the input, because a time nobody answering can see is a time that was
+   * collected for nothing - and the person who typed it is expecting it to be known.
+   */
+  preferredAt: string | null
   status: string
   confirmationSentAt: string | null
   isFreeMail: boolean

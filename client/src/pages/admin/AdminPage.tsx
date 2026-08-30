@@ -925,6 +925,21 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
               <span style={{ fontWeight: 500, color: 'var(--gw-sub)' }}> &middot; {r.teamSize} people</span>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/*
+                * WHEN THEY ASKED TO TALK, ON THE CARD RATHER THAN BURIED.
+                *
+                * The request now carries a time, and it is the whole reason for asking it here:
+                * the conversation is meant to happen BEFORE they set the check-in up. A coach
+                * reading this queue has to be able to see which ones are running out of time
+                * without opening each one.
+                *
+                * "asked for" and never "booked" - nothing has been agreed with anybody yet.
+                */}
+              {r.preferredAt && chip(
+                `asked for ${new Date(r.preferredAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+                new Date(r.preferredAt) < new Date() ? 'var(--gw-red-bg)' : 'var(--gw-blue-bg)',
+                new Date(r.preferredAt) < new Date() ? 'var(--gw-red-t)' : 'var(--gw-navy)',
+              )}
               {chip(r.status, 'var(--gw-paper-2)', 'var(--gw-sub)')}
               {/* Marked, never refused: a founder on a personal address is a real prospect. */}
               {r.isFreeMail && chip('personal email', 'var(--gw-amber-bg)', 'var(--gw-amber-t)')}
