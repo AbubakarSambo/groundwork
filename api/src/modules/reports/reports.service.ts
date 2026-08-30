@@ -1637,6 +1637,36 @@ Close the report by framing - neutrally, without recommending one - the choice n
       lines.push(`- ${who}: "${o.text}".${due} What the record shows: ${why.says}`);
     }
 
+    /*
+     * WHERE A SYSTEM AND A PERSON DISAGREE ABOUT THE SAME WORK.
+     *
+     * The most useful thing evidence produces, and the one a report is most likely to get wrong. A
+     * salesperson's own account of a call sits beside a CRM that has no record of it, and neither
+     * settles the other: the app fails, the phone is unconnected, the shop is logged twice.
+     *
+     * Both sides are stated and nothing is resolved. A discrepancy preserved is worth more than a
+     * certainty invented, and the person reading this is in a position to ask - which the product
+     * is not.
+     */
+    const theirAccounts = await this.prisma.interaction.findMany({
+      where: { organizationId: (await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } }))?.organizationId ?? '', strength: 'SELF_REPORTED' as any },
+      orderBy: { happenedAt: 'desc' },
+      take: 20,
+      select: { personExternalId: true, counterpartyExternalId: true, kind: true, happenedAt: true, note: true },
+    }).catch(() => [] as any[]);
+
+    if (theirAccounts.length) {
+      lines.push('');
+      lines.push('WHERE SOMEBODY\'S OWN ACCOUNT IS THE ONLY RECORD:');
+      for (const t of theirAccounts.slice(0, 8)) {
+        lines.push(
+          `- A ${String(t.kind).toLowerCase()} on ${t.happenedAt.toISOString().slice(0, 10)}, `
+          + `described in a check-in and not in any connected system.${t.note ? ` They said: "${t.note}".` : ''} `
+          + 'That is their account, and a missing record is not evidence it did not happen.',
+        );
+      }
+    }
+
     /* Blockers nobody has an objective for still matter - somebody is still waiting. */
     for (const b of blockers) {
       const from = labelById.get(b.fromParticipantId) ?? 'a party';

@@ -1755,6 +1755,55 @@ export const OPERATING_DIFFERENCE_SCHEMA = {
  * they had started is worse than marking nothing at all: they lose the credit for what is really
  * outstanding, and the record stops matching what they said.
  */
+/**
+ * WHAT THEY SAY HAPPENED WITH A CUSTOMER.
+ *
+ * Read from the check-in so somebody's own account of their work becomes evidence in its own right
+ * - especially the work no system recorded. A call from a phone nothing is connected to is the
+ * commonest kind of real work this product could not see.
+ *
+ * SPECIFIC THINGS ONLY. "I have been doing a lot of outreach" is a description of a week; "I called
+ * Mama Ngozi on Tuesday" is a thing that happened. Without that line the record fills with activity
+ * nobody can point at, which is the same failure as counting visits.
+ */
+export const THEY_SAY_HAPPENED_PROMPT = `You are reading a person's check-in for specific things they say happened with a customer.
+
+For each one:
+   - kind: VISIT, CALL, MESSAGE, MEETING, PROPOSAL or TRANSACTION.
+   - counterparty: the customer, shop or business, in their words. Leave out anything with no specific one.
+   - when: their words for when it happened - "Tuesday", "last week". Empty if they did not say.
+   - note: one short line on what happened, in their words.
+   - saysRecordIsWrong: true only if they said it is missing from a system, or that a system has it wrong.
+
+RULES.
+Only their OWN work. Never what a colleague did - one person's account of another's work is not evidence of it.
+Only specific things. A description of a week, an intention, or a plan is not a thing that happened.
+Only what they said happened. "I will call them" and "I should visit" are not this.
+Never infer a customer they did not name.
+Do not turn one visit into several because it was mentioned twice.
+Be conservative. An empty list is a correct answer.`;
+
+export const THEY_SAY_HAPPENED_SCHEMA = {
+  type: 'object',
+  properties: {
+    happened: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
+          counterparty: { type: 'string' },
+          when: { type: 'string' },
+          note: { type: 'string' },
+          saysRecordIsWrong: { type: 'boolean' },
+        },
+        required: ['kind', 'counterparty'],
+      },
+    },
+  },
+  required: ['happened'],
+} as const;
+
 export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
 
 Find what they said they have DONE against those promises. Nothing else.

@@ -18,6 +18,9 @@ const svc = (over: { objectives?: any[]; blockers?: any[]; deliveries?: any[] } 
     personObjective: { findMany: async () => over.objectives ?? [] },
     groundDependency: { findMany: async () => over.blockers ?? [] },
     delivery: { findMany: async () => over.deliveries ?? [] },
+    /* Somebody's own account of work no system recorded - see `theirAccounts` in the service. */
+    ground: { findUnique: async () => ({ organizationId: 'org1' }) },
+    interaction: { findMany: async () => (over as any).theirAccounts ?? [] },
   };
   return s;
 };
@@ -74,6 +77,32 @@ describe('what the model is forbidden', () => {
   it('saying anybody failed', async () => {
     const out = await svc({ objectives: [objective()] }).whatTheRecordShows('g1', labels);
     expect(out).toContain('Never write that somebody failed');
+  });
+});
+
+describe('where a system and a person disagree', () => {
+  const theirAccount = {
+    personExternalId: 'p-sam', counterpartyExternalId: null, kind: 'CALL',
+    happenedAt: new Date('2026-11-03T00:00:00Z'), note: 'Called her from my own phone',
+  };
+
+  it('both sides are stated and neither settles the other', async () => {
+    const out = await svc({ objectives: [objective()], theirAccounts: [theirAccount] } as any)
+      .whatTheRecordShows('g1', labels);
+    expect(out).toContain('OWN ACCOUNT IS THE ONLY RECORD');
+    expect(out).toContain('Called her from my own phone');
+    expect(out).toContain('not in any connected system');
+  });
+
+  it('and a missing record is never called evidence that nothing happened', async () => {
+    const out = await svc({ objectives: [objective()], theirAccounts: [theirAccount] } as any)
+      .whatTheRecordShows('g1', labels);
+    expect(out).toContain('a missing record is not evidence it did not happen');
+  });
+
+  it('with nothing added when every account is corroborated', async () => {
+    const out = await svc({ objectives: [objective()] }).whatTheRecordShows('g1', labels);
+    expect(out).not.toContain('OWN ACCOUNT IS THE ONLY RECORD');
   });
 });
 

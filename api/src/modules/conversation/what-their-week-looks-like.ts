@@ -1,5 +1,6 @@
 import { whatThisProves, Kind, Strength } from '../public-api/what-a-record-actually-proves';
 import { NEVER_CONCLUDE } from '../public-api/what-a-record-actually-proves';
+import { WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
 
 /**
  * WHAT THEIR OWN SYSTEMS SAY THIS PERSON DID, IN THE ROOM WHERE THEY ARE ASKED ABOUT IT.
@@ -71,6 +72,8 @@ export function whatTheirWeekLooksLike(items: Happened[], now: Date): string {
     'A RECORD BEING ABSENT IS NOT AN EVENT. If something they describe is not here, the ordinary',
     'explanations are that it was done somewhere nothing is connected to, or that the tool failed.',
     'Ask which; accept the answer; never say the record proves it did not happen.',
+    '',
+    WHEN_THEY_SAY_IT_IS_MISSING,
     '',
     NEVER_CONCLUDE,
   ].join('\n');

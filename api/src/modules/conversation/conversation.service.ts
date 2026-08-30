@@ -39,7 +39,8 @@ import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
-import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA } from './prompt-library';
+import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
+import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
@@ -2269,6 +2270,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * GW-EXP-7. Fire-and-forget beside the others: an objection somebody raised must never be the
      * reason their session fails to complete. Returns immediately when nothing is expected of them.
      */
+    this.extractWhatTheySayHappened(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Their-own-account extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+
     this.extractProgress(checkIn.id, checkIn.participantId, checkIn.groundId).catch((err) =>
       this.logger.warn(`Progress extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
@@ -2850,6 +2855,104 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * worse than marking nothing: they lose the credit for what is genuinely still outstanding, and
    * the record stops matching what they said.
    */
+  /**
+   * WHAT THEY SAY HAPPENED WITH A CUSTOMER, RECORDED AS THEIR OWN ACCOUNT.
+   *
+   * The other half of taking in evidence, and the half that keeps it honest. External records fail
+   * in ordinary ways - a call from a phone nothing is connected to, an app that did not sync, a
+   * shop logged twice - and in every one of those the record is silent while the work happened.
+   *
+   * Their account is written at `SELF_REPORTED`, which the report already knows how to describe
+   * without doubting it or dressing it up as corroboration. Nothing is overwritten in either
+   * direction: a discrepancy preserved is worth more than a certainty invented.
+   *
+   * ONLY THEIR OWN WORK, and only where the organisation already takes in evidence. In an
+   * organisation that connects nothing, a check-in should not quietly start building an activity
+   * log about somebody out of what they said in confidence.
+   */
+  async extractWhatTheySayHappened(checkInId: string, participantId: string, groundId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true },
+    });
+    if (!ground) return;
+
+    /*
+     * The organisation has to be taking in evidence already. Without this, a private check-in in a
+     * company that connected nothing would start producing a record of somebody's movements, which
+     * is not what anybody agreed to when they answered the questions.
+     */
+    const takesEvidence = await this.prisma.interaction.count({
+      where: { organizationId: ground.organizationId },
+      take: 1,
+    });
+    if (!takesEvidence) return;
+
+    const me = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { user: { select: { email: true } } },
+    });
+    const person = me?.user?.email
+      ? await this.prisma.person.findFirst({
+        where: { organizationId: ground.organizationId, email: me.user.email },
+        select: { externalId: true },
+      })
+      : null;
+    /* Nobody in the directory, nobody to attribute it to. Never guessed. */
+    if (!person) return;
+
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const said = turns.map((t) => t.content).join('\n').trim();
+    if (said.length < 80) return;
+
+    const result = await this.anthropic.extract<{ happened: TheySay[] }>(
+      THEY_SAY_HAPPENED_PROMPT,
+      [{ role: 'user', content: said }],
+      THEY_SAY_HAPPENED_SCHEMA as any,
+    ).catch(() => null);
+    if (!result?.happened?.length) return;
+
+    /* Counterparties this organisation already knows, matched by the name their system gave them. */
+    const known = await this.prisma.subject.findMany({
+      where: { organizationId: ground.organizationId, type: 'COUNTERPARTY' as any, sourceDeletedAt: null },
+      select: { externalId: true, title: true },
+    });
+
+    for (const item of result.happened) {
+      if (!worthRecording(item)) continue;
+
+      const named = (item.counterparty ?? '').trim().toLowerCase();
+      const hit = known.find((k) => k.title.trim().toLowerCase() === named)
+        ?? known.find((k) => named.length > 4 && k.title.toLowerCase().includes(named));
+
+      await this.prisma.interaction.create({
+        data: {
+          organizationId: ground.organizationId,
+          personExternalId: person.externalId,
+          /* Unmatched stays null rather than guessing - a visit filed against the wrong shop is
+             worse than one filed against none. Their words survive in the note either way. */
+          counterpartyExternalId: hit?.externalId ?? null,
+          kind: (item.kind ?? '').toUpperCase() as any,
+          strength: 'SELF_REPORTED' as any,
+          /*
+           * The date their words meant, and today when they carry none. Unlike a promise, a thing
+           * that already happened has to sit somewhere on a calendar to be read beside the records,
+           * and "this check-in" is the honest place for it.
+           */
+          happenedAt: whenTheyMeant(item.when ?? null, new Date()) ?? new Date(),
+          note: [item.note?.trim(), hit ? null : (item.counterparty?.trim() ? `They said: ${item.counterparty.trim()}` : null)]
+            .filter(Boolean).join(' ').slice(0, 500) || null,
+          sourceSystem: 'their own account',
+          externalId: null,
+        },
+      }).catch(() => undefined);
+    }
+  }
+
   async extractProgress(checkInId: string, participantId: string, groundId: string) {
     const mine = await this.prisma.personObjective.findMany({
       where: { groundId, participantId, status: 'OPEN' },
