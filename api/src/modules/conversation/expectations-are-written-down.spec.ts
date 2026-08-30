@@ -67,14 +67,39 @@ function makeService(over: {
   return { svc, prisma, upsert, createMany, anthropic };
 }
 
-describe('GW-EXP-1b: only the lead sets expectations', () => {
-  it('a participant’s session writes nothing, and does not even call the model', async () => {
-    const { svc, anthropic, upsert } = makeService({
+describe('GW-EXP-1b: the lead sets expectations OF people; a person records their own', () => {
+  /*
+   * THIS USED TO ASSERT THAT A PARTICIPANT'S SESSION WROTE NOTHING AT ALL.
+   *
+   * That was right while there was one prompt. Its rules forbid the speaker recording anything
+   * about themselves - correct for a lead's session, and the reason a new hire's own promises
+   * ("three proposals by the thirtieth") were never written down as anything a later check-in
+   * could return to. They lived as loose text in a transcript.
+   *
+   * The rule that actually matters is unchanged and is what this now checks: the LEAD's prompt,
+   * which writes expectations ABOUT other people, is never pointed at anybody else. A person's own
+   * promises go down their own prompt and land on themselves, authored by them.
+   */
+  it('never runs the lead’s prompt for anybody but the lead', async () => {
+    const { svc, anthropic } = makeService({
       participants: [{ id: 'abu', partyType: PartyType.PARTICIPANT, managingOnly: false, email: 'a@x.test', roleAsDescribed: null, user: null }],
     });
     await svc.extractExpectations('c1', 'abu', 'g1');
-    expect(anthropic.extract).not.toHaveBeenCalled();
-    expect(upsert).not.toHaveBeenCalled();
+    const prompts = (anthropic.extract as jest.Mock).mock.calls.map((c: any[]) => String(c[0]));
+    expect(prompts.some((p) => p.includes('From the transcript of the person RUNNING this check-in'))).toBe(false);
+  });
+
+  it('and writes nothing about anybody else from a participant’s session', async () => {
+    /* An expectation set on somebody else is the lead's to set. A participant recording one about
+       a colleague is the failure this whole guard exists to prevent. */
+    const { svc, upsert } = makeService({
+      participants: [{ id: 'abu', partyType: PartyType.PARTICIPANT, managingOnly: false, email: 'a@x.test', roleAsDescribed: null, user: null }],
+    });
+    await svc.extractExpectations('c1', 'abu', 'g1');
+    for (const call of (upsert as jest.Mock).mock.calls) {
+      const data = call[0]?.data ?? call[0]?.create ?? {};
+      if (data.participantId) expect(data.participantId).toBe('abu');
+    }
   });
 });
 

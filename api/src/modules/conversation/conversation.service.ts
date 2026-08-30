@@ -38,6 +38,8 @@ import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causal
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
+import { whenTheyMeant } from './when-words-mean-a-date';
+import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA } from './prompt-library';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1132,6 +1134,25 @@ export class ConversationService {
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const personObjective = personObjectives[0] ?? null;
 
+    /*
+     * WHO IS WAITING, BY NAME. A commitment's whole point is the person on the other end of it, and
+     * "somebody is waiting on this" is a weaker sentence than "Hafsah is waiting on this".
+     *
+     * Only names for people on this check-in, which is the only place `owedToParticipantId` can
+     * point - so this cannot introduce a name from anywhere else.
+     */
+    const nameByParticipantId = new Map<string, string>();
+    if (personObjectives.some((o: any) => o.owedToParticipantId)) {
+      const owed = await this.prisma.groundParticipant.findMany({
+        where: { groundId: checkIn.groundId },
+        select: { id: true, user: { select: { firstName: true } }, roleAsDescribed: true },
+      }).catch(() => [] as any[]);
+      for (const p of owed) {
+        const name = p.user?.firstName?.trim() || p.roleAsDescribed?.trim();
+        if (name) nameByParticipantId.set(p.id, name);
+      }
+    }
+
     const packKeyBase = `scenario.${ground.scenario.toLowerCase()}`;
     const packParty = checkIn.participant.partyType.toLowerCase();
     const scenarioPackOverride =
@@ -1236,6 +1257,12 @@ export class ConversationService {
         seenBySubject: o.seenBySubject,
         authoredByThem: o.authoredBy === 'self',
         fromTheirSystem: !!o.sourceSystem,
+        /* Loaded from the row all along and dropped here. See `describeObjective`. */
+        kind: o.kind ?? null,
+        dueSaid: o.dueSaid ?? null,
+        dueDate: o.dueDate ?? null,
+        owedToName: o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null,
+        status: o.status ?? null,
       })),
       personObjective: personObjective
         ? {
@@ -2619,6 +2646,91 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * UPSERT, NOT CREATE. A later session where the lead restates an expectation replaces it, because
    * the current expectation is the one that counts. The transcript keeps the history.
    */
+  /**
+   * WRITE DOWN WHAT THIS PERSON SAID THEY WOULD DO.
+   *
+   * The other half of expectations, and the half that was missing. A lead's session records what
+   * they expect OF people; this records what somebody promised about their OWN work, so the next
+   * check-in can return to it by name and by date instead of asking how things are going.
+   *
+   * `authoredBy: 'self'` is what tells the interview these are theirs. `describeObjective` already
+   * renders a self-authored expectation differently from one handed down, and has since before
+   * anything could produce one.
+   *
+   * `seenBySubject: true`, and only here. That field exists to stop somebody being read against an
+   * expectation they have never laid eyes on - a real risk for something a lead wrote about them,
+   * and a nonsense for a sentence they said themselves ten minutes ago.
+   */
+  private async writeTheirOwnPromises(
+    participantId: string,
+    groundId: string,
+    transcript: string,
+    saidOn: Date,
+    participants: { id: string; managingOnly: boolean; email: string | null; roleAsDescribed: string | null; user: { firstName: string | null; lastName: string | null } | null }[],
+  ) {
+    const result = await this.anthropic.extract<{
+      promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string }[];
+    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA as any);
+    if (!result?.promises?.length) return;
+
+    /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */
+    const others = participants.filter((p) => p.id !== participantId && !p.managingOnly);
+    const resolve = (name: string): string | null => {
+      const n = (name ?? '').trim().toLowerCase();
+      if (!n) return null;
+      const hit = others.find((p) => {
+        const first = (p.user?.firstName ?? '').toLowerCase();
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase();
+        const emailLocal = (p.email ?? '').split('@')[0].toLowerCase();
+        const role = (p.roleAsDescribed ?? '').toLowerCase();
+        return (!!full && full === n) || (!!first && first === n) || (!!emailLocal && emailLocal === n) || (!!role && role === n);
+      });
+      return hit?.id ?? null;
+    };
+
+    const KINDS = ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'];
+    const CHECKS = ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'];
+    const DUES = ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'];
+
+    for (const p of result.promises) {
+      const text = (p.promise ?? '').trim();
+      if (!text) continue;
+      const kind = KINDS.includes(p.kind ?? '') ? (p.kind as any) : 'TODO';
+      const check = CHECKS.includes(p.check ?? '') ? (p.check as any) : 'NOT_CHECKABLE';
+      const dueKind = DUES.includes(p.dueKind ?? '') ? (p.dueKind as any) : 'NOT_SAID';
+      const dueSaid = (p.dueSaid ?? '').trim() || null;
+      /* A commitment with nobody waiting is a to-do, whatever the model called it. */
+      const owedTo = kind === 'COMMITMENT' ? resolve(p.owedTo ?? '') : null;
+
+      const data = {
+        text,
+        authoredBy: 'self',
+        kind: (kind === 'COMMITMENT' && !owedTo ? 'TODO' : kind) as any,
+        check,
+        dueKind,
+        dueSaid,
+        dueDate: whenTheyMeant(dueSaid, saidOn),
+        owedToParticipantId: owedTo,
+        seenBySubject: true,
+      };
+
+      /*
+       * One row per kind, which is the constraint this table already holds. Restating the same
+       * kind is a REVISION - "make that four proposals, not three" - and updates in place, so a
+       * record does not fill up with every version of the same promise.
+       */
+      const prior = await this.prisma.personObjective.findFirst({
+        where: { groundId, participantId, kind: data.kind, externalId: '' },
+        select: { id: true },
+      });
+      if (prior) {
+        await this.prisma.personObjective.update({ where: { id: prior.id }, data });
+      } else {
+        await this.prisma.personObjective.create({ data: { ...data, groundId, participantId } });
+      }
+    }
+  }
+
   async extractExpectations(checkInId: string, participantId: string, groundId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2638,7 +2750,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (!ground) return;
 
     const me = ground.participants.find((p) => p.id === participantId);
-    if (me?.partyType !== PartyType.INITIATOR) return;
+    if (!me) return;
+
+    /*
+     * EVERYBODY'S PROMISES, NOT ONLY THE LEAD'S.
+     *
+     * This returned here unless the speaker was the INITIATOR, so only the person leading a
+     * check-in produced structured expectations. Everybody else's promises - the new hire's "three
+     * proposals by the 30th", the exact thing the next check-in most needs to return to - were
+     * written to `RecordEntry` as text and never became anything a question could be built from.
+     *
+     * `authoredBy` already carried the distinction and nothing was using it: 'lead' for an
+     * expectation somebody sets for another person, 'self' for one you take on yourself. The
+     * interview renders the two differently and has since before this line changed.
+     *
+     * The rules underneath are unchanged and still do the work that matters: an expectation is
+     * only ever written against a real named person on this check-in, and never against a team,
+     * a customer or an organisation.
+     */
+    const authoredBy = me.partyType === PartyType.INITIATOR ? 'lead' : 'self';
+
+    /* The day this was said, which every relative deadline is read against. */
+    const saidOn = new Date();
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2648,6 +2781,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const transcript = turns
       .map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`)
       .join('\n');
+
+    /*
+     * A PARTICIPANT'S OWN PROMISES GO DOWN A DIFFERENT PROMPT.
+     *
+     * `EXPECTATION_PROMPT` reads a lead's session and its rules forbid the speaker writing anything
+     * about themselves, which is correct for what it does. Pointing it at a participant would have
+     * captured what the new hire expects of the CEO - the opposite of what is needed. So their own
+     * promises have their own prompt, their own schema, and one target: themselves.
+     */
+    if (me.partyType !== PartyType.INITIATOR) {
+      await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+      return;
+    }
 
     const result = await this.anthropic.extract<{
       groundAims: string[];
@@ -2755,9 +2901,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       const textChanged = !!prior && prior.text.trim() !== text;
 
+      /*
+       * THE DATE THOSE WORDS MEAN, WHERE THEY MEAN ONE.
+       *
+       * Read from `dueSaid` by a rule that refuses more than it accepts - see
+       * `when-words-mean-a-date.ts`. Resolved against the day this was SAID rather than now, so
+       * a re-run cannot move somebody's deadline.
+       *
+       * Null is the common case and stays comfortable: "soon" and "once procurement clears" are
+       * real answers, and the interview asks about them rather than this guessing.
+       */
+      const dueDate = whenTheyMeant(dueSaid, saidOn);
+
       const shared = {
         text,
-        authoredBy: 'lead',
+        dueDate,
+        authoredBy: authoredBy as string,
         awareness,
         awarenessDetail: (e.awarenessDetail ?? '').trim() || null,
         kind,

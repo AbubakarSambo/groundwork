@@ -2438,17 +2438,44 @@ model PersonObjective {
   /// THE PRIMITIVE. See ObjectiveKind. Every one of these is nullable and defaulted, because every
   /// row that already exists was written before any of it and none of them are wrong - they are
   /// simply untyped, and the interview fills them in when it next asks.
-  kind                ObjectiveKind?  @map("kind")
-  check               ObjectiveCheck? @map("check")
-  dueKind             ObjectiveDue?   @map("due_kind")
+  kind    ObjectiveKind?  @map("kind")
+  check   ObjectiveCheck? @map("check")
+  dueKind ObjectiveDue?   @map("due_kind")
   /// The words they used for the deadline - "Thursday", "end of the quarter". Never parsed into a
   /// date: a record of what was said, not a guess at what was meant.
-  dueSaid             String?         @map("due_said")
-  scope               ObjectiveScope  @default(ONE_PERSON) @map("scope")
+  dueSaid String?         @map("due_said")
+  /// THE DATE THOSE WORDS MEAN, WHERE THEY UNAMBIGUOUSLY MEAN ONE.
+  ///
+  /// `dueSaid` stays exactly as it was and is still what anybody is shown: it is what the person
+  /// said, and a record of the words is the thing this product is for. This is the machine's
+  /// reading of them, and it exists because words cannot answer "is this late".
+  ///
+  /// NULL IS THE COMMON CASE AND MUST STAY COMFORTABLE. "Soon", "after the holidays", "once
+  /// procurement clears" are all real answers and none of them is a date. A guess here becomes a
+  /// missed deadline on somebody's record that they never agreed to, so nothing is inferred from
+  /// a vague phrase - the interview asks instead.
+  ///
+  /// Set only from an explicit day, a named month-end, or a phrase with exactly one meaning
+  /// relative to the day it was said.
+  dueDate DateTime?       @map("due_date")
+
+  /// WHERE THIS HAS GOT TO. OPEN until somebody says otherwise.
+  ///
+  /// Nothing could end before this. An expectation set on day one looked identical on day ninety
+  /// whether it was met, quietly dropped, or replaced by a different one - so a check-in could not
+  /// tell a live promise from a dead one, and a report could not either.
+  ///
+  /// CHANGED is not MET and not DROPPED, and keeping it separate is the point: an expectation that
+  /// moved is a different thing from one that was missed, and reading the second as the first is
+  /// the unfairest mistake this product could make.
+  status              String         @default("OPEN") @map("status")
+  /// When the status last moved, so a report can say what was true at a point in time.
+  statusChangedAt     DateTime?      @map("status_changed_at")
+  scope               ObjectiveScope @default(ONE_PERSON) @map("scope")
   /// COMMITMENT only: who is waiting on it. The whole difference between a to-do and a commitment.
-  owedToParticipantId String?         @map("owed_to_participant_id")
+  owedToParticipantId String?        @map("owed_to_participant_id")
   /// 'lead' or 'self'. Who wrote the CURRENT text.
-  authoredBy          String          @map("authored_by")
+  authoredBy          String         @map("authored_by")
 
   /// WHERE THIS CAME FROM, when it did not come from the conversation.
   ///

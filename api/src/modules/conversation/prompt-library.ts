@@ -1670,6 +1670,71 @@ difference between a to-do and a commitment.
 Do not infer awareness. If they were not asked and did not volunteer it, that is NOT_ASKED.
 Be conservative. Empty lists are correct answers.`;
 
+/**
+ * WHAT THIS PERSON SAID THEY WOULD DO, from their own check-in.
+ *
+ * The sibling of EXPECTATION_PROMPT and deliberately a separate one. That prompt reads a LEAD's
+ * session and writes down what the lead expects of other people; its rules forbid the speaker
+ * recording anything about themselves, which is right for what it does. The consequence was that a
+ * new hire's own promises - "three proposals by the thirtieth", the exact thing the next check-in
+ * most needs to return to - were never written down as anything a question could be built from.
+ *
+ * ONLY WHAT THEY SAID ABOUT THEMSELVES. Not what they think somebody else should do, not what they
+ * wish would happen, and never a promise inferred from a complaint. A person's own record is the
+ * one place they should never find something they did not say.
+ *
+ * The same conservatism as its sibling: an empty list is the right answer most of the time, and
+ * NOT_CHECKABLE is a real value rather than a failure to try harder.
+ */
+export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
+
+Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
+
+For each one:
+   - promise: what they said they would do, in their own words, one sentence.
+   - kind:
+       TODO - something they will do, done or not.
+       COMMITMENT - a to-do a NAMED OTHER PERSON on this check-in is waiting on. Put that person in owedTo.
+       TARGET - a number has to cross a line. "Three proposals", "£150k of pipeline".
+       GOAL - a direction judged rather than counted, over a period.
+   - check: how anybody would know it had happened.
+       DONE_OR_NOT, A_NUMBER, A_JUDGEMENT, or NOT_CHECKABLE.
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if
+     it has no end, NOT_SAID if they did not say.
+   - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
+   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+
+RULES.
+Only what they said about their own work. Never what they expect of somebody else - that is not theirs to set.
+Never sharpen a vague promise. "I will get on top of the pipeline" is what it says, and its check is A_JUDGEMENT.
+NOT_CHECKABLE IS A REAL ANSWER. If nothing they said could be checked, say so rather than inventing a measure.
+A wish is not a promise. "It would be good to have three proposals out" is not "I will produce three proposals".
+Something they said they had ALREADY done is not a promise. It belongs to the record of what happened, not to this.
+Do not turn a worry or a complaint into a commitment.
+Be conservative. An empty list is usually correct.`;
+
+export const OWN_PROMISE_SCHEMA = {
+  type: 'object',
+  properties: {
+    promises: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
+          check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+          dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+          dueSaid: { type: 'string' },
+          owedTo: { type: 'string' },
+        },
+        required: ['promise', 'kind', 'check', 'dueKind'],
+      },
+    },
+  },
+  required: ['promises'],
+} as const;
+
 export const EXPECTATION_SCHEMA = {
   name: 'emit_expectations',
   description: "Emit what the lead said this check-in is aiming at, and what they expect of each named person.",
@@ -2632,7 +2697,28 @@ export interface PromptContext {
    * standard they were reading for the first time. The report already refuses to read anybody against
    * an unseen objective; until now the conversation could not honour the same rule.
    */
-  personObjective?: { text: string; authoredBy: string; seenBySubject: boolean; authoredByThem: boolean; fromTheirSystem?: boolean } | null;
+  personObjective?: {
+    text: string;
+    authoredBy: string;
+    seenBySubject: boolean;
+    authoredByThem: boolean;
+    fromTheirSystem?: boolean;
+    /*
+     * WHAT KIND OF PROMISE, WHEN IT IS DUE, AND WHO IS WAITING.
+     *
+     * All three were loaded from the row and dropped before the model saw them, so the interview
+     * knew "Get three proposals out" and not that it was a number, due on the thirtieth, with
+     * somebody waiting on it. That is the difference between "how is it going" and "you said three
+     * by the thirtieth - where are they".
+     */
+    kind?: string | null;
+    dueSaid?: string | null;
+    /** Their words read as a date, where they carried one. Null is common and fine. */
+    dueDate?: Date | string | null;
+    /** The name of whoever is waiting on it, for a commitment. */
+    owedToName?: string | null;
+    status?: string | null;
+  } | null;
   /**
    * ALL of this person's objectives. `personObjective` stays for the single case and for callers
    * that predate this; when both are given, this wins.
@@ -2919,7 +3005,36 @@ function describeObjective(o: NonNullable<PromptContext['personObjective']>): st
       + 'and read nothing against it this session. '
       + 'Never imply they agreed to it. If they disagree, that is worth recording and is not an obstacle';
 
-  return `${o.text} (${whoSetIt}; ${howToUseIt})`;
+  /*
+   * WHAT KIND OF THING IT IS, WHEN IT IS DUE, AND WHO IS WAITING.
+   *
+   * All three were on the row and none reached the model, so a promise with a number and a date
+   * arrived as an undifferentiated sentence and the next check-in could only ask how it was going.
+   *
+   * The DATE is said as a date and the WORDS are kept beside it, because the words are what the
+   * person actually said and the date is our reading of them. Where the words carried no date -
+   * "soon", "once procurement clears" - there is no date here and the interview is told to ask for
+   * one rather than act as though a deadline exists.
+   */
+  const parts = [whoSetIt];
+  if (o.kind === 'COMMITMENT' && o.owedToName) parts.push(`${o.owedToName} is waiting on this`);
+  else if (o.kind === 'TARGET') parts.push('a number has to cross a line');
+  else if (o.kind === 'ROLE_EXPECTATION') parts.push('standing, with no end date');
+
+  if (o.dueDate) {
+    const d = typeof o.dueDate === 'string' ? o.dueDate : o.dueDate.toISOString().slice(0, 10);
+    parts.push(`due ${d}${o.dueSaid ? ` - they said "${o.dueSaid}"` : ''}`);
+  } else if (o.dueSaid) {
+    parts.push(
+      `they said "${o.dueSaid}" for when, which is not a date. If somebody is waiting on this, ask `
+      + 'once which day they mean, and accept that there may not be one yet',
+    );
+  }
+
+  if (o.status && o.status !== 'OPEN') parts.push(`recorded as ${o.status.toLowerCase()}`);
+  parts.push(howToUseIt);
+
+  return `${o.text} (${parts.join('; ')})`;
 }
 
 /**
