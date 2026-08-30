@@ -1,17 +1,82 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { PaginationDto } from '../../common';
 import { TokenType } from '@prisma/client';
+import { setRole, RoleWrite } from './a-role-is-stored-twice';
+import { BillingService } from '../billing/billing.service';
+import { AuthService } from '../auth/auth.service';
+import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 
 @Injectable()
 export class UsersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    /* For seats. The paste screen has to know the cap before it sends, not one refusal at a time. */
+    private billing: BillingService,
+    /* The one implementation of "invite somebody", reused rather than reproduced. */
+    @Inject(forwardRef(() => AuthService)) private auth: AuthService,
   ) {}
+
+  /**
+   * A WHOLE COMPANY AT ONCE, previewed or sent through the same code.
+   *
+   * `preview` changes nothing about how the list is read - it stops before the sending. That is
+   * deliberate: a preview computed separately from the send is a second implementation that will
+   * one day disagree, on the screen where somebody decides whether to email 160 colleagues.
+   */
+  /** The organisation's own name, which is what an invitation says it is from. */
+  async organisationName(organizationId: string): Promise<string> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId }, select: { name: true },
+    });
+    return org?.name ?? 'your team';
+  }
+
+  async inviteMany(organizationId: string, orgName: string, pasted: string, preview: boolean) {
+    const addresses = addressesIn(pasted);
+    if (addresses.length > MOST_IN_ONE_PASTE) {
+      throw new BadRequestException(
+        `That is ${addresses.length} addresses. ${MOST_IN_ONE_PASTE} at a time is the most this takes - `
+        + 'past that, connect your directory instead of pasting.',
+      );
+    }
+
+    /* One query for the whole paste rather than one per address. */
+    const existing = await this.prisma.user.findMany({
+      where: { email: { in: addresses }, deletedAt: null },
+      select: { email: true },
+    });
+    const here = new Set(existing.map((e) => e.email.toLowerCase()));
+
+    const seats = await this.billing.seatsLeft(organizationId);
+    const rows = planFor(pasted, (e) => here.has(e), seats);
+    if (preview) return { preview: true, seatsLeft: seats, rows, summary: summarise(rows) };
+
+    /*
+     * SENT ONE AT A TIME AND ON PURPOSE. `teamInvite` creates the person, mints a token and sends
+     * the email; running 160 of those concurrently is a burst the mail provider answers with a
+     * rate limit, and half a company invited is worse than none.
+     *
+     * A row that throws is reported as itself rather than ending the run. The whole point is that
+     * an admin gets one answer per person.
+     */
+    const sent: Row[] = [];
+    for (const row of rows) {
+      if (row.result !== 'invited') { sent.push(row); continue; }
+      try {
+        await this.auth.teamInvite(orgName, row.email, organizationId);
+        sent.push(row);
+      } catch {
+        /* Almost always the seat gate closing mid-run. Named as what the admin has to act on. */
+        sent.push({ email: row.email, result: 'no seat' });
+      }
+    }
+    return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent) };
+  }
 
   async findAll(organizationId: string, pagination: PaginationDto) {
     const page = pagination.page ?? 1;
@@ -29,7 +94,40 @@ export class UsersService {
       this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
     ]);
 
-    return { data: users, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    /*
+     * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale
+     * above about ten people.
+     *
+     * "Invited" and "signed in" were already knowable from the row. The one that matters is the
+     * third - somebody with an account who has never finished a check-in - because at 160 people
+     * that is the whole rollout question and counting it by hand is not possible.
+     *
+     * ONE QUERY FOR THE PAGE, not one per person. A per-row lookup here is 160 round trips on a
+     * screen somebody opens every morning.
+     */
+    const ids = users.map((u) => u.id);
+    const finished = ids.length
+      ? await this.prisma.groundParticipant.findMany({
+        where: { userId: { in: ids }, checkIns: { some: { status: 'COMPLETED' } } },
+        select: { userId: true },
+        distinct: ['userId'],
+      })
+      : [];
+    const hasFinished = new Set(finished.map((f) => f.userId));
+
+    return {
+      data: users.map((u) => ({
+        ...u,
+        /*
+         * Named for what is true, not for what is missing. "Never checked in" on somebody who
+         * joined yesterday is a fact about the calendar; the page decides how to say it.
+         */
+        state: !u.isEmailVerified ? 'invited'
+          : hasFinished.has(u.id) ? 'checked in'
+            : 'signed in',
+      })),
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOne(id: string, organizationId: string) {
@@ -98,16 +196,27 @@ export class UsersService {
       }
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        ...(dto.email && { email: dto.email.toLowerCase() }),
-        ...(dto.firstName && { firstName: dto.firstName }),
-        ...(dto.lastName && { lastName: dto.lastName }),
-        ...(dto.role && { role: dto.role as any }),
-        ...(typeof dto.isActive === 'boolean' && { isActive: dto.isActive }),
-      },
-      select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
+    /*
+     * THE ROLE GOES THROUGH `setRole`, and everything else is an ordinary update.
+     *
+     * This wrote `User.role` alone, which is admin in the session and member in the organisation
+     * switcher - see `a-role-is-stored-twice.ts`. Both writes in one transaction with the rest, so
+     * a promotion cannot half-land.
+     */
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: {
+          ...(dto.email && { email: dto.email.toLowerCase() }),
+          ...(dto.firstName && { firstName: dto.firstName }),
+          ...(dto.lastName && { lastName: dto.lastName }),
+          ...(typeof dto.isActive === 'boolean' && { isActive: dto.isActive }),
+        },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
+      });
+      if (!dto.role) return updated;
+      await setRole(tx, id, organizationId, dto.role as RoleWrite);
+      return { ...updated, role: dto.role as string };
     });
   }
 
