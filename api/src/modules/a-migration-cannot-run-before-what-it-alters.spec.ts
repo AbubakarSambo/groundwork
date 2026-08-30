@@ -27,6 +27,12 @@ function everyMigration(): Step[] {
     .map((folder) => {
       let sql = '';
       try { sql = readFileSync(join(DIR, folder, 'migration.sql'), 'utf8'); } catch { /* empty folder */ }
+      /*
+       * COMMENTS STRIPPED, which the repository requires of every source-assertion spec and which
+       * is also just correct here: a `-- CREATE TYPE "Foo"` in a note explaining a migration does
+       * not create anything, and counting it would vouch for an ALTER that has nothing to alter.
+       */
+      sql = sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*--.*$/gm, '');
       return { folder, sql };
     });
 }

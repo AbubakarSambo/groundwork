@@ -606,6 +606,21 @@ export class PublicApiController {
    * per-person read is "a good deal more than a finding" - and this is the most per-person thing
    * the API has. An integration granted findings must not get this by accident.
    */
+  /**
+   * `handovers:read`, the same scope as the per-person read this belongs beside. A question about
+   * somebody's estimates is a question about what is on their desk, and it is governed the same way.
+   */
+  @Get('people/:personExternalId/forecasts')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('handovers:read')
+  @ApiOperation({ summary: 'How the dates this person gave have turned out. Never a score.' })
+  async howTheirForecastsHaveGone(
+    @Req() req: { machine: MachineCaller },
+    @Param('personExternalId') personExternalId: string,
+  ) {
+    return this.groundsByApi.howTheirForecastsHaveGone(req.machine.organizationId, personExternalId);
+  }
+
   @Get('people/:personExternalId/before-a-conversation')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('handovers:read')

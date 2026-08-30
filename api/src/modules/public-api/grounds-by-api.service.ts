@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { howForecastsHaveGone, NEVER_CONCLUDE_FROM_FORECASTS } from '../detectors/what-a-forecast-turned-out-to-be';
 import { whereItStands, mayMarkMet, NEVER_CONCLUDE_FROM_CRITERIA } from './what-would-have-to-be-true';
 import { theReadFor, NOTHING_ON_RECORD } from '../detectors/what-a-lead-should-read-first';
 import { PrismaService } from '../prisma/prisma.service';
@@ -562,6 +563,37 @@ export class GroundsByApiService {
     return { change: updated, agreedNow: textAfter(state, row.personObjective.text, row.proposedText) };
   }
 
+
+  /**
+   * HOW SOMEBODY'S DATES HAVE TURNED OUT, ACROSS THE ONES THAT FINISHED.
+   *
+   * Read from commitments, which already hold the date somebody gave and the moment they were
+   * resolved. No new table and no new writing: the two facts have sat beside each other all along
+   * and nothing compared them.
+   *
+   * Part of the same read a lead opens before a conversation, because that is where a question
+   * about somebody's estimates belongs - in a conversation with them, not on a dashboard.
+   */
+  async howTheirForecastsHaveGone(organizationId: string, personExternalId: string) {
+    const rows = await this.prisma.commitment.findMany({
+      where: {
+        organizationId,
+        personExternalId,
+        /* Only dated promises: an undated one cannot be early or late, which is a rule this
+           product enforces everywhere and would be silly to break here. */
+        dueAt: { not: null },
+        resolvedAt: { not: null },
+      },
+      orderBy: { dueAt: 'asc' },
+      take: 40,
+      select: { text: true, dueAt: true, resolvedAt: true },
+    }).catch(() => [] as any[]);
+
+    const out = howForecastsHaveGone(
+      rows.map((r) => ({ what: r.text, said: r.dueAt!, landed: r.resolvedAt })),
+    );
+    return { ...out, refusal: NEVER_CONCLUDE_FROM_FORECASTS };
+  }
 
   /**
    * NUMBERS FROM THE CUSTOMER'S OWN PRODUCT.
