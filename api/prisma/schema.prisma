@@ -2796,6 +2796,29 @@ model GroundDocument {
   // CONTEXT_ENABLED off is genuinely the old product. See DocumentVisibility.
   visibility DocumentVisibility @default(OWN)
 
+  /// A RECORD OF A CONVERSATION - a call transcript, a meeting summary, a message thread.
+  ///
+  /// Marked because it is a different kind of thing from a job description or a workplan, and the
+  /// difference is not about us. Other people are in it who never signed up to this product, and
+  /// the person uploading it is the only one in a position to have told them.
+  ///
+  /// False on everything uploaded before this existed, and on most things after: a strategy deck is
+  /// not a conversation and does not need any of what follows.
+  isConversation Boolean @default(false) @map("is_conversation")
+
+  /// WHO SAID THEY HAD TOLD THE PEOPLE IN IT, AND WHEN.
+  ///
+  /// Not a tick-box in a settings page somebody clicked through a year ago. The person uploading a
+  /// conversation confirms, at the moment of uploading, that the people in it know their
+  /// conversations may be used this way - because they are the only one who can have had that
+  /// conversation, and the moment they are doing it is the only moment the question lands.
+  ///
+  /// Null on anything that is not a conversation. Required before one is stored: the file is
+  /// refused rather than kept pending, because a transcript sitting in a database waiting for
+  /// permission is the thing this is meant to prevent.
+  consentConfirmedAt   DateTime? @map("consent_confirmed_at")
+  consentConfirmedById String?   @map("consent_confirmed_by_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)

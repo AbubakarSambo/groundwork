@@ -22,9 +22,16 @@ export const documentsApi = {
   list: (groundId: string) =>
     apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`).then(r => r.data),
 
-  upload: (groundId: string, file: File) => {
+  /**
+   * `consentConfirmed` is only ever true because somebody read the notice and pressed the button.
+   * The server decides whether it was needed - it recognises a record of a conversation for itself
+   * and refuses one without this, so a client that never sent it could not slip a transcript
+   * through.
+   */
+  upload: (groundId: string, file: File, consentConfirmed = false) => {
     const form = new FormData()
     form.append('file', file)
+    if (consentConfirmed) form.append('consentConfirmed', 'true')
     return apiClient.post<GroundDocument>(`/grounds/${groundId}/documents`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)

@@ -43,8 +43,11 @@ export class DocumentsController {
     @Param('groundId') groundId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('id') userId: string,
+    @Body() body: { consentConfirmed?: string | boolean },
   ) {
-    return this.docs.upload(groundId, userId, file);
+    /* Multipart, so it arrives as the string "true" rather than a boolean. */
+    const confirmed = body?.consentConfirmed === true || body?.consentConfirmed === 'true';
+    return this.docs.upload(groundId, userId, file, confirmed);
   }
 
   @Get()
