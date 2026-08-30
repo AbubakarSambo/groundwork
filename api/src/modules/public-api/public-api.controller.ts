@@ -512,6 +512,24 @@ export class PublicApiController {
    * shows it - because those four are not the same and acting on one thinking it was another is how
    * a feed loses its reader.
    */
+  /**
+   * WHAT TO READ BEFORE A CONVERSATION ABOUT SOMEBODY.
+   *
+   * `handovers:read`, not `findings:read`. scopes.ts already argues why those are separate - a
+   * per-person read is "a good deal more than a finding" - and this is the most per-person thing
+   * the API has. An integration granted findings must not get this by accident.
+   */
+  @Get('people/:personExternalId/before-a-conversation')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('handovers:read')
+  @ApiOperation({ summary: 'What the record holds about one person. Questions to ask, never an assessment.' })
+  async beforeAConversation(
+    @Req() req: { machine: MachineCaller },
+    @Param('personExternalId') personExternalId: string,
+  ) {
+    return this.groundsByApi.beforeAConversation(req.machine.organizationId, personExternalId);
+  }
+
   @Get('findings/structured')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('findings:read')

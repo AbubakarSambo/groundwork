@@ -55,7 +55,7 @@ const SCOPES: { key: string; label: string; sub: string }[] = [
   { key: 'grounds:write',  label: 'Open check-ins',         sub: 'Start one from your own system' },
   { key: 'checkins:write', label: 'Link a check-in',        sub: 'Attach an existing one to an objective. Smaller than opening one' },
   { key: 'findings:read',  label: 'Read findings',          sub: 'What is missing, unowned, or described two ways' },
-  { key: 'handovers:read', label: 'Read handover briefs',   sub: 'What is outstanding on one named person\'s desk' },
+  { key: 'handovers:read', label: 'Read one person\'s desk',  sub: 'A handover brief, and what a lead should read before a conversation' },
   { key: 'reports:read',   label: 'Read reports',           sub: 'Everybody\'s account of a period, once released' },
   { key: 'proposals:read', label: 'Read proposed changes',  sub: 'Changes Groundwork suggests to an objective' },
   { key: 'proposals:write',label: 'Resolve proposed changes', sub: 'Accept or decline them from your side' },
@@ -250,7 +250,7 @@ export function IntegrationsPage() {
       </div>
       <div style={S.card}>
         <div style={S.h3}>What a lead should read before a hard conversation</div>
-        <p style={S.body}>What is outstanding on somebody's desk, where two accounts of the same objective differ, and which objectives have no measure or nobody carrying them. Evidence with its source attached, so it can be checked. It is never a score, and nothing here decides anything about a person.</p>
+        <p style={S.body}>For one named person: what they said they would do and what carried a date, what other people are waiting on them for and what they are waiting on, what the record raised, and what they are carrying - including any objective with no measure on it, because there is nothing to be doing well or badly against. Every section says where it came from. It is never a score, it always says what it does not know, and nothing here decides anything about anybody.</p>
       </div>
       <div style={S.card}>
         <div style={S.h3}>Invitations go out</div>
