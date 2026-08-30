@@ -49,7 +49,20 @@ describe('a ground created by somebody who is not an admin', () => {
         findMany: jest.fn(async () => []),
         update: jest.fn(async (args: any) => ({ id: 'g1', ...args.data })),
       },
-      user: { findUnique: jest.fn(async () => ({ email: 'mem@x.test', firstName: 'Mem' })) },
+      user: {
+        findUnique: jest.fn(async () => ({
+          email: 'mem@x.test', firstName: 'Mem',
+          /* Named unless a test says otherwise: this file is about the WAIT, not about who may
+             open one, which `who-may-open-a-check-in.spec.ts` covers on its own. */
+          mayOpenCheckIns: over.named ?? true,
+        })),
+      },
+      organization: {
+        findUnique: jest.fn(async () => ({
+          whoMayOpenCheckIns: over.whoMayOpen ?? 'NAMED_LEADS',
+          checkInsNeedApproval: over.needsApproval ?? true,
+        })),
+      },
       groundParticipant: { findFirst: jest.fn(async () => null), count: jest.fn(async () => 0) },
     };
     const billing: any = { canCreateGround: jest.fn(async () => ({ allowed: true })) };
@@ -78,6 +91,42 @@ describe('a ground created by somebody who is not an admin', () => {
     expect(created[0].status).toBe(GroundStatus.AWAITING_APPROVAL);
   });
 
+  /*
+   * AND THE TWO THINGS AN ORGANISATION CAN NOW DECIDE FOR ITSELF.
+   *
+   * "Named leads can open a check-in and get approval. Other people that are not named can't, they
+   * can just be part of a check-in. But you can disable these two settings."
+   *
+   * The gate below is untouched by either: it is the status that changes, and `addParticipant`
+   * still refuses while AWAITING_APPROVAL holds.
+   */
+  it('does not wait when the organisation has turned approval off', async () => {
+    const { service, created } = makeService({ needsApproval: false });
+    await service.create('org1', 'u1', dto, 'MEMBER');
+    expect(created[0].status).toBe(GroundStatus.OPEN);
+  });
+
+  it('refuses somebody who has not been named, rather than queueing them', async () => {
+    /* They are not waiting for approval. They cannot open one at all, and are told they can still
+       take part in anybody else's. */
+    const { service, created } = makeService({ named: false });
+    await expect(service.create('org1', 'u1', dto, 'MEMBER')).rejects.toThrow(/named/i);
+    expect(created).toHaveLength(0);
+  });
+
+  it('and lets them through once the organisation opens it to everyone', async () => {
+    const { service, created } = makeService({ named: false, whoMayOpen: 'EVERYONE' });
+    await service.create('org1', 'u1', dto, 'MEMBER');
+    expect(created[0].status).toBe(GroundStatus.AWAITING_APPROVAL);
+  });
+
+  it('refuses before anything is spent, so a no costs nothing', async () => {
+    /* Outside the transaction and before the write: no seat consumed, no free ground spent. */
+    const { service, prisma } = makeService({ named: false });
+    await expect(service.create('org1', 'u1', dto, 'MEMBER')).rejects.toThrow();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it("and an admin's own ground does not wait", async () => {
     const { service, created } = makeService();
     await service.create('org1', 'u1', dto, 'ADMIN');
@@ -90,6 +139,12 @@ describe('a ground created by somebody who is not an admin', () => {
     const { service, created } = makeService();
     await service.create('org1', 'u1', dto, undefined);
     expect(created[0].status).toBe(GroundStatus.AWAITING_APPROVAL);
+  });
+
+  it('and a missing role with nobody named is refused, not admitted', async () => {
+    /* The same fail-closed rule one step earlier, now that there is a step earlier. */
+    const { service } = makeService({ named: false });
+    await expect(service.create('org1', 'u1', dto, undefined)).rejects.toThrow(/named/i);
   });
 });
 

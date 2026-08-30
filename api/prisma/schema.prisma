@@ -303,14 +303,39 @@ model Organization {
   contributions       Contribution[]
   recommendations     Recommendation[]
   objectiveDrafts     ObjectiveDraft[]
-  callRequests        CallRequest[]
+  /// WHO MAY OPEN A CHECK-IN HERE: 'NAMED_LEADS' or 'EVERYONE'.
+  ///
+  /// Named leads by default. An organisation that has thought about it can open the door; one that
+  /// has not should not discover it was open by finding a check-in nobody sanctioned. See
+  /// `who-may-open-a-check-in.ts`, which is the only place the rule is expressed.
+  whoMayOpenCheckIns  String                   @default("NAMED_LEADS") @map("who_may_open_check_ins")
+
+  /// Whether a check-in somebody opens waits for an admin before anybody is invited.
+  ///
+  /// Separate from the setting above on purpose: "anybody may open one and it still waits" and
+  /// "only my leads may open one and I trust them" are both real arrangements, and one combined
+  /// control would make two of the four unreachable.
+  checkInsNeedApproval Boolean @default(true) @map("check_ins_need_approval")
+
+  callRequests CallRequest[]
 
   @@map("organizations")
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  organizationId     String   @map("organization_id")
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// NAMED AS SOMEBODY WHO MAY OPEN A CHECK-IN.
+  ///
+  /// Not a role. An admin manages the organisation; a named lead runs check-ins for their own team
+  /// and has no admin powers at all, which is the whole point of it being a separate field rather
+  /// than a third value of `role`.
+  ///
+  /// Read only when `Organization.whoMayOpenCheckIns` is NAMED_LEADS. False on everybody who
+  /// existed before this, which is the safe direction: an organisation that has not named anybody
+  /// gets a refusal it can act on rather than a door it did not know was open.
+  mayOpenCheckIns    Boolean  @default(false) @map("may_open_check_ins")
   email              String   @unique
   passwordHash       String?  @map("password_hash")
   firstName          String   @map("first_name")

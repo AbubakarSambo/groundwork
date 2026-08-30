@@ -44,6 +44,17 @@ export class UpdateUserDto {
   @IsEnum(Role)
   role?: Role;
 
+  /**
+   * NAMED AS SOMEBODY WHO MAY OPEN A CHECK-IN.
+   *
+   * Separate from `role` and deliberately so: a named lead runs check-ins for their own team and
+   * has no admin powers. Making it a third role would hand them the organisation.
+   */
+  @ApiPropertyOptional({ description: 'Whether this person may open check-ins' })
+  @IsOptional()
+  @IsBoolean()
+  mayOpenCheckIns?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

@@ -69,12 +69,25 @@ describe('where each person got to', () => {
   })
 })
 
-describe('sub-admins', () => {
-  const control = PAGE.slice(PAGE.indexOf('Sub-admins'), PAGE.indexOf('</select>'))
+describe('what somebody is here', () => {
+  const control = PAGE.slice(PAGE.indexOf('SUB-ADMINS'), PAGE.indexOf('</select>'))
 
-  it('can be set from the page, which had no way to do it at all', () => {
-    expect(control).toContain('roleMut.mutate({ id: m.id, role: e.target.value })')
-    expect(control).toContain('value="ADMIN"')
+  it('offers the three things an admin means, not two', () => {
+    /* Takes part, can open check-ins, admin. The middle one is the named lead. */
+    expect(control).toContain('roleMut.mutate({ id: m.id, what: e.target.value')
+    expect(control).toContain('>Takes part<')
+    expect(control).toContain('>Can open check-ins<')
+    expect(control).toContain('>Admin<')
+  })
+
+  it('keeps them two fields underneath, so a lead is not handed the organisation', () => {
+    /*
+     * A lead runs check-ins for their team and has no admin powers whatever. As a third value of
+     * `role` they would get billing, promotions and everybody's account.
+     */
+    const write = PAGE.slice(PAGE.indexOf('const roleMut'), PAGE.indexOf('function handleInvite'))
+    expect(write).toContain("role: what === 'ADMIN' ? 'ADMIN' : 'MEMBER'")
+    expect(write).toContain("mayOpenCheckIns: what === 'LEAD'")
   })
 
   it('is a badge on your own row, not a control', () => {

@@ -26,6 +26,7 @@ import { isSubscribed } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
+import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -257,6 +258,37 @@ export class GroundsService {
       throw new BadRequestException(canCreate.reason ?? 'Ground creation not allowed');
     }
 
+    /*
+     * WHETHER THIS PERSON MAY OPEN ONE AT ALL, AND WHETHER IT WAITS.
+     *
+     * Hafsah's call: named leads open check-ins and they go for approval; people who are not named
+     * cannot open one, they take part in one. Both halves can be switched off by the organisation.
+     *
+     * BEFORE THE BILLING WRITE AND OUTSIDE THE TRANSACTION, because a refusal here should cost
+     * nothing - no seat consumed, no free ground spent, nothing rolled back. The old rule lived in
+     * one expression on the status line further down, which could only ever decide whether it
+     * waited; there was no way to say no.
+     *
+     * `creatorRole` is passed by the controller from the token rather than read again here, which
+     * is the existing arrangement and deliberate: a second read could disagree with the guard that
+     * already let this request through.
+     */
+    const [org, opener] = await Promise.all([
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { whoMayOpenCheckIns: true, checkInsNeedApproval: true },
+      }),
+      this.prisma.user.findUnique({ where: { id: initiatorId }, select: { mayOpenCheckIns: true } }),
+    ]);
+    const answer = mayOpen(
+      { role: creatorRole ?? 'MEMBER', named: opener?.mayOpenCheckIns ?? false },
+      {
+        whoMayOpen: (org?.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE') ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+        needsApproval: org?.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+      },
+    );
+    if (!answer.may) throw new ForbiddenException(answer.because);
+
     const ground = await this.prisma.$transaction(async (tx) => {
       const initiator = await tx.user.findUnique({ where: { id: initiatorId } });
       if (!initiator) throw new NotFoundException('Initiator not found');
@@ -290,8 +322,12 @@ export class GroundsService {
          * The status is the whole gate: `addParticipant` refuses while it holds, so
          * nobody can be invited, and an approval nobody could pre-empt is the only
          * kind worth having.
+         *
+         * WHETHER IT WAITS IS NOW THE ORGANISATION'S DECISION, decided above and by one function
+         * rather than by this expression. An organisation that turns approval off gets an open
+         * check-in here; the gate itself is untouched and comes straight back when they turn it on.
          */
-        status: creatorRole === 'ADMIN' ? GroundStatus.OPEN : GroundStatus.AWAITING_APPROVAL,
+        status: answer.waits ? GroundStatus.AWAITING_APPROVAL : GroundStatus.OPEN,
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
         joinToken: crypto.randomBytes(24).toString('hex'),

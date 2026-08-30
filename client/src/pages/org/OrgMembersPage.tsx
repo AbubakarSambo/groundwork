@@ -17,6 +17,8 @@ interface OrgMember {
   createdAt: string
   /** Where this person actually got to. Computed server side - see users.service findAll. */
   state?: 'invited' | 'signed in' | 'checked in'
+  /** Named as somebody who may open a check-in. Not a role - see the schema. */
+  mayOpenCheckIns?: boolean
 }
 
 /** What happened, or would happen, to one pasted address. */
@@ -120,10 +122,21 @@ export function OrgMembersPage() {
     onError: () => toast.error('Could not send those invitations. Try again.'),
   })
 
-  /* Sub-admins. The role goes through the one endpoint that writes both places it is stored. */
+  /*
+   * WHAT SOMEBODY IS HERE, AS AN ADMIN THINKS OF IT: member, lead, or admin.
+   *
+   * THREE WORDS, TWO FIELDS, and they stay two fields. A lead runs check-ins for their own team and
+   * has no admin powers whatever - folding that into `role` as a third value would hand every lead
+   * the organisation, the billing and the ability to promote people. So the control says the three
+   * things an admin means and writes `role` and `mayOpenCheckIns` accordingly.
+   */
   const roleMut = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: string }) =>
-      apiClient.patch(`/users/${id}`, { role }),
+    mutationFn: ({ id, what }: { id: string; what: 'MEMBER' | 'LEAD' | 'ADMIN' }) =>
+      apiClient.patch(`/users/${id}`, {
+        role: what === 'ADMIN' ? 'ADMIN' : 'MEMBER',
+        /* An admin may open check-ins by virtue of being one, so the flag is about the other two. */
+        mayOpenCheckIns: what === 'LEAD',
+      }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['org-members'] }); toast.success('Role updated') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not change that role.'),
   })
@@ -396,9 +409,9 @@ export function OrgMembersPage() {
                     }}>You</span>
                   ) : (
                     <select
-                      value={m.role}
+                      value={m.role === 'ADMIN' ? 'ADMIN' : m.mayOpenCheckIns ? 'LEAD' : 'MEMBER'}
                       disabled={roleMut.isPending}
-                      onChange={e => roleMut.mutate({ id: m.id, role: e.target.value })}
+                      onChange={e => roleMut.mutate({ id: m.id, what: e.target.value as 'MEMBER' | 'LEAD' | 'ADMIN' })}
                       style={{
                         fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
                         borderRadius: 6, padding: '3px 6px', background: 'white',
@@ -406,7 +419,8 @@ export function OrgMembersPage() {
                         border: `1px solid ${m.role === 'ADMIN' ? 'var(--gw-blue-b)' : 'var(--gw-border)'}`,
                       }}
                     >
-                      <option value="MEMBER">Member</option>
+                      <option value="MEMBER">Takes part</option>
+                      <option value="LEAD">Can open check-ins</option>
                       <option value="ADMIN">Admin</option>
                     </select>
                   )}

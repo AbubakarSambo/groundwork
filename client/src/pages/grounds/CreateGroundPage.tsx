@@ -716,7 +716,26 @@ export function CreateGroundPage() {
       if (failedInvites > 0) toast.warning(`${failedInvites} invite${failedInvites > 1 ? 's' : ''} could not be sent. You can retry from the check-in page.`)
       navigate(`/grounds/${ground.id}`)
     },
-    onError: () => toast.error('Could not open it. Try again.'),
+    /*
+     * THE SERVER'S OWN REASON, WHERE IT GAVE ONE.
+     *
+     * This said "Could not open it. Try again." to everything, which is right for a network blip
+     * and wrong for every refusal - and the product now has a refusal that will never come good by
+     * retrying: somebody who has not been named as able to open check-ins. Telling them to try
+     * again sends them round a loop the product knows they cannot leave.
+     *
+     * Only a 4xx message is shown. A 500 carries an internal message that is nobody's business, and
+     * "try again" is the honest answer to one anyway.
+     */
+    onError: (e: any) => {
+      const status = e?.response?.status
+      const said = e?.response?.data?.message
+      toast.error(
+        status >= 400 && status < 500 && typeof said === 'string' && said
+          ? said
+          : 'Could not open it. Try again.',
+      )
+    },
   })
 
   function addParticipant() {

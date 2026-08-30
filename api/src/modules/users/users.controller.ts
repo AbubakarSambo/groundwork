@@ -33,6 +33,29 @@ export class UsersController {
     return this.usersService.renameOrganization(organizationId, dto.name);
   }
 
+  /**
+   * HOW CHECK-INS WORK HERE. Two settings, read and written by an admin.
+   *
+   * On the organisation rather than on a settings module of its own, next to the rename, because
+   * that is what they are: facts about this organisation that only an admin may change.
+   */
+  @Get('organization/check-ins')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })
+  async howCheckInsWork(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.howCheckInsWork(organizationId);
+  }
+
+  @Patch('organization/check-ins')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Change who may open a check-in, or whether one waits' })
+  async setHowCheckInsWork(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { whoMayOpen?: string; needsApproval?: boolean },
+  ) {
+    return this.usersService.setHowCheckInsWork(organizationId, body);
+  }
+
   @Post('me/leave')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Deactivate own membership (self-serve leave org)' })

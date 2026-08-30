@@ -11,6 +11,7 @@ import { AuthService } from '../auth/auth.service';
 import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { isSubscribed } from '../../common/subscription';
+import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 
 @Injectable()
 export class UsersService {
@@ -99,6 +100,42 @@ export class UsersService {
     return { asked: !!open, at: open?.createdAt ?? null };
   }
 
+  /** How check-ins work here, in the shape the rule reads. */
+  async howCheckInsWork(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { whoMayOpenCheckIns: true, checkInsNeedApproval: true },
+    });
+    return {
+      whoMayOpen: org?.whoMayOpenCheckIns ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+      needsApproval: org?.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+    };
+  }
+
+  /**
+   * CHANGE ONE OR BOTH.
+   *
+   * An unrecognised value is refused rather than written. A typo in `whoMayOpen` would otherwise
+   * land in the column, fail no check, and be read by `mayOpen` as "not NAMED_LEADS" - which is
+   * the permissive branch. A wrong value must never silently open a door.
+   */
+  async setHowCheckInsWork(organizationId: string, body: { whoMayOpen?: string; needsApproval?: boolean }) {
+    if (body.whoMayOpen !== undefined && !['NAMED_LEADS', 'EVERYONE'].includes(body.whoMayOpen)) {
+      throw new BadRequestException('whoMayOpen must be NAMED_LEADS or EVERYONE.');
+    }
+    if (body.needsApproval !== undefined && typeof body.needsApproval !== 'boolean') {
+      throw new BadRequestException('needsApproval must be true or false.');
+    }
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        ...(body.whoMayOpen !== undefined && { whoMayOpenCheckIns: body.whoMayOpen }),
+        ...(body.needsApproval !== undefined && { checkInsNeedApproval: body.needsApproval }),
+      },
+    });
+    return this.howCheckInsWork(organizationId);
+  }
+
   /** The organisation's own name, which is what an invitation says it is from. */
   async organisationName(organizationId: string): Promise<string> {
     const org = await this.prisma.organization.findUnique({
@@ -160,7 +197,7 @@ export class UsersService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, isEmailVerified: true, createdAt: true, mayOpenCheckIns: true },
       }),
       this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
     ]);
@@ -282,8 +319,10 @@ export class UsersService {
           ...(dto.firstName && { firstName: dto.firstName }),
           ...(dto.lastName && { lastName: dto.lastName }),
           ...(typeof dto.isActive === 'boolean' && { isActive: dto.isActive }),
+          /* Naming somebody as a lead. Not a role - see the DTO and the schema comment. */
+          ...(typeof dto.mayOpenCheckIns === 'boolean' && { mayOpenCheckIns: dto.mayOpenCheckIns }),
         },
-        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, mayOpenCheckIns: true },
       });
       if (!dto.role) return updated;
       await setRole(tx, id, organizationId, dto.role as RoleWrite);
