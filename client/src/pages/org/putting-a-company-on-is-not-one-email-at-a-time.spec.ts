@@ -69,18 +69,37 @@ describe('where each person got to', () => {
   })
 })
 
-describe('sub-admins', () => {
-  const control = PAGE.slice(PAGE.indexOf('Sub-admins'), PAGE.indexOf('</select>'))
+describe('what somebody is here', () => {
+  const control = PAGE.slice(PAGE.indexOf('SUB-ADMINS'), PAGE.indexOf('</select>'))
 
-  it('can be set from the page, which had no way to do it at all', () => {
-    expect(control).toContain('roleMut.mutate({ id: m.id, role: e.target.value })')
-    expect(control).toContain('value="ADMIN"')
+  it('offers the three things an admin means, not two', () => {
+    /* Takes part, can open check-ins, admin. The middle one is the named lead. */
+    expect(control).toContain('roleMut.mutate({ id: m.id, what: e.target.value')
+    expect(control).toContain('>Takes part<')
+    expect(control).toContain('>Can open check-ins<')
+    expect(control).toContain('>Admin<')
+  })
+
+  it('writes one field, because a role is what an admin means', () => {
+    /*
+     * Briefly this wrote a role and a separate flag, to keep a lead from inheriting admin powers.
+     * Nothing in this product grants privilege by not being a MEMBER, so there was nothing to
+     * inherit and the second field was a second source of truth for no reason.
+     */
+    const write = PAGE.slice(PAGE.indexOf('const roleMut'), PAGE.indexOf('function handleInvite'))
+    expect(write).toContain('{ role: what }')
+    expect(write).not.toContain('mayOpenCheckIns')
   })
 
   it('is a badge on your own row, not a control', () => {
     /* The server refuses the last admin demoting themselves. A control that exists to be refused
        is worse than no control. */
     expect(control).toContain('m.id === user?.id')
-    expect(control).toContain('>You<')
+    expect(control).toContain("{iAmTheOwner ? 'You, and you hold this account' : 'You'}")
+  })
+
+  it('and no control at all on the row of whoever holds this account', () => {
+    /* Another admin cannot change them - the server refuses it - so the page does not offer it. */
+    expect(control).toContain('m.id === ownerId ? null :')
   })
 })

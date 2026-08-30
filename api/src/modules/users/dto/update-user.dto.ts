@@ -44,6 +44,7 @@ export class UpdateUserDto {
   @IsEnum(Role)
   role?: Role;
 
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

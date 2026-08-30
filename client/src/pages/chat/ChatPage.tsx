@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
+import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'
 
 interface Msg {
   id: string
@@ -565,25 +566,20 @@ export function ChatPage() {
             <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 6px', letterSpacing: '-.02em' }}>What happens to what you write</h1>
             <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>Worth thirty seconds before the first question, because it changes what is worth writing.</p>
 
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nobody you work with reads it</div>
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing everyone's accounts. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
-            </div>
-
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>We cannot show it to ourselves either</div>
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
-            </div>
-
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Nothing here trains a model</div>
-              <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are used to build this record and nothing else.</p>
-            </div>
-
-            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 4 }}>And the part we are not going to dress up</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
-            </div>
+            {/*
+              * THE SAME FOUR CLAIMS, now read from one place because a second screen shows them
+              * too - an admin rolling this out has to be able to show their company what will be
+              * read and by whom, before anybody is asked to answer anything. Two copies of a
+              * privacy promise drift. See `what-happens-to-what-you-write.ts`.
+              *
+              * This screen renders them exactly as it did before.
+              */}
+            {WHAT_HAPPENS_TO_WHAT_YOU_WRITE.map(c => (
+              <div key={c.title} style={{ background: c.plain ? 'var(--gw-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: c.plain ? '14px 16px' : '16px 18px', marginBottom: c.plain ? 18 : 12 }}>
+                <div style={{ fontSize: c.plain ? 12.5 : 14, fontWeight: 700, color: c.plain ? 'var(--gw-sub)' : 'var(--gw-text)', marginBottom: 4 }}>{c.title}</div>
+                <p style={{ fontSize: c.plain ? 12.5 : 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>{c.body}</p>
+              </div>
+            ))}
 
             <button
               onClick={() => { try { localStorage.setItem('gw_privacy_seen', '1') } catch { /* private mode: shown again, which is the safe direction */ } setPrivacyAcknowledged(true) }}

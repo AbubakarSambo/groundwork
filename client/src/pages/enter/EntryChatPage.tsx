@@ -2558,9 +2558,20 @@ export function EntryChatPage() {
         </div>
       )}
 
-      {/* Save card */}
+      {/*
+        * Save card.
+        *
+        * ABOVE THE RAIL, WHICH IS 40. This sat at 30, so the navigation drew on top of it: at a
+        * viewport narrower than about 1120 the 640px card is centred far enough left that the rail
+        * covers its edge, and the panel where somebody types their email was clipped. Wider
+        * screens hid it, which is why it lasted - measured at 953px, where the card starts at 156
+        * and the rail is 240 wide.
+        *
+        * 50 is this page's own number for a full-screen modal: the document panel a few lines up
+        * already uses it. Two overlays on one screen at two different heights is the bug itself.
+        */}
       <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 30,
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50,
         opacity: showSave ? 1 : 0, pointerEvents: showSave ? 'auto' : 'none',
         // visibility keeps the hidden modal out of the accessibility tree and
         // tab order - opacity alone leaves "Your account is on record" readable
@@ -2978,6 +2989,25 @@ export function EntryChatPage() {
               </div>
             ) : !emailSent ? (
               <div style={{ marginBottom: 20 }}>
+                {/*
+                  * THE ORGANISATION'S NAME, ASKED BEFORE EITHER DOOR.
+                  *
+                  * It used to live on the panel that appears after the email is sent, which meant
+                  * only the email path ever saw it. Somebody signing up with Google left with
+                  * "Ada's Workspace" and was never offered anything else - the callback returns
+                  * before its own name step, deliberately, because interrupting between "signed
+                  * in" and "here is your check-in" to ask something already offered is the worst
+                  * moment for it. It just had not actually been offered on that path.
+                  *
+                  * So it is asked here, one step earlier, where both doors pass. Optional, and
+                  * above the email rather than below it: it is about the account being made, and
+                  * the email is the thing that makes it.
+                  */}
+                <input
+                  type="text" placeholder="Organisation name (optional)" value={orgName}
+                  onChange={e => setOrgName(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
+                />
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
@@ -3089,11 +3119,8 @@ export function EntryChatPage() {
                 onChange={e => setGroundName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
               />
-              <input
-                type="text" placeholder="Organisation name (optional)" value={orgName}
-                onChange={e => setOrgName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
-              />
+              {/* Asked one step earlier now, where both the email and Google paths pass. */}
+
               <FieldLabel>
                 How often does everyone check in?
                 {!cadenceChosen && (

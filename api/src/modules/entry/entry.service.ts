@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
@@ -24,6 +24,7 @@ import { forHumans, hadCloseMarker } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
+import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -919,6 +920,18 @@ STRICT RULES:
    * marks session 1 complete with the full transcript, stores the solo report,
    * and fires invite emails for any contributors the admin queued.
    */
+  /**
+   * What this person actually is, for the rule that decides whether they may open a check-in.
+   *
+   * MEMBER when the row has gone, which is the safe direction: `mayOpen` refuses a member in an
+   * organisation that limits opening to its leads, and a missing user should never be treated as
+   * the most powerful thing on the account.
+   */
+  private async roleOf(userId: string): Promise<string> {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    return u?.role ?? 'MEMBER';
+  }
+
   async commit(
     organizationId: string,
     initiatorId: string,
@@ -1061,6 +1074,31 @@ STRICT RULES:
       throw new BadRequestException('NO_ENTRY_SESSION');
     }
 
+    /*
+     * MAY THIS PERSON OPEN A CHECK-IN HERE AT ALL.
+     *
+     * Asked once, at the top, because this method has two ways out - one that opens a check-in for
+     * the person themselves and one that hands it to a lead - and both create a check-in in an
+     * organisation that may have said who is allowed to.
+     *
+     * `POST /entry/commit` is authenticated, and anybody signed in can walk the entry chat: an
+     * admin, a lead, or somebody who takes part in other people's check-ins. Without this, the
+     * entry chat was the way round the setting - refused at the create page, allowed here.
+     *
+     * A BRAND NEW SIGN-UP IS UNAFFECTED. They are the admin of the organisation just made for them,
+     * and an admin is subject to neither setting.
+     */
+    const role = await this.roleOf(initiatorId);
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { whoMayOpenCheckIns: true, checkInsNeedApproval: true },
+    });
+    const answer = mayOpen({ role }, {
+      whoMayOpen: (org?.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE') ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+      needsApproval: org?.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+    });
+    if (!answer.may) throw new ForbiddenException(answer.because);
+
     const label = (dto.groundLabel ?? '').trim() || 'My first ground';
     const scenario = resolveScenario(dto.scenario);
 
@@ -1180,9 +1218,19 @@ STRICT RULES:
       endsAt: dto.lastCheckInBy || undefined,
       brief,
       freeParticipantCap: isBroadcast ? 100 : DEFAULT_FREE_MEMBER_LIMIT,
-      // See the comment above: the entry flow's creator is the admin of the org that
-      // was just created for them, so there is nobody else to approve this.
-    }, 'ADMIN');
+      /*
+       * THEIR ACTUAL ROLE, NOT 'ADMIN'.
+       *
+       * This was hardcoded on the argument that the entry flow's creator is the admin of the org
+       * just created for them - true for a brand new sign-up, and false for everybody else who
+       * reaches this. `POST /entry/commit` is authenticated, so anybody already signed in walks the
+       * same path: a member refused at the create page could open the entry chat, click "Save
+       * this", and get a check-in that skipped both the permission and the approval.
+       *
+       * Reading the role costs one query and makes the rule the same rule everywhere. A brand new
+       * sign-up is genuinely an ADMIN, so nothing about that case changes.
+       */
+    }, role);
 
     // Find the session 1 check-in and the initiator participant just created.
     const participant = await this.prisma.groundParticipant.findFirst({

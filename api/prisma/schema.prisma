@@ -17,6 +17,12 @@ datasource db {
 
 enum UserRole {
   ADMIN // manages grounds, billing activation, sees the alignment feed
+  /// Sets up check-ins for their own team. No admin powers of any kind: every privilege check in
+  /// this codebase asks for ADMIN specifically, so a LEAD inherits nothing by not being a MEMBER.
+  ///
+  /// This was a boolean on User for about an hour. A role is what an admin already means when they
+  /// say "my leads", and one field that says what somebody is beats two that have to agree.
+  LEAD
   MEMBER // a regular person who checks in
 }
 
@@ -303,13 +309,44 @@ model Organization {
   contributions       Contribution[]
   recommendations     Recommendation[]
   objectiveDrafts     ObjectiveDraft[]
+  /// WHO MAY OPEN A CHECK-IN HERE: 'NAMED_LEADS' or 'EVERYONE'.
+  ///
+  /// Named leads by default. An organisation that has thought about it can open the door; one that
+  /// has not should not discover it was open by finding a check-in nobody sanctioned. See
+  /// `who-may-open-a-check-in.ts`, which is the only place the rule is expressed.
+  /// THE PERSON WHO SET THIS ORGANISATION UP.
+  ///
+  /// Other admins cannot take their role or their account away; they can take anybody's. One
+  /// asymmetry, not a hierarchy - every admin is otherwise an admin. See
+  /// `the-person-who-set-this-up.ts`.
+  ///
+  /// Nullable, and null means nobody is protected rather than everybody. That is what was true for
+  /// every existing organisation a minute before this shipped; reading it the other way would
+  /// freeze their admin lists. The migration fills it in with each organisation's first admin.
+  ///
+  /// Not a relation: a `User` row can be soft-deleted and anonymised, and a foreign key would make
+  /// that a choice between breaking the constraint and cascading away the record of who set the
+  /// place up.
+  ownerUserId         String?                  @map("owner_user_id")
+
+  whoMayOpenCheckIns String @default("NAMED_LEADS") @map("who_may_open_check_ins")
+
+  /// Whether a check-in somebody opens waits for an admin before anybody is invited.
+  ///
+  /// Separate from the setting above on purpose: "anybody may open one and it still waits" and
+  /// "only my leads may open one and I trust them" are both real arrangements, and one combined
+  /// control would make two of the four unreachable.
+  checkInsNeedApproval Boolean @default(true) @map("check_ins_need_approval")
+
+  callRequests CallRequest[]
 
   @@map("organizations")
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  organizationId     String   @map("organization_id")
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
   email              String   @unique
   passwordHash       String?  @map("password_hash")
   firstName          String   @map("first_name")
@@ -2796,6 +2833,36 @@ model CoachRequest {
   @@index([status, createdAt])
   @@index([email])
   @@map("coach_requests")
+}
+
+/// SOMEBODY ASKING TO TALK TO US ABOUT CONNECTING THEIR SYSTEMS.
+///
+/// The Connect page explains the API well and ended at "see the plans". An admin evaluating this
+/// for a company does not want a plan, they want half an hour with their own engineers in the room,
+/// and the only way to reach anybody was a mailto on a different page.
+///
+/// NOT FEEDBACK, WHICH IS WHY IT IS NOT A FeedbackSubmission. Feedback is anonymous by design and
+/// has a fixed vocabulary of tabs and pills. A request for a call that does not say who to call
+/// back is a request nobody can act on.
+///
+/// The note is theirs, in their words, and nothing is inferred from it.
+model CallRequest {
+  id             String  @id @default(uuid())
+  organizationId String  @map("organization_id")
+  /// Who asked. They are the one to call.
+  requestedById  String  @map("requested_by_id")
+  /// What they want to talk about. Optional: asking is the signal, the note is a courtesy.
+  note           String? @db.Text
+
+  /// new | contacted | closed. Read by whoever works through these, not by the product.
+  status String @default("new")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("call_requests")
 }
 
 model FeedbackSubmission {

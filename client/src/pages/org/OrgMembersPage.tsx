@@ -120,10 +120,43 @@ export function OrgMembersPage() {
     onError: () => toast.error('Could not send those invitations. Try again.'),
   })
 
-  /* Sub-admins. The role goes through the one endpoint that writes both places it is stored. */
+  /*
+   * WHAT SOMEBODY IS HERE: member, lead, or admin. One field.
+   *
+   * This briefly wrote a role and a separate `mayOpenCheckIns` flag, on the argument that a third
+   * role would hand leads the organisation. That argument was wrong, and checking rather than
+   * defending it settled it: every privilege in this product is granted by naming ADMIN - forty-two
+   * guarded routes on the API, nineteen checks in this client - and none by not being a MEMBER. So
+   * a LEAD inherits nothing, and one field that says what somebody is beats two that must agree.
+   */
+  /*
+   * WHO SET THIS ORGANISATION UP.
+   *
+   * Other admins cannot change their role or deactivate them - the server refuses it. This is here
+   * so the page does not offer a control that exists to be refused, and so the position is visible:
+   * an admin who cannot see who holds it has no way to understand the refusal.
+   */
+  const ownerQuery = useQuery({
+    queryKey: ['org-owner'],
+    queryFn: () => apiClient.get('/users/organization/owner').then(r => r.data.data ?? r.data),
+    enabled: isAdmin,
+    retry: false,
+  })
+  const ownerId: string | null = ownerQuery.data?.ownerUserId ?? null
+  const iAmTheOwner = !!ownerId && ownerId === user?.id
+
+  const handOverMut = useMutation({
+    mutationFn: (userId: string) => apiClient.patch('/users/organization/owner', { userId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org-owner'] })
+      toast.success('Handed over. They now hold this account.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not hand that over.'),
+  })
+
   const roleMut = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: string }) =>
-      apiClient.patch(`/users/${id}`, { role }),
+    mutationFn: ({ id, what }: { id: string; what: 'MEMBER' | 'LEAD' | 'ADMIN' }) =>
+      apiClient.patch(`/users/${id}`, { role: what }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['org-members'] }); toast.success('Role updated') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not change that role.'),
   })
@@ -303,6 +336,32 @@ export function OrgMembersPage() {
         )}
       </div>
 
+      {/*
+        * TRAINING, WHICH IS THE STEP BETWEEN 160 ACCOUNTS AND 160 PEOPLE WHO USE THEM.
+        *
+        * Here rather than in the rail: it is a link an admin sends other people, not a section of
+        * their own console, and this is the page they are on when they are thinking about the
+        * people they just invited.
+        */}
+      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 18px', marginBottom: 28, background: 'var(--gw-card)', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>Send your team the guide</div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            How to run a check-in, what happens to what people write, and what you can see as their admin.
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/org/guide')}
+          style={{
+            padding: '8px 16px', background: 'white', color: 'var(--gw-navy)',
+            border: '1px solid var(--gw-navy)', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}
+        >
+          Read it
+        </button>
+      </div>
+
       {/* Members list */}
       {/*
         * A FAILED LOAD IS NOT AN EMPTY COMPANY. This page rendered "No members yet" over a 400,
@@ -363,16 +422,29 @@ export function OrgMembersPage() {
                     * demoting themselves; showing a control that exists to be refused is worse
                     * than not showing one.
                     */}
+                  {/*
+                    * WHOEVER HOLDS THIS ACCOUNT IS SHOWN AND NOT OFFERED.
+                    *
+                    * Their row carries no control for anybody else: the server refuses it, and a
+                    * dropdown that exists to be refused is worse than none. Their own row still
+                    * shows "You", as every admin's does.
+                    */}
+                  {m.id === ownerId && m.id !== user?.id && (
+                    <span style={{
+                      fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
+                      background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
+                    }}>Holds this account</span>
+                  )}
                   {m.id === user?.id ? (
                     <span style={{
                       fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
                       background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)', border: '1px solid var(--gw-blue-b)',
-                    }}>You</span>
-                  ) : (
+                    }}>{iAmTheOwner ? 'You, and you hold this account' : 'You'}</span>
+                  ) : m.id === ownerId ? null : (
                     <select
                       value={m.role}
                       disabled={roleMut.isPending}
-                      onChange={e => roleMut.mutate({ id: m.id, role: e.target.value })}
+                      onChange={e => roleMut.mutate({ id: m.id, what: e.target.value as 'MEMBER' | 'LEAD' | 'ADMIN' })}
                       style={{
                         fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
                         borderRadius: 6, padding: '3px 6px', background: 'white',
@@ -380,9 +452,33 @@ export function OrgMembersPage() {
                         border: `1px solid ${m.role === 'ADMIN' ? 'var(--gw-blue-b)' : 'var(--gw-border)'}`,
                       }}
                     >
-                      <option value="MEMBER">Member</option>
+                      <option value="MEMBER">Takes part</option>
+                      <option value="LEAD">Can open check-ins</option>
                       <option value="ADMIN">Admin</option>
                     </select>
+                  )}
+                  {/*
+                    * HANDING IT ON, which is what stops the protection becoming a hostage the day
+                    * that person leaves. Offered only by the holder, and only on another admin's
+                    * row, because it can only go to somebody who can manage the organisation.
+                    */}
+                  {iAmTheOwner && m.id !== user?.id && m.role === 'ADMIN' && (
+                    <button
+                      onClick={() => {
+                        const who = `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
+                        if (window.confirm(
+                          `Hand this account to ${who}?\n\nThey become the person who cannot be `
+                          + 'removed by other admins, and you stop being that person. You stay an admin.',
+                        )) handOverMut.mutate(m.id)
+                      }}
+                      style={{
+                        fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                        borderRadius: 6, padding: '3px 8px', background: 'white',
+                        color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Hand over
+                    </button>
                   )}
                 </div>
               </div>

@@ -28,6 +28,8 @@ import {
   MemberSigninDto,
 } from './dto';
 import { TokenType } from '@prisma/client';
+import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 
 type UserWithOrg = {
   id: string;
@@ -37,6 +39,8 @@ type UserWithOrg = {
   role: string;
   organizationId: string;
   isPlatformAdmin: boolean;
+  /** Whether this person may open a check-in. Computed by the rule, never a permission itself. */
+  mayOpenCheckIns?: boolean;
   /*
    * The whole organisation, not just its name. The client reads `organization.email` to decide
    * whether an admin still has to set up their org, so a builder that could only see the name
@@ -50,6 +54,9 @@ type UserWithOrg = {
     email: string | null;
     companyStage: unknown;
     subscriptionPlan: unknown;
+    /* The two settings the open-a-check-in rule reads. See `who-may-open-a-check-in.ts`. */
+    whoMayOpenCheckIns?: string;
+    checkInsNeedApproval?: boolean;
   };
 };
 
@@ -112,6 +119,8 @@ export class AuthService {
           isEmailVerified: false,
         },
       });
+      /* The first admin of a new organisation holds it. One function, five doors. */
+      await theFirstAdminHoldsIt(tx, organization.id, user.id);
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
@@ -168,6 +177,8 @@ export class AuthService {
           isEmailVerified: false,
         },
       });
+      /* The first admin of a new organisation holds it. One function, five doors. */
+      await theFirstAdminHoldsIt(tx, organization.id, user.id);
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
@@ -265,6 +276,8 @@ export class AuthService {
           },
           include: { organization: true },
         });
+        /* The first admin of a new organisation holds it. One function, five doors. */
+        await theFirstAdminHoldsIt(tx, org.id, u.id);
         if (pending.draftToken) {
           await tx.entryDraft.create({
             data: {
@@ -523,6 +536,14 @@ export class AuthService {
         const u = await tx.user.create({
           data: { organizationId, email: lower, firstName, lastName: '', role: 'MEMBER', isEmailVerified: false },
         });
+        /*
+         * ONLY WHERE WE JUST MADE THE WORKSPACE FOR THEM. This branch also runs for somebody being
+         * invited INTO an existing organisation, and claiming that one for the invitee would hand a
+         * customer's account to the newest person in it. `theFirstAdminHoldsIt` refuses to take one
+         * that is already held, but an organisation that has none yet would be taken - so it is
+         * asked only when this call created the organisation a line earlier.
+         */
+        if (!inviterOrganizationId) await theFirstAdminHoldsIt(tx, organizationId, u.id);
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
           data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
@@ -703,7 +724,7 @@ export class AuthService {
 
         user = await this.prisma.$transaction(async (tx) => {
           const organization = await tx.organization.create({ data: { name: orgName, slug } });
-          return tx.user.create({
+          const created = await tx.user.create({
             data: {
               organizationId: organization.id,
               email,
@@ -715,6 +736,9 @@ export class AuthService {
             },
             include: { organization: true },
           });
+          /* The first admin of a new organisation holds it. One function, five doors. */
+          await theFirstAdminHoldsIt(tx, organization.id, created.id);
+          return created;
         });
       }
     }
@@ -803,6 +827,28 @@ export class AuthService {
         organizationId: user.organizationId,
         organizationName: user.organization.name,
         isPlatformAdmin: user.isPlatformAdmin,
+        /**
+         * WHETHER THIS PERSON MAY OPEN A CHECK-IN, DECIDED BY THE ONE RULE THAT DECIDES IT.
+         *
+         * Without this the client cannot know, and what it did instead was show everybody the
+         * button: a member saw "Start a check-in" in the rail, filled in eight steps, and was
+         * refused on submit. The refusal was right and the journey was a waste of their afternoon.
+         *
+         * COMPUTED, NOT COPIED. Sending the role and the organisation's two settings and letting
+         * the client work it out would put a second copy of the rule in a second language, and the
+         * copy that drifts is the one deciding whether somebody sees a button.
+         *
+         * It is a convenience for the screen and never a permission: `create` asks the same
+         * function again on every request, so a stale session cannot open anything.
+         */
+        mayOpenCheckIns: mayOpen(
+          { role: user.role },
+          {
+            whoMayOpen: (user.organization.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE')
+              ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+            needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+          },
+        ).may,
         /**
          * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
          *

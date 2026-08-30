@@ -50,6 +50,12 @@ describe('a ground created by somebody who is not an admin', () => {
         update: jest.fn(async (args: any) => ({ id: 'g1', ...args.data })),
       },
       user: { findUnique: jest.fn(async () => ({ email: 'mem@x.test', firstName: 'Mem' })) },
+      organization: {
+        findUnique: jest.fn(async () => ({
+          whoMayOpenCheckIns: over.whoMayOpen ?? 'NAMED_LEADS',
+          checkInsNeedApproval: over.needsApproval ?? true,
+        })),
+      },
       groundParticipant: { findFirst: jest.fn(async () => null), count: jest.fn(async () => 0) },
     };
     const billing: any = { canCreateGround: jest.fn(async () => ({ allowed: true })) };
@@ -74,8 +80,44 @@ describe('a ground created by somebody who is not an admin', () => {
 
   it('waits for an admin to accept it', async () => {
     const { service, created } = makeService();
+    await service.create('org1', 'u1', dto, 'LEAD');
+    expect(created[0].status).toBe(GroundStatus.AWAITING_APPROVAL);
+  });
+
+  /*
+   * AND THE TWO THINGS AN ORGANISATION CAN NOW DECIDE FOR ITSELF.
+   *
+   * "Named leads can open a check-in and get approval. Other people that are not named can't, they
+   * can just be part of a check-in. But you can disable these two settings."
+   *
+   * The gate below is untouched by either: it is the status that changes, and `addParticipant`
+   * still refuses while AWAITING_APPROVAL holds.
+   */
+  it('does not wait when the organisation has turned approval off', async () => {
+    const { service, created } = makeService({ needsApproval: false });
+    await service.create('org1', 'u1', dto, 'LEAD');
+    expect(created[0].status).toBe(GroundStatus.OPEN);
+  });
+
+  it('refuses somebody who has not been named, rather than queueing them', async () => {
+    /* They are not waiting for approval. They cannot open one at all, and are told they can still
+       take part in anybody else's. */
+    const { service, created } = makeService();
+    await expect(service.create('org1', 'u1', dto, 'MEMBER')).rejects.toThrow(/named/i);
+    expect(created).toHaveLength(0);
+  });
+
+  it('and lets them through once the organisation opens it to everyone', async () => {
+    const { service, created } = makeService({ whoMayOpen: 'EVERYONE' });
     await service.create('org1', 'u1', dto, 'MEMBER');
     expect(created[0].status).toBe(GroundStatus.AWAITING_APPROVAL);
+  });
+
+  it('refuses before anything is spent, so a no costs nothing', async () => {
+    /* Outside the transaction and before the write: no seat consumed, no free ground spent. */
+    const { service, prisma } = makeService();
+    await expect(service.create('org1', 'u1', dto, 'MEMBER')).rejects.toThrow();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("and an admin's own ground does not wait", async () => {
@@ -84,10 +126,23 @@ describe('a ground created by somebody who is not an admin', () => {
     expect(created[0].status).toBe(GroundStatus.OPEN);
   });
 
-  it('a missing role is treated as needing approval, not as an admin', async () => {
-    // Fail closed. A caller that forgets to pass the role must not accidentally
-    // bypass the gate - that is how a guard quietly stops guarding.
+  it('a missing role is treated as the weakest one, not as an admin', async () => {
+    /*
+     * Fail closed. A caller that forgets to pass the role must not accidentally bypass the gate -
+     * that is how a guard quietly stops guarding.
+     *
+     * It used to mean "waits for approval", because waiting was the strictest outcome available.
+     * There is a stricter one now, and falling back to MEMBER reaches it: refused outright while
+     * the organisation limits opening to its leads.
+     */
     const { service, created } = makeService();
+    await expect(service.create('org1', 'u1', dto, undefined)).rejects.toThrow(/named/i);
+    expect(created).toHaveLength(0);
+  });
+
+  it('and still waits, rather than opening, where anybody may open one', async () => {
+    /* The original point of the test: a missing role must never read as ADMIN. */
+    const { service, created } = makeService({ whoMayOpen: 'EVERYONE' });
     await service.create('org1', 'u1', dto, undefined);
     expect(created[0].status).toBe(GroundStatus.AWAITING_APPROVAL);
   });
@@ -157,13 +212,33 @@ describe('while a ground is waiting to be accepted', () => {
 describe('the entry flow creates a ground that is ready to run', () => {
   const SRC = readFileSync(join(__dirname, '../entry/entry.service.ts'), 'utf8');
 
-  it('passes a role to grounds.create, so it is not held by the pending gate', () => {
+  /*
+   * AND THE ROLE IS NOW READ RATHER THAN ASSUMED.
+   *
+   * This used to pin the literal `'ADMIN'`, which was right for the case it was written about and
+   * wrong for one nobody had considered: `POST /entry/commit` is authenticated, so anybody already
+   * signed in can walk the entry chat. Hardcoding ADMIN meant a member refused at the create page
+   * could open a check-in here, with no approval, having skipped both settings.
+   *
+   * The protection this test exists for is untouched. Somebody coming out of the entry chat as a
+   * brand new sign-up IS the admin of the organisation made for them moments earlier, so reading
+   * their role returns ADMIN and their ground is not held for an approver who does not exist.
+   */
+  it('passes the creator\'s real role to grounds.create, not an assumption', () => {
     const call = SRC.slice(SRC.indexOf('this.grounds.create(organizationId, initiatorId, {'));
     const end = call.indexOf(');');
-    expect(call.slice(0, end)).toMatch(/\}, 'ADMIN'/);
+    expect(call.slice(0, end)).toMatch(/\}, role/);
+    expect(call.slice(0, end)).not.toMatch(/\}, 'ADMIN'/);
   });
 
-  it('and says why, because the next person will wonder', () => {
-    expect(SRC).toMatch(/nobody else to approve it/i);
+  it('reads it from the row, and treats a missing user as the weakest', () => {
+    /* Never the most powerful thing on the account, which is the direction that fails safe. */
+    expect(SRC).toMatch(/private async roleOf/);
+    expect(SRC).toMatch(/return u\?\.role \?\? 'MEMBER'/);
+  });
+
+  it('and asks whether they may open one at all, before either way out', () => {
+    /* Two ways out of commit - their own check-in, or a hand-off to a lead - and both create one. */
+    expect(SRC).toMatch(/if \(!answer\.may\) throw new ForbiddenException/);
   });
 });

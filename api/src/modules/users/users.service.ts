@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -9,9 +9,15 @@ import { setRole, RoleWrite } from './a-role-is-stored-twice';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
 import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
+import { RolloutFacts } from './where-a-rollout-has-got-to';
+import { isSubscribed } from '../../common/subscription';
+import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
@@ -28,6 +34,153 @@ export class UsersService {
    * deliberate: a preview computed separately from the send is a second implementation that will
    * one day disagree, on the screen where somebody decides whether to email 160 colleagues.
    */
+  /**
+   * WHERE THIS ROLLOUT HAS GOT TO, in one request.
+   *
+   * One call rather than five, because the screen it feeds is the first thing an admin sees and a
+   * waterfall of five requests is how a landing page arrives in pieces.
+   *
+   * Counts only. No names, no emails, no plan - the console needs to know whether a step happened,
+   * and anything more than that is a second copy of data the pages themselves already serve.
+   */
+  async rolloutFacts(organizationId: string): Promise<RolloutFacts> {
+    const [people, admins, checkIns, org, keys] = await Promise.all([
+      this.prisma.user.count({ where: { organizationId, deletedAt: null } }),
+      this.prisma.user.count({ where: { organizationId, deletedAt: null, role: 'ADMIN', isActive: true } }),
+      this.prisma.ground.count({ where: { organizationId } }),
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { subscriptionPlan: true, subscriptionStatus: true },
+      }),
+      this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
+    ]);
+    return {
+      people,
+      admins,
+      checkIns,
+      /* The one definition of paying, rather than a sixth comparison against a bare string. */
+      paying: isSubscribed(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
+      connected: keys > 0,
+    };
+  }
+
+  /**
+   * ASKING TO TALK TO US, WHICH ENDS IN A ROW SOMEBODY CAN ACT ON.
+   *
+   * A mailto is a request that exists only if a message arrives, gets read, and is not filtered -
+   * three things nobody can check. This is a row with a company, a person and a date on it.
+   *
+   * IDEMPOTENT WHILE ONE IS OPEN. A second click is somebody checking the first one worked.
+   */
+  async requestACall(organizationId: string, requestedById: string, note?: string) {
+    const open = await this.prisma.callRequest.findFirst({
+      where: { organizationId, status: 'new' },
+      select: { id: true, createdAt: true },
+    });
+    if (open) return { asked: true, at: open.createdAt, alreadyOpen: true };
+
+    const row = await this.prisma.callRequest.create({
+      data: {
+        organizationId,
+        requestedById,
+        /* Their words, trimmed and bounded. Nothing is inferred from it. */
+        note: note?.trim()?.slice(0, 2000) || null,
+      },
+      select: { createdAt: true },
+    });
+    this.logger.log(`Call requested by org ${organizationId}.`);
+    return { asked: true, at: row.createdAt, alreadyOpen: false };
+  }
+
+  /** Whether one is already open, so the page says so rather than offering to ask again. */
+  async callAlreadyRequested(organizationId: string) {
+    const open = await this.prisma.callRequest.findFirst({
+      where: { organizationId, status: 'new' },
+      select: { createdAt: true },
+    });
+    return { asked: !!open, at: open?.createdAt ?? null };
+  }
+
+  /** How check-ins work here, in the shape the rule reads. */
+  async howCheckInsWork(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { whoMayOpenCheckIns: true, checkInsNeedApproval: true },
+    });
+    return {
+      whoMayOpen: org?.whoMayOpenCheckIns ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+      needsApproval: org?.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+    };
+  }
+
+  /**
+   * CHANGE ONE OR BOTH.
+   *
+   * An unrecognised value is refused rather than written. A typo in `whoMayOpen` would otherwise
+   * land in the column, fail no check, and be read by `mayOpen` as "not NAMED_LEADS" - which is
+   * the permissive branch. A wrong value must never silently open a door.
+   */
+  async setHowCheckInsWork(organizationId: string, body: { whoMayOpen?: string; needsApproval?: boolean }) {
+    if (body.whoMayOpen !== undefined && !['NAMED_LEADS', 'EVERYONE'].includes(body.whoMayOpen)) {
+      throw new BadRequestException('whoMayOpen must be NAMED_LEADS or EVERYONE.');
+    }
+    if (body.needsApproval !== undefined && typeof body.needsApproval !== 'boolean') {
+      throw new BadRequestException('needsApproval must be true or false.');
+    }
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        ...(body.whoMayOpen !== undefined && { whoMayOpenCheckIns: body.whoMayOpen }),
+        ...(body.needsApproval !== undefined && { checkInsNeedApproval: body.needsApproval }),
+      },
+    });
+    return this.howCheckInsWork(organizationId);
+  }
+
+  /**
+   * HAND THE POSITION ON, which is what stops the protection becoming a hostage.
+   *
+   * Without this, the day the founder leaves the company the account has an owner who no longer
+   * works there and nobody able to change it.
+   *
+   * It GIVES the position away rather than sharing it. Two protected people would be two people who
+   * cannot remove each other, which is a deadlock rather than a safeguard.
+   */
+  async handOverTheOrganisation(organizationId: string, actingUserId: string, toUserId: string) {
+    const [org, acting, target] = await Promise.all([
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { ownerUserId: true } }),
+      this.prisma.user.findUnique({ where: { id: actingUserId }, select: { id: true, role: true } }),
+      this.prisma.user.findFirst({
+        where: { id: toUserId, organizationId, deletedAt: null },
+        select: { id: true, role: true, firstName: true },
+      }),
+    ]);
+    if (!target) throw new NotFoundException('That person is not on this account.');
+
+    const allowed = mayHandOver(
+      { id: acting?.id ?? actingUserId, role: acting?.role ?? 'MEMBER' },
+      { id: target.id, role: target.role },
+      org?.ownerUserId ?? null,
+    );
+    if (!allowed.may) throw new ForbiddenException(allowed.because);
+
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { ownerUserId: target.id },
+    });
+    this.logger.log(`Organisation ${organizationId} handed over to ${target.id}.`);
+    return { ownerUserId: target.id };
+  }
+
+  /** Who set this organisation up, so the People page can say so and hide what it must. */
+  async whoSetThisUp(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { ownerUserId: true },
+    });
+    return { ownerUserId: org?.ownerUserId ?? null };
+  }
+
   /** The organisation's own name, which is what an invitation says it is from. */
   async organisationName(organizationId: string): Promise<string> {
     const org = await this.prisma.organization.findUnique({
@@ -180,6 +333,29 @@ export class UsersService {
       if (taken) throw new ConflictException('Email already in use');
     }
 
+    /*
+     * THE PERSON WHO SET THIS UP CANNOT BE DEMOTED OR DEACTIVATED BY ANOTHER ADMIN.
+     *
+     * Before the last-admin check, because it is the stronger rule: even with six other admins on
+     * the account, this one is not theirs to change. See `the-person-who-set-this-up.ts`.
+     */
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { ownerUserId: true },
+    });
+    const acting = await this.prisma.user.findUnique({
+      where: { id: _actingUserId },
+      select: { id: true, role: true },
+    });
+    if (dto.role !== undefined || dto.isActive !== undefined) {
+      const allowed = mayChange(
+        { id: acting?.id ?? _actingUserId, role: acting?.role ?? 'MEMBER' },
+        { id: user.id, role: user.role },
+        org?.ownerUserId ?? null,
+      );
+      if (!allowed.may) throw new ForbiddenException(allowed.because);
+    }
+
     // Last-admin safeguard: this user's own role/active state can't be removed
     // if they're the org's only remaining active admin - otherwise the org is
     // left with nobody able to manage it at all.
@@ -254,6 +430,22 @@ export class UsersService {
     if (id === actingUserId) throw new BadRequestException('You cannot deactivate yourself');
     const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null } });
     if (!user) throw new NotFoundException('User not found');
+
+    /* The same protection as `update`, on the path that deactivates and anonymises somebody. */
+    const orgForRemoval = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { ownerUserId: true },
+    });
+    const remover = await this.prisma.user.findUnique({
+      where: { id: actingUserId },
+      select: { id: true, role: true },
+    });
+    const allowedToRemove = mayChange(
+      { id: remover?.id ?? actingUserId, role: remover?.role ?? 'MEMBER' },
+      { id: user.id, role: user.role },
+      orgForRemoval?.ownerUserId ?? null,
+    );
+    if (!allowedToRemove.may) throw new ForbiddenException(allowedToRemove.because);
 
     // Last-admin safeguard - see update() above for the same rule.
     if (user.role === 'ADMIN') {

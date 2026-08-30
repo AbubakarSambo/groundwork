@@ -388,9 +388,13 @@ export function AuthPage() {
                     onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}
                     style={{ width: '100%', padding: '10px 0', borderRadius: 7, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}
                   >
+                    {/*
+                      * ONE MARK. There were two, stacked, on the sign-up side only - the sign-in
+                      * button below has always had one. Added twice when the logo went in and
+                      * never seen, because the change was checked on the sign-in half.
+                      */}
                     <GoogleMark />
-                    <GoogleMark />
-                  Continue with Google
+                    Continue with Google
                   </button>
                 </>
               )}

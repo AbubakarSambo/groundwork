@@ -15,7 +15,16 @@ import { EntryService } from './entry.service';
  */
 function makeService() {
   const prisma: any = {
-    organization: { update: jest.fn(async () => ({})) },
+    /*
+     * `commit` now asks who this person is and what the organisation allows, before either path -
+     * the entry chat was otherwise the way round the "who may open a check-in" setting for anybody
+     * already signed in. An admin here, which is what this spec's coordinator is.
+     */
+    user: { findUnique: jest.fn(async () => ({ role: 'ADMIN' })) },
+    organization: {
+      update: jest.fn(async () => ({})),
+      findUnique: jest.fn(async () => ({ whoMayOpenCheckIns: 'NAMED_LEADS', checkInsNeedApproval: true })),
+    },
     leadContextNote: { create: jest.fn(async () => ({ id: 'note1' })) },
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
     checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },

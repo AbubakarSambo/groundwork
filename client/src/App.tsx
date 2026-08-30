@@ -38,6 +38,7 @@ import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
+import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
@@ -212,6 +213,13 @@ export default function App() {
             <Route path="/prompts/test" element={<RequireOrgSetup><PromptTestPage /></RequireOrgSetup>} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><OrgMembersPage /></RequireOrgSetup>} />
+            {/*
+              * THE PAGE AN ADMIN SENDS THEIR LEADS. Signed in, like the rest of /org, because
+              * everybody being briefed was just invited and has an account. Not admin-only: it is
+              * for the leads, and gating it would mean the person it was written for cannot open
+              * the link they were sent.
+              */}
+            <Route path="/org/guide" element={<LeadsGuidePage />} />
             {/* RequireOrgSetup rather than RequirePlatformAdmin: this is a CUSTOMER's admin connecting
                 their own systems, not Groundwork staff. The page itself refuses a non-admin, and
                 every endpoint behind it is admin-gated on the server. */}

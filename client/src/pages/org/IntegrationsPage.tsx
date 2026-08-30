@@ -4,6 +4,7 @@ import { API_DOCS_URL, API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { apiClient } from '@/api/client'
 
 /**
  * WHERE AN ADMIN CONNECTS THEIR OWN SYSTEMS, WITHOUT TALKING TO US FIRST.
@@ -101,6 +102,26 @@ export function IntegrationsPage() {
   const firstClientId = (creds.data ?? []).find(c => !c.revokedAt)?.clientId ?? null
   const events = useQuery({ queryKey: ['integrations', 'events'], queryFn: integrationsApi.webhookEvents, enabled: isAdmin })
   const endpoints = useQuery({ queryKey: ['integrations', 'endpoints'], queryFn: integrationsApi.listEndpoints, enabled: isAdmin })
+
+  /*
+   * ASKING FOR A CALL. Read first so the page can say "we will be in touch" rather than offering
+   * to ask again - clicking twice is somebody wondering whether the first click worked.
+   */
+  const call = useQuery({
+    queryKey: ['call-request'],
+    queryFn: () => apiClient.get('/users/call-request').then(r => r.data.data ?? r.data),
+    enabled: isAdmin,
+    retry: false,
+  })
+  const callMut = useMutation({
+    mutationFn: () => apiClient.post('/users/call-request', {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['call-request'] })
+      toast.success('Asked. We will be in touch.')
+    },
+    onError: () => toast.error('Could not send that just now. Try again.'),
+  })
+  const callAsked = !!call.data?.asked
   const deliveries = useQuery({ queryKey: ['integrations', 'deliveries'], queryFn: () => integrationsApi.deliveries(), enabled: isAdmin })
   const imports = useQuery({ queryKey: ['integrations', 'imports'], queryFn: integrationsApi.listImports, enabled: isAdmin })
 
@@ -199,6 +220,43 @@ export function IntegrationsPage() {
         * Nothing is disabled. Somebody evaluating this should be able to set it all up first and
         * subscribe when they are ready - the key they issue today starts working the day they do.
         */}
+      {/*
+        * THE OTHER HALF OF THIS PAGE'S AUDIENCE.
+        *
+        * Everything below is written for an engineer and is good now. Nothing on it was written for
+        * the person deciding whether to do this at all - who is not going to evaluate an API by
+        * reading curl examples, and whose actual next step is half an hour with their own engineers
+        * in the room. The only way to reach anybody was a mailto on the pricing page.
+        *
+        * It stores a row rather than opening a mail client. A mailto is a request that exists only
+        * if a message arrives, is read, and is not filtered - three things nobody can check.
+        */}
+      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 20, background: 'var(--gw-card)', display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: 460 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+            {callAsked ? 'We will be in touch' : 'Talk it through with your engineers'}
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            {callAsked
+              ? 'You have asked for a call. We have your organisation and who to reach, and nothing else is needed from you.'
+              : 'Half an hour on what you already have, what it would take on your side, and whether this fits. Bring whoever will build it.'}
+          </div>
+        </div>
+        {!callAsked && (
+          <button
+            onClick={() => callMut.mutate()}
+            disabled={callMut.isPending}
+            style={{
+              padding: '9px 18px', background: 'var(--gw-navy)', color: 'white', border: 'none',
+              borderRadius: 8, fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit',
+              cursor: 'pointer', whiteSpace: 'nowrap', opacity: callMut.isPending ? 0.6 : 1,
+            }}
+          >
+            {callMut.isPending ? 'Asking…' : 'Ask for a call'}
+          </button>
+        )}
+      </div>
+
       {!plan && (
         <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>

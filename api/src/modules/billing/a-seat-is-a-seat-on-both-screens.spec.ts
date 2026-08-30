@@ -45,7 +45,11 @@ function fakePrisma(users: { isActive: boolean; deletedAt: Date | null }[], plan
         return out;
       },
     },
-    ground: { findMany: async () => [] },
+    ground: { findMany: async () => [], count: async () => 0 },
+    /* This spec is about seats. The usage counts on the same response answer zero and stay out of
+       its way - they are covered where they are rendered. */
+    report: { count: async () => 0 },
+    groundParticipant: { findMany: async () => [] },
   } as any;
 }
 

@@ -21,7 +21,11 @@ import { Prisma } from '@prisma/client';
  * holds admin in the session with no membership record saying why, and no error was raised to tell
  * anybody.
  */
-export type RoleWrite = 'ADMIN' | 'MEMBER';
+/**
+ * The three a person can be. LEAD sets up check-ins for their own team and holds no admin powers -
+ * see the schema, and `who-may-open-a-check-in.ts` for what it actually permits.
+ */
+export type RoleWrite = 'ADMIN' | 'LEAD' | 'MEMBER';
 
 /**
  * Write a role to both places it lives.

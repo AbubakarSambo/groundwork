@@ -1,5 +1,6 @@
 import { useHelpStore } from '@/stores/help'
 import { useAuthStore } from '@/stores/auth'
+import { HOW_TO_STEPS } from './how-a-check-in-is-run'
 
 const TABS = ['What it is', 'How to use it', 'Use cases', 'Reports'] as const
 
@@ -42,24 +43,6 @@ function Tab0({ onNext }: { onNext: () => void }) {
   )
 }
 
-const HOW_TO_STEPS = [
-  {
-    title: 'Open a check-in before the situation becomes urgent',
-    body: 'The product is most powerful when used early. A new hire starting, a project beginning, a cofounder agreement forming. The record built before the conversation is the one you can stand on.',
-  },
-  {
-    title: 'Set a resolution state before the check-in starts',
-    body: 'Before the first check-in, everybody agrees on what a successful outcome looks like. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the end state before you start changes the quality of every session.',
-  },
-  {
-    title: 'Check in independently. Be specific.',
-    body: 'The product probes for specificity. Vague answers produce vague records. The more specific your check-in, the stronger your record, the higher the alignment status, the more defensible the outcome.',
-  },
-  {
-    title: 'Use the report as the basis for the conversation, not the conversation itself',
-    body: 'The report shows every account at the same time, and everybody reads it together. The gap is what needs to be discussed. The product never decides. You decide with evidence.',
-  },
-]
 
 function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (

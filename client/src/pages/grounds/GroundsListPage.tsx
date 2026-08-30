@@ -362,7 +362,12 @@ export function GroundsListPage() {
                * in progress is itself the thing a person needs to know; the other two earn their
                * place only when there is something in them.
                */
-              ].filter(s => s.label === 'In progress' || s.val > 0).map(s => (
+              /*
+               * A ZERO IS NOT A NUMBER WORTH A TILE, and "In progress: 0" sitting above an empty
+               * state is the product reporting on its own emptiness. The empty state underneath
+               * already says there is nothing here, in words, and says what to do about it.
+               */
+              ].filter(s => s.val > 0).map(s => (
                 // The board's own stat tile, so the same number does not have two
                 // different looks depending on which page you opened it from.
                 <Stat key={s.label} label={s.label} value={String(s.val)} />
@@ -373,14 +378,17 @@ export function GroundsListPage() {
                 confidence scores as a paid unlock, routed at a per-session
                 checkout. Neither half is real - there is no session billing,
                 and the insights were never locked. */}
-            {/* Open ground CTA */}
-            <button
+            {/*
+              * Open ground CTA - and not for somebody the rule would refuse. See AppShell: they
+              * used to fill in eight steps to be told no at the end.
+              */}
+            {user?.mayOpenCheckIns !== false && <button
               onClick={() => navigate('/grounds/new')}
               style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <span>Start a check-in</span>
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
-            </button>
+            </button>}
 
             {/* Invite a colleague - admin only, matches the backend guard on POST /auth/team-invite */}
             {isAdmin && (!showInviteColleague ? (
@@ -456,10 +464,17 @@ export function GroundsListPage() {
 
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
 
+            {/*
+              * AN ADMIN'S ROLLOUT, WHICH DOES NOT END WHEN THE FIRST CHECK-IN OPENS.
+              *
+              * This used to be inside the empty-list branch, so it vanished the moment somebody
+              * opened one - which is step two of five. It hid the list exactly when it started
+              * being useful. It decides for itself when it is finished, and hides then.
+              */}
+            {!isLoading && <AdminFirstRun />}
+
             {!isLoading && grounds.length === 0 && (
               <>
-              {/* An org admin's own job, on the screen they actually land on. See the file. */}
-              <AdminFirstRun />
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginBottom: 24, height: 44 }}>
                   <div style={{ width: 10, height: 32, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
@@ -467,8 +482,13 @@ export function GroundsListPage() {
                   <div style={{ width: 10, height: 28, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>Your first check-in is one tap away.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto 24px' }}>Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.</div>
-                <button onClick={() => navigate('/grounds/new')} style={{ padding: '13px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Open your first check-in</button>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto' }}>Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.</div>
+                {/*
+                  * THE THIRD BUTTON FOR ONE ACTION IS GONE. This screen had "Start a check-in" in
+                  * the rail, "Start a check-in" above, and "Open your first check-in" here - three
+                  * buttons doing one thing, which is how a screen stops having a primary action.
+                  * The words stay, because they say what a check-in is for. The button does not.
+                  */}
               </div>
               </>
             )}

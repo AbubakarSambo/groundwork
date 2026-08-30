@@ -715,7 +715,7 @@ export class BillingService {
   /**
    * Billing status: active grounds with session balances and saved card details.
    */
-  async getStatus(organizationId: string): Promise<{
+  async getStatus(organizationId: string, includeUsage = true): Promise<{
     /**
      * THE SUBSCRIPTION BELONGS TO THE ORGANISATION, AND THIS ENDPOINT DID NOT SAY SO. W14-6.
      *
@@ -736,6 +736,9 @@ export class BillingService {
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
+    /** Counts only. See the comment where these are assembled. */
+    /** Admin only. Absent for anybody else - see the controller. */
+    usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
     card?: { brand: string; last4: string } | null;
   }> {
@@ -761,6 +764,23 @@ export class BillingService {
       isSubscribed(org)
         ? await this.pricing.memberCapFor(org.subscriptionPlan)
         : await this.pricing.getFreeMemberLimit();
+
+    /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
+    const [everyGround, reportsOut, tookPart] = await Promise.all([
+      this.prisma.ground.count({ where: { organizationId } }),
+      this.prisma.report.count({ where: { ground: { organizationId }, releasedAt: { not: null } } }),
+      this.prisma.groundParticipant.findMany({
+        where: { ground: { organizationId }, checkIns: { some: { status: 'COMPLETED' } } },
+        select: { userId: true },
+        distinct: ['userId'],
+      }),
+    ]);
+    const usage = {
+      checkIns: everyGround,
+      reports: reportsOut,
+      /* Distinct people, so somebody in four check-ins counts once. */
+      participating: new Set(tookPart.map((t) => t.userId).filter(Boolean)).size,
+    };
 
     const activeGrounds = await this.prisma.ground.findMany({
       where: { organizationId, status: GroundStatus.ACTIVE },
@@ -792,6 +812,25 @@ export class BillingService {
        * and showing no ceiling to the only people who have one is how person six got added.
        */
       people: { count: peopleCount, cap: peopleCap },
+      /*
+       * WHAT THIS ACCOUNT HAS ACTUALLY DONE, which is what makes a renewal defensible.
+       *
+       * An admin asked to pay for 160 seats needs to be able to say what was got for it, and the
+       * page could only say what the plan costs. Counts only - no names, no labels - because this
+       * is an argument about volume, and anything more is a second copy of pages that already
+       * exist and are governed properly.
+       *
+       * Check-ins EVER rather than this month: these run for a quarter at a time, so a calendar
+       * month is a window that would report zero for a healthy account most of the time.
+       */
+      /* Omitted rather than zeroed for a non-admin: a zero is a claim, and this is a refusal. */
+      usage: includeUsage ? {
+        checkIns: usage.checkIns,
+        /* Rounds where everybody finished and a report went out. The thing they are buying. */
+        reportsReleased: usage.reports,
+        /* People who have actually taken part, as against people who have an account. */
+        peopleTakingPart: usage.participating,
+      } : undefined,
       activeGrounds: activeGrounds.map((g) => ({
         groundId: g.id,
         label: g.label,

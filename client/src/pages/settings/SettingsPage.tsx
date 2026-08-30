@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { myDataApi, type MyData } from '@/api/my-data'
 import { Sec, Card } from '@/components/gw/kit'
+import { apiClient } from '@/api/client'
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -44,6 +45,26 @@ export function SettingsPage() {
     onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organization name updated') },
     onError: () => toast.error('Could not rename the organisation. Try again.'),
   })
+  /*
+   * HOW CHECK-INS WORK HERE. Read before it is shown, so a toggle never renders in a state the
+   * organisation is not actually in.
+   */
+  const qc = useQueryClient()
+  const checkInsQuery = useQuery({
+    queryKey: ['how-check-ins-work'],
+    queryFn: () => apiClient.get('/users/organization/check-ins').then((r: any) => r.data.data ?? r.data),
+    enabled: user?.role === 'ADMIN',
+    retry: false,
+  })
+  const checkInSettings = useMutation({
+    mutationFn: (change: { whoMayOpen?: string; needsApproval?: boolean }) =>
+      apiClient.patch('/users/organization/check-ins', change),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['how-check-ins-work'] }); toast.success('Saved') },
+    onError: () => toast.error('Could not save that. Try again.'),
+  })
+  /* The defaults, which are the stricter of each - the same two this product starts an org on. */
+  const howCheckIns = checkInsQuery.data ?? { whoMayOpen: 'NAMED_LEADS', needsApproval: true }
+
   const logout = useAuthStore(s => s.logout)
 
   const [emailNotif, setEmailNotif] = useState(user?.emailNotifications ?? true)
@@ -208,6 +229,70 @@ export function SettingsPage() {
                   }}
                 >
                   {renameOrgMut.isPending ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </Card>
+
+            {/*
+              * HOW CHECK-INS WORK HERE. Two settings, and they are separate on purpose.
+              *
+              * The default is the stricter of each: named leads only, and every check-in waits.
+              * An organisation that has thought about it can open either door; one that has not
+              * should not discover a door was open by finding a check-in nobody sanctioned.
+              *
+              * Both are written by the same rule the create path enforces, so what this page says
+              * and what actually happens cannot come apart - see `who-may-open-a-check-in.ts`.
+              */}
+            <Card pad="block">
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Who can open a check-in</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+                Everybody can take part in a check-in somebody adds them to. This is about opening
+                one.
+              </div>
+              {([
+                ['NAMED_LEADS', 'Only people I name', 'You choose who on the People page. Everybody else takes part.'],
+                ['EVERYONE', 'Anybody here', 'Anybody with an account can open one.'],
+              ] as const).map(([value, title, body]) => (
+                <label
+                  key={value}
+                  style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '9px 0', cursor: 'pointer' }}
+                >
+                  <input
+                    type="radio"
+                    name="who-may-open"
+                    checked={howCheckIns.whoMayOpen === value}
+                    onChange={() => checkInSettings.mutate({ whoMayOpen: value })}
+                    style={{ marginTop: 2 }}
+                  />
+                  <span>
+                    <span style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>{title}</span>
+                    <span style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5 }}>{body}</span>
+                  </span>
+                </label>
+              ))}
+            </Card>
+
+            <Card pad="block">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-ins wait for an admin</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5, maxWidth: 420 }}>
+                    Nobody is invited until an admin accepts it. Turn this off and a check-in starts
+                    the moment somebody opens it.
+                  </div>
+                </div>
+                <button
+                  onClick={() => checkInSettings.mutate({ needsApproval: !howCheckIns.needsApproval })}
+                  disabled={checkInSettings.isPending}
+                  style={{
+                    padding: '8px 14px', borderRadius: 7, fontFamily: 'inherit', fontSize: 13,
+                    fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: howCheckIns.needsApproval ? 'var(--gw-navy)' : 'white',
+                    color: howCheckIns.needsApproval ? 'white' : 'var(--gw-navy)',
+                    border: `1px solid var(--gw-navy)`,
+                  }}
+                >
+                  {howCheckIns.needsApproval ? 'On' : 'Off'}
                 </button>
               </div>
             </Card>

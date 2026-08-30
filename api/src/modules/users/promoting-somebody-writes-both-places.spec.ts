@@ -45,6 +45,11 @@ describe('a role is stored twice, so it is written twice', () => {
     expect(calls.filter(([, a]) => a.data.role === 'MEMBER')).toHaveLength(2);
   });
 
+  it('writes a lead the same way, since a lead is a role like the others', async () => {
+    await setRole(tx(), 'u1', 'org1', 'LEAD');
+    expect(calls.filter(([, a]) => a.data.role === 'LEAD')).toHaveLength(2);
+  });
+
   it('does not create a membership that was not there', async () => {
     /* No row is a different condition with a different cause. Conjuring one hides it, so this
        updates many-or-none rather than upserting. */
