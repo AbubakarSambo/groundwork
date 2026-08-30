@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { theReadFor, NOTHING_ON_RECORD } from '../detectors/what-a-lead-should-read-first';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from '../reports/reports.service';
@@ -499,6 +500,105 @@ export class GroundsByApiService {
     return { change: updated, agreedNow: textAfter(state, row.personObjective.text, row.proposedText) };
   }
 
+
+  /**
+   * WHAT THE RECORD HOLDS ABOUT ONE PERSON, BEFORE A CONVERSATION ABOUT THEM.
+   *
+   * Every part of this already existed and nothing put them together for the person about to walk
+   * into the room - so a lead prepared from memory, inside a product built to end exactly that.
+   *
+   * `handovers:read` RATHER THAN `findings:read`, and the reason is written in scopes.ts: a
+   * handover brief is "the list of what is outstanding on one named person's desk, which is a good
+   * deal more than a finding". This is that shape exactly, so it takes that scope. Granting an
+   * integration the right to read findings must not silently grant it a per-person read.
+   *
+   * The shaping - what is said, what is refused, what it admits not knowing - is in
+   * what-a-lead-should-read-first.ts, away from the queries, because that is the part that has to
+   * be arguable without a database in front of you.
+   */
+  async beforeAConversation(organizationId: string, personExternalId: string) {
+    const person = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: personExternalId },
+      select: { email: true, displayName: true, givenName: true, familyName: true },
+    });
+    if (!person) throw new NotFoundException('No such person in what your organisation has sent us.');
+
+    const label = person.displayName?.trim()
+      || [person.givenName, person.familyName].filter(Boolean).join(' ').trim()
+      || personExternalId;
+    const key = person.email?.toLowerCase() ?? null;
+
+    const [commitments, findings, contributions] = await Promise.all([
+      this.prisma.commitment.findMany({
+        where: { organizationId, personExternalId, state: { in: ['OPEN', 'SLIPPED'] as any } },
+        select: { text: true, state: true, dueAt: true, statedAt: true },
+      }),
+      this.prisma.detectorResult.findMany({
+        where: { organizationId, personExternalId, resolvedAt: null },
+        select: { key: true, evidence: true, subjectExternalId: true, firstSeenAt: true },
+      }),
+      this.prisma.contribution.findMany({
+        where: { organizationId, personExternalId },
+        select: { subjectExternalId: true, lastSeenAt: true },
+      }),
+    ]);
+
+    const subjects = contributions.length
+      ? await this.prisma.subject.findMany({
+        where: { organizationId, externalId: { in: contributions.map((c) => c.subjectExternalId) } },
+        select: { externalId: true, title: true, measure: true },
+      })
+      : [];
+    const lastSeen = new Map(contributions.map((c) => [c.subjectExternalId, c.lastSeenAt]));
+
+    /* Both sides of every handoff. One side alone is a charge sheet - see the module. */
+    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
+    const side = (which: 'from' | 'on') => waiting
+      .filter((w: any) => (which === 'from' ? w.fromPersonKey : w.onPersonKey) === key)
+      .map((w: any) => ({
+        what: w.what,
+        status: String(w.status),
+        waitingDays: w.waitingDays,
+        onLabel: w.onLabel ?? null,
+        escalatedAt: w.escalatedAt ?? null,
+        /* Whether the claim names who and what - the board already decides this, and a read that
+           decided it again would be a second opinion on the same question. */
+        hasSubstance: w.hasSubstance ?? true,
+      }));
+
+    /*
+     * Released reports they were in. Zero is what makes the picture "nothing yet" rather than
+     * "thin" - a fact about the record, never about them.
+     */
+    const finishedCheckIns = key
+      ? await this.prisma.groundParticipant.count({
+        where: { email: key, ground: { organizationId, report: { releasedAt: { not: null } } } },
+      })
+      : 0;
+
+    const read = theReadFor({
+      personLabel: label,
+      finishedCheckIns,
+      commitments: commitments.map((c) => ({ text: c.text, state: String(c.state), dueAt: c.dueAt, statedAt: c.statedAt })),
+      waitingOnOthers: side('from'),
+      othersWaiting: side('on'),
+      findings: findings.map((f) => ({
+        key: f.key,
+        says: ((f.evidence as any)?.says ?? null) as string | null,
+        subjectExternalId: f.subjectExternalId,
+        firstSeenAt: f.firstSeenAt,
+      })),
+      carrying: subjects.map((s) => ({
+        externalId: s.externalId,
+        title: s.title,
+        measure: s.measure,
+        lastSeenAt: lastSeen.get(s.externalId) ?? null,
+      })),
+      now: new Date(),
+    });
+
+    return read.sections.length ? read : { ...read, nothingOnRecord: NOTHING_ON_RECORD };
+  }
 
   /**
    * WHAT NEEDS SOMEBODY, ACROSS THE WHOLE ORGANISATION.

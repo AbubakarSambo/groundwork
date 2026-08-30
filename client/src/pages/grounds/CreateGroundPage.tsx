@@ -8,6 +8,7 @@ import { entryApi } from '@/api/entry'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, ASKS_WHEN_THEY_START, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/auth'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -429,7 +430,7 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
 // Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
 // We use integer steps internally: 1,2,3,4,5,6
-const TOTAL_STEPS = 6
+const TOTAL_STEPS = 8
 
 /**
  * What each step is asking, in the words already on that step's own heading.
@@ -440,11 +441,14 @@ const TOTAL_STEPS = 6
  * every link and saved position that already exists.
  */
 const STEP_NAMES: Record<number, string> = {
-  1: 'What is this about',
-  2: 'Your plan',
-  3: 'How long it runs',
-  4: 'Who is in it',
-  6: 'The brief',
+  1: 'Who it is for',
+  2: 'The situation',
+  3: 'A coach',
+  4: 'Describe it',
+  5: 'Your plan',
+  6: 'How long it runs',
+  7: 'Who is in it',
+  8: 'The brief',
 }
 
 /**
@@ -476,6 +480,8 @@ export function CreateGroundPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
+  /* Coaching is a paid feature, the same as the integration API. Null means nobody has ever paid. */
+  const onAPaidPlan = !!useAuthStore(s => s.user?.organization?.subscriptionPlan)
 
   const [scenario, setScenario] = useState<GroundScenario | null>(
     () => scenarioFromParam(searchParams.get('scenario'))
@@ -722,6 +728,9 @@ export function CreateGroundPage() {
   }
 
   function back() {
+    /* Step 4 only exists on the free-text path, so going back from 5 has to skip it there too -
+       otherwise Back lands on a screen the person was never shown on the way in. */
+    if (step === 5 && selectedCard !== 'DESCRIBE_OWN') { setStep(3); return }
     if (step > 1) setStep(s => s - 1)
     else navigate('/grounds')
   }
@@ -771,8 +780,10 @@ export function CreateGroundPage() {
         </div>
 
         {/* Step 1: Scenario + Moment */}
-        {step === 1 && (
+        {step >= 1 && step <= 4 && (
           <div>
+            {/* ---- STEP 1: who this check-in is for ---- */}
+            {step === 1 && (<>
             {/* Say the limit is reached BEFORE the setup work, not after it.
                 The API refuses an eleventh ground correctly, but it refused it
                 at submit - so the admin picked a card, named the ground, set
@@ -876,6 +887,10 @@ export function CreateGroundPage() {
               )}
             </div>
 
+            </>)}
+
+            {/* ---- STEP 2: which situation ---- */}
+            {step === 2 && (<>
             <div className="gw-sub-t" style={{ marginBottom: 2 }}>
               Twenty situations, grouped by the question you are actually asking. Every one of them is an
               objective agreed at the start, then a run of check-ins testing the work against it. Pick the
@@ -991,6 +1006,52 @@ export function CreateGroundPage() {
               })}
             </div>
 
+            </>)}
+
+            {/* ---- STEP 3: a coach, before you decide ---- */}
+            {step === 3 && (<>
+            {/*
+              * A STEP OF ITS OWN, BEFORE THE SITUATION IS WRITTEN DOWN.
+              *
+              * The coach used to sit at the bottom of the same screen as the twenty-one situation
+              * cards, below a group called "Not sure yet", where it read as the thing you scroll
+              * past. Two things were wrong with that: it is a decision, not a card, and it is a
+              * decision worth making BEFORE you write the situation down rather than after - the
+              * whole point of a coach is help shaping what you are about to set up.
+              *
+              * PAID, LIKE THE API, AND GREYED THE SAME WAY. Coaching is not on the free plan, and
+              * the honest place to say so is here rather than in a reply to a request somebody has
+              * already spent ten minutes writing. Nothing is hidden: the card is readable, dimmed,
+              * and offers the two real answers - go and pay, or carry on without one.
+              */}
+            {!onAPaidPlan && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>
+                  Working with a coach is part of a paid plan
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                  You can carry on and set this check-in up without one - most teams do. If you want a
+                  person alongside it, the plans are one click away and you will come back to this step.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/pricing')}
+                    style={{ fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none' }}
+                  >
+                    See the plans
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(selectedCard === 'DESCRIBE_OWN' ? 4 : 5)}
+                    style={{ fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
+                  >
+                    Skip this
+                  </button>
+                </div>
+              </div>
+            )}
+            <div style={{ opacity: onAPaidPlan ? 1 : 0.55, pointerEvents: onAPaidPlan ? 'auto' : 'none' }}>
             {/* THE COACH CARD. Outside the radiogroup on purpose: it is not a situation, it
                 creates nothing, and it must not be selectable as one.
 
@@ -1083,6 +1144,11 @@ export function CreateGroundPage() {
               </div>
             </section>
 
+            </div>
+            </>)}
+
+            {/* ---- STEP 4: describe it in your own words ---- */}
+            {step === 4 && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
                 <label className="gw-label" htmlFor="own-situation">Describe it in your own words</label>
@@ -1152,7 +1218,11 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            {scenario && (
+            </>)}
+
+            {/* The moment belongs with the situation, so it is bound to step 2 rather than to
+                wherever it happens to sit in the file. */}
+            {step === 2 && scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
@@ -1193,17 +1263,37 @@ export function CreateGroundPage() {
                     whatever the card happens to default to, which is the whole
                     bug this replaces. */}
                 {(() => {
+                  /*
+                   * ONE BAR, FOUR STEPS, AND EACH ONE ONLY ASKS FOR ITS OWN THING.
+                   *
+                   * This used to gate on everything at once, because everything was on one screen:
+                   * a person could not continue until they had picked a situation AND a moment AND
+                   * described it, with a single line of help trying to say which was missing. Split
+                   * into steps, each has one thing to be waiting for, so the message is exact.
+                   */
                   const needsRouting = selectedCard === 'DESCRIBE_OWN' && !routedTo && !routeFailed
-                  const blocked = !scenario || !moment || needsRouting
+                  const describing = selectedCard === 'DESCRIBE_OWN'
+
+                  const blocked =
+                    step === 1 ? alsoAParty === null
+                    : step === 2 ? (!scenario || !moment)
+                    : step === 4 ? needsRouting
+                    : false
+
+                  const why =
+                    step === 1 ? 'Choose one to continue'
+                    : step === 2 ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
+                    : step === 4 ? 'Describe the situation above, then let us find the closest match'
+                    : ''
+
+                  /* Step 4 only exists for the free-text path; a card already says what this is. */
+                  const next = step === 3 ? (describing ? 4 : 5) : step + 1
+
                   return (
                     <>
-                      <button className="gw-btn" disabled={blocked} onClick={() => setStep(2)} style={{ margin: 0 }}>Continue</button>
+                      <button className="gw-btn" disabled={blocked} onClick={() => setStep(next)} style={{ margin: 0 }}>Continue</button>
                       {blocked ? (
-                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
-                          {needsRouting
-                            ? 'Describe the situation above, then let us find the closest match'
-                            : !scenario ? 'Pick a situation to continue' : 'Pick where you are in it (below the cards) to continue'}
-                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>{why}</div>
                       ) : null}
                     </>
                   )
@@ -1214,7 +1304,7 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 2 (1.5): Billing check */}
-        {step === 2 && (
+        {step === 5 && (
           <div>
             <div className="gw-ttl">Before you continue</div>
 
@@ -1247,7 +1337,7 @@ export function CreateGroundPage() {
                     Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}
-                <button className="gw-btn" onClick={() => setStep(3)} style={{ margin: '12px 0 0' }}>Continue →</button>
+                <button className="gw-btn" onClick={() => setStep(6)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
@@ -1309,7 +1399,7 @@ export function CreateGroundPage() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Code applied</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the check-in is created.</div>
                     </div>
-                    <button className="gw-btn" onClick={() => setStep(3)}>Continue →</button>
+                    <button className="gw-btn" onClick={() => setStep(6)}>Continue →</button>
                   </div>
                 )}
               </div>
@@ -1318,7 +1408,7 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 3 (was 2): Timeframe + cadence */}
-        {step === 3 && (
+        {step === 6 && (
           <div>
             <div className="gw-ttl">How long will this run?</div>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
@@ -1416,12 +1506,12 @@ export function CreateGroundPage() {
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>
               </div>
             </div>
-            <button className="gw-btn" onClick={() => setStep(4)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" onClick={() => setStep(7)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
         {/* Step 4 (was 3): Participants */}
-        {step === 4 && (
+        {step === 7 && (
           <div>
             <div className="gw-ttl">Who is in this check-in?</div>
             <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
@@ -1525,7 +1615,7 @@ export function CreateGroundPage() {
 
             {/* Handing the ground over needs an address to hand it to. Better to
                 stop here than to create a ground nobody is leading. */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(6)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(8)} style={{ margin: 0 }}>Continue</button>
             {/*
               THE OTHER HALF OF THE SAME REFUSAL, WHICH SAID NOTHING. W-UX-7.
               
@@ -1544,7 +1634,7 @@ export function CreateGroundPage() {
               </div>
             ) : null}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(6) }}>
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(8) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
@@ -1576,7 +1666,7 @@ export function CreateGroundPage() {
         */}
 
         {/* Step 6 (was 5): Opening brief + ground name */}
-        {step === 6 && (
+        {step === 8 && (
           <div>
             <div className="gw-ttl">What is this about?</div>
             <div className="gw-sub-t">Your version of the brief. Each person writes their own in their first session. The report shows where accounts agree and where they differ.</div>
