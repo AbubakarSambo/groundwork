@@ -2558,9 +2558,20 @@ export function EntryChatPage() {
         </div>
       )}
 
-      {/* Save card */}
+      {/*
+        * Save card.
+        *
+        * ABOVE THE RAIL, WHICH IS 40. This sat at 30, so the navigation drew on top of it: at a
+        * viewport narrower than about 1120 the 640px card is centred far enough left that the rail
+        * covers its edge, and the panel where somebody types their email was clipped. Wider
+        * screens hid it, which is why it lasted - measured at 953px, where the card starts at 156
+        * and the rail is 240 wide.
+        *
+        * 50 is this page's own number for a full-screen modal: the document panel a few lines up
+        * already uses it. Two overlays on one screen at two different heights is the bug itself.
+        */}
       <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 30,
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50,
         opacity: showSave ? 1 : 0, pointerEvents: showSave ? 'auto' : 'none',
         // visibility keeps the hidden modal out of the accessibility tree and
         // tab order - opacity alone leaves "Your account is on record" readable
