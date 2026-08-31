@@ -912,7 +912,18 @@ export class GroundsService {
         participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
-          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true },
+          /**
+           * `availableFrom` BECAUSE THE RAIL CANNOT DO ITS JOB WITHOUT IT.
+           *
+           * `railAttention` decides what a check-in wants from you, and its rule is explicit: a round
+           * scheduled for next fortnight is not something anybody is late for. It reads `availableFrom`
+           * to know that, and this select left it out - so on every surface fed by the list, a round
+           * opening in two weeks read as "your turn", on all of them at once.
+           *
+           * The detail endpoint has always returned it. That is why one check-in could say "your turn"
+           * in the rail and say nothing at all on its own page - two surfaces, one rule, different data.
+           */
+          select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
@@ -970,7 +981,7 @@ export class GroundsService {
         participants: { select: { id: true, email: true, partyType: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
-              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true },
+              select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
             },
             report: { select: { releasedAt: true, agreements: true, divergences: true } },
             reportActivations: { select: { participantId: true, status: true } },

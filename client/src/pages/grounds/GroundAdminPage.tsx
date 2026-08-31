@@ -1,6 +1,7 @@
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
+import { railAttention } from '@/lib/rail-attention'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
@@ -874,6 +875,29 @@ export function GroundAdminPage() {
 
         {/* Sessions are per-participant-per-session, so count DISTINCT session
             numbers, not check-in rows. */}
+        {/*
+          * THE ONE THING THAT NEEDS THEM, ABOVE THE THINGS THAT DO NOT.
+          *
+          * The row below is five facts - scenario, session, days left, who has answered, report
+          * state - and each is worth having. None of them is "your turn". So the question a person
+          * opens this page with was answered by inference across five items, four of which do not
+          * change between visits.
+          *
+          * Same rule as the rail and the cards - `railAttention` - so three surfaces cannot give
+          * three answers. Nothing is removed: the facts keep their line, and this sits above it only
+          * when there is something to say.
+          */}
+        {(() => {
+          const a = railAttention(ground as any, user?.id)
+          const say =
+            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn — 1 day late' : `Your turn — ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
+            : a.kind === 'yours' ? { t: 'Your turn', c: 'var(--gw-navy)' }
+            : a.kind === 'waiting' ? { t: `Waiting on ${a.total - a.done} of ${a.total}`, c: 'var(--gw-sub)' }
+            : null
+          return say
+            ? <div style={{ padding: '0 16px 4px', fontSize: 14, fontWeight: 700, color: say.c, letterSpacing: '-.01em' }}>{say.t}</div>
+            : null
+        })()}
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
@@ -911,7 +935,15 @@ export function GroundAdminPage() {
               */}
               {(ground.participants ?? []).length > 0 && (
                 <span style={{ color: 'var(--gw-sub)' }}>
-                  {roundDone} of {(ground.participants ?? []).length} checked in
+                  {/*
+                    * THE ROUND IS NAMED, BECAUSE THE TWO NUMBERS ON THIS SCREEN COUNT DIFFERENT THINGS.
+                    *
+                    * This counts the OPEN round. The report panel below counts the one that just closed.
+                    * Both are right, and together they read as a contradiction: "0 of 2 checked in" above
+                    * "2 of 2 have checked in for this round", which is enough to make somebody doubt the
+                    * record. Saying which round this is costs three words and removes the question.
+                    */}
+                  Round {openRound} · {roundDone} of {(ground.participants ?? []).length} checked in
                 </span>
               )}
             </>
