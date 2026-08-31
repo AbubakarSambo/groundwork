@@ -326,7 +326,8 @@ export function GroundAdminPage() {
       qc.invalidateQueries({ queryKey: ['ground', id] })
       toast.success('Participant added')
     },
-    onError: () => toast.error('Could not add participant.'),
+    /* See below: the server's own sentence, for the same reason. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add participant.'),
   })
 
   const dismissRequest = useMutation({
@@ -470,7 +471,20 @@ export function GroundAdminPage() {
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('Could not add them.'),
+    /**
+     * THE SERVER'S OWN SENTENCE, WHICH THIS SCREEN WAS THROWING AWAY.
+     *
+     * Every reason adding somebody can be refused is written for a person and sent in the response:
+     * the seat limit, an address already on the check-in, and the gate that refuses an invitation
+     * until something has been said about what the check-in is for - which answers with the four
+     * ways out of it, by name. This replaced all of them with "Could not add them."
+     *
+     * On the roster, of all screens: the setup flow already surfaces the per-person reason and the
+     * report page already surfaces this one, so a lead adding somebody to a running check-in was
+     * the only person in the product told nothing. The most likely refusal here is the gate, whose
+     * entire purpose is to say what to do next.
+     */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add them.'),
   })
 
   useEffect(() => {
