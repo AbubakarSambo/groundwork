@@ -81,10 +81,21 @@ describe('the marketing site quotes the app price', () => {
    */
   const COACHING_PRICES = [...COACH_CARD.cost.matchAll(/\$\d[\d,]*/g)].map((m) => m[0])
 
+  /**
+   * AND THE SERVICES THE SITE SELLS THAT ARE NOT PLANS EITHER.
+   *
+   * Integration support is priced from, not at, and invoiced by hand like coaching. Read from
+   * `marketing/src/site.mjs` - the module the page renders - rather than retyped, because retyping
+   * it here is precisely the second copy this file spent its previous comment apologising for.
+   */
+  const SERVICE_PRICES = [...readFileSync(
+    join(__dirname, '..', '..', '..', 'marketing', 'src', 'site.mjs'), 'utf8',
+  ).matchAll(/'(\$[0-9][0-9,]*)'/g)].map((m) => m[1])
+
   it('and does not quote a price the app has never heard of', () => {
     // Plus $0, the free tier, which has no SubscriptionPlan because nobody
     // subscribes to it - it is what an organisation has before it pays.
-    const known = new Set(['$0', ...COACHING_PRICES, ...PUBLIC_PLANS.map(p => seededAmountLabel(p))])
+    const known = new Set(['$0', ...COACHING_PRICES, ...SERVICE_PRICES, ...PUBLIC_PLANS.map(p => seededAmountLabel(p))])
     const quoted = [...MARKETING.matchAll(/>(\$\d[\d,]*)</g)].map(m => m[1])
     expect(quoted.length).toBeGreaterThan(0)
     for (const q of quoted) {

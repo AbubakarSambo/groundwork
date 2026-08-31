@@ -18,20 +18,41 @@ import { COACH_CARD } from './scenario-catalog'
  * differently. It checks that the NUMBERS in one appear in the other, which is the only part that
  * cannot be allowed to disagree.
  */
-const PRICING = readFileSync(
-  join(__dirname, '..', '..', '..', 'marketing', 'src', 'pages', 'pricing.astro'),
-  'utf8',
+const MARKETING = join(__dirname, '..', '..', '..', 'marketing', 'src')
+const PRICING = readFileSync(join(MARKETING, 'pages', 'pricing.astro'), 'utf8')
+
+/**
+ * THE NUMBERS COME FROM THE MODULE THE PAGE RENDERS, NOT FROM THE PAGE'S SOURCE.
+ *
+ * This read the .astro file for literal figures, which worked until the page started rendering
+ * `{SERVICES.coachingRetainer}` instead of typing $7,500 - at which point the guard saw no coaching
+ * price at all and failed, on a page that was more correct than before. A guard that punishes the
+ * fix is worse than no guard.
+ */
+const SERVICES: Record<string, string> = Object.fromEntries(
+  [...readFileSync(join(MARKETING, 'site.mjs'), 'utf8')
+    .matchAll(/(\w+):\s*'(\$[0-9][0-9,]*)'/g)].map((m) => [m[1], m[2]]),
 )
 
-/** Every money figure the pricing page shows, so the test cannot be fooled by a stale constant. */
 function moneyOn(page: string): Set<string> {
-  return new Set([...page.matchAll(/\$[0-9][0-9,]*/g)].map((m) => m[0]))
+  return new Set([
+    ...[...page.matchAll(/\$[0-9][0-9,]*/g)].map((m) => m[0]),
+    ...Object.values(SERVICES),
+  ])
 }
 
 describe('coaching costs the same in the product as on the site', () => {
-  it('finds the pricing page at all', () => {
+  it('finds the pricing page and the shared numbers', () => {
     expect(PRICING.length).toBeGreaterThan(1000)
     expect(moneyOn(PRICING).size).toBeGreaterThan(3)
+    expect(Object.keys(SERVICES).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('the page renders the shared numbers rather than retyping them', () => {
+    /* The whole point of the module: a price typed onto the page is a second copy again. */
+    expect(PRICING).toContain('{SERVICES.coachingRetainer}')
+    expect(PRICING).toContain('{SERVICES.coachingHourly}')
+    expect(PRICING).toContain('{SERVICES.integrationSupportFrom}')
   })
 
   it('every figure the coach card quotes is a figure the pricing page shows', () => {
