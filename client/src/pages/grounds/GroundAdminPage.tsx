@@ -1828,13 +1828,13 @@ export function GroundAdminPage() {
                           ? `${(report as any).sessionProgress.completed} of ${(report as any).sessionProgress.total} have checked in for this round. `
                           : 'Not everyone has checked in yet. '}
                         You can release what there is now, and everybody will see it at the same moment. It will
-                        be missing whoever has not answered, and billing activates on release.
+                        be missing whoever has not answered.
                       </div>
                     </>
                   ) : (
                     <>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody has completed their sessions. When you release the report, everybody sees it at the same moment - nobody reads it before anybody else. Billing activates on release.</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody has completed their sessions. When you release the report, everybody sees it at the same moment - nobody reads it before anybody else.</div>
                     </>
                   )}
                   {!showReleaseConfirm ? (
@@ -1846,8 +1846,23 @@ export function GroundAdminPage() {
                     </button>
                   ) : (
                     <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '14px 16px' }}>
+                      {/*
+                        * "BILLING ACTIVATES ON RELEASE" WAS NOT TRUE, IN EITHER PLACE IT SAID IT.
+                        *
+                        * Releasing emits a REPORT_RELEASED usage event and nothing consumes it for
+                        * billing. `billing.service.ts` says so itself: free-tier check-ins have
+                        * unlimited sessions and "are never metered or paywalled - the 10-ground cap
+                        * (canCreateGround) is the only free-tier limit", and a subscribed
+                        * organisation has unlimited sessions with no balance check either. The limit
+                        * is counted when a check-in is CREATED, and the person is told so there.
+                        *
+                        * The audit filed this as disclosing a charge too late. The charge does not
+                        * exist. Warning somebody about money on an irreversible action that costs
+                        * nothing is worse than saying nothing: it makes them hesitate over the one
+                        * thing the product needs them to do, and it is false.
+                        */}
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Release report?</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody will see the report at the same moment. This cannot be undone. Billing activates on release.</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody will see the report at the same moment. This cannot be undone.</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => setShowReleaseConfirm(false)}
                           style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-sub)' }}>
