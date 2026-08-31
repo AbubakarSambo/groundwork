@@ -218,6 +218,16 @@ export const groundsApi = {
       .then(r => r.data),
 
   /**
+   * The other half of it. `getParticipantInviteUrl` refuses the moment somebody accepts, and from
+   * that point the only thing that could produce the address of their check-in was a scheduled
+   * email. If that email was missed, nobody could recover it.
+   */
+  getParticipantCheckInUrl: (groundId: string, participantId: string) =>
+    apiClient
+      .get<{ checkInUrl: string }>(`/grounds/${groundId}/participants/${participantId}/check-in-url`)
+      .then(r => r.data),
+
+  /**
    * Where THIS person stands on this ground - their own sessions and nothing
    * about anyone else. Safe by construction: the endpoint resolves the
    * participant from the caller's own user id, so it cannot be pointed at

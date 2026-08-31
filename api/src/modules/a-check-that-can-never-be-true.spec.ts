@@ -59,6 +59,14 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 const CHECKED_AND_FINE = new Set([
   'modules/entry/entry.service.ts:email',           // the request body's email, before a user exists
   'modules/entry/entry.service.ts:userId',          // GroundParticipant.userId, which IS nullable
+  /*
+   * The same column and the same collision, in the file that owns it. `if (!participant.userId)` in
+   * `getParticipantCheckInUrl` - GroundParticipant.userId is `String?`, null until somebody accepts
+   * their invite, and that branch is the whole point of the method: it is how a lead is sent to the
+   * invite link instead. It matched `EmailVerificationToken.userId`, which is non-nullable, on the
+   * name alone.
+   */
+  'modules/grounds/grounds.service.ts:userId',
   'modules/conversation/conversation.service.ts:text', // a chat message, not a stored note
   /*
    * Both of these validate the INCOMING HTTP PAYLOAD from a customer's system, not a row read back.

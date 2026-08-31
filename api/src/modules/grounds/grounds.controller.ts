@@ -281,6 +281,17 @@ export class GroundsController {
     return this.grounds.getParticipantInviteUrl(id, participantId, userId);
   }
 
+  /** The other half of invite-url: once they have accepted, that one refuses and this is the link. */
+  @Get(':id/participants/:participantId/check-in-url')
+  @ApiOperation({ summary: 'Get the link to a participant\'s open check-in (initiator only)' })
+  async getParticipantCheckInUrl(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.getParticipantCheckInUrl(id, participantId, userId);
+  }
+
   @Post(':id/participants/:participantId/resend-invite')
   @ApiOperation({ summary: 'Resend an expired participant invite (GW-24)' })
   async resendParticipantInvite(
