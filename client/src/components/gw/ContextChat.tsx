@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
@@ -20,6 +20,10 @@ import { toast } from 'sonner'
  * entry chat. Reading three different chat styles in one product is how a person
  * stops trusting that they are in the same place.
  */
+import {
+  rememberConversation, recallConversation, forgetConversation,
+} from './remembering-the-context-conversation'
+
 export function ContextChat({ groundId }: { groundId: string }) {
   const qc = useQueryClient()
   /**
@@ -30,9 +34,17 @@ export function ContextChat({ groundId }: { groundId: string }) {
    * page look read-only. A composer sitting there says what the page is for.
    */
   const [open, setOpen] = useState(true)
-  const [history, setHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
+  /**
+   * RESTORED, NOT STARTED FRESH. Read once at mount rather than in an effect: an effect would
+   * render the empty box first, which is the thing being fixed, and would race the opening query
+   * into firing against an empty history.
+   */
+  const remembered = useState(() => recallConversation(groundId))[0]
+  const [history, setHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>(
+    remembered?.history ?? [],
+  )
   const [text, setText] = useState('')
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState(remembered?.done ?? false)
   /**
    * WHAT IT HEARD, WAITING ON A YES. This panel has always said "nothing is saved until you say
    * so", and until now there was no way to say so: the conversation asked how long the ground
@@ -41,7 +53,23 @@ export function ContextChat({ groundId }: { groundId: string }) {
    * `said` is kept beside the proposal because the server re-derives the change from the lead's own
    * words. Sending a value instead would make this a button that edits the ground.
    */
-  const [proposal, setProposal] = useState<{ gap: string; say: string; said: string } | null>(null)
+  const [proposal, setProposal] = useState<{ gap: string; say: string; said: string } | null>(
+    remembered?.proposal ?? null,
+  )
+
+  /**
+   * KEEP IT ACROSS LEAVING THE PAGE.
+   *
+   * This is the only way to say anything on the Context tab, and the whole conversation lived in
+   * component state - the server keeps none of it, since the client posts the entire history on
+   * every turn. Navigating to another tab and back met the lead with an empty box that had
+   * forgotten a conversation they had just had, and threw away any proposal still waiting on their
+   * yes. Because the panel promises nothing is saved until they say so, that looked exactly like
+   * the product had cleared their setup.
+   */
+  useEffect(() => {
+    rememberConversation(groundId, { history, proposal, done })
+  }, [groundId, history, proposal, done])
 
   const send = useMutation({
     mutationFn: (next: { role: 'user' | 'assistant'; content: string }[]) =>
@@ -252,6 +280,32 @@ export function ContextChat({ groundId }: { groundId: string }) {
             style={{ padding: '10px 16px', borderRadius: 8, background: text.trim() ? 'var(--gw-navy)' : 'var(--gw-border)', color: text.trim() ? 'white' : 'var(--gw-muted)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
           >
             Send
+          </button>
+        </div>
+      )}
+      {/*
+        REQUIRED BY THE PERSISTENCE, NOT AN EXTRA.
+
+        Before the conversation was kept, leaving the page WAS how you got a fresh one. Keeping it
+        takes that away, so the way out has to become a control instead of a side effect of
+        navigating. It clears the draft on this machine only - anything already confirmed is written
+        on the ground and is not touched.
+      */}
+      {open && history.length > 0 && (
+        <div style={{ textAlign: 'right', paddingTop: 8 }}>
+          <button
+            onClick={() => {
+              forgetConversation(groundId)
+              setHistory([])
+              setProposal(null)
+              setDone(false)
+              setText('')
+              qc.removeQueries({ queryKey: ['context-chat-opening', groundId] })
+            }}
+            style={{ fontSize: 11.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            title="Clear this conversation and start again. Anything already saved stays."
+          >
+            Start this conversation over
           </button>
         </div>
       )}
