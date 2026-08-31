@@ -743,9 +743,9 @@ export function GroundAdminPage() {
   const everyoneIn = ((ground as any).roundCompletions ?? []).some((r: any) => r.roundNumber === openRound)
   const reportState: string =
     (ground as any).report?.releasedAt
-      ? 'report released'
+      ? 'report sent to everyone'
       : (ground as any).report
-        ? (everyoneIn ? 'report ready, not released' : 'report forming')
+        ? (everyoneIn ? 'report ready \u2014 you release it' : 'report being written')
         : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -867,7 +867,7 @@ export function GroundAdminPage() {
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               {alignRead
                 ? <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', maxWidth: 160, lineHeight: 1.35 }}>{alignRead}</div>
-                : <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No read yet</div>}
+                : <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No report yet</div>}
             </div>
           )}
         </div>
@@ -1652,7 +1652,7 @@ export function GroundAdminPage() {
                     So the caption now depends on whether a report EXISTS, and says the true thing in
                     each case rather than the same thing in both.
                   */}
-                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No read yet</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No report yet</div>
                   {/*
                     ONE EXPLANATION, NOT TWO. First pass made these two blocks agree instead of
                     contradict, which was the bug - and then the screen still said the same thing

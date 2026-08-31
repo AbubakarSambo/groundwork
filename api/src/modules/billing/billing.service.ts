@@ -183,7 +183,15 @@ export class BillingService {
     // 5. Free limit reached, no active subscription and no care fee.
     return {
       allowed: false,
-      reason: `Your free plan includes ${freeGroundLimit} Grounds. Subscribe to create unlimited Grounds.`,
+      /*
+       * "Grounds" IS OUR WORD FOR IT, NOT THEIRS.
+       *
+       * This sentence is rendered verbatim by the client, under a heading that reads "You have used
+       * all 10 of your free check-ins". One screen, two names for one object, at the exact moment
+       * somebody is being asked for money. The schema calls it a Ground; nothing a person reads
+       * should.
+       */
+      reason: `Your free plan includes ${freeGroundLimit} check-ins. Subscribe to open more.`,
       groundsUsed: groundCount,
     };
   }
@@ -656,7 +664,7 @@ export class BillingService {
   ): Promise<{ ok: boolean; message: string; sessionsAdded?: number }> {
     if (callerOrganizationId) {
       const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId: callerOrganizationId } });
-      if (!ground) return { ok: false, message: 'Ground not found or does not belong to your organization.' };
+      if (!ground) return { ok: false, message: 'That check-in is not in your organisation.' };
     }
 
     const record = await this.prisma.contributorCode.findUnique({ where: { code } });
