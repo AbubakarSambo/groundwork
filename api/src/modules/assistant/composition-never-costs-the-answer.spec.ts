@@ -44,7 +44,21 @@ describe('composition never costs the answer', () => {
      * mentioned, the reply was correctly rejected as invented, and a passing test began failing
      * for a reason that had nothing to do with the code.
      */
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    /*
+     * AND IT IS FORMATTED THE WAY THE DRAFT FORMATS IT, NOT THE WAY THIS FILE GUESSED.
+     *
+     * Building the date dynamically fixed the midnight problem and left a second one behind: the
+     * fixture used `toLocaleDateString('en-GB', { month: 'short' })` while the draft uses
+     * `toDateString()`. Those agree for eleven months of the year and disagree for September, where
+     * en-GB's short month is "Sept" and toDateString gives "Sep". So the model's reply carried a
+     * date the draft did not contain, the safety check correctly called it invented, composition was
+     * refused, and this test failed - for the whole of September, every year. It began failing on
+     * 1 September.
+     *
+     * The fixture now derives the date the same way the draft does. A test about whether the model
+     * invented a date must not be able to fail because it disagreed with the draft about spelling.
+     */
+    const today = new Date().toDateString();
     const reply = `From their-tool: 1 objective and 2 people, last updated ${today}.`;
     const { service } = svc(async () => reply);
     const r = await ask(service);
