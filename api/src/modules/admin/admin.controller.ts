@@ -194,6 +194,19 @@ export class AdminController {
     return this.adminService.getCodeUsage(codeId);
   }
 
+  @Get('call-requests')
+  @ApiOperation({ summary: 'Every call somebody has asked for, with what it is about' })
+  getCallRequests() {
+    return this.adminService.getCallRequests();
+  }
+
+  @Post('call-requests/:id/answered')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mark one call request answered' })
+  markCallAnswered(@Param('id') id: string) {
+    return this.adminService.markCallAnswered(id);
+  }
+
   @Get('inbox')
   @ApiOperation({ summary: 'Mail sent to our own addresses, newest first' })
   getInbox() {

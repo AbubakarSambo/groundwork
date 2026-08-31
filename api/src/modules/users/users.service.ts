@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -72,33 +73,58 @@ export class UsersService {
    *
    * IDEMPOTENT WHILE ONE IS OPEN. A second click is somebody checking the first one worked.
    */
-  async requestACall(organizationId: string, requestedById: string, note?: string) {
-    const open = await this.prisma.callRequest.findFirst({
+  async requestACall(
+    organizationId: string,
+    requestedById: string,
+    note?: string,
+    subject: Subject = 'CALL',
+  ) {
+    /*
+     * PER SUBJECT, NOT PER ORGANISATION. The old rule meant asking for a coach silently swallowed a
+     * later request for integration help - the second click said it worked and nothing was written
+     * down. Clicking the SAME one twice is still one request.
+     */
+    const open = await this.prisma.callRequest.findMany({
       where: { organizationId, status: 'new' },
-      select: { id: true, createdAt: true },
+      select: { id: true, kind: true, createdAt: true },
     });
-    if (open) return { asked: true, at: open.createdAt, alreadyOpen: true };
+    const already = alreadyOpen(subject, open as { kind: string; createdAt: Date }[]);
+    if (already) return { asked: true, at: already.createdAt, alreadyOpen: true, subject };
 
     const row = await this.prisma.callRequest.create({
       data: {
         organizationId,
         requestedById,
+        kind: subject as any,
         /* Their words, trimmed and bounded. Nothing is inferred from it. */
         note: note?.trim()?.slice(0, 2000) || null,
       },
       select: { createdAt: true },
     });
-    this.logger.log(`Call requested by org ${organizationId}.`);
-    return { asked: true, at: row.createdAt, alreadyOpen: false };
+    this.logger.log(`Call requested by org ${organizationId} about ${subject}.`);
+    return { asked: true, at: row.createdAt, alreadyOpen: false, subject };
   }
 
-  /** Whether one is already open, so the page says so rather than offering to ask again. */
+  /**
+   * WHICH ONES ARE ALREADY OPEN, so each button says so rather than offering to ask again.
+   *
+   * Returns a map rather than a boolean: with four subjects, "have they asked" is four questions,
+   * and answering it with one boolean is how a page tells somebody their coaching request is
+   * pending when what is pending is an integration one.
+   */
   async callAlreadyRequested(organizationId: string) {
-    const open = await this.prisma.callRequest.findFirst({
+    const open = await this.prisma.callRequest.findMany({
       where: { organizationId, status: 'new' },
-      select: { createdAt: true },
+      select: { kind: true, createdAt: true },
     });
-    return { asked: !!open, at: open?.createdAt ?? null };
+    const asked: Record<string, string> = {};
+    for (const row of open) asked[row.kind] = row.createdAt.toISOString();
+    return {
+      /* Kept so anything reading the old shape still sees the original question answered. */
+      asked: open.some((o) => o.kind === 'CALL'),
+      at: open.find((o) => o.kind === 'CALL')?.createdAt ?? null,
+      open: asked,
+    };
   }
 
   /** How check-ins work here, in the shape the rule reads. */

@@ -1,4 +1,5 @@
 import { Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
@@ -130,16 +131,25 @@ export class UsersController {
    * and it is already guarded as one. A module of its own for a single insert would be more files
    * saying the same thing.
    *
-   * ONE OPEN REQUEST PER ORGANISATION. Clicking twice is somebody wondering whether the first click
-   * worked, not two requests, and a queue with the same company in it four times is a queue that
-   * gets read less carefully.
+   * ONE OPEN REQUEST PER SUBJECT. Clicking the same one twice is somebody wondering whether the
+   * first click worked, not two requests, and a queue with the same company in it four times is a
+   * queue that gets read less carefully. Per SUBJECT rather than per organisation, because asking
+   * about a coach and asking about an integration are two different calls.
+   *
+   * NOT GATED ON A SUBSCRIPTION. The services are for subscribers and our team says so on the call.
+   * Gating the request stops the people deciding whether to subscribe from asking, which is the
+   * conversation most likely to end in a subscription - and nothing here charges anybody, so an
+   * unqualified request costs a phone call.
    */
   @Post('call-request')
   @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ask to talk to us about connecting your systems' })
-  async requestACall(@CurrentUser() user: CurrentUserData, @Body() body: { note?: string }) {
-    return this.usersService.requestACall(user.organizationId, user.id, body?.note);
+  async requestACall(@CurrentUser() user: CurrentUserData, @Body() body: { note?: string; subject?: string }) {
+    /* An unknown subject is treated as "something else" rather than refused: the call still needs
+       making, and losing it over a typo in a client would be the worst possible trade. */
+    const subject = isASubject(body?.subject) ? body.subject : 'CALL';
+    return this.usersService.requestACall(user.organizationId, user.id, body?.note, subject);
   }
 
   /** Whether this organisation has already asked, so the page can say so rather than ask again. */

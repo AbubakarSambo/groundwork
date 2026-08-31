@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData } from '@/api/prompts'
-import { adminApi, type PricingPlanRow, type InboundMessage } from '@/api/admin'
+import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
@@ -1045,7 +1045,85 @@ function InboxTab({ data, onRead }: {
   )
 }
 
-type Tab = 'system' | 'dropoffs' | 'prompts' | 'orgs' | 'usage' | 'inbox' | 'feedback' | 'coach' | 'errors'
+/**
+ * EVERY CALL SOMEBODY HAS ASKED FOR.
+ *
+ * Coaching, setup help and integration support are the same request with a different subject:
+ * somebody asks, our team rings back, and what they agree is invoiced by hand. One queue, because a
+ * second one is a queue nobody opens - which is exactly what happened to the mail at hello@.
+ *
+ * WHETHER THEY PAY US IS SHOWN AND GATES NOTHING. The request is deliberately open to anybody,
+ * including somebody still deciding whether to subscribe - that is the call most likely to end in
+ * one. It is here because a call to a free account is a different conversation, and whoever picks
+ * it up should not have to go and look it up.
+ */
+const WHAT_IT_IS_ABOUT: Record<CallRequestRow['about'], string> = {
+  COACHING: 'A coach in the room',
+  HANDS_ON: 'Setting them up, training the team',
+  INTEGRATION: 'Connecting to their systems',
+  CALL: 'Something else',
+}
+
+function CallRequestsTab({ data, onAnswered }: {
+  data: { requests: CallRequestRow[] }
+  onAnswered: (id: string) => void
+}) {
+  if (!data.requests.length) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+        Nobody is waiting on a call. Requests arrive here from the pricing page, the Connect page and
+        the coach card, and stay until somebody marks them answered.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+        {data.requests.length} waiting. Ring them, agree what it costs, and invoice it afterwards -
+        nothing here charges anybody.
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {data.requests.map(r => (
+          <div key={r.id} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-navy)' }}>
+                {WHAT_IT_IS_ABOUT[r.about] ?? 'Something else'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+                {new Date(r.askedAt).toLocaleString()}
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7 }}>
+              {r.who}{r.email ? ' · ' : ''}
+              {r.email && <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>}
+              {' · '}{r.orgName}
+              <span style={{
+                marginLeft: 8, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em',
+                textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
+                background: r.paying ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
+                color: r.paying ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+                border: `1px solid ${r.paying ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+              }}>{r.paying ? 'Paying' : 'Free plan'}</span>
+            </div>
+            {r.note && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+                {r.note}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => onAnswered(r.id)}
+              style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >Mark answered</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+type Tab = 'system' | 'dropoffs' | 'prompts' | 'orgs' | 'usage' | 'calls' | 'inbox' | 'feedback' | 'coach' | 'errors'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'system',   label: 'System' },
@@ -1053,7 +1131,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'prompts',  label: 'Prompts' },
   { id: 'orgs',     label: 'Orgs' },
   { id: 'usage',    label: 'Usage' },
-  /* Mail sent TO us. Above Feedback because somebody is waiting on an answer to it. */
+  /* Both of these are somebody waiting on us, so they sit above the reporting tabs. */
+  { id: 'calls',    label: 'Call requests' },
   { id: 'inbox',    label: 'Inbox' },
   { id: 'feedback', label: 'Feedback' },
   /**
@@ -1104,6 +1183,13 @@ export function AdminPage() {
     staleTime: 60 * 1000,
   })
 
+  const { data: calls, isLoading: callsLoading } = useQuery({
+    queryKey: ['platform-call-requests'],
+    queryFn: adminApi.getCallRequests,
+    enabled: !!user?.isPlatformAdmin && tab === 'calls',
+    staleTime: 30 * 1000,
+  })
+
   const { data: inbox, isLoading: inboxLoading } = useQuery({
     queryKey: ['platform-inbox'],
     queryFn: adminApi.getInbox,
@@ -1113,6 +1199,10 @@ export function AdminPage() {
     staleTime: 30 * 1000,
   })
   const pageQc = useQueryClient()
+  const markAnswered = useMutation({
+    mutationFn: (id: string) => adminApi.markCallAnswered(id),
+    onSuccess: () => pageQc.invalidateQueries({ queryKey: ['platform-call-requests'] }),
+  })
   const markRead = useMutation({
     mutationFn: (id: string) => adminApi.markInboundRead(id),
     onSuccess: () => pageQc.invalidateQueries({ queryKey: ['platform-inbox'] }),
@@ -1140,6 +1230,7 @@ export function AdminPage() {
     : tab === 'coach' ? coachLoading
     : tab === 'feedback' ? feedbackLoading
     : tab === 'inbox' ? inboxLoading
+    : tab === 'calls' ? callsLoading
     : false
 
   return (
@@ -1194,6 +1285,9 @@ export function AdminPage() {
         {tab === 'prompts'  && <PromptsTab navigate={navigate} />}
         {tab === 'orgs'     && !orgsLoading  && orgs     && <OrgsTab orgs={orgs} />}
         {tab === 'usage'    && !usageLoading && usage    && <UsageTab data={usage} />}
+        {tab === 'calls' && !callsLoading && calls && (
+          <CallRequestsTab data={calls} onAnswered={(id) => markAnswered.mutate(id)} />
+        )}
         {tab === 'inbox' && !inboxLoading && inbox && (
           <InboxTab data={inbox} onRead={(id) => markRead.mutate(id)} />
         )}
