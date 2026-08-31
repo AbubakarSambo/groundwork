@@ -78,7 +78,16 @@
   --gw-blue-t: #0C447C;
   --gw-blue-b: #B5D4F4;
   --gw-border: #E2E0DB;
-  --gw-muted: #9B9590;
+  /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.
+     Measured: 2.51 on --gw-bg, 2.96 on white, 2.84 on --gw-paper, 2.67 on --gw-paper-2, against
+     the 4.5 normal text needs. It carries the smallest text in the product - 10 and 11px section
+     labels, "no report yet", the metadata row under a check-in title - so the least readable colour
+     was on the least readable sizes.
+     #706A65 is the same hue and saturation, darkened until the worst of those four grounds clears
+     4.5 (it reaches 4.52). Checked first that the token is never painted on a dark surface: the
+     rail uses its own colours, so nothing is made worse by this.
+     --gw-sub was measured at the same time and left alone - it already passes at 4.87. */
+  --gw-muted: #706A65;
   --gw-sub: #6B6560;
   --gw-text: #1A1916;
   --gw-clay: #B5675A;
