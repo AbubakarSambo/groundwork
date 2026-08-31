@@ -70,16 +70,27 @@ describe('remembering the context conversation', () => {
   })
 
   it('storage that throws does not take the chat down with it', () => {
-    /* A private window, or a browser set to block site data, throws on access. */
-    /* Spied on the object, not Storage.prototype: under this runner sessionStorage is a shim and
-       is not an instance of it, so a prototype spy silently never fires and the test passes on
-       storage that worked perfectly. */
+    /*
+     * A private window, or a browser set to block site data, throws on ACCESS.
+     *
+     * The global is replaced rather than spied on. Spying needs a guess about how sessionStorage is
+     * implemented, and the guess is not portable: a Storage.prototype spy never fires under this
+     * runner locally, and an own-property spy never fired in CI. Both versions of this test went
+     * green against storage that worked perfectly, which is the one outcome a test like this must
+     * not have.
+     */
+    const real = globalThis.sessionStorage
     const denied = () => { throw new Error('denied') }
-    vi.spyOn(sessionStorage, 'setItem').mockImplementation(denied)
-    vi.spyOn(sessionStorage, 'getItem').mockImplementation(denied)
-    vi.spyOn(sessionStorage, 'removeItem').mockImplementation(denied)
-    expect(() => rememberConversation(G, { history: TURNS, proposal: null, done: false })).not.toThrow()
-    expect(recallConversation(G)).toBeNull()
-    expect(() => forgetConversation(G)).not.toThrow()
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      value: { getItem: denied, setItem: denied, removeItem: denied, clear: denied, key: denied, length: 0 },
+    })
+    try {
+      expect(() => rememberConversation(G, { history: TURNS, proposal: null, done: false })).not.toThrow()
+      expect(recallConversation(G)).toBeNull()
+      expect(() => forgetConversation(G)).not.toThrow()
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: real })
+    }
   })
 })
