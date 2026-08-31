@@ -145,6 +145,54 @@ export function oneWordForTheThing(text: string): string {
   return out;
 }
 
+/**
+ * THE ENGINE DOES NOT NARRATE THE RECORD.
+ *
+ * The prompt has forbidden this at length for a long time, in its own words: never say "that is now
+ * in your record", "your record now shows", "noted in your record", or any variant that narrates the
+ * act of recording, because "that is software describing its own database write. A person does not
+ * do it."
+ *
+ * The rule is right and it was unenforced. Driving five scenarios through the live engine produced
+ * three violations in two of them:
+ *
+ *   "Your record shows you see this as a capacity management issue, not a capability one."
+ *   "I've noted that."
+ *   "That's a specific reason, and it's now in the record: ..."
+ *
+ * A rule that lives only in wording holds until the model is tired. This is the same seam the
+ * house-style pass already uses, so every reply goes through it - streaming and not - and the
+ * instruction stays where it is, because a model that never needed correcting is better than one
+ * corrected after the fact.
+ *
+ * IT STRIPS THE CLAUSE, NOT THE SENTENCE. "Your record shows you see this as X" carries a real
+ * observation behind the narration; deleting the sentence would lose it. The lead-in goes and what
+ * follows is kept, capitalised. A sentence that is nothing but narration - "I've noted that." -
+ * leaves nothing behind and is dropped whole.
+ *
+ * There is a second reason beyond the ban. The adversarial suite checks that an unverified claim is
+ * never handed back as established fact, and it recognises attribution in the forms a person uses -
+ * "when you say", "your claim that". "Your record shows X" is attribution too, in substance, and is
+ * not in that list, so the phrase fails a check it does not deserve to fail. Removing the phrase
+ * resolves both without teaching the suite to accept something the product forbids.
+ */
+const NARRATION_LEAD_IN =
+  /(?:^|(?<=[.!?]\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+now\s+(?:in|on)\s+the\s+record|your\s+record\s+(?:now\s+)?(?:shows|reflects)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
+
+export function withoutRecordNarration(text: string): string {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const kept = sentences.map((sentence) => {
+    const cleaned = sentence.replace(NARRATION_LEAD_IN, '');
+    if (cleaned.trim() === sentence.trim()) return sentence;
+    /* Nothing but the narration: the sentence existed only to announce the write. */
+    if (!/[a-z0-9]/i.test(cleaned)) return '';
+    /* What followed the lead-in is the real content. It now starts the sentence. */
+    const t = cleaned.trimStart();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  });
+  return kept.filter((s) => s.trim() !== '').join(' ');
+}
+
 export function forHumans(text: string | null | undefined): string {
   if (!text) return '';
   let out = stripCloseMarker(text).text;
@@ -164,6 +212,7 @@ export function forHumans(text: string | null | undefined): string {
   /** After houseStyle, so a replaced word still gets the house's quotes and spacing. */
   out = oneWordForTheThing(out);
   out = withoutQuotedQuestions(out);
+  out = withoutRecordNarration(out);
   /** Collapse whatever the removals left behind, without touching paragraph breaks. */
   return out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 }
