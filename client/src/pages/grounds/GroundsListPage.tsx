@@ -161,7 +161,18 @@ export function GroundsListPage() {
     onError: () => toast.error('Could not send invite. Please try again.'),
   })
 
-  const { data: grounds = [], isLoading } = useQuery({
+  /**
+   * `isError` MATTERS BECAUSE THE FALLBACK IS A LIE.
+   *
+   * This destructured `data = []` and nothing else, so a failed fetch fell through to the same
+   * branch as a genuinely empty account: "Your first check-in is one tap away", shown to somebody
+   * who may have ten of them. A person whose connection dropped is told their work does not exist -
+   * the worst available reading, and the one they are least able to check.
+   *
+   * "Nothing here yet" and "we could not load this" are different sentences. The page has to be
+   * able to say both.
+   */
+  const { data: grounds = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
     enabled: !!user,
@@ -471,9 +482,26 @@ export function GroundsListPage() {
               * opened one - which is step two of five. It hid the list exactly when it started
               * being useful. It decides for itself when it is finished, and hides then.
               */}
-            {!isLoading && <AdminFirstRun />}
+            {!isLoading && !isError && <AdminFirstRun />}
 
-            {!isLoading && grounds.length === 0 && (
+            {!isLoading && isError && (
+              /* Could not load. Say which of the two things happened, and offer the one that helps. */
+              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
+                  We could not load your check-ins
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 320, margin: '0 auto 18px' }}>
+                  This is a connection problem, not a lost record. Nothing you have written is affected.
+                </div>
+                <button
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+                >{isFetching ? 'Trying\u2026' : 'Try again'}</button>
+              </div>
+            )}
+
+            {!isLoading && !isError && grounds.length === 0 && (
               <>
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginBottom: 24, height: 44 }}>
