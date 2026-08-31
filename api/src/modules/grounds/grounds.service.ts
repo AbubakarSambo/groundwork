@@ -2034,6 +2034,12 @@ export class GroundsService {
    * MODELLED ON THE APPROVAL GATE DIRECTLY ABOVE, which already refuses an invite for a reason of the
    * same kind: an invitation that has gone out cannot be recalled, so the check belongs before it.
    */
+  /**
+   * Long enough to be a description of the work rather than a title somebody typed to get past a
+   * field. A brief of four words tells the person answering nothing.
+   */
+  private static readonly MEANS_SOMETHING = 40;
+
   private async assertSomethingToBeInvitedInto(groundId: string) {
     const leadDone = await this.prisma.checkIn.count({
       where: {
@@ -2044,18 +2050,40 @@ export class GroundsService {
     });
     if (leadDone > 0) return;
 
-    const [documents, notes] = await Promise.all([
+    /*
+     * THE BRIEF COUNTS, AND ITS ABSENCE HERE MADE THE REFUSAL UNTRUE.
+     *
+     * Setup asks for a brief in as many words - "say who this is about and what they have been
+     * brought in to do" - stores it on the ground, and then adds the participants. This gate counted
+     * documents and notes and not the brief, so EVERY participant added from the setup flow was
+     * refused with "nothing has been said about what this check-in is for" while the lead's own
+     * description of it sat on the same row. Reproduced by creating a ground with a full brief and
+     * watching the invite fail.
+     *
+     * An expectation counts too. It is the strongest form of the thing this gate is asking for -
+     * somebody named, and what is wanted of them - and setup can now record one.
+     *
+     * WHAT STILL DOES NOT COUNT: adding a person. The gate exists so that nobody opens their first
+     * session and answers into a vacuum, and the act of inviting somebody says nothing about what
+     * the check-in is for. A gate cleared by the action it guards is not a gate.
+     */
+    const [documents, notes, ground, expectations] = await Promise.all([
       this.prisma.groundDocument.count({ where: { groundId } }),
       this.prisma.leadContextNote.count({ where: { groundId } }),
+      this.prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } }),
+      this.prisma.personObjective.count({ where: { groundId } }),
     ]);
-    if (documents > 0 || notes > 0) return;
+    if (documents > 0 || notes > 0 || expectations > 0) return;
+    if ((ground?.brief ?? '').trim().length >= GroundsService.MEANS_SOMETHING) return;
 
     /**
-     * Says which two things clear it, because a refusal that does not tell you what to do next is the
+     * Says which ways clear it, because a refusal that does not tell you what to do next is the
      * failure this codebase keeps finding.
      */
     throw new BadRequestException(
-      'Nobody can be invited yet: nothing has been said about what this check-in is for. Do your own check-in first, which is where you say what you expect of each person, or add a document or a note on the Context tab.',
+      'Nobody can be invited yet: nothing has been said about what this check-in is for. Write the '
+      + 'brief, say what you expect of somebody, add a document or a note on the Context tab, or do '
+      + 'your own check-in first.',
     );
   }
 
