@@ -619,6 +619,19 @@ export function CreateGroundPage() {
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
+  /**
+   * MUST MATCH GroundsService.MEANS_SOMETHING (api/src/modules/grounds/grounds.service.ts).
+   *
+   * Below this, the server has nothing to invite anyone into: a brief this
+   * short doesn't clear `assertSomethingToBeInvitedInto`, so `POST /grounds`
+   * succeeds but the very next call, adding whoever was staged on "Who is in
+   * it", 400s - "Nobody can be invited yet". The button used to only require
+   * a non-empty brief, so it happily let people through to that dead end.
+   * Matching the real gate here means the button itself is honest about what
+   * "Continue" is actually going to do.
+   */
+  const BRIEF_MEANS_SOMETHING = 40
+  const briefTooShortToInvite = participants.length > 0 && brief.trim().length < BRIEF_MEANS_SOMETHING
 
   // When entering step 2 (billing), auto-check
   useEffect(() => {
@@ -700,21 +713,18 @@ export function CreateGroundPage() {
         ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
         brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
-      } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
+        /**
+         * Sent at CREATE now, not via the follow-up confirmLead call that used to
+         * run here. An admin's own ground is created OPEN, not AWAITING_LEAD, so
+         * confirmLead's AWAITING_LEAD-only guard threw "already been confirmed"
+         * on every single call for this flow, into a silent catch - meaning the
+         * choice on the very first wizard step was dropped every time. The server
+         * applies it at creation and skips the creator's own check-in when set.
+         */
+        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
+      } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string; managingOnly?: boolean })
       // Use allSettled so a failed invite email never blocks navigation to the
       // newly-created ground. Failed invites are surfaced as warnings after redirect.
-      // Record whether the person opening this is a party to it before anyone is
-      // invited, so the very first check-in round already knows who it is for.
-      if (alsoAParty !== null) {
-        try {
-          await groundsApi.confirmLead(ground.id, {
-            managingOnly: !alsoAParty,
-            remit: alsoAParty ? (myRemit.trim() || undefined) : undefined,
-          })
-        } catch {
-          // Non-fatal: the same choice can still be made on the ground page.
-        }
-      }
       const results = await Promise.allSettled(participants.map(p =>
         groundsApi.addParticipant(ground.id, {
           email: p.email,
@@ -1861,7 +1871,11 @@ export function CreateGroundPage() {
               <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>{briefWords} words</div>
             </div>
 
-            {briefShort && (
+            {briefTooShortToInvite ? (
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
+                A little more before you can invite anyone: with nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about - a few more words closes this.
+              </div>
+            ) : briefShort && (
               <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
                 A brief this short will produce weaker first sessions. The questions are shaped by what you write here. Add more context.
               </div>
@@ -1909,7 +1923,7 @@ export function CreateGroundPage() {
               </div>
             </div>
 
-            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim()} style={{ margin: 0 }}>
+            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim() || briefTooShortToInvite} style={{ margin: 0 }}>
               {/* "Talk it through" described the conversation and not the button. It opens the
                   check-in, so it says so. */}
               {create.isPending ? 'Opening…' : 'Start check-in →'}

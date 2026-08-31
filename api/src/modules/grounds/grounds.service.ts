@@ -2206,8 +2206,17 @@ export class GroundsService {
     });
     if (existing) {
       if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this check-in');
-      // Unaccepted invite - refresh token and re-send.
-      const freshToken = crypto.randomBytes(32).toString('hex');
+      /**
+       * KEEP THE TOKEN. Re-adding somebody who hasn't accepted yet used to mint a
+       * new token and overwrite the old one, which silently killed the first
+       * invite email the moment a second one went out - so whichever email the
+       * person actually opens, the earlier one now dead, they land on "this link
+       * has already been used" despite never having clicked anything. Reusing
+       * the existing token (or minting one only if none exists) means every
+       * email ever sent to this address keeps pointing at the same, still-live
+       * link - only the expiry is refreshed.
+       */
+      const freshToken = existing.inviteToken ?? crypto.randomBytes(32).toString('hex');
       const freshExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       await this.prisma.groundParticipant.update({
         where: { id: existing.id },
@@ -2394,8 +2403,17 @@ export class GroundsService {
 
   /**
    * GW-24: Resend an expired invite to a ground participant who has not yet
-   * accepted. Generates a fresh token (invalidating the old one by overwrite),
-   * resets the expiry, and re-sends the invite email.
+   * accepted. Reuses the existing token (only minting one if the row somehow
+   * has none) and just refreshes the expiry, then re-sends the invite email.
+   *
+   * IT USED TO MINT A FRESH TOKEN AND OVERWRITE THE OLD ONE. That silently
+   * killed every email sent before the resend: the person opens whichever
+   * copy is in their inbox - the first one they find, a delayed sync, a
+   * search result - and if it isn't the newest, the token it carries no
+   * longer matches any row, so loadByToken() reports it as "already been
+   * used, or not a link we recognise" even though they never clicked
+   * anything. Reusing the token means every email ever sent to this address
+   * points at the same, still-live link.
    */
   async resendParticipantInvite(groundId: string, participantId: string, organizationId: string): Promise<{ message: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
@@ -2411,7 +2429,7 @@ export class GroundsService {
     });
     if (completedCheckIn) throw new BadRequestException('This participant has already completed their check-in');
 
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = participant.inviteToken ?? crypto.randomBytes(32).toString('hex');
     const inviteTokenExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
     await this.prisma.groundParticipant.update({
