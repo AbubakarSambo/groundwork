@@ -553,7 +553,38 @@ export class AuthService {
 
       await this.emailService.sendUserInvite(lower, result.firstName, result.token, inviterOrgName);
     } else {
-      // User exists - send them a magic sign-in link.
+      /*
+       * THEY ALREADY HAVE AN ACCOUNT, AND THE INVITE USED TO DO NOTHING.
+       *
+       * This sent a magic sign-in link and stopped. The link works, it signs them into THEIR OWN
+       * organisation, and they are never added to the one that invited them - so an admin invites a
+       * colleague who happens to have signed up elsewhere, is told "Invite sent", and the person
+       * never appears in People. Nothing failed loudly; the invite simply had no effect.
+       *
+       * A membership for the inviting organisation is what an invite actually is. Their home
+       * organisation is untouched - they keep their own grounds and their own role there - and this
+       * is what puts the inviting company in their switcher.
+       *
+       * ALWAYS MEMBER, never their role at home: being an admin of their own company says nothing
+       * about what they should hold in somebody else's.
+       */
+      if (inviterOrganizationId && user.organizationId !== inviterOrganizationId) {
+        const already = await this.prisma.organizationMembership.findUnique({
+          where: { userId_organizationId: { userId: user.id, organizationId: inviterOrganizationId } },
+          select: { id: true },
+        });
+        if (!already) {
+          /* A person joining costs a seat here exactly as a new account does. */
+          const canInvite = await this.billing.canInviteMember(inviterOrganizationId);
+          if (!canInvite.allowed) throw new BadRequestException(canInvite.reason);
+          await this.prisma.organizationMembership.create({
+            data: { userId: user.id, organizationId: inviterOrganizationId, role: 'MEMBER' },
+          });
+          this.logger?.log?.(`Existing account ${lower} added to org ${inviterOrganizationId} as a member.`);
+        }
+      }
+
+      // Send them a magic sign-in link.
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
         data: { usedAt: new Date() },

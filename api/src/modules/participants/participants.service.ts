@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -142,9 +143,27 @@ export class ParticipantsService {
         // Pre-existing account - let the client know so it can surface a message.
         existingAccount = true;
       }
-      // Cross-org participation: user keeps their home org. The JWT carries their
-      // real orgId so their own grounds remain accessible. Only the participant
-      // record is linked here.
+      /*
+       * Cross-org participation: user keeps their home org. The JWT carries their real orgId so
+       * their own grounds remain accessible.
+       *
+       * AND A MEMBERSHIP FOR THE ORGANISATION THEY HAVE JUST JOINED, which nothing wrote before.
+       * The middleware that mints memberships fires on `User.create` and so only ever records the
+       * first one - leaving somebody in two companies with one membership, invisible to the
+       * switcher, and reading as their home-org role everywhere. See
+       * joining-a-second-organisation.ts.
+       *
+       * ALWAYS MEMBER. Being an admin of your own company says nothing about what you should be
+       * able to do in somebody else's.
+       */
+      if (isASecondOrganisation(user.organizationId, ground.organizationId)) {
+        await tx.organizationMembership.upsert({
+          where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+          create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
+          /* Nothing on a second acceptance: a role somebody was given there is theirs to keep. */
+          update: {},
+        });
+      }
 
       await tx.groundParticipant.update({
         where: { id: participant.id },
