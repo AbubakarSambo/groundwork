@@ -401,6 +401,25 @@ export function GroundAdminPage() {
       toast.error(e?.response?.data?.message ?? 'Could not get the invite link.'),
   })
 
+  /**
+   * And once they have accepted, the same problem with no answer. "Copy invite link" refuses from
+   * that moment on, and the address of an open check-in existed only inside a scheduled email - so
+   * a person who missed that email could not reach their own check-in and the lead could not send
+   * it to them. This copies the link to the one that is open now. It mints nothing.
+   */
+  const copyCheckInLink = useMutation({
+    mutationFn: async (participantId: string) => {
+      const { checkInUrl } = await groundsApi.getParticipantCheckInUrl(id!, participantId)
+      await navigator.clipboard.writeText(checkInUrl)
+      return checkInUrl
+    },
+    onSuccess: () => toast.success('Check-in link copied. Send it however you like.'),
+    /* The server's sentence, not ours: it knows whether they have no open check-in or have not
+       accepted yet, and those need different things from the lead. */
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message ?? 'Could not get the check-in link.'),
+  })
+
   const updateRole = useMutation({
     mutationFn: ({ participantId, role }: { participantId: string; role: string }) =>
       participantsApi.updateRole(participantId, role),
@@ -1225,6 +1244,20 @@ export function GroundAdminPage() {
                             title="Copy their invite link so you can send it yourself"
                           >
                             {copyInviteLink.isPending && copyInviteLink.variables === p.id ? 'Copying...' : 'Copy invite link'}
+                          </button>
+                        )}
+                        {/* Once they have accepted, every action above goes quiet - each one is
+                            gated on not having joined. This is the row's only action from that
+                            point, and it answers the same question: they cannot find it, send it
+                            to them. */}
+                        {isInitiator && p.userId && (
+                          <button
+                            disabled={copyCheckInLink.isPending}
+                            onClick={() => copyCheckInLink.mutate(p.id)}
+                            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            title="Copy the link to their open check-in so you can send it yourself"
+                          >
+                            {copyCheckInLink.isPending && copyCheckInLink.variables === p.id ? 'Copying...' : 'Copy check-in link'}
                           </button>
                         )}
                         {/*

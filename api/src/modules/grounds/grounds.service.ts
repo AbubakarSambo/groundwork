@@ -2424,6 +2424,64 @@ export class GroundsService {
   }
 
   /**
+   * "THEY NEVER GOT THE EMAIL" DID NOT STOP AT THE INVITE.
+   *
+   * The invite link above refuses the moment somebody accepts - `participant.userId` is set and it
+   * throws. From that point the lead had nothing to hand anybody. The address of an open check-in
+   * was built by string concatenation inside the reminder cron and nowhere else, so the ONLY thing
+   * in the product that could produce one was a scheduled email. If that email went to spam, was
+   * deleted, or went to an address somebody no longer reads, the person could not reach their own
+   * check-in and the lead could not send it to them. There was no recovery at all, only waiting for
+   * the next nudge to fire and hoping.
+   *
+   * So this is the other half of the same button. It returns the link to the check-in that is open
+   * NOW - not started or half-finished - and refuses clearly when there is not one, because a lead
+   * copying a link to a completed check-in would be sending somebody to a page that asks them for
+   * nothing.
+   *
+   * It mints nothing. The check-in already exists; this only says where it is. And like the invite
+   * link, only the initiator can read it: a check-in address is enough to open somebody's session.
+   */
+  async getParticipantCheckInUrl(
+    groundId: string,
+    participantId: string,
+    initiatorId: string,
+  ): Promise<{ checkInUrl: string }> {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
+    if (!ground) throw new ForbiddenException('Not the initiator of this check-in');
+
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { id: participantId, groundId },
+      select: { id: true, userId: true },
+    });
+    if (!participant) throw new NotFoundException('Participant not found');
+    if (!participant.userId) {
+      throw new BadRequestException(
+        'They have not accepted their invite yet. Copy the invite link instead.',
+      );
+    }
+
+    /* The open one, newest first: a ground runs several sessions and only the current one is
+       somewhere to send a person. */
+    const checkIn = await this.prisma.checkIn.findFirst({
+      where: {
+        groundId,
+        participantId: participant.id,
+        status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (!checkIn) {
+      throw new BadRequestException(
+        'They have no check-in open right now. There will be a link to copy when their next one opens.',
+      );
+    }
+
+    return { checkInUrl: this.email.buildCheckInUrl(checkIn.id) };
+  }
+
+  /**
    * Activate a ground. Moves status directly to ACTIVE with no payment gate.
    * Reports are generated and released automatically after each session completes.
    */

@@ -30,6 +30,14 @@ export class EmailService {
     return `${this.frontendUrl}/invite?token=${inviteToken}`;
   }
 
+  /**
+   * The address of an open check-in. This was built by string concatenation inside the reminder
+   * cron and nowhere else, which is why nothing but a scheduled email could ever produce one.
+   */
+  buildCheckInUrl(checkInId: string): string {
+    return `${this.frontendUrl}/checkin/${checkInId}`;
+  }
+
   private isDev(): boolean {
     const nodeEnv = process.env.NODE_ENV ?? 'development';
     if (nodeEnv === 'production') return false;
