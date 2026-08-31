@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest'
  * both halves of the bug:
  *
  *   1. It deleted its key BEFORE attempting the commit. A failed request took the setup with it -
- *      the ground was not lost on the server, it was deleted in the browser by the code meant to be
+ *      the check-in was not lost on the server, it was deleted in the browser by the code meant to be
  *      saving it, with no copy anywhere.
  *   2. It read `gw_entry_pending_commit`, a snapshot taken the moment they clicked Google.
  *      `EntryChatPage` keeps `gw_commit_payload` in sync as they keep editing and never touches the
@@ -21,7 +21,7 @@ const MAGIC = readFileSync(join(__dirname, 'MagicVerifyPage.tsx'), 'utf8')
 const SHARED = readFileSync(join(__dirname, 'entry-handover.ts'), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-describe('nothing is cleared before the ground exists', () => {
+describe('nothing is cleared before the check-in exists', () => {
   it('the Google path no longer removes its key ahead of the commit', () => {
     const code = strip(GOOGLE)
     expect(code).not.toMatch(/removeItem\('gw_entry_pending_commit'\)/)
@@ -37,7 +37,7 @@ describe('nothing is cleared before the ground exists', () => {
   })
 
   it('and says so, rather than dropping them on /start with no explanation', () => {
-    expect(GOOGLE).toMatch(/your ground did not save\. Everything you wrote is still here/)
+    expect(GOOGLE).toMatch(/your check-in did not save\. Everything you wrote is still here/)
   })
 })
 

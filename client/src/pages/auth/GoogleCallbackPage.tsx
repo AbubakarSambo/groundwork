@@ -93,7 +93,7 @@ export function GoogleCallbackPage() {
           } catch {
             // The sign-in worked; only the ground did not. Everything is still in storage, so the
             // entry flow can pick up exactly where it was rather than stranding them here.
-            toast.error('You are signed in, but your ground did not save. Everything you wrote is still here.')
+            toast.error('You are signed in, but your check-in did not save. Everything you wrote is still here.')
             navigate('/start', { replace: true })
             return
           }

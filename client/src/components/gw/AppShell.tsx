@@ -7,16 +7,26 @@ import { useState, useRef, useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
-import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
+import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import { alignmentShort } from '@/lib/alignment'
 
 const NAV_ITEMS = [
   {
-    label: 'Grounds',
+    /*
+     * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
+     *
+     * The top of this rail is a live list of the check-ins somebody is in, and this item said
+     * "Check-ins" and went to a page of the same thing - so a person looking at their check-ins was
+     * offered a link called check-ins, and reasonably asked which one they were meant to use.
+     *
+     * The page is not redundant: it holds the ones the rail does not show and the ways in to them.
+     * What was redundant was the name.
+     */
+    label: 'All check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -52,6 +62,20 @@ const NAV_ITEMS = [
    * who leads each ground, is on the grounds card now.
    */
   {
+    /* A route with no door is a page nobody finds. This one is admin-only because every endpoint
+       behind it is, and a nav item that leads to a refusal is worse than no nav item. */
+    label: 'Connect',
+    to: '/org/integrations',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M7.5 12.5l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M11 4.5l1.5-1.5a3.5 3.5 0 015 5L16 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
+        <path d="M9 15.5L7.5 17a3.5 3.5 0 01-5-5L4 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: 'Billing',
     to: '/billing',
     adminOnly: true,
@@ -64,7 +88,15 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Admin',
+    /**
+     * "ADMIN" MEANT TWO THINGS AND THIS WAS THE OTHER ONE. W-UX-3.
+     *
+     * The list page's header carries a pill saying what YOU are in this organisation - "Admin" or
+     * "Team member" - and this rail item, pointing at Groundwork's own back office, wore the
+     * identical word one inch away. Renaming the page's link and leaving this one would have moved
+     * the collision rather than removed it.
+     */
+    label: 'Platform ops',
     to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is
     // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
@@ -139,7 +171,7 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
 }
 
 /** The organisation's own pages, as opposed to the grounds inside it. */
-export const ORG_ROUTES = ['/org/members', '/billing', '/settings']
+export const ORG_ROUTES = ['/org/members', '/org/integrations', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'
 
@@ -171,14 +203,49 @@ function FeedbackWidget() {
     return false
   }
 
+  /**
+   * WHY THE SEND BUTTON IS GREY. W-UX-7.
+   *
+   * Three different conditions, one per tab, and none of them said so - the button just sat at 38%
+   * opacity. The "something went wrong" tab was the worst of them: it wants five characters and a
+   * person who typed "bug" was refused in silence, on the form whose whole purpose is telling us
+   * when something is wrong.
+   *
+   * Empty is not "invalid", it is "not started", so nothing is said until they have begun.
+   */
+  function whyNotValid(): string | null {
+    if (valid()) return null
+    if (tab === 'reaction') return 'Pick one to send.'
+    if (tab === 'build')    return 'Pick what you need built.'
+    if (tab === 'wrong')    return wrongText.trim().length === 0 ? null : 'A few more words, so we can find it.'
+    return null
+  }
+
   async function submit() {
+    /**
+     * THE SHAPE THE SERVER ACTUALLY ACCEPTS. W-UX-C.
+     *
+     * This used to send `tab: 'build'`, no `pill` at all, and the chosen option under `buildPick` -
+     * against a DTO that requires `tab` from a fixed set, requires `pill`, and has no idea what
+     * `buildPick` is. So every submission was rejected with a 400 and the table has never held a
+     * single row. Not one of the widget's option strings appeared in the server's list either: two
+     * vocabularies for one field, with no overlap.
+     *
+     * `pill` is WHAT THEY PICKED and `text` is WHAT THEY WROTE, which is what the DTO has always
+     * meant. The contact address goes into `text` rather than being dropped, because somebody who
+     * leaves one is asking to be replied to.
+     */
+    const pill =
+      tab === 'reaction' ? reaction
+      : tab === 'build'  ? buildPick
+      : 'Something went wrong'
+    const written = tab === 'build' ? buildDetail : tab === 'wrong' ? wrongText : ''
+    const text = [written.trim(), contactEmail.trim() ? `Contact: ${contactEmail.trim()}` : '']
+      .filter(Boolean).join('\n\n')
     const payload = {
-      tab,
-      reaction: tab === 'reaction' ? reaction : undefined,
-      buildPick: tab === 'build' ? buildPick : undefined,
-      buildDetail: tab === 'build' ? buildDetail : undefined,
-      wrongText: tab === 'wrong' ? wrongText : undefined,
-      contactEmail: contactEmail || undefined,
+      tab: tab === 'build' ? 'build_request' : tab === 'wrong' ? 'something_went_wrong' : 'reaction',
+      pill,
+      text: text || undefined,
     }
     /**
      * "SWALLOW - BEST EFFORT" IS HOW THIS HID FOR MONTHS.
@@ -195,7 +262,15 @@ function FeedbackWidget() {
      * from a static analysis rule.
      */
     try {
-      await apiClient.post('/feedback', payload)
+      /**
+       * Through `feedbackApi`, not a raw `apiClient.post`. W-UX-C.
+       *
+       * `feedbackApi.submit` posts to this exact route and was never called - so the one module that
+       * describes the shape of a submission was bypassed by the only thing that creates one, and the
+       * `list`/`updateStatus` beside it were orphaned in the same stroke. That is how every piece of
+       * feedback anybody sent came to be written and never read.
+       */
+      await feedbackApi.submit(payload)
     } catch {
       toast.error('That did not send. Your note is still here - try again, or email us if it keeps failing.')
       return
@@ -322,6 +397,9 @@ function FeedbackWidget() {
                     style={{ padding: '11px 16px', background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 6, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Cancel
                   </button>
+                  {whyNotValid() && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', width: '100%', marginBottom: 6 }}>{whyNotValid()}</div>
+                  )}
                   <button onClick={submit} disabled={!valid()}
                     style={{ flex: 1, padding: 11, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: valid() ? 1 : 0.38 }}>
                     Send
@@ -349,9 +427,21 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
         to={item.to}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-          padding: '6px 12px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.45)',
+          padding: '6px 4px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.45)',
           textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
-          background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1,
+          background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1, minWidth: 0,
+          /**
+           * BROKEN LABELS IN THE BOTTOM BAR. W-UX-A.
+           *
+           * Five items across 375px with 12px of side padding each left too little room, so the two
+           * longest snapped mid-word: "Check-" over "ins", "Platform" over "ops". The bar is 60px
+           * tall, so the second line was clipped as well as wrong.
+           *
+           * The padding was the slack. Trimmed to 4px and the label held on one line; `nowrap` with
+           * ellipsis is the backstop, so a longer name in future degrades to "Platform o..." rather
+           * than to a broken word.
+           */
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}
       >
         {item.icon(active)}
@@ -536,7 +626,17 @@ export function AppSidebar() {
         */}
         {/* New ground button */}
         <div style={{ padding: collapsed ? '0 8px 10px' : '0 10px 10px', flexShrink: 0 }}>
-          <button
+          {/*
+            * NOT SHOWN TO SOMEBODY IT WOULD REFUSE.
+            *
+            * A member used to see this, fill in eight steps, and be told on submit that opening a
+            * check-in is limited to people their admin has named. The refusal was right and the
+            * journey was a waste of their afternoon.
+            *
+            * They lose nothing by not seeing it: taking part in a check-in happens by being added
+            * to one, and everything they are in is on the list below.
+            */}
+          {user?.mayOpenCheckIns !== false && <button
             onClick={() => navigate('/grounds/new')}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 7,
@@ -547,8 +647,8 @@ export function AppSidebar() {
             }}
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
-            {!collapsed && <span>New ground</span>}
-          </button>
+            {!collapsed && <span>Start a check-in</span>}
+          </button>}
         </div>
 
         {/* Grounds list */}
@@ -587,7 +687,7 @@ export function AppSidebar() {
               </div>
             )}
             {!isEntryPage && grounds.length === 0 && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>No grounds yet</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>Nothing in progress yet</div>
             )}
             {/*
               THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
@@ -661,7 +761,7 @@ export function AppSidebar() {
                         style={{ width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 4, color: 'rgba(255,255,255,.92)', fontSize: 13, fontWeight: 600, padding: '3px 7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                       />
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div className="gw-rail-row" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         {/*
                           BOLD AND A DOT WHEN IT IS YOUR TURN, RED ONLY WHEN LATE.
                           Hafsah asked for the name to turn red when it is time to
@@ -688,9 +788,11 @@ export function AppSidebar() {
                           {g.label}
                         </span>
                         <button
+                          className="gw-rename"
                           onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
-                          title="Rename"
-                          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.2)', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
+                          title={`Rename ${g.label}`}
+                          aria-label={`Rename ${g.label}`}
+                          style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
                         >✎</button>
                       </div>
                     )}
@@ -858,7 +960,7 @@ export function AppSidebar() {
                 onClick={() => {
                   if (o.active || switchOrg.isPending) return
                   const asRole = o.role.toLowerCase()
-                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s grounds instead of this organisation's, as a ${asRole}.`)) return
+                  if (!window.confirm(`Switch to ${o.name}? You will see ${o.name}'s check-ins instead of this organisation's, as a ${asRole}.`)) return
                   switchOrg.mutate(o.id)
                 }}
                 disabled={switchOrg.isPending}
@@ -895,7 +997,27 @@ export function AppSidebar() {
                     {user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
+                    {/**
+                      * WHICH ORGANISATION YOU ARE IN, BESIDE WHAT YOU ARE IN IT.
+                      *
+                      * An ordinary member could not see the company's name anywhere in the chrome.
+                      * People and Billing are admin-only, so the org heading above them - which is
+                      * the only place the name appeared - never rendered for them. They knew they
+                      * were a "Member" of something unnamed.
+                      *
+                      * NOT FIXED BY PUTTING THE NAME ABOVE SETTINGS, which was the obvious move and
+                      * is wrong: a member's Settings is their OWN - notifications, their number,
+                      * what we hold about them - and the company's name over it mislabels whose page
+                      * it is. `the-org-is-not-a-ground` guards that, correctly.
+                      *
+                      * It belongs here because this block is about the person's MEMBERSHIP, which is
+                      * exactly the thing in question, and because switching organisation happens two
+                      * lines above. Role and org are one fact: you are a member OF something.
+                      */}
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
+                      {user?.organizationName ? ` at ${user.organizationName}` : ''}
+                    </span>
                     {/**
                       * SIGNING OUT EXISTED ON ONE PAGE, AS A SPAN.
                       *
@@ -948,6 +1070,23 @@ export function AppSidebar() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  /**
+   * THE ROUTER'S LOCATION, NOT THE BROWSER'S. This is why the menu was never there.
+   *
+   * Every other component in this file calls `useLocation()`. This one used a bare `location`,
+   * which resolves to the DOM global - so the pathname was right but nothing subscribed AppShell to
+   * route changes, and it did not re-render when the route changed.
+   *
+   * What that does in practice: you land on /auth, which is deliberately bare, so the shell renders
+   * with no rail. You sign in. React Router changes the route without a page load, AppShell is
+   * never told, and it keeps rendering the decision it made on /auth. The rail is missing on every
+   * page from then on, at every width, until a hard refresh - which is exactly what was reported
+   * three times and answered three times with the wrong thing.
+   *
+   * It survived because every previous test of this read the source rather than mounting it, and
+   * the source is correct. Only a mount could tell.
+   */
+  const location = useLocation()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   /**
    * Signed-out visitors do not get the signed-in navigation.
@@ -980,7 +1119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const CHROMELESS = [
     '/auth', '/auth/sent', '/auth/google/callback',
     '/set-password', '/reset-password', '/verify-email',
-    '/invite', '/join', '/login',
+    '/invite', '/join', '/login', '/org/setup',
   ]
 
   /**
@@ -999,7 +1138,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * stopped happening. The API sweep for this class did not cover the client.
    */
   const isEntryFlow = location.pathname === '/start'
-  const showSidebar = (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname)
+  /**
+   * TWO PRODUCTS ON ONE SCREEN. W-UX-8.
+   *
+   * `/admin` and `/admin/dashboard` are the Groundwork platform back office - our own operations
+   * console, for us, about every customer org. They were rendering INSIDE the customer rail, so the
+   * internal page sat wrapped in a nav offering "Check-ins", "People" and "Billing" for one
+   * particular organisation. The audit's line: "The customer menu wraps around your internal page."
+   *
+   * A PREFIX, not an exact path, because the back office has sub-pages and `CHROMELESS` matches the
+   * whole pathname - which is why `/admin/dashboard` would have slipped through a literal.
+   *
+   * Only platform staff can reach these at all (`RequirePlatformAdmin`), so nothing a customer sees
+   * changes. It is last on the list for exactly that reason.
+   */
+  const CHROMELESS_PREFIXES = ['/admin']
+  const isBackOffice = CHROMELESS_PREFIXES.some(
+    p => location.pathname === p || location.pathname.startsWith(`${p}/`),
+  )
+  const showSidebar =
+    (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice
 
   if (!showSidebar) return <>{children}</>
 

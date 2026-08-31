@@ -60,6 +60,68 @@ const CHECKED_AND_FINE = new Set([
   'modules/entry/entry.service.ts:email',           // the request body's email, before a user exists
   'modules/entry/entry.service.ts:userId',          // GroundParticipant.userId, which IS nullable
   'modules/conversation/conversation.service.ts:text', // a chat message, not a stored note
+  /*
+   * Both of these validate the INCOMING HTTP PAYLOAD from a customer's system, not a row read back.
+   * The column being non-nullable is what the check enforces rather than something it can lean on -
+   * a push arriving with no title is exactly the case, and trusting the schema there would mean
+   * trusting a stranger's request to have obeyed it.
+   */
+  'modules/subjects/subjects.service.ts:externalId',
+  'modules/subjects/subjects.service.ts:title',
+  /*
+   * The same shape a third time, and for the same reason: `personExternalId` on an INCOMING push
+   * from a customer's sales system. The column being non-nullable is what this check enforces, not
+   * something it can lean on - a record arriving with no person is exactly the case, and trusting
+   * the schema there would mean trusting a stranger's request to have obeyed it.
+   */
+  'modules/public-api/what-happened-with-a-customer.service.ts:personExternalId',
+  /*
+   * Same shape again: `occurredAt` is non-nullable on the row and entirely absent from a push that
+   * forgot it. Defaulting a missing one to now would date every backfilled event to the day it was
+   * uploaded, which is the whole reason the check refuses instead.
+   */
+  'modules/detectors/roles-and-their-action.service.ts:occurredAt',
+  /*
+   * `if (!dto.role)` in `update()`. `UpdateUserDto.role` is OPTIONAL - a caller changing somebody's
+   * name sends no role at all - and the check is what stops an absent one being written as a
+   * change. It matched `User.role`, which is non-nullable, because the same file writes that column
+   * a few lines further down. The name-collision case this file's own header describes.
+   */
+  'modules/users/users.service.ts:role',
+  /*
+   * Three of the name-collision false positives this file's own header warns about, all in one
+   * service because it reads Person, User and PersonObjective together.
+   *
+   * `email`  - the check is `!person.email`, and `Person.email` IS nullable. It matched
+   *            `User.email`, which is not, because the same file also reads `prisma.user`.
+   * `externalId` and `text` - both are fields on the INCOMING request body from a customer's system,
+   *            validated before anything is written. The column being non-nullable is what the check
+   *            enforces, not something it can lean on: trusting the schema there would mean trusting
+   *            a stranger's request to have obeyed it.
+   */
+  'modules/public-api/grounds-by-api.service.ts:email',
+  'modules/public-api/grounds-by-api.service.ts:externalId',
+  'modules/public-api/grounds-by-api.service.ts:text',
+  /*
+   * `state` - a fourth of the same collision. The check is `!item.state` on the evidence payload
+   * from a customer's system, a `Record<string, string | number>` that arrives from the wire. It
+   * matched `ProposedChange.state`, an enum column this file also reads, because they share a name.
+   */
+  'modules/public-api/grounds-by-api.service.ts:state',
+  /*
+   * An argument that may legitimately be null, checked BEFORE deciding whether to write. A ground
+   * participant with no identity-system id cannot be mirrored into the org layer, and the column
+   * being non-nullable is exactly why the check is there - it is what stops the write, not
+   * something the write can lean on.
+   */
+  'modules/assistant/a-commitment-carries-past-the-ground.ts:personExternalId',
+  /*
+   * The same shape again: an incoming payload from a customer's system, validated before anything
+   * is written. The columns being non-nullable is what these checks ENFORCE, not something they can
+   * lean on - a push arriving with no key is exactly the case.
+   */
+  'modules/knowledge/knowledge.service.ts:key',
+  'modules/knowledge/knowledge.service.ts:title',
 ]);
 
 function findHits() {

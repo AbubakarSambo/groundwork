@@ -30,7 +30,6 @@ export const appConfig = registerAs("app", () => ({
    * The test that matters is not that it works when on. It is that a check-in
    * with this off behaves EXACTLY as it did before any of it existed.
    */
-  coachingEnabled: process.env.COACHING_ENABLED === "true",
 
   /**
    * CONTEXT. Off by default, on the same terms as the coaching flag above.
@@ -53,7 +52,23 @@ export const appConfig = registerAs("app", () => ({
    * for anything that exists. The test that matters is the one that proves that,
    * not the one that proves the feature works.
    */
-  contextEnabled: process.env.CONTEXT_ENABLED === "true",
+  /**
+   * ON. Her decision: "context is always enabled."
+   *
+   * It shipped behind a flag while the shape of the page was still being decided, and the flag was
+   * never turned on - so the tab said Documents, every document stayed private to whoever uploaded it
+   * whatever its visibility column said, and the context chat was hidden. A large amount of built work
+   * sat dark, and the product could not do the thing the Context page exists for: let a lead share the
+   * brief so everybody's questions are about the real situation.
+   *
+   * SAFE TO FLIP RETROACTIVELY, and this is why: while it was off, `setVisibility` threw before doing
+   * anything, so no document anywhere could have been marked Open or Closed. Every row is Own. Turning
+   * it on reveals nothing that was previously hidden - it only lets people start choosing.
+   *
+   * The env var still overrides, so it can be turned off in an emergency without a deploy. Nothing
+   * sets it, and nothing should.
+   */
+  contextEnabled: process.env.CONTEXT_ENABLED !== "false",
   /**
    * G30-G33. Off is today's product: the specificity signal, unchanged. On, the
    * same measurement is said about the picture instead of about the person, and
@@ -125,6 +140,12 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
   phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
   verifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+  /**
+   * The app secret Meta signs inbound webhooks with. Separate from verifyToken, which only
+   * answers Meta's one-time subscribe handshake and says nothing about any later POST - a
+   * distinction that let unsigned traffic reach the inbound handler.
+   */
+  appSecret: process.env.WHATSAPP_APP_SECRET,
   enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
 }));
 

@@ -46,6 +46,23 @@ export interface Participation {
    * a liability, and "on leave" is the entire fact it needs.
    */
   leaves?: LeavePeriod[];
+  /**
+   * WHEN THE WORK ITSELF STARTS, WHICH IS NOT WHEN THE GROUND DID.
+   *
+   * Five situations set a ground up about somebody before they begin: a new hire whose first day is
+   * next month, an advisor whose year has not opened, a manager taking over on the first. The lead
+   * writes the objective in advance on purpose - that is the whole point of agreeing what good looks
+   * like before anybody can be judged against it.
+   *
+   * `joinedAt` cannot carry this. It means "joined the ground", and the joiner has joined the ground:
+   * they were named in setup and they have a check-in waiting. What they have not done is started the
+   * job. Without the distinction, a period before their first day looks exactly like a period they
+   * were present for and went quiet in, and every read built on countable periods - patterns,
+   * contribution, follow-through - counts it against them.
+   *
+   * Null means the work was already underway, which is true of most grounds.
+   */
+  startsAt?: Date | null;
 }
 
 export interface SessionMark {
@@ -67,6 +84,17 @@ export function hadJoinedBy(at: Date, p: Participation): boolean {
   return !p.joinedAt || at.getTime() >= p.joinedAt.getTime();
 }
 
+/**
+ * Had this person actually started the work by then?
+ *
+ * Distinct from having joined the ground. A new hire named in setup three weeks before their first day
+ * has joined the ground and has not started the job, and nothing that happened before their start date
+ * is theirs to answer for.
+ */
+export function hadStartedBy(at: Date, p: Participation): boolean {
+  return !p.startsAt || at.getTime() >= p.startsAt.getTime();
+}
+
 /** Were they still here? */
 export function wasStillHereAt(at: Date, p: Participation): boolean {
   return !p.leftAt || at.getTime() < p.leftAt.getTime();
@@ -80,7 +108,7 @@ export function wasStillHereAt(at: Date, p: Participation): boolean {
  */
 export function countableSessions(sessions: SessionMark[], p: Participation): SessionMark[] {
   return sessions.filter(
-    (s) => hadJoinedBy(s.at, p) && wasStillHereAt(s.at, p) && !onLeaveAt(s.at, p),
+    (s) => hadJoinedBy(s.at, p) && hadStartedBy(s.at, p) && wasStillHereAt(s.at, p) && !onLeaveAt(s.at, p),
   );
 }
 

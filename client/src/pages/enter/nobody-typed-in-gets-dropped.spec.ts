@@ -5,7 +5,7 @@ import { join } from 'path'
 /**
  * A PERSON WHOSE ADDRESS WAS TYPED IN DOES NOT GET DISCARDED BY "DONE".
  *
- * Adding somebody to a ground takes two clicks: entering the email opens a note
+ * Adding somebody to a check-in takes two clicks: entering the email opens a note
  * box, and "Add person" commits them to the list. Closing the save panel with that
  * box still open threw them away silently - no invite, no warning - and the closing
  * line went on reporting the invites it WAS about to send, which made the omission
@@ -25,7 +25,7 @@ import { join } from 'path'
  * pending entry, which is a wiring fact. A render test would need the whole
  * post-send panel state, and the thing that broke was one missing call.
  */
-const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** The "Done" button that closes the save panel, from its onClick to its label. */
 const DONE = (() => {

@@ -5,6 +5,9 @@ import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageS
 import { adminApi, type PricingPlanRow } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { coachApi, type CoachRequestRow } from '@/api/coach'
+import { feedbackApi } from '@/api/feedback'
+import { formatMonthlyPrice, type SubscriptionPlan } from '@/api/billing'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,17 +87,32 @@ function WhatsAppToggle() {
   )
 }
 
-function centsToDollarsStr(cents: number): string {
+/**
+ * FOR THE EDIT FIELD ONLY - NEVER FOR DISPLAY. W-UX-7.
+ *
+ * "$1650/mo" on this page while every other surface said "$1,650/mo". `formatMonthlyPrice` in
+ * `api/billing` is the one formatter and its own comment says so; this page had a second one, and
+ * the second one won on the only page where a four-figure price is edited.
+ *
+ * It still exists, and deliberately: a thousands separator inside a number input breaks the value a
+ * person is typing. So the name now says which of the two jobs it has, and the display below uses
+ * the shared formatter.
+ */
+function centsForEditing(cents: number): string {
   return (cents / 100).toFixed(2).replace(/\.00$/, '')
 }
 
 function PricingRow({ row }: { row: PricingPlanRow }) {
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(centsToDollarsStr(row.amountCents))
+  /** Enterprise has no amount; the price editor is hidden for it, so 0 is never shown. */
+  const [value, setValue] = useState(centsForEditing(row.amountCents ?? 0))
+
+  const [editingCap, setEditingCap] = useState(false)
+  const [capValue, setCapValue] = useState(row.memberCap === null ? '' : String(row.memberCap))
 
   const save = useMutation({
-    mutationFn: (amountCents: number) => adminApi.setPricing(row.plan, amountCents),
+    mutationFn: (amountCents: number) => adminApi.setPlanLimits(row.plan, { amountCents }),
     onSuccess: rows => {
       qc.setQueryData(['admin-pricing'], rows)
       setEditing(false)
@@ -112,15 +130,74 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
     save.mutate(Math.round(dollars * 100))
   }
 
+  /**
+   * THE SEAT CAP, EDITABLE BESIDE THE PRICE.
+   *
+   * The caps moved into `pricing_plans` with the prices, and a cap that can only be changed by SQL
+   * is a cap that drifts - which is how Scale came to advertise 1,000 people in three places. An
+   * empty field means unlimited, which is what Enterprise is: a value, not a missing answer.
+   */
+  const saveCap = useMutation({
+    mutationFn: (memberCap: number | null) => adminApi.setPlanLimits(row.plan, { memberCap }),
+    onSuccess: rows => {
+      qc.setQueryData(['admin-pricing'], rows)
+      /** The public pricing page reads these, so it has to be told to re-read them. */
+      qc.invalidateQueries({ queryKey: ['public-pricing'] })
+      setEditingCap(false)
+      toast.success(`${row.label} now seats ${capValue.trim() === '' ? 'an unlimited number of' : capValue.trim()} people.`)
+    },
+    onError: () => toast.error('Could not update the seat cap. Try again.'),
+  })
+
+  function submitCap() {
+    const raw = capValue.trim()
+    if (raw === '') { saveCap.mutate(null); return }
+    const n = Number(raw)
+    if (!Number.isInteger(n) || n < 1) {
+      toast.error('Enter a whole number of people, or leave it empty for unlimited.')
+      return
+    }
+    saveCap.mutate(n)
+  }
+
   return (
     <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <div>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{row.label}</div>
         <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
-          {row.hasStripePrice ? 'Live Stripe price cached' : 'Will create a Stripe price on next checkout'}
+          {row.amountCents === null
+            ? 'Contact sales. No Stripe price, by design.'
+            : row.hasStripePrice ? 'Live Stripe price cached' : 'Will create a Stripe price on next checkout'}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {editingCap ? (
+            <>
+              <input
+                autoFocus
+                value={capValue}
+                placeholder="unlimited"
+                onChange={e => setCapValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitCap(); if (e.key === 'Escape') setEditingCap(false) }}
+                style={{ width: 74, padding: '3px 6px', borderRadius: 6, border: '0.5px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }}
+              />
+              <span>people</span>
+              <button onClick={submitCap} disabled={saveCap.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: saveCap.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+              <button onClick={() => setEditingCap(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 11, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <span>{row.memberCap === null ? 'Unlimited people' : `Up to ${row.memberCap.toLocaleString('en-US')} people`}</span>
+              <button
+                onClick={() => { setCapValue(row.memberCap === null ? '' : String(row.memberCap)); setEditingCap(true) }}
+                style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Edit cap
+              </button>
+            </>
+          )}
         </div>
       </div>
-      {editing ? (
+      {editing && row.amountCents !== null ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <span style={{ fontSize: 13, color: 'var(--gw-muted)' }}>$</span>
           <input
@@ -147,9 +224,101 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>${centsToDollarsStr(row.amountCents)}/mo</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>
+            {row.amountCents === null ? 'Contact us' : formatMonthlyPrice(row.amountCents)}
+          </span>
           <button
-            onClick={() => { setValue(centsToDollarsStr(row.amountCents)); setEditing(true) }}
+            hidden={row.amountCents === null}
+            onClick={() => { setValue(centsForEditing(row.amountCents ?? 0)); setEditing(true) }}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Edit
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * HOW MANY PEOPLE A FREE ORGANISATION MAY HAVE.
+ *
+ * The second free limit, and the one the pricing page now advertises: "10 free check-ins, for
+ * teams of 5 or fewer". It lives in `platform_settings` beside the check-in limit because it is
+ * the same decision and the same shape, one number for the whole platform.
+ *
+ * THE COUNT INCLUDES THE ACCOUNT CREATOR. Said on this screen as well as in the refusal message,
+ * because an admin setting "5" here will otherwise assume it means five invitations.
+ *
+ * Lowering it never removes anybody. The limit is only consulted when somebody NEW is invited, so
+ * an organisation already above it keeps every member and is simply unable to add more.
+ */
+function FreeMemberLimitRow() {
+  const qc = useQueryClient()
+  const { data } = useQuery({ queryKey: ['admin-free-member-limit'], queryFn: adminApi.getFreeMemberLimit })
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+
+  const save = useMutation({
+    mutationFn: () => {
+      const n = Number(value)
+      if (!value.trim() || !Number.isInteger(n) || n < 1) {
+        throw new Error('That needs to be a whole number of people, at least 1.')
+      }
+      return adminApi.setFreeMemberLimit(n)
+    },
+    onSuccess: (res) => {
+      qc.setQueryData(['admin-free-member-limit'], res)
+      /** Every surface that quotes the free team size reads this through the pricing endpoint. */
+      qc.invalidateQueries({ queryKey: ['public-pricing'] })
+      setEditing(false)
+      setErr(null)
+      toast.success(`Free accounts now cover ${res.freeMemberLimit} people, the creator included. Nobody already on an account is removed.`)
+    },
+    onError: (e: Error) => setErr(e.message),
+  })
+
+  if (!data) return null
+
+  return (
+    <div style={{ ...C, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Free team size</div>
+        <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
+          People allowed on a free account, counting the person who created it
+        </div>
+        {err && <div style={{ fontSize: 11, color: 'var(--gw-red-t)', marginTop: 3 }}>{err}</div>}
+      </div>
+      {editing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <input
+            autoFocus
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') save.mutate(); if (e.key === 'Escape') { setEditing(false); setErr(null) } }}
+            style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+          />
+          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>people</span>
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: save.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+          >
+            Save
+          </button>
+          <button
+            onClick={() => { setEditing(false); setErr(null) }}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'none', color: 'var(--gw-muted)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
+          <button
+            onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
             style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
@@ -177,7 +346,7 @@ function FreeGroundLimitRow() {
   const save = useMutation({
     mutationFn: () => {
       const n = Number(value)
-      if (!value.trim() || !Number.isInteger(n)) throw new Error('That needs to be a whole number of grounds.')
+      if (!value.trim() || !Number.isInteger(n)) throw new Error('That needs to be a whole number of check-ins.')
       return adminApi.setFreeGroundLimit(n)
     },
     onSuccess: (res) => {
@@ -193,7 +362,7 @@ function FreeGroundLimitRow() {
   return (
     <div style={{ ...C, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700 }}>Free grounds</div>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Free check-ins</div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 1 }}>
           Before an organisation needs a subscription. Zero means no free tier.
         </div>
@@ -202,7 +371,7 @@ function FreeGroundLimitRow() {
       {editing ? (
         <>
           <input
-            aria-label="Free ground limit"
+            aria-label="Free check-in limit"
             value={value}
             inputMode="numeric"
             onChange={e => setValue(e.target.value)}
@@ -237,13 +406,31 @@ function FreeGroundLimitRow() {
   )
 }
 
+/**
+ * THE PRICES RAN OUT OF ORDER. W-UX-7.
+ *
+ * Scale ($1,650) was listed AFTER Enterprise, because this rendered whatever order the endpoint
+ * happened to return - and a price list out of order is the one kind of table a person reads as
+ * broken instantly.
+ *
+ * DERIVED, not hand-written. `PLAN_ORDER` is built from the SubscriptionPlan union in `api/billing`,
+ * which is the single place the ladder is defined, so a new tier cannot appear here in the wrong
+ * place. A row whose plan is not in the union sorts to the end rather than vanishing.
+ */
+const PLAN_ORDER: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
+const rankOf = (plan: string) => {
+  const i = PLAN_ORDER.indexOf(plan as SubscriptionPlan)
+  return i === -1 ? PLAN_ORDER.length : i
+}
+
 function PricingPanel() {
   const { data, isLoading } = useQuery({ queryKey: ['admin-pricing'], queryFn: adminApi.getPricing })
   if (isLoading || !data) return null
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {data.map(row => <PricingRow key={row.plan} row={row} />)}
+      {[...data].sort((a, b) => rankOf(a.plan) - rankOf(b.plan)).map(row => <PricingRow key={row.plan} row={row} />)}
       <FreeGroundLimitRow />
+      <FreeMemberLimitRow />
     </div>
   )
 }
@@ -267,7 +454,7 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat val={dash.orgs.total} label="Total orgs" />
           <Stat val={dash.orgs.withActiveCareFee} label="Active billing" accent />
-          <Stat val={dash.grounds.total} label="Total grounds" />
+          <Stat val={dash.grounds.total} label="Total check-ins" />
           <Stat val={dash.checkIns.totalCompleted} label="Check-ins done" />
         </div>
       </section>
@@ -276,14 +463,14 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={SL}>Last 7 days</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat val={dash.orgs.createdLast30Days} label="New orgs (30d)" />
-          <Stat val={dash.grounds.openedLast7Days} label="Grounds opened" />
+          <Stat val={dash.grounds.openedLast7Days} label="Check-ins opened" />
           <Stat val={dash.checkIns.completedLast7Days} label="Check-ins" />
           <Stat val={dash.grounds.resolvedLast30Days} label="Resolved (30d)" />
         </div>
       </section>
 
       <section>
-        <div style={SL}>Ground status</div>
+        <div style={SL}>Check-in status</div>
         <div style={C}>
           {Object.entries(dash.grounds.byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => {
             const total = Object.values(dash.grounds.byStatus).reduce((a, b) => a + b, 0)
@@ -392,7 +579,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
       )}
 
       <section>
-        <div style={SL}>Ground scenarios</div>
+        <div style={SL}>Check-in scenarios</div>
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[...data.byScenario].sort((a, b) => b.count - a.count).map(row => (
             <div key={row.scenario} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -406,7 +593,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
       </section>
 
       <section>
-        <div style={SL}>Ground status distribution</div>
+        <div style={SL}>Check-in status distribution</div>
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[...data.byStatus].sort((a, b) => b.count - a.count).map(row => {
             const pct = statusTotal > 0 ? (row.count / statusTotal) * 100 : 0
@@ -486,7 +673,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
         <div style={SL}>Platform totals</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat val={data.totalCheckIns} label="Check-ins completed" accent />
-          <Stat val={data.groundsCreated} label="Grounds created" />
+          <Stat val={data.groundsCreated} label="Check-ins created" />
           <Stat val={data.reportsGenerated} label="Reports generated" />
         </div>
       </section>
@@ -534,20 +721,95 @@ function UsageTab({ data }: { data: UsageStatsData }) {
 
 // ── Feedback tab ──────────────────────────────────────────────────────────────
 
+/**
+ * WHAT PEOPLE WROTE IN THE FEEDBACK BUTTON, WHICH NOTHING HAS EVER SHOWN. W-UX-C.
+ *
+ * This tab showed OUTCOME feedback - "did this check-in feel fair" - and that is a different thing
+ * from the floating Feedback button, whose submissions had no reader anywhere in the product.
+ * `feedbackApi.list` and `feedbackApi.updateStatus` were both live on the server, both guarded to
+ * platform admins, and both called by nothing.
+ *
+ * So the loop was open at both ends: submissions were rejected on the way in (fixed in AppShell) and
+ * unreadable if they had arrived. Marking one handled is the other half - a list with no way to
+ * clear a row is a list nobody keeps looking at.
+ */
+function InAppFeedback() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ['in-app-feedback'], queryFn: feedbackApi.list, retry: false })
+  const setStatus = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => feedbackApi.updateStatus(id, status),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['in-app-feedback'] }) },
+    onError: () => toast.error('Could not update that. Try again.'),
+  })
+  if (isLoading) return null
+
+  const rows = data ?? []
+  const open = rows.filter(r => r.status === 'new')
+  return (
+    <div>
+      <div style={SL}>From the feedback button{open.length > 0 ? ` · ${open.length} unread` : ''}</div>
+      {rows.length === 0 ? (
+        <div style={{ ...C, fontSize: 12, color: 'var(--gw-muted)' }}>
+          Nothing sent through the in-app feedback button yet.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {rows.map(f => (
+            <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.status === 'new' ? 'var(--gw-navy)' : 'var(--gw-border)'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{f.pill}</div>
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 1 }}>
+                    {f.tab.replace(/_/g, ' ')} · {timeAgo(f.createdAt)}
+                  </div>
+                </div>
+                {f.status === 'new' ? (
+                  <button
+                    onClick={() => setStatus.mutate({ id: f.id, status: 'reviewed' })}
+                    disabled={setStatus.isPending}
+                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Mark read
+                  </button>
+                ) : (
+                  <span style={{ flexShrink: 0, fontSize: 11, color: 'var(--gw-muted)' }}>{f.status}</span>
+                )}
+              </div>
+              {f.text && (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 6, whiteSpace: 'pre-wrap' }}>{f.text}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FeedbackTab({ data }: { data: FeedbackSummaryData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+      <InAppFeedback />
+
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Stat val={data.total} label="Feedback responses" />
+        <Stat val={data.total} label="Fairness responses" />
         <Stat val={data.fairRate != null ? `${data.fairRate}%` : '–'} label="Felt fair" accent={!!data.fairRate && data.fairRate >= 70} />
       </div>
 
       {data.recent.length === 0 ? (
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 32 }}>No feedback submitted yet.</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 32 }}>Nobody has answered "did this feel fair" yet.</div>
       ) : (
         <div>
-          <div style={SL}>Recent responses</div>
+          {/*
+            TWO DIFFERENT FEEDBACKS ON ONE TAB, AND BOTH WERE CALLED "FEEDBACK". W-UX-C.
+            
+            Seen on the running page the moment the in-app list was added above: this half said
+            "Feedback responses 0" and "No feedback submitted yet" directly under a section holding a
+            submission. They are genuinely different things - this one is "did this check-in feel
+            fair", asked of a party after it resolves - so each now says which it is.
+          */}
+          <div style={SL}>Did it feel fair · recent answers</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {data.recent.map(f => (
               <div key={f.id} style={{ ...C, borderLeft: `3px solid ${f.feltFair ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}` }}>
@@ -629,7 +891,91 @@ function PromptsTab({ navigate }: { navigate: (path: string) => void }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'system' | 'dropoffs' | 'prompts' | 'orgs' | 'usage' | 'feedback' | 'errors'
+/**
+ * COACH REQUESTS. NOT FEEDBACK, AND NOT A GROUND.
+ *
+ * Somebody asked to speak to a coach before opening anything. Nothing was created for them, nobody on
+ * their team was contacted, and the only thing they were promised is an email - so the one column that
+ * must never be guessed at is whether that email actually went.
+ *
+ * The intention is shown IN FULL. It is the whole reason the form asks for two written lines, and
+ * truncating it here would make that friction pointless.
+ */
+function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () => void }) {
+  const NEXT: Record<string, string[]> = {
+    new: ['contacted', 'declined'],
+    contacted: ['booked', 'declined'],
+    booked: ['done'],
+    done: [],
+    declined: [],
+  }
+  if (rows.length === 0) {
+    return <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 32 }}>Nobody has asked to speak to a coach yet.</div>
+  }
+  const chip = (text: string, bg: string, fg: string) => (
+    <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 7px', borderRadius: 4, background: bg, color: fg }}>{text}</span>
+  )
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {rows.map(r => (
+        <div key={r.id} style={{ ...C, borderLeft: `3px solid ${r.status === 'new' ? 'var(--gw-navy)' : r.status === 'declined' ? 'var(--gw-border)' : 'var(--gw-green-b)'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 5 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>
+              {r.name} &middot; {r.orgName}
+              <span style={{ fontWeight: 500, color: 'var(--gw-sub)' }}> &middot; {r.teamSize} people</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/*
+                * WHEN THEY ASKED TO TALK, ON THE CARD RATHER THAN BURIED.
+                *
+                * The request now carries a time, and it is the whole reason for asking it here:
+                * the conversation is meant to happen BEFORE they set the check-in up. A coach
+                * reading this queue has to be able to see which ones are running out of time
+                * without opening each one.
+                *
+                * "asked for" and never "booked" - nothing has been agreed with anybody yet.
+                */}
+              {r.preferredAt && chip(
+                `asked for ${new Date(r.preferredAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+                new Date(r.preferredAt) < new Date() ? 'var(--gw-red-bg)' : 'var(--gw-blue-bg)',
+                new Date(r.preferredAt) < new Date() ? 'var(--gw-red-t)' : 'var(--gw-navy)',
+              )}
+              {chip(r.status, 'var(--gw-paper-2)', 'var(--gw-sub)')}
+              {/* Marked, never refused: a founder on a personal address is a real prospect. */}
+              {r.isFreeMail && chip('personal email', 'var(--gw-amber-bg)', 'var(--gw-amber-t)')}
+              {r.askedAgainAt && chip('asked again', 'var(--gw-blue-bg)', 'var(--gw-navy)')}
+              {/* The one thing they were promised. Loud when it did not happen. */}
+              {!r.confirmationSentAt && chip('no email sent', 'var(--gw-red-bg)', 'var(--gw-red-t)')}
+            </div>
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
+            <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>
+            {r.triedAlready === true && <span> &middot; has already tried opening a check-in</span>}
+            {r.triedAlready === false && <span> &middot; has not tried the product yet</span>}
+            <span> &middot; {new Date(r.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{r.intention}</div>
+          {NEXT[r.status] && NEXT[r.status].length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              {NEXT[r.status].map(next => (
+                <button
+                  key={next}
+                  type="button"
+                  onClick={async () => { await coachApi.setStatus(r.id, next); onChanged() }}
+                  style={{ fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '4px 10px', borderRadius: 5, border: '1px solid var(--gw-blue-b)', background: 'none', color: 'var(--gw-navy)' }}
+                >
+                  Mark {next}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+type Tab = 'system' | 'dropoffs' | 'prompts' | 'orgs' | 'usage' | 'feedback' | 'coach' | 'errors'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'system',   label: 'System' },
@@ -638,6 +984,11 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'orgs',     label: 'Orgs' },
   { id: 'usage',    label: 'Usage' },
   { id: 'feedback', label: 'Feedback' },
+  /**
+   * Beside feedback, not inside it. A coach request has a person, an organisation, a team size, a
+   * stated intention and a lifecycle; filed as feedback all of that becomes a text blob.
+   */
+  { id: 'coach',    label: 'Coach requests' },
   { id: 'errors',   label: 'Errors' },
 ]
 
@@ -674,6 +1025,13 @@ export function AdminPage() {
     staleTime: 2 * 60 * 1000,
   })
 
+  const { data: coachRequests, isLoading: coachLoading, refetch: refetchCoach } = useQuery({
+    queryKey: ['coach-requests'],
+    queryFn: () => coachApi.list(),
+    enabled: !!user?.isPlatformAdmin && tab === 'coach',
+    staleTime: 60 * 1000,
+  })
+
   const { data: feedback, isLoading: feedbackLoading } = useQuery({
     queryKey: ['platform-feedback'],
     queryFn: promptsApi.feedbackSummary,
@@ -693,6 +1051,7 @@ export function AdminPage() {
     : tab === 'dropoffs' ? funnelLoading
     : tab === 'orgs' ? orgsLoading
     : tab === 'usage' ? usageLoading
+    : tab === 'coach' ? coachLoading
     : tab === 'feedback' ? feedbackLoading
     : false
 
@@ -738,6 +1097,7 @@ export function AdminPage() {
         {tab === 'orgs'     && !orgsLoading  && orgs     && <OrgsTab orgs={orgs} />}
         {tab === 'usage'    && !usageLoading && usage    && <UsageTab data={usage} />}
         {tab === 'feedback' && !feedbackLoading && feedback && <FeedbackTab data={feedback} />}
+        {tab === 'coach' && !coachLoading && <CoachTab rows={coachRequests ?? []} onChanged={refetchCoach} />}
         {tab === 'errors'   && <ErrorsTab />}
       </div>
     </div>

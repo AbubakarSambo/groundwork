@@ -4,10 +4,30 @@ import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
+
+/**
+ * WHAT SOMEBODY READS WHEN THEY RUN OUT OF SEATS.
+ *
+ * Written here, once, because the gate and the per-check-in cap both refuse for the same reason
+ * and a person who hits one and then the other should not be told two different things.
+ *
+ * "5 people" reads as "5 people I can invite" to almost everybody, and it is not: the account
+ * creator holds one of the five. So the number is always said with who it counts, and the message
+ * says what a subscription gives rather than what the reader did wrong.
+ */
+export function freeSeatLimitMessage(limit: number): string {
+  return `The free plan covers ${limit} people, including you, so you can invite ${limit - 1} others. Subscribe to add more people.`;
+}
+
+export function paidSeatLimitMessage(planLabel: string, cap: number): string {
+  return `Your ${planLabel} plan covers ${cap} people, including you. Move to a larger plan to add more.`;
+}
 import { EmailService } from '../email/email.service';
 import { CareFeeStatus, GroundStatus, BillingEventType, BillingEventStatus, UserRole, UsageEventType, SubscriptionPlan } from '@prisma/client';
 import { UsageService } from '../usage/usage.service';
 import * as crypto from 'crypto';
+import { SEAT_WHERE, SEAT_RELATION_COUNT } from '../../common/seats';
+import { isSubscribed, ACTIVE, type SubscriptionStatus } from '../../common/subscription';
 
 /**
  * Billing model:
@@ -67,7 +87,7 @@ export class BillingService {
         where: { id: ground.organizationId },
         select: { subscriptionPlan: true, subscriptionStatus: true, freeSessionsUsed: true, freeExtensionUsed: true },
       });
-      if (org?.subscriptionPlan && org.subscriptionStatus === 'active') {
+      if (org && isSubscribed(org)) {
         return { allowed: true, sessionsBalance: -1 }; // -1 signals unlimited
       }
 
@@ -118,7 +138,7 @@ export class BillingService {
     if (!org) return { allowed: false, reason: 'Organization not found' };
 
     // 1. Org has an active subscription - unlimited grounds.
-    if (org.subscriptionPlan && org.subscriptionStatus === 'active') {
+    if (isSubscribed(org)) {
       return { allowed: true };
     }
 
@@ -184,9 +204,9 @@ export class BillingService {
     // (fix/free-tier-unlimited-sessions) but this endpoint was never guarded,
     // leaving a live path via a stale link or a direct call to /billing/purchase-session.
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     if (ground.isFreeGround) {
-      throw new ForbiddenException('This ground has unlimited free sessions - nothing to purchase.');
+      throw new ForbiddenException('This check-in has unlimited free sessions - nothing to purchase.');
     }
 
     const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
@@ -217,15 +237,11 @@ export class BillingService {
     return { checkoutUrl: session.url! };
   }
 
-  /** Member cap limits per subscription plan. */
-  private readonly PLAN_MEMBER_CAPS: Record<SubscriptionPlan, number | null> = {
-    [SubscriptionPlan.STARTER]: 5,
-    [SubscriptionPlan.SMALL_TEAM]: 20,
-    [SubscriptionPlan.GROWTH]: 100,
-    [SubscriptionPlan.BUSINESS]: 250,
-    [SubscriptionPlan.SCALE]: 1000,
-    [SubscriptionPlan.ENTERPRISE]: null, // unlimited
-  };
+  /**
+   * The seat caps used to be a hardcoded map here, with a second copy on the client and a third
+   * inside the plan labels. They now live in `pricing_plans.memberCap`, beside the prices, and
+   * are read through `pricing.memberCapFor`. Nothing in this file states a cap.
+   */
 
   /**
    * The two messages a billing change owes somebody, wired where the change happens.
@@ -259,15 +275,59 @@ export class BillingService {
   }
 
   /** Returns allowed: false if the org is at its plan member cap. */
+  /**
+   * HOW MANY MORE PEOPLE THIS ORGANISATION MAY ADD. Null when there is no cap.
+   *
+   * `canInviteMember` answers "may I add one more" and that is the wrong question for somebody
+   * pasting a list: they need to know before they send, not one refusal at a time. Same two
+   * sources, same order, so the number shown on the paste screen and the number that refuses an
+   * invitation cannot disagree - which is the failure this whole path exists to avoid.
+   */
+  async seatsLeft(organizationId: string): Promise<number | null> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: SEAT_RELATION_COUNT } },
+    });
+    if (!org) return null;
+    const cap = isSubscribed(org)
+      ? await this.pricing.memberCapFor(org.subscriptionPlan)
+      : await this.pricing.getFreeMemberLimit();
+    if (cap === null || cap === undefined) return null;
+    /* Never negative: an organisation already over its cap has no room, not room owed back. */
+    return Math.max(0, cap - (org._count.users ?? 0));
+  }
+
   async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: { users: true } } },
+      select: { subscriptionPlan: true, subscriptionStatus: true, _count: { select: SEAT_RELATION_COUNT } },
     });
-    if (!org?.subscriptionPlan || org.subscriptionStatus !== 'active') return { allowed: true };
-    const cap = this.PLAN_MEMBER_CAPS[org.subscriptionPlan];
-    if (cap === null) return { allowed: true };
+    if (!org) return { allowed: true };
     const count = org._count.users ?? 0;
+    const subscribed = isSubscribed(org);
+
+    /**
+     * THE FREE TIER HAS A SEAT LIMIT NOW, ENFORCED HERE RATHER THAN IN A SECOND GATE.
+     *
+     * This method returned `{ allowed: true }` on its first line for any organisation without an
+     * active subscription, so free accounts were exempt from seat caps entirely and person number
+     * six was simply added. The free limit lives with the free ground limit, is read the same way,
+     * and refuses in the same shape - server side, with a reason, touching nothing that exists.
+     *
+     * Nobody already on the account is affected: this is only ever asked when somebody new is
+     * being invited, so an organisation over the limit keeps every member it has and is only
+     * stopped from adding more.
+     */
+    if (!subscribed) {
+      const freeLimit = await this.pricing.getFreeMemberLimit();
+      if (count >= freeLimit) {
+        return { allowed: false, reason: freeSeatLimitMessage(freeLimit) };
+      }
+      return { allowed: true };
+    }
+
+    const cap = await this.pricing.memberCapFor(org.subscriptionPlan!);
+    if (cap === null) return { allowed: true };
     if (count >= cap) {
       /**
        * THE WARNING FIRES WHERE THE CAP IS ACTUALLY HIT, not on a schedule.
@@ -282,11 +342,8 @@ export class BillingService {
        * better than the silence it replaces, and a one-shot marker would need a
        * schema field for a message nobody has ever received.
        */
-      this.warnAboutTheMemberCap(organizationId, org.subscriptionPlan, count, cap).catch(() => undefined);
-      return {
-        allowed: false,
-        reason: `Your ${org.subscriptionPlan.replace('_', ' ').toLowerCase()} plan supports up to ${cap} members. Upgrade your organization to add more.`,
-      };
+      this.warnAboutTheMemberCap(organizationId, org.subscriptionPlan!, count, cap).catch(() => undefined);
+      return { allowed: false, reason: paidSeatLimitMessage(PLAN_LABELS[org.subscriptionPlan!], cap) };
     }
     return { allowed: true };
   }
@@ -361,6 +418,41 @@ export class BillingService {
     }
   }
 
+  /**
+   * WRITE A CHARGE ONCE, AND LET THE DATABASE DECIDE THAT.
+   *
+   * Stripe retries webhooks by design and can deliver one event more than once, concurrently. The old
+   * dedupe read `billingEvent.findFirst({ stripeInvoiceId })` and skipped if found - a check-then-act
+   * race - and nothing stood behind it, because the column had no unique constraint. So the loser of
+   * that race was not rejected, it was recorded: the balance credited twice and the charge logged
+   * twice for one payment.
+   *
+   * `stripe_invoice_id` is now uniquely indexed, so the SECOND insert fails and that failure IS the
+   * idempotency signal. P2002 is Prisma's unique-violation code. Anything else is rethrown rather
+   * than swallowed, because a silently dropped charge record is the fault this change exists to fix.
+   */
+  private async recordInvoiceOnce(data: {
+    organizationId: string;
+    type: BillingEventType;
+    amountCents: number;
+    currency: string;
+    stripeInvoiceId: string | null;
+    periodStart: Date;
+    periodEnd: Date;
+    groundId?: string | null;
+  }): Promise<'written' | 'duplicate'> {
+    try {
+      await this.prisma.billingEvent.create({ data: { ...data, status: BillingEventStatus.PAID } });
+      return 'written';
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        this.logger.log(`Duplicate delivery for invoice ${data.stripeInvoiceId} - already recorded, nothing written`);
+        return 'duplicate';
+      }
+      throw err;
+    }
+  }
+
   /** Create a Stripe recurring checkout session for an org subscription plan. */
   async createSubscription(organizationId: string, plan: SubscriptionPlan): Promise<{ checkoutUrl: string }> {
     if (plan === SubscriptionPlan.ENTERPRISE) {
@@ -369,7 +461,7 @@ export class BillingService {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
 
-    if (org.subscriptionPlan && org.subscriptionStatus === 'active') {
+    if (isSubscribed(org)) {
       throw new ForbiddenException('Organization already has an active subscription - use the plan-change endpoint to switch plans.');
     }
 
@@ -412,7 +504,7 @@ export class BillingService {
     }
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) throw new NotFoundException('Organization not found');
-    if (!org.subscriptionStripeId || org.subscriptionStatus !== 'active') {
+    if (!org.subscriptionStripeId || org.subscriptionStatus !== ACTIVE) {
       throw new ForbiddenException('No active subscription to change - subscribe first.');
     }
     if (org.subscriptionPlan === newPlan) {
@@ -452,7 +544,7 @@ export class BillingService {
     await this.stripe.stripe.subscriptions.cancel(org.subscriptionStripeId);
     await this.prisma.organization.update({
       where: { id: organizationId },
-      data: { subscriptionPlan: null, subscriptionStatus: 'cancelled', subscriptionStripeId: null, subscriptionPeriodEnd: null },
+      data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null },
     });
     this.logger.log(`Subscription cancelled for org ${organizationId}`);
   }
@@ -468,7 +560,7 @@ export class BillingService {
     await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, {
       pause_collection: { behavior: 'mark_uncollectible' },
     });
-    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionStatus: 'paused' } });
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionStatus: 'paused' satisfies SubscriptionStatus } });
     this.logger.log(`Subscription paused for org ${organizationId}`);
   }
 
@@ -481,7 +573,7 @@ export class BillingService {
     if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
 
     await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, { pause_collection: '' as any });
-    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionStatus: 'active' } });
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionStatus: 'active' satisfies SubscriptionStatus } });
     this.logger.log(`Subscription resumed for org ${organizationId}`);
   }
 
@@ -623,7 +715,7 @@ export class BillingService {
   /**
    * Billing status: active grounds with session balances and saved card details.
    */
-  async getStatus(organizationId: string): Promise<{
+  async getStatus(organizationId: string, includeUsage = true): Promise<{
     /**
      * THE SUBSCRIPTION BELONGS TO THE ORGANISATION, AND THIS ENDPOINT DID NOT SAY SO. W14-6.
      *
@@ -644,6 +736,9 @@ export class BillingService {
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
+    /** Counts only. See the comment where these are assembled. */
+    /** Admin only. Absent for anybody else - see the controller. */
+    usage?: { checkIns: number; reportsReleased: number; peopleTakingPart: number };
     activeGrounds: Array<{ groundId: string; label: string; startedAt: Date | null; sessionsBalance: number }>;
     card?: { brand: string; last4: string } | null;
   }> {
@@ -660,7 +755,32 @@ export class BillingService {
     });
     if (!org) throw new NotFoundException('Organization not found');
 
-    const peopleCount = await this.prisma.user.count({ where: { organizationId, isActive: true } });
+    const peopleCount = await this.prisma.user.count({ where: { organizationId, ...SEAT_WHERE } });
+    /**
+     * THE SAME CAP THE GATE WILL APPLY. Read from the same two sources in the same order, so the
+     * number on this page and the number that refuses an invitation cannot be different numbers.
+     */
+    const peopleCap =
+      isSubscribed(org)
+        ? await this.pricing.memberCapFor(org.subscriptionPlan)
+        : await this.pricing.getFreeMemberLimit();
+
+    /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
+    const [everyGround, reportsOut, tookPart] = await Promise.all([
+      this.prisma.ground.count({ where: { organizationId } }),
+      this.prisma.report.count({ where: { ground: { organizationId }, releasedAt: { not: null } } }),
+      this.prisma.groundParticipant.findMany({
+        where: { ground: { organizationId }, checkIns: { some: { status: 'COMPLETED' } } },
+        select: { userId: true },
+        distinct: ['userId'],
+      }),
+    ]);
+    const usage = {
+      checkIns: everyGround,
+      reports: reportsOut,
+      /* Distinct people, so somebody in four check-ins counts once. */
+      participating: new Set(tookPart.map((t) => t.userId).filter(Boolean)).size,
+    };
 
     const activeGrounds = await this.prisma.ground.findMany({
       where: { organizationId, status: GroundStatus.ACTIVE },
@@ -686,7 +806,31 @@ export class BillingService {
       },
       // `null` cap means unlimited (Enterprise) or no plan at all - the client renders the
       // count without a ceiling rather than inventing one.
-      people: { count: peopleCount, cap: org.subscriptionPlan ? this.PLAN_MEMBER_CAPS[org.subscriptionPlan] : null },
+      /**
+       * `null` means unlimited - the client renders the count without a ceiling rather than
+       * inventing one. A free organisation reports its free seat limit, because that IS its cap
+       * and showing no ceiling to the only people who have one is how person six got added.
+       */
+      people: { count: peopleCount, cap: peopleCap },
+      /*
+       * WHAT THIS ACCOUNT HAS ACTUALLY DONE, which is what makes a renewal defensible.
+       *
+       * An admin asked to pay for 160 seats needs to be able to say what was got for it, and the
+       * page could only say what the plan costs. Counts only - no names, no labels - because this
+       * is an argument about volume, and anything more is a second copy of pages that already
+       * exist and are governed properly.
+       *
+       * Check-ins EVER rather than this month: these run for a quarter at a time, so a calendar
+       * month is a window that would report zero for a healthy account most of the time.
+       */
+      /* Omitted rather than zeroed for a non-admin: a zero is a claim, and this is a refusal. */
+      usage: includeUsage ? {
+        checkIns: usage.checkIns,
+        /* Rounds where everybody finished and a report went out. The thing they are buying. */
+        reportsReleased: usage.reports,
+        /* People who have actually taken part, as against people who have an account. */
+        peopleTakingPart: usage.participating,
+      } : undefined,
       activeGrounds: activeGrounds.map((g) => ({
         groundId: g.id,
         label: g.label,
@@ -805,7 +949,7 @@ export class BillingService {
               where: { id: orgId },
               data: {
                 subscriptionPlan: plan as SubscriptionPlan,
-                subscriptionStatus: 'active',
+                subscriptionStatus: 'active' satisfies SubscriptionStatus,
                 subscriptionStripeId: subId,
                 subscriptionPeriodEnd: periodEnd,
               },
@@ -871,7 +1015,7 @@ export class BillingService {
           const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true, subscriptionPlan: true } });
           await this.prisma.organization.update({
             where: { id: orgId },
-            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled', subscriptionStripeId: null, subscriptionPeriodEnd: null },
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
             await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);
@@ -897,6 +1041,30 @@ export class BillingService {
           const amountCents = invoice.amount_paid ?? 0;
           await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd).catch(() => undefined);
         }
+
+        /**
+         * AND WRITE IT DOWN, WHICH NOTHING DID.
+         *
+         * `BillingEventType` declares SUBSCRIPTION_FEE and nothing ever wrote it. Only FREE_EXTENSION
+         * and SESSION_FEE were recorded - and per-session selling was withdrawn from every screen - so
+         * the ledger held a row type for a product no longer sold and no row at all for subscriptions,
+         * which is the entire revenue model. An organisation querying a charge could not be shown
+         * their own history.
+         *
+         * Deliberately OUTSIDE the email branch: the record must not depend on the org having an
+         * email address or a readable plan.
+         */
+        if (paidOrg && (invoice.amount_paid ?? 0) > 0) {
+          await this.recordInvoiceOnce({
+            organizationId: paidOrg.id,
+            type: BillingEventType.SUBSCRIPTION_FEE,
+            amountCents: invoice.amount_paid ?? 0,
+            currency: (invoice.currency ?? 'usd').toUpperCase(),
+            stripeInvoiceId: invoice.id ?? null,
+            periodStart: invoice.period_start ? new Date(invoice.period_start * 1000) : new Date(),
+            periodEnd: invoice.period_end ? new Date(invoice.period_end * 1000) : new Date(),
+          });
+        }
         break;
       }
 
@@ -914,7 +1082,7 @@ export class BillingService {
           // New subscription payment failed.
           await this.prisma.organization.update({
             where: { id: failedOrg.id },
-            data: { subscriptionStatus: 'past_due' },
+            data: { subscriptionStatus: 'past_due' satisfies SubscriptionStatus },
           });
           const portalUrl = `${this.config.get<string>('resend.frontendUrl') ?? ''}/billing`;
           if (failedOrg.email) {
@@ -1031,7 +1199,7 @@ export class BillingService {
 
     const [subscribedOrgsCount, sessionBalanceAgg] = await Promise.all([
       this.prisma.organization.count({
-        where: { subscriptionStatus: 'active' },
+        where: { subscriptionStatus: 'active' satisfies SubscriptionStatus },
       }),
       this.prisma.ground.aggregate({
         _sum: { sessionsBalance: true },

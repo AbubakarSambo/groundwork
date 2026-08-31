@@ -13,7 +13,7 @@ import { join } from 'path'
  *
  * It matters more than a styling nit, because it is the only route for anyone
  * whose situation is not among the seventeen - and describing your own
- * situation is a first-class way to start a ground, not a consolation prize.
+ * situation is a first-class way to start a check-in, not a consolation prize.
  *
  * Asserted against the source rather than a render: what is being held is the
  * absence of disabled-looking styling on this specific button, which a
@@ -32,7 +32,7 @@ import { join } from 'path'
  * listed, so it must be impossible to miss - full width, its own accent, and
  * reachable from the top of the list as well as the bottom.
  */
-const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /**
  * The describe-your-own CARD, from its opening tag to its closing one.

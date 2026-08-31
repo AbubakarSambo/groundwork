@@ -1,3 +1,4 @@
+import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -7,6 +8,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import type { Ground } from '@/types'
 import { alignmentLabel } from '@/lib/alignment'
+import { personLabel } from '@/lib/utils'
 import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
 
@@ -47,7 +49,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
             */}
             {(g as any).otherOrgName && (
               <span
-                title={`This ground belongs to ${(g as any).otherOrgName}. You are in it as a participant.`}
+                title={`This check-in belongs to ${(g as any).otherOrgName}. You are in it as a participant.`}
                 style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
               >
                 {(g as any).otherOrgName}
@@ -83,9 +85,14 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
              * purpose - so the guess produced either a lowercase fragment or nothing at
              * all. `grounds.list` now sends the display name.
              */
+            /**
+             * And this is the line that comment is about, still splitting the address two lines
+             * under its own warning. W-UX-4. `personLabel` is the one chain now: name, else what
+             * they do here, else the address whole rather than a lowercase fragment of it.
+             */
             const lead = (g.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-            const first = (lead?.user?.firstName ?? (lead as any)?.firstName ?? '').trim()
-            const who = first || (lead?.email ? lead.email.split('@')[0] : null)
+            const firstName = (lead?.user?.firstName ?? (lead as any)?.firstName ?? '').trim()
+            const who = lead ? personLabel({ ...(lead as any), user: (lead as any).user ?? (firstName ? { firstName } : null) }) : null
             /**
              * THE SESSION COUNT, ON THE CARD SOMEBODY CHOOSES FROM. W13-6.
              *
@@ -245,15 +252,23 @@ export function GroundsListPage() {
           {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
               chrome could usefully carry. W13-11. */}
-              <span className="gw-logo">Your grounds</span>
+              <span className="gw-logo">In progress</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
             {isAdmin ? 'Admin' : 'Team member'}
           </span>
-          {user?.isPlatformAdmin && <span onClick={() => navigate('/admin')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Admin</span>}
-          <span onClick={() => navigate('/settings')} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Settings</span>
-          <span onClick={() => { useAuthStore.getState().logout(); navigate('/') }} style={{ fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer' }}>Sign out</span>
+          {/*
+            A SECOND NAVIGATION BAR FOR THINGS THE FIRST ONE ALREADY HAD. W-UX-3.
+            
+            Platform ops, Settings and Sign out were all here AND all in the rail immediately to the
+            left - Settings as a rail item, Sign out and the back office in the user block at the
+            bottom of it. Three links, twice, on the screen a person opens every day, and one of them
+            ("Admin") wore the same word as the pill beside it while going somewhere else entirely.
+            
+            The pill stays: it is the one thing here that is not navigation. It says what you are in
+            this organisation, which is what makes the difference between the two Admins legible.
+          */}
         </div>
       </div>
 
@@ -264,7 +279,7 @@ export function GroundsListPage() {
               Waiting for you
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-              {awaiting.length === 1 ? 'Somebody has set up a ground' : `${awaiting.length} grounds have been set up`} and
+              {awaiting.length === 1 ? 'Somebody has set up a check-in' : `${awaiting.length} check-ins have been set up`} and
               {' '}nobody has been invited to {awaiting.length === 1 ? 'it' : 'them'} yet. Nothing goes out until you say so.
             </div>
             {awaiting.map(a => (
@@ -322,7 +337,7 @@ export function GroundsListPage() {
             {/* Stats bar */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
               {[
-                { val: active.length,    label: 'Active grounds' },
+                { val: active.length,    label: 'In progress' },
                 { val: checkInsToday,    label: 'Participant sessions today' },
                 /**
                  * THE LABEL SAYS WHAT THE NUMBER COUNTS.
@@ -335,7 +350,24 @@ export function GroundsListPage() {
                  * meaning.
                  */
                 { val: reportsReady,     label: 'Waiting for you to read' },
-              ].map(s => (
+              /**
+               * A ZERO IS NOT A SUMMARY. W-UX-2.
+               *
+               * Two of the three tiles read 0 on every account looked at - "Participant sessions
+               * today" is zero for most of any given day by design, and "Waiting for you to read"
+               * exempts the lead, who is the person reading this page. So the widest, highest strip
+               * on the landing screen was mostly dead space.
+               *
+               * A count of nothing is not worth a tile. "In progress" always shows, because zero
+               * in progress is itself the thing a person needs to know; the other two earn their
+               * place only when there is something in them.
+               */
+              /*
+               * A ZERO IS NOT A NUMBER WORTH A TILE, and "In progress: 0" sitting above an empty
+               * state is the product reporting on its own emptiness. The empty state underneath
+               * already says there is nothing here, in words, and says what to do about it.
+               */
+              ].filter(s => s.val > 0).map(s => (
                 // The board's own stat tile, so the same number does not have two
                 // different looks depending on which page you opened it from.
                 <Stat key={s.label} label={s.label} value={String(s.val)} />
@@ -346,29 +378,40 @@ export function GroundsListPage() {
                 confidence scores as a paid unlock, routed at a per-session
                 checkout. Neither half is real - there is no session billing,
                 and the insights were never locked. */}
-            {/* Open ground CTA */}
-            <button
+            {/*
+              * Open ground CTA - and not for somebody the rule would refuse. See AppShell: they
+              * used to fill in eight steps to be told no at the end.
+              */}
+            {user?.mayOpenCheckIns !== false && <button
               onClick={() => navigate('/grounds/new')}
               style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              <span>Open a new ground</span>
+              <span>Start a check-in</span>
               <span style={{ fontSize: 18, fontWeight: 300 }}>+</span>
-            </button>
+            </button>}
 
             {/* Invite a colleague - admin only, matches the backend guard on POST /auth/team-invite */}
             {isAdmin && (!showInviteColleague ? (
               <button
                 onClick={() => setShowInviteColleague(true)}
-                style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                /**
+                 * ONE PRIMARY ACTION PER SCREEN. W-UX-2.
+                 *
+                 * This was a second full-width navy button directly under "What's going on?" -
+                 * identical weight, identical colour, stacked. Two primaries is no primary, and the
+                 * one a person wants ninety-nine times out of a hundred is the one above. Inviting a
+                 * colleague is a real action and stays; it just stops shouting as loud.
+                 */
+                style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="white" strokeWidth="1.5"/><path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><path d="M15 8v4M13 10h4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="var(--gw-navy)" strokeWidth="1.5"/><path d="M1 16c0-2.21 2.686-4 6-4s6 1.79 6 4" stroke="var(--gw-navy)" strokeWidth="1.5" strokeLinecap="round"/><path d="M15 8v4M13 10h4" stroke="var(--gw-navy)" strokeWidth="1.5" strokeLinecap="round"/></svg>
                 Invite a team member
               </button>
             ) : (
               <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a colleague</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5, marginBottom: 12 }}>
-                  They will receive an email with a link to set up their own Groundwork account. They can then open and manage their own grounds.
+                  They will receive an email with a link to set up their own Groundwork account. They can then open and manage their own check-ins.
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
@@ -397,36 +440,57 @@ export function GroundsListPage() {
               </div>
             ))}
 
-            {/* Needs attention banner */}
+            {/*
+              THE SAME NAME, THREE TIMES, ON THE SCREEN YOU LAND ON EVERY DAY.
+              
+              This banner listed every check-in needing attention BY NAME, and then the list below
+              listed all of them again by name, and the rail on the left listed them a third time.
+              Ten check-ins read as thirty things to do. The audit's own line: "Looks like you have
+              30 things when you have 10."
+              
+              The signal was never wrong - it is the duplication that was. The cards already sort
+              urgent-first and already carry the badge saying WHY ("Your report is ready", "2
+              overdue"), so a name list here added nothing a person could not see one inch lower.
+              What it could not see is the COUNT, so that is what is left: one line, no names.
+            */}
             {!isLoading && needsAttention.length > 0 && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Needs your attention</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {needsAttention.map(g => (
-                    <div key={g.id} onClick={() => navigate(`/grounds/${g.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '4px 0' }}>
-                      <span style={{ fontSize: 13, color: 'var(--gw-text)', fontWeight: 600 }}>{g.label}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: g.status === 'REPORT_READY' ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)', color: g.status === 'REPORT_READY' ? 'var(--gw-green-t)' : 'var(--gw-amber-t)' }}>
-                        {g.status === 'REPORT_READY' ? 'Report ready' : `${g.overdue} overdue`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+                <strong style={{ fontWeight: 700 }}>
+                  {needsAttention.length === 1 ? 'One check-in needs you' : `${needsAttention.length} check-ins need you`}
+                </strong>
+                {needsAttention.length === 1 ? ' - it is at the top of the list.' : ' - they are at the top of the list.'}
               </div>
             )}
 
             {isLoading && <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 24 }}>Loading…</div>}
 
+            {/*
+              * AN ADMIN'S ROLLOUT, WHICH DOES NOT END WHEN THE FIRST CHECK-IN OPENS.
+              *
+              * This used to be inside the empty-list branch, so it vanished the moment somebody
+              * opened one - which is step two of five. It hid the list exactly when it started
+              * being useful. It decides for itself when it is finished, and hides then.
+              */}
+            {!isLoading && <AdminFirstRun />}
+
             {!isLoading && grounds.length === 0 && (
+              <>
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginBottom: 24, height: 44 }}>
                   <div style={{ width: 10, height: 32, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
                   <div style={{ width: 14, height: 44, borderRadius: 7, background: 'var(--gw-blue-b)' }} />
                   <div style={{ width: 10, height: 28, borderRadius: 5, background: 'var(--gw-border)', opacity: .5 }} />
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>Your first ground is one tap away.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto 24px' }}>Open a ground for a new hire, a cofounder conversation, or a team that needs alignment.</div>
-                <button onClick={() => navigate('/grounds/new')} style={{ padding: '13px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Open your first ground</button>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>Your first check-in is one tap away.</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 280, margin: '0 auto' }}>Open a check-in for a new hire, a cofounder conversation, or a team that needs alignment.</div>
+                {/*
+                  * THE THIRD BUTTON FOR ONE ACTION IS GONE. This screen had "Start a check-in" in
+                  * the rail, "Start a check-in" above, and "Open your first check-in" here - three
+                  * buttons doing one thing, which is how a screen stops having a primary action.
+                  * The words stay, because they say what a check-in is for. The button does not.
+                  */}
               </div>
+              </>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -439,13 +503,13 @@ export function GroundsListPage() {
             {justSetUp && (
               <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>Your account is live.</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your grounds and reports here. Open a ground to start contributing.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
               </div>
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700 }}>
-                {grounds.length > 0 ? `Your grounds (${grounds.length})` : 'Your grounds'}
+                {grounds.length > 0 ? `In progress (${grounds.length})` : 'In progress'}
               </div>
               {/*
                 A SIGNED-IN PERSON MUST NOT BE SENT TO /start.
@@ -454,12 +518,12 @@ export function GroundsListPage() {
                 somebody who is already signed in. An admin who wants a ground
                 belongs in the picker at /grounds/new.
               */}
-              <button
+              {user?.mayOpenCheckIns !== false && <button
                 onClick={() => navigate('/grounds/new')}
                 style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                + Open a ground
-              </button>
+                + New check-in
+              </button>}
             </div>
 
             {/* Removed: this one was shown to CONTRIBUTORS, offering to
@@ -469,17 +533,17 @@ export function GroundsListPage() {
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Nothing here yet.</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 300, margin: '0 auto 8px' }}>
-                  A ground is a shared space where two or more parties check in privately. The report releases when everyone has checked in.
+                  A check-in is a shared space where two or more parties check in privately. The report releases when everyone has checked in.
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.5, maxWidth: 280, margin: '0 auto 24px' }}>
-                  You will see grounds here when someone invites you, or when you open one yourself.
+                  You will see check-ins here when someone invites you, or when you open one yourself.
                 </div>
-                <button
+                {user?.mayOpenCheckIns !== false && <button
                   onClick={() => navigate('/grounds/new')}
                   style={{ padding: '12px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  Open a ground
-                </button>
+                  Open a check-in
+                </button>}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

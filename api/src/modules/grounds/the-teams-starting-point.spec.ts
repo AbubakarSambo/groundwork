@@ -88,8 +88,11 @@ describe('and the reads that were guessing now have the answer', () => {
   });
 
   it('the page stops passing literals into the context read', () => {
+    // The context read moved with the rest of the Context tab into the one ContextPage the lead
+    // and participant views both render. The rule is about where its inputs come from, not about
+    // which file holds the call.
     const PAGE = readFileSync(
-      join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'),
+      join(__dirname, '../../../../client/src/components/gw/ContextPage.tsx'),
       'utf8',
     ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(PAGE).not.toMatch(/conditionCount: 0,/);

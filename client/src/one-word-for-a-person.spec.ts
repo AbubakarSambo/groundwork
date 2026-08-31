@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
  *
  * WHAT IS STILL ALLOWED, and why each is not the same word:
  *  - "contribution" - what a person puts in. A real and different noun, and the
- *    product's own phrase ("your contribution to this ground is yours").
+ *    product's own phrase ("your contribution to this check-in is yours").
  *  - "hiddenContributors" - the report's name for somebody whose contribution is
  *    not visible to the people above them. A finding, not a role. It never reaches
  *    the screen: the heading says "People who may be missing".
@@ -74,7 +74,7 @@ function withoutComments(text: string): string {
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + m.slice(p1.length).replace(/./g, ' '))
 }
 
-describe('the product has one word for a person in a ground', () => {
+describe('the product has one word for a person in a check-in', () => {
   const offenders: string[] = []
   for (const f of files(SRC)) {
     // The `demoData` exemption is gone with the demo page it was written for: a fictional

@@ -16,6 +16,13 @@ import { Cadence, CheckInStatus } from '@prisma/client';
 function makeService(ground: any, session1Completed: boolean) {
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground), update: jest.fn(async (args: any) => ({ ...ground, ...args.data })) },
+    /**
+     * `updateTimeline` now asks who the caller is, because an admin in the same organisation may
+     * change the schedule - they could already release the report and close the check-in. A MEMBER
+     * here, so these suites keep testing the rule they were written for: the schedule is the lead's,
+     * not every party's.
+     */
+    user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })) },
     checkIn: { findFirst: jest.fn(async () => (session1Completed ? { id: 'ci1' } : null)) },
   };

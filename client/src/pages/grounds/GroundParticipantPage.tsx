@@ -1,29 +1,26 @@
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
-import { documentsApi } from '@/api/documents'
 import { GroundChat } from '@/components/gw/GroundChat'
-import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
-import { ContextStrength } from '@/components/gw/ContextStrength'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
+import { ReportBody } from '@/pages/report/ReportPage'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
-import { ObjectivePanel } from '@/components/gw/ObjectivePanel'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
-import { alignmentLabel } from '@/lib/alignment'
 import { toast } from 'sonner'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { ContextPage } from '@/components/gw/ContextPage'
 
 
 
@@ -35,13 +32,39 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
  * conversation dates its own sessions on the dividers.
  */
 
-type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'board' | 'settings'
+type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
+
+/** The shared tab keys, and this page's own older names for the same tabs. Both directions. */
+const FROM_TAB_KEY: Record<string, Tab> = {
+  chat: 'checkin', report: 'report', record: 'record', context: 'docs', settings: 'settings',
+}
+const TO_TAB_KEY: Partial<Record<Tab, string>> = {
+  checkin: 'chat', report: 'report', record: 'record', docs: 'context', settings: 'settings',
+}
 
 export function GroundParticipantPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [tab, setTab] = useState<Tab>('checkin')
+  /**
+   * THIS PAGE IGNORED ?tab= ALTOGETHER.
+   *
+   * The admin page read it; this one always opened on the conversation. So the same link behaved
+   * differently depending on who followed it, and nobody could send anybody "look at the Context
+   * tab" - which is a sentence people say constantly about a check-in.
+   *
+   * Keys are the shared ones from `ground-tabs.ts`, mapped to this page's own older names, and the
+   * URL is kept in step so a tab can be linked to and come back to.
+   */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => FROM_TAB_KEY[searchParams.get('tab') ?? ''] ?? 'checkin')
+  const goTab = (t: Tab) => {
+    setTab(t)
+    const key = TO_TAB_KEY[t]
+    const next = new URLSearchParams(searchParams)
+    if (key) next.set('tab', key); else next.delete('tab')
+    setSearchParams(next, { replace: true })
+  }
   const [showPaywall, setShowPaywall] = useState(false)
   const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
@@ -175,17 +198,7 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Could not activate. Try again.'),
   })
 
-  const { data: docs = [] } = useQuery({
-    queryKey: ['docs', id],
-    queryFn: () => documentsApi.list(id!),
-    enabled: !!id && tab === 'docs',
-  })
 
-  const uploadDoc = useMutation({
-    mutationFn: (file: File) => documentsApi.upload(id!, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Upload failed.'),
-  })
 
   /**
    * WHERE CONTEXT WENT: it was never on this page.
@@ -255,10 +268,10 @@ export function GroundParticipantPage() {
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>Account not linked</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
-            Your account is not linked to this ground. Please contact the ground admin.
+            Your account is not linked to this check-in. Please contact the check-in admin.
           </div>
           <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-            Back to grounds
+            Back to check-ins
           </button>
         </div>
       </div>
@@ -292,24 +305,6 @@ export function GroundParticipantPage() {
   const totalSessions =
     plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
 
-  /**
-   * THE SAME CONTEXT READ THE LEAD SEES. G25 on this page, G26 as the reason.
-   *
-   * "One context page per ground, the same page for everyone, with the closed part
-   * visibly absent rather than silently missing." It was on the admin page only, so
-   * a participant opening Context got a file picker and no idea what the ground
-   * could do with what they gave it. Same function, same inputs, same component.
-   */
-  const contextStrength = ground ? whatThisGroundCanTellYou({
-    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-    hasSuccessDefinition: !!(ground as any).brief?.trim(),
-    conditionCount: 0,
-    hasBaseline: false,
-    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
-    openDocumentCount: (docs ?? []).filter((d: any) => d.visibility === 'OPEN').length,
-    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: totalSessions ?? 1,
-  }) : null
 
   /**
    * The signal feed, the alignment read, the last-completed shortcut and the
@@ -329,9 +324,7 @@ export function GroundParticipantPage() {
    * differs by role rather than two tabs about the same thing.
    */
   const tabs = groundTabs({
-    isLead: false,
     contextEnabled,
-    hasBoard: !!(ground as any).boardRenders,
   }).map(t => {
     /**
      * This page's own keys predate the shared list and are not worth churning: `checkin` for the
@@ -342,7 +335,7 @@ export function GroundParticipantPage() {
      */
     const mine: Record<string, Tab> = {
       chat: 'checkin', report: 'report', record: 'record',
-      context: 'docs', board: 'board', settings: 'settings',
+      context: 'docs', settings: 'settings',
     }
     return { key: mine[t.key] ?? 'checkin', label: t.label }
   })
@@ -354,10 +347,34 @@ export function GroundParticipantPage() {
       {/* Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Grounds</span>
+          <span onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Your contribution to this ground is yours until the report releases.</div>
+            {/*
+              WHICH OF THE TWO VIEWS YOU ARE ON, PERMANENTLY.
+              
+              The same check-in has two pages - the one that runs it and this one, your own account -
+              and a person can move between them from a small button. Neither page said which it was,
+              so somebody who had crossed over could not tell why what they were seeing had changed.
+              The sentence stays on screen rather than announcing itself once and vanishing.
+            */}
+            {/*
+              THE STATE LIVES IN THE HEADER ON THIS PAGE TOO.
+              
+              It was on the lead's page only, so the card below had to carry a session count for a
+              participant - and then the same count sat on the lead's page twice, once in each place.
+              The card is meant to hold two things: the brief, and who is in this. Everything about
+              where the check-in has got to belongs up here, on both pages, once.
+            */}
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <span>Your own account. Yours until the report releases.</span>
+              {totalSessions != null && (
+                <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
+              )}
+              {(ground as any).daysLeft != null && (
+                <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+              )}
+            </div>
           </div>
           {/*
             THE OTHER HALF OF THE SWITCH.
@@ -391,7 +408,13 @@ export function GroundParticipantPage() {
           <GroundTabRow
             tabs={tabs.map(t => ({ key: t.key as any, label: t.label }))}
             active={tab}
-            onPick={k => (k === 'board' ? navigate(`/grounds/${id}/board`) : setTab(k as Tab))}
+            /*
+              The `k === 'board'` branch that used to sit here was dead: `groundTabs()` stopped
+              returning a board key when the board left the tab row, so nothing could ever take it.
+              Dead, and worse than dead - it was the only navigate() to the board left in the app, so
+              it kept a "does anything link here?" check green while the board was unreachable.
+            */
+            onPick={k => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
           />
       </div>
 
@@ -419,11 +442,7 @@ export function GroundParticipantPage() {
             nextOpensAt={opensLater ? openAvailableFrom : null}
             onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
             openPending={probeSession.isPending}
-            label={ground.label}
-            scenario={(ground as any).scenario}
             brief={(ground as any).brief}
-            alignment={alignmentLabel((ground as any).alignment)}
-            sessionsDone={completedCheckIns.length}
             /**
              * WHO IS IN THIS, for the person who could not see it. W13-5.
              *
@@ -467,19 +486,21 @@ export function GroundParticipantPage() {
         {/* MY RECORD TAB */}
         {tab === 'record' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/**
-              * WHAT I AM WORKING TOWARDS, first on my own record, because it is the thing everything
-              * else on this tab is measured against.
-              *
-              * If the lead proposed it, this is where I accept it or say it in my own words - and until
-              * one of those happens, `mayBeReadAgainst` is false and the panel says so out loud.
-              */}
-            <ObjectivePanel
-              groundId={id!}
-              objective={(ground.participants ?? []).find((p: any) => p.userId === user?.id)?.objective}
-              canPropose={false}
-              isMine
-            />
+            {/*
+              WHAT IS EXPECTED OF ME IS ON CONTEXT, IN PLAIN VIEW, WITH EVERYBODY ELSE'S.
+              
+              An ObjectivePanel stood here with an Accept button and the line "Nothing is read against
+              this until you accept it or write your own". That is the old propose-and-accept model,
+              and it contradicted the one the product now runs on:
+              
+                "Participants should not be able to rewrite their targets or accept it. One person is
+                 doing this, we dont want chaos. But they can see it."
+              
+              Both models were live at once, on the same PersonObjective rows - a lead stated an
+              expectation, it published to Context as designed, and this page offered a button to
+              accept it. Seeing it is right; agreeing to it by form is not the mechanism. If they think
+              it is wrong they say so in their check-in, where it is probed and recorded.
+            */}
 
             {/*
               THE EXIT BELONGS AT THE EXIT, ON THIS PAGE TOO. W8-5, half-fixed.
@@ -517,6 +538,39 @@ export function GroundParticipantPage() {
                 </div>
               </div>
             )}
+
+              {/*
+                WHAT IS EXPECTED OF YOU, AS A STATE, BESIDE YOUR OWN SESSIONS.
+                
+                Who Sees What: a participant's Sessions tab is "their own sessions only, and their own
+                target". The sessions were already theirs alone; the target used to be an editing
+                panel with an Accept button, which is the model this product no longer runs on.
+                
+                So it is the same one line the lead's rows carry - set, seen, or nothing yet - and it
+                opens Context, where the words are published for everyone including them. The state
+                belongs next to the sessions it is read against; the words belong where everybody
+                reads the same copy.
+              */}
+              {(() => {
+                const mine = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+                const o = mine?.objective
+                return (
+                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
+                    <Sec title="What is expected of you" />
+                    <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                      {!o?.text?.trim()
+                        ? 'Nothing yet. This comes out of the lead\u2019s own check-in, where they are asked what they expect of each person.'
+                        : o.text}
+                    </div>
+                    <button
+                      onClick={() => setTab('docs')}
+                      style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      {o?.text?.trim() ? 'See it in context, with everyone else\u2019s' : 'Open Context'}
+                    </button>
+                  </div>
+                )
+              })()}
 
             {/* Session history summary - always visible */}
             {(myRecord?.sessions ?? []).length > 0 && (
@@ -575,7 +629,7 @@ export function GroundParticipantPage() {
                 )}
 
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
-                  Only you see this. It is never shown to the lead or to anybody else in this ground.
+                  Only you see this. It is never shown to the lead or to anybody else in this check-in.
                 </div>
               </div>
             )}
@@ -635,7 +689,7 @@ export function GroundParticipantPage() {
                 <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
                     {mySoloReport.shared
-                      ? 'Shared with all parties on this ground'
+                      ? 'Shared with all parties in this check-in'
                       : 'Private - only you can see this'}
                   </div>
                   <button
@@ -702,24 +756,23 @@ export function GroundParticipantPage() {
                 </div>
               </div>
             ) : !report.releasedAt ? (
-              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                  {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
-                </div>
-                <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: (report as any)?.forming ? 10 : 0 }}>
-                  {(report as any)?.forming
-                    ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
-                    : 'Your report will be available once it is released.'}
+              <>
+                <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+                    {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: 0 }}>
+                    {(report as any)?.forming
+                      ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
+                      : 'Your report will be available once it is released.'}
+                  </div>
                 </div>
                 {(report as any)?.forming && (
-                  <button
-                    onClick={() => navigate(`/grounds/${id}/report`)}
-                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    View the forming picture →
-                  </button>
+                  <div style={{ marginTop: 10 }}>
+                    <ReportBody groundId={id!} embedded />
+                  </div>
                 )}
-              </div>
+              </>
             ) : !report.activated ? (
               <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
@@ -739,19 +792,40 @@ export function GroundParticipantPage() {
               </div>
             ) : (
               <>
-                <button
-                  onClick={() => navigate(`/grounds/${id}/report`)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                    background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
-                    padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>
-                    {(report as any).forming ? 'View the forming report (Venn view)' : 'View the full shared report (Venn view)'}
-                  </span>
-                  <span style={{ fontSize: 13 }}>→</span>
-                </button>
+                <ReportBody groundId={id!} embedded />
+
+                {/*
+                  THE WAY INTO THE TEAM BOARD, WHICH A PARTICIPANT DID NOT HAVE.
+
+                  The board stopped being a tab for a good reason - it leaves the page rather than
+                  changing what is under the tab row - and the lead got a replacement door at the
+                  foot of their report. A participant got nothing. The route stayed live, the board
+                  still rendered, and for everybody who is not the lead it simply ceased to exist.
+
+                  Hafsah found it the only way it could be found: "the team board no longer exists."
+
+                  Same gate as the lead's, because a board with nothing to draw is a worse door than
+                  no door, and same place - the board is the shared picture you talk over once you
+                  have read what the accounts said.
+                */}
+                {!!(ground as any).boardRenders && (
+                  <button
+                    onClick={() => navigate(`/grounds/${id}/board`)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                      background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)',
+                      borderRadius: 10, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ textAlign: 'left' }}>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Team board</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
+                        The same check-in side by side, so you can see where the accounts meet. Opens full screen.
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 13 }}>&rarr;</span>
+                  </button>
+                )}
 
                 {/* Participant report sections */}
                 {report.pattern && (
@@ -819,57 +893,51 @@ export function GroundParticipantPage() {
           </div>
         )}
 
-        {/* DOCUMENTS TAB */}
+        {/*
+          THE SAME CONTEXT PAGE THE LEAD SEES. This was assembled separately here, in a different
+          order, with a stray heading and buttons pointing at a chat this page does not have. One
+          file now owns the bands and their order - see ContextPage.
+        */}
         {tab === 'docs' && (
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 10 }}>{contextEnabled ? 'Context' : 'Documents'}</div>
-
-            {/* G25 + G26: what the ground can tell you, and an honest line about the
-                part of context that is the lead's. */}
-            {contextEnabled && contextStrength && (
-              <ContextStrength read={contextStrength} closedNote={!isInitiator} />
-            )}
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 14, background: 'white', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--gw-border)' }}>
-              {contextEnabled
-                ? "This is where the background lives. Anything the lead has opened to the ground appears here, and your check-in has read it. What you upload is yours until the report is released, and it shapes the questions you get asked."
-                : "Documents the admin has shared appear here. Your uploads are part of your contribution to this ground's record until the report is released."}
-            </div>
-
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.6 }}>
-              Your uploads are private. Everyone's documents are cross-referenced when the report is released.
-            </div>
-
-            <div
-              style={{ border: '1.5px dashed var(--gw-border)', borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer', marginBottom: 12, background: 'white' }}
-              onClick={() => document.getElementById('gp-doc-upload')?.click()}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)' }}>Upload a supporting document</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 3 }}>PDF, DOCX, JPEG, PNG</div>
-              <input type="file" id="gp-doc-upload" style={{ display: 'none' }} accept=".pdf,.docx,.jpeg,.jpg,.png"
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadDoc.mutate(f); e.target.value = '' }} />
-            </div>
-
-            {docs.length === 0 ? (
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 20, background: 'white', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
-                No documents yet.
-              </div>
-            ) : (
-              docs.map((doc: any) => (
-                <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <ContextPage ground={ground} role={isInitiator ? 'lead' : 'party'} viewerUserId={user?.id} />
         )}
 
         {/* SETTINGS TAB */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
+            {/*
+              WHAT IS TRUE ABOUT YOU FIRST, WHAT SOMEBODY ELSE SET SECOND.
+
+              This tab opened with a disclaimer and two empty panels that belong to the lead, so a
+              party's first sight of it was three statements about absence and permission before
+              anything that was actually about them. Counted on a real check-in: five sentences about
+              what is missing or not theirs, in a thousand characters.
+
+              Nothing is removed - the disclaimer is still the honest thing to say, and the panels
+              still show what the lead has set. They are ordered with `order` rather than moved,
+              because the parent is already a flex column and reordering the markup itself is how a
+              1,100-line page gets broken.
+            */}
+            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
+            {/*
+              SAID OUTRIGHT, ONCE, AT THE TOP.
+              
+              Everything on this tab is read-only for a party, and each panel knew it - `canState` and
+              `canRecord` are both false - but the tab never said so. A screen full of things you
+              cannot change, with nothing explaining why, reads as either broken or as a permission
+              you have somehow lost.
+              
+              And the reason matters more than the fact: a party stating their own yardstick would be
+              the person being read setting their own measure, which is the one comparison the report
+              exists to make. So the sentence gives the reason and names the way to disagree, because
+              there is one and it is not a form.
+            */}
+            <div style={{ order: 3, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              Nothing on this page is yours to change. What doing well looks like, and where this
+              stood at the start, are set by the person running the check-in - so that what you are
+              read against is not something you set yourself. You can see all of it, and if you
+              think any of it is wrong, say so in your check-in: that goes on the record too.
+            </div>
 
             {/**
               * THE YARDSTICK, READ-ONLY. `canState` is false: stating what doing well looks like is
@@ -879,15 +947,15 @@ export function GroundParticipantPage() {
               * But they see it. If it changed mid-ground, they see that too, with the reason. Somebody
               * being read against a standard they cannot see is the thing this product is against.
               */}
-            <BaselinePanel groundId={id!} canState={false} />
+            <div style={{ order: 4 }}><BaselinePanel groundId={id!} canState={false} /></div>
             {/**
               * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
               * yardstick and the starting point together are what let a report say something moved.
               */}
-            <StartingPointPanel groundId={id!} canRecord={false} />
+            <div style={{ order: 5 }}><StartingPointPanel groundId={id!} canRecord={false} /></div>
 
             {/* Profile summary */}
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ order: 1, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
                 {(user?.firstName?.[0] ?? '?').toUpperCase()}
               </div>
@@ -897,9 +965,9 @@ export function GroundParticipantPage() {
               </div>
             </div>
 
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ order: 2, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Ground</div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
@@ -908,7 +976,14 @@ export function GroundParticipantPage() {
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed ?? 'In this ground'}</div>
+                {/*
+                  THE FALLBACK SAID NOTHING. Every other row here carries a value - the check-in's
+                  name, the scenario, ACTIVE, 0 of 8. This one fell back to "In this check-in",
+                  which reads as a caption for the label above it rather than an answer, so the row
+                  looked filled in while saying nothing at all. Only visible once the card moved to
+                  the top of the tab and became the first thing a party reads about themselves.
+                */}
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed || 'Not recorded'}</div>
               </div>
               <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
@@ -925,7 +1000,7 @@ export function GroundParticipantPage() {
               * same read as the one on the record tab, minus everything a person could act on, and
               * a page that grades you twice is not twice as honest.
               */}
-            <div style={{ background: 'var(--gw-clay-bg)', border: '1px solid #EDD0CB', borderRadius: 10, padding: '13px 16px' }}>
+            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid var(--gw-clay-b)', borderRadius: 10, padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
               <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
                 Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.
@@ -952,7 +1027,7 @@ export function GroundParticipantPage() {
                   <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
                     <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                      Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Ground.
+                      Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
                     </div>
                     <button
                       onClick={() => claimFreeExtensionMut.mutate()}
@@ -972,7 +1047,7 @@ export function GroundParticipantPage() {
                 <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organisation</div>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                    Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
+                    Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
                   </div>
                   <button
                     onClick={() => createSubscriptionMut.mutate('STARTER')}
@@ -1042,7 +1117,7 @@ export function GroundParticipantPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
-              Your private report will become visible to all other parties on this ground:
+              Your private report will become visible to all other parties on this check-in:
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
               {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (

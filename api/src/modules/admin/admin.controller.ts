@@ -23,6 +23,8 @@ import { PricingService } from '../billing/pricing.service';
  */
 const MIN_PLAN_AMOUNT_CENTS = 50;
 const MAX_PLAN_AMOUNT_CENTS = 500000;
+/** A seat cap larger than this is a typo, not a plan. Enterprise expresses unlimited with null. */
+const MAX_PLAN_MEMBER_CAP = 100000;
 import { SubscriptionPlan } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -92,6 +94,18 @@ export class AdminController {
     return { freeGroundLimit: await this.pricing.getFreeGroundLimit() };
   }
 
+  @Get('pricing/free-member-limit')
+  @ApiOperation({ summary: 'How many people a free organisation may have, the creator included' })
+  async getFreeMemberLimit() {
+    return { freeMemberLimit: await this.pricing.getFreeMemberLimit() };
+  }
+
+  @Patch('pricing/free-member-limit')
+  @ApiOperation({ summary: 'Change the free member limit' })
+  async setFreeMemberLimit(@CurrentUser('id') userId: string, @Body() body: { freeMemberLimit: number }) {
+    return { freeMemberLimit: await this.pricing.setFreeMemberLimit(Number(body?.freeMemberLimit), userId) };
+  }
+
   @Patch('pricing/free-ground-limit')
   @ApiOperation({ summary: 'Change the free ground limit' })
   async setFreeGroundLimit(@CurrentUser('id') userId: string, @Body() body: { freeGroundLimit: number }) {
@@ -100,12 +114,38 @@ export class AdminController {
 
   @Patch('pricing/:plan')
   @ApiOperation({ summary: 'Update the monthly price (in cents) for a subscription plan' })
-  async setPricing(@Param('plan') plan: string, @Body() body: { amountCents: number }) {
-    if (plan === SubscriptionPlan.ENTERPRISE) {
-      throw new BadRequestException('Enterprise is contact-sales only and has no self-serve price.');
-    }
+  async setPricing(@Param('plan') plan: string, @Body() body: { amountCents?: number; memberCap?: number | null }) {
     if (!Object.values(SubscriptionPlan).includes(plan as SubscriptionPlan)) {
       throw new BadRequestException(`Unknown plan: ${plan}`);
+    }
+
+    /**
+     * THE SEAT CAP IS EDITABLE HERE TOO, OR IT IS ONLY EDITABLE BY SQL.
+     *
+     * Moving the caps into `pricing_plans` beside the prices only helps if the same admin screen
+     * can change them. Left read-only, the caps would still be the half of pricing that drifts -
+     * just in a table instead of in three source files.
+     *
+     * `null` means unlimited, which is what Enterprise is, so it is a valid value rather than a
+     * missing one. `undefined` means "not changing the cap".
+     */
+    if (body?.memberCap !== undefined) {
+      const cap = body.memberCap;
+      if (cap !== null && (!Number.isInteger(cap) || cap < 1 || cap > MAX_PLAN_MEMBER_CAP)) {
+        throw new BadRequestException(`memberCap must be null for unlimited, or a whole number between 1 and ${MAX_PLAN_MEMBER_CAP}.`);
+      }
+      await this.pricing.setMemberCap(plan as SubscriptionPlan, cap);
+    }
+
+    /** Enterprise has no self-serve price, but it does have a cap, so it reaches this method. */
+    if (body?.amountCents === undefined) {
+      if (body?.memberCap === undefined) {
+        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, or both.');
+      }
+      return this.pricing.listPlans();
+    }
+    if (plan === SubscriptionPlan.ENTERPRISE) {
+      throw new BadRequestException('Enterprise is contact-sales only and has no self-serve price.');
     }
     if (!Number.isInteger(body?.amountCents) || body.amountCents <= 0) {
       throw new BadRequestException('amountCents must be a positive integer');

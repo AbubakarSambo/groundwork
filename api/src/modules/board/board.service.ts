@@ -1,10 +1,12 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
 import {
   BoardFamily,
   BoardSection,
   boardRendersFor,
+  boardHasSection,
   familyFor,
   pickBoardSafeReportFields,
   sectionsFor,
@@ -23,6 +25,11 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
+import {
+  OrgDependency,
+  whatThePlaceIsWaitingOn,
+  whoIsBeingWaitedOn,
+} from './what-the-whole-place-is-waiting-on';
 import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 
@@ -80,7 +87,7 @@ export class BoardService {
         poll: { include: { options: { orderBy: { sortOrder: 'asc' } } } },
       },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     /**
      * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.
@@ -88,7 +95,7 @@ export class BoardService {
      * The authorisation throw used to sit here, above the mode gate. On a private ground - which has
      * no board at all, by design - an org admin who was not a party got "You are not a party to this
      * ground" and a red Access denied toast, while a PARTICIPANT on the same URL got the truth:
-     * "This is a private alignment ground... there is no shared board. Read your report instead."
+     * "This is a private check-in... there is no shared board. Read your report instead."
      *
      * So the person with the least authority was the one being told what was going on, and the
      * admin was shown a permission problem that did not exist - one tab after a banner reading "You
@@ -105,16 +112,25 @@ export class BoardService {
     // GATE 1: mode + family. A private ground, or a sensing-family scenario,
     // has no board at all - and says so, rather than returning an empty shell
     // that reads like a broken page.
-    if (!boardRendersFor(ground.scenario, ground.mode)) {
+    if (!boardRendersFor(ground.scenario)) {
       return {
         groundId,
         renders: false,
         mode: ground.mode,
         family: familyFor(ground.scenario),
+        /**
+         * BOTH OLD REASONS WERE ABOUT MODE, AND MODE NO LONGER DECIDES THIS.
+         *
+         * One said "this is a private check-in, so there is no shared board", the other said this kind
+         * of check-in does not use one. Every check-in has a board now, so neither can be true - and a
+         * refusal that gives a reason which cannot be true is worse than a plain one.
+         *
+         * What remains reachable is a family with no sections, which would be a check-in the product
+         * does not know how to lay out. That is a gap in the product, not a decision about the reader,
+         * so it says so.
+         */
         reason:
-          ground.mode !== GroundMode.SHARED
-            ? 'This is a private alignment ground. Accounts are never shown to other parties, so there is no shared board. Read your report instead.'
-            : 'This kind of ground does not use a shared board. Laying these accounts out for everyone to read would undo the candour that makes them worth having. Read the report instead.',
+          'There is no board for this check-in yet. Read the report instead - it has everything the accounts produced.',
       };
     }
 
@@ -131,14 +147,14 @@ export class BoardService {
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     if (!me && !isInitiator && !isSetupAdmin) {
-      throw new ForbiddenException('You are not a party to this ground');
+      throw new ForbiddenException('You are not a party to this check-in');
     }
 
     // Collapse duplicate handoffs before anything reads them, so existing
     // grounds get the same answer as new ones.
     (ground as any).dependencies = dedupeDependencies(ground.dependencies as any);
 
-    const sections = sectionsFor(ground.scenario, ground.mode);
+    const sections = sectionsFor(ground.scenario);
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
@@ -164,11 +180,28 @@ export class BoardService {
     });
     const maxSession = checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 1);
 
+    /**
+     * NAMES AND RAW EMAIL ADDRESSES IN THE SAME COLUMN. W-UX-4.
+     *
+     * Seen on the running board: "Sahar Okonkwo" beside "ejiro@meridianhealth.test",
+     * "hafeezah@meridianhealth.test" and four more, in one grid, so it read as two different kinds
+     * of person. Her audit note said exactly that about two screens; this was the third.
+     *
+     * The board falls back to the ROLE, not the address, and there are two reasons rather than one:
+     *
+     *  1. The board is read by every party, and a party's address can be hidden from the others. The
+     *     client's `participantLabel` refuses the email for this reason and this did not.
+     *  2. It is what this board is for. Its own framing panel says each person is shown "against
+     *     their own role in its own terms" - so when there is no name, the role IS the identity.
+     *
+     * `role` is already sent alongside `name` in the response, so the client suppresses the subtitle
+     * when the two would say the same word twice.
+     */
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim();
-      return n || p.email || null;
+      return n || p.roleAsDescribed?.trim() || null;
     };
 
     // GATE 2: whitelist. Only these report fields may cross to the board.
@@ -246,7 +279,7 @@ export class BoardService {
       // board is otherwise read-only, so the client should not offer controls it
       // would only be rejected for using.
       canEditFrame: isInitiator,
-      readOnlyNote: 'Generated from the ground. Only the meeting poll is editable.',
+      readOnlyNote: 'Generated from the check-in. Only the meeting poll is editable.',
       participants: ground.participants.map((p) => ({
         id: p.id,
         name: nameOf(p.id),
@@ -731,12 +764,21 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
-    if (!boardRendersFor(ground.scenario, ground.mode)) {
-      throw new ForbiddenException('This ground does not have a board');
+    if (!ground) throw new NotFoundException('Check-in not found');
+    /**
+     * GATED ON THE SECTION, NOT ON THE BOARD EXISTING.
+     *
+     * This asked "does this ground have a board", which was the same question while the only
+     * boardless families were the ones with no sections at all. Sensing boards now exist and
+     * deliberately have NO objectives section - a pulse or a drift has no target anybody stated,
+     * which is the whole reason its board is reduced. Asking the weaker question let an initiator
+     * write a target onto a board that will never show it.
+     */
+    if (!boardHasSection(ground.scenario, 'objectives')) {
+      throw new ForbiddenException('This check-in does not track targets');
     }
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the person who set this ground up can change what it is aiming for');
+      throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for');
     }
     return ground;
   }
@@ -834,12 +876,24 @@ export class BoardService {
       where: { id: groundId },
       select: { id: true, scenario: true, mode: true, initiatorId: true, participants: { select: { id: true, userId: true } } },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
-    if (!boardRendersFor(ground.scenario, ground.mode)) {
-      throw new ForbiddenException('This ground does not have a board');
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!boardRendersFor(ground.scenario)) {
+      throw new ForbiddenException('This check-in does not have a board');
+    }
+    /**
+     * AND THE POLL SECTION SPECIFICALLY, which the board check above no longer implies.
+     *
+     * While a private check-in had no board at all, "has a board" happened to exclude everything without
+     * a poll. Every check-in has a board now, so a one-round read would have accepted a schedule it has
+     * no section to show and nothing to schedule - there is no second session to pick a time for.
+     *
+     * Same shape as the objectives gate above: write to the SECTION, not to the board.
+     */
+    if (!boardHasSection(ground.scenario, 'poll')) {
+      throw new ForbiddenException('This check-in does not schedule its own rounds');
     }
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me) throw new ForbiddenException('You are not a party to this ground');
+    if (!me) throw new ForbiddenException('You are not a party to this check-in');
 
     const option = await this.prisma.groundPollOption.findUnique({
       where: { id: optionId },
@@ -852,6 +906,132 @@ export class BoardService {
     await this.prisma.groundPollOption.update({ where: { id: optionId }, data: { whoIds } });
     return { optionId, available: !has, count: whoIds.length };
   }
+
+  /**
+   * WHAT THE WHOLE ORGANISATION IS WAITING ON.
+   *
+   * The per-ground board has read handoffs well for a long time; what it cannot see is that the same
+   * person has been waiting on the same thing for a month across three grounds. This gathers them,
+   * resolves each side to a person so the same human is one person everywhere, and hands them to the
+   * pure read. No rule about what counts lives here - that stays in the read where it can be checked.
+   *
+   * Participants are matched by email, which is the only identifier a participant row and a person
+   * reliably share. A participant with no email cannot be resolved and is left out rather than
+   * guessed at: attributing somebody's wait to the wrong person is worse than not showing it.
+   */
+  async waitingAcrossTheOrg(organizationId: string, now = new Date()) {
+    const rows = await this.prisma.groundDependency.findMany({
+      where: {
+        ground: { organizationId },
+        status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] },
+      },
+      select: {
+        fromParticipantId: true, onParticipantId: true, onLabel: true, what: true,
+        status: true, createdAt: true, groundId: true,
+        ground: { select: { label: true } },
+        fromParticipant: { select: { email: true } },
+        onParticipant: { select: { email: true } },
+      },
+    });
+
+    const deps: OrgDependency[] = [];
+    for (const r of rows) {
+      const from = r.fromParticipant?.email?.toLowerCase();
+      if (!from) continue;
+      deps.push({
+        fromParticipantId: r.fromParticipantId,
+        onParticipantId: r.onParticipantId,
+        onLabel: r.onLabel,
+        what: r.what,
+        status: r.status,
+        createdAt: r.createdAt,
+        groundId: r.groundId,
+        groundLabel: r.ground?.label ?? '',
+        fromPersonKey: from,
+        onPersonKey: r.onParticipant?.email?.toLowerCase() ?? null,
+      });
+    }
+
+    const waiting = whatThePlaceIsWaitingOn(deps, now);
+    return { waiting, waitedOn: whoIsBeingWaitedOn(waiting) };
+  }
+
+  /**
+   * WHERE A MANAGER IS NEEDED THIS WEEK.
+   *
+   * Every input already existed and nothing asked the question, which is the same gap escalation
+   * filled one level down: a careful per-person read is worth nothing to somebody with twelve people
+   * if they have to open twelve of them to find the one that matters.
+   *
+   * ASSEMBLY ONLY. Every judgement here was made somewhere else and is only being grouped - the
+   * handoffs come from the board, the ran-out cycle from the escalation rules, and asking to be
+   * shown from what the person said in their own check-in. Nothing new is decided about anybody,
+   * which is what keeps this a router rather than a second opinion.
+   *
+   * The shaping - four buckets, no score, what it refuses to mean - is in who-needs-you-this-week.ts.
+   */
+  async whoNeedsYouThisWeek(organizationId: string, managerKey: string) {
+    const key = managerKey.toLowerCase();
+    const now = new Date();
+    const { waiting } = await this.waitingAcrossTheOrg(organizationId);
+
+    const needs: Need[] = [];
+
+    for (const w of waiting as any[]) {
+      /*
+       * THE MANAGER'S OWN QUEUE FIRST. A manager reading a list of people who need attention while
+       * being the thing several of them are waiting for is the version of this that does harm.
+       */
+      if (w.onPersonKey === key) {
+        needs.push({
+          kind: 'WAITING_ON_YOU',
+          who: w.fromLabel ?? w.fromPersonKey ?? 'somebody',
+          says: `waiting on you for ${w.what}`,
+          waitingDays: w.waitingDays,
+        });
+        continue;
+      }
+      /* Raised, still open, and not theirs to clear. Long waits sort themselves to the top. */
+      if (w.escalatedAt) {
+        needs.push({
+          kind: 'STUCK_AND_RAISED',
+          who: w.fromLabel ?? w.fromPersonKey ?? 'somebody',
+          says: `raised that they are stuck on ${w.what}${w.onLabel ? ` with ${w.onLabel}` : ''}`,
+          waitingDays: w.waitingDays,
+        });
+      }
+    }
+
+    /*
+     * ASKED TO BE SHOWN. The cheapest thing on the whole list to fix and the one most likely to be
+     * read as a performance problem, which is why it carries its own sentence about what it asks
+     * for. Only ever from what the person said about themselves - see they-said-why-themselves.ts.
+     */
+    const said = await this.prisma.checkIn.findMany({
+      where: { saidWhy: 'SKILL', ground: { organizationId } },
+      /*
+       * The check-in's own completion, not a timestamp on the person. `completedAt` is when they
+       * said it; falling back to when the check-in was made keeps an in-progress one from reading
+       * as nought days old.
+       */
+      select: { completedAt: true, createdAt: true, participant: { select: { email: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    }).catch(() => [] as any[]);
+
+    for (const c of said as any[]) {
+      const who = c.participant?.email ?? 'somebody';
+      needs.push({
+        kind: 'ASKED_TO_BE_SHOWN',
+        who,
+        says: 'said themselves that they do not know how to do something they have taken on',
+        waitingDays: Math.max(0, Math.floor((now.getTime() - new Date(c.completedAt ?? c.createdAt).getTime()) / 86400000)),
+      });
+    }
+
+    return whoNeedsYou(needs);
+  }
+
 }
 
 /**

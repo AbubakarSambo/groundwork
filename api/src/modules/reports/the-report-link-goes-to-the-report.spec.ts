@@ -31,7 +31,7 @@ const API = path.join(__dirname, '../..');
 
 /** Every path the client will actually render something for. */
 function clientRoutes(): string[] {
-  const source = fs.readFileSync(CLIENT_ROUTES, 'utf8');
+  const source = fs.readFileSync(CLIENT_ROUTES, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   return [...source.matchAll(/path="([^"]+)"/g)].map((m) => m[1]);
 }
 
@@ -55,7 +55,7 @@ describe('every report link the API sends', () => {
   ];
 
   it.each(filesThatLink)('%s builds a path the client can open', (file) => {
-    const source = fs.readFileSync(path.join(API, 'modules', file), 'utf8');
+    const source = fs.readFileSync(path.join(API, 'modules', file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
     // Template literals that look like a frontend URL being assembled.
     const built = [...source.matchAll(/\$\{frontend[^}]*\}([^`]*)`/g)].map((m) => m[1]);

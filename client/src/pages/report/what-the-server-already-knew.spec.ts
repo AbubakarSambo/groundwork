@@ -20,7 +20,7 @@ const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the weigh section reaches the page', () => {
-  it('renders what the ground can tell you', () => {
+  it('renders what the check-in can tell you', () => {
     expect(CODE).toContain('<WhatTheGroundCanTellYou')
     expect(CODE).toMatch(/report as any\)\.whatTheGroundCanTellYou/)
   })
@@ -135,13 +135,13 @@ describe('the section\'s own reading of its gaps', () => {
    * turning CONFIDENCE_ENABLED on. `whatALeaderCanWeigh` returns TWO notes-worth of writing and the
    * page rendered one of them:
    *
-   *   section.note   this ground: "three things you said mattered were never reached"
+   *   section.note   this check-in: "three things you said mattered were never reached"
    *   the caveat     any ground: this is material, not a verdict
    *
    * A lead was reading a list of unmet standards with nothing telling them what that does and does
    * not mean, which is the one sentence the module wrote for exactly that moment.
    */
-  it('renders the note the module computed for this ground', () => {
+  it('renders the note the module computed for this check-in', () => {
     expect(CODE).toMatch(/section\.note &&/)
   })
 

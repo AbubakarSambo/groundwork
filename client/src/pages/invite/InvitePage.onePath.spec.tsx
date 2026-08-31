@@ -69,7 +69,7 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
     expect(opts?.state?.sessionNumber).toBe(1)
   })
 
-  it('falls back to the ground participant page when no open check-in exists', async () => {
+  it('falls back to the check-in participant page when no open check-in exists', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({
       accessToken: 'jwt-1', user: { id: 'u-p', email: 'p@x.test' }, groundId: 'g-1', checkInId: null,
     })

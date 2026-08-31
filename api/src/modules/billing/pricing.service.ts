@@ -3,12 +3,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { SubscriptionPlan } from '@prisma/client';
 
+/**
+ * The plan NAMES, and only the names.
+ *
+ * These read "Starter (up to 5 people)" and so on, which made them a fourth copy of the seat
+ * caps - one that reached Stripe, since the Product is created as `Groundwork ${label}`. A cap
+ * changed in the database would have left the old number in the plan name on the invoice.
+ * The cap now comes from `pricing_plans.memberCap` wherever it is shown.
+ */
 export const PLAN_LABELS: Record<SubscriptionPlan, string> = {
-  [SubscriptionPlan.STARTER]: 'Starter (up to 5 people)',
-  [SubscriptionPlan.SMALL_TEAM]: 'Small Team (up to 20 people)',
-  [SubscriptionPlan.GROWTH]: 'Growth (up to 100 people)',
-  [SubscriptionPlan.BUSINESS]: 'Business (up to 250 people)',
-  [SubscriptionPlan.SCALE]: 'Scale (up to 1,000 people)',
+  [SubscriptionPlan.STARTER]: 'Starter',
+  [SubscriptionPlan.SMALL_TEAM]: 'Small Team',
+  [SubscriptionPlan.GROWTH]: 'Growth',
+  [SubscriptionPlan.BUSINESS]: 'Business',
+  [SubscriptionPlan.SCALE]: 'Scale',
   [SubscriptionPlan.ENTERPRISE]: 'Enterprise',
 };
 
@@ -29,6 +37,19 @@ export const FREE_GROUND_LIMIT_KEY = 'pricing.freeGroundLimit';
 export const DEFAULT_FREE_GROUND_LIMIT = 10;
 export const MAX_FREE_GROUND_LIMIT = 1000;
 
+/**
+ * How many people a free organisation may have. Beside the ground limit because it is the same
+ * decision - what the free tier is worth - and the same shape: one number for the whole platform,
+ * so it belongs in `platform_settings` rather than in `pricing_plans`, which is keyed by plan.
+ *
+ * The count INCLUDES the person who created the account, on both the account gate and the
+ * per-check-in cap. Five means them plus four others, and every message that quotes the number
+ * has to say so, because "5 people" reads as "5 people I can invite".
+ */
+export const FREE_MEMBER_LIMIT_KEY = 'pricing.freeMemberLimit';
+export const DEFAULT_FREE_MEMBER_LIMIT = 5;
+export const MAX_FREE_MEMBER_LIMIT = 1000;
+
 @Injectable()
 export class PricingService {
   private readonly logger = new Logger(PricingService.name);
@@ -44,9 +65,34 @@ export class PricingService {
       plan: r.plan,
       label: PLAN_LABELS[r.plan],
       amountCents: r.amountCents,
+      /** Null means unlimited. The client renders the count without a ceiling rather than a number. */
+      memberCap: r.memberCap,
       hasStripePrice: !!r.stripePriceId,
       updatedAt: r.updatedAt,
     }));
+  }
+
+  /**
+   * Everything a pricing surface needs, in ONE read.
+   *
+   * The plans and the free limits were two separate lookups reached through two endpoints, and
+   * the client held its own copy of the free limit because there was nowhere to get it. A page
+   * that has to make two requests to state one offer will eventually state half of it.
+   */
+  async publicPricing() {
+    const [plans, groundLimit, memberLimit] = await Promise.all([
+      this.listPlans(),
+      this.getFreeGroundLimit(),
+      this.getFreeMemberLimit(),
+    ]);
+    return { plans, free: { groundLimit, memberLimit } };
+  }
+
+  /** The seat cap for a plan, or null for unlimited. Throws for a plan with no row. */
+  async memberCapFor(plan: SubscriptionPlan): Promise<number | null> {
+    const row = await this.prisma.pricingPlan.findUnique({ where: { plan }, select: { memberCap: true } });
+    if (!row) throw new NotFoundException(`No plan configured for ${plan}`);
+    return row.memberCap;
   }
 
   /** Admin update: Stripe Prices are immutable, so a new amount invalidates the cached one. */
@@ -58,11 +104,29 @@ export class PricingService {
     this.logger.log(`Pricing updated for plan ${plan}: ${amountCents} cents (cached Stripe price cleared)`);
   }
 
+  /**
+   * Admin update for the seat cap. Deliberately does NOT clear `stripePriceId`: the cap is not
+   * part of what Stripe charges, so invalidating the cached price would create a new Stripe Price
+   * for the same amount every time somebody adjusted a seat count.
+   */
+  async setMemberCap(plan: SubscriptionPlan, memberCap: number | null): Promise<void> {
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { memberCap } });
+    this.logger.log(`Member cap for ${plan} set to ${memberCap === null ? 'unlimited' : memberCap}`);
+  }
+
   /** Returns a live Stripe Price id for the plan, creating one lazily if the DB amount changed. */
   async getOrCreateStripePrice(plan: SubscriptionPlan): Promise<string> {
     const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
     if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
     if (row.stripePriceId) return row.stripePriceId;
+    /**
+     * A contact-sales plan has no amount, and `unit_amount: null` would have created a Stripe
+     * price of zero - a subscription that charges nothing, created by a checkout that looked
+     * like it worked. Refusing is the only safe reading.
+     */
+    if (row.amountCents === null) {
+      throw new BadRequestException(`${PLAN_LABELS[plan]} has no self-serve price. This plan is arranged by contacting us.`);
+    }
 
     let productId = row.stripeProductId;
     if (!productId) {
@@ -107,9 +171,42 @@ export class PricingService {
     return DEFAULT_FREE_GROUND_LIMIT;
   }
 
+  /**
+   * The live free member limit, or the shipped default. Never throws, for the same reason
+   * `getFreeGroundLimit` never does: a bad row must mean "the limit we shipped with", not zero.
+   * Zero here would refuse every free organisation its own founder.
+   */
+  async getFreeMemberLimit(): Promise<number> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: FREE_MEMBER_LIMIT_KEY } });
+      const v = row?.value;
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_FREE_MEMBER_LIMIT) return v;
+    } catch (err) {
+      this.logger.warn(`Could not read the free member limit, using the default: ${(err as Error)?.message}`);
+    }
+    return DEFAULT_FREE_MEMBER_LIMIT;
+  }
+
+  async setFreeMemberLimit(limit: number, adminUserId: string): Promise<number> {
+    /**
+     * At least one, not zero. The creator's own row is counted, so a limit of zero would lock
+     * an organisation out of itself the moment it was created.
+     */
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_FREE_MEMBER_LIMIT) {
+      throw new BadRequestException(`The free member limit must be a whole number between 1 and ${MAX_FREE_MEMBER_LIMIT}.`);
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: FREE_MEMBER_LIMIT_KEY },
+      create: { key: FREE_MEMBER_LIMIT_KEY, value: limit, updatedBy: adminUserId },
+      update: { value: limit, updatedBy: adminUserId },
+    });
+    this.logger.log(`Free member limit set to ${limit} by ${adminUserId}`);
+    return limit;
+  }
+
   async setFreeGroundLimit(limit: number, adminUserId: string): Promise<number> {
     if (!Number.isInteger(limit) || limit < 0 || limit > MAX_FREE_GROUND_LIMIT) {
-      throw new BadRequestException(`The free ground limit must be a whole number between 0 and ${MAX_FREE_GROUND_LIMIT}.`);
+      throw new BadRequestException(`The free check-in limit must be a whole number between 0 and ${MAX_FREE_GROUND_LIMIT}.`);
     }
     await this.prisma.platformSetting.upsert({
       where: { key: FREE_GROUND_LIMIT_KEY },

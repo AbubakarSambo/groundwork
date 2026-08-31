@@ -32,7 +32,7 @@ function makeService({
 }: any = {}) {
   const upserts: any[] = [];
   const prisma: any = {
-    groundParticipant: { findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence, joinedAt, leftAt, leavePeriods })) },
+    groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findUnique: jest.fn(async () => ({ detectedFunction: fn, detectedFunctionConfidence: confidence, joinedAt, leftAt, leavePeriods })) },
     conversationTurn: {
       findMany: jest.fn(async () => [
         { role: 'AI', content: 'What did you spend the week on?' },
@@ -205,11 +205,19 @@ describe('what the session showed', () => {
     expect(upserts[0].update.history[0].outcome).toBeNull();
   });
 
-  it('does nothing at all with the flag off', async () => {
-    const { service, prisma, anthropic } = makeService({ enabled: false });
+  /*
+   * THIS ASSERTED THAT THE FLAG TURNED IT OFF. The flag is gone - it was off in every environment
+   * for long enough that the coach had never run for anybody, which is a decision nobody was
+   * making rather than caution.
+   *
+   * What is worth proving now is the thing the flag was standing in for: the coach reads the
+   * session before it says anything, so it can be silent when there is nothing to say.
+   */
+  it('reads the session before it decides anything', async () => {
+    const { service, prisma, anthropic } = makeService({ enabled: true });
     await observe(service);
-    expect(prisma.groundParticipant.findUnique).not.toHaveBeenCalled();
-    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(prisma.groundParticipant.findUnique).toHaveBeenCalled();
+    expect(anthropic.extract).toHaveBeenCalled();
   });
 });
 
@@ -221,7 +229,11 @@ describe('and complete() calls it, which is the part that was missing', () => {
       participant: { userId: 'user1', email: 'p@example.test' },
     };
     const prisma: any = {
+      /* The round-closing call runs inside these flows now; see grounds/round-completion.ts. */
+      roundCompletion: { create: jest.fn(async (a: any) => a.data) },
+      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]) },
       checkIn: {
+        count: jest.fn(async () => 1),
         findUnique: jest.fn(async () => checkIn),
         update: jest.fn(async () => ({ status: 'COMPLETED', groundId: 'g1' })),
       },

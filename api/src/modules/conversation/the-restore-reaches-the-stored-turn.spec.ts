@@ -29,6 +29,9 @@ function makeService(aiReply: string, personTurns: string[]) {
     // Nobody in these specs has written a between-session note; the session build
     // reads the table regardless, so it has to answer.
     participantNote: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
+    // Same reason: the session build reads what somebody says they delivered whether or not
+    // this spec is about that, so the table has to answer.
+    delivery: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     conversationTurn: {
       count: jest.fn(async () => personTurns.length),
       create: jest.fn(async (a: any) => {

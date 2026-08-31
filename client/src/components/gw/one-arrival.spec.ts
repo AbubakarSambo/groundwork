@@ -12,13 +12,13 @@ import { describe, it, expect } from 'vitest'
  *   /verify-email   four bare full-height divs, one per state
  *
  * So the first thing somebody saw of Groundwork depended on which email they were sent, and the one
- * that looked least like a product was the magic link - the path a person takes to reach the ground
+ * that looked least like a product was the magic link - the path a person takes to reach the check-in
  * they just built.
  *
  * WHAT WAS DELIBERATELY NOT DONE, and this is the part to argue with if you disagree. W8-49 says
  * collapse the three routes onto one page. The three flows are genuinely different mechanics against
  * different endpoints - `/invite` accepts a token and lands in a check-in, `/join` needs a name and
- * an email first, `/verify-email` verifies and then commits a ground built before the account
+ * an email first, `/verify-email` verifies and then commits a check-in built before the account
  * existed - and each already has its own guard file asserting its own behaviour. Folding them into
  * one component would put the three paths that get people into the product at all through one set of
  * branches, to save some markup.
@@ -90,7 +90,7 @@ describe('the rail on the entry flow, and the way out of a session', () => {
    * and it was already the behaviour - so I recorded that as a wrong plan item. She then said the
    * rail HAD been there on a signed-out window. Also right, and the mechanism was sitting in the
    * file: `AppSidebar` carries a branch commented "Entry ground shown when unauthenticated on
-   * /start", which draws the ground being built for somebody with no account yet.
+   * /start", which draws the check-in being built for somebody with no account yet.
    *
    * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was never mounted
    * for a stranger, which makes `isEntryPage = !isAuthenticated && pathname === '/start'` false
@@ -135,7 +135,7 @@ describe('the check-in is not a trap', () => {
     expect(header.indexOf('gw-back')).toBeLessThan(header.indexOf('gw-logo'))
   })
 
-  it('and it returns you to the ground, not to the list of every ground', () => {
+  it('and it returns you to the check-in, not to the list of every ground', () => {
     // Leaving a session should not cost you your place.
     expect(CHAT).toMatch(/navigate\(groundId \? `\/grounds\/\$\{groundId\}\$\{isInitiator \? '' : '\/p'\}` : '\/grounds'\)/)
   })

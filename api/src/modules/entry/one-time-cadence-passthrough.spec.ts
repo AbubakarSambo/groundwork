@@ -11,10 +11,15 @@ import { Cadence } from '@prisma/client';
 
 function makeService() {
   const prisma: any = {
-    organization: { update: jest.fn(async () => ({})) },
+    user: { findUnique: jest.fn(async () => ({ role: 'ADMIN' })) },
+    organization: {
+      /* `commit` now checks who may open a check-in here before either path. */
+      findUnique: jest.fn(async () => ({ whoMayOpenCheckIns: 'NAMED_LEADS', checkInsNeedApproval: true })), update: jest.fn(async () => ({})) },
     entryDraft: { findUnique: jest.fn(async () => null), updateMany: jest.fn(async () => ({ count: 0 })) },
-    groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
-    checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
+    groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})) },
+    /* The round-closing call runs inside these flows now; see grounds/round-completion.ts. */
+    roundCompletion: { create: jest.fn(async (a: any) => a.data) },
+    checkIn: { count: jest.fn(async () => 1), findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
     conversationTurn: { createMany: jest.fn(async () => ({ count: 0 })) },
     leadContextNote: { create: jest.fn(async () => ({})) },
     ground: { update: jest.fn(async () => ({})), findUnique: jest.fn(async () => ({ joinToken: 'jt' })) },
@@ -31,7 +36,9 @@ function makeService() {
     buildSoloArtifact: jest.fn(async () => undefined),
   };
   const service = new EntryService(
-    {} as any, prisma, grounds, {} as any, {} as any, conversation, {} as any,
+    /* The last position is the event emitter. It was an empty object until the entry paths started
+       announcing a closed round; a bare `{}` now throws on `.emit`. */
+    {} as any, prisma, grounds, {} as any, {} as any, conversation, { emit: jest.fn() } as any,
   );
   return { service, grounds };
 }

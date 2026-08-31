@@ -11,7 +11,7 @@ import { groundTabs } from './ground-tabs'
  * their manager saw two names for one screen, and had no way to know they were the same thing.
  *
  * "Check-in" wins because it is the word every other surface already uses: the email says your
- * check-in is due, the ground header says My check-ins, the button says Check in. "Chat" was
+ * check-in is due, the check-in header says My check-ins, the button says Check in. "Chat" was
  * mine, from the wave that built the conversation view.
  *
  * The card list had to be renamed too. Leaving it as "Check-ins" would have put "Check-in" and
@@ -31,8 +31,8 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * private copy. That second half is the part that would otherwise rot: a page could quietly go back
  * to its own list and the label checks would still pass against the shared file.
  */
-const leadTabs = groundTabs({ isLead: true, contextEnabled: true, hasBoard: true })
-const partyTabs = groundTabs({ isLead: false, contextEnabled: true, hasBoard: true })
+const leadTabs = groundTabs({ contextEnabled: true})
+const partyTabs = groundTabs({ contextEnabled: true})
 const labelOf = (tabs: { key: string; label: string }[], key: string) => tabs.find(t => t.key === key)?.label
 
 describe('the conversation tab', () => {
@@ -57,13 +57,24 @@ describe('the conversation tab', () => {
 
 describe('"Settings" says which settings', () => {
   /**
-   * W13-9. A ground has settings and so does the account, and both tabs said "Settings" - so
-   * somebody looking for their notification preferences opened a ground, and somebody looking
-   * for the ground's visibility rules left the ground entirely. One word, two destinations.
+   * W13-9. A check-in has settings and so does the account, and both tabs said "Settings" - so
+   * somebody looking for their notification preferences opened a check-in, and somebody looking
+   * for the check-in's visibility rules left the check-in entirely. One word, two destinations.
    */
-  it('the ground\'s tab names the ground, for both roles', () => {
-    expect(labelOf(leadTabs, 'settings')).toBe('Ground settings')
-    expect(labelOf(partyTabs, 'settings')).toBe('Ground settings')
+  it('names its own destination, for both roles', () => {
+    /**
+     * W13-9's RULE HOLDS; THE ANSWER TO IT CHANGED. The bug was one word with two destinations -
+     * "Settings" in the tab row and "Settings" in the left rail, sending people to the wrong page in
+     * both directions. "Check-in settings" fixed that by getting longer.
+     *
+     * "Setup" fixes it by being a different word, which is the better fix and the one both artifacts
+     * ask for. It also describes what the tab now holds: how the check-in RUNS. No target is set here
+     * any more - expectations come out of the lead's own conversation and live on Context.
+     *
+     * The rule that must not break is the one below: never the bare word "Settings".
+     */
+    expect(labelOf(leadTabs, 'settings')).toBe('Setup')
+    expect(labelOf(partyTabs, 'settings')).toBe('Setup')
   })
 
   it('and neither says the bare word any more', () => {
@@ -75,11 +86,16 @@ describe('and the two labels cannot collide', () => {
   it('the record tab is not a plural of the conversation tab', () => {
     /**
      * It was "Check-ins" beside "Check-in", then "Sessions" for the lead and "My record" for a
-     * party. It is "Record" for both now: one tab whose content differs by role. What must never
-     * come back is a label that reads as the plural of the tab next to it.
+     * party, then "Record" for both - and "Record" sat next to "Report", which W-UX-6 found nobody
+     * could tell apart. It is "Sessions" for both now, which is not a plural of "Check-in" and is
+     * not a synonym of "Report".
+     *
+     * THE RULE, which has outlived four labels: no tab may read as the plural of the tab beside it,
+     * and no two tabs may be near-homographs. The specific word is the changeable part.
      */
-    expect(labelOf(leadTabs, 'record')).toBe('Record')
-    expect(labelOf(partyTabs, 'record')).toBe('Record')
+    expect(labelOf(leadTabs, 'record')).toBe('Sessions')
+    expect(labelOf(partyTabs, 'record')).toBe('Sessions')
+    for (const t of [...leadTabs, ...partyTabs]) expect(t.label).not.toBe('Report ')
     for (const t of [...leadTabs, ...partyTabs]) expect(t.label).not.toBe('Check-ins')
   })
 })

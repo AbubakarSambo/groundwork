@@ -6,6 +6,7 @@ import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
+import { labelsForParties, namesVisibleTo, displayName } from '../reports/party-labels';
 
 /**
  * Resolution. A ground closes only when every ACTIVE party confirms the SAME
@@ -46,7 +47,7 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This ground is already resolved');
+      throw new BadRequestException('This check-in is already resolved');
     }
     if (!isValidEndState(ground.scenario, endState)) {
       throw new BadRequestException(`"${endState}" is not a valid end state for this scenario`);
@@ -69,7 +70,7 @@ export class ResolutionService {
      */
     if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
       throw new ForbiddenException(
-        'On this ground the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
       );
     }
 
@@ -131,7 +132,11 @@ export class ResolutionService {
     } else {
       // GW-22: notify parties who have not yet confirmed this endState so they
       // know a proposal is waiting. Skip the proposer (they just made it).
-      const proposerLabel = participant.roleAsDescribed?.trim() || participant.email;
+      /**
+     * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
+     * with the person's actual NAME never consulted - and this one goes out in an email.
+     */
+    const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
       const groundUrl = `${frontend}/grounds/${groundId}/resolution`;
       const needConfirmation = active.filter(
@@ -160,8 +165,30 @@ export class ResolutionService {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
-      throw new BadRequestException('This ground is already resolved');
+      throw new BadRequestException('This check-in is already resolved');
     }
+    /** Authorisation first: a party with no say here should not be told which end states are valid. */
+    /**
+     * THE SAME GUARD `propose` HAS, WHICH THIS PATH NEVER HAD. W-UX-R.
+     *
+     * Found while checking whether `counter` was simply dead code. It is unreached by any client, but
+     * it is reachable by any authenticated PARTY, and what it does is replace the leading end state,
+     * DELETE every existing confirmation, and record the caller's own.
+     *
+     * With no lead-decides check, that is the whole of `LEAD_DECIDES` undone by one request. On a PIP
+     * or a new-hire ground the employee could overwrite their manager's decision with their own
+     * choice and clear the manager's confirmation - which is exactly the veto the UI was changed to
+     * take away, and the reason the comment above `propose` exists.
+     *
+     * `propose` has guarded this since LEAD_DECIDES was introduced. This path was written earlier and
+     * never revisited, and nothing pointed at it, so nobody walked into it. That is luck, not design.
+     */
+    if (!closingNeedsEveryone(ground.scenario) && participant.partyType !== PartyType.INITIATOR) {
+      throw new ForbiddenException(
+        'In this check-in, the lead decides how it ends. Your account and your corrections stand on the record beside theirs.',
+      );
+    }
+
     if (!isValidEndState(ground.scenario, proposedEndState)) {
       throw new BadRequestException(`"${proposedEndState}" is not a valid end state for this scenario`);
     }
@@ -190,7 +217,11 @@ export class ResolutionService {
       where: { groundId, userId: { not: null } },
       select: { id: true, email: true, roleAsDescribed: true },
     });
-    const proposerLabel = participant.roleAsDescribed?.trim() || participant.email;
+    /**
+     * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
+     * with the person's actual NAME never consulted - and this one goes out in an email.
+     */
+    const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
     const groundUrl = `${frontend}/grounds/${groundId}/resolution`;
 
@@ -265,7 +296,7 @@ export class ResolutionService {
    */
   private async buildState(groundId: string, viewerUserId?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     const resolution = await this.prisma.resolution.findUnique({
       where: { groundId },
@@ -274,17 +305,55 @@ export class ResolutionService {
     const active = await this.prisma.groundParticipant.findMany({
       where: { groundId, userId: { not: null } },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, email: true, partyType: true, roleAsDescribed: true },
+      select: {
+        id: true,
+        email: true,
+        userId: true,
+        partyType: true,
+        roleAsDescribed: true,
+        /** For `labelsForParties`, which reads the name before anything else. */
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
     });
 
+    /**
+     * THE SEVENTH HAND-WRITTEN NAME CHAIN, AND THE WORST OF THEM. W-UX-4.
+     *
+     * The label was `roleAsDescribed?.trim() || p.email`, which never consults the NAME at all - so a
+     * person with a perfectly good name showed as their role, and a person without one showed as a raw
+     * email address. Seen on a released report directly under the decline notice: one row read
+     * "sahar@meridianhealth.test" and the two beside it read roles.
+     *
+     * `labelsForParties` is what the report is written in, and this block renders INSIDE the shared
+     * report, so it must use the same map - which also gets the privacy rule right for free: a viewer
+     * not entitled to somebody's real name sees their role, and the address never appears.
+     */
+    const labels = labelsForParties(active as any);
+    /**
+     * AND THEN THE NAMES GO BACK IN, WHICH IS THE SECOND HALF.
+     *
+     * `labelsForParties` deliberately holds no real names - reports are written and stored without
+     * them, and a later per-viewer step swaps them in for the people this reader is entitled to see.
+     * Using the map alone fixed the raw address and replaced it with "the initiator", which is the
+     * report's internal shorthand and not a thing to show somebody about themselves.
+     *
+     * `namesVisibleTo` is that second step, and it already encodes the entitlement: a lead sees every
+     * name, anybody else sees their own and the lead's. So a party who may not know another party's
+     * name still gets their role here, and nobody ever gets an email address.
+     */
+    const viewer = viewerUserId ? active.find((p) => p.userId === viewerUserId) : undefined;
+    const names = namesVisibleTo(viewer?.id ?? null, active as any);
     const choiceByParticipant = new Map((resolution?.confirmations ?? []).map((c) => [c.participantId, c.endState]));
-    const confirmations = active.map((p) => ({
+    const confirmations = active.map((p) => {
+      const label = labels.get(p.id) ?? 'A party';
+      return {
       participantId: p.id,
-      label: p.roleAsDescribed?.trim() || p.email,
+      label: names.get(label) ?? label,
       partyType: p.partyType,
       endState: choiceByParticipant.get(p.id) ?? null,
       confirmed: choiceByParticipant.has(p.id),
-    }));
+      };
+    });
 
     return {
       resolution: resolution
@@ -311,9 +380,17 @@ export class ResolutionService {
 
   private async assertParty(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
-    const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!ground) throw new NotFoundException('Check-in not found');
+    /**
+     * `user` is included so callers can NAME this person. `displayName` reads `user.firstName`, and
+     * without the relation it silently returns null - so a label built from it would have fallen
+     * straight through to the address it was meant to replace, and looked like a fix.
+     */
+    const participant = await this.prisma.groundParticipant.findFirst({
+      where: { groundId, userId },
+      include: { user: { select: { firstName: true, lastName: true, email: true } } },
+    });
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
     return { ground, participant };
   }
 }

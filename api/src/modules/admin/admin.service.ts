@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SEAT_RELATION_COUNT } from '../../common/seats';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -110,7 +111,7 @@ export class AdminService implements OnApplicationBootstrap {
           freeSessionsUsed: true,
           firstGroundUsed: true,
           careFeeStatus: true,
-          _count: { select: { grounds: true, users: true } },
+          _count: { select: { grounds: true, ...SEAT_RELATION_COUNT } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -269,7 +270,7 @@ export class AdminService implements OnApplicationBootstrap {
         report: { select: { id: true, releasedAt: true, createdAt: true } },
       },
     });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     const pendingParticipantRequests = await this.prisma.participantRequest.count({
       where: { groundId, status: 'PENDING' },

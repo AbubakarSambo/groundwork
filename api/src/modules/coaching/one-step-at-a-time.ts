@@ -206,7 +206,29 @@ export function afterOutcome(state: CoachingStateShape, outcome: StepOutcome): C
  * rest of the conversation. And it says the thing that keeps it inside the
  * guardrail: offer it, do not require it.
  */
-export function coachingBlockFor(move: NextMove): string | null {
+/**
+ * A STEP NEEDS A SESSION TO BE TAKEN INTO.
+ *
+ * The whole difference between coaching and advice, stated at the top of this file, is the wait:
+ * offer one small thing, wait, ask what happened, pick the next thing from the answer. On the last
+ * check-in of a run there is no wait - nobody will ever ask how it went - and on a one-round read
+ * there was never going to be a second session at all.
+ *
+ * So the offer is suppressed there. What is NOT suppressed is asking about a step already offered:
+ * somebody who was given something to try is owed the question about it, and the final session is
+ * the last chance to ask.
+ */
+export function isThereAnotherSession(input: { sessionNumber: number; totalSessions?: number | null }): boolean {
+  const total = input.totalSessions && input.totalSessions > 0 ? input.totalSessions : 1;
+  return input.sessionNumber < total;
+}
+
+export function coachingBlockFor(move: NextMove, run?: { sessionNumber: number; totalSessions?: number | null }): string | null {
+  /**
+   * 'offer' is the only move that assumes a next session. 'ask about the last one' and 'shrink' are
+   * both about a step that already exists, and both belong in a final session more than anywhere else.
+   */
+  if (run && move.move === 'offer' && !isThereAnotherSession(run)) return null;
   switch (move.move) {
     case 'wait':
       return null;

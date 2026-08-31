@@ -13,6 +13,9 @@ import { SITUATION_CARDS } from './EntryChatPage'
  * reframe. If any assertion here fails, a copy change has leaked into routing.
  */
 const PINNED_MESSAGES = [
+  /* Added with the ROLE_HANDOVER card. Pinned from the day it shipped, like the rest: what this
+     file protects is that a display reframe never quietly changes what gets SENT. */
+  'Somebody is handing a role over and I want the incoming person to have more than a list of tasks.',
   // retained cards - messages byte-identical to the originals (routing untouched)
   'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
   'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',
@@ -62,29 +65,43 @@ describe('entry cards: display reframed, routing untouched', () => {
     // "something is wrong here" sets the wrong tone for the whole product. The
     // counts moved when /start was brought up to the full scenario set, so the
     // check now holds the intent instead of the numbers.
-    const positive = SITUATION_CARDS.filter(c => c.group === 'positive').length
-    const negative = SITUATION_CARDS.filter(c => c.group === 'negative').length
+    /*
+     * The group KEYS are the catalog's now - 'starting' and 'off' rather than this page's own
+     * 'positive' and 'negative' - because two surfaces were grouping the same nineteen situations
+     * under two different sets of headings. The intent this holds is unchanged: what somebody meets
+     * first should lean towards starting something well, not towards something being wrong.
+     */
+    const positive = SITUATION_CARDS.filter(c => c.group === 'starting').length
+    const negative = SITUATION_CARDS.filter(c => c.group === 'off').length
     expect(positive).toBeGreaterThan(negative)
     const labels = SITUATION_CARDS.map(c => c.label)
     expect(labels).toContain('Setting shared goals')
     expect(labels).toContain('A big decision')
-    expect(labels).toContain('You and someone see it differently')
+    expect(labels).toContain('People see it differently')
   })
 
   it('the starting cards carry the plain voice (the last three un-reframed strings)', () => {
     const labels = SITUATION_CARDS.map(c => c.label)
-    expect(labels).toContain('New project')
-    expect(labels).toContain('A new partner, cofounder, or manager')
+    expect(labels).toContain('A new project starting')
+    expect(labels).toContain('A new co-founder or partner')
     expect(labels).not.toContain('New project kickoff')
     expect(labels).not.toContain('New working arrangement')
     // Sharpened for a reader who runs a company: "a new way of working
     // together" was the vaguest label on the page. Display only - the
     // routing sentence beneath it is unchanged.
     expect(labels).not.toContain('A new way of working together')
-    const arrangement = SITUATION_CARDS.find(c => c.label === 'A new partner, cofounder, or manager')!
-    // Names who is involved, in the words someone running a company would use.
-    // The old label described a mood; this one describes a person arriving.
-    expect(arrangement.detail).toMatch(/sharing the work or taking it over/)
+    /*
+     * WAS ONE CARD, IS NOW TWO. "A new partner, cofounder, or manager" stood in for NEW_COFOUNDER
+     * and NEW_MANAGER at once, while the catalog, the public use-cases page and the situation
+     * configs all treated them separately - so somebody arriving from the site having read
+     * "A new manager taking over" found no such card. The rule this held is unchanged and now
+     * applies to both: the detail names who is arriving, in the words somebody running a company
+     * would use, rather than describing a mood.
+     */
+    const cofounder = SITUATION_CARDS.find(c => c.label === 'A new co-founder or partner')!
+    expect(cofounder.detail).toMatch(/sharing the work/)
+    const manager = SITUATION_CARDS.find(c => c.label === 'A new manager taking over')!
+    expect(manager.detail).toMatch(/taking over/)
     for (const c of SITUATION_CARDS) {
       expect(c.label, `label of "${c.label}"`).not.toMatch(/kickoff|working arrangement/i)
       expect(c.detail, `detail of "${c.label}"`).not.toMatch(/reporting line|clear foundation/i)

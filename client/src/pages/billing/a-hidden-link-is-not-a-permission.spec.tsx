@@ -11,7 +11,7 @@ import { groundsApi } from '@/api/grounds'
  *
  * `AppShell` marks Billing `adminOnly`, and that was the only thing keeping anybody off this page:
  * the route is `RequireAuth` alone and the component never looked at `user.role`. Signed in as a
- * plain participant on a ground and typing `/billing`, the whole page rendered - the organisation's
+ * plain participant on a check-in and typing `/billing`, the whole page rendered - the organisation's
  * plan, its grounds, the ladder from $25 to $400 a month with live Subscribe buttons, and the
  * access-code tools.
  *
@@ -30,8 +30,17 @@ vi.mock('@/api/billing', () => ({
     cancelSubscription: vi.fn(), pauseSubscription: vi.fn(), resumeSubscription: vi.fn(),
     getPricing: vi.fn(),
   },
-  PLAN_LABELS: {}, PLAN_PRICES: {}, PLAN_MEMBER_CAPS: {},
-  formatMonthlyPrice: (c: number) => `$${c / 100}/mo`, FREE_GROUND_LIMIT: 10,
+  PLAN_LABELS: {}, PLAN_PRICES: {},
+  formatMonthlyPrice: (c: number) => `$${c / 100}/mo`,
+  /**
+   * The caps and the free limit come from the API now, so the mock supplies the formatter and the
+   * pre-load fallback rather than the two maps this used to stub. A hand-written mock that omits a
+   * new export fails at render with a message about the mock, which is how this was found - the
+   * alternative, a mock that quietly returns undefined, is how a green suite hides a broken page.
+   */
+  formatMemberCap: (cap: number | null | undefined) =>
+    cap === null ? 'Unlimited' : cap === undefined ? '' : `Up to ${cap} people`,
+  FALLBACK_FREE_LIMITS: { groundLimit: 10, memberLimit: 5 },
 }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 
@@ -93,7 +102,7 @@ describe('an admin', () => {
 
   it('still gets the real page', async () => {
     renderBilling()
-    await waitFor(() => expect(screen.getByText(/Manage sessions for your grounds/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Manage sessions for your check-ins/i)).toBeTruthy())
     expect(screen.queryByText(/need admin access/i)).toBeNull()
   })
 

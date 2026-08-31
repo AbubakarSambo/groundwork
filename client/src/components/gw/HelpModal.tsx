@@ -1,5 +1,6 @@
 import { useHelpStore } from '@/stores/help'
 import { useAuthStore } from '@/stores/auth'
+import { HOW_TO_STEPS } from './how-a-check-in-is-run'
 
 const TABS = ['What it is', 'How to use it', 'Use cases', 'Reports'] as const
 
@@ -23,16 +24,16 @@ function Tab0({ onNext }: { onNext: () => void }) {
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-navy)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>A shared record of contribution</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Everybody checks in independently. Nobody sees what anybody else wrote. The report shows every account at the same time. The gap between them is usually the conversation that needed to happen months earlier.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>1. Start a check-in</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Pick the situation, set how long it runs and how often people check in, then add the people. Takes about two minutes.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-green-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>The record belongs to you. Permanently.</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Not the organisation. Not the platform. The person. Your words are private until everybody activates the report. Your record survives the relationship, and you keep it.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>2. Everyone answers on their own</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and a conversation of their own. Nobody sees anybody else's answers, including you.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-amber-b)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>This tells you where things stand</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Every ground carries an alignment status: Unresolved, Mixed, Emerging, Clear, or Aligned. It is a plain summary of how many areas are settled and how many are still open.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>3. Read the report together</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>It releases to everyone at once and shows where the accounts agree and where they do not. The gaps are the conversation.</div>
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
@@ -42,24 +43,6 @@ function Tab0({ onNext }: { onNext: () => void }) {
   )
 }
 
-const HOW_TO_STEPS = [
-  {
-    title: 'Open a ground before the situation becomes urgent',
-    body: 'The product is most powerful when used early. A new hire starting, a project beginning, a cofounder agreement forming. The record built before the conversation is the one you can stand on.',
-  },
-  {
-    title: 'Set a resolution state before the ground starts',
-    body: 'Before the first check-in, everybody agrees on what a successful outcome looks like. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the end state before you start changes the quality of every session.',
-  },
-  {
-    title: 'Check in independently. Be specific.',
-    body: 'The product probes for specificity. Vague answers produce vague records. The more specific your check-in, the stronger your record, the higher the alignment status, the more defensible the outcome.',
-  },
-  {
-    title: 'Use the report as the basis for the conversation, not the conversation itself',
-    body: 'The report shows every account at the same time, and everybody reads it together. The gap is what needs to be discussed. The product never decides. You decide with evidence.',
-  },
-]
 
 function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
@@ -84,12 +67,12 @@ function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
 }
 
 const USE_CASES = [
-  { accent: 'var(--gw-green-b)', accentText: 'var(--gw-green-t)', label: 'Team use',                     title: 'Get alignment across the whole team',               body: 'Open a multi-party ground before a new quarter, project launch, or team restructure. Every person submits their version of the plan independently. The alignment feed shows where all versions agree and where they diverge. Without anyone performing for the group.' },
-  { accent: 'var(--gw-green-b)', accentText: 'var(--gw-green-t)', label: 'Contribution identification',   title: 'Surface invisible work before it disappears',       body: 'Open a recognition ground when you want to capture what someone is actually contributing. The record shows what was delivered, what was invisible, and what was absorbed. The conversation happens with evidence, not competing feelings.' },
-  { accent: 'var(--gw-navy)', accentText: 'var(--gw-navy)', label: 'Conflict recall',               title: 'Use the record when you need to recall what was agreed', body: 'When a dispute arises about what was agreed, the ground record is the reference. Everybody can return to the record at any point. The check-ins are timestamped. The pattern is documented. Nobody can rewrite history.' },
-  { accent: 'var(--gw-navy)', accentText: 'var(--gw-navy)', label: 'Work terms and conditions',     title: 'Set the terms of the working relationship in writing. Both sides.', body: 'Open a ground to formalise what each party expects, what they are committed to, and what success looks like. This is not an HR document. It is a living record that updates with every session. Both versions. Independently submitted.' },
-  { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Project alignment',             title: 'Agree on what success looks like before the work starts', body: 'The brief you gave and the brief they heard are almost never the same. Open a ground before the project starts. Everybody describes what they are building and what done looks like. The gap appears before it becomes a dispute at month three.' },
-  { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Pre-agreed resolution',         title: 'Agree on the resolution state before the ground opens', body: 'Everybody selects the resolution state they are aiming for before the first session. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the destination changes the quality of the journey. The ground becomes a shared project, not a test.' },
+  { accent: 'var(--gw-green-b)', accentText: 'var(--gw-green-t)', label: 'Team use',                     title: 'Get alignment across the whole team',               body: 'Open a multi-party check-in before a new quarter, project launch, or team restructure. Every person submits their version of the plan independently. The alignment feed shows where all versions agree and where they diverge. Without anyone performing for the group.' },
+  { accent: 'var(--gw-green-b)', accentText: 'var(--gw-green-t)', label: 'Contribution identification',   title: 'Surface invisible work before it disappears',       body: 'Open a recognition check-in when you want to capture what someone is actually contributing. The record shows what was delivered, what was invisible, and what was absorbed. The conversation happens with evidence, not competing feelings.' },
+  { accent: 'var(--gw-navy)', accentText: 'var(--gw-navy)', label: 'Conflict recall',               title: 'Use the record when you need to recall what was agreed', body: 'When a dispute arises about what was agreed, the check-in record is the reference. Everybody can return to the record at any point. The check-ins are timestamped. The pattern is documented. Nobody can rewrite history.' },
+  { accent: 'var(--gw-navy)', accentText: 'var(--gw-navy)', label: 'Work terms and conditions',     title: 'Set the terms of the working relationship in writing. Both sides.', body: 'Open a check-in to formalise what each party expects, what they are committed to, and what success looks like. This is not an HR document. It is a living record that updates with every session. Both versions. Independently submitted.' },
+  { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Project alignment',             title: 'Agree on what success looks like before the work starts', body: 'The brief you gave and the brief they heard are almost never the same. Open a check-in before the project starts. Everybody describes what they are building and what done looks like. The gap appears before it becomes a dispute at month three.' },
+  { accent: 'var(--gw-amber-b)', accentText: 'var(--gw-amber-t)', label: 'Pre-agreed resolution',         title: 'Agree on the resolution state before the check-in opens', body: 'Everybody selects the resolution state they are aiming for before the first session. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the destination changes the quality of the journey. The check-in becomes a shared project, not a test.' },
 ]
 
 function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
@@ -114,9 +97,9 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
 
 const REPORT_ITEMS = [
   { title: 'Resolution summary',          body: 'One sentence. Auto-generated. The thing neither party named directly but both records implied. This is the most valuable line in the report. It is what the conversation needs to be about.' },
-  { title: 'Where you agreed', body: 'What you genuinely agree on. Plain language, and you both see the same list at the same time.' },
+  { title: 'Where you agreed', body: 'What you genuinely agree on. Plain language, and everyone sees the same list at the same time.' },
   { title: 'Where you saw it differently', body: 'What each party said. Where the difference lies. Not which party is right. The product never decides. It describes.' },
-  { title: 'Resolution state',            body: 'The end state everybody agreed to before the ground started. The report closes with the resolution state that was agreed. Whether the ground evidence supports it.' },
+  { title: 'Resolution state',            body: 'The end state everybody agreed to before the check-in started. The report closes with the resolution state that was agreed. Whether the check-in evidence supports it.' },
   { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Confirmed by everybody in it, and everybody keeps it permanently. It belongs to the people who built it.' },
 ]
 
@@ -175,8 +158,16 @@ export function HelpModal() {
             </svg>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'white', letterSpacing: '-.01em' }}>Groundwork</span>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>A shared picture, built from both sides.</div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Everybody checks in independently. The report shows where you align, where you differ, and what the gap means.</div>
+          {/*
+            * THE ? BUTTON IS PRESSED BY SOMEBODY WHO IS STUCK, NOT BY SOMEBODY BROWSING.
+            *
+            * This opened on a slogan and three cards about what the product believes. The verdict
+            * was "tells me nothing of what I should do and sounds like generic AI BS", and that is
+            * a fair reading of an answer that starts with "A shared picture, built from both
+            * sides." Say what to do first. The philosophy is still here, one tab across.
+            */}
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>How this works</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Start a check-in, add the people in it, and everyone answers on their own. You get one report showing all the accounts side by side.</div>
           <button
             onClick={hide}
             style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.1)', border: 'none', color: 'white', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}

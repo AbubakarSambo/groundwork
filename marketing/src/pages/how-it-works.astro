@@ -3,7 +3,7 @@ import Nav from '../components/Nav.astro';
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="How it works · Groundwork" description="Start a Ground, everyone checks in privately, and Groundwork shows where people agree, where they understand things differently, and where a conversation is needed, from a clear beginning to a clear end." canonicalPath="/how-it-works">
+<Layout title="How it works · Groundwork" description="Start a check-in, everyone checks in privately, and Groundwork shows where people agree, where they understand things differently, and where a conversation is needed, from a clear beginning to a clear end." canonicalPath="/how-it-works">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -27,13 +27,13 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">How it works</p>
       <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">How Groundwork works.</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">Every Ground follows the same simple path, from a clear beginning to a clear end.</p>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">Every check-in follows the same simple path, from a clear beginning to a clear end.</p>
 
       <div style="display:flex;flex-direction:column;gap:0;margin-bottom:48px;">
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid var(--gw-border);">
           <div style="width:36px;height:36px;background:var(--gw-navy);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">1</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Start a Ground</div>
+            <div style="font-size:16px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Start a check-in</div>
             <div style="font-size:14px;color:var(--gw-sub);line-height:1.7;">Start one for an important piece of work where expectations, responsibilities, or delivery are easy to lose track of, or when something already underway does not feel right. You do not have to start at the very beginning. The manager sets the starting point: the objectives, what success looks like, expectations, responsibilities, constraints, and the context that matters. This becomes the baseline the rest of the Ground is measured against.</div>
           </div>
         </div>
@@ -75,7 +75,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <div style="display:flex;gap:20px;padding:24px 0;">
           <div style="width:36px;height:36px;background:var(--gw-green-t);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:800;color:#fff;">7</div>
           <div>
-            <div style="font-size:16px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Close the Ground</div>
+            <div style="font-size:16px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Close it</div>
             <div style="font-size:14px;color:var(--gw-sub);line-height:1.7;">When the work reaches its end, Groundwork compares the final outcome with the starting point and produces a clear conclusion: objectives against what was delivered, how expectations changed, the key decisions, the evidence, what was learned, and the complete history of the Ground. The closed Ground stays on record for everyone who was in it, so the next conversation starts from what happened rather than from memory.</div>
           </div>
         </div>
@@ -103,7 +103,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       </div>
 
       <div style="text-align:center;">
-        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:13px 28px;font-size:14px;">Start your first Ground</a>
+        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:13px 28px;font-size:14px;">Start a check-in for your team</a>
       </div>
     </main>
 

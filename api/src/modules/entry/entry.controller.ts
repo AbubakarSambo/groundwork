@@ -191,8 +191,18 @@ export class EntryController {
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
     const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, dto.joinToken);
+    /**
+     * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
+     *
+     * This used to be phrases alone, and none of them matched the marker the model is told to emit:
+     * it tests for "[session complete]" and the marker is "[[SESSION_COMPLETE]]". So the reliable
+     * signal was never consulted, and whether a session closed depended on the assistant happening
+     * to use one of six wordings.
+     */
+    const markerClosed = this.service.didLastReplyClose();
     const r = reply.toLowerCase();
     const sessionComplete =
+      markerClosed ||
       r.includes('[session complete]') ||
       r.includes('your account is now on record') ||
       r.includes('your record is here') ||

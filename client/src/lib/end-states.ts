@@ -15,6 +15,12 @@ export interface EndStateOption {
 }
 
 export const END_STATES: Record<string, EndStateOption[]> = {
+  ROLE_HANDOVER: [
+    { value: 'HANDED_OVER', label: 'Handed over' },
+    { value: 'GAPS_REMAIN', label: 'Handed over with named gaps', description: 'The successor has it, and both sides named what was not transferred rather than pretending it was.' },
+    { value: 'NEEDS_MORE_TIME', label: 'Not finished - extend it' },
+    { value: 'PREDECESSOR_GONE', label: 'Ended without the predecessor', description: 'They left before this finished. Recorded honestly so the gaps are attributed to the circumstance rather than to the successor.' },
+  ],
   NEW_HIRE: [
     { value: 'KEEP', label: 'Keep the hire' },
     { value: 'RESTRUCTURE', label: 'Restructure the role' },
@@ -90,7 +96,7 @@ export const END_STATES: Record<string, EndStateOption[]> = {
   /** Mirror of the server's OPEN_READ set. Plainest in the product, because the shape was unknown. */
   OPEN_READ: [
     { value: 'shared_picture', label: 'Shared picture established', description: 'Everyone has given their account and the differences are named.' },
-    { value: 'needs_specific_ground', label: 'Now clear enough to name the situation', description: 'The accounts show what this actually is, and it deserves its own ground.' },
+    { value: 'needs_specific_ground', label: 'Now clear enough to name the situation', description: 'The accounts show what this actually is, and it deserves its own check-in.' },
     { value: 'not_yet', label: 'Not yet - more accounts needed', description: 'Too few people have checked in to read anything from it.' },
   ],
   REALIGN_TEAM: [
@@ -117,11 +123,32 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'AT_RISK', label: 'At risk - intervention needed' },
     { value: 'NOT_YET', label: 'Not yet - check-ins ongoing' },
   ],
+  /**
+   * MIRRORS THE SERVER, INCLUDING THE FOUR OUTCOME STATES THAT WERE MISSING.
+   *
+   * Every state here used to close on the picture, and one of them said so out loud: "any decision
+   * now happens outside this check-in". So a fortnight of daily check-ins opened because a client had
+   * just left could only finish by recording that everybody agreed on what had happened. Whether the
+   * client came back had nowhere to go.
+   */
   ACUTE_SHOCK: [
-    { value: 'PICTURE_SHARED', label: 'Shared picture established', description: "Everyone's accounts are on record and the picture of what happened is agreed. Any decision now happens outside this ground, informed by it." },
-    { value: 'READS_DIVERGE', label: 'Accounts differ - gaps named', description: 'The accounts do not match. The specific points of divergence are named so the follow-up conversation starts there.' },
+    { value: 'OBJECTIVE_MET', label: 'What we set out to do, done', description: 'The objective set after the first session was achieved, and the record shows what moved and who moved it.' },
+    { value: 'PARTLY_RECOVERED', label: 'Partly recovered', description: 'Some of the objective was achieved and some was not. The record shows which parts, and what was still stuck at the end.' },
+    { value: 'NOT_RECOVERED', label: 'Not recovered', description: 'The objective was not achieved. The record shows what was tried and where it stalled, which is what the next decision should rest on.' },
+    { value: 'OBJECTIVE_OVERTAKEN', label: 'Overtaken by events', description: 'What we were trying to achieve stopped being the right aim partway through. The record shows when that became clear and why.' },
+    { value: 'PICTURE_SHARED', label: 'Shared picture established, nothing to recover', description: "Everyone's accounts are on record and agreed, and there was nothing to win back. No objective was set, deliberately." },
+    { value: 'READS_DIVERGE', label: 'Accounts differ - gaps named', description: 'The accounts never reconciled, so no shared objective could honestly be set. The points of divergence are named so the conversation starts there.' },
     { value: 'UNKNOWNS_REMAIN', label: 'Key facts still unknown', description: 'The picture cannot be settled yet because named facts are still missing. Revisit when they land.' },
     { value: 'NOT_YET', label: 'Not yet - more accounts needed' },
+  ],
+  /**
+   * A one-off read cannot "resolve" - there is no objective to have met and no follow-up to book.
+   * What it can say is whether anything in the accounts needs opening as a situation that runs.
+   */
+  SNAPSHOT: [
+    { value: 'READ_TAKEN', label: 'Read taken, nothing needs opening', description: 'Everyone answered and nothing needs watching over time. The record stands as a snapshot of this week.' },
+    { value: 'NEEDS_A_RUN', label: 'Something here needs watching', description: 'The accounts point at something that will not settle on its own. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },
+    { value: 'THIN_RESPONSE', label: 'Too few answers to read', description: 'Not enough people answered for the spread to mean anything. Nothing is concluded from what did come in.' },
   ],
 };
 

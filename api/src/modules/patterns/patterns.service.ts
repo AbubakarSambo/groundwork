@@ -3,7 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
-import { PatternStatus, TurnRole, GroundStatus, CheckInStatus } from '@prisma/client';
+import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
+import { mirrorDetection } from '../detectors/mirror-a-detection';
 import {
   PATTERN_DETECTION_PROMPT,
   PATTERN_DETECTION_SCHEMA,
@@ -169,16 +170,14 @@ export class PatternsService {
     });
 
     if (!existing) {
-      return this.prisma.patternDetection.create({
-        data: {
-          groundId,
-          participantId,
-          code,
-          observationText,
-          periodsObserved: 1,
-          lastPeriodNumber: periodNumber,
-          status: PatternStatus.CANDIDATE,
-        },
+      return this.createAndMirror({
+        groundId,
+        participantId,
+        code,
+        observationText,
+        periodsObserved: 1,
+        lastPeriodNumber: periodNumber,
+        status: PatternStatus.CANDIDATE,
       });
     }
 
@@ -723,4 +722,40 @@ export class PatternsService {
       }))
       .sort((a, b) => b.surfaced - a.surfaced);
   }
+  /**
+   * WRITE THE GROUND'S ROW, THEN MIRROR IT INTO THE ORG LAYER.
+   *
+   * The ground's detection is unchanged and stays authoritative for its ground - the thirty-eight
+   * codes, the three-period rule and the collusion confirmation are untouched. The mirror is what
+   * lets the same behaviour be watched across check-ins and tied to a piece of the customer's work.
+   *
+   * Nothing in the live product reads the mirror. Mirroring is best-effort and a failure is
+   * swallowed inside `mirrorDetection`: a detection must never fail because its copy did.
+   */
+  private async createAndMirror(data: Prisma.PatternDetectionUncheckedCreateInput) {
+    const created = await this.prisma.patternDetection.create({ data });
+
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: created.participantId },
+      select: { email: true, ground: { select: { organizationId: true } } },
+    });
+    const roster = participant?.email
+      ? await this.prisma.person.findFirst({
+          where: { organizationId: participant.ground.organizationId, email: participant.email.toLowerCase() },
+          select: { externalId: true },
+        })
+      : null;
+
+    await mirrorDetection(this.prisma, {
+      organizationId: participant!.ground.organizationId,
+      groundId: created.groundId,
+      patternDetectionId: created.id,
+      personExternalId: roster?.externalId ?? null,
+      code: created.code,
+      periodsObserved: created.periodsObserved,
+      observationText: created.observationText,
+    });
+    return created;
+  }
+
 }

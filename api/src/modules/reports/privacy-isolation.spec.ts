@@ -153,7 +153,7 @@ describe('GW-PRI-04: missing report does not leak ground existence', () => {
   it('throws NotFoundException when the ground itself does not exist', async () => {
     const prisma: any = { ground: { findUnique: jest.fn(async () => null) } };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, { getSessionProgress: jest.fn(async () => null) } as any);
     await expect(service.get('g1', 'user-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
@@ -174,7 +174,7 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, { getSessionProgress: jest.fn(async () => null) } as any);
     await expect(service.release('g1', 'org-B')).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -193,7 +193,7 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, { getSessionProgress: jest.fn(async () => null) } as any);
     await service.release('g1', 'org-A');
     expect(email.sendReportReady).toHaveBeenCalledTimes(ground.participants.length);
   });
@@ -220,7 +220,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
       checkIn: { findMany: jest.fn(async () => []) },
     };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, { getSessionProgress: jest.fn(async () => null) } as any);
 
     const resultForP1 = await service.get('g1', 'user-1') as any;
     const resultForP2 = await service.get('g1', 'user-2') as any;
@@ -251,7 +251,7 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
       checkIn: { findMany: jest.fn(async () => []) },
     };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, { getSessionProgress: jest.fn(async () => null) } as any);
 
     const resultForP2 = await service.get('g1', 'user-2') as any;
     // p2 has no soloArtifact - result must be null, not p1's artifact

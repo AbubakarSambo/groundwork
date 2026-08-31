@@ -37,9 +37,23 @@ type Participant = {
   completedSessions: number[];
 };
 
-const NOW = new Date('2026-08-10T12:00:00.000Z');
-const LIVE_INVITE = new Date('2026-08-20T12:00:00.000Z');   // ten days left
-const LAPSED_INVITE = new Date('2026-07-20T12:00:00.000Z'); // three weeks ago
+/**
+ * RELATIVE TO NOW, BECAUSE THE CODE UNDER TEST COMPARES AGAINST `Date.now()`.
+ *
+ * These were fixed dates, and `LIVE_INVITE` was '2026-08-20T12:00:00.000Z' with the comment
+ * "ten days left". It was ten days left when it was written and it expired mid-morning on the
+ * 20th - during a working session, between one green run of this suite and the next. The
+ * assertion that flipped was "three of six is NOT a finished round", which is exactly the live
+ * defect this file exists to pin: once the invitation lapsed, the round genuinely WAS ready and
+ * the test was the only thing wrong.
+ *
+ * A test about whether an invitation is still open cannot hold its expiry as a literal date.
+ * These are offsets now, so the fixture means the same thing on every day it runs.
+ */
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = new Date(Date.now() - 10 * DAY);
+const LIVE_INVITE = new Date(Date.now() + 10 * DAY);   // ten days left, always
+const LAPSED_INVITE = new Date(Date.now() - 21 * DAY); // three weeks ago, always
 
 /**
  * A Prisma stand-in that applies the service's own `where` clause to a fixed

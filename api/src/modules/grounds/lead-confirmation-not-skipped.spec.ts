@@ -31,7 +31,7 @@ import { join } from 'path';
  * than failing loudly.
  */
 
-const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+const SRC = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** The transaction inside addParticipant that creates and advances state. */
 const ADD_TX = (() => {
@@ -77,8 +77,19 @@ describe('the lead keeps the confirmation that creates their own check-in', () =
     expect(CONFIRM).toMatch(/sessionNumber: 1/);
   });
 
-  it('creates none when the lead says they are managing only', () => {
+  it('gives a managing-only lead a setup conversation instead of a session', () => {
+    /**
+     * SUPERSEDED BY GW-EXP-6. This asserted `checkInId: null` - no conversation at all - which was
+     * right while a check-in could only mean "give your account", and was what left the expectation
+     * interview unreachable for anybody running a check-in without taking part in it.
+     *
+     * The row exists now and is marked `isSetup`, which keeps it out of every session count. What has
+     * not changed, and is the thing this branch really has to protect, is that the report never waits
+     * on it: the readiness check filters participants on `managingOnly: false` and never sees it.
+     */
     expect(CONFIRM).toMatch(/if \(managingOnly\) \{/);
-    expect(CONFIRM).toMatch(/return \{ groundId, checkInId: null \};/);
+    expect(CONFIRM).toMatch(/isSetup: true/);
+    expect(CONFIRM).toMatch(/return \{ groundId, checkInId: setup\.id \};/);
+    expect(CONFIRM).not.toMatch(/checkInId: null/);
   });
 });

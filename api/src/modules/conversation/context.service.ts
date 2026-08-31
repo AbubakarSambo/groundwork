@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { whatMightHelp, NOT_A_STANDARD } from '../detectors/what-worked-for-somebody-else';
 import { PrismaService } from '../prisma/prisma.service';
 import { runIntake, trustFrom, COMPLETION_WORDS, PROBLEM_WORDS } from './intake';
 import { ALIGNMENT_FEED_ONLY_CODES, PATTERN_PROBE_BY_CODE } from '../patterns/pattern-library';
@@ -162,6 +163,40 @@ export class ConversationContextService {
    * Returns the dynamic context block + the calibrated tone. When a message is
    * present, runs intake and updates the rolling specificity history.
    */
+  /**
+   * MATCHED ON WHAT THEY JUST SAID, and read within their own organisation only.
+   *
+   * Deliberately dumb matching, in the module rather than here: a model deciding which colleague's
+   * experience is relevant to your problem is a model forming a view about whose approach is good,
+   * and somebody reading "this is about a procurement hold" can tell in a second whether it is
+   * theirs. Never returns the reader's own note back to them, which reads as the product not
+   * listening.
+   */
+  private async whatOthersWorkedOut(groundId: string, participantId: string, said: string) {
+    /*
+     * NOTHING HERE IS WORTH COSTING SOMEBODY THEIR CHECK-IN. This is the nice-to-have of the whole
+     * context block - a colleague's note, offered - and a check-in that fails because a lookup for
+     * one failed would be the feature doing more harm than it can possibly do good.
+     */
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+      if (!ground) return [];
+      const offers = await this.prisma.whatWorked.findMany({
+        where: { organizationId: ground.organizationId, byParticipantId: { not: participantId } },
+        select: { byName: true, about: true, what: true, offeredAt: true },
+        orderBy: { offeredAt: 'desc' },
+        take: 100,
+      });
+      if (!offers.length) return [];
+      return whatMightHelp(
+        { about: said },
+        offers.map((o) => ({ by: o.byName, about: o.about, what: o.what, offeredAt: o.offeredAt })),
+      ).slice(0, 2);
+    } catch {
+      return [];
+    }
+  }
+
   async build(params: {
     groundId: string;
     participantId: string;
@@ -204,6 +239,28 @@ export class ConversationContextService {
       if (intake.vagueLanguage.length) block += `Vague language to push past: ${intake.vagueLanguage.join(', ')}.\n`;
       if (intake.factualClaims.length) block += `Verifiable claims: ${intake.factualClaims.filter((c) => c.verifiable).length} of ${intake.factualClaims.length}.\n`;
       block += `\n`;
+
+      /*
+       * WHAT SOMEBODY ELSE ALREADY WORKED OUT ABOUT THIS.
+       *
+       * A team of twelve solves the same problem twelve times, because what one of them worked out
+       * lived in her check-in and her check-in is hers. This is the one thing that crosses over, and
+       * it crosses because the person who wrote it wrote it FOR other people - nothing is harvested.
+       *
+       * OFFERED TO THE PERSON, NEVER SPOKEN AS THE ENGINE'S OWN ADVICE. It arrives as a colleague's
+       * account of one attempt, named, with the sentence that says it is not a standard. An engine
+       * that repeats somebody's method as its own recommendation has quietly decided whose approach
+       * is good, which is the thing this whole module refuses to do.
+       */
+      const helped = await this.whatOthersWorkedOut(groundId, participantId, latestMessage);
+      if (helped.length) {
+        block += `# What somebody here wrote down for whoever hits this next. Offer it, do not preach it.\n`;
+        for (const h of helped) {
+          block += `- ${h.by} wrote, about "${h.about}": ${h.what}\n`;
+        }
+        block += `Say who wrote it and that they are worth asking. Say it worked once for one person `
+          + `on their version of the problem. ${NOT_A_STANDARD.join(' ')}\n\n`;
+      }
 
       // Agent 3 - cross-reference (degree 2 + degree 3): only from session 2 onward,
       // only when another party in this ground has completed a check-in.

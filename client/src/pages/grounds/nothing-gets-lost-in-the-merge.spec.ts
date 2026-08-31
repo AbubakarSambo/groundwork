@@ -33,7 +33,7 @@ import { describe, it, expect } from 'vitest'
  */
 
 /**
- * The ground's surfaces. `GroundChat` is here because capabilities MOVED into it
+ * The check-in's surfaces. `GroundChat` is here because capabilities MOVED into it
  * when the card view was retired - the session summary and the correction that
  * starts from it. This spec went red on `conversationApi.artifact` the moment they
  * left `GroundParticipantPage`, which is the whole reason it exists: a capability
@@ -46,6 +46,9 @@ const PAGES = [
   '../report/ReportPage.tsx',
   '../board/BoardPage.tsx',
   '../../components/gw/GroundChat.tsx',
+  // The Context tab, which used to be assembled inline in the two pages above. When it moved, this
+  // guard fired for every document and lead-context call - which is exactly what it is for.
+  '../../components/gw/ContextPage.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */
@@ -68,16 +71,16 @@ const OPERATIONS: Record<string, string[]> = {
   billing: ['claimFreeExtension(', 'createSubscription(', 'redeemContributorCode(', 'getContributorCodeShareCard('],
   /**
    * The two that exist nowhere else, and the reason the report cannot simply be
-   * dropped into the board: did this ground actually help, and can I take my
+   * dropped into the board: did this check-in actually help, and can I take my
    * record away with me.
    */
   'report only': ['outcomeFeedbackApi.mine(', 'outcomeFeedbackApi.submit(', 'conversationApi.download('],
   board: ['boardApi.get(', 'createObjective(', 'updateObjective(', 'deleteObjective(', 'upsertPoll(', 'togglePoll('],
 }
 
-const SRC = PAGES.map(p => readFileSync(join(__dirname, p), 'utf8')).join('\n')
+const SRC = PAGES.map(p => readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).join('\n')
 
-describe('nothing the ground pages can do gets lost in a merge', () => {
+describe('nothing the check-in pages can do gets lost in a merge', () => {
   for (const [group, calls] of Object.entries(OPERATIONS)) {
     describe(group, () => {
       for (const call of calls) {
@@ -117,7 +120,7 @@ describe('nothing the ground pages can do gets lost in a merge', () => {
  */
 describe('no mutation is left with no way to call it', () => {
   for (const page of PAGES) {
-    const src = readFileSync(join(__dirname, page), 'utf8')
+    const src = readFileSync(join(__dirname, page), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     const declared = [...src.matchAll(/const (\w+) = useMutation\(/g)].map(m => m[1])
     for (const name of declared) {
       it(`${page.split('/').pop()}: ${name} is invoked`, () => {

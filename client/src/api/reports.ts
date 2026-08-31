@@ -11,6 +11,21 @@ export const reportsApi = {
   get: (groundId: string) =>
     apiClient.get<Report & { activated?: boolean }>(`/grounds/${groundId}/report`, { skipNotFoundToast: true }).then(r => r.data),
 
+  /**
+   * WHAT THIS REPORT SAID AT THE END OF EACH ROUND, and the same rounds read as a sequence.
+   *
+   * The report at the top of the tab is always the current one. This is what it said when each
+   * round closed - kept so a picture somebody read at day 14 is still there at day 90, and so a
+   * ninety-day account is read back from the record rather than re-derived from transcripts.
+   */
+  rounds: (groundId: string) =>
+    apiClient
+      .get<{ rounds: any[]; moved: { round: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
+        `/grounds/${groundId}/report/rounds`,
+        { skipNotFoundToast: true },
+      )
+      .then(r => r.data),
+
   release: (groundId: string) =>
     apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),
 

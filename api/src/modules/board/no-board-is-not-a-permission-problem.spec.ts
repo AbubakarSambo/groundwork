@@ -8,7 +8,7 @@ import { join } from 'path';
  *
  *   PARTICIPANT: "This is a private alignment ground. Accounts are never shown to other parties, so
  *                 there is no shared board. Read your report instead."
- *   ORG ADMIN:   "You are not a party to this ground" plus a red Access denied toast.
+ *   ORG ADMIN:   "You are not a party to this check-in" plus a red Access denied toast.
  *
  * There is no board on that ground at all, for anybody. The person with the least authority was the
  * only one told the truth, and the admin was shown a permission problem that does not exist - one
@@ -27,13 +27,18 @@ const get = CODE.slice(CODE.indexOf('async get('), CODE.indexOf('async get(') + 
 
 describe('the board answers "is there one" before "who are you"', () => {
   it('both gates are still there', () => {
-    expect(get).toMatch(/if \(!boardRendersFor\(ground\.scenario, ground\.mode\)\)/);
-    expect(get).toMatch(/throw new ForbiddenException\('You are not a party to this ground'\)/);
+    /**
+     * `ground.mode` dropped out of the call when the parameter was removed - it was read by nothing,
+     * so passing it made the signature claim a dependency that did not exist. The ORDER of the two
+     * gates is what this file is for and that is unchanged.
+     */
+    expect(get).toMatch(/if \(!boardRendersFor\(ground\.scenario\)\)/);
+    expect(get).toMatch(/throw new ForbiddenException\('You are not a party to this check-in'\)/);
   });
 
   it('and the mode gate comes FIRST', () => {
     const mode = get.indexOf('if (!boardRendersFor(');
-    const authz = get.indexOf("throw new ForbiddenException('You are not a party to this ground')");
+    const authz = get.indexOf("throw new ForbiddenException('You are not a party to this check-in')");
     expect(mode).toBeGreaterThan(-1);
     expect(authz).toBeGreaterThan(-1);
     /**
@@ -53,7 +58,7 @@ describe('the board answers "is there one" before "who are you"', () => {
      * Asserted as "the accounts are read after the throw", not just "a throw exists" - moving the
      * gate down is only safe while nothing between the two gates touches a participant's words.
      */
-    const authz = get.indexOf("throw new ForbiddenException('You are not a party to this ground')");
+    const authz = get.indexOf("throw new ForbiddenException('You are not a party to this check-in')");
     const sections = get.indexOf('const sections = sectionsFor(');
     expect(sections).toBeGreaterThan(-1);
     expect(authz).toBeLessThan(sections);

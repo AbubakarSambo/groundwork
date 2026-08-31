@@ -28,6 +28,8 @@ import {
   MemberSigninDto,
 } from './dto';
 import { TokenType } from '@prisma/client';
+import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 
 type UserWithOrg = {
   id: string;
@@ -37,7 +39,25 @@ type UserWithOrg = {
   role: string;
   organizationId: string;
   isPlatformAdmin: boolean;
-  organization: { name: string };
+  /** Whether this person may open a check-in. Computed by the rule, never a permission itself. */
+  mayOpenCheckIns?: boolean;
+  /*
+   * The whole organisation, not just its name. The client reads `organization.email` to decide
+   * whether an admin still has to set up their org, so a builder that could only see the name
+   * could only ever answer "not set up".
+   */
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+    careFeeStatus: unknown;
+    email: string | null;
+    companyStage: unknown;
+    subscriptionPlan: unknown;
+    /* The two settings the open-a-check-in rule reads. See `who-may-open-a-check-in.ts`. */
+    whoMayOpenCheckIns?: string;
+    checkInsNeedApproval?: boolean;
+  };
 };
 
 @Injectable()
@@ -54,6 +74,23 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
+    /**
+     * THIS HONEYPOT GUARDS A DOOR NOBODY USES. W-UX-C. Not fixed - recorded, because the fix is a
+     * decision rather than a line.
+     *
+     * A honeypot catches a bot that fills a field a human cannot see. No client form has ever
+     * rendered `_hp`, so nothing has ever been caught. The obvious fix is to render it - except this
+     * endpoint (`/auth/register`) and `/auth/magic-link-register` are BOTH unreached by the client:
+     * sign-up goes through `/auth/entry-save`, which has no honeypot, no DTO and no field validation
+     * at all, only a throttle of 10/minute.
+     *
+     * So the protection sits on the paths nobody walks, and the live path has a rate limit and
+     * nothing else. Rendering `_hp` on a form that posts elsewhere would look like a fix and be one
+     * less than before.
+     *
+     * The silent-success return below is deliberate and correct either way: telling a bot it was
+     * detected teaches it to try again without the trap.
+     */
     if ((dto as any)._hp) {
       return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
     }
@@ -82,6 +119,8 @@ export class AuthService {
           isEmailVerified: false,
         },
       });
+      /* The first admin of a new organisation holds it. One function, five doors. */
+      await theFirstAdminHoldsIt(tx, organization.id, user.id);
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
@@ -138,6 +177,8 @@ export class AuthService {
           isEmailVerified: false,
         },
       });
+      /* The first admin of a new organisation holds it. One function, five doors. */
+      await theFirstAdminHoldsIt(tx, organization.id, user.id);
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
@@ -235,6 +276,8 @@ export class AuthService {
           },
           include: { organization: true },
         });
+        /* The first admin of a new organisation holds it. One function, five doors. */
+        await theFirstAdminHoldsIt(tx, org.id, u.id);
         if (pending.draftToken) {
           await tx.entryDraft.create({
             data: {
@@ -493,6 +536,14 @@ export class AuthService {
         const u = await tx.user.create({
           data: { organizationId, email: lower, firstName, lastName: '', role: 'MEMBER', isEmailVerified: false },
         });
+        /*
+         * ONLY WHERE WE JUST MADE THE WORKSPACE FOR THEM. This branch also runs for somebody being
+         * invited INTO an existing organisation, and claiming that one for the invitee would hand a
+         * customer's account to the newest person in it. `theFirstAdminHoldsIt` refuses to take one
+         * that is already held, but an organisation that has none yet would be taken - so it is
+         * asked only when this call created the organisation a line earlier.
+         */
+        if (!inviterOrganizationId) await theFirstAdminHoldsIt(tx, organizationId, u.id);
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
           data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
@@ -673,7 +724,7 @@ export class AuthService {
 
         user = await this.prisma.$transaction(async (tx) => {
           const organization = await tx.organization.create({ data: { name: orgName, slug } });
-          return tx.user.create({
+          const created = await tx.user.create({
             data: {
               organizationId: organization.id,
               email,
@@ -685,6 +736,9 @@ export class AuthService {
             },
             include: { organization: true },
           });
+          /* The first admin of a new organisation holds it. One function, five doors. */
+          await theFirstAdminHoldsIt(tx, organization.id, created.id);
+          return created;
         });
       }
     }
@@ -704,28 +758,27 @@ export class AuthService {
     return { valid: true, email: tokenRecord.user.email, firstName: tokenRecord.user.firstName };
   }
 
+  /**
+   * THE SAME SHAPE AS SIGNING IN, BECAUSE IT IS THE SAME QUESTION.
+   *
+   * This built its own object beside `buildAuthResponse` and the two drifted, in the way two copies
+   * of one shape always eventually do. What it lost was `mayOpenCheckIns`, and the loss was silent
+   * and total: the client asks `user?.mayOpenCheckIns !== false`, `undefined !== false` is true, and
+   * every page load calls this - so signing in hid the button correctly and the first refresh handed
+   * it back to everybody in the organisation.
+   *
+   * The server refused what they then clicked, which is the guard working. It is not a defence:
+   * being shown a door, walking through it and being turned away is a worse experience than never
+   * seeing the door, and it teaches people the product is broken rather than that the setting is
+   * deliberate.
+   *
+   * So there is one builder now, and a field added to it cannot fail to reach this route.
+   */
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
     if (!user) throw new BadRequestException('User not found');
-
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      organizationId: user.organizationId,
-      organizationName: user.organization.name,
-      orgCode: user.organization.slug,
-      isPlatformAdmin: user.isPlatformAdmin,
-      emailNotifications: user.emailNotifications,
-      organization: {
-        id: user.organization.id,
-        name: user.organization.name,
-        slug: user.organization.slug,
-        careFeeStatus: user.organization.careFeeStatus,
-      },
-    };
+    /* One builder. A field added to it cannot fail to reach this route now. */
+    return { ...this.theUserShape(user as unknown as UserWithOrg), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
   }
 
   // --- helpers ---
@@ -761,7 +814,23 @@ export class AuthService {
        */
       needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
       accessToken: this.generateToken(user),
-      user: {
+      user: this.theUserShape(user),
+    };
+  }
+
+  /**
+   * ONE SHAPE FOR WHO SOMEBODY IS, BUILT IN ONE PLACE.
+   *
+   * Signing in and `GET /auth/me` answer the same question and had two builders, which drifted the
+   * way two copies of one shape always do. `mayOpenCheckIns` reached the first and not the second,
+   * silently, so signing in hid the button correctly and the first page refresh handed it back to
+   * everybody in the organisation.
+   *
+   * SEPARATE FROM `buildAuthResponse` RATHER THAN CALLING IT, because that one also mints an access
+   * token, and fetching a profile is not a reason to issue a credential.
+   */
+  private theUserShape(user: UserWithOrg) {
+    return {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
@@ -770,6 +839,52 @@ export class AuthService {
         organizationId: user.organizationId,
         organizationName: user.organization.name,
         isPlatformAdmin: user.isPlatformAdmin,
+        /**
+         * WHETHER THIS PERSON MAY OPEN A CHECK-IN, DECIDED BY THE ONE RULE THAT DECIDES IT.
+         *
+         * Without this the client cannot know, and what it did instead was show everybody the
+         * button: a member saw "Start a check-in" in the rail, filled in eight steps, and was
+         * refused on submit. The refusal was right and the journey was a waste of their afternoon.
+         *
+         * COMPUTED, NOT COPIED. Sending the role and the organisation's two settings and letting
+         * the client work it out would put a second copy of the rule in a second language, and the
+         * copy that drifts is the one deciding whether somebody sees a button.
+         *
+         * It is a convenience for the screen and never a permission: `create` asks the same
+         * function again on every request, so a stale session cannot open anything.
+         */
+        mayOpenCheckIns: mayOpen(
+          { role: user.role },
+          {
+            whoMayOpen: (user.organization.whoMayOpenCheckIns as 'NAMED_LEADS' | 'EVERYONE')
+              ?? HOW_A_NEW_ORG_WORKS.whoMayOpen,
+            needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
+          },
+        ).may,
+        /**
+         * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
+         *
+         * `GET /auth/me` and `PATCH /auth/me` both return this object; every sign-in returned only
+         * `organizationId` and `organizationName`. The client decides whether an admin still has to
+         * set their organisation up by reading `user.organization?.email` - which is undefined on a
+         * freshly signed-in user no matter what the organisation actually holds.
+         *
+         * So every ADMIN was sent to `/org/setup` on every sign-in, forever, including ones who had
+         * filled it in months earlier. That page is deliberately bare, which is the first half of
+         * why the menu was reported missing: you never reached a page that has one.
+         *
+         * The same five doors share this builder, so all five were wrong in the same way and one
+         * fix covers them. The shape matches `/auth/me` deliberately - two endpoints returning a
+         * different idea of the same user is what let this hide.
+         */
+        organization: {
+          id: user.organization.id,
+          name: user.organization.name,
+          slug: user.organization.slug,
+          careFeeStatus: user.organization.careFeeStatus,
+          email: user.organization.email,
+          companyStage: user.organization.companyStage,
+        subscriptionPlan: user.organization.subscriptionPlan,
       },
     };
   }
@@ -817,6 +932,7 @@ export class AuthService {
 
     const orgUpdate: Record<string, unknown> = {};
     if (dto.orgName !== undefined) orgUpdate.name = dto.orgName.trim();
+    if (dto.orgEmail !== undefined) orgUpdate.email = dto.orgEmail.trim();
     if (dto.orgSlug !== undefined) {
       const slug = dto.orgSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const existing = await this.prisma.organization.findUnique({ where: { slug } });

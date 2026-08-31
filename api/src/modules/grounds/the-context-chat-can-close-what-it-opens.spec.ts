@@ -118,7 +118,7 @@ describe('and the service writes only after a yes', () => {
      * of rules, and the audit trail would have a hole exactly where a chat changed something.
      */
     const apply = CODE.slice(CODE.indexOf('async applyContextProposal('));
-    expect(apply).toMatch(/this\.updateTimeline\(groundId, requestingUserId, \{ timelineWeeks:/);
+    expect(apply).toMatch(/this\.updateTimeline\(groundId, requestingUserId, \{ timelineDays:/);
     expect(apply).toMatch(/this\.updateTimeline\(groundId, requestingUserId, \{ cadence:/);
   });
 });
@@ -170,8 +170,19 @@ describe('the question this whole feature exists to ask', () => {
    */
   it('the ground records whether the lead chose the pacing or we did', () => {
     const SCHEMA = readFileSync(join(__dirname, '../../../prisma/schema.prisma'), 'utf8');
-    expect(SCHEMA).toMatch(/timelineStated Boolean @default\(false\)/);
-    expect(SCHEMA).toMatch(/cadenceStated  Boolean @default\(false\)/);
+    /**
+     * WHITESPACE-TOLERANT, because it was not before and a formatter broke it.
+     *
+     * These patterns matched the exact spacing the fields happened to have, including a literal
+     * double space in the second one. `prisma format` aligns the columns of a block whenever any
+     * field in it changes name length - so adding an unrelated field elsewhere in the model
+     * re-indents these two and this test fails, having found nothing wrong.
+     *
+     * What it is actually for is that the two flags exist and default to false, so that is what it
+     * now asserts.
+     */
+    expect(SCHEMA).toMatch(/timelineStated\s+Boolean\s+@default\(false\)/);
+    expect(SCHEMA).toMatch(/cadenceStated\s+Boolean\s+@default\(false\)/);
   });
 
   it('and both create paths record which it was', () => {
@@ -195,7 +206,7 @@ describe('the question this whole feature exists to ask', () => {
 
   it('and stating it through updateTimeline marks it stated', () => {
     // Otherwise the chat would keep offering to set a length the lead had just set.
-    expect(CODE).toMatch(/timelineWeeks: dto\.timelineWeeks, timelineStated: true/);
+    expect(CODE).toMatch(/timelineDays: requestedDays,\s*\n\s*timelineWeeks: Math\.max\(1, Math\.round\(requestedDays \/ 7\)\),\s*\n\s*timelineStated: true/);
     expect(CODE).toMatch(/cadence: dto\.cadence as Cadence, cadenceStated: true/);
   });
 

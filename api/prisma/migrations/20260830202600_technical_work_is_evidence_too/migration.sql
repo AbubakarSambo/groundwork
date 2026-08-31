@@ -1,0 +1,5 @@
+ALTER TYPE "InteractionKind" ADD VALUE 'MERGE';
+ALTER TYPE "InteractionKind" ADD VALUE 'TEST_RUN';
+ALTER TYPE "InteractionKind" ADD VALUE 'DEPLOY';
+ALTER TYPE "InteractionKind" ADD VALUE 'RELEASE';
+ALTER TYPE "InteractionKind" ADD VALUE 'INCIDENT';

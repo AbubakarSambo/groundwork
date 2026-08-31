@@ -42,7 +42,7 @@ const renderPanel = () => {
 
 beforeEach(() => vi.clearAllMocks())
 
-describe('a ground can be brought to an end', () => {
+describe('a check-in can be brought to an end', () => {
   it('offers the scenario\'s own end states', async () => {
     ;(resolutionApi.get as any).mockResolvedValue(STATE)
     renderPanel()
@@ -102,7 +102,7 @@ describe('a ground can be brought to an end', () => {
       groundStatus: 'RESOLVED',
     })
     renderPanel()
-    expect(await screen.findByText('How this ground ended')).toBeTruthy()
+    expect(await screen.findByText('How this ended')).toBeTruthy()
     expect(screen.queryByText('This is my answer')).toBeNull()
   })
 

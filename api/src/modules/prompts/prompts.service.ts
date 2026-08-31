@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleIni
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
+import { SEAT_RELATION_COUNT } from '../../common/seats';
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -382,7 +383,7 @@ export class PromptsService implements OnModuleInit {
         email: true,
         careFeeStatus: true,
         createdAt: true,
-        _count: { select: { grounds: true, users: true } },
+        _count: { select: { grounds: true, ...SEAT_RELATION_COUNT } },
       },
     });
 

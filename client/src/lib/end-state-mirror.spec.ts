@@ -30,7 +30,7 @@ function parseServerEndStates(src: string): Record<string, { value: string; labe
 }
 
 describe('end-state mirror: client === server, verbatim', () => {
-  const server = parseServerEndStates(readFileSync(SERVER_FILE, 'utf8'))
+  const server = parseServerEndStates(readFileSync(SERVER_FILE, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))
 
   it('covers every server scenario and no extras', () => {
     expect(Object.keys(END_STATES).sort()).toEqual(Object.keys(server).sort())

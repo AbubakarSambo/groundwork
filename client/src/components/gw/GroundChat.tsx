@@ -65,8 +65,7 @@ import { toast } from 'sonner'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSessions, parties, peersHidden, notOpenYet }: {
-  label: string
+function GroundTopic({ brief, parties, peersHidden, notOpenYet }: {
   /**
    * NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
    *
@@ -77,11 +76,7 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
    * they could have done. Neither of them could have.
    */
   notOpenYet?: boolean
-  scenario?: string | null
   brief?: string | null
-  alignment?: string | null
-  sessionsDone: number
-  totalSessions: number | null
   /**
    * WHO ELSE IS IN THIS, AND WHETHER THEY ARE DOING IT. W13-5.
    *
@@ -101,37 +96,23 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
   parties?: { name: string; done: boolean; isSelf: boolean }[]
   peersHidden?: boolean
 }) {
-  const situation = scenario
-    ? scenario.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
-    : null
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
       <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
-        About this ground
+        About this check-in
       </div>
-      <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{label}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--gw-sub)' }}>
-        {situation && <span>{situation}</span>}
-        {/*
-          THE SESSION COUNT, WHICH HAD NOWHERE TO LIVE BETWEEN SESSIONS. The only
-          place a total rendered after the cards went was the "Continue session 2 of
-          6" button, and that button is only there when a check-in is open - so for
-          thirteen days out of fourteen nothing said this ground had six.
-        */}
-        {totalSessions != null && (
-          <>
-            <span style={{ color: 'var(--gw-border)' }}>·</span>
-            <span>{sessionsDone} of {totalSessions} sessions done</span>
-          </>
-        )}
-        {alignment && (
-          <>
-            <span style={{ color: 'var(--gw-border)' }}>·</span>
-            {/* "Where things stand" - the report's read, not a count of check-ins. */}
-            <span>{alignment}</span>
-          </>
-        )}
-      </div>
+      {/*
+        TWO THINGS ON THIS CARD: THE BRIEF, AND WHO IS IN IT.
+        
+        It used to open with the check-in's name, the scenario, "n of m sessions done" and the
+        alignment read - all four of which the page header carries a centimetre above, on both the
+        lead's page and the party's. So the first thing anybody met on the tab where they were about
+        to give their account was a restatement of the header.
+        
+        The two that stayed are the two the header cannot hold: what this is about, and who else is
+        here with the rule about who reads what. Those are what somebody needs in front of them at the
+        moment they start typing.
+      */}
       {brief && (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
           {brief}
@@ -154,7 +135,7 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
             Who is in this
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-            On this ground people check in without seeing each other. Your lead knows who is here;
+            On this check-in people check in without seeing each other. Your lead knows who is here;
             you will not see the others or what they wrote, and they will not see you.
           </div>
         </div>
@@ -168,12 +149,22 @@ function GroundTopic({ label, scenario, brief, alignment, sessionsDone, totalSes
             {(parties ?? []).map((p, i) => (
               <span
                 key={i}
-                title={p.done ? 'Has checked in for the current session' : notOpenYet ? 'The next session has not opened yet' : 'Has not checked in yet'}
+                /**
+                 * The full label belongs in the tooltip now that these can be long. W-UX-4.
+                 *
+                 * The chips used to hold email local-parts - "hafsah", "abubakar" - and now hold a
+                 * name, or the ROLE when somebody has no account yet. Roles here are written as
+                 * sentences ("Delivery manager, his line manager"), which is right in a roster and
+                 * far too long for a pill, so a chip that overflows is capped visibly rather than
+                 * wrapping the row into three lines.
+                 */
+                title={`${p.isSelf ? 'You' : p.name} - ${p.done ? 'has checked in for the current session' : notOpenYet ? 'the next session has not opened yet' : 'has not checked in yet'}`}
                 style={{
                   fontSize: 12, padding: '3px 9px', borderRadius: 20,
                   background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
                   border: `1px solid ${p.done ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
                   color: 'var(--gw-text)',
+                  maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}
               >
                 {p.isSelf ? 'You' : p.name}
@@ -488,7 +479,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
 
 export function GroundChat({
   groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending,
-  label, scenario, brief, alignment, sessionsDone, signals,
+  brief, signals,
   viewerIsParty, history, parties, peersHidden,
 }: {
   groundId: string
@@ -498,12 +489,14 @@ export function GroundChat({
   nextOpensAt: string | null
   onOpenSession?: () => void
   openPending?: boolean
-  /** The topic at the top of the scroll: what this ground is, and where it stands. */
-  label: string
-  scenario?: string | null
+  /**
+   * The topic at the top of the scroll: what this check-in is about, and who is in it.
+   *
+   * `label`, `scenario`, `alignment` and `sessionsDone` used to arrive here too and are gone. Every
+   * one of them is in the page header on both pages, and a card that restates the header is the
+   * first thing somebody reads on the tab where they are about to give their account.
+   */
   brief?: string | null
-  alignment?: string | null
-  sessionsDone: number
   /** What Groundwork has noticed, in the order it noticed it. */
   signals?: { label: string; text: string; session: number }[]
   /**
@@ -564,12 +557,7 @@ export function GroundChat({
         )}
 
         <GroundTopic
-          label={label}
-          scenario={scenario}
           brief={brief}
-          alignment={alignment}
-          sessionsDone={sessionsDone}
-          totalSessions={totalSessions}
           parties={parties}
           peersHidden={peersHidden}
           notOpenYet={!openCheckInId && !!nextOpensAt}

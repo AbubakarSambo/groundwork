@@ -40,7 +40,7 @@ export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-
         {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.`}
         {kind === 'sign-in'
           ? ' Ask for a new one below.'
-          : ' Ask whoever invited you to send a new one - they can do that from the ground.'}
+          : ' Ask whoever invited you to send a new one - they can do that from the check-in.'}
       </div>
 
       <button className="gw-btn" onClick={() => navigate('/auth')}>

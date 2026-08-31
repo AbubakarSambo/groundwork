@@ -21,14 +21,33 @@ export class BillingController {
   @Get('pricing')
   @ApiOperation({ summary: 'Current subscription pricing per plan - what /pricing and /billing actually charge' })
   async getPricing() {
-    return this.pricing.listPlans();
+    /**
+     * Plans AND the free limits, in one response. The client used to get the plans here and hold
+     * its own copy of the free limit, because there was nowhere to read it from.
+     */
+    return this.pricing.publicPricing();
   }
 
   @Get('status')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Billing status: active grounds with session balances and saved card' })
-  async status(@CurrentUser('organizationId') organizationId: string) {
-    return this.billing.getStatus(organizationId);
+  async status(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    /*
+     * USAGE IS FOR AN ADMIN. THE SEAT COUNT IS FOR EVERYBODY WHO INVITES SOMEBODY.
+     *
+     * This route has never had a role guard, and that is right: the ground page reads it to warn
+     * that a plan is full before somebody adds a participant, and a lead adding one needs the same
+     * warning an admin gets. Guarding the route would make that warning silently stop appearing for
+     * exactly the people the product now expects to run check-ins.
+     *
+     * But adding usage counts to it widened what a non-admin could read - how many check-ins this
+     * organisation has run, how many reports went out, how many people take part - which is nobody's
+     * business but the admin's. So the counts are the part that is gated, not the route.
+     */
+    return this.billing.getStatus(organizationId, role === 'ADMIN');
   }
 
   @Delete('account')
@@ -117,7 +136,21 @@ export class BillingController {
 
   @Get('can-create-ground')
   @ApiBearerAuth()
-  @Roles(Role.ADMIN)
+  /**
+   * NOT ADMIN-ONLY, BECAUSE CREATING A CHECK-IN IS NOT ADMIN-ONLY.
+   *
+   * `POST /grounds` carries no role guard: any member of an organisation can open a check-in, and
+   * `canRunThisGround` on the client is `isInitiator || isOrgAdmin` precisely so that they can. This
+   * endpoint only ASKS whether the org is allowed to open another one, and it was the stricter of
+   * the two - so a member could create a check-in but not find out whether they were permitted to.
+   *
+   * What they got instead was "Access denied - you do not have permission to perform this action"
+   * on opening /grounds/new, over a page that then rendered and worked. The toast was true about the
+   * request and false about the person.
+   *
+   * It returns the organisation's own allowance - whether another is permitted, why, and how many
+   * have been used. Nothing in it belongs to another person or another org.
+   */
   @ApiOperation({ summary: 'Check if the org can create a new ground (free first ground or valid access code)' })
   async canCreateGround(
     @CurrentUser('organizationId') organizationId: string,

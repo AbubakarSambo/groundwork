@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { MyOwnRecordService } from '../people/my-own-record.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
@@ -17,7 +18,10 @@ class RenameOrganizationDto {
 @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly myRecord: MyOwnRecordService,
+  ) {}
 
   @Patch('organization')
   @Roles(Role.ADMIN)
@@ -27,6 +31,29 @@ export class UsersController {
     @Body() dto: RenameOrganizationDto,
   ) {
     return this.usersService.renameOrganization(organizationId, dto.name);
+  }
+
+  /**
+   * HOW CHECK-INS WORK HERE. Two settings, read and written by an admin.
+   *
+   * On the organisation rather than on a settings module of its own, next to the rename, because
+   * that is what they are: facts about this organisation that only an admin may change.
+   */
+  @Get('organization/check-ins')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Who may open a check-in here, and whether one waits for approval' })
+  async howCheckInsWork(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.howCheckInsWork(organizationId);
+  }
+
+  @Patch('organization/check-ins')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Change who may open a check-in, or whether one waits' })
+  async setHowCheckInsWork(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { whoMayOpen?: string; needsApproval?: boolean },
+  ) {
+    return this.usersService.setHowCheckInsWork(organizationId, body);
   }
 
   @Post('me/leave')
@@ -50,10 +77,24 @@ export class UsersController {
    * derivable from `GET /users` and a ground list, both properly scoped.
    */
 
+  /**
+   * EVERYTHING, WHICH IT WAS NOT.
+   *
+   * This export covered check-ins, record entries and grounds - all keyed through participants. Every
+   * org-scoped record built since is keyed to a person's external id instead, so commitments,
+   * contributions, findings, handoffs, onboarding and suggested conversations were all invisible to
+   * it. Somebody exercising a subject-access request would have received a real-looking document
+   * that omitted most of what the product knows about them, with nothing saying so - a wrong answer
+   * to a legal question, signed.
+   */
   @Get('me/export')
   @ApiOperation({ summary: 'Export all personal data for the current user (GDPR Article 15)' })
   async exportData(@CurrentUser('id') userId: string) {
-    return this.usersService.exportData(userId);
+    const [fromGrounds, fromOrg] = await Promise.all([
+      this.usersService.exportData(userId),
+      this.myRecord.orgScopedRecord(userId),
+    ]);
+    return { ...fromGrounds, organisationWide: fromOrg };
   }
 
   @Delete('me/data')
@@ -68,6 +109,86 @@ export class UsersController {
   @ApiOperation({ summary: 'List users in the organization' })
   async findAll(@CurrentUser('organizationId') organizationId: string, @Query() pagination: PaginationDto) {
     return this.usersService.findAll(organizationId, pagination);
+  }
+
+  /**
+   * PUT A WHOLE COMPANY ON, previewed first.
+   *
+   * `preview` is a query parameter rather than a second route so the two cannot drift apart: it is
+   * the same call, stopping one step earlier.
+   */
+  /**
+   * WHERE THE ROLLOUT HAS GOT TO. Read by the screen an admin lands on.
+   *
+   * Above `:id` deliberately - a route with a literal segment has to be declared before the one
+   * with a parameter, or `rollout` is read as somebody's user id and comes back 404.
+   */
+  /**
+   * ASK US TO TALK TO YOUR ENGINEERS.
+   *
+   * On the users controller because that is where an organisation's own admin actions already live
+   * and it is already guarded as one. A module of its own for a single insert would be more files
+   * saying the same thing.
+   *
+   * ONE OPEN REQUEST PER ORGANISATION. Clicking twice is somebody wondering whether the first click
+   * worked, not two requests, and a queue with the same company in it four times is a queue that
+   * gets read less carefully.
+   */
+  @Post('call-request')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ask to talk to us about connecting your systems' })
+  async requestACall(@CurrentUser() user: CurrentUserData, @Body() body: { note?: string }) {
+    return this.usersService.requestACall(user.organizationId, user.id, body?.note);
+  }
+
+  /** Whether this organisation has already asked, so the page can say so rather than ask again. */
+  @Get('call-request')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Whether a call has already been asked for' })
+  async callRequested(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.callAlreadyRequested(organizationId);
+  }
+
+  /**
+   * WHO SET THIS ORGANISATION UP, and handing that on.
+   *
+   * The read is available to any admin, because the People page has to know whose row it must not
+   * offer to change. The write is owner-only, enforced in the service rather than by a decorator:
+   * `@Roles` knows about roles and this is not one.
+   */
+  @Get('organization/owner')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Who set this organisation up' })
+  async whoSetThisUp(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.whoSetThisUp(organizationId);
+  }
+
+  @Patch('organization/owner')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Hand the organisation to another admin' })
+  async handOver(@CurrentUser() user: CurrentUserData, @Body() body: { userId?: string }) {
+    if (!body?.userId) throw new BadRequestException('Say who you are handing it to.');
+    return this.usersService.handOverTheOrganisation(user.organizationId, user.id, body.userId);
+  }
+
+  @Get('rollout')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'What an admin has actually done so far, as counts' })
+  async rollout(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.rolloutFacts(organizationId);
+  }
+
+  @Post('invitations')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Invite many people at once, or preview what would happen' })
+  async inviteMany(
+    @CurrentUser() user: CurrentUserData,
+    @Body() body: { pasted?: string; preview?: boolean },
+  ) {
+    const org = await this.usersService.organisationName(user.organizationId);
+    return this.usersService.inviteMany(user.organizationId, org, body?.pasted ?? '', body?.preview === true);
   }
 
   @Get(':id')

@@ -1,0 +1,62 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { describe, it, expect } from 'vitest'
+
+/**
+ * ELEVEN ENDPOINTS' WORTH OF CODE WITH NO BUTTON. W-UX-C.
+ *
+ * The audit's line, and the two that mattered most:
+ *
+ *  - `authApi.updateProfile` - nothing in the product called it, so NOBODY COULD TELL US THEIR OWN
+ *    NAME. Every name Groundwork held came from Google at sign-in, or from an admin typing it into
+ *    an invite. That is the root of the complaint that started this whole pass: three screens showed
+ *    email addresses because for half the people there genuinely was no name, and no way to give one.
+ *    Fixing the display alone would have been the dishonest half of the job.
+ *
+ *  - `groundsApi.resendParticipantInvite` - live since GW-24, never called. What the roster offered
+ *    instead was "Copy invite link", which makes the lead paste into their own mail client to handle
+ *    the most ordinary failure there is: somebody did not see the email.
+ *
+ * THE RULE: an endpoint in `src/api` that nothing renders is either a missing button or dead code,
+ * and either way somebody has to decide which. This checks these two are decided.
+ */
+const read = (p: string) =>
+  readFileSync(join(__dirname, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
+describe('a person can tell us their own name', () => {
+  const SETTINGS = read('settings/SettingsPage.tsx')
+
+  it('the endpoint is called from the page', () => {
+    expect(SETTINGS).toContain('authApi.updateProfile({ firstName:')
+  })
+
+  it('with a field for each part of it', () => {
+    expect(SETTINGS).toContain('aria-label="First name"')
+    expect(SETTINGS).toContain('aria-label="Last name"')
+  })
+
+  it('and it says why it matters, because that is the reason it exists', () => {
+    expect(SETTINGS).toMatch(/we can only show your\s+email address/)
+  })
+
+  it('a last name is not demanded', () => {
+    /** One name is enough to stop a person being an address. Requiring two would refuse for nothing. */
+    expect(SETTINGS).toContain('!nameChanged || !firstName.trim()')
+    expect(SETTINGS).not.toMatch(/!lastName\.trim\(\)/)
+  })
+})
+
+describe('a lost invite can be sent again', () => {
+  const ADMIN = read('grounds/GroundAdminPage.tsx')
+
+  it('the endpoint is called from the roster', () => {
+    expect(ADMIN).toContain('groundsApi.resendParticipantInvite(id!, participantId)')
+    expect(ADMIN).toContain('Resend invite')
+  })
+
+  it('offered only by the lead, and only while they have not joined', () => {
+    /** The server refuses after acceptance; the button must not offer what the server will reject. */
+    const at = ADMIN.indexOf('Resend invite')
+    expect(ADMIN.slice(at - 700, at)).toContain('isInitiator && !p.userId')
+  })
+})

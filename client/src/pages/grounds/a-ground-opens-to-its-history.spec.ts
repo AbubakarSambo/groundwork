@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest'
 /**
  * A GROUND OPENS TO ITS OWN HISTORY. W8-57.
  *
- * Hafsah's model: a ground is a channel you come back to and keep adding to, and a
+ * Hafsah's model: a check-in is a channel you come back to and keep adding to, and a
  * channel opens to what has been said with the place to type at the bottom.
  *
  * THIS FILE HAS BEEN REWRITTEN ONCE, AND THE REASON MATTERS. The first version
@@ -21,7 +21,7 @@ import { describe, it, expect } from 'vitest'
  * renders the conversation and nothing else, and that the retired card view has not
  * crept back alongside it.
  */
-const SRC = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
+const SRC = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the Check-in tab', () => {
   it('renders the conversation', () => {

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Groundwork</title>
+<style>
+  :root { --ink:#1b1a18; --sub:#5a544c; --line:#e2ddd5; --bg:#f4f2ee; --navy:#1C4E80; }
+  * { box-sizing:border-box }
+  body { margin:0; font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:var(--ink); background:#fff; display:flex; flex-direction:column; height:100vh }
+  header { padding:10px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:8px }
+  .who { font-weight:700; font-size:13px }
+  .fresh { font-size:11px; color:var(--sub) }
+  .fresh.stale { color:#8A5C1A }
+  #close { border:0; background:none; font-size:18px; color:var(--sub); cursor:pointer; line-height:1 }
+  #log { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px }
+  .msg { max-width:88%; padding:9px 12px; border-radius:12px; white-space:pre-wrap; font-size:13.5px }
+  .them { background:var(--bg); align-self:flex-start; border-bottom-left-radius:4px }
+  .me { background:var(--navy); color:#fff; align-self:flex-end; border-bottom-right-radius:4px }
+  .chips { display:flex; flex-wrap:wrap; gap:6px }
+  .chip { font-size:12px; padding:5px 10px; border-radius:14px; border:1px solid var(--line); background:#fff; cursor:pointer; font-family:inherit }
+  .chip:hover { background:var(--bg) }
+  .by { font-size:10.5px; color:var(--sub); align-self:flex-start; margin-top:-6px }
+  form { display:flex; gap:6px; padding:10px 12px; border-top:1px solid var(--line) }
+  input { flex:1; font:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--line); border-radius:8px }
+  button[type=submit] { border:0; background:var(--navy); color:#fff; border-radius:8px; padding:0 14px; font:inherit; font-weight:600; cursor:pointer }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="who" id="who">Groundwork</div>
+      <div class="fresh" id="fresh"></div>
+    </div>
+    <button id="close" aria-label="Close">×</button>
+  </header>
+  <div id="log" role="log" aria-live="polite"></div>
+  <form id="form"><input id="input" placeholder="Ask about your work" autocomplete="off"><button type="submit">Send</button></form>
+
+<script>
+/**
+ * THE PANEL. It holds the session token and speaks to the API; the host page can do neither.
+ *
+ * The token arrives in the fragment rather than the query string, because a fragment is never sent
+ * to a server and never lands in an access log - not ours, not a proxy's, not the customer's. It is
+ * read once and removed from the address so it does not sit in the frame's history either.
+ */
+(function () {
+  var API = location.origin;
+  var token = decodeURIComponent(location.hash.slice(1));
+  history.replaceState(null, '', location.pathname);
+
+  var log = document.getElementById('log');
+  var form = document.getElementById('form');
+  var input = document.getElementById('input');
+
+  function send(type, extra) {
+    parent.postMessage(Object.assign({ type: type }, extra || {}), '*');
+  }
+
+  function bubble(cls, textContent) {
+    var d = document.createElement('div');
+    d.className = 'msg ' + cls;
+    /* textContent, never innerHTML. Everything here has passed through a customer's systems. */
+    d.textContent = textContent;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  }
+
+  function chips(options) {
+    var wrap = document.createElement('div');
+    wrap.className = 'chips';
+    options.forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = o.label;
+      b.addEventListener('click', function () { ask(o.label); });
+      wrap.appendChild(b);
+    });
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function render(reply) {
+    (reply.blocks || []).forEach(function (b) {
+      if (b.type === 'text') bubble('them', b.body);
+      else if (b.type === 'picker') chips(b.options || []);
+      else bubble('them', '[' + b.type + ']');
+    });
+    /* Stamped on every reply, so a person always knows which spoke. */
+    if (reply.composedBy === 'rules') {
+      var by = document.createElement('div');
+      by.className = 'by';
+      by.textContent = 'answered from your records';
+      log.appendChild(by);
+    }
+  }
+
+  function ask(message) {
+    bubble('me', message);
+    fetch(API + '/api/org/v1/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ message: message }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () {
+        /* Never a stack trace, and never silence. */
+        bubble('them', 'I could not reach the record just then. Try again in a moment.');
+      });
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = input.value.trim();
+    if (!v) return;
+    input.value = '';
+    ask(v);
+  });
+
+  document.getElementById('close').addEventListener('click', function () { send('closed'); });
+
+  /* Two inbound, and neither carries content. */
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.source !== parent) return;
+    if (e.data.type === 'open') input.focus();
+    else if (e.data.type === 'context' && e.data.subjectExternalId) {
+      window.__gwContext = String(e.data.subjectExternalId);
+    }
+  });
+
+  /* The opening state came with the session and is rendered before anybody types. */
+  fetch(API + '/api/org/v1/embed/opening', { headers: { Authorization: 'Bearer ' + token } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (s) {
+      if (!s) return;
+      document.getElementById('who').textContent = s.person ? s.person.displayName : 'Groundwork';
+      var fresh = document.getElementById('fresh');
+      if (s.freshness && s.freshness.length) {
+        var stale = s.freshness.filter(function (f) { return f.stale; });
+        fresh.textContent = stale.length
+          ? stale[0].system + ' has not sent anything recently'
+          : s.freshness.map(function (f) { return f.system; }).join(', ') + ' connected';
+        if (stale.length) fresh.className = 'fresh stale';
+      }
+      if (s.opening) {
+        bubble('them', s.opening.line);
+        if (s.opening.suggestions) {
+          chips(s.opening.suggestions.map(function (t) { return { key: t, label: t }; }));
+        }
+      }
+      send('ready');
+      send('resize', { height: Math.min(document.body.scrollHeight, 640) });
+    })
+    .catch(function () { send('ready'); });
+})();
+</script>
+</body>
+</html>

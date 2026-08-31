@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { CheckInStatus, GroundStatus, PatternStatus } from '@prisma/client';
+import { forbiddenNames, namesAnyone } from '../reports/guide-sanitiser';
 
 /**
  * The learning loop + cross-org intelligence. When a ground resolves, its
@@ -44,9 +45,9 @@ export class IntelligenceService {
    */
   async submitFeedback(groundId: string, userId: string, feltFair: boolean, note?: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
 
     return this.prisma.outcomeFeedback.upsert({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -72,16 +73,16 @@ export class IntelligenceService {
     dto: { rating: number; feltFair: boolean; whatWorked?: string; whatDidnt?: string; wouldUseAgain: boolean },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
 
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
 
     // Enforce one-submission-per-ground guard (in addition to the DB unique constraint).
     const existing = await this.prisma.outcomeFeedback.findUnique({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
     });
-    if (existing) throw new ForbiddenException('You have already submitted feedback for this ground');
+    if (existing) throw new ForbiddenException('You have already submitted feedback for this check-in');
 
     // wouldUseAgain lives in the note with the rest of the survey. It used to be
     // written into the feltFair COLUMN, which is the column every fairness
@@ -342,6 +343,31 @@ export class IntelligenceService {
     ]);
 
     if (!narrative?.trim()) return;
+
+    /*
+     * THE "NO NAMES" RULE WAS A LINE IN THE PROMPT, WHICH IS A REQUEST.
+     *
+     * This codebase has learned that twice already and written it down both times: the post-report
+     * guide named a participant despite a prompt forbidding it, and the `atStake` pass was only
+     * fixed by never handing the model the names at all. Here the instruction was the whole of the
+     * protection, on the one record in the product that is org-wide and marked `anonymised: true` -
+     * a flag that would have been false the first time a name came through, with nothing checking.
+     *
+     * DROP, NEVER REDACT, the same as the guide sanitiser. A summary with a name cut out of it still
+     * says a specific person was discussed, and the org has other summaries. Losing one costs
+     * nothing next to a name appearing under a heading that promises there are none.
+     */
+    const people = await this.prisma.user.findMany({
+      where: { organizationId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    const names = forbiddenNames(people);
+    if (namesAnyone(narrative, names)) {
+      this.logger.warn(
+        `Org narrative named somebody despite the prompt forbidding it - dropped for org ${organizationId}.`,
+      );
+      return;
+    }
 
     await this.prisma.orgIntelligence.create({
       data: {

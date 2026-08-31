@@ -237,7 +237,7 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
       <div style={SL}>Overview</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Stat val={overview.totalOrgs} label="Total orgs" />
-        <Stat val={overview.totalGrounds} label="Total grounds" />
+        <Stat val={overview.totalGrounds} label="Total check-ins" />
         <Stat val={overview.totalCodes} label="Access codes" accent />
         <Stat val={overview.totalRedemptions} label="Redemptions" />
         {overview.totalSubscribedOrgs !== undefined && (
@@ -336,7 +336,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
 function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }) {
   const entries: { label: string; key: keyof FreeReasonBreakdown; color: string }[] = [
     { label: 'Free tier', key: 'FREE_TIER', color: 'var(--gw-green-b)' },
-    { label: 'First ground (legacy)', key: 'FIRST_GROUND', color: '#A8DDD0' },
+    { label: 'First check-in (legacy)', key: 'FIRST_GROUND', color: '#A8DDD0' },
     { label: 'Access code', key: 'ACCESS_CODE', color: 'var(--gw-navy)' },
     { label: 'Paid', key: 'paid', color: 'var(--gw-amber-b)' },
   ]
@@ -565,7 +565,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--gw-border)' }}>
-              {['User', 'Grounds', 'Codes created', 'Code redemptions', 'Last active'].map(h => (
+              {['User', 'Check-ins', 'Codes created', 'Code redemptions', 'Last active'].map(h => (
                 <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'left', padding: '6px 10px', textTransform: 'uppercase', letterSpacing: '.06em', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>

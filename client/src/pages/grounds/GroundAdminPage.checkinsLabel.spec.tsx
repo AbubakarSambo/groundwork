@@ -63,19 +63,29 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
     // role. It was "Sessions" here and "My record" there, which is the same tab named twice.
     // Originally: the conversation tab is the one called Check-in,
     // because that is the word the emails and buttons use. W13-8.
-    fireEvent.click(screen.getByRole('button', { name: 'Record' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }))
     await waitFor(() => {
-      expect(screen.getByText('admin@example-test.invalid')).toBeTruthy()
-      expect(screen.getByText('jordan@example-test.invalid')).toBeTruthy()
+      /**
+       * BUG7 IN ITS NEW FORM. The bug was that every row showed the same person, so a lead could not
+       * tell whose session was whose. The flat list of cards that produced it is gone: the tab is now
+       * one row per person, with a cell per session on that row.
+       *
+       * Which makes the protection structural rather than incidental - a cell is rendered from
+       * `checkIns.filter(c => c.participantId === p.id)`, so it cannot show anybody else's session.
+       * These assertions pin that each person is present and identified.
+       */
+      expect(screen.getAllByText('admin@example-test.invalid').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('jordan@example-test.invalid').length).toBeGreaterThan(0)
     })
+
     /**
-     * Both rows are session 1, now distinguishable by participant.
+     * ONE SESSION-1 CELL PER PERSON, EACH NAMING WHOSE IT IS.
      *
-     * Counted with an EXACT match. A loose /Session 1/ also matches the header's
-     * progress line ("Session 1 of 12"), which was added later - so the loose
-     * version failed on a change that had nothing to do with these rows, and
-     * would have gone on being wrong in either direction as the page grew.
+     * The old check counted two elements reading exactly "Session 1" - the two cards. The cells read
+     * just the number, and say which session and what state in their title, so the count moves to the
+     * titles. Two people, one session each, two cells.
      */
-    expect(screen.getAllByText(/^Session 1$/i).length).toBe(2)
+    const cells = screen.getAllByTitle(/^Session 1:/)
+    expect(cells.length).toBe(2)
   })
 })

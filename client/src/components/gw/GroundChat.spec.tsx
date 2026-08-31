@@ -48,8 +48,6 @@ function renderChat(props: Partial<Parameters<typeof GroundChat>[0]> = {}) {
           openSessionNumber={null}
           totalSessions={6}
           nextOpensAt={null}
-          label="Chain proof"
-          sessionsDone={2}
           {...props}
         />
       </MemoryRouter>
@@ -92,7 +90,7 @@ describe('the conversation', () => {
       sessions: [{ ...session(3, '2026-09-01T00:00:00.000Z', [['PERSON', 'The date was March.']]), isSelfCorrection: true, correctionOf: 1 }],
     })
     renderChat()
-    // "Session 3" would read as a third round of the ground, which it is not.
+    // "Session 3" would read as a third round of the check-in, which it is not.
     await waitFor(() => expect(screen.getByText(/Added to session 1/)).toBeTruthy())
   })
 
@@ -117,7 +115,7 @@ describe('the bottom of the scroll', () => {
 
   it('drops "of N" once the session number passes N', async () => {
     /**
-     * A ground can run past its plan - a paid extension does exactly that - and "Check in for
+     * A check-in can run past its plan - a paid extension does exactly that - and "Check in for
      * session 13 of 12" reads as a broken counter rather than as extra work. Seen for real
      * while verifying the affordance on a twelve-session ground with a thirteenth open.
      */

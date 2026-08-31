@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -32,6 +33,43 @@ export class WhatsAppService {
    * Credentials being set does not turn WhatsApp on by itself; an admin must
    * flip the toggle once they've verified the integration.
    */
+
+  /**
+   * MESSAGES FROM META, OR NOTHING.
+   *
+   * The inbound handler used to trust `message.from` - a phone number written in the request body -
+   * as proof of identity, and then wrote into that person's private check-in as them. Nothing
+   * verified the request came from Meta at all: the class was `@Public()`, the admin toggle and the
+   * credential check both govern SENDING, and the GET handler's verifyToken is only the subscribe
+   * handshake. So anyone who knew one linked number could author somebody else's answers.
+   *
+   * FAIL CLOSED, in the same shape the Resend webhook already uses: no secret, no header, a
+   * malformed header or a mismatch all reject and nothing is processed. An unconfigured deployment
+   * therefore has no live inbound path, which is the correct default for a channel that writes to
+   * the record.
+   *
+   * Compared with `timingSafeEqual` on equal-length buffers, so the comparison cannot leak the
+   * expected digest a byte at a time.
+   */
+  verifySignature(headers: Record<string, string | string[] | undefined>, raw: Buffer): void {
+    const secret = this.config.get<string>('whatsapp.appSecret');
+    if (!secret) throw new UnauthorizedException('WhatsApp webhook signature cannot be verified');
+
+    const header = headers['x-hub-signature-256'];
+    const provided = Array.isArray(header) ? header[0] : header;
+    if (!provided || !provided.startsWith('sha256=')) {
+      throw new UnauthorizedException('Missing or malformed WhatsApp signature');
+    }
+
+    const expected = crypto.createHmac('sha256', secret).update(raw).digest('hex');
+    const got = provided.slice('sha256='.length);
+    /** Length check first: timingSafeEqual throws on unequal lengths rather than returning false. */
+    if (got.length !== expected.length ||
+        !crypto.timingSafeEqual(Buffer.from(got, 'utf8'), Buffer.from(expected, 'utf8'))) {
+      throw new UnauthorizedException('WhatsApp signature did not match');
+    }
+  }
+
   async isEnabled(): Promise<boolean> {
     if (!this.config.get<boolean>('whatsapp.enabled')) return false;
     const setting = await this.prisma.platformSetting.findUnique({ where: { key: WhatsAppService.TOGGLE_KEY } });

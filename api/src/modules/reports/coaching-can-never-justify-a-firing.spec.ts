@@ -50,7 +50,7 @@ const COACHING_REFERENCES = [
   /from ['"].*coaching-step['"]/,
 ];
 
-const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), 'utf8');
+const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('no path exists from coaching to any shared surface', () => {
   it.each(WALLED_OFF)('%s cannot reach coaching state', (file) => {

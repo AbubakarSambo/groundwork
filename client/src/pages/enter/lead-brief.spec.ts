@@ -16,7 +16,7 @@ describe('composeLeadBrief', () => {
       goals: ['clear scope', 'one owner'],
       brief: 'watch the deadline',
     })
-    expect(brief).toContain('What this ground is for: Q3 checkout rebuild')
+    expect(brief).toContain('What this check-in is for: Q3 checkout rebuild')
     expect(brief).toContain('Who is part of this: Priya (lead), Dana (engineer)')
     expect(brief).toContain('Why now: ownership is unclear')
     expect(brief).toContain('Goals: clear scope, one owner')
@@ -25,7 +25,7 @@ describe('composeLeadBrief', () => {
 
   it('omits missing fields without leaving separators behind', () => {
     const brief = composeLeadBrief({ initial: 'A new project' })
-    expect(brief).toBe('What this ground is for: A new project')
+    expect(brief).toBe('What this check-in is for: A new project')
   })
 
   it('composes empty selections to an empty string', () => {

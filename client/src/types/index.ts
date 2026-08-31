@@ -1,3 +1,13 @@
+export interface UserOrganization {
+  id: string
+  name: string
+  slug: string
+  careFeeStatus: string
+  email: string | null
+  companyStage: string | null
+  subscriptionPlan: string | null
+}
+
 export interface User {
   id: string
   email: string
@@ -6,13 +16,20 @@ export interface User {
   role: 'ADMIN' | 'MEMBER'
   organizationId: string
   organizationName?: string
+  organization?: UserOrganization
   jobTitle?: string
   isPlatformAdmin?: boolean
+  /**
+   * Whether this person may open a check-in here, decided server side by the one rule that decides
+   * it. A convenience for the screen, never a permission: the API asks again on every create.
+   */
+  mayOpenCheckIns?: boolean
   emailNotifications?: boolean
   phoneNumber?: string | null
 }
 
 export type GroundScenario =
+  | 'ROLE_HANDOVER'
   | 'NEW_HIRE'
   | 'NEW_COFOUNDER'
   | 'NEW_ADVISOR'
@@ -76,6 +93,21 @@ export interface GroundParticipant {
     described: string
     mayBeReadAgainst: boolean
     updatedAt?: string | null
+    /**
+     * THE PRIMITIVE. What SHAPE of thing this is, how anybody would know it happened, and by when.
+     *
+     * An expectation used to be one untyped sentence, so a session could not press on a to-do
+     * differently from a standing role expectation. `check` is the axis that matters most:
+     * NOT_CHECKABLE is a real value, and the page says so plainly rather than letting an
+     * unmeasurable sentence sit there looking like a target somebody failed.
+     */
+    kind?: 'TODO' | 'COMMITMENT' | 'TARGET' | 'GOAL' | 'SUCCESS_DEFINITION' | 'ROLE_EXPECTATION' | 'REFERENCE' | null
+    check?: 'DONE_OR_NOT' | 'A_NUMBER' | 'A_JUDGEMENT' | 'NOT_CHECKABLE' | null
+    dueKind?: 'A_DATE' | 'A_CYCLE' | 'STANDING' | 'NOT_SAID' | null
+    /** Their own words for the deadline. Never a parsed date. */
+    dueSaid?: string | null
+    /** COMMITMENT only: who is waiting on it. */
+    owedToParticipantId?: string | null
   } | null
 }
 

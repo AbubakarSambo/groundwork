@@ -26,7 +26,7 @@ import { join } from 'path';
  * store this", it is "what reads it, and can the person see it".
  */
 
-const api = (p: string) => readFileSync(join(__dirname, '..', '..', '..', p), 'utf8');
+const api = (p: string) => readFileSync(join(__dirname, '..', '..', '..', p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const SCHEMA = api('prisma/schema.prisma');
 
 /** The intake fields, by their prisma names and their column names. */

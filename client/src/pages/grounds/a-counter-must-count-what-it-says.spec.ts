@@ -9,7 +9,7 @@ import { join } from 'path'
  * labelled "Reports ready" and counted something else: reports waiting for THIS PERSON to open,
  * from which the initiator is deliberately exempt because they released it and can always read it.
  * Both halves were defensible alone. Together, on one screen, they told her nothing was ready while
- * the ground beneath printed its report's own summary.
+ * the check-in beneath printed its report's own summary.
  *
  * It is the same defect as "0 of 3 checked in" over a finished report, which this product already
  * fixed once: a counter whose label promises one thing and whose value measures another. A leader
@@ -62,5 +62,26 @@ describe('a report nobody has read can raise its hand', () => {
   it('an overdue check-in still surfaces too', () => {
     /** The control: this was the only thing that worked before, and it must keep working. */
     expect(CODE).toMatch(/\(g\.overdue \?\? 0\) > 0/)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+
+describe('the rollout counter and the cards it sits above', () => {
+  const SRC = readFileSync(join(__dirname, 'an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
+
+  it('says what it counts, because "1 of 4" above five cards reads as a bug', () => {
+    /*
+     * And it was not a bug. Connect is optional and the counter was right to leave it out. Being
+     * right is not enough when the two numbers a person can see disagree with each other.
+     */
+    expect(SRC).toContain('{done} of {counted.length} needed')
+    expect(SRC).toContain('plus ${steps.length - counted.length} optional')
+  })
+
+  it('marks the optional card as optional where the eye lands, not in the body text', () => {
+    expect(SRC).toContain('>Optional</span>')
+    /* The old version buried it at the start of the description, where it read as part of it. */
+    expect(SRC).not.toContain("'Optional. '")
   })
 })

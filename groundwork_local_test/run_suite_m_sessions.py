@@ -38,7 +38,11 @@ from _runner import (
     mail_link,
     seed_closed_entry_session,
     complete_password_step,
+    complete_org_setup,
     ground_reached,
+)
+from _ui_strings import (  # UI copy the product owns - see the guard in
+    GO_TO_YOUR_GROUND, INVITE_AND_FINISH, SAVE_MY_CHECKIN, SENT_A_LINK,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
 )
 
 rec = Recorder("suite_m")
@@ -59,16 +63,16 @@ async def provision_ground(browser):
     await page.wait_for_timeout(2500)
     # the save modal exists in the DOM but is visibility:hidden until opened -
     # judge by VISIBILITY, not presence, and open it via the bar if needed
-    save_btn = page.get_by_text("Save my ground").first
+    save_btn = page.get_by_text(SAVE_MY_CHECKIN).first
     if not await save_btn.is_visible():
-        bar = page.get_by_text("Invite & finish")
+        bar = page.get_by_text(INVITE_AND_FINISH)
         if await bar.count():
             await bar.first.click()
             await page.wait_for_timeout(800)
     email_input = page.locator("input[placeholder*='your@email']:visible").first
     await email_input.fill(EMAIL)
-    await page.get_by_text("Save my ground").first.click()
-    await page.get_by_text("We sent a link to").wait_for(timeout=15000)
+    await page.get_by_text(SAVE_MY_CHECKIN).first.click()
+    await page.get_by_text(SENT_A_LINK).wait_for(timeout=15000)
     link = mail_link(EMAIL, match="verify-email")
     if not link:
         raise RuntimeError("no magic link for suite M initiator")
@@ -77,6 +81,7 @@ async def provision_ground(browser):
     # first, so the tripwire below still sees the real success-or-failure screen for this arrival -
     # but the harness has to get past the step the way a person does.
     await complete_password_step(page)
+    await complete_org_setup(page, EMAIL)
     # GW-REPORTSUMMARY-DTO-DRIFT tripwire: this initiator's session was closed
     # with a real generated report before saving, so /entry/commit carries a
     # reportSummary payload - the exact shape that 400'd with "property
@@ -98,7 +103,7 @@ async def provision_ground(browser):
     )
     if not landed:
         raise RuntimeError("magic link reached neither the confirmation nor a ground - reportSummary commit likely 400'd")
-    go = page.get_by_text("Go to your ground")
+    go = page.get_by_text(GO_TO_YOUR_GROUND)
     await go.first.click()
     await page.wait_for_timeout(3000)
     # The password step sits on the way OUT of the confirmation, not before it - deliberately, so
@@ -107,6 +112,28 @@ async def provision_ground(browser):
     # it built `/set-password/p` and then reported the participant page as missing its controls.
     if await complete_password_step(page):
         await page.wait_for_timeout(2000)
+    # An ADMIN whose organisation has no contact email is redirected to /org/setup from every route,
+    # including the ground they were just handed. That is what "this is not a ground: /org/setup"
+    # below was reporting - a gate, not a missing check-in.
+    if await complete_org_setup(page):
+        await page.wait_for_timeout(2000)
+        # Saving the organisation sends them to /grounds rather than back to where they were going,
+        # so the check-in they were handed has to be opened from the list - which is what a person
+        # in this position actually does. The cards are divs with an onClick, not links, so there is
+        # no href to follow: the only handle is the label, and the label is the ground's own name.
+        if page.url.rstrip("/").endswith("/grounds"):
+            await page.wait_for_timeout(1500)
+            # `.gw-ground-card` is the card's own class in GroundsListPage, not a guess at one -
+            # checked against the component rather than assumed, after a first version of this
+            # matched on the word "check-in" and would have clicked whatever happened to contain it.
+            cards = page.locator(".gw-ground-card")
+            if await cards.count():
+                await cards.first.click()
+            else:
+                # Nothing to click is a real failure and it should say so here, where the cause is
+                # visible, rather than as a bare URL mismatch fifteen seconds later.
+                raise RuntimeError(f"after the organisation gate there is no check-in to open on {page.url}")
+            await page.wait_for_timeout(2500)
     # And only now is a ground page a fair expectation - specifically a ground, not the tolerant
     # either-ending check used earlier. We have already clicked THROUGH the confirmation, so still
     # being on it would be a failure, and accepting it here would hide exactly that.

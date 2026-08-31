@@ -20,10 +20,31 @@ export enum BoardFamily {
   DELIVERY = 'DELIVERY',
   /** Many people, one shared bar. Wide but simpler: no who-is-blocked-on-whom. */
   COHORT = 'COHORT',
+  /**
+   * One session, so no board. Every section a board can show reads across time.
+   *
+   * Its own family rather than an empty entry on an existing one, because `hasBoard` is derived
+   * from whether a family has sections - so "no board" has to be a property of the family, not a
+   * special case bolted onto a family that does have them.
+   */
+  SNAPSHOT = 'SNAPSHOT',
   /** Ramping someone in. Light board, mostly private, forward-looking. */
   ONBOARDING = 'ONBOARDING',
   /** Deciding if someone is working out. Minimal board, private report. */
   EVALUATION = 'EVALUATION',
+  /**
+   * A team checking in on the same work, over and over, with a target they set.
+   *
+   * Split out of SENSING. `recurring` and `already_underway` both route to PULSE_CHECK, so this
+   * is the commonest thing anybody opens - and as a sensing scenario it got the thinnest board in
+   * the product. It is not a mood read: a real one arrives with a number, named people and stated
+   * evidence, which is most of what a board is for.
+   *
+   * Deliberately NOT the delivery thirteen. A recurring check-in has no phase spine and no
+   * starting state - it starts wherever the team already is - and coverage attribution belongs to
+   * one interlocking piece of work rather than a standing cadence.
+   */
+  RECURRING = 'RECURRING',
   /** Pulse / misalignment / crisis. NO board, ever. Report only. */
   SENSING = 'SENSING',
 }
@@ -42,6 +63,9 @@ export enum BoardFamily {
 export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   // Delivery: interlocking work, handoffs matter, transparency helps.
   NEW_PROJECT: BoardFamily.DELIVERY,
+  /* Delivery, not onboarding. A handover is two people with interlocking work and a real handoff
+     between them - which is the delivery shape exactly. The successor being new is incidental. */
+  ROLE_HANDOVER: BoardFamily.DELIVERY,
   NEW_COFOUNDER: BoardFamily.DELIVERY,
   OKR_ALIGNMENT: BoardFamily.DELIVERY,
   WORKPLAN_BUDGET: BoardFamily.DELIVERY,
@@ -60,8 +84,19 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   CONTRACT_RENEWAL: BoardFamily.EVALUATION,
   RECOGNITION: BoardFamily.EVALUATION,
 
+  /**
+   * PULSE_CHECK IS NOT SENSING ANY MORE.
+   *
+   * The alternative considered was routing `recurring` to OKR_ALIGNMENT, which would have given it
+   * the full delivery board. Rejected after reading the packs: OKR_ALIGNMENT asks for "your top two
+   * or three objectives for this period" and "how this connects to the company direction", and its
+   * end states are OKRs aligned / gaps identified. A fortnightly team check-in would have been
+   * interrogated as a planning session and resolved as an OKR review. The scenario drives the
+   * questions and the outcome; the FAMILY drives only the board, so the board is what changed.
+   */
+  PULSE_CHECK: BoardFamily.RECURRING,
+
   // Sensing the mood: transparency would poison these.
-  PULSE_CHECK: BoardFamily.SENSING,
   REALIGN_TEAM: BoardFamily.SENSING,
   /**
    * SENSING, deliberately. OPEN_READ exists because nobody could say what the situation is, so the
@@ -72,6 +107,22 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   CRISIS_ALIGNMENT: BoardFamily.SENSING,
   DRIFT: BoardFamily.SENSING,
   ACUTE_SHOCK: BoardFamily.SENSING,
+
+  /**
+   * A SNAPSHOT RENDERS NO BOARD, AND THAT IS NOT AN OVERSIGHT.
+   *
+   * Every section a board can show reads across time: the phase spine, the check-in grid, the
+   * patterns, the contribution comparison. A snapshot has one session, so each of those would
+   * render a column of one - a grid that looks broken rather than a grid that says "once".
+   *
+   * SENSING was the obvious file-it-here answer and is wrong for the same reason: its reduced set
+   * still includes `patterns`, which is explicitly a read across sessions.
+   *
+   * It gets SENSING's MODE, though. `defaultModeFor` is a separate decision, and a one-off honest
+   * read is exactly the kind of thing that stops being honest once people know it will be laid out
+   * for everyone. See the mode note there.
+   */
+  SNAPSHOT: BoardFamily.SNAPSHOT,
 };
 
 /** Every board section that can exist. A family opts in per section. */
@@ -105,6 +156,17 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     'whoOwnsWhat', 'dependencies', 'checkInGrid', 'contribution', 'coverage',
     'patterns', 'decisions', 'poll',
   ],
+  /**
+   * COHORT KEEPS ITS SECTIONS, and its board is simply not SHARED by default.
+   *
+   * Emptying this was my first reading of "a shared board unless it is cohort" and it was too
+   * strong: it deleted a surface that had been designed with care - dependencies dropped because
+   * a cohort is not one interlocking unit, and the contribution read carrying the caveat that
+   * tells a lead plainly when there is no second account to check somebody against.
+   *
+   * `defaultModeFor` is where the rule belongs. A cohort defaults to PRIVATE, so it renders no
+   * shared board; a lead who deliberately opens one as SHARED still gets the right sections.
+   */
   [BoardFamily.COHORT]: [
     'phaseSpine', 'quickRead', 'objectives', 'divergence',
     'checkInGrid', 'contribution', 'patterns',
@@ -120,7 +182,85 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
   [BoardFamily.EVALUATION]: [
     'objectives', 'checkInGrid', 'divergence',
   ],
-  [BoardFamily.SENSING]: [],
+  /**
+   * SENSING NOW RENDERS A BOARD, reversing a deliberate decision, on Hafsah's instruction.
+   *
+   * The old rule was "sensing scenarios never render a board, even shared", and the reason
+   * given was that "laying those accounts out for everyone to read undoes the candour that
+   * made them worth having". That argument is real, and it is why this set is REDUCED rather
+   * than the delivery thirteen: no phase spine, no objectives, no dependencies, no who-owns-what.
+   * The original note was right that a delivery-shaped board "would invent structure nobody
+   * described" - so this shows only what people actually said and where it differs.
+   *
+   * What changed the balance is that `recurring` and `already_underway` both route to
+   * PULSE_CHECK, so the commonest thing anybody opens from /start landed in the one family
+   * with no board at all. A manager running a fortnightly team check-in was the exact person
+   * the board was built for and the only one who could not see it.
+   */
+  /**
+   * THE REDUCED SET WAS THE MISTAKE, NOT THE MODE.
+   *
+   * This family held five sections: quickRead, checkInGrid, divergence, contribution, patterns. Every
+   * one of them reads what people SAID. Not one of them can hold what the group decided to do about
+   * it. So on a ground where a client had just left, the team could agree "get them back by Friday,
+   * Ade owns the call" and the board had nowhere to put the target, nobody to attach to it, and no
+   * way to show whether Friday came and went.
+   *
+   * The old reasoning was that a delivery-shaped board "would invent structure nobody described",
+   * and that is right about PHASES - a shock has no phase one and phase two. It was wrong about the
+   * rest. Every situation in this product works the same way: establish where things actually stand,
+   * agree what needs to happen, then track whether it is happening. A drift, a crisis and a shock are
+   * not exceptions to that - they are the cases where establishing where things stand takes the
+   * longest, because the accounts disagree. What follows is the same.
+   *
+   * WHAT IS DELIBERATELY STILL OUT. `phaseSpine`, because these situations have no planned stages.
+   * `coverage`, which reads work against a scope that was scoped in advance. `poll`, which schedules
+   * a standing rhythm - a 14-day daily recovery is not a standing rhythm.
+   */
+  [BoardFamily.SENSING]: [
+    'quickRead',
+    // Where things actually stand. First of the three, and the one these situations spend most of
+    // their first session on, because it is the part people do not agree about.
+    'startingState',
+    // What needs to happen now. The section whose absence made this family unable to track anything.
+    'objectives',
+    'divergence',
+    // Who owns each part of it, and who is waiting on whom to move. A recovery stalls on a person
+    // far more often than on a plan.
+    'whoOwnsWhat',
+    'dependencies',
+    'checkInGrid', 'contribution', 'patterns',
+    // What got decided along the way, so a call made on day three is on the record on day ten.
+    'decisions',
+  ],
+  /**
+   * Everything a standing cadence actually produces, and nothing it does not.
+   *
+   * `objectives` because a recurring check-in is where a team states its target - the live example
+   * that prompted this set a quarterly number in its first session. `whoOwnsWhat` because "who
+   * owns each stage" was the exact gap that same session's report flagged and had nowhere to show.
+   * `dependencies` because waiting-on-somebody is what recurring work is made of. `poll` because a
+   * cadence has to be scheduled.
+   */
+  /**
+   * ONE ROUND, SO A SMALL BOARD - BUT A BOARD.
+   *
+   * This was deliberately empty, on the argument that a section reading across sessions would render a
+   * column of one and look broken. Empty now means "no board at all", which is no longer a thing any
+   * check-in may have.
+   *
+   * So it takes the three sections that are true of a single round and nothing else. `quickRead`
+   * summarises what came back. `divergence` is exactly what independent accounts of one moment produce.
+   * `checkInGrid` shows who answered, which on a one-off read is the whole question a lead has.
+   *
+   * WHAT IS STILL OUT, and for the same reason as everywhere else: `patterns` needs three periods,
+   * `contribution` reads a run, and `objectives` cannot show a target this situation does not have.
+   */
+  [BoardFamily.SNAPSHOT]: ['quickRead', 'divergence', 'checkInGrid'],
+  [BoardFamily.RECURRING]: [
+    'quickRead', 'objectives', 'whoOwnsWhat', 'dependencies', 'checkInGrid',
+    'divergence', 'contribution', 'patterns', 'decisions', 'poll',
+  ],
 };
 
 export function familyFor(scenario: GroundScenario): BoardFamily {
@@ -133,31 +273,106 @@ export function familyFor(scenario: GroundScenario): BoardFamily {
  * ground never renders a board regardless of scenario, and a SENSING scenario
  * never renders one regardless of mode.
  */
-export function boardRendersFor(scenario: GroundScenario, mode: GroundMode): boolean {
-  if (mode !== GroundMode.SHARED) return false;
-  return FAMILY_SECTIONS[familyFor(scenario)].length > 0;
+/**
+ * EVERY CHECK-IN HAS A BOARD. Hafsah, on being shown that mode denied one.
+ *
+ * This used to refuse outright when the ground was not SHARED, which made mode the thing that decided
+ * whether a board existed. That is the wrong axis: every situation in this product has the same shape -
+ * establish where things stand, agree what needs to happen, then track whether it is happening - and the
+ * board is where the third part happens. A ground with an objective and no board has been given a target
+ * it can never be read against, which is exactly the defect that left the sensing five unable to track
+ * anything.
+ *
+ * `mode` IS NOW UNUSED AS A GATE, and that is worth stating plainly rather than leaving to be
+ * discovered: it gated three things and all three were this board. The column stays - it is a stored
+ * value and nothing should break it - and `defaultModeFor` still records what a ground was opened as.
+ * It no longer decides what anybody can see.
+ *
+ * WHAT PROTECTS CANDOUR IS NOT MODE, and never really was. Raw accounts never cross to the board: only
+ * six synthesised fields do (BOARD_WHITELIST), `concernFlags` is stripped for participants entirely, and
+ * leadership-gap text may carry no quote and no party label. Those are the protections. Denying the
+ * board denied the tracking as well, which cost more than it protected.
+ *
+ * THE PARAMETER IS NOW GONE TOO, and that is the second half of the same fix.
+ *
+ * It was kept "so every caller and test keeps compiling", which was true and cost more than it saved:
+ * `mode` was threaded through this function, `sectionsFor` and `boardHasSection`, and read by none of
+ * them, while eight call sites passed `ground.mode` in as though it mattered. One caller had already
+ * started omitting it, which is what a meaningless argument looks like on its way to being a bug -
+ * the next person to add a mode-dependent rule would have written it here and it would have done
+ * nothing at all.
+ *
+ * A signature is a claim about what the answer depends on. This one depends on the scenario.
+ */
+export function boardRendersFor(scenario: GroundScenario): boolean {
+  /**
+   * DEFENSIVE ON PURPOSE, and this is not paranoia - removing the mode gate above found it.
+   *
+   * `if (mode !== SHARED) return false` used to run first, so for every non-shared check-in this lookup
+   * never happened. Take the gate away and an unrecognised scenario - a value from a mock, a row written
+   * before an enum member existed, anything not in SCENARIO_FAMILY - throws instead of answering. Three
+   * privacy tests failed on exactly that, which is a bad way to find out.
+   *
+   * No sections means no board, which is the right answer for a situation the product cannot lay out.
+   */
+  const sections = FAMILY_SECTIONS[familyFor(scenario)];
+  return !!sections && sections.length > 0;
 }
 
-export function sectionsFor(scenario: GroundScenario, mode: GroundMode): BoardSection[] {
-  if (!boardRendersFor(scenario, mode)) return [];
-  return FAMILY_SECTIONS[familyFor(scenario)];
+export function sectionsFor(scenario: GroundScenario): BoardSection[] {
+  if (!boardRendersFor(scenario)) return [];
+  return FAMILY_SECTIONS[familyFor(scenario)] ?? [];
 }
 
-export function boardHasSection(
-  scenario: GroundScenario,
-  mode: GroundMode,
-  section: BoardSection,
-): boolean {
-  return sectionsFor(scenario, mode).includes(section);
+export function boardHasSection(scenario: GroundScenario, section: BoardSection): boolean {
+  return sectionsFor(scenario).includes(section);
 }
 
 /**
- * Scenarios that must default to PRIVATE at creation. The SENSING family's
- * whole value is that nobody sees who said what, so shared mode is not a
- * sensible default there even though a lead could in principle choose it.
+ * WHICH SITUATIONS OPEN PRIVATE, AND WHY SENSING IS NOT ONE OF THEM ANY MORE.
+ *
+ * This comment used to say the opposite of the code beneath it: "scenarios that must default to PRIVATE
+ * at creation - the SENSING family's whole value is that nobody sees who said what". The function has
+ * returned SHARED for everything but COHORT for some time, so the stated rule and the behaviour
+ * disagreed, and nothing reconciled them.
+ *
+ * THE CODE IS THE RIGHT HALF, and the reason is structural rather than a preference. A PRIVATE ground
+ * renders no board at all - `boardRendersFor` requires SHARED - and the board is where an objective and
+ * the work against it are tracked. Every situation in this product has the same shape: establish where
+ * things stand, agree what needs to happen, then track whether it is happening. Defaulting a drift or a
+ * shock to private would give it an objective it could never read against, which is the failure that
+ * made those five situations unable to track anything in the first place.
+ *
+ * THE CANDOUR ARGUMENT IS REAL AND IS ANSWERED ELSEWHERE. Laying out who said what would undo the
+ * honesty that made the accounts worth having - which is why the board never shows raw accounts. Only
+ * six synthesised fields cross (BOARD_WHITELIST), `concernFlags` is stripped for participants entirely,
+ * and the leadership-gap text may carry no quote and no party label at all. Those are the protections;
+ * mode is not one of them.
+ *
+ * COHORT STAYS PRIVATE for a different reason, unchanged: its people do not work together, so laying
+ * their accounts side by side compares strangers rather than colleagues.
+ *
+ * SNAPSHOT STAYS PRIVATE because it has one round and no board to render - see its note below.
  */
 export function defaultModeFor(scenario: GroundScenario): GroundMode {
-  return familyFor(scenario) === BoardFamily.SENSING ? GroundMode.PRIVATE : GroundMode.SHARED;
+  /**
+   * One rule, stated once: shared unless it is a cohort.
+   *
+   * Mode is fixed at creation - nothing in the codebase updates it - so changing this default
+   * cannot expose anybody who has already checked in. Every existing sensing ground stays
+   * PRIVATE and stays boardless, which is what its participants were promised.
+   */
+  const family = familyFor(scenario);
+  /**
+   * A SNAPSHOT IS PRIVATE, on the same reasoning that made COHORT private.
+   *
+   * It has one round and no board, so SHARED would buy nothing structural - and it would cost the
+   * only thing the read has going for it. A person giving a five-minute answer they know will be
+   * laid out for the whole team writes a different answer, and there is no second session in which
+   * a more honest one could arrive.
+   */
+  if (family === BoardFamily.SNAPSHOT) return GroundMode.PRIVATE;
+  return family === BoardFamily.COHORT ? GroundMode.PRIVATE : GroundMode.SHARED;
 }
 
 /**

@@ -24,6 +24,9 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import Recorder, api, launch, mail_clear, model_budget_take, new_page, provision_admin
+# Imported rather than typed: the client guard fails a suite that writes pinned UI copy inline,
+# because that is how the harness and the product drifted apart in the first place.
+from _ui_strings import CREATE_STEP_ONE_ANSWER
 
 rec = Recorder("suite_s")
 STAMP = str(int(time.time()))
@@ -41,15 +44,32 @@ EMAIL = f"s.sweep+{STAMP}@example-test.invalid"
 #
 # There is no shared constant to point at - the labels live inline in the component -
 # so the only honest fix is to pin THIS page's copy and say which page that is.
+#
+# AND IT DRIFTED AGAIN, twice, between then and 29 August: "Board & leadership strategy" became
+# "Board or leadership strategy", and "Something's off track" was split in two - DRIFT is now "A
+# project is off track" and PIP is "Someone's work is off track". Neither crashed anything; the
+# check simply reported cards missing that were on screen under different words.
+#
+# These are now covered by client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts, which reads
+# this list and fails on the client test run rather than in a browser twenty minutes later.
 # Eighteen, not seventeen: "Onboarding several people at once" was added and the
 # count in this comment was never updated either.
+# The picker's labels, exactly as SCENARIO_LABELS in client/src/lib/scenario-catalog.ts holds them.
+#
+# EXACTLY, because the check below matches exactly and the previous list did not. It pinned "New
+# hire" where the product renders "A new hire starting" - and the client guard passed it, because
+# that guard lowercases and asks whether the label appears anywhere in the source, and "new hire"
+# is a substring of "a new hire starting". So the suite failed in the browser while the guard
+# reported agreement, which is the same shape of hole the guard was written to close. It now
+# requires a complete label rather than a fragment of one.
 CREATE_CARDS = [
-    "New hire", "New project", "New advisor or board member", "A new partner or co-founder",
-    "A new manager taking over", "Contract or renewal", "Raise, promotion, or recognition",
-    "Performance improvement plan", "Goals & planning", "Workplan & budget",
-    "A regular read on live work", "Something's off track", "Board & leadership strategy",
-    "Many people in the same role", "Onboarding several people at once",
-    "A shock just hit", "Get a team back on the same page", "Describe your own situation",
+    "A new hire starting", "A role changing hands", "A new project starting",
+    "A new advisor or board member", "A new co-founder or partner", "A new manager taking over",
+    "A contract or renewal", "A raise, promotion, or recognition", "Someone's work is off track",
+    "Setting shared goals", "A workplan and budget", "A regular read on live work",
+    "A project is off track", "A big decision", "Board or leadership strategy",
+    "Several people in the same role", "A pulse check", "Onboarding several people at once",
+    "Something serious just happened", "People see it differently", "Describe your own situation",
 ]
 
 VALID_ENUMS = {
@@ -102,11 +122,25 @@ async def main() -> int:
         page = await new_page(rec, ctx, "persona S")
         await page.goto(f"{origin}/grounds/new")
         await page.wait_for_timeout(2500)
+
+        # SETUP ASKS WHO THE CHECK-IN IS FOR BEFORE IT SHOWS THE SITUATIONS.
+        #
+        # Step one used to be four questions on one screen, so landing here and reading the body
+        # found the cards. It is now its own step and the cards are on step two - this suite went
+        # red reporting all twenty-one cards missing, which reads as the picker being broken when
+        # the picker was one click away.
+        answer = page.get_by_text(CREATE_STEP_ONE_ANSWER, exact=False)
+        if await answer.count():
+            await answer.first.click()
+            await page.wait_for_timeout(400)
+            await page.locator("button:has-text('Continue'):visible").last.click()
+            await page.wait_for_timeout(1500)
+
         body = await page.inner_text("body")
         missing = [c for c in CREATE_CARDS if c not in body]
-        rec.check("S1", not missing, "all 18 create-picker cards render with exact labels",
+        rec.check("S1", not missing, f"all {len(CREATE_CARDS)} create-picker cards render with exact labels",
                   f"missing: {missing}" if missing else "", hard=True, url=page.url)
-        await rec.step(page, "17-card picker", "persona S")
+        await rec.step(page, "the situation picker", "persona S")
         await browser.close()
 
         # ---- S2: classify-intent routes every scenario ----------------------

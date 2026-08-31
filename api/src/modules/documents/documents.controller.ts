@@ -43,8 +43,11 @@ export class DocumentsController {
     @Param('groundId') groundId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser('id') userId: string,
+    @Body() body: { consentConfirmed?: string | boolean; uploaderNote?: string },
   ) {
-    return this.docs.upload(groundId, userId, file);
+    /* Multipart, so it arrives as the string "true" rather than a boolean. */
+    const confirmed = body?.consentConfirmed === true || body?.consentConfirmed === 'true';
+    return this.docs.upload(groundId, userId, file, confirmed, body?.uploaderNote);
   }
 
   @Get()
@@ -67,8 +70,8 @@ export class DocumentsController {
   /**
    * G38: open context and private context, named and switchable.
    *
-   * Only the uploader may move a document, and CLOSED is not offered - see
-   * setVisibility for why both of those are deliberate.
+   * Only the uploader may move a document, and only the lead may move one to CLOSED -
+   * see setVisibility for why both of those are deliberate.
    */
   @Patch(':docId/visibility')
   @ApiOperation({ summary: 'Move your own document between open and private' })
@@ -76,7 +79,7 @@ export class DocumentsController {
     @Param('groundId') groundId: string,
     @Param('docId') docId: string,
     @CurrentUser('id') userId: string,
-    @Body() dto: { visibility: 'OPEN' | 'OWN' },
+    @Body() dto: { visibility: 'OPEN' | 'OWN' | 'CLOSED' },
   ) {
     return this.docs.setVisibility(groundId, docId, userId, dto.visibility);
   }

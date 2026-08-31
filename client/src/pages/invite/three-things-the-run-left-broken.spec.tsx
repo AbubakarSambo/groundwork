@@ -12,7 +12,7 @@ import { join } from 'path'
 const read = (p: string) => readFileSync(join(__dirname, p), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-describe('a ground is not named after a database value', () => {
+describe('a check-in is not named after a database value', () => {
   const CREATE = strip(read('../grounds/CreateGroundPage.tsx'))
 
   it('does not fall back to the raw scenario enum', () => {
@@ -29,8 +29,24 @@ describe('a ground is not named after a database value', () => {
     expect(CREATE).toMatch(/cardLabel\?\.trim\(\)/)
   })
 
-  it('and puts the named person in front of them when there is one', () => {
-    expect(CREATE).toMatch(/firstParticipant/)
+  it('and does NOT put the person in front of it, which this used to require', () => {
+    /**
+     * SUPERSEDED, DELIBERATELY, AND THE REVERSAL IS THE POINT.
+     *
+     * This assertion originally required the opposite: the label led with the participant's name,
+     * "Abubakar, new hire", so the string would be recognisable in an inbox. That was a real
+     * improvement on "NEW HIRE ground" and it was wrong for a reason not considered at the time.
+     *
+     * The label is interpolated into the invite subject: "{founder} invited you to check in on:
+     * {label}". Leading with the name renders "invited you to check in on: Abubakar", which makes
+     * the participant the subject of the sentence. A message to the second party is anchored to the
+     * topic and never to the person, and that rule outranks inbox recognition.
+     *
+     * Kept rather than deleted because a future change that reaches for the name again should meet
+     * this, not silence.
+     */
+    expect(CREATE).not.toMatch(/firstParticipant/)
+    expect(CREATE).not.toMatch(/\$\{name\}, \$\{base/)
   })
 })
 
@@ -39,7 +55,7 @@ describe('the status badge says something or says nothing', () => {
 
   it('stays silent on the ordinary working states', () => {
     /**
-     * A ground sits in AWAITING_PARTIES from its first invite until the last person finishes a
+     * A check-in sits in AWAITING_PARTIES from its first invite until the last person finishes a
      * round - its entire working life. Every row in a ten-ground org wore "Awaiting parties",
      * including rows where everybody had already checked in.
      */
@@ -97,7 +113,7 @@ describe('accepting an invitation never ends at another button', () => {
 
   it('mints a session 1 when the invited person has none', () => {
     /**
-     * `checkInId: null` sent them to the ground page, where accepting an invitation ended at a
+     * `checkInId: null` sent them to the check-in page, where accepting an invitation ended at a
      * third click - "Check in for session 1 of 2" - after the email link and "Add my version".
      */
     expect(ACCEPT).toMatch(/if \(!checkIn\) \{/)

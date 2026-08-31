@@ -19,6 +19,13 @@ function makeService(ground: any) {
       findUnique: jest.fn(async () => ground),
       update: jest.fn(async (args: any) => ({ ...ground, ...args.data })),
     },
+    /**
+     * `updateTimeline` now asks who the caller is, because an admin in the same organisation may
+     * change the schedule - they could already release the report and close the check-in. A MEMBER
+     * here, so these suites keep testing the rule they were written for: the schedule is the lead's,
+     * not every party's.
+     */
+    user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
     groundParticipant: {
       findFirst: jest.fn(async ({ where }: any) => (where.userId === 'participant' ? { id: 'p1', userId: 'participant' } : null)),
     },
@@ -48,7 +55,7 @@ describe('changing how long a ground runs', () => {
   it('tells them who to ask, rather than just saying no', async () => {
     const svc = makeService(GROUND);
     await svc.updateTimeline('g1', 'participant', { timelineWeeks: 4 }).catch((e: any) => {
-      expect(e.message).toMatch(/person leading this ground/i);
+      expect(e.message).toMatch(/person leading this check-in/i);
       expect(e.message).toMatch(/ask them/i);
     });
   });

@@ -22,9 +22,18 @@ export const documentsApi = {
   list: (groundId: string) =>
     apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`).then(r => r.data),
 
-  upload: (groundId: string, file: File) => {
+  /**
+   * `consentConfirmed` is only ever true because somebody read the notice and pressed the button.
+   * The server decides whether it was needed - it recognises a record of a conversation for itself
+   * and refuses one without this, so a client that never sent it could not slip a transcript
+   * through.
+   */
+  upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string) => {
     const form = new FormData()
     form.append('file', file)
+    if (consentConfirmed) form.append('consentConfirmed', 'true')
+    /* What they want looked for in it. Optional, and kept in their words. */
+    if (uploaderNote?.trim()) form.append('uploaderNote', uploaderNote.trim())
     return apiClient.post<GroundDocument>(`/grounds/${groundId}/documents`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
@@ -40,7 +49,9 @@ export const documentsApi = {
    * CLOSED would be handing their document to the lead while believing they had
    * made it more private.
    */
-  setVisibility: (groundId: string, docId: string, visibility: 'OPEN' | 'OWN') =>
+  /* CLOSED is the lead's only and the server enforces that; the type is the full set the endpoint
+     accepts, not the subset one caller offers. See api/src/modules/documents/documents.service.ts. */
+  setVisibility: (groundId: string, docId: string, visibility: 'OPEN' | 'OWN' | 'CLOSED') =>
     apiClient.patch<GroundDocument>(`/grounds/${groundId}/documents/${docId}/visibility`, { visibility }).then(r => r.data),
 
   remove: (groundId: string, docId: string) =>

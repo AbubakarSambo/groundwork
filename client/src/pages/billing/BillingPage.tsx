@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { billingApi, PLAN_LABELS, PLAN_PRICES, PLAN_MEMBER_CAPS, formatMonthlyPrice, type SubscriptionPlan, FREE_GROUND_LIMIT } from '@/api/billing'
+import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { scrollToId } from '@/lib/scroll-to'
 import { Stat, Pill } from '@/components/gw/kit'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
@@ -74,12 +75,30 @@ export function BillingPage() {
   const { data: livePricing } = useQuery({
     queryKey: ['public-pricing'],
     queryFn: billingApi.getPricing,
+    /**
+     * Admin-only, like every other read on this page, because `if (!isAdmin)` below returns before
+     * any price is rendered. I removed this gate on the grounds that the endpoint is public and a
+     * non-admin would otherwise read stale fallbacks - which was wrong: a member never reaches the
+     * plan list at all, so the request was work for a page they are being turned away from. The
+     * public pricing page has no such gate, which is where a non-admin actually reads a price.
+     */
     enabled: isAdmin,
     staleTime: 60 * 1000,
   })
+
+  /** The live free limit, or what we shipped with, until the request lands. */
+  const freeGrounds = livePricing?.free.groundLimit ?? FALLBACK_FREE_LIMITS.groundLimit
+  const freeTeam = livePricing?.free.memberLimit ?? FALLBACK_FREE_LIMITS.memberLimit
+
   function priceLabel(plan: SubscriptionPlan): string {
-    const live = livePricing?.find(p => p.plan === plan)
-    return live ? formatMonthlyPrice(live.amountCents) : PLAN_PRICES[plan]
+    const live = livePricing?.plans.find(p => p.plan === plan)
+    if (live) return live.amountCents === null ? 'Contact us' : formatMonthlyPrice(live.amountCents)
+    return PLAN_PRICES[plan]
+  }
+
+  /** No fallback: an absent seat count is honest, a stale one is the bug being removed. */
+  function capLabel(plan: SubscriptionPlan): string {
+    return formatMemberCap(livePricing?.plans.find(p => p.plan === plan)?.memberCap)
   }
 
   const generateCode = useMutation({
@@ -116,6 +135,19 @@ export function BillingPage() {
       toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
     },
     onError: () => toast.error('Could not change plan. Try again.'),
+  })
+
+  /**
+   * Stripe's Customer Portal: invoices, receipts, the card on file, and cancellation, on their
+   * screens rather than rebuilt on ours. The endpoint and the client call both already existed.
+   */
+  const portalMut = useMutation({
+    mutationFn: () => billingApi.portal(),
+    onSuccess: (res) => {
+      if (res?.portalUrl) window.location.assign(res.portalUrl)
+      else toast.error('Could not open the billing portal. Try again in a moment.')
+    },
+    onError: () => toast.error('Could not open the billing portal. Try again in a moment.'),
   })
 
   const cancelSubscriptionMut = useMutation({
@@ -198,7 +230,7 @@ export function BillingPage() {
 
         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>Billing</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Manage sessions for your grounds and generate access codes.
+          Manage sessions for your check-ins and generate access codes.
         </div>
 
         {/**
@@ -213,14 +245,23 @@ export function BillingPage() {
           * `Stat` is the board's own component, not a copy of it, so this row cannot drift from the
           * one on the board.
           */}
-        {(isSubscribed || isPaused) && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        {/*
+          * THE ROW SHOWS FOR A FREE ACCOUNT TOO, which is the whole point of it.
+          *
+          * It was behind `isSubscribed || isPaused`, so the one number that decides whether
+          * somebody upgrades - how many people they have against what their plan covers - was
+          * hidden from every organisation that had not upgraded yet. An admin working out what 160
+          * people costs could not see their own headcount on the page selling them the plan.
+          */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+          {(isSubscribed || isPaused) && (
             <Stat
               label="Plan"
               value={PLAN_LABELS[orgSub!.plan as SubscriptionPlan] ?? String(orgSub!.plan)}
               caption={priceLabel(orgSub!.plan as SubscriptionPlan)}
               tone={isPaused ? 'warn' : undefined}
             />
+          )}
             {billingStatus?.people && (
               <Stat
                 label="People"
@@ -231,16 +272,34 @@ export function BillingPage() {
                 tone={peopleOverCap ? 'bad' : undefined}
               />
             )}
-            <Stat
+            {/*
+              * WHAT THIS ACCOUNT HAS ACTUALLY DONE. An admin asked to pay for a year needs to be
+              * able to say what was got for it, and this page could only say what it costs.
+              */}
+            {(billingStatus as any)?.usage && (
+              <Stat
+                label="Check-ins"
+                value={String((billingStatus as any).usage.checkIns)}
+                caption={`${(billingStatus as any).usage.reportsReleased} report${(billingStatus as any).usage.reportsReleased === 1 ? '' : 's'} released, ${(billingStatus as any).usage.peopleTakingPart} taking part`}
+              />
+            )}
+            {(isSubscribed || isPaused) && <Stat
               label={isPaused ? 'Paused since' : 'Renews'}
               value={orgSub?.periodEnd
                 ? new Date(orgSub.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
                 : 'Not set'}
-              caption={isPaused ? 'Nothing is being charged' : 'On the card ending below'}
+              /**
+               * IT POINTED AT SOMETHING THAT IS NOT ON THE PAGE. W-UX-5.
+               *
+               * "On the card ending below" - and there is no card below, or anywhere else: this page
+               * has never shown a payment method, because Stripe is not wired yet. So the one line
+               * about how a person is charged referred to a thing they could scroll for and never
+               * find. Say the true thing instead, which is when it renews.
+               */
+              caption={isPaused ? 'Nothing is being charged' : 'Renews automatically'}
               tone={isPaused ? 'warn' : undefined}
-            />
-          </div>
-        )}
+            />}
+        </div>
 
         {/* Current plan */}
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Current plan</div>
@@ -257,7 +316,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                 {isPaused
-                  ? 'Paused. Nothing is being charged, and your grounds stay as they are.'
+                  ? 'Paused. Nothing is being charged, and your check-ins stay as they are.'
                   : peopleOverCap
                     ? 'More people have accounts here than this plan covers. Moving up a plan is below.'
                     : 'Running normally.'}
@@ -282,6 +341,25 @@ export function BillingPage() {
                   {pauseSubscriptionMut.isPending ? 'Pausing...' : 'Pause subscription'}
                 </button>
               )}
+              {/*
+                * INVOICES EXISTED AND WERE UNREACHABLE.
+                *
+                * Stripe issues an invoice for every payment and the API has had a Customer Portal
+                * endpoint all along - `billing.controller.ts`, "manage card, invoices,
+                * cancellation" - with a client function to call it. Nothing ever called it. Asked
+                * by somebody signing up: "do I get an invoice when I pay?" The answer was yes, and
+                * there was no way to see one.
+                *
+                * The portal is Stripe's own screen, so it opens in the same tab by assignment
+                * rather than through the router - it is not a route in this app.
+                */}
+              <button
+                onClick={() => portalMut.mutate()}
+                disabled={portalMut.isPending}
+                style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: portalMut.isPending ? 0.7 : 1 }}
+              >
+                {portalMut.isPending ? 'Opening...' : 'Invoices and payment method'}
+              </button>
               <button
                 onClick={() => {
                   if (window.confirm('Cancel your subscription? Your team will move to per-session billing.')) {
@@ -300,7 +378,7 @@ export function BillingPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>Free</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>Up to {FREE_GROUND_LIMIT} Grounds, with unlimited sessions and reports.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>Up to {freeGrounds} check-ins for teams of {freeTeam} or fewer, with unlimited sessions and reports.</div>
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--gw-paper-2)', color: 'var(--gw-muted)' }}>
                 No subscription
@@ -313,14 +391,14 @@ export function BillingPage() {
         {!hasBillingHistory && !isSubscribed && !isPaused && (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 28, textAlign: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 6 }}>
-              Your first {FREE_GROUND_LIMIT} Grounds are free.
+              Your first {freeGrounds} check-ins are free.
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 14 }}>
-              Create up to {FREE_GROUND_LIMIT} Grounds with unlimited sessions and reports, no card required. Subscribe when your team outgrows the free tier.
+              Create up to {freeGrounds} check-ins with unlimited sessions and reports, no card required. The free plan covers {freeTeam} people including you. Subscribe when your team outgrows it.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
-                onClick={() => document.getElementById('upgrade-section')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => scrollToId('upgrade-section', 'start')}
                 style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 View org plans
@@ -329,12 +407,29 @@ export function BillingPage() {
           </div>
         )}
 
-        {/* Your grounds */}
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Your grounds</div>
+        {/*
+          THE FOURTH COPY OF THE CHECK-IN LIST, AND ON A PAID PLAN IT SAID NOTHING. W-UX-5.
+          
+          Seen on the running page: ten rows, each carrying the identical badge "Unlimited sessions",
+          under a heading already carried by the rail, the list page and the attention line. The list
+          exists to show what differs per check-in - a session balance, a free stamp, a used
+          extension - and on a subscription NOTHING differs, by definition. So it was a tenfold
+          repetition of one fact, on the fourth screen to hold the same names.
+          
+          It stays for the accounts it means something to. A subscribed org gets the one fact once.
+        */}
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>
+          {isSubscribed ? 'Your check-ins' : 'In progress'}
+        </div>
 
-        {grounds.length === 0 ? (
+        {isSubscribed && grounds.length > 0 ? (
+          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 28, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            All {grounds.length} of your check-ins have unlimited sessions and reports on this plan.
+            Nothing is counted or charged per session.
+          </div>
+        ) : grounds.length === 0 ? (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, marginBottom: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No active grounds yet.</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Nothing active yet.</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
@@ -347,10 +442,24 @@ export function BillingPage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.label}</div>
                     <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {isFree ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Free ground</span>
-                      ) : isSubscribed ? (
+                      {/*
+                        "FREE CHECK-IN" ON A $400/MONTH PLAN. W-UX-5.
+                        
+                        `isFreeGround` is a stamp left on the row from the day it was created, and it
+                        was tested BEFORE the subscription. So an org that started free and then paid
+                        saw every check-in it had ever opened labelled "Free check-in" - on the
+                        billing page, which is the one screen whose whole job is to say what is being
+                        charged for. The audit's line: "Makes a paying customer think nothing is
+                        being counted."
+                        
+                        What the org is paying NOW decides what the badge says. The stamp still
+                        matters - it is what exempts the row from the free-plan cap - it just does
+                        not get to describe a paid account.
+                      */}
+                      {isSubscribed ? (
                         <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Unlimited sessions</span>
+                      ) : isFree ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>Free check-in</span>
                       ) : balance !== undefined ? (
                         <span style={{
                           fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
@@ -398,10 +507,21 @@ export function BillingPage() {
           </div>
         )}
 
-        {/* Upgrade organisation */}
-        <div id="upgrade-section" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Upgrade your organisation</div>
+        {/*
+          IT SAID "UPGRADE" TO A CUSTOMER WHO WAS ALREADY PAYING. W-UX-5.
+          
+          Seen on the running page: an org on Growth, with "Current" correctly marked against Growth,
+          under a heading reading "Upgrade your organisation" and a sentence offering to "unlock"
+          what it had already bought. The same table is a sales pitch to a free org and a plan
+          switcher to a paying one, and it only ever said the first thing.
+        */}
+        <div id="upgrade-section" style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>
+          {isSubscribed ? 'Change your plan' : 'Upgrade your organisation'}
+        </div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.6 }}>
-          Your team is getting value from Groundwork. Unlock unlimited Grounds and unlimited sessions for everyone in your organisation with one simple monthly subscription.
+          {isSubscribed
+            ? 'Every plan includes unlimited check-ins, sessions and reports. What changes is how many people your organisation covers.'
+            : 'Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.'}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
@@ -409,7 +529,7 @@ export function BillingPage() {
             <div key={plan} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>{PLAN_LABELS[plan]}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{PLAN_MEMBER_CAPS[plan]}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2, minHeight: 16 }}>{capLabel(plan)}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-dark)' }}>{priceLabel(plan)}</span>
@@ -499,7 +619,7 @@ export function BillingPage() {
               style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Sessions to grant</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Check-ins to grant</label>
             <input type="number" min={1} max={20} value={sendSessions} onChange={e => setSendSessions(Math.min(20, Math.max(1, Number(e.target.value))))}
               style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
@@ -517,7 +637,7 @@ export function BillingPage() {
         {user?.isPlatformAdmin && <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 12 }}>Generate a code</div>
           <div style={{ marginBottom: 10 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Sessions to grant</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 5 }}>Check-ins to grant</label>
             <input type="number" min={1} max={10} value={genSessions} onChange={e => setGenSessions(Math.min(10, Math.max(1, Number(e.target.value))))}
               style={{ width: '100%', padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none', boxSizing: 'border-box' }} />
           </div>

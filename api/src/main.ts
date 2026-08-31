@@ -1,9 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Resend } from 'resend';
 import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import type { Response as ExpressResponse } from 'express';
+import { MAX_BATCH_BYTES } from './modules/subjects/how-heavy-a-batch-may-be';
 
 /**
  * Refuse to boot in production with insecure defaults. These are trust- and
@@ -30,29 +33,90 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   assertProductionConfig(logger);
 
-  const app = await NestFactory.create(AppModule, {
+  /* Typed as the Express application so the body-parser limit below is reachable. */
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true, // For Stripe webhook signature verification
   });
 
   const configService = app.get(ConfigService);
 
-  app.setGlobalPrefix('api/v1');
+  /**
+   * THE INTEGRATION API IS NOT UNDER THE INTERNAL VERSION, AND MUST NOT BE.
+   *
+   * Internal routes live at /api/v1 and are free to change shape whenever the product does. The
+   * integration surface at /api/org/v1 is a contract somebody else's server depends on, so it is
+   * excluded from this prefix rather than nested inside it - if it inherited /api/v1, then the day
+   * internal routes move to v2 the customer's integration either moves with them or is left behind
+   * on a version number that no longer means anything.
+   *
+   * The excluded controller therefore declares its full path itself. See public-api.controller.ts.
+   */
+  /**
+   * THE BODY LIMIT, RAISED FROM EXPRESS'S 100kb DEFAULT.
+   *
+   * A bulk import of three thousand plain objectives is 233kb, so the default refused it while
+   * `MAX_BATCH` advertised five thousand - a cap the server would not honour.
+   *
+   * THE FIRST ATTEMPT SCOPED A BIGGER LIMIT TO THE BULK ROUTE ALONE, with `app.use(path, json())`,
+   * and that broke request body parsing for EVERY route: mounting a body parser this way stops Nest
+   * registering its own, so logging in began failing with a validation error saying the email was
+   * empty. It typechecked, it started cleanly, and nothing in the suite touches a real HTTP body.
+   * Found by trying to log in.
+   *
+   * So the limit is global, set through the supported API, and kept modest enough to be unremarkable
+   * on an unauthenticated endpoint - and MAX_BATCH is derived from it rather than asserted
+   * separately. See how-heavy-a-batch-may-be.ts.
+   */
+  app.useBodyParser('json', { limit: MAX_BATCH_BYTES });
+
+
+  app.setGlobalPrefix('api/v1', {
+    exclude: [
+      { path: 'api/org/v1/(.*)', method: RequestMethod.ALL },
+      /* The two files a customer's browser fetches. Their addresses go in a script tag on every
+         page of somebody else's application, so they are stable URLs rather than ones that move
+         with our internal version. */
+      { path: 'embed.js', method: RequestMethod.GET },
+      { path: 'embed/panel', method: RequestMethod.GET },
+    ],
+  });
 
   // CORS - allow configured origins (plus this project's Vercel previews) or all in development
   const allowedOrigins = configService.get<string>('app.corsOrigins');
   const staticOrigins = allowedOrigins ? allowedOrigins.split(',') : [];
   const vercelPreviewPattern = /^https:\/\/groundwork-[a-z0-9-]+-collecta-s-projects\.vercel\.app$/;
 
-  app.enableCors({
-    origin: !allowedOrigins
-      ? true
-      : (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-          if (!origin || staticOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
-            return callback(null, true);
-          }
-          callback(new Error(`Origin ${origin} not allowed by CORS`));
-        },
-    credentials: true,
+  /**
+   * TWO SURFACES WITH OPPOSITE CORS NEEDS.
+   *
+   * Groundwork's own client is a known origin and carries credentials, so it gets an allow-list.
+   * The integration surface is called from EVERY CUSTOMER'S OWN DOMAIN by definition - a widget on
+   * their application, a panel in an iframe - and an allow-list cannot enumerate domains we have
+   * never been told about. The first version applied the app's list to both, so a customer's page
+   * got a 500 on the preflight; found by loading the widget from a page that was not ours.
+   *
+   * Opening those paths is not a weakening. CORS is not what protects them: every one is
+   * authenticated by a bearer token in a header, which a cross-origin page cannot obtain by being
+   * cross-origin. And `credentials: false` there is deliberate - a browser refuses to send cookies
+   * to a wildcard origin anyway, and these endpoints must never depend on one.
+   */
+  const INTEGRATION_PATHS = /^\/(api\/org\/v1\/|embed\.js|embed\/panel)/;
+
+  app.enableCors((req: { url?: string }, callback: (err: Error | null, options?: any) => void) => {
+    if (INTEGRATION_PATHS.test(req.url ?? '')) {
+      return callback(null, { origin: true, credentials: false });
+    }
+    callback(null, {
+      origin: !allowedOrigins
+        ? true
+        : (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+            if (!origin || staticOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+              return cb(null, true);
+            }
+            cb(new Error(`Origin ${origin} not allowed by CORS`));
+          },
+      credentials: true,
+    });
   });
 
   app.useGlobalPipes(
@@ -81,7 +145,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get('/health', (_req, res) => res.status(200).send('ok'));
+  httpAdapter.get('/health', (_req: unknown, res: ExpressResponse) => res.status(200).send('ok'));
 
   // A health check that never touches the model cannot tell you the model is
   // unreachable. In a live run every AI call from the running process failed

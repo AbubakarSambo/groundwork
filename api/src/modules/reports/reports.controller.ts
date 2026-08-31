@@ -19,6 +19,26 @@ export class ReportsController {
     return this.reports.get(groundId, userId, organizationId);
   }
 
+  /**
+   * WHAT THIS REPORT SAID AT THE END OF EACH ROUND.
+   *
+   * The report at the top of the page is always the current one. This is what it said when each
+   * round closed, kept so a picture somebody read at day 14 is still there at day 90 - and so a
+   * ninety-day account can be read back from the record instead of re-derived from transcripts.
+   *
+   * Same permission as the report itself: it is the same content at an earlier moment, so anybody
+   * entitled to read the report is entitled to read what it used to say, and nobody else is.
+   */
+  @Get('rounds')
+  @ApiOperation({ summary: 'What the report said at the end of each completed round' })
+  async rounds(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.rounds(groundId, userId, organizationId);
+  }
+
   @Post('generate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Manually trigger or retry report synthesis (admin only)' })

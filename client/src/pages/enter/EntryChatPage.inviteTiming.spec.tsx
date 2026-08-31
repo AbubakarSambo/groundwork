@@ -25,7 +25,7 @@ const src = readFileSync(
 describe('INVITE-TIMING: add-participants step states invites are deferred until email confirmation', () => {
   it('contains the deferred-send timing copy, consistent with the save card', () => {
     expect(src).toMatch(/Invites don't go out yet/)
-    expect(src).toMatch(/sent once you save this ground and confirm your email/)
+    expect(src).toMatch(/sent once you save this check-in and confirm your email/)
   })
 
   it('places the timing copy inside the invite-contributors step (not elsewhere)', () => {

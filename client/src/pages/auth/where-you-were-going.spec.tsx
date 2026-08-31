@@ -12,8 +12,8 @@ import { authApi } from '@/api/auth'
  *
  * `RequireAuth` and `RequirePlatformAdmin` both redirected to `/auth?from=<path>`.
  * `AuthPage` has only ever read `?next=`. So **every** signed-out person who clicked any
- * link into the app - a ground, a report, a board, an invite in a message - signed in and
- * landed on the grounds list, with no explanation and nothing to click to get back to what
+ * link into the app - a check-in, a report, a board, an invite in a message - signed in and
+ * landed on the check-ins list, with no explanation and nothing to click to get back to what
  * they were opening.
  *
  * The same bug was found and fixed once for PricingPage, which is why `next` exists. The
@@ -65,7 +65,7 @@ describe('after signing in', () => {
     expect(await signInFrom('?next=%2Fpricing')).toBe('/pricing')
   })
 
-  it('with nothing asked for, the grounds list is the right default', async () => {
+  it('with nothing asked for, the check-ins list is the right default', async () => {
     expect(await signInFrom('')).toBe('/')
   })
 

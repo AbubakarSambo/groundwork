@@ -1,5 +1,7 @@
+import { alreadyEstablished } from './setup-already-asked-this';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { whereInTheRun } from './where-in-the-run';
 
 /**
  * THE MOAT - exact Part 3 wording.
@@ -57,6 +59,23 @@ This produces: (a) a nameable artefact, (b) a named verifier. These are the evid
  * It is machinery, never shown to anyone: stripped from the reply before it is
  * persisted, streamed, or displayed.
  */
+
+/**
+ * THE MODEL MUST NOT SAY "GROUND", AND CLEANING THE STRINGS IS NOT ENOUGH.
+ *
+ * Every prompt string carrying the word has been rewritten, but the model also sees the ground's own
+ * label, scenario names, and a transcript in which a person may well type "ground" themselves. Given
+ * any of that it will mirror the vocabulary back, which is how a word survives its own removal.
+ *
+ * So the instruction is explicit and it ships in code rather than in the database prompt row: a row
+ * edited by hand reaches one environment and appears in no diff.
+ */
+export const VOCABULARY_RULE = [
+  'VOCABULARY. Never use the words "ground" or "grounds" for the thing being discussed. It is a',
+  'check-in. If somebody else calls it a ground, answer them without repeating the word. "Groundwork"',
+  'is the product name and is always fine.',
+].join(' ');
+
 export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
 
 /** Remove the close marker from a reply and report whether it was there. */
@@ -181,6 +200,10 @@ Never accept "nothing was written" after only one ask. The second and third asks
 
 PUSHBACK RULES:
 If the answer to Question 1 does not contain a thing: a document, a number, a named person, a system state, a decision: ask once more: "Can you make that one level more concrete: a specific document, a number, a named person, or a system?" Maximum two pushbacks.
+A THING IS NOT A MEASURE, AND THIS IS THE ONE THE RULE ABOVE LETS THROUGH. "Find the bugs and fix them" names a thing, so it passes the test above, and there is no way on earth to tell whether it happened: which bugs, how many, found by whom, and what would be true at the end that is not true now. The same goes for "improve the onboarding", "clean up the backlog", "get the tests passing". Treat an outcome with a noun in it but no amount, no date and no way to tell it is done as VAGUE, and push on it exactly as you would on "things are busy".
+
+NEVER CALL SUCH AN ANSWER CLEAR. Saying "that's a clear goal" to one of these ends the conversation at the worst possible moment: the person now believes their definition was accepted, the record holds something nobody can check, and every later session measures against it. If you are about to affirm an answer, first ask yourself what would have to exist at the end for it to be met - if you cannot say, it is not clear, whatever it names.
+
 If the answer to Question 2 does not name a person or system: ask once: "Who would be in a position to confirm this happened?"
 If still vague after two pushbacks: record what they said exactly, note it as a weak evidence definition, do not block the conversation. Tell them: "This is in your record as your evidence baseline. I'll ask you to be more specific when we check in."
 If they refuse entirely: see REFUSAL RULE below - ask once more before recording it.
@@ -351,7 +374,7 @@ Never say the check-ins have been shorter. Never say engagement is declining. Ne
 Instead: reference something concrete from their record and ask what happened to it. The observation is embedded in the question, not stated explicitly.
 
 CONTRIBUTORS ARE NOTED NOW, INVITED AFTER YOU CONFIRM - AND ALWAYS IN PARALLEL, NEVER SEQUENTIAL:
-YOU CANNOT CHANGE ANYTHING STORED ABOUT A PERSON, SO NEVER SAY YOU HAVE. You write one thing only: this conversation. Their stated role, their remit, the ground's dates and cadence, who else is on it - all of that was set elsewhere and you can read it but not touch it. When someone corrects a detail about themselves, the correction belongs in this conversation and you carry it forward here; it does not reach the place the detail is stored. So never say "I've updated your role", "I've corrected that in the record", "I've changed that", or anything that tells them a stored field now says something different. It does not, and they will leave believing a thing about their own record that is not true - which is the exact failure this product exists to prevent. Say what is true instead: "Understood - I have that for this session, and you can change it in the ground's settings so it holds everywhere." Then use their correction for the rest of the conversation.
+YOU CANNOT CHANGE ANYTHING STORED ABOUT A PERSON, SO NEVER SAY YOU HAVE. You write one thing only: this conversation. Their stated role, their remit, the ground's dates and cadence, who else is on it - all of that was set elsewhere and you can read it but not touch it. When someone corrects a detail about themselves, the correction belongs in this conversation and you carry it forward here; it does not reach the place the detail is stored. So never say "I've updated your role", "I've corrected that in the record", "I've changed that", or anything that tells them a stored field now says something different. It does not, and they will leave believing a thing about their own record that is not true - which is the exact failure this product exists to prevent. Say what is true instead: "Understood - I have that for this session, and you can change it in the settings so it holds everywhere." Then use their correction for the rest of the conversation.
 
 When an initiator names several people to check in - a team, a cohort, a group of contributors - you are NOTING them for this ground. You are NOT sending or opening anyone's check-in yet. Invites go out only after the initiator saves and confirms their email. Never claim an invite has already been sent or opened. Never say "I'm opening check-ins now," "inviting them now," "their check-ins are open," or anything that implies a check-in is already live - it is not, until the email is confirmed. Say instead something like "I've noted [names] - their invites go out the moment you confirm your email, and each of them checks in independently, on their own schedule." Two rules together: (1) the invitation has NOT happened yet (it is queued until email confirmation), and (2) when it does happen, everyone is invited at once - there is no queue or turn order between them. Never say "I'll start with [name]" or anything that implies one person's check-in happens before or gates another's. You may still state a specific thing you will do with what comes back (for example, flagging a vague or incomplete answer) - keep that commitment, just never frame the invitation as already sent or as a sequence.
 
@@ -1105,6 +1128,10 @@ RELATIONSHIP_TYPE: the specific sub-type (new_hire_junior, board_member, cofound
 OPENER_ROLE: founder | hr | manager | peer | external
 SESSION: current session number and total
 RESOLUTION_STATE: the agreed outcome both parties are working toward
+OBJECTIVES: what this check-in is aiming at, as the lead stated it. The person answering has been shown these on screen before being asked anything, so you may refer to them directly. Press on the gap between an objective and what the person actually describes - that gap is the most useful thing this session can surface. Never assert that they agreed to an objective, and never treat one as a target they accepted: it is the lead's statement of the aim, and the person may disagree with it, which is itself worth recording.
+MY_OBJECTIVE: what the person leading this said they expect of the person answering, and whether that person has seen it yet. Where they have seen it, press on the gap between it and what they describe - never assert they agreed to it, and never turn the gap into a score. Where they have not, show it and ask what they make of it.
+EXISTING_EXPECTATIONS: what is already recorded as expected of each person. If somebody states a DIFFERENT expectation for one of them, ask what changed before replacing it.
+OTHER_PARTIES: everybody else in this check-in, by name or by the role they were described as. Use these names. Where you are asked to go person by person, these are the people.
 ADMIN_BRIEF: what the admin wrote when opening the ground
 PRIOR_CONTEXT: what the admin noted about the relationship history before the ground opened
 PRIOR_SESSION: the person's most recent submission in this ground
@@ -1115,7 +1142,7 @@ What each field changes:
 
 RELATIONSHIP_HISTORY = drifted → run FAILING RELATIONSHIP PROTOCOL before anything else. Do not start with goals or evidence. Start with alignment recovery.
 
-RELATIONSHIP_HISTORY = prior_ground → open with recall of what the prior ground established before setting any new baseline. "Based on what came out of the last ground, what do you carry forward from that?"
+RELATIONSHIP_HISTORY = prior_ground → open with recall of what the prior ground established before setting any new baseline. "Based on what came out of the last one, what do you carry forward from that?"
 
 SESSION_MODE = recall → run RECALL SESSION PROTOCOL. Do not run check-in questions.
 
@@ -1476,6 +1503,492 @@ export const WORK_MENTION_SCHEMA = {
   },
 };
 
+/**
+ * DO THESE TWO VIEWS CONNECT? GW-EXP-3.
+ *
+ * The finding the product was built on, and the reason there is a product:
+ *
+ *     "I was measured on a queue and judged on judgement, and only one of those was said."
+ *
+ * One side is what the lead said they expect of this person. The other is what this person said doing
+ * well looks like, in their own words, in their own session. Neither is wrong. Whether they CONNECT is
+ * the only question worth asking, and it is the one nobody in that story ever asked.
+ *
+ * CANNOT_TELL IS A REAL ANSWER AND THE MODEL IS PUSHED TOWARDS IT, not away. `mayCompare`'s own
+ * comment says why: "this is a real comparison for a person to make, not something to infer from word
+ * overlap." A read that guesses invents agreement that is not there - which lets a real mismatch run
+ * for months - or invents conflict, which starts an argument out of nothing. Both are worse than
+ * saying plainly that it cannot be told from what has been said, which is a prompt for the two of them
+ * to talk.
+ *
+ * AND IT NEVER JUDGES EITHER SIDE. Not whose is better, not who is more ambitious, not whether the
+ * expectation is fair. `an-objective-belongs-to-a-person.ts` states the rule this obeys: the product
+ * may ask whether achieving one would move the other, and nothing else.
+ */
+/**
+ * DID THIS PERSON OBJECT TO WHAT IS EXPECTED OF THEM? GW-EXP-7.
+ *
+ * The lead can revise an expectation and everybody sees the new words with a reason attached. The
+ * person it is about had no equivalent: they could disagree, and it went into a transcript nobody
+ * opens. One side had a visible lever and the other had a private complaint, which is lopsided in
+ * exactly the direction that matters.
+ *
+ * THE HARD PART IS NOT FINDING OBJECTIONS, IT IS NOT INVENTING THEM. Somebody saying the work is hard,
+ * or that they are behind, or that a deadline is tight, is describing their situation - that is most
+ * of what a check-in contains. Reading those as objections would put "disputes their expectation" on
+ * a card in front of their lead for somebody who disputed nothing, which is a serious thing to do to
+ * a person by accident.
+ */
+export const OBJECTION_PROMPT = `You are reading one person's check-in transcript. They have an expectation recorded of them, which is given below.
+
+Decide ONE thing: did they object to the expectation ITSELF?
+
+An objection is them saying the expectation is wrong, unfair, not theirs, impossible as stated, or based on something untrue. It is about the expectation, not about the work.
+
+THESE ARE NOT OBJECTIONS, and treating them as such is the failure to avoid:
+- Saying the work is hard, slow, behind, or going badly.
+- Describing an obstacle, a blocker, or something they are waiting on.
+- Saying they have not done it yet.
+- Worrying they will not manage it.
+- Asking a question about it.
+- Disagreeing with somebody about something else.
+
+Someone struggling with an expectation has not objected to it. Someone saying "that was never my job" has.
+
+If they did object, return their own words - the sentence where they said it, quoted from the transcript, not your summary. If they said it across more than one sentence, take the clearest single one.
+
+Be conservative. "No objection" is the correct answer for almost every transcript, and a wrongly reported objection puts words in somebody's mouth in front of the person who set the expectation.`;
+
+export const OBJECTION_SCHEMA = {
+  name: 'emit_objection',
+  description: 'Whether this person objected to the expectation recorded of them, and their own words if so.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      objected: { type: 'boolean' },
+      words: { type: 'string', description: "Their own words, quoted. Empty string when they did not object." },
+    },
+    required: ['objected'],
+  },
+};
+
+export const ALIGNMENT_PROMPT = `You are given two statements about the same person.
+
+EXPECTATION - what the person leading this check-in said they expect of them.
+THEIR OWN VIEW - what that person said, in their own session, that doing well looks like.
+
+Answer one question: would achieving one move the other?
+
+verdict:
+  ALIGNS - they point at the same thing. Achieving their own view would satisfy the expectation, or the other way round. Different words for the same work is ALIGNS.
+  DIFFERS - they point at different things. Somebody could fully satisfy one and not the other. This is not a criticism of either person.
+  CANNOT_TELL - you cannot tell from what has been said. One or both is too vague, or they are about different parts of the work and might or might not connect.
+
+note: one plain sentence saying what connects them, or what does not, in the speakers' own terms.
+
+RULES.
+CANNOT_TELL is the right answer whenever you are reaching. Two statements sharing a word are not aligned, and two statements using different words are not necessarily different. If you are inferring rather than reading, say CANNOT_TELL.
+Never say which is better, more ambitious, more realistic, or more correct.
+Never say anything about the person's performance, attitude or effort. You are comparing two sentences, not assessing anybody.
+Never suggest what either of them should do about it.
+The note is one sentence. No dashes of any kind. Straight quotes only.`;
+
+export const ALIGNMENT_SCHEMA = {
+  name: 'emit_alignment',
+  description: 'Emit whether an expectation and a person\'s own idea of doing well connect.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      verdict: { type: 'string', enum: ['ALIGNS', 'DIFFERS', 'CANNOT_TELL'] },
+      note: { type: 'string' },
+    },
+    required: ['verdict', 'note'],
+  },
+};
+
+/**
+ * WHAT THE LEAD SAID THEY EXPECT, AND WHETHER THEY HAVE SAID IT. GW-EXP-1b.
+ *
+ * Runs on the LEAD's transcript only, and only where the pathway asked the per-person questions. The
+ * interview produces the answers; this is what writes them down, because until it existed
+ * `personObjective` and `groundObjective` held zero rows for the product's whole life.
+ *
+ * `awareness` IS THE FIELD THAT MATTERS. The live run made this obvious: the model volunteered "your
+ * record now shows that gap clearly" to a lead who had not told anybody. If we capture the expectation
+ * and not whether it was communicated, that sentence is a promise the record does not keep.
+ *
+ * CONSERVATIVE BY DESIGN, same as the work-mention extractor. An expectation invented from a stray
+ * remark is worse than a missing one: it becomes a thing somebody is measured against that nobody
+ * actually said.
+ */
+export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING this check-in, capture two things.
+
+1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. Short phrases, one per aim. Only what they actually said it is for. If they never said, return an empty list.
+
+2. expectations: for each OTHER person they named, what they said they expect of that person.
+   - personName: the other person's name exactly as the speaker said it.
+   - expectation: what they expect of that person, as a STANDALONE STATEMENT OF THE WORK. Keep their
+     wording - concrete where they were concrete, and never paraphrased into something sharper than
+     they said - but state the thing itself rather than the clause it sat in. "What I expect from Tom
+     is that he ships the onboarding rewrite" gives "Ship the onboarding rewrite", not "he ships the
+     onboarding rewrite". No he, she or they, and do not name the person: this text is published to
+     the person it is about and is read on their own page, under a heading that says "You".
+   - awareness: whether that person has been told, on the speaker's own account.
+       TOLD - the speaker says they have told them, and can say roughly when or how.
+       NOT_TOLD - the speaker says they have not, or that somebody else may have, or that they assumed it was covered.
+       UNSURE - the speaker does not know whether it has been said.
+       NOT_ASKED - the question never came up in this transcript.
+   - awarenessDetail: the speaker's own words about the telling, if they said anything. Empty string otherwise.
+   - kind: what SHAPE of thing this is. Read it from how they said it, never from what would be tidiest.
+       TODO - a discrete piece of work, done or not, with a date.
+       COMMITMENT - a to-do that a NAMED OTHER PERSON is waiting on. Set owedTo to that person's name.
+       TARGET - a number has to cross a line. "Under twenty open tickets", "margin above 40%".
+       GOAL - a direction judged rather than counted, over a period.
+       SUCCESS_DEFINITION - a judgement about the WHOLE check-in rather than one person's work.
+       ROLE_EXPECTATION - standing, no end date. "You own escalations." True until somebody changes it.
+       REFERENCE - a ticket or issue tracked somewhere else, named by its id. Whenever they say
+       where the work is tracked - "it is in OPS-902", "the Linear ticket", a Jira link - use this
+       kind and put the id or link in trackedUrl. Do not put its status in: what a ticket says is
+       only recorded by somebody who has just looked at it.
+   - check: how anybody would know it had happened.
+       DONE_OR_NOT - it either happened or it did not.
+       A_NUMBER - a number crosses a line.
+       A_JUDGEMENT - a person would have to weigh it up. This is a real answer, not a failure.
+       NOT_CHECKABLE - nothing in what they said could be checked, by you or by the person it is about.
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if it
+     has no end, NOT_SAID if they did not say.
+   - dueSaid: their own words for the deadline - "Thursday", "end of the quarter". Empty otherwise.
+   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+   - target and measure: ONLY when the expectation is checked by a number and that number is
+     unambiguous. "Under twenty open tickets" is target 20, measure "open tickets". Leave BOTH
+     empty for anything judged rather than counted.
+
+RULES.
+Only a real named person who is another party here. Never the speaker themselves, never a team, an organisation or a customer.
+An expectation must be something the speaker said they want FROM that person. A description of what somebody currently does is not an expectation.
+Never sharpen a vague expectation into a measurable one. If they said "be more proactive", that is what it says.
+NOT_CHECKABLE IS NOT A FAILURE AND MUST NOT BE AVOIDED. If nothing in what they said can be checked, say so. It is
+what makes the interview ask how anybody would know, and it is what stops an unmeasurable sentence sitting on
+somebody's record looking like a target they failed. Choosing A_JUDGEMENT to seem helpful is the one thing that
+breaks this.
+A DEADLINE MEANS IT IS NOT A GOAL. Something with a date is a piece of work, whatever verb they used.
+TWO PEOPLE AND A DATE IS A COMMITMENT, and whoever the work is owed TO goes in owedTo - that is the whole
+difference between a to-do and a commitment.
+Do not infer awareness. If they were not asked and did not volunteer it, that is NOT_ASKED.
+Be conservative. Empty lists are correct answers.`;
+
+/**
+ * WHAT THIS PERSON SAID THEY WOULD DO, from their own check-in.
+ *
+ * The sibling of EXPECTATION_PROMPT and deliberately a separate one. That prompt reads a LEAD's
+ * session and writes down what the lead expects of other people; its rules forbid the speaker
+ * recording anything about themselves, which is right for what it does. The consequence was that a
+ * new hire's own promises - "three proposals by the thirtieth", the exact thing the next check-in
+ * most needs to return to - were never written down as anything a question could be built from.
+ *
+ * ONLY WHAT THEY SAID ABOUT THEMSELVES. Not what they think somebody else should do, not what they
+ * wish would happen, and never a promise inferred from a complaint. A person's own record is the
+ * one place they should never find something they did not say.
+ *
+ * The same conservatism as its sibling: an empty list is the right answer most of the time, and
+ * NOT_CHECKABLE is a real value rather than a failure to try harder.
+ */
+/**
+ * WHERE SOMEBODY'S ACCOUNT OF A PROCESS AND THE COMPANY'S WRITTEN ONE DIFFER.
+ *
+ * Run only when the company has actually written the process down and it came up in the
+ * conversation. It records the DIFFERENCE, never a verdict: a document nobody has updated since
+ * March is at least as likely to be the wrong one, and where nobody ever told them, the finding
+ * belongs to whoever should have.
+ *
+ * The two hard rules are the ones that keep this from becoming a competency score: no marking, and
+ * both sides of the difference stated in the same entry.
+ */
+export const OPERATING_DIFFERENCE_PROMPT = `You are given a transcript and the company's own written process.
+
+Find places where what the person described DIFFERS from what is written. Nothing else.
+
+For each one:
+   - about: which written process it concerns, in a few words.
+   - theirAccount: what they described, in their own words as far as possible.
+   - whatIsWritten: what the document says, in its words.
+   - neverTold: true only if they said, or plainly implied, that nobody had told them this.
+
+RULES.
+A difference is not a mistake. Do not say who is right, and do not imply it.
+Only where they actually described something. Silence is not a difference, and neither is "I am not sure" -
+somebody saying they do not know is being honest, and it is not this.
+Only where the written process actually covers it. If the document does not say, there is no difference.
+A different emphasis is not a difference. Look for something that would lead to a different action.
+Never write that they are wrong, do not understand, or have a gap.
+Be conservative. An empty list is usually correct.`;
+
+export const OPERATING_DIFFERENCE_SCHEMA = {
+  type: 'object',
+  properties: {
+    differences: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          about: { type: 'string' },
+          theirAccount: { type: 'string' },
+          whatIsWritten: { type: 'string' },
+          neverTold: { type: 'boolean' },
+        },
+        required: ['about', 'theirAccount', 'whatIsWritten'],
+      },
+    },
+  },
+  required: ['differences'],
+} as const;
+
+/**
+ * WHAT THEY SAY THEY HAVE ACTUALLY DONE, against promises already on the record.
+ *
+ * The product could hold a promise and a date and had no way to hear the answer. Progress only
+ * existed if somebody typed it into a form, so a person could describe two proposals at length in
+ * their check-in and the record would still say nothing had been done.
+ *
+ * That is not merely a missing feature - it makes the report unfair. The reading that says "the
+ * agreed thing is not being done" rests on nothing being recorded as done, so an empty progress
+ * list turns every passed date into that reading, including for somebody who has been getting on
+ * with it and saying so.
+ *
+ * DONE IS A HIGH BAR AND MUST STAY ONE. Marking somebody's promise finished when they only said
+ * they had started is worse than marking nothing at all: they lose the credit for what is really
+ * outstanding, and the record stops matching what they said.
+ */
+/**
+ * WHAT THEY SAY HAPPENED WITH A CUSTOMER.
+ *
+ * Read from the check-in so somebody's own account of their work becomes evidence in its own right
+ * - especially the work no system recorded. A call from a phone nothing is connected to is the
+ * commonest kind of real work this product could not see.
+ *
+ * SPECIFIC THINGS ONLY. "I have been doing a lot of outreach" is a description of a week; "I called
+ * Mama Ngozi on Tuesday" is a thing that happened. Without that line the record fills with activity
+ * nobody can point at, which is the same failure as counting visits.
+ */
+export const THEY_SAY_HAPPENED_PROMPT = `You are reading a person's check-in for specific things they say happened with a customer.
+
+For each one:
+   - kind: VISIT, CALL, MESSAGE, MEETING, PROPOSAL or TRANSACTION.
+   - counterparty: the customer, shop or business, in their words. Leave out anything with no specific one.
+   - when: their words for when it happened - "Tuesday", "last week". Empty if they did not say.
+   - note: one short line on what happened, in their words.
+   - saysRecordIsWrong: true only if they said it is missing from a system, or that a system has it wrong.
+
+RULES.
+Only their OWN work. Never what a colleague did - one person's account of another's work is not evidence of it.
+Only specific things. A description of a week, an intention, or a plan is not a thing that happened.
+Only what they said happened. "I will call them" and "I should visit" are not this.
+Never infer a customer they did not name.
+Do not turn one visit into several because it was mentioned twice.
+Be conservative. An empty list is a correct answer.`;
+
+export const THEY_SAY_HAPPENED_SCHEMA = {
+  type: 'object',
+  properties: {
+    happened: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
+          counterparty: { type: 'string' },
+          when: { type: 'string' },
+          note: { type: 'string' },
+          saysRecordIsWrong: { type: 'boolean' },
+        },
+        required: ['kind', 'counterparty'],
+      },
+    },
+  },
+  required: ['happened'],
+} as const;
+
+export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
+
+Find what they said they have DONE against those promises. Nothing else.
+
+For each one:
+   - promise: the promise it is about, copied exactly from the list you were given.
+   - whatTheyDid: what they said they did, in their own words, one sentence.
+   - finished: true ONLY if they plainly said the whole promise is complete.
+
+RULES.
+Only against a promise on the list. If it matches none of them, leave it out.
+Only what they say they DID. A plan is not progress. "I am going to" and "I will" are not this.
+Started is not finished. Half of it is not finished. "Nearly there" is not finished.
+If they described doing some of it, record that as progress with finished false. That is the common case.
+Never infer that something is finished because time has passed or because they sound positive.
+Do not turn a difficulty into progress, and do not turn progress into a difficulty.
+Be conservative. An empty list is a correct answer and usually the right one.`;
+
+export const PROGRESS_SCHEMA = {
+  type: 'object',
+  properties: {
+    progress: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          whatTheyDid: { type: 'string' },
+          finished: { type: 'boolean' },
+        },
+        required: ['promise', 'whatTheyDid'],
+      },
+    },
+  },
+  required: ['progress'],
+} as const;
+
+export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
+
+Return only things THIS PERSON said THEY would do. Their words, not a tidier version of them.
+
+For each one:
+   - promise: what they said they would do, in their own words, one sentence.
+   - kind:
+       TODO - something they will do, done or not.
+       COMMITMENT - a to-do a NAMED OTHER PERSON on this check-in is waiting on. Put that person in owedTo.
+       TARGET - a number has to cross a line. "Three proposals", "£150k of pipeline".
+       GOAL - a direction judged rather than counted, over a period.
+   - check: how anybody would know it had happened.
+       DONE_OR_NOT, A_NUMBER, A_JUDGEMENT, or NOT_CHECKABLE.
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if
+     it has no end, NOT_SAID if they did not say.
+   - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
+   - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
+   - target and measure: ONLY when the promise is checked by a number and that number is
+     unambiguous. "Three proposals" is target 3, measure "proposals". "£150k of pipeline" is target
+     "150k", measure "pipeline". Leave BOTH empty for anything judged rather than counted, and for
+     a number you had to work out - a promise nobody stated as a number does not become one here.
+
+RULES.
+Only what they said about their own work. Never what they expect of somebody else - that is not theirs to set.
+Never sharpen a vague promise. "I will get on top of the pipeline" is what it says, and its check is A_JUDGEMENT.
+NOT_CHECKABLE IS A REAL ANSWER. If nothing they said could be checked, say so rather than inventing a measure.
+A wish is not a promise. "It would be good to have three proposals out" is not "I will produce three proposals".
+Something they said they had ALREADY done is not a promise. It belongs to the record of what happened, not to this.
+Do not turn a worry or a complaint into a commitment.
+Be conservative. An empty list is usually correct.`;
+
+export const OWN_PROMISE_SCHEMA = {
+  type: 'object',
+  properties: {
+    promises: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
+          check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+          dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+          dueSaid: { type: 'string' },
+          owedTo: { type: 'string' },
+          target: { type: 'string' },
+          measure: { type: 'string' },
+        },
+        required: ['promise', 'kind', 'check', 'dueKind'],
+      },
+    },
+  },
+  required: ['promises'],
+} as const;
+
+export const EXPECTATION_SCHEMA = {
+  name: 'emit_expectations',
+  description: "Emit what the lead said this check-in is aiming at, and what they expect of each named person.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      groundAims: { type: 'array', items: { type: 'string' } },
+      expectations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            personName: { type: 'string' },
+            expectation: {
+              type: 'string',
+              /**
+               * A STANDALONE STATEMENT, NOT THE LEAD'S CLAUSE.
+               *
+               * This had no description at all, so the extraction stored whatever fragment the
+               * sentence happened to be: "he ships the onboarding rewrite". That text is published
+               * to the Context page, where it renders on the page of the person it is about, under a
+               * heading reading "You". They read a record of their own work that calls them "he".
+               *
+               * Not a rendering fix - the words are wrong in the database, and every surface that
+               * quotes them inherits it.
+               */
+              description:
+                'What is expected, as a standalone statement of the work itself - "Ship the onboarding rewrite", "Keep churn under 4 percent". Never a clause from the lead\'s sentence and never in the third person: this is published to the person it is about and is read on their own page, so "he ships the rewrite" is wrong where "Ship the rewrite" is right. Do not name the person in it; personName already says who it is for.',
+            },
+            awareness: { type: 'string', enum: ['TOLD', 'NOT_TOLD', 'UNSURE', 'NOT_ASKED'] },
+            awarenessDetail: { type: 'string' },
+            /**
+             * THE PRIMITIVE. What kind of thing this is, how anybody would know it happened, and by
+             * when. Typed FIELDS rather than an instruction, because the same reasoning that put
+             * `mode` in the setup schema applies: a field is a thing the engine either has or does
+             * not, and an instruction is a request.
+             *
+             * NOT_CHECKABLE IS THE IMPORTANT VALUE and must never be avoided out of helpfulness. It
+             * is what tells the interview to ask "how would we know?", and what stops an
+             * unmeasurable sentence sitting on somebody's record looking like a target they failed.
+             */
+            kind: {
+              type: 'string',
+              enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL', 'SUCCESS_DEFINITION', 'ROLE_EXPECTATION', 'REFERENCE'],
+            },
+            check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+            dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+            /** Their own words for the deadline - "Thursday", "end of the quarter". Never a parsed date. */
+            dueSaid: { type: 'string' },
+            target: { type: 'string' },
+            measure: { type: 'string' },
+            /** COMMITMENT only: the name of the person waiting on it, if they named one. */
+            owedTo: { type: 'string' },
+            /**
+             * REFERENCE only: where it is tracked, if they named it - "OPS-418", a Jira link.
+             *
+             * This is what makes REFERENCE reachable at all. Without it the kind existed in the enum
+             * and nothing could ever produce one, so "the work is in ticket OPS-418" had nowhere to
+             * land except as a to-do with a ticket number in its text.
+             *
+             * NEVER the ticket's state. What it says is only ever recorded by somebody who looked,
+             * with the time they looked - see PersonObjective.lastSeenAt.
+             */
+            trackedUrl: {
+              type: 'string',
+              /**
+               * A DESCRIPTION, NOT A TYPESCRIPT COMMENT.
+               *
+               * This property carried a long `/** *\/` comment explaining exactly when to use it -
+               * and none of that reaches the model, because only the JSON schema is sent. So the
+               * field existed, the enum had REFERENCE in it, the lead said "tracked in ticket
+               * OPS-902 in Jira", and the extraction returned REFERENCE with no url at all.
+               *
+               * Green in a source-reading spec, empty in the database. The rule I keep writing down
+               * and keep re-learning: prove it at the assembled prompt, not at the code that builds
+               * the prompt.
+               */
+              description:
+                'REFERENCE only. The ticket or issue id, or its link, exactly as they said it - "OPS-902", "JIRA-14", "https://linear.app/...". Fill this in whenever they name where the work is tracked. Never put what the ticket SAYS in here: its state is only ever recorded by somebody who has just looked at it.',
+            },
+          },
+          required: ['personName', 'expectation', 'awareness', 'kind', 'check', 'dueKind'],
+        },
+      },
+    },
+    required: ['groundAims', 'expectations'],
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Willingness gate - fires before a tension/recognition session deepens.
 // ---------------------------------------------------------------------------
@@ -1552,16 +2065,90 @@ LANGUAGE ADAPTATION RULE: From the participant's first three responses, observe 
 const STARTING_VALIDATION = `VALIDATION (deliver ONLY if the person is uncertain or general in their first response; skip if they arrive specific):
 "The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment."`;
 
+/**
+ * THE INITIATOR IS NOT THE SUBJECT, AND THE PATHWAY DID NOT SAY SO.
+ *
+ * A lead setting up a check-in for a new hire was opened with "what does success look like for you",
+ * which is the shared pathway's second question and means "your version of success for this". Read
+ * cold by the person who just wrote the brief, it means "your personal goals" - so the session
+ * interviewed the lead as though they were the hire, and she had to type "i am the one setting up
+ * the context" to stop it. Everything downstream inherited that: her record was built as a party's
+ * account of their own work, and the report compared it against the hire's like two peers.
+ *
+ * The role-specific question knew better all along - "Who have you just hired and what did you bring
+ * them in to do?" - and sat three blocks below the generic one, so the model opened on the generic
+ * one. Order is the fix, not new words: for an initiator, the question that establishes WHO THIS IS
+ * ABOUT has to be the first thing asked, because every later question is ambiguous without it.
+ */
+const WHO_THE_LEAD_IS = `WHO YOU ARE TALKING TO: the person who SET THIS UP. They are not the subject of it. They may be a party to the work, and they are still not the person this check-in is about.
+
+Never ask them what they personally want to achieve, what success looks like for them personally, or what they were brought in to do. Those questions are for the other party, and asked here they read as the session not knowing who it is speaking to.`;
+
+const STARTING_OPENING_INITIATOR = `CONVERSATION PATHWAY - the rest of it, AFTER the role-specific question above has been answered (cover these across multiple exchanges, one at a time; never ask more than one in a single message):
+"What does success look like from where you sit - your version of what good looks like here, not the job description."
+"What would have to exist for you to know this is working?" This is the most important one - it forces a concrete definition rather than a feeling.
+
+SKIP ANY OF THESE THAT THE ALREADY ESTABLISHED BLOCK ABOVE HAS ANSWERED. Asking a person to
+describe a situation they chose from a list two screens ago is the clearest possible signal that
+nothing they do here is being read.`;
+
 const STARTING_OPENING = `CONVERSATION PATHWAY (cover these across multiple exchanges, one at a time; never ask more than one in a single message; the third is the most important - it forces a concrete definition rather than a feeling):
 "What is starting and who is involved?"
 "What does success look like for you - your version, not the brief."
-"What would have to exist for you to know this is working?"`;
+"What would have to exist for you to know this is working?"
+
+SKIP THE FIRST ONE WHEN IT IS ALREADY ANSWERED. If the ALREADY ESTABLISHED block above says what
+this is about and who is in it, do not ask it - open on the second question instead. Asking a
+person to describe a situation they chose from a list two screens ago is the clearest possible
+signal that nothing they do here is being read.`;
 
 const STARTING_FOLLOWUP = `FOLLOW-UP IF VAGUE (the unstated reliance is almost always where the gap is):
 "One more thing before we go further - is there anything you are relying on them to cover that you have not explicitly agreed yet?"`;
 
+/**
+ * THE LEAD'S CHECK-IN IS WHERE EXPECTATIONS GET SET. GW-EXP-1.
+ *
+ * The pathway above already asks a lead what success looks like, and it works - but it asks for ONE
+ * answer about the whole check-in. On a live renewal the lead's answer was "a renewal decision both of
+ * them would describe the same way": true, useful, and an expectation of nobody.
+ *
+ * So nothing in the product has ever asked a lead what they expect OF A NAMED PERSON, and
+ * `personObjective` has held zero rows for the product's entire life. Not a missing field. A missing
+ * question, which could not even be phrased because the prompt did not know who was in the room.
+ *
+ * WHY THE SECOND HALF IS THE MORE IMPORTANT ONE. Stating an expectation and having communicated it are
+ * different things, and the gap between them is the failure this product exists to catch. The founding
+ * example is exactly this:
+ *
+ *     "I was measured on a queue and judged on judgement, and only one of those was said."
+ *
+ * A lead who cannot say when they told somebody has just found that out about themselves, before
+ * anybody gets measured on it. That is worth more than the expectation itself.
+ *
+ * NOT A FORM. This is asked in conversation because an expectation typed into a field is a note to
+ * self, and one said out loud under questioning is a commitment somebody can be shown.
+ */
+const STARTING_PER_PERSON = `PER-PERSON EXPECTATIONS - the most valuable part of this session. Do this AFTER the pathway above, once you have the whole picture.
+
+Go through OTHER_PARTIES one person at a time. Never list them all in one message, and never ask about more than one person per message.
+
+For each person, two questions in this order:
+1. "What specifically do you expect of NAME here? What would you want them to be able to point at, at the end of this?" Press for something checkable. "Be more proactive" is not an expectation; "own the weekly number end to end" is.
+2. THEN, and do not skip this: "Does NAME know that? When did you tell them, and in what words?"
+
+HOW TO HANDLE THE ANSWER TO THE SECOND QUESTION:
+- If they have told them: ask what they think that person understood. A thing said once in a corridor is not the same as a thing agreed.
+- If they have not, or they are not sure: say so plainly and without judgement. "That is worth knowing - it means NAME is working to their own read of this rather than yours, and the record will show that." Do not offer to fix it, do not suggest wording, and do not press further. Naming it is the whole job.
+- If they say the expectation is obvious: ask how they know it is obvious to that person. That answer is the finding.
+
+Never tell a lead an expectation is unfair, unclear or too demanding. You are recording what they expect and whether it has been said, not assessing it.
+
+IF AN EXPECTATION ALREADY EXISTS FOR SOMEBODY - it will be in EXISTING_EXPECTATIONS below - and what they say now is DIFFERENT, do not just take the new one. Ask what changed: "That is different from what is on the record, which was: OLD. What changed?" Record their answer. A revised expectation with no reason reads, to the person it is about, as moving the target - and they will see both the old and the new.
+
+If what they say matches what is already there, do not ask. Repeating an expectation is not changing it.`;
+
 // Role-specific opening questions - exact wording (Part 3 tables).
-const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL', { initiator: string; participant: string }> = {
+const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR' | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL' | 'ROLE_HANDOVER', { initiator: string; participant: string }> = {
   NEW_HIRE: {
     initiator: `"Who have you just hired and what did you bring them in to do? What does early success look like for you - not the job description, your version. If you have a timeframe in mind, tell me it. What would have to exist for you to know this hire is working?"`,
     participant: `"What do you want to get out of this role - not what the organisation wants, what do you want personally. What does this look like for you in twelve months? Then separately: what do you think you were hired to do? What does the organisation expect from you right now?"
@@ -1569,6 +2156,22 @@ const STARTING_ROLE_QUESTIONS: Record<'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISO
 DISCOVERY DEPENDENCY: For senior or executive hires, ask: "What do you need to understand, learn, or have access to before you can deliver on your mandate - and by when do you need it?" Record the answer as a named dependency. If the person cannot name it, ask what would block them in the first sixty days.
 
 AUTHORITY CLARITY: If the person describes a mandate that comes from more than one person or layer - a board, a chair, an investor, a parent company - ask: "If the people giving you this mandate disagree with each other, who has the final word?" If they cannot name one person, record that explicitly. This is often the most important thing in the ground.`,
+  },
+  /*
+   * A HANDOVER CONVERSATION, WHICH IS NOT A HANDOVER DOCUMENT.
+   *
+   * The brief already lists what is outstanding. What it cannot carry is WHY any of it is where it
+   * is - that was the leaver's judgement, and it is the part that is genuinely lost when somebody
+   * goes. So neither side is asked to restate the list. Both are asked the things a list cannot
+   * hold: what is fragile, what is owed to whom, and what the successor has not thought to ask.
+   */
+  ROLE_HANDOVER: {
+    initiator: `"You are handing this over. Start with what is genuinely fragile - the thing that works because you have been watching it, not because it is set up to work. Then: who is relying on you personally rather than on the role? And what did you decide that somebody could easily undo without knowing they were undoing it?"`,
+    participant: `"What have you inherited that you do not yet understand? Do not list what is outstanding - you have that. Name the thing you would be guessing about if you had to act on it this week.
+
+RELATIONSHIP HANDOVER: Ask separately: "Which relationships come with this role, and which of them have you not met yet?" A handover that transfers work and not relationships is the one that quietly fails a month later.
+
+WHAT YOU WOULD CHANGE: Ask: "What looks wrong to you from outside it?" Ask this EARLY, before they have been in the seat long enough to stop noticing. It is the only moment anybody gets an outside view of the role, and it is gone within weeks."`,
   },
   NEW_COFOUNDER: {
     initiator: `"Who is joining and what is the arrangement? What are they contributing that nobody else in the founding team can contribute? What are you relying on them to cover that you have not explicitly agreed yet?"`,
@@ -1780,17 +2383,48 @@ COHERENCE CHECK: Ask whether the plan is achievable within the time and resource
 
 RECORD: The record should show: named work items, associated resource requirements, what is approved versus assumed, and any gaps between the plan and the resource reality.`;
 
-const PULSE_CHECK_PACK = `MOMENT: Alignment pulse check.
+const PULSE_CHECK_PACK = `MOMENT: A regular read on live work.
 
-PURPOSE: A lightweight recurring check-in. No setup required. The goal is a current-state read: what is moving, what is stuck, and what has changed since the last check-in.
+PURPOSE: The lead wants to know what the team is actually doing, week after week. This is a RUN, not a repeated snapshot: the first session establishes what each person owns and is working to, and every session after it reads their work against that. A one-off temperature read with no target is a different situation (SNAPSHOT) - do not run this like one.
 
-OPENING: Ask the person what is going well right now. One thing is enough. If they cannot name something, note it.
+FIRST SESSION - ESTABLISH WHAT THIS PERSON OWNS. Before asking how things are going, find out what "going well" would even mean for them:
+"What are you working to right now? The one or two things you would be judged on this period."
+"Which parts of that do you own, as opposed to depend on somebody else for?"
+Press for something checkable. "Growth" is not a commitment; "twelve signed contracts by the end of the quarter" is. If they genuinely cannot name one, record that plainly - a person who cannot say what they are working to is the most useful finding this ground can produce, and it is about the work, not about them.
 
-FOLLOW-UP: Ask what is stuck or harder than expected. One thing is enough. Be specific - "things are busy" is not stuck, a named obstacle is.
+EVERY LATER SESSION - READ THE WORK AGAINST IT. Open from what they said they own, in their words, not from a blank "how is it going":
+"Last time you said you owned X. What moved on it since then?"
+"What is stuck, and is it stuck on you or on somebody else?"
+"Has what you are working to changed? If it has, who agreed that?"
+That last question matters: a target quietly rewritten is not progress, and it is invisible unless asked for.
 
-CHANGE QUESTION: Ask what has changed since the last check-in that the other party should know about.
+BE SPECIFIC: "things are busy" is not an answer. A named obstacle, a named person waiting, a number that moved or did not.
 
-RECORD: The record should show: one thing going well with evidence, one obstacle with specifics, and any notable change since the last session. This is a signal, not a deep account. It should take no more than five minutes.`;
+KEEP IT SHORT: about five minutes. This is a standing read, not a deep account - it earns its value by happening every week, so it must never feel like a review.
+
+RECORD: The record should show what this person owns and is working to, what moved against it since last time, what is stuck and on whom, and any change to the target itself and who agreed it. Across sessions the useful signal is the same thing stuck three reads running, and work that is busy but not against anything anyone agreed.`;
+
+const SNAPSHOT_PACK = `MOMENT: One honest read from everyone, once.
+
+PURPOSE: The lead wants a single temperature read from each person, today. There is no objective, no target and no next session. This is the ONE situation in the product where a single report is the right shape, and the whole job is to get an honest, specific answer quickly.
+
+DO NOT SET UP ANYTHING. Do not ask what they own, what they are working to, what success looks like, or what was agreed. Those questions belong to situations that run over time, and asking them here makes a five-minute read feel like the start of something the person did not sign up for. If the lead needed a target, they would have opened a different ground.
+
+THREE QUESTIONS, IN THIS ORDER, ONE AT A TIME:
+"What is going well right now? One thing is enough."
+"What is stuck, or harder than it should be? One thing is enough."
+"What has changed recently that the people you work with might not know about?"
+
+PRESS ONCE, THEN MOVE ON. Each answer needs one specific thing, not a category: "things are busy" is not stuck, a named obstacle is. Ask once for the specific version. If it does not come, record what they did say and go to the next question - this session has no second chance to come back, but pushing three times on a five-minute read costs more than the vague answer does.
+
+WHAT NOT TO DO:
+- Do not ask what should happen next, or develop any plan they raise. Record it in one line as something they said and move on.
+- Do not go looking for a problem. "Nothing is stuck" is a legitimate answer and must be recorded as given, not interrogated.
+- Do not reference a previous session or a next one. There are none.
+
+CLOSING: Say plainly that this is a one-off read and there is no follow-up scheduled. If what they described sounds like something that needs watching over time, name the situation that fits so the lead can open it deliberately - do not turn this ground into it.
+
+RECORD: One thing going well, one thing stuck, one recent change, each as specifically as the person gave it. Where several accounts name the same obstacle that is the finding; where they do not, the spread of what people are carrying is itself the read. No targets, no commitments, no plan.`;
 
 const OPEN_READ_PACK = `MOMENT: The situation has not been named yet.
 
@@ -1821,7 +2455,14 @@ DRIFT CHECK: Ask what has changed from the original plan or direction, as they u
 
 TENSION QUESTION: Ask whether there is anything the team is not talking about openly that is affecting how people are working. If yes, name it. If they say no, accept it and note it.
 
-RECORD: The record should show: each person's current understanding of team direction, named changes from original plan, and any named tensions that have not been formally addressed.`;
+WHAT NEEDS TO HAPPEN NOW (the step this pack was missing): establishing that people see it differently is half the job. Ask, once the difference is on record:
+"For this to be working in a month, what would have to be true? Say it as something that could be checked."
+"Which part of that is yours to move, and what are you waiting on somebody else for?"
+Their answers will not match each other, and that is the point - the report shows the spread, and the group agrees one version from it. Without this the ground can only ever report that people disagreed.
+
+LATER SESSIONS - READ AGAINST WHAT WAS AGREED: open from the agreed version, not from a blank "how is it going". "The team agreed X. What moved on it?" and "is this still what we are working to, and who changed it?" A gap that went quiet is not a gap that closed.
+
+RECORD: The record should show: each person's current understanding of team direction, named changes from original plan, any named tensions not formally addressed, and what each person says would have to be true for this to be working, with the part they own. Across sessions, whether the agreed version is being worked to or has quietly been dropped.`;
 
 const PIP_PACK = `MOMENT: Performance improvement.
 
@@ -1942,7 +2583,9 @@ NEVER: score them, compare them to the others, hint at how they are doing relati
 // no initiator/participant question split.
 const ACUTE_SHOCK_PACK = `MOMENT: Something jarring just happened. Everyone needs to see the same picture before anyone decides anything.
 
-SCOPE BOUNDARY (the inverse of the decision-session rule): This is NOT a decision session. The record's job is the picture, not the plan. If the person pushes toward what to do next, note the option they raised in one line and bring them back to what is actually true. How people are carrying this event is part of the picture, not noise - ask about it and record it.
+SHAPE: THE PICTURE FIRST, THEN THE OBJECTIVE, THEN A DAILY READ AGAINST IT. This runs for a fortnight, daily. It used to be a single session whose only job was the picture, which left the other thirteen days with nothing to do and the ground closing on "shared picture established" whether or not anything got recovered.
+
+FIRST SESSION - THE PICTURE ONLY. In this session you are not planning. A recovery built on rumour is worse than no recovery, and an account of a shock is usually half observation and half repetition, so the split below has to happen before anyone commits to anything. If the person pushes toward what to do next, note the option they raised in one line and bring them back to what is actually true. How people are carrying this event is part of the picture, not noise - ask about it and record it.
 
 VALIDATION (deliver after the first response; skip if they arrive with a precise first-hand account):
 "When something breaks suddenly, the story fragments within hours. Each person ends up holding a different version without knowing it. Before anyone decides anything, it is worth knowing what everyone actually saw."
@@ -1968,15 +2611,27 @@ WORRY AND TENSION (explicitly in - part of the shared picture, not noise):
 Then in the next exchange:
 "Is there a tension in the team that this event has cracked open?"
 
-DECISION DEFLECTION: If the person proposes a next step, record it in one line as an option raised ("they believe the next step should be...") and return to the picture: "Before what to do, I want the picture complete. What else do you know first-hand?" Never develop the option, never weigh options, never ask what they would decide.
+DECISION DEFLECTION, IN THE FIRST SESSION ONLY: If the person proposes a next step before the picture is complete, record it in one line as an option raised ("they believe the next step should be...") and return to the picture: "Before what to do, I want the picture complete. What else do you know first-hand?" Do not develop the option or weigh options yet.
+
+CLOSING THE FIRST SESSION - NAME WHAT YOU ARE NOW TRYING TO ACHIEVE. Once the picture is down, ask it plainly:
+"Given what you have just described, what are we trying to achieve now? Say it as something that could be true or not true by a date."
+"What would you personally have to do for that to happen, and what are you waiting on somebody else for?"
+Press for something checkable and dated. "Stabilise things" is not it. "Get the contract reinstated by the fifteenth" is, and so is "hold the other three accounts through the quarter". If the honest answer is that nothing can be won back and the objective is containing the damage, record that - it is a real objective and the run tests it just the same.
+
+EVERY LATER SESSION - THE DAILY READ. Open from the objective, in the words it was set in:
+"The aim is X by Y. What moved on it since yesterday?"
+"What is stuck, and is it stuck on you or on somebody else?"
+"Has anything you learned today changed the picture we started from?"
+That last question is what stops a recovery running on a version of events that has since been disproved.
 
 ROUTING BOUNDARY (hold the lane): This pack is for a discrete event in the last hours or days. If the person describes a gap that grew over weeks against something that was agreed, that is a different kind of ground (something off track). If there is no specific triggering event, only ongoing mis-sync, that is a different ground (team realignment). If they arrive wanting to decide, the decision comes after this record, not inside it.
 
-RECORD: The record should show: the person's first-hand account of the event, the known-versus-assumed split, what they believe is genuinely at risk versus only apparently at risk, who is most affected and who has not been heard from, the biggest named unknown, where they think reads diverge and whose read they are least sure of, and how they are carrying it. No decisions and no plans - any proposed next step is recorded as an option raised, not a commitment.`;
+RECORD: From the first session - the person's first-hand account, the known-versus-assumed split, what is genuinely at risk versus only apparently at risk, who is most affected and who has not been heard from, the biggest named unknown, where reads diverge, and how they are carrying it. Then the objective as it was actually stated, with its date and who owns which part of it. From every later session - what moved against that objective, what is stuck and on whom, and anything that changed the original picture. A recovery that is not moving should be visible by the third day, not at the end of the fortnight.`;
 
 // Legacy combined packs - used by the DB seed only. Runtime uses buildScenarioPackForParty.
 export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_HIRE: composeStartingPack('NEW_HIRE'),
+  ROLE_HANDOVER: composeStartingPack('ROLE_HANDOVER'),
   NEW_COFOUNDER: composeStartingPack('NEW_COFOUNDER'),
   NEW_ADVISOR: composeStartingPack('NEW_ADVISOR'),
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
@@ -1988,6 +2643,7 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   OKR_ALIGNMENT: OKR_ALIGNMENT_PACK,
   WORKPLAN_BUDGET: WORKPLAN_BUDGET_PACK,
   PULSE_CHECK: PULSE_CHECK_PACK,
+  SNAPSHOT: SNAPSHOT_PACK,
   REALIGN_TEAM: REALIGN_TEAM_PACK,
   OPEN_READ: OPEN_READ_PACK,
   PIP: PIP_PACK,
@@ -2024,9 +2680,23 @@ export function buildScenarioPackForParty(
         return [
           `MOMENT: Something new is starting.`,
           STARTING_VALIDATION,
-          STARTING_OPENING,
+          /*
+           * ORDER IS THE FIX. Who it is speaking to, then the question that establishes who this is
+           * about, then everything else - which is ambiguous until that question is answered. The
+           * pathway used to lead and the role-specific question sat three blocks under it, so the
+           * model opened on "what does success look like for you" and the lead read it as being
+           * about herself. She was right to.
+           */
+          WHO_THE_LEAD_IS,
+          `ROLE-SPECIFIC QUESTIONS - initiator, and the FIRST thing to ask (one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
+          STARTING_OPENING_INITIATOR,
           STARTING_FOLLOWUP,
-          `ROLE-SPECIFIC QUESTIONS - initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
+          /**
+           * The per-person pass goes LAST in the pathway, deliberately: a lead who has just been made
+           * to define what success looks like for the whole thing gives a far sharper answer about
+           * one person than one asked cold.
+           */
+          STARTING_PER_PERSON,
         ].join('\n\n');
       }
       return [
@@ -2101,6 +2771,8 @@ export function buildScenarioPackForParty(
 
     case GroundScenario.PULSE_CHECK:
       return PULSE_CHECK_PACK;
+    case GroundScenario.SNAPSHOT:
+      return SNAPSHOT_PACK;
 
     case GroundScenario.REALIGN_TEAM:
       return REALIGN_TEAM_PACK;
@@ -2169,7 +2841,36 @@ export interface PromptContext {
   roleAsDescribed?: string | null;
   otherPartyCheckedIn: boolean;
   groundLabel: string;
+  /**
+   * WHO ELSE IS IN THIS CHECK-IN, BY NAME. GW-EXP-1.
+   *
+   * The prompt has never known this, which is why nothing has ever asked a lead what they expect of a
+   * NAMED person - it could not say the name. That single absence is why `personObjective` holds zero
+   * rows after the product's whole life: not a missing field, a question that could not be phrased.
+   *
+   * Labels come from `participantLabel`, so a person with no account shows as their role rather than
+   * an address, and nothing here is a raw email.
+   */
+  otherParties?: { label: string }[];
+  /**
+   * The lead's framing of the situation, addressed to everyone in the check-in. Steers what gets
+   * asked; never quotable. See SHARED_NOTE in the intake block.
+   */
+  sharedNote?: string;
+  /**
+   * GW-EXP-4. What is already on the record for each person, so a revision can be told from a
+   * restatement and the lead can be asked what changed.
+   */
+  existingExpectations?: { label: string; text: string }[];
   adminBrief?: string | null;
+  /**
+   * What this check-in is actually aiming at, as the lead stated it.
+   *
+   * The engine had no access to this. It inferred a target from the scenario pack and interviewed
+   * against that, which is how a person could be pressed for specifics about the wrong thing - and
+   * why a report could read somebody against a number nobody had shown either of them.
+   */
+  objectives?: { name: string; target: number | null }[];
   priorContext?: string | null;
   priorSession?: string | null;
   resolutionState?: string | null;
@@ -2181,6 +2882,50 @@ export interface PromptContext {
   // asks them to commit to "consistent check-ins over the agreed period"
   // without the model ever being told what that period actually is).
   cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | null;
+  /**
+   * How long the run is, in days. Passed so the engine can tell a fortnight from a year: without it,
+   * "reaching an end" and "at the start" read identically on a two-week ground.
+   */
+  timelineDays?: number | null;
+  /**
+   * THIS PERSON'S OWN OBJECTIVE, WHO WROTE IT, AND WHETHER THEY HAVE SEEN IT.
+   *
+   * Distinct from `objectives` above, which is the LEAD's statement of what the ground is aiming at.
+   * `PersonObjective` is what this individual is working to, and it carries the two facts that make a
+   * middle session different from a repeated first one: who authored it, and whether the person it
+   * belongs to has actually seen the current text.
+   *
+   * Both columns existed and neither reached the engine, so the interview could press somebody on a
+   * standard they were reading for the first time. The report already refuses to read anybody against
+   * an unseen objective; until now the conversation could not honour the same rule.
+   */
+  personObjective?: {
+    text: string;
+    authoredBy: string;
+    seenBySubject: boolean;
+    authoredByThem: boolean;
+    fromTheirSystem?: boolean;
+    /*
+     * WHAT KIND OF PROMISE, WHEN IT IS DUE, AND WHO IS WAITING.
+     *
+     * All three were loaded from the row and dropped before the model saw them, so the interview
+     * knew "Get three proposals out" and not that it was a number, due on the thirtieth, with
+     * somebody waiting on it. That is the difference between "how is it going" and "you said three
+     * by the thirtieth - where are they".
+     */
+    kind?: string | null;
+    dueSaid?: string | null;
+    /** Their words read as a date, where they carried one. Null is common and fine. */
+    dueDate?: Date | string | null;
+    /** The name of whoever is waiting on it, for a commitment. */
+    owedToName?: string | null;
+    status?: string | null;
+  } | null;
+  /**
+   * ALL of this person's objectives. `personObjective` stays for the single case and for callers
+   * that predate this; when both are given, this wins.
+   */
+  personObjectives?: NonNullable<PromptContext['personObjective']>[];
   sessionMode?: 'checkin' | 'recall';
   openerRole?: 'founder' | 'hr' | 'manager' | 'peer' | 'external';
   relationshipHistory?: 'new' | 'ongoing' | 'drifted' | 'prior_ground';
@@ -2213,16 +2958,16 @@ const PATHWAY_QUESTIONS: Record<number, string> = {
   8:  '"What is your specific role on this project - not the project goal, your part. What falls to you personally?"',
   9:  '"In your own words - what do you believe you need to deliver in this period to come through this probation? What does passing look like?"',
   10: '"What do you think is not working, or not working well enough, from where you sit?"',
-  11: '"This ground has already been running. What is your role in this, and what were you asked to do when you were brought in?"',
+  11: '"Let\'s start with the work itself. What do you understand you are responsible for at the moment, and what were you asked to do when you came in?"',
   12: '"What have you done in the last period that you believe is not currently reflected in your compensation? Not what you think you should earn - what exists in your record that justifies it?"',
   13: '"What do you feel is out of alignment right now? Not what they are doing wrong. What is true right now that is not matching what you expected or agreed?"',
   14: '"Describe the situation. What is happening, from your point of view?"',
   15: '"What has changed in this working relationship from how it was at the beginning, or from how you expected it to be?"',
-  16: '"Before we build this new ground - what did you take away from the last one as the most important thing the record showed?"',
+  16: '"Before we start this one, what did you take away from the last one as the most important thing the record showed?"',
   17: 'Safety framing first: "This is a private space. The other party cannot read what you write until you both activate the report." Then: "What do you feel is not working - not the diplomatic version. Your honest version."',
   18: '"What is the specific thing that is not working? Not in general - a specific recent moment or situation that captures it."',
   19: '"What do you think is working well between you and the organisation right now - and what does that look like as a delivered thing?"',
-  20: '"What is this ground about for you, and what would need to be true at the end of this period for you to feel it was worth doing?"',
+  20: '"What is this about for you, and what would need to be true at the end of this period for you to feel it was worth doing?"',
 };
 
 function situationTypeFromScenario(scenario: GroundScenario): string {
@@ -2418,6 +3163,110 @@ function cadenceLabel(cadence: PromptContext['cadence']): string {
   }
 }
 
+/**
+ * ONE OBJECTIVE, DESCRIBED WITH WHO SET IT AND WHETHER THE PERSON HAS SEEN IT.
+ *
+ * Pulled out of the intake block so that several can be rendered. Every clause here was already in
+ * that block and is unchanged; what changed is that it can now be called more than once.
+ */
+function describeObjective(o: NonNullable<PromptContext['personObjective']>): string {
+  const whoSetIt = o.authoredByThem
+    ? 'they wrote this themselves'
+    /*
+     * A THIRD ANSWER, because there are three and there were two. "Set by the person leading this"
+     * is right when a lead wrote it in the product and wrong for an agreement the organisation's own
+     * system already held - that is not one person's opinion, it is what everybody is working
+     * against, and describing it as an opinion invites the interview to treat it as negotiable.
+     *
+     * Still not beyond question: whether somebody may be pressed on it is decided by `seenBySubject`
+     * below, exactly as before. The source changes the wording, never whether it can be challenged.
+     */
+    : o.fromTheirSystem
+      ? "recorded as already agreed in the organisation's own system, not set here"
+      : 'set by the person leading this';
+
+  const howToUseIt = o.seenBySubject
+    /*
+     * SEEN, SO PRESS ON THE GAP. The half that was missing, and the reason the original question had
+     * no good answer: a to-do somebody forgets was never raised again. The gap between the stated
+     * expectation and what the person describes is the finding - not the shortfall.
+     */
+    ? 'they have seen it - PRESS ON THE GAP between this and what they actually describe doing. '
+      + 'That gap is the most useful thing this session can surface. '
+      + 'Ask about it plainly and without accusation, record what they say, '
+      + 'and never score them against it or compare them to anybody else'
+    /*
+     * NOT SEEN, so the fairness rule stands and nothing may be read against it. "Accept" is
+     * deliberately absent: one person states expectations, and a party neither agrees to nor
+     * rewrites theirs. What they get is a say, on the record.
+     */
+    /* Wrapped so that whole phrases survive the line breaks. The first version split "read nothing
+       against it this session" across a concatenation, and a guard asserting that exact sentence
+       stopped finding it - the instruction was intact, the assertion was not. */
+    : 'THEY HAVE NOT SEEN IT - show it to them, ask what they make of it, '
+      + 'and read nothing against it this session. '
+      + 'Never imply they agreed to it. If they disagree, that is worth recording and is not an obstacle';
+
+  /*
+   * WHAT KIND OF THING IT IS, WHEN IT IS DUE, AND WHO IS WAITING.
+   *
+   * All three were on the row and none reached the model, so a promise with a number and a date
+   * arrived as an undifferentiated sentence and the next check-in could only ask how it was going.
+   *
+   * The DATE is said as a date and the WORDS are kept beside it, because the words are what the
+   * person actually said and the date is our reading of them. Where the words carried no date -
+   * "soon", "once procurement clears" - there is no date here and the interview is told to ask for
+   * one rather than act as though a deadline exists.
+   */
+  const parts = [whoSetIt];
+  if (o.kind === 'COMMITMENT' && o.owedToName) parts.push(`${o.owedToName} is waiting on this`);
+  else if (o.kind === 'TARGET') parts.push('a number has to cross a line');
+  else if (o.kind === 'ROLE_EXPECTATION') parts.push('standing, with no end date');
+
+  if (o.dueDate) {
+    const d = typeof o.dueDate === 'string' ? o.dueDate : o.dueDate.toISOString().slice(0, 10);
+    parts.push(`due ${d}${o.dueSaid ? ` - they said "${o.dueSaid}"` : ''}`);
+  } else if (o.dueSaid) {
+    parts.push(
+      `they said "${o.dueSaid}" for when, which is not a date. If somebody is waiting on this, ask `
+      + 'once which day they mean, and accept that there may not be one yet',
+    );
+  }
+
+  if (o.status && o.status !== 'OPEN') parts.push(`recorded as ${o.status.toLowerCase()}`);
+  parts.push(howToUseIt);
+
+  return `${o.text} (${parts.join('; ')})`;
+}
+
+/**
+ * ALL OF THEM, NOT THE FIRST ONE.
+ *
+ * The engine took `personObjectives[0]` and showed that. A person holding a target AND a commitment
+ * AND a standing role expectation - which the data model has always allowed, and which a planning
+ * system produces by default - had everything after the first silently invisible to the interview.
+ * Nothing failed; the conversation simply never mentioned two thirds of what somebody was carrying.
+ *
+ * THEY ARE SEPARATE COMMITMENTS, NOT A CHECKLIST, and the instruction says so because the failure
+ * mode of a list is a march through it. Each is a different promise to a different person, each has
+ * its own answer to whether it was seen, and progress on one says nothing about another.
+ */
+function renderObjectives(objectives: NonNullable<PromptContext['personObjective']>[]): string[] {
+  if (!objectives.length) return ['MY_OBJECTIVE: none set for this person'];
+  if (objectives.length === 1) return [`MY_OBJECTIVE: ${describeObjective(objectives[0])}`];
+
+  return [
+    `MY_OBJECTIVES (${objectives.length}, all of them this person's):\n`
+    + objectives.map((o, i) => `${i + 1}. ${describeObjective(o)}`).join('\n'),
+    'THESE ARE SEPARATE COMMITMENTS, NOT A CHECKLIST. Do not march through them in order and do not '
+    + 'ask about all of them in one message. Each is its own promise, often to a different person, '
+    + 'and each has its own answer to whether they have seen it - so an instruction attached to one '
+    + 'does not carry to another. Progress on one says nothing about the others. Follow what the '
+    + 'person actually raises; where they leave one untouched across a whole session, that silence '
+    + 'is worth one plain question, not a reminder every time.',
+  ];
+}
+
 export function buildIntakeBlock(ctx: PromptContext): string {
   const situationType = situationTypeFromScenario(ctx.scenario);
   const relHistory = resolveRelationshipHistory(ctx.scenario, ctx.relationshipHistory);
@@ -2434,12 +3283,128 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     '',
     `GROUND: ${ctx.groundLabel}`,
     `SITUATION_TYPE: ${situationType}`,
+    /*
+     * WHAT SETUP ALREADY SETTLED, AND THE INSTRUCTION NOT TO ASK FOR IT AGAIN.
+     *
+     * High in the block on purpose: it changes which question opens the conversation, and an
+     * instruction about the first message is worth nothing below three screens of context.
+     *
+     * The facts themselves were always here - GROUND, OTHER_PARTIES, ROLE, the admin brief. What
+     * was missing was any rule about them, so the model read them and asked for them anyway.
+     */
+    ...(() => {
+      const block = alreadyEstablished({
+        scenario: ctx.scenario,
+        groundLabel: ctx.groundLabel,
+        otherParties: ctx.otherParties,
+        roleAsDescribed: ctx.roleAsDescribed,
+        adminBrief: ctx.adminBrief ?? null,
+      });
+      return block ? ['', block] : [];
+    })(),
     `RELATIONSHIP_HISTORY: ${relHistory}`,
     `RELATIONSHIP_TYPE: ${relType}`,
     `OPENER_ROLE: ${openerRole}`,
     `SESSION: ${ctx.sessionNumber} of ${total}`,
+    /**
+     * THE NUMBERS WERE ALREADY HERE. WHAT THEY MEAN WAS NOT.
+     *
+     * "SESSION: 3 of 6" is arithmetic. It does not say that this is a middle session, that three
+     * remain, or that a middle session reads work against an objective rather than going to look for
+     * one. And `moment` reached the pack selector without the model ever being told which moment it
+     * was in, so it could not calibrate on it even in principle.
+     */
+    ...whereInTheRun({
+      sessionNumber: ctx.sessionNumber,
+      totalSessions: total,
+      moment: ctx.moment ?? null,
+      timelineDays: ctx.timelineDays ?? null,
+    }),
     `CADENCE: ${cadenceLabel(ctx.cadence)}`,
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
+    `OBJECTIVES: ${
+      (ctx.objectives ?? []).length
+        ? (ctx.objectives ?? [])
+            .map((o) => (o.target != null ? `${o.name} (target ${o.target.toLocaleString('en-US')})` : o.name))
+            .join('; ')
+        : 'none stated'
+    }`,
+    /**
+     * WHAT THIS PERSON IS WORKING TO, AND WHETHER THEY HAVE EVER SEEN IT.
+     *
+     * The unseen case is the one that matters. Pressing somebody on a target they are reading for the
+     * first time produces a defensive answer and a worthless record, and the report already refuses to
+     * read anybody against an objective they have not seen. This is what lets the interview honour the
+     * same rule instead of discovering it afterwards.
+     */
+    /**
+     * The roster, so the interview can address people by name. Only rendered when there is somebody
+     * else in the check-in, so a solo read never gets an empty list to reason about.
+     */
+    /**
+     * THE LEAD'S FRAMING, WITH ITS LIMIT ATTACHED TO IT.
+     *
+     * A note the lead wrote for the whole check-in, so a session opens knowing what this is about
+     * instead of asking what could be asked of anybody.
+     *
+     * THE LIMIT TRAVELS WITH THE TEXT, not in a paragraph somewhere else in this prompt. Everyone can
+     * read this note, and that changes nothing about what it proves: it is the lead's words about a
+     * situation, so it decides what gets ASKED and can never be quoted, attributed, or treated as
+     * established. Widening who reads something never widens what it is evidence of - and the model
+     * has the sentence in front of it with no memory of where it came from, which is exactly the case
+     * where a rule stated elsewhere stops holding.
+     */
+    ...(ctx.sharedNote?.trim()
+      ? [
+          `SHARED_NOTE - how the person running this check-in has framed the situation, in their own words, read by everybody here: "${ctx.sharedNote.trim()}"\nUse it to understand what this is about and to shape what you ask. It is NOT evidence and NOT established fact: never quote it, never attribute it to anybody, never put it to somebody as though it settles anything, and never treat it as this person's own view. If it conflicts with what they tell you, what they tell you is their account and the note is the lead's framing - record both and press on the difference.`,
+        ]
+      : []),
+    ...(ctx.otherParties?.length
+      ? [`OTHER_PARTIES: ${ctx.otherParties.map((p) => p.label).join(', ')}`]
+      : [
+          /**
+           * NOBODY IS ON THE RECORD YET, SO DO NOT PROMISE WHAT YOU WILL DO WITH THEM.
+           *
+           * In the setting-up flow this session runs BEFORE anybody has been invited - invitations
+           * come at the end. Observed live: told about a briefing for three people, the interview
+           * replied "when I check in with each of them, I will be listening for..." when no
+           * participant existed, none had been named, and nothing had been sent. It came true only
+           * because the person happened to name them a turn later.
+           *
+           * The cost is not the broken promise. It is that this product's whole claim is that it
+           * records what was actually said - so a session that speaks confidently about things it
+           * has no basis for teaches the reader to discount the rest of it.
+           *
+           * Asking about other people is right and stays. Stating what you will DO with them is what
+           * this forbids, and only while OTHER_PARTIES is absent.
+           */
+          'NOBODY ELSE IS ON THE RECORD FOR THIS CHECK-IN YET, AND THAT IS THE FIRST THING TO PUT RIGHT.\n\nASK WHO ELSE IS IN THIS, ONCE, EARLY, AND PLAINLY. Names if they have them, roles if they do not ("the finance lead" is a usable answer, "my team" is not - that is a group, and a group cannot give an account). Say why in one short sentence: a check-in with nobody in it has nobody to check in with, and nothing can be expected of anyone by name.\n\nACCEPT THE ANSWER AND MOVE ON. If they name people, use those names for the rest of this session. If they say it is only them, that is a real answer - record it and do not raise it again. If they do not want to say yet, that is also an answer: note it and carry on. Ask ONCE. This is their session, not a form.\n\nTELL THEM THE NAMES DO NOT ADD THEMSELVES. Nothing here puts anyone into the check-in - say once, plainly, that they add the people themselves afterwards, and that until they do, nobody else can be invited or asked anything.\n\nDO NOT SAY WHAT YOU WILL DO WITH THEM LATER: no "when I check in with each of them", no "I will ask them about this", no describing what you will listen for in their sessions. They have not been invited, and you cannot promise a session that nobody has been asked to attend.',
+        ]),
+    /**
+     * WHAT IS ALREADY ON THE RECORD FOR EACH PERSON. GW-EXP-4.
+     *
+     * Without this the interview cannot tell a restatement from a revision, so a lead quietly moving
+     * somebody's target looks identical to a lead repeating it - and the person it is about sees the
+     * words change with no reason attached. Only rendered where something exists to compare against.
+     */
+    ...(ctx.existingExpectations?.length
+      ? [
+          `EXISTING_EXPECTATIONS: ${ctx.existingExpectations
+            .map((e) => `${e.label} - "${e.text}"`)
+            .join(' | ')}`,
+        ]
+      : []),
+    ...(ctx.personObjective?.fromTheirSystem
+      ? [
+        'ALREADY RECORDED, SO DO NOT ASK FOR IT: the objective below was agreed in this organisation'
+        + ' before the check-in and is stated in MY_OBJECTIVE. Never ask them to tell you what their'
+        + ' target, deadline or responsibility is - you have it. Ask how it is going, what is in the'
+        + ' way, and whether it still reflects what they are working against.'
+        + ' They may say it is wrong, was never agreed with them, or has been overtaken by something'
+        + ' - take that seriously and record it. What you must not do is make them recite it back.',
+      ]
+      : []),
+    ...renderObjectives(ctx.personObjectives ?? (ctx.personObjective ? [ctx.personObjective] : [])),
     `SESSION_MODE: ${sessionMode}`,
     `ADMIN_BRIEF: ${ctx.adminBrief ?? 'none provided'}`,
     // Ground-situation context for NON-initiator parties: the brief tells an
@@ -2472,7 +3437,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
   if (ctx.leadSignals?.length) {
     lines.push('');
     lines.push('LEAD_PROFILE (private - never reveal to participants):');
-    lines.push('Based on past grounds, this lead consistently cares about:');
+    lines.push('Based on past check-ins, this lead consistently cares about:');
     for (const s of ctx.leadSignals) lines.push(`- ${s}`);
     lines.push('Probe harder in these areas. Do not skip standard questions. Use this to know where to dig deeper, not what to ignore.');
   }

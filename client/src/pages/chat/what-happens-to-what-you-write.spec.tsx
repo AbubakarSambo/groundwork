@@ -19,13 +19,31 @@ import { join } from 'path'
  * for weeks because nothing compared a sentence to the behaviour behind it, and
  * this is the same class of failure one page earlier.
  */
-const SRC = readFileSync(join(__dirname, 'ChatPage.tsx'), 'utf8')
+/*
+ * THE COPY MOVED, AND THIS FOLLOWS IT. The four claims now live in one module because a second
+ * screen shows them - the guide an admin sends their company before a rollout. This still reads
+ * the words a person sees; it just reads them where they now are, and still checks that this
+ * screen renders them rather than having quietly dropped the block.
+ */
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const PAGE = strip(readFileSync(join(__dirname, 'ChatPage.tsx'), 'utf8'))
+const CLAIMS = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'what-happens-to-what-you-write.ts'), 'utf8'))
+const SRC = `${PAGE}\n${CLAIMS}`
 
-/** The privacy screen, from its flag to the button that dismisses it. */
+describe('the screen still shows them', () => {
+  it('renders the shared claims rather than having dropped the block', () => {
+    expect(PAGE).toContain('WHAT_HAPPENS_TO_WHAT_YOU_WRITE.map')
+  })
+})
+
+/**
+ * The privacy screen as a person reads it: this page's own heading and framing, plus the four
+ * claims, which are now a module because a second surface shows them as well.
+ */
 const SCREEN = (() => {
-  const start = SRC.indexOf('What happens to what you write')
+  const start = PAGE.indexOf('What happens to what you write')
   expect(start).toBeGreaterThan(-1)
-  return SRC.slice(start, SRC.indexOf('Start my check-in', start))
+  return `${PAGE.slice(start, PAGE.indexOf('Start my check-in', start))}\n${CLAIMS}`
 })()
 
 describe('what it promises', () => {

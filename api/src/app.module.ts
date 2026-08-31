@@ -11,6 +11,8 @@ import { PromptsModule } from './modules/prompts';
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
 import { GroundsModule } from './modules/grounds';
+import { PublicApiModule } from './modules/public-api/public-api.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { ParticipantsModule } from './modules/participants';
 import { ConversationModule } from './modules/conversation';
 import { ReportsModule } from './modules/reports';
@@ -34,7 +36,9 @@ import { AdminModule } from './modules/admin/admin.module';
  * Found by the unwired-module rule, not by anybody noticing.
  */
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { CoachModule } from './modules/coach/coach.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -48,8 +52,11 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     AuthModule,
     UsersModule,
     GroundsModule,
+    PublicApiModule,
+    WebhooksModule,
     ParticipantsModule,
     ConversationModule,
+    KnowledgeModule,
     WhatsAppModule,
     ReportsModule,
     PatternsModule,
@@ -58,6 +65,7 @@ import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor }
     BillingModule,
     IntelligenceModule,
     FeedbackModule,
+    CoachModule,
     DocumentsModule,
     EntryModule,
     AdminModule,

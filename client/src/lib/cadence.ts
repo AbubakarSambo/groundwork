@@ -26,10 +26,38 @@ export const CADENCES: CadenceOption[] = [
   { cadence: 'FORTNIGHTLY', label: 'Every 2 weeks', days: 14 },
   { cadence: 'MONTHLY', label: 'Monthly', days: 30 },
   { cadence: 'SEQUENTIAL', label: 'When the lead checks in', days: null },
+  /**
+   * A single round, and no follow-up is ever scheduled.
+   *
+   * It is in this list so `cadenceLabel` can name it, and it IS offered in the dropdown - see
+   * SELECTABLE_CADENCES below. Keeping it out was the original call, on the grounds that a one-off has
+   * no rhythm to choose. That was wrong once a situation recommended it: the control could not display
+   * its own recommendation, and the screen showed "Daily" for a ground the product had set to one round.
+   */
+  { cadence: 'ONE_TIME', label: 'One time, no follow-up', days: null },
 ]
 
 /** The cadences offered when someone is choosing a regular rhythm. */
 export const TIMED_CADENCES = CADENCES.filter((c) => c.days !== null)
+
+/**
+ * EVERY RHYTHM A LEAD MAY CHOOSE, WHICH IS NOT THE SAME AS EVERY TIME-BASED ONE.
+ *
+ * The cadence dropdown offered `TIMED_CADENCES` - the four with a fixed interval - so two rhythms the
+ * product fully supports were unreachable from the only screen that sets one: "when the lead checks
+ * in", which fires on the lead's own check-in rather than on elapsed time, and "one time", which is the
+ * whole design of the one-off read.
+ *
+ * That turned into a visible defect the moment a situation RECOMMENDED one of them. Picking the one-off
+ * read seeded ONE_TIME into a select with no such option, so the screen showed "Daily" while the state
+ * held ONE_TIME, the timeframe showed "1 week" while the state held one day, and the summary underneath
+ * read "1 sessions over 1 days". Three different answers on one screen.
+ *
+ * The recommendation and the control were two lists with nothing reconciling them, which is the same
+ * shape as the label drift and the pricing drift. `every-recommendation-is-selectable.spec.ts` is what
+ * stops it coming back.
+ */
+export const SELECTABLE_CADENCES = CADENCES
 
 export const cadenceLabel = (c: GroundCadence): string =>
   CADENCES.find((x) => x.cadence === c)?.label ?? String(c)

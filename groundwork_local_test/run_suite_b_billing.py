@@ -30,12 +30,19 @@ import time
 from playwright.async_api import async_playwright
 
 from _runner import BASE_URL, Recorder, api, launch, mail_clear, new_page, provision_admin
+from _ui_strings import (  # UI copy the product owns - see the guard in
+    CREATE_STEP_ONE, CREATE_STEP_ONE_ANSWER, CREATE_PROJECT_CARD, INCLUDED_IN_PLAN,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
+)
 
 rec = Recorder("suite_b")
 STAMP = str(int(time.time()))
 EMAIL = f"b.billing+{STAMP}@example-test.invalid"
 
-DOLLAR_PATTERNS = re.compile(r"\$5|Buy a session|Add more sessions for \$", re.I)
+# `\$5` on its own matched "$5,000 a year" in the coaching note, which is real copy the product
+# means to show, and reported it as the per-session charge this guard exists to prevent. The
+# negative lookahead is what tells "$5" from "$5,000" and "$50" - the thing being looked for is a
+# five dollar price, not the digit five after a dollar sign.
+DOLLAR_PATTERNS = re.compile(r"\$5(?![0-9,.])|Buy a session|Add more sessions for \$", re.I)
 
 
 async def main() -> int:
@@ -57,11 +64,23 @@ async def main() -> int:
         await page.goto(f"{origin}/grounds/new")
         await page.wait_for_timeout(2500)
         await rec.step(page, "create flow loaded (authed)", "persona B")
-        on_create = await page.get_by_text("What is this ground for?").count()
+        on_create = await page.get_by_text(CREATE_STEP_ONE).count()
         rec.check("B1", on_create > 0, "authed create flow actually loaded (not a vacuous /auth sweep)",
                   f"url={page.url}", hard=True)
-        # walk: pick a scenario -> moment -> billing interstitial -> timeline
-        card = page.get_by_text("New project", exact=True)
+        # walk: who it is for -> scenario -> moment -> billing interstitial -> timeline
+        #
+        # The first screen is now "who is this check-in for" and the situations are on the second.
+        # Without answering it the walk below silently does nothing - `card.count()` is zero, the
+        # guard skips, and the $5 sweep then runs against the wrong two screens and passes for the
+        # wrong reason.
+        answer = page.get_by_text(CREATE_STEP_ONE_ANSWER, exact=False)
+        if await answer.count():
+            await answer.first.click()
+            await page.wait_for_timeout(400)
+            await page.locator("button:has-text('Continue'):visible").last.click()
+            await page.wait_for_timeout(1500)
+
+        card = page.get_by_text(CREATE_PROJECT_CARD, exact=True)
         if await card.count():
             await card.first.click()
             await page.wait_for_timeout(400)
@@ -85,7 +104,7 @@ async def main() -> int:
                     await page.wait_for_timeout(900)
                 except Exception:
                     break
-        included = await page.get_by_text("Included in your plan").count()
+        included = await page.get_by_text(INCLUDED_IN_PLAN).count()
         rec.check("B1", included >= 0, "swept create-flow steps for billing copy")  # informational marker
 
         # ---- B2: the 10-ground gate ----------------------------------------

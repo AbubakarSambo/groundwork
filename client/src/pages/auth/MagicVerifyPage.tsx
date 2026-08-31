@@ -18,7 +18,7 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; passwordSetupToken?: string }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
   | { kind: 'noSession' }
   | { kind: 'commitError' }
   | { kind: 'redirect'; to: string }
@@ -39,6 +39,7 @@ export function MagicVerifyPage() {
   const [noSession, setNoSession] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [failedInvites, setFailedInvites] = useState<string[]>([])
+  const [whyInvitesFailed, setWhyInvitesFailed] = useState<{ email: string; because: string }[]>([])
   const [invited, setInvited] = useState<string[]>([])
   const [nextGroundId, setNextGroundId] = useState<string | null>(null)
   // null while we do not know yet; the welcome panel waits rather than flashing.
@@ -65,6 +66,7 @@ export function MagicVerifyPage() {
     if (outcome.kind === 'success') {
       setPasswordSetupToken(outcome.passwordSetupToken ?? null)
       setFailedInvites(outcome.failedInvites)
+      setWhyInvitesFailed(outcome.whyInvitesFailed ?? [])
       setInvited(outcome.invited)
       setJoinUrl(outcome.joinUrl)
       setNextGroundId(outcome.groundId)
@@ -309,7 +311,7 @@ export function MagicVerifyPage() {
         <div style={{ maxWidth: 380, width: '100%' }}>
           <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your ground is set up.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your check-in is set up.</div>
             <div style={{ fontSize: 13, color: 'var(--gw-green-t-soft)', lineHeight: 1.6 }}>Your session is on record and your account is live.</div>
           </div>
           {joinUrl && (
@@ -332,16 +334,34 @@ export function MagicVerifyPage() {
                 <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', fontFamily: 'monospace' }}>{e}</div>
               ))}
               <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                Track who has checked in on your ground page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
+                Track who has checked in on your check-in page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
               </div>
             </div>
           )}
           {failedInvites.length > 0 && (
             <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>These addresses were not reached. You can resend from your ground page:</div>
+              {/*
+                * SAYS WHY, PER PERSON. This read "these addresses were not reached, you can resend
+                * from your check-in page", which is right for a bounced email and wrong for the
+                * commonest cause: the free plan covers five people including you, so an admin who
+                * names five colleagues here loses one. Resending will never fix a seat limit, and
+                * being told to retry something that cannot work is worse than being told the limit.
+                */}
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>
+                {whyInvitesFailed.length > 0
+                  ? 'These did not go out:'
+                  : 'These addresses were not reached. You can resend from your check-in page:'}
+              </div>
               {failedInvites.map(e => (
-                <div key={e} style={{ fontSize: 12, color: '#5A3A00', fontFamily: 'monospace' }}>{e}</div>
+                <div key={e} style={{ fontSize: 12, color: '#5A3A00', marginBottom: 5 }}>
+                  <span style={{ fontFamily: 'monospace' }}>{e}</span>
+                  {whyInvitesFailed.find(w => w.email === e) && (
+                    <div style={{ fontFamily: 'inherit', lineHeight: 1.5, marginTop: 1 }}>
+                      {whyInvitesFailed.find(w => w.email === e)!.because}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -371,7 +391,7 @@ export function MagicVerifyPage() {
             what to do next.
           */}
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
-            Track their check-ins on your ground page, and add documents or notes
+            Track their check-ins on your check-in page, and add documents or notes
             for everyone to work from under <strong>Context</strong>.
           </div>
           <button
@@ -383,7 +403,7 @@ export function MagicVerifyPage() {
             )}
             style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Go to your ground →
+            Go to your check-in →
           </button>
         </div>
       </Arrival>
@@ -402,10 +422,10 @@ export function MagicVerifyPage() {
             </div>
           </div>
           <button className="gw-btn" style={{ marginBottom: 10 }} onClick={() => navigate('/grounds', { replace: true })}>
-            Go to my grounds →
+            Go to my check-ins →
           </button>
           <button className="gw-btn" style={{ background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }} onClick={() => navigate('/start', { replace: true })}>
-            Start a new ground
+            Start a new check-in
           </button>
         </div>
       </Arrival>
@@ -417,8 +437,8 @@ export function MagicVerifyPage() {
       <Arrival wide>
         <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
           <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Your account is active, but the ground wasn't saved.</div>
-            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your grounds page and start again from there.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Your account is active, but the check-in wasn't saved.</div>
+            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>Something went wrong saving your session. Your account is ready - go to your check-ins page and start again from there.</div>
           </div>
           <button
             className="gw-btn"
@@ -437,7 +457,7 @@ export function MagicVerifyPage() {
             {retrying ? 'Retrying...' : 'Try again'}
           </button>
           <button className="gw-btn" onClick={() => navigate('/grounds', { replace: true })}>
-            Go to grounds →
+            Go to check-ins →
           </button>
         </div>
       </Arrival>
@@ -449,7 +469,7 @@ export function MagicVerifyPage() {
       {!error ? (
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your ground…</div>
+          <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Setting up your check-in…</div>
         </div>
       ) : (
         <div style={{ padding: '0 20px' }}>

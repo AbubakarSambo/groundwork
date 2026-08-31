@@ -17,7 +17,7 @@ import { authApi } from '@/api/auth'
  *   - Ask someone who already belongs to an organisation. A person invited to a
  *     ground, signing in with Google, belongs to the org that invited them.
  *     Presenting them with "what should we call your workspace?" would be
- *     asking them to name someone else's company on their way into a ground
+ *     asking them to name someone else's company on their way into a check-in
  *     they were added to.
  *   - Hold anybody up. A default already exists, so skipping costs nothing and
  *     the way past is always one click.

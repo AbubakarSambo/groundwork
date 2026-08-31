@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest'
  *
  * `BillingPage` navigated to `/billing/payment`. That route does not exist -
  * `PaymentPage` is mounted at `/billing/checkout` - so "Add sessions", the control
- * for buying sessions on a ground, landed a paying customer on "There is nothing at
+ * for buying sessions on a check-in, landed a paying customer on "There is nothing at
  * this address", which tells them THEY typed something wrong.
  *
  * It was the only destination in the whole product that 404'd, and it was the one
@@ -36,7 +36,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out
 }
 
-const app = readFileSync(join(SRC, 'App.tsx'), 'utf8')
+const app = readFileSync(join(SRC, 'App.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** Routes as declared, minus the catch-all. */
 const routes = [...app.matchAll(/<Route\s+path="([^"]+)"/g)]
@@ -79,14 +79,14 @@ describe('every in-app destination resolves to a route', () => {
     // A source-scanning rule that matches nothing passes silently. This is the
     // line that makes the rest of the file mean something.
     expect(routes.length).toBeGreaterThan(20)
-    const all = walk(SRC).flatMap((f) => destinationsIn(readFileSync(f, 'utf8')))
+    const all = walk(SRC).flatMap((f) => destinationsIn(readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')))
     expect(all.length).toBeGreaterThan(20)
   })
 
   it('and none of them lands on the 404 page', () => {
     const dead: string[] = []
     for (const file of walk(SRC)) {
-      for (const target of destinationsIn(readFileSync(file, 'utf8'))) {
+      for (const target of destinationsIn(readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))) {
         const path = normalise(target)
         if (!matchers.some((rx) => rx.test(path))) {
           dead.push(`${file.replace(SRC, 'src')} -> ${target}`)

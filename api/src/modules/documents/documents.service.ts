@@ -5,12 +5,15 @@ const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buff
 const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require('xlsx') as typeof import('xlsx');
+const JSZip = require('jszip') as typeof import('jszip');
 import { ConfigService } from '@nestjs/config';
 import { documentWhereFor } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
+import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
+import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -29,6 +32,8 @@ const ALLOWED_MIME = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  /* Decks. A roadmap or an architecture overview usually arrives as one. */
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -37,8 +42,30 @@ const ALLOWED_MIME = [
 const TEXT_EXTRACTABLE = ['text/plain', 'text/csv', 'text/html', 'text/markdown', 'text/x-markdown', 'application/json', 'application/xml', 'text/xml', 'application/javascript', 'text/javascript'];
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const;
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * WHAT A BROWSER CALLS A FILE IS NOT WHAT THE FILE IS.
+ *
+ * `text/markdown` was on the allow-list and a Markdown file was still refused, because most
+ * browsers report a `.md` upload as `application/octet-stream` or as an empty string - they only
+ * know the extensions their own OS has registered. The allow-list was right about the format and
+ * never saw it.
+ *
+ * So where the browser has told us nothing useful, the extension gets a say. Only for formats that
+ * are plain text anyway: being wrong here costs a file that reads as gibberish, and being wrong the
+ * other way costs somebody the upload with a message telling them the format is unsupported when
+ * it is not.
+ */
+const UNHELPFUL_MIMES = ['', 'application/octet-stream', 'binary/octet-stream'];
+const TEXT_EXTENSIONS = ['.md', '.markdown', '.txt', '.csv', '.json', '.xml', '.yml', '.yaml', '.log', '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rb', '.java', '.sql', '.sh'];
+
+function looksLikeTextFromItsName(fileName: string): boolean {
+  const lower = (fileName ?? '').toLowerCase();
+  return TEXT_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
 
 /** True for any mimetype we treat as plain readable text, including ones not
  * explicitly listed above (e.g. text/x-python, text/x-java - source code
@@ -100,13 +127,24 @@ const CLAIMS_TOOL = {
   },
 };
 
-function toDocShape(doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any }) {
+function toDocShape(
+  doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null },
+  viewerParticipantId?: string,
+) {
   return {
     id: doc.id,
     name: doc.fileName,
     mimeType: doc.mimeType,
     uploadedAt: doc.createdAt,
     assessment: doc.assessment ?? null,
+    /*
+     * WHOSE IT IS, because only the uploader may move it and the screen had no way to know.
+     * A reader's list holds their own files AND everything OPEN, so a lead looking at a party's
+     * shared brief was shown an enabled control that answered "Document not found" - the message
+     * for a document that does not exist, said about one they were looking at.
+     * Same rule as `visibility`: omitted rather than guessed when the column was not selected.
+     */
+    ...(doc.participantId !== undefined ? { mine: doc.participantId === viewerParticipantId } : {}),
     // Who can read it. Omitted rather than defaulted when the column was not
     // selected, so a screen cannot mistake "not asked" for "private".
     ...(doc.visibility !== undefined ? { visibility: doc.visibility } : {}),
@@ -131,7 +169,34 @@ export class DocumentsService {
    * scanned meeting notes page all come back as text Groundwork can reason
    * about.
    */
+  /**
+   * SLIDE TEXT, IN SLIDE ORDER.
+   *
+   * A `.pptx` is a zip; every run of text on a slide is an `<a:t>` element in
+   * `ppt/slides/slideN.xml`. No new parser, and nothing here reconstructs layout or reads speaker
+   * notes - see slides-are-mostly-headings.ts for what it deliberately does not claim to do.
+   */
+  private async pptxToText(buffer: Buffer): Promise<string> {
+    let zip: import('jszip');
+    try {
+      zip = await JSZip.loadAsync(buffer);
+    } catch {
+      throw new BadRequestException('That presentation could not be opened. If it is an older .ppt, save it as .pptx and try again.');
+    }
+    const slides = await Promise.all(
+      slidesInOrder(Object.keys(zip.files)).map(async ({ name, number }) => ({
+        number,
+        text: textFromOneSlide((await zip.file(name)!.async('string')) ?? ''),
+      })),
+    );
+    return deckToText(slides);
+  }
+
   private async extractContent(file: Express.Multer.File): Promise<string> {
+    /* A file the browser could not name, whose extension says it is text, is read as text. */
+    if (UNHELPFUL_MIMES.includes(file.mimetype ?? '') && looksLikeTextFromItsName(file.originalname)) {
+      return file.buffer.toString('utf8');
+    }
     if (file.mimetype === 'application/pdf') {
       const parser = new PDFParse({ data: file.buffer });
       const text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
@@ -147,6 +212,9 @@ export class DocumentsService {
     }
     if (file.mimetype === XLSX_MIME) {
       return this.xlsxToText(file.buffer, file.originalname);
+    }
+    if (file.mimetype === PPTX_MIME || /\.pptx$/i.test(file.originalname ?? '')) {
+      return this.pptxToText(file.buffer);
     }
     if ((IMAGE_MIMES as readonly string[]).includes(file.mimetype)) {
       return this.mediaToText(file.buffer, file.mimetype, file.originalname);
@@ -174,30 +242,77 @@ export class DocumentsService {
     }
   }
 
-  async upload(groundId: string, userId: string, file: Express.Multer.File) {
+  async upload(
+    groundId: string,
+    userId: string,
+    file: Express.Multer.File,
+    /*
+     * WHETHER THEY CONFIRMED THE PEOPLE IN IT KNOW.
+     *
+     * Only ever read for something that looks like a record of a conversation. For a workplan or a
+     * job description it is not asked and not stored, because there is nobody else in those.
+     */
+    consentConfirmed = false,
+    /* What they want looked for in it, in their words. Kept exactly - see the schema note. */
+    uploaderNote?: string,
+  ) {
     if (!file) throw new BadRequestException('No file provided');
     if (file.size > MAX_BYTES) throw new BadRequestException('File must be under 10 MB');
-    if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype)) {
-      throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
+    const browserWasNoHelp = UNHELPFUL_MIMES.includes(file.mimetype ?? '');
+    const readableByName = browserWasNoHelp && looksLikeTextFromItsName(file.originalname);
+    if (!ALLOWED_MIME.includes(file.mimetype) && !isPlainTextMime(file.mimetype) && !readableByName) {
+      /*
+       * NAMES THE FORMAT THAT WAS REFUSED AND THE ONES THAT WORK. "Unsupported file type" followed
+       * by a list makes somebody check their file against nine entries to find out which rule they
+       * broke. Slides are the common one and are genuinely not supported - saying so directly beats
+       * leaving them to infer it.
+       */
+      /*
+       * .pptx is read now. The formats still refused are the ones nothing here can open: Keynote,
+       * OpenDocument, and the pre-2007 binary .ppt. Each gets the way through rather than a list.
+       */
+      const isOtherSlides = /\.(ppt|key|odp)$/i.test(file.originalname ?? '');
+      throw new BadRequestException(
+        isOtherSlides
+          ? 'That slide format cannot be read. Save or export it as .pptx or PDF and attach that - either keeps the text.'
+          : 'That file type cannot be read. Accepted: PDF, Word, Excel, PowerPoint, Markdown, plain text, CSV, HTML, code files, and images.',
+      );
     }
 
     const participant = await this.assertParticipant(groundId, userId);
     const content = await this.extractContent(file);
+    /*
+     * A RECORD OF A CONVERSATION IS REFUSED UNTIL SOMEBODY CONFIRMS THE PEOPLE IN IT KNOW.
+     *
+     * Refused rather than kept pending: a transcript sitting in a database waiting for permission
+     * is exactly the thing this is meant to prevent. The content is read to recognise the shape and
+     * then dropped with the request - nothing is written.
+     *
+     * The check errs towards asking. Being asked about a strategy deck costs one click; a
+     * transcript slipping through as an ordinary document costs somebody else their privacy.
+     */
+    const isConversation = looksLikeAConversation(file.originalname, content);
+    if (isConversation && !consentConfirmed) throw new BadRequestException(NOT_CONFIRMED);
+
     const assessment = await this.assessDocument(content, file.originalname);
 
     const doc = await this.prisma.groundDocument.create({
       data: {
         groundId,
         participantId: participant.id,
+        isConversation,
+        /* Who said it, and when they said it. Null on anything that is not a conversation. */
+        ...(isConversation ? { consentConfirmedAt: new Date(), consentConfirmedById: userId } : {}),
         // G24 rule 3: private unless somebody says otherwise. See
         // a-document-is-context.ts for why the lead is not an exception.
         visibility: defaultVisibilityForUpload(),
         fileName: file.originalname,
         mimeType: file.mimetype,
+        uploaderNote: uploaderNote?.trim() || null,
         content,
         assessment: assessment as any,
       },
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true },
     });
 
     // Extract structured claims from the document content and write them as
@@ -314,10 +429,10 @@ export class DocumentsService {
         { participantId: participant.id, isLead: ground?.initiatorId === userId },
         this.config.get<boolean>('app.contextEnabled') === true,
       ) as any,
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, visibility: true },
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, visibility: true, participantId: true },
       orderBy: { createdAt: 'asc' },
     });
-    return docs.map(toDocShape);
+    return docs.map((d) => toDocShape(d, participant.id));
   }
 
   /** Upload a document from a pre-auth participant identified by invite token. */
@@ -364,21 +479,53 @@ export class DocumentsService {
    * single worst thing this feature could do. Nobody would attach anything
    * afterwards.
    *
-   * CLOSED is not settable here on purpose. It means "the lead's own material",
-   * which is a fact about who uploaded it rather than a state to switch into: a
-   * participant moving their document to CLOSED would be handing it to the lead
-   * while believing they had made it more private.
+   * CLOSED IS THE LEAD'S ONLY, AND THAT IS THE WHOLE OF THE RULE.
+   *
+   * It used to be unsettable by anyone, for a good reason that turned out to be a
+   * reason about participants rather than about CLOSED: a participant moving their
+   * own document to CLOSED would be handing it to the lead while believing they
+   * had made it MORE private. That trap is real and the guard against it stays.
+   *
+   * It does not apply to the lead. "The lead's own material" read as a fact about
+   * who uploaded a file, but OWN already covers that - a lead's upload is private
+   * to them today. What CLOSED actually adds is the one case OWN cannot express:
+   * material the lead keeps that a co-lead or org admin reading with the lead's
+   * eyes may also read. So it is a state to switch into after all, for exactly one
+   * person, and the check is on who is asking rather than on the value asked for.
    */
   async setVisibility(
     groundId: string,
     docId: string,
     userId: string,
-    visibility: 'OPEN' | 'OWN',
+    visibility: 'OPEN' | 'OWN' | 'CLOSED',
   ) {
     if (this.config.get<boolean>('app.contextEnabled') !== true) {
       throw new ForbiddenException('Context is not enabled on this deployment');
     }
+    /*
+     * The body is a plain type, not a validated DTO, so the string arrives unchecked. That was
+     * harmless while both values were harmless; now that one of them decides who else can read a
+     * file, an unrecognised value is refused here rather than handed to Prisma to reject.
+     */
+    if (visibility !== 'OPEN' && visibility !== 'OWN' && visibility !== 'CLOSED') {
+      throw new BadRequestException('Unknown visibility');
+    }
     const participant = await this.assertParticipant(groundId, userId);
+
+    /*
+     * Checked before the document is looked up, so a participant who guesses the value gets the
+     * same refusal whether or not the id they sent is real.
+     */
+    if (visibility === 'CLOSED') {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { initiatorId: true },
+      });
+      if (ground?.initiatorId !== userId) {
+        throw new ForbiddenException('Only the person running this check-in can keep a document to themselves');
+      }
+    }
+
     const doc = await this.prisma.groundDocument.findFirst({
       where: { id: docId, groundId, participantId: participant.id },
     });
@@ -415,9 +562,9 @@ export class DocumentsService {
 
   private async assertParticipant(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
-    if (!ground) throw new NotFoundException('Ground not found');
+    if (!ground) throw new NotFoundException('Check-in not found');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this ground');
+    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
     return participant;
   }
 }

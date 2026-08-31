@@ -42,7 +42,11 @@ from _runner import (
     mail_link,
     seed_closed_entry_session,
     complete_password_step,
+    complete_org_setup,
     ground_reached,
+)
+from _ui_strings import (  # UI copy the product owns - see the guard in
+    GROUND_IS_SET_UP, INVITE_AND_FINISH, NO_SESSION_ON_DEVICE, SAVE_MY_CHECKIN, SENT_A_LINK, WAITING_TO_SEND,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
 )
 
 rec = Recorder("suite_v")
@@ -104,19 +108,27 @@ async def main() -> int:
         # class: an ended session must never be discarded on reload).
         # the save modal exists in the DOM but is visibility:hidden until
         # opened - judge by VISIBILITY, not presence
-        save_btn = page.get_by_text("Save my ground").first
+        save_btn = page.get_by_text(SAVE_MY_CHECKIN).first
         if not await save_btn.is_visible():
-            bar = page.get_by_text("Invite & finish")
+            bar = page.get_by_text(INVITE_AND_FINISH)
             if await bar.count():
                 await bar.first.click()
                 await page.wait_for_timeout(800)
-        rec.check("V1", await page.get_by_text("Save my ground").first.is_visible(),
+        rec.check("V1", await page.get_by_text(SAVE_MY_CHECKIN).first.is_visible(),
                   "closed session restores and offers the save card", hard=True, url=f"{BASE_URL}/start")
 
+        # THE ORGANISATION'S NAME IS ASKED BEFORE THE EMAIL NOW, not after it.
+        #
+        # It used to live only on the panel shown while waiting for the link, which meant the
+        # Google path - which never sees that panel - was never offered it, and a person who
+        # signed up that way kept "Ada's Workspace" forever. It moved one step earlier, where both
+        # ways out pass. This suite filled it afterwards and timed out waiting for a field that is
+        # no longer there, which is the runner being right and out of date at the same time.
+        await page.locator("input[placeholder*='Organisation name']:visible").first.fill(ORG_NAME)
         await page.locator("input[placeholder*='your@email']:visible").first.fill(EMAIL)
-        await page.get_by_text("Save my ground").first.click()
+        await page.get_by_text(SAVE_MY_CHECKIN).first.click()
         try:
-            await page.get_by_text("We sent a link to").wait_for(timeout=15000)
+            await page.get_by_text(SENT_A_LINK).wait_for(timeout=15000)
             rec.record("V1", "OK", "entry-save accepted, magic link on its way")
             await rec.step(page, "saved with email - link on its way", "persona A")
         except Exception:
@@ -124,9 +136,8 @@ async def main() -> int:
             await browser.close()
             return rec.finish()
 
-        # Post-email edits: org name + one contributor (the state that used to
-        # live ONLY in this browser's localStorage).
-        await page.locator("input[placeholder*='Organisation name']:visible").first.fill(ORG_NAME)
+        # Post-email edits: one contributor (the state that used to live ONLY in this
+        # browser's localStorage). The org name is set before the email now - see above.
         await page.locator("input[placeholder*='name@company']:visible").first.fill(CONTRIB)
         await page.keyboard.press("Enter")
         await page.wait_for_timeout(700)
@@ -153,7 +164,7 @@ async def main() -> int:
         await page.wait_for_timeout(2000)  # let the debounced draft PATCH fire
 
         await rec.step(page, "org name + contributor added AFTER email", "persona A")
-        queued = await page.get_by_text("Waiting to send").count()
+        queued = await page.get_by_text(WAITING_TO_SEND).count()
         rec.check("V1", queued > 0, "queued invites are visible ('Waiting to send')",
                   "the emailSent box shows no queue - the send moment is invisible again")
 
@@ -201,6 +212,7 @@ async def main() -> int:
         # step (it must be - putting the step first is what made this suite fail), so this is a
         # detour on the way to the same place, not a change to what V2 is checking.
         await complete_password_step(page_b)
+        await complete_org_setup(page_b, EMAIL)
         if await ground_reached(page_b):
             rec.record("V2", "OK", "fresh context: the ground is there after the magic link")
             await rec.step(page_b, "FRESH CONTEXT: ground survived the magic link", "persona A (new browser)")
@@ -244,8 +256,17 @@ async def main() -> int:
             code_me, me = api("GET", "/auth/me", token=token)
             if code_me == 200 and isinstance(me, dict):
                 org_name = org_name or (me.get("organizationName") or "")
+            # WHAT THIS PROVES CHANGED WHEN THE FIELD MOVED.
+            #
+            # The org name used to be typed after the email, so this checked the draft PATCH. It is
+            # asked before the email now - the Google path never sees the post-email panel, so a
+            # person signing up that way was never offered it at all. The name now rides in the
+            # entry-save payload instead, and this checks it survives from there to the ground.
+            #
+            # The PATCH is still covered: the ground label a few lines above is typed after the
+            # email and reaches the ground the same way.
             rec.check("V2", ORG_NAME in (org_name or ""),
-                      "org carries the name typed AFTER the email (draft PATCH worked)",
+                      "org carries the name typed BEFORE the email (entry-save payload carried it)",
                       f"org name is {org_name!r}, expected {ORG_NAME!r}", hard=True)
         # the contributor's invite email actually fired
         contrib_link = mail_link(CONTRIB, timeout_s=15)
@@ -288,7 +309,7 @@ async def main() -> int:
             )
             await page_d.goto(legacy_link)
             try:
-                await page_d.get_by_text("Your ground is set up").wait_for(timeout=25000)
+                await page_d.get_by_text(GROUND_IS_SET_UP).wait_for(timeout=25000)
                 rec.record("V4", "OK", "legacy localStorage payload still commits (no draft row)")
             except Exception:
                 rec.check("V4", False, "legacy no-draft path commits from the body",
@@ -311,7 +332,7 @@ async def main() -> int:
             )
             await page_e.goto(lost_link)
             await page_e.wait_for_timeout(8000)
-            explicit = await page_e.get_by_text("We couldn't find your session on this device").count()
+            explicit = await page_e.get_by_text(NO_SESSION_ON_DEVICE).count()
             on_setup = "/setup" in page_e.url
             rec.check("V5", explicit > 0 and not on_setup,
                       "lost-session shows the EXPLICIT screen, never a silent /setup",

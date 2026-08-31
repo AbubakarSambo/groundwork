@@ -12,7 +12,7 @@ import { parentDomain, markSignedIn, clearSignedIn } from './signed-in-flag'
  * exactly, not loosely.
  *
  * IT MUST BE DELETABLE. A flag that cannot be cleared leaves the marketing site offering "Go to
- * your grounds" after somebody signs out, which reads as the sign-out having failed.
+ * your check-ins" after somebody signs out, which reads as the sign-out having failed.
  */
 describe('what the flag is allowed to be', () => {
   beforeEach(() => {

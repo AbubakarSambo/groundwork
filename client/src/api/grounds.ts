@@ -1,17 +1,30 @@
 import { apiClient } from './client'
 import type { Ground } from '@/types'
 
+export interface Delivery {
+  id: string
+  text: string
+  evidence: string | null
+  objectiveId: string | null
+  createdAt: string
+  /** Set once a session has raised it. Until then it is still waiting to be asked about. */
+  carriedIntoCheckInId: string | null
+}
+
+
 export type GroundScenario =
-  | 'NEW_HIRE' | 'NEW_COFOUNDER' | 'NEW_ADVISOR'
+  | 'NEW_HIRE' | 'ROLE_HANDOVER' | 'NEW_COFOUNDER' | 'NEW_ADVISOR'
   | 'NEW_PROJECT' | 'NEW_MANAGER' | 'CONTRACT_RENEWAL'
   | 'RECOGNITION' | 'DRIFT' | 'CRISIS_ALIGNMENT'
   | 'OKR_ALIGNMENT' | 'WORKPLAN_BUDGET' | 'PULSE_CHECK'
   | 'REALIGN_TEAM' | 'PIP' | 'BOARD_STRATEGY' | 'COHORT_CHECK' | 'ACUTE_SHOCK'
   /** The honest default when a described situation matches no card. Mirrors the server enum. */
   | 'OPEN_READ'
+  // One honest read from everybody, once. The only situation with no run and no board.
+  | 'SNAPSHOT'
 
 export type GroundMoment = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
-export type GroundCadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL'
+export type GroundCadence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | 'ONE_TIME'
 
 export interface CreateGroundBody {
   label: string
@@ -32,6 +45,16 @@ export interface AddParticipantBody {
   email: string
   roleAsDescribed?: string
   note?: string
+  /**
+   * WHEN THIS PERSON STARTS, IF THEY HAVE NOT.
+   *
+   * A future date does two things on the server: nothing before it counts as a period they went quiet
+   * in, and their invitation is held until the day. An email asking somebody to account for their work
+   * can otherwise arrive before they have signed a contract, and it cannot be recalled once read.
+   *
+   * ISO date. Omit when the work is already underway, which is most people on most grounds.
+   */
+  startsAt?: string
 }
 
 export interface CreateGroundForLeadBody {
@@ -108,13 +131,26 @@ export const groundsApi = {
   confirmLead: (groundId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) =>
     apiClient.post<{ groundId: string; checkInId: string | null }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
 
-  getOrgRoster: () =>
-    apiClient.get<OrgRosterEntry[]>('/grounds/org-roster').then(r => r.data),
+  /**
+   * `getOrgRoster` USED TO SIT HERE. W-UX-C.
+   *
+   * It fed `/org/roster`, an "All grounds" page that was retired when `grounds.list` was found to
+   * return the same data to an admin already - one page at two addresses, with two levels of detail
+   * rather than two audiences. The page went; its client method did not, and has called nothing
+   * since. `GroundsListPage` carries a comment naming this exact history.
+   *
+   * The SERVER route stays, per the standing rule about not removing routes.
+   */
 
   addParticipant: (groundId: string, body: AddParticipantBody) =>
     apiClient.post(`/grounds/${groundId}/participants`, body).then(r => r.data),
 
-  addLeadContext: (groundId: string, body: { participantId?: string; text: string }) =>
+  /**
+   * `audience` is WHO READS IT and nothing else. EVERYONE is the lead's framing of the situation,
+   * read by the whole check-in and still never quotable - the same rule as a private note, with a
+   * different readership. Omitted means LEAD_ONLY, which is what every note was before this existed.
+   */
+  addLeadContext: (groundId: string, body: { participantId?: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) =>
     apiClient.post(`/grounds/${groundId}/lead-context`, body).then(r => r.data),
 
   activate: (groundId: string) =>
@@ -134,7 +170,7 @@ export const groundsApi = {
   setPeopleWorkTogether: (groundId: string, together: boolean) =>
     apiClient.patch<{ id: string; peopleWorkTogether: boolean }>(`/grounds/${groundId}/people-work-together`, { together }).then(r => r.data),
 
-  update: (groundId: string, body: { label?: string; timelineWeeks?: number; cadence?: GroundCadence; contextNote?: string }) =>
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
 
   getMySpecificity: (groundId: string) =>
@@ -233,6 +269,34 @@ export const groundsApi = {
       .then(r => r.data),
 
   /** Your own between-session notes. Private: never in a report, never to the lead. */
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND WHAT IT RESTS ON. `GroundBaseline`, which had no caller at all.
+   *
+   * Stating it again is a new VERSION, never an edit - the schema's own note: "half the findings this
+   * product makes are the distance between what people believed at the start and what turned out to be
+   * true. Corrected, a baseline becomes a second description of the present and the arc disappears."
+   */
+  stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
+    apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
+      `/grounds/${groundId}/baseline`, body,
+    ).then(r => r.data),
+
+  baselineHistory: (groundId: string) =>
+    apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
+      `/grounds/${groundId}/baseline`,
+    ).then(r => r.data),
+
+  /**
+   * GW-EXP-2. Marks THIS viewer's own expectation as seen, and only their own.
+   *
+   * A dedicated call because the first version flipped `seenBySubject` on the ground read, which
+   * happens from every tab - so it marked an expectation seen for somebody who never opened the view
+   * that shows it. Being measured against something you have never laid eyes on is the failure this
+   * flag exists to prevent, so the flag has to mean what it says.
+   */
+  markMyExpectationShown: (groundId: string) =>
+    apiClient.post<{ ok: true }>(`/grounds/${groundId}/my-expectation/shown`).then(r => r.data),
+
   myNotes: (groundId: string) =>
     apiClient
       .get<{ id: string; text: string; createdAt: string; carriedIntoCheckInId: string | null }[]>(
@@ -251,6 +315,33 @@ export const groundsApi = {
 
   deleteMyNote: (groundId: string, noteId: string) =>
     apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-notes/${noteId}`).then(r => r.data),
+
+  /**
+   * Somebody looked at the ticket behind a REFERENCE expectation. The one write that keeps a
+   * pointer honest: what it says and when that was true, together, stamped by the server.
+   */
+  markExpectationLookedAt: (groundId: string, objectiveId: string, lastSeenState: string) =>
+    apiClient
+      .patch<{ ok: true }>(`/grounds/${groundId}/expectations/${objectiveId}/looked`, { lastSeenState })
+      .then(r => r.data),
+
+  myDeliveries: (groundId: string) =>
+    apiClient
+      .get<Delivery[]>(`/grounds/${groundId}/my-deliveries`, {
+        skipForbiddenToast: true,
+        skipNotFoundToast: true,
+      })
+      .then(r => r.data),
+
+  /**
+   * What you say you delivered. It reaches your next session as something to be ASKED about -
+   * `carriedIntoCheckInId` is how the page can say so honestly once that has happened.
+   */
+  addDelivery: (groundId: string, body: { text: string; evidence?: string; objectiveId?: string }) =>
+    apiClient.post<Delivery>(`/grounds/${groundId}/my-deliveries`, body).then(r => r.data),
+
+  deleteMyDelivery: (groundId: string, deliveryId: string) =>
+    apiClient.delete<{ deleted: boolean }>(`/grounds/${groundId}/my-deliveries/${deliveryId}`).then(r => r.data),
 
   /** Grounds a member set up that an admin has not accepted yet. Admin only. */
   awaitingApproval: () =>
@@ -282,44 +373,7 @@ export const groundsApi = {
       .post<{ changed: string; say: string }>(`/grounds/${groundId}/context-chat/confirm`, { said })
       .then(r => r.data),
 
-  /**
-   * WHAT DOING WELL LOOKS LIKE, AND WHAT IT RESTS ON. `GroundBaseline`, which had no caller at all.
-   *
-   * Stating it again is a new VERSION, never an edit - the schema's own note: "half the findings this
-   * product makes are the distance between what people believed at the start and what turned out to be
-   * true. Corrected, a baseline becomes a second description of the present and the arc disappears."
-   */
-  stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
-    apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
-      `/grounds/${groundId}/baseline`, body,
-    ).then(r => r.data),
 
-  baselineHistory: (groundId: string) =>
-    apiClient.get<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }[]>(
-      `/grounds/${groundId}/baseline`,
-    ).then(r => r.data),
-
-  /**
-   * WHAT EACH PERSON IS WORKING TOWARDS. `PersonObjective`, which had a 169-line module and no writer.
-   *
-   * Three calls because the rule needs three states: a lead proposing, the person accepting what was
-   * proposed, and the person writing their own. `mayBeReadAgainst` refuses a proposal nobody has seen,
-   * which is why accepting is its own deliberate act.
-   */
-  proposeObjective: (groundId: string, participantId: string, text: string) =>
-    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
-      `/grounds/${groundId}/objectives/${participantId}`, { text },
-    ).then(r => r.data),
-
-  stateMyObjective: (groundId: string, text: string) =>
-    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
-      `/grounds/${groundId}/my-objective`, { text },
-    ).then(r => r.data),
-
-  acceptMyObjective: (groundId: string) =>
-    apiClient.post<{ text: string; authoredBy: string; seenBySubject: boolean }>(
-      `/grounds/${groundId}/my-objective/accept`,
-    ).then(r => r.data),
 
   /**
    * WHERE THIS STOOD ON DAY ONE. `GroundBaselineEntry`, append-only.

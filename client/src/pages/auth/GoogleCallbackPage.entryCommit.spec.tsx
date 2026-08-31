@@ -10,7 +10,7 @@ import { entryApi } from '@/api/entry'
  * The entry flow does the whole conversation first and only then asks who you
  * are - so someone choosing Google there already has a finished ground waiting.
  * Google has verified their address, so there is no confirmation email to wait
- * for: the ground is created on the way back.
+ * for: the check-in is created on the way back.
  *
  * The payload rides in localStorage because the page is replaced by Google's.
  * Nothing is persisted server-side until they have actually signed in, which is
@@ -20,7 +20,7 @@ import { entryApi } from '@/api/entry'
  *
  *   - The org-name question must NOT interrupt this path, even for a brand-new
  *     account. The setup panel has its own field for it; stopping someone
- *     between "signed in" and "here is your ground" to ask something they have
+ *     between "signed in" and "here is your check-in" to ask something they have
  *     already been offered is the worst possible moment for it.
  *   - A commit that fails must not strand them on a callback screen. Their
  *     session is still in storage, so the entry flow is where they can carry on.
@@ -55,10 +55,10 @@ const pending = JSON.stringify({
   history: [{ role: 'user', content: 'A new hire is starting.' }],
 })
 
-describe('coming back from Google with a ground already built', () => {
+describe('coming back from Google with a check-in already built', () => {
   beforeEach(() => { vi.clearAllMocks(); navigated.length = 0; localStorage.clear() })
 
-  it('creates the ground and lands on it, with no confirmation email in between', async () => {
+  it('creates the check-in and lands on it, with no confirmation email in between', async () => {
     localStorage.setItem('gw_entry_pending_commit', pending)
     ;(entryApi.commit as any).mockResolvedValue({ groundId: 'g-77' })
 
@@ -102,7 +102,7 @@ describe('coming back from Google with a ground already built', () => {
     expect(localStorage.getItem('gw_entry_pending_commit')).toBeNull()
   })
 
-  it('sends them back to their session rather than stranding them if the ground fails', async () => {
+  it('sends them back to their session rather than stranding them if the check-in fails', async () => {
     localStorage.setItem('gw_entry_pending_commit', pending)
     ;(entryApi.commit as any).mockRejectedValue(new Error('nope'))
 

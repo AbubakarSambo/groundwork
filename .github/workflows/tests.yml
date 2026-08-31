@@ -1,0 +1,129 @@
+name: Tests (PR)
+
+# THE SUITES NOBODY WAS RUNNING.
+#
+# This repository had 3,248 tests and not one of them gated a pull request. The
+# only workflow on `pull_request` was the persona gate, which boots the stack and
+# talks to it - valuable, and a different question entirely from "does the code
+# still do what its guards say".
+#
+# The cost of that was not theoretical. In one week of work it hid a phantom
+# schema column that killed every write to a table, a page nothing linked to, and
+# four dead scroll targets - all of them caught by hand, none by CI, because CI
+# was never asked.
+#
+# Deliberately cheap: no browser, no model credentials, no mail catcher. It should
+# finish in a couple of minutes so it can be the check people actually wait for.
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - "client/**"
+      - ".github/workflows/tests.yml"
+  push:
+    branches: [staging, main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API - types, guards, schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    # The suites mock Prisma, but the client is instantiated at import time and
+    # the drift check below needs somewhere real to compare against.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: groundwork
+          POSTGRES_PASSWORD: groundwork
+          POSTGRES_DB: groundwork_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U groundwork"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://groundwork:groundwork@127.0.0.1:5432/groundwork_test
+      NODE_ENV: development
+      JWT_SECRET: ci-test-secret-not-for-production
+      RESEND_API_KEY: re_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install
+        working-directory: api
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: api
+        run: npx prisma generate
+
+      - name: Types
+        working-directory: api
+        run: npx tsc --noEmit
+
+      - name: Tests
+        working-directory: api
+        run: npx jest --ci
+
+      # THE ONE THAT NEEDS A DATABASE.
+      #
+      # `the-schema-and-the-migrations-agree.spec.ts` approximates this by reading
+      # the migrations as text, which is enough to catch a column nothing creates
+      # and no more. This asks Postgres properly: apply every migration, then ask
+      # whether the result differs from schema.prisma at all. It is what catches a
+      # migration that is present but wrong.
+      - name: Migrations match the schema
+        working-directory: api
+        run: |
+          npx prisma migrate deploy
+          npx prisma migrate diff \
+            --from-schema-datasource prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code
+
+  client:
+    name: Client - types and guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        working-directory: client
+        run: npm ci
+
+      - name: Types
+        working-directory: client
+        run: npx tsc --noEmit
+
+      - name: Tests
+        working-directory: client
+        run: npx vitest run

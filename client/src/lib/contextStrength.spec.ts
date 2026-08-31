@@ -4,7 +4,7 @@ import { whatThisGroundCanTellYou } from './contextStrength'
 /**
  * THE CARD MUST NOT DISAGREE WITH ITSELF ABOUT THE GROUND IT IS DESCRIBING. W8-7.
  *
- * On a one-person ground it said "only one person is in this ground" and, four
+ * On a one-person ground it said "only one person is in this check-in" and, four
  * lines later, "only the two of you are in it". Both lines came from the same
  * function, and the second was written for the two-person case and then reused
  * for anything under three.
@@ -21,8 +21,8 @@ const base = {
   plannedSessions: 1,
 }
 
-describe('how many people the card thinks are in the ground', () => {
-  it('never says "the two of you" about a ground with one person in it', () => {
+describe('how many people the card thinks are in the check-in', () => {
+  it('never says "the two of you" about a check-in with one person in it', () => {
     const read = whatThisGroundCanTellYou({ ...base, partyCount: 1 })
     expect(read.cannot.join(' ')).not.toContain('two of you')
   })
@@ -39,7 +39,7 @@ describe('how many people the card thinks are in the ground', () => {
   })
 })
 
-describe('a ground always does something', () => {
+describe('a check-in always does something', () => {
   it('so the card is never a page of nothing but limits', () => {
     // The failure this guards is the one Hafsah met: one line of what it can do
     // against seven of what it cannot, which reads as the product apologising.

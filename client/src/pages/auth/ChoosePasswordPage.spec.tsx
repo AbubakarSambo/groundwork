@@ -8,7 +8,7 @@ import { authApi } from '@/api/auth'
 /**
  * WHERE THE PASSWORD PAGE SENDS PEOPLE NEXT.
  *
- * The lead invite email says "review the ground I set up for you". Setting the
+ * The lead invite email says "review the check-in I set up for you". Setting the
  * password then dropped the lead on the whole grounds list, because `next` was
  * read by this page and passed by nobody. `grounds.service.ts` now sends
  * `next=/grounds/{id}`.
@@ -54,7 +54,7 @@ beforeEach(() => {
   ;(authApi.setPassword as any).mockResolvedValue({ user: { id: 'u1' }, accessToken: 'a' })
 })
 
-describe('the lead lands on the ground they were invited to', () => {
+describe('the lead lands on the check-in they were invited to', () => {
   it('follows next when it is a path in this app', async () => {
     expect(await setPasswordWith('/grounds/g-123')).toBe('/grounds/g-123')
   })

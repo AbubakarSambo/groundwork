@@ -8,6 +8,12 @@ import { GroundScenario } from '@prisma/client';
  * the ground is about, the decision belongs to whoever holds it in real life.
  */
 export const END_STATES: Record<GroundScenario, { value: string; label: string; description?: string }[]> = {
+  ROLE_HANDOVER: [
+    { value: 'HANDED_OVER', label: 'Handed over' },
+    { value: 'GAPS_REMAIN', label: 'Handed over with named gaps', description: 'The successor has it, and both sides named what was not transferred rather than pretending it was.' },
+    { value: 'NEEDS_MORE_TIME', label: 'Not finished - extend it' },
+    { value: 'PREDECESSOR_GONE', label: 'Ended without the predecessor', description: 'They left before this finished. Recorded honestly so the gaps are attributed to the circumstance rather than to the successor.' },
+  ],
   NEW_HIRE: [
     { value: 'KEEP', label: 'Keep the hire' },
     { value: 'RESTRUCTURE', label: 'Restructure the role' },
@@ -115,11 +121,37 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
   ],
   // ACUTE_SHOCK ends when the PICTURE is settled, not when a decision is made -
   // the decision happens after this ground, informed by the record.
+  /**
+   * ALL FOUR OF THESE USED TO CLOSE ON THE PICTURE, AND NONE ON THE OUTCOME.
+   *
+   * The old set was PICTURE_SHARED, READS_DIVERGE, UNKNOWNS_REMAIN, NOT_YET - and the first carried
+   * the note "any decision now happens outside this ground". So a fortnight of daily check-ins aimed
+   * at getting a client back could only ever end by saying everyone agreed on what had happened.
+   * Whether the client came back was not something the ground could record.
+   *
+   * The picture states are kept, because a shock genuinely can end there: sometimes the honest
+   * outcome is that the accounts never reconciled, or the facts never landed. What is added is the
+   * half that was missing - what happened to the thing you were trying to achieve.
+   */
   ACUTE_SHOCK: [
-    { value: 'PICTURE_SHARED', label: 'Shared picture established', description: 'Everyone\'s accounts are on record and the picture of what happened is agreed. Any decision now happens outside this ground, informed by it.' },
-    { value: 'READS_DIVERGE', label: 'Accounts differ - gaps named', description: 'The accounts do not match. The specific points of divergence are named so the follow-up conversation starts there.' },
+    { value: 'OBJECTIVE_MET', label: 'What we set out to do, done', description: 'The objective set after the first session was achieved, and the record shows what moved and who moved it.' },
+    { value: 'PARTLY_RECOVERED', label: 'Partly recovered', description: 'Some of the objective was achieved and some was not. The record shows which parts, and what was still stuck when the fortnight ended.' },
+    { value: 'NOT_RECOVERED', label: 'Not recovered', description: 'The objective was not achieved. The record shows what was tried and where it stalled, which is what a decision about what to do next should rest on.' },
+    { value: 'OBJECTIVE_OVERTAKEN', label: 'Overtaken by events', description: 'What we were trying to achieve stopped being the right aim partway through. The record shows when that became clear and why.' },
+    { value: 'PICTURE_SHARED', label: 'Shared picture established, nothing to recover', description: 'The accounts are on record and agreed, and there was nothing to win back - the event was what it was. No objective was set, deliberately.' },
+    { value: 'READS_DIVERGE', label: 'Accounts differ - gaps named', description: 'The accounts never reconciled, so no shared objective could honestly be set. The specific points of divergence are named so the conversation starts there.' },
     { value: 'UNKNOWNS_REMAIN', label: 'Key facts still unknown', description: 'The picture cannot be settled yet because named facts are still missing. Revisit when they land.' },
     { value: 'NOT_YET', label: 'Not yet - more accounts needed' },
+  ],
+  /**
+   * A snapshot cannot "resolve" in the sense the other scenarios do - there is no objective to have
+   * been met and no follow-up to schedule. What it can do is say what the read showed, so the lead
+   * knows whether to open something that runs.
+   */
+  SNAPSHOT: [
+    { value: 'READ_TAKEN', label: 'Read taken, nothing needs opening', description: 'Everyone answered and nothing in the accounts needs watching over time. The record stands as a snapshot of this week.' },
+    { value: 'NEEDS_A_RUN', label: 'Something here needs watching', description: 'The accounts point at something that will not settle on its own. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },
+    { value: 'THIN_RESPONSE', label: 'Too few answers to read', description: 'Not enough people answered for the spread to mean anything. Nothing is concluded from what did come in.' },
   ],
 };
 
@@ -129,6 +161,47 @@ export function endStatesFor(scenario: GroundScenario) {
 
 export function isValidEndState(scenario: GroundScenario, value: string): boolean {
   return endStatesFor(scenario).some((o) => o.value === value);
+}
+
+/**
+ * OUTCOMES THAT ONLY MEAN SOMETHING IF THERE WAS AN OBJECTIVE.
+ *
+ * A ground can reach its end without one ever having been set - most often because the first session
+ * never produced a checkable statement of what was being worked to, which is itself a finding. Offering
+ * "what we set out to do, done" on that ground invites somebody to close it as a success against a
+ * target nobody wrote down.
+ *
+ * Only the ACUTE_SHOCK set has these today, because it is the only scenario whose end states were
+ * written in two halves: what happened to the picture, and what happened to the objective. Naming them
+ * here rather than inferring from the label keeps it honest - a future outcome state has to be added to
+ * this list deliberately.
+ */
+const NEEDS_AN_OBJECTIVE = new Set([
+  'OBJECTIVE_MET',
+  'PARTLY_RECOVERED',
+  'NOT_RECOVERED',
+  'OBJECTIVE_OVERTAKEN',
+]);
+
+/**
+ * The end states a ground may actually close on.
+ *
+ * `hadAnObjective` is the caller's to establish - it is a question about the ground's record, not about
+ * its scenario. When it is false, the outcome states are withheld and the picture states remain, which
+ * is the honest set: the accounts are on record and nothing was being measured.
+ */
+export function endStatesForGround(
+  scenario: GroundScenario,
+  opts: { hadAnObjective: boolean },
+): { value: string; label: string; description?: string }[] {
+  const all = endStatesFor(scenario);
+  if (opts.hadAnObjective) return all;
+  const kept = all.filter((o) => !NEEDS_AN_OBJECTIVE.has(o.value));
+  /**
+   * Never strip a scenario down to nothing. If every one of its end states needed an objective, the
+   * scenario would become unclosable, which is worse than offering a state that reads oddly.
+   */
+  return kept.length ? kept : all;
 }
 
 
