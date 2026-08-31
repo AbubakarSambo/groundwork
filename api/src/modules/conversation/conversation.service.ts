@@ -2331,12 +2331,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const minTurns = checkIn.isSelfCorrection ? 1 : 3;
     if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
-      throw new BadRequestException({
-        message:
-          'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
-        /** See ANSWERABLE below: this refusal asks for something, so it must be possible to give it. */
-        canContinue: true,
-      });
+      throw new BadRequestException(
+        'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
+      );
     }
     // SUBSTANCE, NOT LENGTH. Counting characters rejected two of one person's
     // real check-ins in a live run - answers that named a buyer, a number and a
@@ -2363,31 +2360,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
     const MIN_REAL_TURNS = checkIn.isSelfCorrection ? 1 : 2;
 
-    /**
-     * ANSWERABLE. A REFUSAL THAT ASKS FOR SOMETHING HAS TO LEAVE A WAY TO GIVE IT.
-     *
-     * These two gates say "answer one or two more questions, then complete" - and the person they
-     * say it to often cannot. When the engine decides a session is over it returns sessionComplete,
-     * the chat sets `done`, and `done` disables the composer. So the sequence is: the engine closes
-     * the session, the person presses Complete, the server tells them to answer more, and the box
-     * they would answer in is already switched off. There is nothing left to press. That is the
-     * dead end behind "I could not complete the check-in".
-     *
-     * The turn floor above already had half of this fixed - it lets somebody out when they SAID
-     * they were done. This gate is deliberately unconditional and stays that way: leaving early is
-     * fine, leaving nothing behind is not, and weakening it would put empty records into shared
-     * reports. What was missing was not a softer gate but an honest one, so it now tells the client
-     * that this particular refusal is answerable, and the client re-opens the composer.
-     *
-     * `canContinue` is on the refusal rather than inferred from its wording, because matching on
-     * the sentence would make the copy load-bearing: somebody rewording it later would silently
-     * reinstate the trap.
-     */
     if (totalPersonChars < MIN_CHARS || substantiveTurns.length < MIN_REAL_TURNS) {
-      throw new BadRequestException({
-        message: 'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
-        canContinue: true,
-      });
+      throw new BadRequestException(
+        'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
+      );
     }
 
     // Score session specificity from person's turns before marking complete
