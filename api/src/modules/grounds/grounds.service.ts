@@ -258,7 +258,7 @@ export class GroundsService {
     // Resolve whether this org may create a ground right now, and how.
     const canCreate = await this.billing.canCreateGround(organizationId, dto.accessCode);
     if (!canCreate.allowed) {
-      throw new BadRequestException(canCreate.reason ?? 'Ground creation not allowed');
+      throw new BadRequestException(canCreate.reason ?? 'You cannot open a check-in here.');
     }
 
     /*
@@ -478,7 +478,7 @@ export class GroundsService {
   async createForLead(organizationId: string, adminUserId: string, dto: CreateGroundForLeadDto) {
     const canCreate = await this.billing.canCreateGround(organizationId);
     if (!canCreate.allowed) {
-      throw new BadRequestException(canCreate.reason ?? 'Ground creation not allowed');
+      throw new BadRequestException(canCreate.reason ?? 'You cannot open a check-in here.');
     }
 
     const leadEmail = dto.leadEmail.toLowerCase();

@@ -61,7 +61,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
           {read
             ? <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', maxWidth: 132, lineHeight: 1.35 }}>{read}</div>
-            : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No read yet</div>}
+            : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No report yet</div>}
         </div>
       </div>
       {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
