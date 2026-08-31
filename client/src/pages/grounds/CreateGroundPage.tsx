@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
+import { whatMatches, alsoTyped, NOTHING_MATCHED } from '@/lib/finding-your-situation'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
@@ -478,6 +479,15 @@ export function CreateGroundPage() {
     retry: false,
   })
   const navigate = useNavigate()
+  /* Twenty cards is a wall even in six groups, if your words are not our headings. */
+  const [situationSearch, setSituationSearch] = useState('')
+  /* null means "not searching" - show the grouped list. An empty array means "searched, found
+     nothing", which is a different thing and gets a different message. */
+  const matches = useMemo(
+    () => whatMatches(alsoTyped(SCENARIOS), situationSearch),
+    [situationSearch],
+  )
+
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
   /* Coaching is a paid feature, the same as the integration API. Null means nobody has ever paid. */
@@ -809,6 +819,86 @@ export function CreateGroundPage() {
   // We show TOTAL_STEPS dots (6), mapping internal step directly
   const displayStep = step
 
+  const renderSituation = (card: ScenarioCard) => {
+                        const facts = SCENARIO_FACTS[card.scenario]
+                        const sessions = recommendedSessions(card.scenario)
+                        const isSel = selectedCard === card.cardKey
+                        const arcOpen = openArc === card.cardKey
+                        const pick = () => {
+                          setScenario(card.scenario)
+                          setSelectedCard(card.cardKey)
+                          sessionStorage.setItem('gw-new-ground-card', card.cardKey)
+                          /* Seeding, not setting. Both were hardcoded here - 90 days and
+                             fortnightly for every situation - so the engine's per-scenario
+                             timeline was never reached on the path people use. The lead still
+                             changes either one at step 3. */
+                          setTimelineDays(facts.timelineDays)
+                          setCadence(CADENCE_VALUE[facts.cadence] as GroundCadence)
+                          /* And where in the arc. Step one required this second choice and disabled
+                             Continue until it was answered, without saying which choice was missing -
+                             while the card just clicked already answered it. Still changeable below. */
+                          setMoment(RECOMMENDED_MOMENT[card.scenario] as GroundMoment)
+                        }
+                        return (
+                          <div
+                            key={card.cardKey}
+                            role="radio"
+                            tabIndex={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
+                            aria-checked={isSel}
+                            aria-label={`${card.label}. ${card.moment} ${card.desc}`}
+                            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
+                            className={`cg-sit-card${isSel ? ' selected' : ''}`}
+                            onClick={pick}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
+                              <div className="cg-sit-check" />
+                            </div>
+                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{card.label}</div>
+                            <p className="cg-moment">{card.moment}</p>
+
+                            <button
+                              type="button"
+                              className="cg-more"
+                              aria-expanded={arcOpen}
+                              onClick={(e) => { e.stopPropagation(); setOpenArc(arcOpen ? null : card.cardKey) }}
+                            >
+                              {arcOpen ? 'How it runs \u2039' : 'How it runs \u203A'}
+                            </button>
+                            {arcOpen && (
+                              <dl className="cg-arc">
+                                <div>
+                                  <dt>Agreed at the start</dt>
+                                  <dd>{card.agreed}</dd>
+                                </div>
+                                <div>
+                                  <dt>What the check-ins test</dt>
+                                  <dd>{card.tests}</dd>
+                                </div>
+                                {facts.notThisOneIf && (
+                                  <div className="warn">
+                                    <dt>Not this one if</dt>
+                                    <dd>{facts.notThisOneIf}</dd>
+                                  </div>
+                                )}
+                                {card.examples && card.examples.length > 0 && (
+                                  <div>
+                                    <dt>Also this</dt>
+                                    <dd>{card.examples.map((ex, i) => <div key={i}>{ex}</div>)}</dd>
+                                  </div>
+                                )}
+                              </dl>
+                            )}
+
+                            <dl className="cg-meta">
+                              <div><dt>Recommended cadence</dt><dd>{facts.cadence}</dd></div>
+                              <div><dt>Runs for</dt><dd>{facts.timelineDays === 1 ? 'Once' : `${facts.timelineDays} days`}</dd></div>
+                              <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
+                            </dl>
+                          </div>
+                        )
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       <div className="gw-hdr">
@@ -967,18 +1057,56 @@ export function CreateGroundPage() {
               closest fit: it sets the questions people are asked and how often.
             </div>
 
+            {/* Type it in your own words. The groups fixed the card nobody could find; this is for
+                the person who knows their situation but not our heading for it. */}
+            <div className="cg-find">
+              <input
+                type="search"
+                value={situationSearch}
+                onChange={e => setSituationSearch(e.target.value)}
+                placeholder="Search in your own words - handover, conflict, off track, new hire"
+                aria-label="Search the situations"
+                aria-describedby="cg-find-count"
+              />
+              {matches !== null && (
+                <span id="cg-find-count" role="status">
+                  {/* Matches, not "n of 21". There are twenty-one cards covering twenty
+                      situations - COHORT_ONBOARDING shares COHORT_CHECK's situation - so a total
+                      here would contradict the "Twenty situations" line directly above it. */}
+                  {matches.length === 0
+                    ? 'No match'
+                    : `${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}
+                </span>
+              )}
+            </div>
+
             {/* Jump bar. The concrete failure this fixes: the recurring read sat at position
                 eleven of twenty in one unbroken list, and the person who built the product
-                could not find it. Nothing was wrong with the card. */}
+                could not find it. Nothing was wrong with the card. Hidden while searching,
+                because jumping to a group is meaningless when the list is not grouped. */}
+            {matches === null && (
             <nav className="cg-jump" aria-label="Jump to a group of situations">
               {SCENARIO_GROUPS.map(g => (
                 <a key={g.key} href={`#cg-${g.key}`}>{g.heading} <b>{cardsInGroup(g.key).length}</b></a>
               ))}
             </nav>
+            )}
 
+            {matches !== null && (
+              matches.length === 0
+                ? <p className="cg-nomatch">{NOTHING_MATCHED}</p>
+                : <div role="radiogroup" aria-label="Situations matching your search" className="cg-group-grid" style={{ marginBottom: 24 }}>
+                    {matches.map(renderSituation)}
+                  </div>
+            )}
+
+            {/* ONE renderer for both lists. The search results and the grouped list show the same
+                card with the same behaviour, because they are the same card - duplicating this JSX
+                is how the two lists start disagreeing about what a situation is. */}
             {/* Real radios in ONE radiogroup spanning every group, not one per section:
                 a person arrowing through this is choosing among twenty situations, not
                 among six lists. The headings are structure, not separate controls. */}
+            {matches === null && (
             <div role="radiogroup" aria-label="What is this for?" style={{ marginBottom: 24 }}>
               {SCENARIO_GROUPS.map(g => {
                 const cards = cardsInGroup(g.key)
@@ -991,90 +1119,13 @@ export function CreateGroundPage() {
                     </div>
                     <p className="cg-group-q">{g.question}</p>
                     <div className={`cg-group-grid${cards.length === 1 ? ' one' : ''}`}>
-                      {cards.map(s => {
-                        const facts = SCENARIO_FACTS[s.scenario]
-                        const sessions = recommendedSessions(s.scenario)
-                        const isSel = selectedCard === s.cardKey
-                        const open = openArc === s.cardKey
-                        const pick = () => {
-                          setScenario(s.scenario)
-                          setSelectedCard(s.cardKey)
-                          sessionStorage.setItem('gw-new-ground-card', s.cardKey)
-                          /* Seeding, not setting. Both were hardcoded here - 90 days and
-                             fortnightly for every situation - so the engine's per-scenario
-                             timeline was never reached on the path people use. The lead still
-                             changes either one at step 3. */
-                          setTimelineDays(facts.timelineDays)
-                          setCadence(CADENCE_VALUE[facts.cadence] as GroundCadence)
-                          /* And where in the arc. Step one required this second choice and disabled
-                             Continue until it was answered, without saying which choice was missing -
-                             while the card just clicked already answered it. Still changeable below. */
-                          setMoment(RECOMMENDED_MOMENT[s.scenario] as GroundMoment)
-                        }
-                        return (
-                          <div
-                            key={s.cardKey}
-                            role="radio"
-                            tabIndex={isSel || (!selectedCard && s.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
-                            aria-checked={isSel}
-                            aria-label={`${s.label}. ${s.moment} ${s.desc}`}
-                            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
-                            className={`cg-sit-card${isSel ? ' selected' : ''}`}
-                            onClick={pick}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
-                              <div className="cg-sit-check" />
-                            </div>
-                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{s.label}</div>
-                            <p className="cg-moment">{s.moment}</p>
-
-                            <button
-                              type="button"
-                              className="cg-more"
-                              aria-expanded={open}
-                              onClick={(e) => { e.stopPropagation(); setOpenArc(open ? null : s.cardKey) }}
-                            >
-                              {open ? 'How it runs \u2039' : 'How it runs \u203A'}
-                            </button>
-                            {open && (
-                              <dl className="cg-arc">
-                                <div>
-                                  <dt>Agreed at the start</dt>
-                                  <dd>{s.agreed}</dd>
-                                </div>
-                                <div>
-                                  <dt>What the check-ins test</dt>
-                                  <dd>{s.tests}</dd>
-                                </div>
-                                {facts.notThisOneIf && (
-                                  <div className="warn">
-                                    <dt>Not this one if</dt>
-                                    <dd>{facts.notThisOneIf}</dd>
-                                  </div>
-                                )}
-                                {s.examples && s.examples.length > 0 && (
-                                  <div>
-                                    <dt>Also this</dt>
-                                    <dd>{s.examples.map((ex, i) => <div key={i}>{ex}</div>)}</dd>
-                                  </div>
-                                )}
-                              </dl>
-                            )}
-
-                            <dl className="cg-meta">
-                              <div><dt>Recommended cadence</dt><dd>{facts.cadence}</dd></div>
-                              <div><dt>Runs for</dt><dd>{facts.timelineDays === 1 ? 'Once' : `${facts.timelineDays} days`}</dd></div>
-                              <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
-                            </dl>
-                          </div>
-                        )
-                      })}
+                      {cards.map(renderSituation)}
                     </div>
                   </section>
                 )
               })}
             </div>
+            )}
 
             </>)}
 
