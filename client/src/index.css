@@ -597,10 +597,18 @@ body {
      removing overflow:auto from .gw-bd, which is app-wide. Neither is worth it for a
      jump bar: the grouping is what makes twenty cards findable, and the bar is a
      shortcut to the groups. */
-  display: flex; gap: 8px;
+  /* IT WRAPS, BECAUSE SCROLLING HID HALF OF IT.
+     This was `overflow-x: auto`, and measured on the real page at a normal desktop width three of
+     the six groups - "A read on live work", "A decision about one person", "Something is off" -
+     sat past the right edge with nothing on screen to say they were there. A horizontal scroller
+     with no affordance reads as a bar with three groups in it. That is the same failure this bar
+     was built to fix, one level up: the cards were unfindable, so we added navigation, and then
+     half the navigation was unfindable.
+     Six short pills wrap to two rows at worst and cost a line of vertical space. Nothing is
+     hidden, and there is no affordance to get right. */
+  display: flex; flex-wrap: wrap; gap: 8px;
   padding: 10px 0 10px; margin-bottom: 4px;
   background: var(--gw-bg); border-bottom: 1px solid var(--gw-border);
-  overflow-x: auto; scrollbar-width: thin;
 }
 .cg-jump a {
   flex: 0 0 auto; font-size: 12px; font-weight: 600; text-decoration: none;
