@@ -1,3 +1,4 @@
+import { stillNeedsSomethingInWriting } from './what-the-documents-say';
 /**
  * THE CONTEXT CHAT. G37 and G23, the last of the seven and the largest.
  *
@@ -44,6 +45,14 @@ export interface ContextGaps {
   perPersonObjectiveCount: number;
   /** Documents everybody in the ground can work from. */
   openDocumentCount: number;
+  /**
+   * Whether the chat has actually been given their text.
+   *
+   * A count could only ever say a file exists, and the reason to want a document is that everybody
+   * works from the same one - which a file nobody has read to the team does not achieve. So the gap
+   * closes on having read it, not on it being there.
+   */
+  documentsWereRead?: boolean;
 }
 
 /** The gap, and the document that would settle it. */
@@ -108,10 +117,12 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
     });
   }
 
-  if (g.openDocumentCount === 0) {
+  if (stillNeedsSomethingInWriting(g.openDocumentCount, g.documentsWereRead !== false)) {
     gaps.push({
       key: 'documents',
-      ask: 'Is there anything in writing everybody should be working from? Whatever you put in as open context, every check-in has read before it asks anything.',
+      ask: g.openDocumentCount === 0
+        ? 'Is there anything in writing everybody should be working from? Whatever you put in as open context, every check-in has read before it asks anything.'
+        : 'There is something attached but nothing has read it yet. Open it as context so every check-in works from it.',
       suggests: 'the brief, the plan, the scope, the grant terms, or the message that started this',
     });
   }

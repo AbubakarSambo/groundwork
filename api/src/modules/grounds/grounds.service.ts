@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
+import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
 import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
@@ -20,6 +22,7 @@ import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
 import { proposalFrom, extractionToolFor, Heard, Proposal } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isSubscribed } from '../../common/subscription';
@@ -1556,6 +1559,23 @@ export class GroundsService {
       throw new ForbiddenException('Setting this check-in up is for the lead or an admin in your organisation. Your own check-ins are on your page.');
     }
 
+    /*
+     * THE DOCUMENTS THEMSELVES, NOT A COUNT OF THEM.
+     *
+     * This read only `count`, so the context chat knew how many files existed and nothing about
+     * what was in them - it could not tell somebody what their own brief said, and the "anything in
+     * writing?" gap closed the moment a file existed rather than when anybody had read it.
+     *
+     * Bounded by the same rule the check-in uses, and for the same reason: a forty page
+     * architecture document read as its first N characters, saying so, beats one read silently in
+     * part. See a-prompt-that-ran-out-of-room-says-so.ts.
+     */
+    const openDocuments = await this.prisma.groundDocument.findMany({
+      where: { groundId, visibility: 'OPEN' },
+      select: { fileName: true, content: true, uploaderNote: true },
+      orderBy: { createdAt: 'desc' },
+    }).catch(() => [] as { fileName: string; content: string; uploaderNote: string | null }[]);
+
     const openDocumentCount = await this.prisma.groundDocument.count({
       where: { groundId, visibility: 'OPEN' },
     });
@@ -1587,6 +1607,8 @@ export class GroundsService {
        */
       perPersonObjectiveCount: perPersonObjectives,
       openDocumentCount,
+      /* Read means read: the block above carries their text, or it does not. */
+      documentsWereRead: openDocuments.length > 0,
     });
 
     // Nothing to ask about. Saying so and stopping is the right answer - a setup
@@ -1600,7 +1622,23 @@ export class GroundsService {
       };
     }
 
-    const systemPrompt = contextChatPrompt(ground.label, ground.scenario, gaps);
+    /*
+     * WHAT THEY ATTACHED, AND WHAT THE CHAT IS TO DO WITH IT. Appended rather than woven in, so the
+     * refusals in `contextChatPrompt` stay the first thing the model reads.
+     */
+    const fitted = whatFitsInTheRoom(openDocuments as any);
+    if (fitted.leftOut.length) {
+      this.logger?.log?.(`Context chat on ground ${groundId}: documents that did not fit - ${fitted.leftOut.join(', ')}.`);
+    }
+    const documentBlock = whatTheDocumentsSay(openDocuments as any, fitted.block)
+      + (fitted.leftOut.length ? `\n\n${tellThemWhatIsMissing(fitted.leftOut)}` : '');
+
+    /*
+     * WHAT RECORDING AN EXPECTATION MEANS, SAID WHERE IT IS ABOUT TO HAPPEN. Only when that gap is
+     * open, because a rule about a thing nobody is doing is noise.
+     */
+    const expectationRule = gaps.some((g) => g.key === 'objectives') ? `\n\n${WHAT_RECORDING_IT_MEANS}` : '';
+    const systemPrompt = `${contextChatPrompt(ground.label, ground.scenario, gaps)}${expectationRule}\n\n${documentBlock}`;
     const raw = await this.anthropic.respond(
       systemPrompt,
       history.length
@@ -1655,7 +1693,7 @@ export class GroundsService {
           [{ role: 'user' as const, content: lastFromLead }],
           extractionToolFor(openGap),
         );
-        if (heard) proposal = proposalFrom(openGap, heard);
+        if (heard) proposal = proposalFrom(openGap, heard, await this.partiesForMatching(groundId));
       } catch {
         /* no proposal; the conversation carries on and the lead can use the form */
       }
@@ -1687,6 +1725,19 @@ export class GroundsService {
    * accepts "set timelineDays to 4000" from the client is not a confirmation step, it is an edit
    * endpoint with a confirmation-shaped name.
    */
+  /** Who is on this ground, in the shape the name matcher needs. */
+  private async partiesForMatching(groundId: string) {
+    const rows = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+    }).catch(() => [] as any[]);
+    return rows.map((p: any) => ({
+      id: p.id,
+      email: p.email,
+      name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || null,
+    }));
+  }
+
   async applyContextProposal(
     groundId: string,
     requestingUserId: string,
@@ -1743,7 +1794,7 @@ export class GroundsService {
       [{ role: 'user' as const, content: dto.said }],
       extractionToolFor(openGap),
     );
-    const proposal = proposalFrom(openGap, heard ?? {});
+    const proposal = proposalFrom(openGap, heard ?? {}, await this.partiesForMatching(groundId));
     if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
 
     /**
@@ -1761,6 +1812,28 @@ export class GroundsService {
       await this.updateTimeline(groundId, requestingUserId, { cadence: proposal.cadence });
       return { changed: 'cadence', say: proposal.say };
     }
+    if (proposal.kind === 'expectation') {
+      /*
+       * THE LEAD'S EXPECTATION, MARKED UNSEEN, AND NOT AGREEMENT.
+       *
+       * `seenBySubject: false` is true by construction here - the person it is about has not
+       * arrived. That flag is what the six explanations read to refuse pressing anybody about
+       * something nobody showed them, so recording it honestly is what makes writing this safe at
+       * all. `authoredBy` says the lead wrote it at setup, which is neither the person it is about
+       * nor an integration.
+       */
+      await this.prisma.personObjective.create({
+        data: {
+          groundId,
+          participantId: proposal.participantId,
+          text: proposal.text,
+          authoredBy: AUTHORED_AT_SETUP,
+          seenBySubject: false,
+        },
+      });
+      return { changed: 'expectation', say: proposal.say };
+    }
+
     await this.prisma.ground.update({ where: { id: groundId }, data: { brief: proposal.text } });
     return { changed: 'success', say: proposal.say };
   }

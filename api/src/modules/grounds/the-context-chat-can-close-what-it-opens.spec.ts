@@ -103,7 +103,12 @@ describe('and the service writes only after a yes', () => {
     const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 3000);
     expect(apply).toMatch(/dto: \{ said: string \}/);
     expect(apply).toMatch(/extractionToolFor\(openGap\)/);
-    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}\)/);
+    /*
+     * The parties are passed as well now, so a name in an answer can be matched to a real person.
+     * The invariant is unchanged and is what this asserts: the proposal is re-derived from the
+     * words, never taken from a payload.
+     */
+    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, await this\.partiesForMatching\(groundId\)\)/);
   });
 
   it('and it is the lead\'s, checked again on the write and not only on the read', () => {
