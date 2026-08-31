@@ -71,7 +71,7 @@ export function JoinPage() {
 
   return (
     <Shell>
-      <div className="gw-ttl">{ground.initiatorName} invited your check-in</div>
+      <h1 className="gw-ttl">{ground.initiatorName} invited your check-in</h1>
       <div className="gw-sub-t">A Groundwork session about: <strong>{ground.groundLabel}</strong>.</div>
 
       <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>

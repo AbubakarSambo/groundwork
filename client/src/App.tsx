@@ -161,6 +161,9 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <SessionGuard>
+          {/* First in the document, so it is the first thing a keyboard reaches. It was inside the
+              shell, behind the help button, which made it the second stop and therefore useless. */}
+          <a href="#main" className="gw-skip">Skip to content</a>
           <Toaster position="top-right" richColors />
           <HelpModal />
           <HelpButton />

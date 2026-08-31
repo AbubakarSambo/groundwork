@@ -162,7 +162,7 @@ export function InvitePage() {
   return (
     <Arrival wide>
       <div>
-        <div className="gw-ttl">{preview.initiatorName} wants to hear your version</div>
+        <h1 className="gw-ttl">{preview.initiatorName} wants to hear your version</h1>
         <div className="gw-sub-t">
           A Groundwork session about: <strong>{preview.groundLabel}</strong>.
         </div>

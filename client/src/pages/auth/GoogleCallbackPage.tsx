@@ -177,7 +177,7 @@ export function GoogleCallbackPage() {
       <div className="gw-bd" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '70vh', textAlign: 'center' }}>
         {error ? (
           <>
-            <div className="gw-ttl" style={{ textAlign: 'center' }}>Sign-in did not complete</div>
+            <h1 className="gw-ttl" style={{ textAlign: 'center' }}>Sign-in did not complete</h1>
             <div className="gw-sub-t" style={{ textAlign: 'center', maxWidth: 320, margin: '8px auto 18px' }}>{error}</div>
             <button
               onClick={() => navigate('/login', { replace: true })}

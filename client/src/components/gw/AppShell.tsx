@@ -1159,14 +1159,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showSidebar =
     (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice
 
-  if (!showSidebar) return <>{children}</>
+  if (!showSidebar) return <main id="main">{children}</main>
 
   return (
     <>
+      {/*
+        * A WAY PAST THE RAIL, AND SOMETHING TO SKIP TO.
+        *
+        * There was no <main> on any page and no skip link anywhere, and the rail is the first thing
+        * in the tab order on every screen: at ten check-ins that is twenty-odd stops before the
+        * content, every single navigation, for anybody using a keyboard. A screen reader had no
+        * landmark to jump to either.
+        *
+        * The link is visually hidden until it takes focus, which is the one case it exists for.
+        */}
       <AppSidebar />
-      <div className="gw-main-content">
+      <main id="main" className="gw-main-content">
         {children}
-      </div>
+      </main>
       <FeedbackWidget />
 
       <style>{`
