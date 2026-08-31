@@ -34,7 +34,7 @@ function ThingsWeDoByHand() {
       qc.invalidateQueries({ queryKey: ['call-request'] })
       toast.success('Asked. We will be in touch.')
     },
-    onError: () => toast.error('Could not send that just now. Try again.'),
+    onError: () => toast.error('That did not send. What you wrote is still here — try again.'),
   })
 
   const open: Record<string, string> = asked.data?.open ?? {}
@@ -185,7 +185,7 @@ export function BillingPage() {
       setSendEmail('')
       qc.invalidateQueries({ queryKey: ['contributor-codes'] })
     },
-    onError: () => toast.error('Could not send code. Check the email and try again.'),
+    onError: () => toast.error('The code did not send. Check the address and try again.'),
   })
 
   const createSubscriptionMut = useMutation({
@@ -201,7 +201,7 @@ export function BillingPage() {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
       toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
     },
-    onError: () => toast.error('Could not change plan. Try again.'),
+    onError: () => toast.error('Your plan did not change. You have not been charged — try again.'),
   })
 
   /**

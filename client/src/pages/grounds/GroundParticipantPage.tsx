@@ -113,7 +113,7 @@ export function GroundParticipantPage() {
       refetchSoloReport()
       setShowShareConfirm(false)
     },
-    onError: () => toast.error('Could not update. Try again.'),
+    onError: () => toast.error('That did not change — try again.'),
   })
 
   // Explicit "my account is accurate" confirmation - the deadline for
@@ -195,7 +195,7 @@ export function GroundParticipantPage() {
       toast.success('Report revealed')
       setTab('report')
     },
-    onError: () => toast.error('Could not activate. Try again.'),
+    onError: () => toast.error('That did not activate. Nothing has changed — try again.'),
   })
 
 

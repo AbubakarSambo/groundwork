@@ -1124,7 +1124,7 @@ export function EntryChatPage() {
         await generateSessionReport(withReply)
       }
     } catch {
-      toast.error('Could not send your correction. Try again.')
+      toast.error('That did not send. What you wrote is still here — try again.')
     } finally {
       setCorrectionLoading(false)
     }
@@ -1257,7 +1257,7 @@ export function EntryChatPage() {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
     } catch {
-      toast.error('Could not send message. Please try again.')
+      toast.error('That did not send. Your message is still here — try again.')
       setOnboardingHistory(onboardingHistory) // revert
     } finally {
       setOnboardingLoading(false)

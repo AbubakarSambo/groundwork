@@ -70,20 +70,20 @@ export function BoardPage() {
       target: newObjTarget.trim() ? Number(newObjTarget) : null,
     }),
     onSuccess: () => { setNewObjName(''); setNewObjTarget(''); invalidate() },
-    onError: () => toast.error('Could not add that target. Try again.'),
+    onError: () => toast.error('The target was not added. What you typed is still here — try again.'),
   })
 
   const bumpObjective = useMutation({
     mutationFn: (v: { objectiveId: string; count: number }) =>
       boardApi.updateObjective(id!, v.objectiveId, { count: v.count }),
     onSuccess: invalidate,
-    onError: () => toast.error('Could not update that count. Try again.'),
+    onError: () => toast.error('That count did not change — try again.'),
   })
 
   const removeObjective = useMutation({
     mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
     onSuccess: invalidate,
-    onError: () => toast.error('Could not remove that target. Try again.'),
+    onError: () => toast.error('The target was not removed. Nothing has changed — try again.'),
   })
 
   const savePoll = useMutation({
@@ -92,13 +92,13 @@ export function BoardPage() {
       options: pollOpts.split('\n').map((o) => o.trim()).filter(Boolean),
     }),
     onSuccess: () => { setShowPollForm(false); setPollQ(''); setPollOpts(''); invalidate() },
-    onError: () => toast.error('Could not save the poll. Try again.'),
+    onError: () => toast.error('The poll did not save. Your answers are still here — try again.'),
   })
 
   const togglePoll = useMutation({
     mutationFn: (optionId: string) => boardApi.togglePoll(id!, optionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', id] }),
-    onError: () => toast.error('Could not update your availability. Try again.'),
+    onError: () => toast.error('Your availability did not change — try again.'),
   })
 
   if (isLoading) {

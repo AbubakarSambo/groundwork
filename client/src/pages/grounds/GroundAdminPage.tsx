@@ -192,7 +192,7 @@ export function GroundAdminPage() {
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['report', id] }),
-    onError: () => toast.error('Could not release report.'),
+    onError: () => toast.error('The report was not released. Nobody has been sent anything — try again.'),
   })
 
 
@@ -343,7 +343,7 @@ export function GroundAdminPage() {
       setConfirmClosing(false)
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('Could not begin the closing round.'),
+    onError: () => toast.error('The closing round did not open. Nothing has changed for anyone — try again.'),
   })
 
   const remind = useMutation({
@@ -388,7 +388,7 @@ export function GroundAdminPage() {
   const resendInvite = useMutation({
     mutationFn: (participantId: string) => groundsApi.resendParticipantInvite(id!, participantId),
     onSuccess: () => toast.success('Invite sent again.'),
-    onError: () => toast.error('Could not send it again. Try again in a moment.'),
+    onError: () => toast.error('It did not send again. The original invite still works — try again in a moment.'),
   })
 
   const copyInviteLink = useMutation({
@@ -430,7 +430,7 @@ export function GroundAdminPage() {
       setEditingRoleValue('')
       toast.success('Role updated')
     },
-    onError: () => toast.error('Could not update role.'),
+    onError: () => toast.error('Their role did not change. Nothing else was altered — try again.'),
   })
 
   // Contact visibility toggle. restrict=true hides peers' emails from each other (default).
@@ -445,13 +445,13 @@ export function GroundAdminPage() {
   const setPeerVisibility = useMutation({
     mutationFn: (visible: boolean) => groundsApi.setPeerVisibility(id!, visible),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
-    onError: () => toast.error('Could not save that. Try again.'),
+    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
   })
 
   const setContactVisibility = useMutation({
     mutationFn: (restrict: boolean) => groundsApi.setExternalVisibility(id!, restrict),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: () => toast.error('Could not update this setting.'),
+    onError: () => toast.error('That setting did not change — try again.'),
   })
 
 
@@ -1985,7 +1985,7 @@ export function GroundAdminPage() {
                         onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
                         onClick={() => groundsApi.setPeopleWorkTogether(id!, o.v)
                           .then(() => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                          .catch(() => toast.error('Could not save that.'))}
+                          .catch(() => toast.error('Not saved. What you typed is still here — try again.'))}
                         className={`cg-sit-card${selected ? ' selected' : ''}`}
                         style={{ cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2076,7 +2076,7 @@ export function GroundAdminPage() {
                   disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}
                   onClick={() => groundsApi.update(id!, { timelineDays: timelineDaysDraft, cadence: cadenceDraft })
                     .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                    .catch(() => toast.error('Could not update how long this runs.'))}
+                    .catch(() => toast.error('The length did not change — try again.'))}
                   style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
                 >
                   Save timeframe
@@ -2088,7 +2088,7 @@ export function GroundAdminPage() {
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
               <button
                 disabled={!groundLabel.trim() || groundLabel === ground.label}
-                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label) groundsApi.update(id!, { label: groundLabel.trim() }).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('Could not update name.')) }}
+                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label) groundsApi.update(id!, { label: groundLabel.trim() }).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The name did not change — try again.')) }}
                 style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
               >
                 Save name
@@ -2118,7 +2118,7 @@ export function GroundAdminPage() {
               </select>
               <button
                 disabled={!groundScenario || groundScenario === ground.scenario}
-                onClick={() => { if (groundScenario && groundScenario !== ground.scenario) groundsApi.update(id!, { scenario: groundScenario } as any).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('Could not update scenario.')) }}
+                onClick={() => { if (groundScenario && groundScenario !== ground.scenario) groundsApi.update(id!, { scenario: groundScenario } as any).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The situation did not change — try again.')) }}
                 style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
               >
                 Save scenario
@@ -2289,7 +2289,7 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
       setNewEmail(''); setNewRole(''); setShowAddParticipant(false)
       toast.success('Invited')
     } catch {
-      toast.error('Could not add that participant. Try again.')
+      toast.error('They were not added. Nobody has been emailed — try again.')
     } finally {
       setAddingParticipant(false)
     }
