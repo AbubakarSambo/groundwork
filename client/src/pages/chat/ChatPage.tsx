@@ -284,6 +284,25 @@ export function ChatPage() {
     onError: (err: any) => {
       const message: string = err?.response?.data?.message ?? ''
       if (/already complete/i.test(message)) { setCompleted(true); return }
+      /**
+       * A REFUSAL THAT ASKS FOR MORE HAS TO LET THEM GIVE IT.
+       *
+       * When the engine decides a session is over it returns sessionComplete, which sets `done`,
+       * and `done` disables the composer. If the server then refuses the completion because the
+       * record is too thin - "answer a couple of the questions properly, then complete" - the box
+       * they would answer in is already switched off. The person is told what to do and given no
+       * way to do it, which is the dead end behind "I could not complete my check-in".
+       *
+       * The server marks those two refusals `canContinue`, so re-open the session rather than
+       * leaving them looking at a disabled box and an instruction. Not matched on the wording:
+       * rewording the sentence would otherwise quietly bring the trap back.
+       */
+      if (err?.response?.data?.canContinue) {
+        setDone(false)
+        setConfirmingFinish(false)
+        toast.error(message || 'A little more is needed before this can close.')
+        return
+      }
       toast.error(message || 'Could not complete this session.')
     },
   })
