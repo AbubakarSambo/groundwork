@@ -138,7 +138,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
       await adminApi.requestOtp()
       setStep('enter')
     } catch (e: any) {
-      setError(e.message ?? 'Failed to send OTP')
+      setError(e.message ?? 'Could not send the code — try again.')
     } finally {
       setLoading(false)
     }
@@ -661,7 +661,7 @@ export function AdminDashboardPage() {
 
         {error && (
           <div style={{ ...C, borderLeft: '3px solid var(--gw-danger)', fontSize: 13, color: 'var(--gw-danger)' }}>
-            {(error as Error).message ?? 'Failed to load dashboard data.'}
+            {(error as Error).message ?? 'Could not load the dashboard — try again.'}
           </div>
         )}
 

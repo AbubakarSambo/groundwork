@@ -118,7 +118,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
       setEditing(false)
       toast.success(`${row.label} updated. Existing subscribers keep their current price until they change plans.`)
     },
-    onError: () => toast.error('Could not update price. Try again.'),
+    onError: () => toast.error('The price did not change — try again.'),
   })
 
   function submit() {
@@ -146,7 +146,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
       setEditingCap(false)
       toast.success(`${row.label} now seats ${capValue.trim() === '' ? 'an unlimited number of' : capValue.trim()} people.`)
     },
-    onError: () => toast.error('Could not update the seat cap. Try again.'),
+    onError: () => toast.error('The seat cap did not change — try again.'),
   })
 
   function submitCap() {
@@ -739,7 +739,7 @@ function InAppFeedback() {
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => feedbackApi.updateStatus(id, status),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['in-app-feedback'] }) },
-    onError: () => toast.error('Could not update that. Try again.'),
+    onError: () => toast.error('That did not change — try again.'),
   })
   if (isLoading) return null
 

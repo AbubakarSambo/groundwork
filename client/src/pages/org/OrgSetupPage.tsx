@@ -21,7 +21,7 @@ export function OrgSetupPage() {
       toast.success('Organization details saved')
       navigate('/grounds', { replace: true })
     },
-    onError: () => toast.error('Could not save. Check the details and try again.'),
+    onError: () => toast.error('That did not save. Everything you entered is still here — check the details and try again.'),
   })
 
   function handleSave() {

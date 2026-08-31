@@ -96,7 +96,7 @@ export function OrgMembersPage() {
       setInviteEmail('')
       qc.invalidateQueries({ queryKey: ['org-members'] })
     },
-    onError: () => toast.error('Could not send invite. Try again.'),
+    onError: () => toast.error('The invite did not send. Nobody has been emailed — try again.'),
   })
 
   /*
@@ -117,7 +117,7 @@ export function OrgMembersPage() {
       qc.invalidateQueries({ queryKey: ['org-members'] })
       toast.success(a.summary)
     },
-    onError: () => toast.error('Could not send those invitations. Try again.'),
+    onError: () => toast.error('None of those invitations sent. Nobody has been emailed — try again.'),
   })
 
   /*

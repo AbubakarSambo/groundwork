@@ -38,7 +38,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
       onCorrected(doc.assessment ?? corrected)
       setEditing(false)
     } catch {
-      toast.error('Could not save your correction. Try again.')
+      toast.error('The correction did not save. What you wrote is still here — try again.')
     } finally {
       setSaving(false)
     }
@@ -346,7 +346,7 @@ export function ChatPage() {
       setPendingDoc(file)
       setDocContext(ctx)
       setDocContextMode(true)
-      toast.error('Upload failed. Try again.')
+      toast.error('That did not upload. Nothing was added to the record — try again.')
     },
   })
 
@@ -495,7 +495,7 @@ export function ChatPage() {
         setLoading(false)
       } else {
         setLoading(false)
-        toast.error('The reply was cut off. You can send again.')
+        toast.error('The reply was cut off. What you sent is on the record — send again to carry on.')
       }
     }
   }

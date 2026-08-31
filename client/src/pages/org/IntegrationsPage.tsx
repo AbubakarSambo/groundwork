@@ -124,7 +124,7 @@ export function IntegrationsPage() {
       qc.invalidateQueries({ queryKey: ['call-request'] })
       toast.success('Asked. We will be in touch.')
     },
-    onError: () => toast.error('Could not send that just now. Try again.'),
+    onError: () => toast.error('That did not send. What you wrote is still here — try again.'),
   })
   /* Per subject now: an open coaching request must not make this page say they already asked. */
   const callAsked = !!call.data?.open?.INTEGRATION

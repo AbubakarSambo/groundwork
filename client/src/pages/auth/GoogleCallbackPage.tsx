@@ -135,7 +135,7 @@ export function GoogleCallbackPage() {
         try {
           await authApi.renameOrganization(trimmed)
         } catch {
-          toast.error('Could not save that name just yet. You can change it any time from settings.')
+          toast.error('Your name did not save. You can set it any time from Settings.')
         }
       }
       navigate('/start', { replace: true })

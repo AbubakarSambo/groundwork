@@ -158,7 +158,7 @@ export function GroundsListPage() {
       setColleagueEmail('')
       setShowInviteColleague(false)
     },
-    onError: () => toast.error('Could not send invite. Please try again.'),
+    onError: () => toast.error('The invite did not send. Nobody has been emailed — try again.'),
   })
 
   /**
@@ -241,12 +241,12 @@ export function GroundsListPage() {
   const approveMut = useMutation({
     mutationFn: (groundId: string) => groundsApi.approve(groundId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); qc.invalidateQueries({ queryKey: ['grounds'] }); toast.success('Approved. The people involved can be invited now.') },
-    onError: () => toast.error('Could not approve. Try again.'),
+    onError: () => toast.error('Not approved. Nothing has changed — try again.'),
   })
   const declineMut = useMutation({
     mutationFn: ({ groundId, reason }: { groundId: string; reason: string }) => groundsApi.declineGround(groundId, reason),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); toast.success('Declined. Nobody was invited.') },
-    onError: () => toast.error('Could not decline. Try again.'),
+    onError: () => toast.error('Not declined. Nothing has changed — try again.'),
   })
   const [declining, setDeclining] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState('')

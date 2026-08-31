@@ -119,7 +119,7 @@ export function ContextPage({
     mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' | 'CLOSED' }) =>
       documentsApi.setVisibility(id, docId, visibility),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Could not change who can see that.'),
+    onError: () => toast.error('That did not change. It is still visible to the same people — try again.'),
   })
 
   const deleteDoc = useMutation({
@@ -132,7 +132,7 @@ export function ContextPage({
   const addNote = useMutation({
     mutationFn: (note: string) => groundsApi.update(id, { contextNote: note }),
     onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save note.'),
+    onError: () => toast.error('The note did not save. It is still in the box — try again.'),
   })
 
   /**
@@ -145,7 +145,7 @@ export function ContextPage({
   const addSharedNoteMut = useMutation({
     mutationFn: () => groundsApi.addLeadContext(id, { text: sharedNoteText.trim(), audience: 'EVERYONE' }),
     onSuccess: () => { setSharedNoteText(''); setSharedNoteSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save that note.'),
+    onError: () => toast.error('The note did not save. It is still in the box — try again.'),
   })
 
   const [leadCtxText, setLeadCtxText] = useState('')
@@ -157,7 +157,7 @@ export function ContextPage({
       text: leadCtxText.trim(),
     }),
     onSuccess: () => { setLeadCtxText(''); setLeadCtxSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save context.'),
+    onError: () => toast.error('That did not save. Your text is still here — try again.'),
   })
 
   /**
