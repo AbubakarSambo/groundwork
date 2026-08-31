@@ -263,7 +263,7 @@ export function GroundsListPage() {
           {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
               chrome could usefully carry. W13-11. */}
-              <span className="gw-logo">In progress</span>
+              <h1 className="gw-logo gw-page-h1">Check-ins</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>

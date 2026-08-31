@@ -922,7 +922,7 @@ export function CreateGroundPage() {
                 * screens that were asking five other things. A person halfway through had no way to
                 * tell how far in they were except by counting six grey dots.
                 */}
-              <span className="gw-logo">Set up a check-in</span>
+              <h1 className="gw-logo gw-page-h1">Set up a check-in</h1>
               <span style={{ fontSize: 13, color: 'var(--gw-sub)', marginLeft: 10 }}>
                 Step {displayStep} of {TOTAL_STEPS} · {STEP_NAMES[displayStep] ?? ''}
               </span>
@@ -1491,7 +1491,7 @@ export function CreateGroundPage() {
         {/* Step 2 (1.5): Billing check */}
         {step === 5 && (
           <div>
-            <div className="gw-ttl">Before you continue</div>
+            <h1 className="gw-ttl">Before you continue</h1>
 
             {billingLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: 'var(--gw-sub)', fontSize: 14 }}>
@@ -1595,7 +1595,7 @@ export function CreateGroundPage() {
         {/* Step 3 (was 2): Timeframe + cadence */}
         {step === 6 && (
           <div>
-            <div className="gw-ttl">How long will this run?</div>
+            <h1 className="gw-ttl">How long will this run?</h1>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
             <div className="gw-fld">
               <label className="gw-label" htmlFor="gw-timeframe">Recommended timeframe</label>
@@ -1698,7 +1698,7 @@ export function CreateGroundPage() {
         {/* Step 4 (was 3): Participants */}
         {step === 7 && (
           <div>
-            <div className="gw-ttl">Who is in this check-in?</div>
+            <h1 className="gw-ttl">Who is in this check-in?</h1>
             <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
 
 
@@ -1857,7 +1857,7 @@ export function CreateGroundPage() {
         {/* Step 6 (was 5): Opening brief + ground name */}
         {step === 8 && (
           <div>
-            <div className="gw-ttl">What is this about?</div>
+            <h1 className="gw-ttl">What is this about?</h1>
             <div className="gw-sub-t">Your version of the brief. Each person writes their own in their first session. The report shows where accounts agree and where they differ.</div>
 
             <div style={{ position: 'relative', marginBottom: 6 }}>

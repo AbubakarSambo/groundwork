@@ -106,7 +106,7 @@ export function ChoosePasswordPage() {
   if (!token) {
     return shell(
       <>
-        <div className="gw-ttl">This link is missing its token.</div>
+        <h1 className="gw-ttl">This link is missing its token.</h1>
         <div className="gw-sub-t" style={{ marginBottom: 20 }}>
           Password links are single use and expire. Open the most recent one from your inbox, or
           ask for a new one below.
@@ -118,7 +118,7 @@ export function ChoosePasswordPage() {
 
   return shell(
     <>
-      <div className="gw-ttl">{kind === 'set' ? 'One last step' : 'Reset your password'}</div>
+      <h1 className="gw-ttl">{kind === 'set' ? 'One last step' : 'Reset your password'}</h1>
       <div className="gw-sub-t" style={{ marginBottom: kind === 'set' ? 6 : 0 }}>
         {kind === 'set'
           ? 'Set a password so you can sign back in to see your record and receive the report when it is ready.'

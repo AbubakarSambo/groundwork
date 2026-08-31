@@ -153,7 +153,7 @@ export function SettingsPage() {
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 520, margin: '0 auto', width: '100%', paddingTop: 28 }}>
-        <div className="gw-ttl">Settings</div>
+        <h1 className="gw-ttl">Settings</h1>
 
         <section style={{ marginBottom: 32 }}>
           <Sec title="Profile" />

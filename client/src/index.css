@@ -433,7 +433,10 @@ body {
 @media (min-width: 641px) {
   .cg-fixed-bar { left: var(--gw-sidebar-w, 240px); }
 }
-.gw-ttl { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; color: var(--gw-text); }
+/* THE PAGE TITLE IS A HEADING, NOT A DIV THAT LOOKS LIKE ONE.
+   Every usage is now an <h1>, so `margin-top` and the browser's own font-size have to be
+   overridden here or every page shifts. The rendered result is byte-identical to the div. */
+.gw-ttl { font-size: 20px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; color: var(--gw-text); }
 .gw-sub-t { font-size: 13px; color: var(--gw-sub); margin-bottom: 20px; line-height: 1.65; }
 .gw-sec { font-size: 11px; color: var(--gw-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin: 16px 0 8px; }
 
@@ -1114,3 +1117,17 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   font-size: 13.5px; line-height: 1.55; color: var(--gw-sub);
   background: var(--gw-bg); border: 1px solid var(--gw-border); border-radius: 8px;
 }
+
+/* Visible only when focused - the one moment it is wanted. Positioned over the rail so it
+   is the first thing seen as well as the first thing reached. */
+.gw-skip {
+  position: fixed; top: 8px; left: 8px; z-index: 1000;
+  transform: translateY(-200%);
+  background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700;
+  padding: 10px 16px; border-radius: 8px; text-decoration: none;
+}
+.gw-skip:focus { transform: translateY(0); outline: 2px solid white; outline-offset: 2px; }
+
+/* A page title that happens to sit in the header strip. Neutralises the h1 defaults so the
+   header keeps the size and spacing it had as a span. */
+.gw-page-h1 { margin: 0; font-size: inherit; }
