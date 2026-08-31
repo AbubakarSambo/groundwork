@@ -2070,20 +2070,56 @@ export class GroundsService {
     const [documents, notes, ground, expectations] = await Promise.all([
       this.prisma.groundDocument.count({ where: { groundId } }),
       this.prisma.leadContextNote.count({ where: { groundId } }),
-      this.prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } }),
+      this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { brief: true, scenario: true },
+      }),
       this.prisma.personObjective.count({ where: { groundId } }),
     ]);
     if (documents > 0 || notes > 0 || expectations > 0) return;
     if ((ground?.brief ?? '').trim().length >= GroundsService.MEANS_SOMETHING) return;
 
     /**
+     * A SNAPSHOT IS THE ONE SITUATION WHERE THIS GATE IS BACKWARDS.
+     *
+     * Every other situation is set up because the lead already knows something: a person is
+     * starting, a project is off track, a decision is coming. A snapshot is the opposite - one
+     * honest read from everybody today, run precisely BECAUSE nobody can yet say what is going on.
+     * Demanding that the lead state what it is for before anyone can be asked defeats the only
+     * thing it is for.
+     *
+     * And the harm this gate exists to prevent does not arise here. It exists so that nobody opens
+     * their first session and answers into a vacuum against expectations they have never been told
+     * - but a snapshot sets no target and asks everybody the same open question, so there is
+     * nothing they could be measured against unknowingly. The vacuum is the format.
+     */
+    if (ground?.scenario === GroundScenario.SNAPSHOT) return;
+
+    /**
      * Says which ways clear it, because a refusal that does not tell you what to do next is the
      * failure this codebase keeps finding.
+     *
+     * AND IT MUST NOT NAME A ROUTE THIS PERSON CANNOT TAKE.
+     *
+     * "Do your own check-in first" is impossible for a lead who set the ground up as managingOnly:
+     * they run the check-in and are not in it, so they have no session of their own and never will.
+     * Telling them to do one is an instruction that cannot be followed, which is the same defect as
+     * a refusal asking for more input into a box that is switched off - and it hid the real point,
+     * which is that for them a brief, an expectation or a document is not one option of four but
+     * the only way through.
      */
+    const leadIsNotInIt = await this.prisma.groundParticipant.count({
+      where: { groundId, partyType: PartyType.INITIATOR, managingOnly: true },
+    });
     throw new BadRequestException(
-      'Nobody can be invited yet: nothing has been said about what this check-in is for. Write the '
-      + 'brief, say what you expect of somebody, add a document or a note on the Context tab, or do '
-      + 'your own check-in first.',
+      leadIsNotInIt > 0
+        ? 'Nobody can be invited yet: nothing has been said about what this check-in is for. You are '
+          + 'running this check-in rather than taking part in it, so it has to come from you in '
+          + 'writing - write the brief, say what you expect of somebody, or add a document or a note '
+          + 'on the Context tab.'
+        : 'Nobody can be invited yet: nothing has been said about what this check-in is for. Write the '
+          + 'brief, say what you expect of somebody, add a document or a note on the Context tab, or do '
+          + 'your own check-in first.',
     );
   }
 
