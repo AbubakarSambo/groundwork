@@ -10,6 +10,12 @@ import { dirname, join } from 'node:path'
  * forming content (report.forming) - the admin page already had a "View the
  * forming report" button gated on the same flag. Source-level: the
  * participant page must branch on report.forming and offer a way in.
+ *
+ * The "way in" used to be a button that navigated to `/grounds/${id}/report`
+ * - a route that just redirects back to the tab already on screen, so the
+ * button was a dead end (see one-report-not-two.spec.ts). The fix embeds
+ * `ReportBody` directly, the same way the lead's page already did for the
+ * released state.
  */
 const src = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), 'GroundParticipantPage.tsx'),
@@ -21,8 +27,10 @@ describe('GroundParticipantPage: offers a way into the forming report, not just 
     expect(src).toMatch(/\(report as any\)\?\.forming \? 'A picture is forming'/)
   })
 
-  it('gives the participant a navigable affordance into the forming report', () => {
-    expect(src).toMatch(/View the forming picture/)
-    expect(src).toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
+  it('gives the participant a real affordance into the forming report, not a dead link', () => {
+    expect(src).toMatch(/\{\(report as any\)\?\.forming && \(/)
+    expect(src).toMatch(/<ReportBody groundId=\{id!\} embedded \/>/)
+    expect(src).not.toMatch(/View the forming picture/)
+    expect(src).not.toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
   })
 })
