@@ -104,8 +104,20 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      /*
+       * THE CONTACT EMAIL IS THE ADMIN'S, UNTIL THEY SAY OTHERWISE.
+       *
+       * `isOrgSetupComplete` on the client is `!!organization.email` - so an organisation created
+       * without one sends its admin to "Set up your organization" on EVERY sign-in, forever, asking
+       * for a name it already has and an address it could have worked out. Signing up with Google
+       * landed exactly there: the org was created with a name and a slug and nothing else.
+       *
+       * Defaulting it is not a guess. The person creating an organisation is its first admin and
+       * their address is the one we already write to; Settings changes it in one field, and the
+       * setup screen says as much. Asking again for something already known is the defect.
+       */
       const organization = await tx.organization.create({
-        data: { name: orgName, slug },
+        data: { name: orgName, slug, email: dto.email.toLowerCase() },
       });
 
       const user = await tx.user.create({
@@ -165,7 +177,8 @@ export class AuthService {
     const slug = await this.generateUniqueSlug(organizationName);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const organization = await tx.organization.create({ data: { name: organizationName, slug } });
+      /* The contact email is the admin's until they say otherwise - see the note on register. */
+      const organization = await tx.organization.create({ data: { name: organizationName, slug, email: dto.email.toLowerCase() } });
       const user = await tx.user.create({
         data: {
           organizationId: organization.id,
@@ -263,7 +276,8 @@ export class AuthService {
       const slug = await this.generateUniqueSlug(orgName);
 
       const created = await this.prisma.$transaction(async (tx) => {
-        const org = await tx.organization.create({ data: { name: orgName, slug } });
+        /* The contact email is the admin's until they say otherwise - see the note on register. */
+        const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -530,7 +544,8 @@ export class AuthService {
           // Fallback: create a standalone workspace only when no inviter org is known.
           const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
           const slug = await this.generateUniqueSlug(domainBase);
-          const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug } });
+          /* Their own workspace, so their own address. See the note on register. */
+          const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug, email: lower } });
           organizationId = org.id;
         }
         const u = await tx.user.create({
@@ -754,7 +769,8 @@ export class AuthService {
         const slug = await this.generateUniqueSlug(orgName);
 
         user = await this.prisma.$transaction(async (tx) => {
-          const organization = await tx.organization.create({ data: { name: orgName, slug } });
+          /* The contact email is the admin's until they say otherwise - see the note on register. */
+          const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,
