@@ -6,6 +6,7 @@ import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
+import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
 import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
@@ -150,6 +151,8 @@ function RootRoute() {
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
   useSessionTimeout()
+  /* The stored user is a copy from sign-in day; ask the server what is true now. */
+  useWhoTheServerSaysYouAre()
   return <>{children}</>
 }
 
