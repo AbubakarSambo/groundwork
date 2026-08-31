@@ -38,4 +38,6 @@ export const SERVICES = {
    * whole HR platform are not the same week of work.
    */
   integrationSupportFrom: '$2,200',
+  /* Somebody to get you running and train your team, in the first month. */
+  handsOnFirstMonth: '$1,500',
 };

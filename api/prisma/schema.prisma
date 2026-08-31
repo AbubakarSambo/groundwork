@@ -3310,13 +3310,32 @@ model CoachRequest {
 /// back is a request nobody can act on.
 ///
 /// The note is theirs, in their words, and nothing is inferred from it.
+/// WHAT A CALL IS ABOUT, WHICH IS NOT A PERMISSION.
+///
+/// Every one of these is the same request: somebody asks to talk to us, our team talks to them, and
+/// what they agreed is invoiced afterwards by hand. Nothing here is sold from a form, so nothing
+/// here gates anything - this is a subject line, so whoever picks the call up knows what it is
+/// about before they ring back.
+enum ServiceRequestKind {
+  /// Something else, or not said. The original, and what every row written before this was.
+  CALL
+  /// Coaching. Sahar in the room when the report lands.
+  COACHING
+  /// Hands-on setup: somebody to get them running and train their team.
+  HANDS_ON
+  /// Help connecting Groundwork to systems they already run.
+  INTEGRATION
+}
+
 model CallRequest {
-  id             String  @id @default(uuid())
-  organizationId String  @map("organization_id")
+  /// Which of the four. Defaulted so every row written before this reads as what it was.
+  kind           ServiceRequestKind @default(CALL)
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
   /// Who asked. They are the one to call.
-  requestedById  String  @map("requested_by_id")
+  requestedById  String             @map("requested_by_id")
   /// What they want to talk about. Optional: asking is the signal, the note is a courtesy.
-  note           String? @db.Text
+  note           String?            @db.Text
 
   /// new | contacted | closed. Read by whoever works through these, not by the product.
   status String @default("new")

@@ -50,9 +50,22 @@ describe('coaching costs the same in the product as on the site', () => {
 
   it('the page renders the shared numbers rather than retyping them', () => {
     /* The whole point of the module: a price typed onto the page is a second copy again. */
-    expect(PRICING).toContain('{SERVICES.coachingRetainer}')
-    expect(PRICING).toContain('{SERVICES.coachingHourly}')
-    expect(PRICING).toContain('{SERVICES.integrationSupportFrom}')
+    for (const key of Object.keys(SERVICES)) {
+      expect(PRICING, `SERVICES.${key} is defined and the page never renders it`).toContain(`{SERVICES.${key}}`)
+    }
+  })
+
+  it('says each price once, because twice is how they drift apart', () => {
+    /*
+     * The coaching figures were in two sections of this page at the same time - the Guided
+     * comparison and the services block - which is the same duplication that had the retainer
+     * wrong in three files. The comparison explains the difference and the services block carries
+     * the numbers.
+     */
+    for (const figure of Object.values(SERVICES)) {
+      const times = [...PRICING.matchAll(new RegExp(figure.replace('$', '\\$'), 'g'))].length
+      expect(times, `${figure} is typed on the pricing page ${times} times`).toBe(0)
+    }
   })
 
   it('every figure the coach card quotes is a figure the pricing page shows', () => {

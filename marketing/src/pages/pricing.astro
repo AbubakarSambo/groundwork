@@ -165,20 +165,17 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         </div>
       </div>
 
-      <div class="why-grid" style="margin-bottom:20px;">
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Retained</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingRetainer}</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">a year, for twelve sessions</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">About $625 a session, against $700 booked one at a time. Every session is tied to a specific check-in objective or a specific issue, so it is never an open-ended conversation.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">By the hour</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingHourly}</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">an hour, no retainer</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">If you would rather not retain anybody, book single sessions as you need them. Same coach, same preparation.</p>
-        </div>
-      </div>
+      <!--
+        THE PRICES USED TO BE REPEATED HERE, IN A SECOND PAIR OF CARDS.
+        
+        This section explains the difference between running it yourself and running it with a
+        coach, which is worth its own space. The numbers moved down to "Help, where you want it",
+        where they sit beside setup and integration - the other two things that are a person's time
+        rather than software. One place for a price is the rule that stopped the retainer being
+        wrong in three files.
+      -->
+      <p style="font-size:13px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">What coaching costs, and the two other things our team does by hand, are below.</p>
+
 
       <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:18px 20px;margin-bottom:24px;">
         <p style="font-size:13px;font-weight:700;color:var(--gw-navy);margin:0 0 6px;">Book two sessions per issue, back to back</p>
@@ -194,29 +191,42 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       </div>
 
       <!--
-        INTEGRATIONS. Nothing on this site said the API existed, so the only way to learn you could
-        connect Groundwork to your own systems was to already be inside the product looking at the
-        Connect page. What we sell is the HELP, not the access - the access comes with the plan.
+        THE THREE THINGS THAT ARE PEOPLE RATHER THAN SOFTWARE.
+        
+        Nothing on this site said the API existed, so the only way to learn you could connect
+        Groundwork to your own systems was to already be inside the product. And all three of these
+        end the same way: you ask for a call, our team talks to you, and what you agree is invoiced
+        afterwards. None of them is bought from a form, so none of them offers a buy button that
+        would be a lie.
       -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Connect it to what you already use</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">Your people and objectives can come in from the tools you already run, and what check-ins produce can go back out to them. You can also put a check-in inside your own product, so your users never leave it. The API and the keys are part of your subscription: most engineering teams will do this themselves and want nothing from us.</p>
+      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Help, where you want it</h2>
+      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">The software is the plan above and most teams run it on their own. Your people and objectives can come in from tools you already use, what check-ins produce can go back out, and you can put a check-in inside your own product. The API and the keys come with your subscription: your engineers can do all of it without talking to us. These three are for when you would rather not.</p>
 
-      <div class="why-grid" style="margin-bottom:20px;">
+      <div class="why-grid" style="margin-bottom:16px;">
         <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Do it yourself</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">Included</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">on every paid plan</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Issue a key, point your systems at us, and send events back out. The documentation is in the product, on the Connect page, and your engineers do not need to talk to us to use it.</p>
+          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">A coach in the room</div>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingRetainer}</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">a year for twelve sessions, or {SERVICES.coachingHourly} an hour</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Sahar reads the report with your team and turns what it found into a decision somebody owns. About $625 a session retained, against {SERVICES.coachingHourly} booked one at a time.</p>
+        </div>
+        <div class="why-card">
+          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Setting you up</div>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.handsOnFirstMonth}</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">first month</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">A named person to get you running and train your team. Three sessions covering planning, setup and training, so the first check-ins are ones you would want to read.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Integration support</div>
           <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.integrationSupportFrom}+</p>
           <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">depending on complexity</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">If you would rather we did it with you. Priced from rather than at, because a two-system sync and a whole HR platform are not the same week of work. Tell us what you are connecting and we will tell you the number before anybody starts.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">If you would rather we connected it with you. Priced from rather than at, because a two-system sync and a whole HR platform are not the same week of work.</p>
         </div>
       </div>
 
-      <p style="font-size:13px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;"><a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Integration%20support" style="font-weight:700;color:var(--gw-navy);text-decoration:none;">Ask about integration support &#8594;</a></p>
+      <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:48px;">
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 8px;">All three start with a call, and none of them is charged to a card. Subscribe first, ask from inside the product, and we will tell you the number before anybody starts. What you agree is invoiced by us afterwards.</p>
+        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Request%20a%20call" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Request a call &#8594;</a>
+      </div>
 
       <!-- Why we price this way -->
       <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Why we price this way</h2>
