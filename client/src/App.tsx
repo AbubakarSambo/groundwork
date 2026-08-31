@@ -230,8 +230,20 @@ export default function App() {
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-            <Route path="/prompts" element={<RequireOrgSetup><PromptVersioningPage /></RequireOrgSetup>} />
-            <Route path="/prompts/test" element={<RequireOrgSetup><PromptTestPage /></RequireOrgSetup>} />
+            {/*
+              * INTERNAL TOOLING, ON A CUSTOMER ROUTE.
+              *
+              * These two were guarded only by `RequireOrgSetup`, which means "you are signed in and
+              * your organisation is named" - true of every customer. Neither is linked from the
+              * navigation, so nobody found them by accident, and every endpoint behind them already
+              * carries `PlatformAdminGuard` at the class level: a customer who reached them got a
+              * page whose every request returned 403, written in internal language, with no way to
+              * know why.
+              *
+              * Not a data exposure. A page that can only fail, shown to the wrong person.
+              */}
+            <Route path="/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
+            <Route path="/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
