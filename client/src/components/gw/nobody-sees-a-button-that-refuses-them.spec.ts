@@ -51,6 +51,17 @@ describe('the button is not shown to somebody it would refuse', () => {
      * `!== false` rather than `=== true`. A client running against a session minted before this
      * existed has `undefined`, and hiding the product's main action on a stale token would be a
      * worse failure than showing a button that occasionally refuses.
+     *
+     * REVISITED, AND KEPT. The reason this trade-off exists is a stored user that could be stale
+     * indefinitely - which is no longer the case, since the app now re-reads /auth/me on every load
+     * and merges the answer. So `=== true` would be safe in the steady state, and it would close the
+     * hole where a lost field re-offers the button to everybody, which has happened twice.
+     *
+     * It is still not worth it. `=== true` hides the button for the moment between hydration and
+     * that refetch resolving, so the product's main action appears late on every load for everybody
+     * - a certain cost paid constantly, against an uncertain one paid rarely. The real defence is
+     * upstream: the field must not go missing. That is asserted in the API, where every endpoint
+     * returning a user is required to route through one shape.
      */
     expect(strip(SHELL)).not.toContain('user?.mayOpenCheckIns === true')
     expect(strip(LIST)).not.toContain('user?.mayOpenCheckIns === true')
