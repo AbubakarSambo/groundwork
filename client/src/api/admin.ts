@@ -18,6 +18,17 @@ export interface PricingPlanRow {
   updatedAt: string
 }
 
+export interface InboundMessage {
+  id: string
+  fromAddress: string
+  fromName: string | null
+  toAddress: string
+  subject: string | null
+  body: string | null
+  receivedAt: string
+  readAt: string | null
+}
+
 export const adminApi = {
   getWhatsAppStatus: () =>
     apiClient.get<WhatsAppToggleState>('/admin/whatsapp').then(r => r.data),
@@ -54,6 +65,16 @@ export const adminApi = {
    * This is where "Scale advertised 1,000 people in three places" comes from, and the comment inside
    * `setPlanLimits` already says a cap that drifts is what it exists to prevent.
    */
+
+  /*
+   * MAIL SENT TO US. `hello@myground.work` is on the marketing site and arrived in one person's
+   * inbox, invisible to anybody else and unanswerable if she were away. See the model note.
+   */
+  getInbox: () =>
+    apiClient.get<{ messages: InboundMessage[]; unread: number }>('/admin/inbox').then(r => r.data),
+
+  markInboundRead: (id: string) =>
+    apiClient.post<{ messages: InboundMessage[]; unread: number }>(`/admin/inbox/${id}/read`).then(r => r.data),
 }
 
 export interface PricingSnapshot {

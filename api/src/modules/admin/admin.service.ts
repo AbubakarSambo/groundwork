@@ -325,6 +325,35 @@ export class AdminService implements OnApplicationBootstrap {
     };
   }
 
+  /**
+   * MAIL SENT TO US, NEWEST FIRST.
+   *
+   * The address is on the marketing site and went to one person's inbox, where nobody else could
+   * see it and nothing could be picked up if she were away. Unread first is deliberately NOT the
+   * order: a message somebody has read is still the one that might need answering, and hiding it
+   * below fifty older ones is how an inbox becomes a place things go missing.
+   */
+  async getInbox() {
+    const messages = await this.prisma.inboundMessage.findMany({
+      orderBy: { receivedAt: 'desc' },
+      take: 200,
+      select: {
+        id: true, fromAddress: true, fromName: true, toAddress: true,
+        subject: true, body: true, receivedAt: true, readAt: true,
+      },
+    });
+    return { messages, unread: messages.filter((m) => !m.readAt).length };
+  }
+
+  /** Marking one read is the only thing anybody can do to it here. Replying happens in real mail. */
+  async markInboundRead(id: string, userId: string) {
+    await this.prisma.inboundMessage.update({
+      where: { id },
+      data: { readAt: new Date(), readById: userId },
+    });
+    return this.getInbox();
+  }
+
   async getFeedback() {
     return this.prisma.outcomeFeedback.findMany({
       include: {

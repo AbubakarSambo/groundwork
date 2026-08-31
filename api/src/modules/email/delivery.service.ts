@@ -1,4 +1,5 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { isSomethingSentToUs, whatArrived } from './a-message-sent-to-us';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -100,7 +101,37 @@ export class DeliveryService {
   /** Apply one Resend event. Upserted by resendId -> replays are idempotent.
    * Unknown event types and unknown email ids are acknowledged and ignored
    * (Resend retries on non-2xx; there is nothing to retry into). */
-  async applyEvent(event: { type?: string; data?: { email_id?: string; to?: string | string[]; bounce?: { message?: string } } }): Promise<{ ok: true }> {
+  /**
+   * MAIL ARRIVING IS THE SAME WEBHOOK AS MAIL LEAVING, and it is handled first because it is not a
+   * delivery event at all - the status table below has no row for it, so without this it would fall
+   * through and be silently discarded as an unknown type.
+   *
+   * Upserted on the provider's own id: a webhook that is redelivered - which Resend does, on
+   * purpose, when we are slow to answer - must not become a second copy of somebody's email.
+   */
+  async applyEvent(event: { type?: string; data?: any }): Promise<{ ok: true }> {
+    if (isSomethingSentToUs(event?.type)) {
+      const arrived = whatArrived(event);
+      if (!arrived) return { ok: true };
+      if (arrived.providerId) {
+        await this.prisma.inboundMessage.upsert({
+          where: { providerId: arrived.providerId },
+          create: arrived as any,
+          /* Nothing is updated on a redelivery. The first copy is the message; a later one is the
+             same message arriving twice, and overwriting would clear a `readAt` somebody set. */
+          update: {},
+        }).catch((err: any) => this.logger?.warn?.(`Storing an inbound message failed: ${err?.message}`));
+      } else {
+        await this.prisma.inboundMessage.create({ data: arrived as any })
+          .catch((err: any) => this.logger?.warn?.(`Storing an inbound message failed: ${err?.message}`));
+      }
+      return { ok: true };
+    }
+
+    return this.applyDeliveryEvent(event as any);
+  }
+
+  private async applyDeliveryEvent(event: { type?: string; data?: { email_id?: string; to?: string | string[]; bounce?: { message?: string } } }): Promise<{ ok: true }> {
     const statusByType: Record<string, string> = {
       'email.delivered': 'DELIVERED',
       'email.bounced': 'BOUNCED',

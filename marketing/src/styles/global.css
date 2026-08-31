@@ -121,7 +121,7 @@
    * They are not buttons and they are not mid-sentence, so the fix is to grow the hit box
    * without moving anything: vertical padding cancelled by an equal negative margin. The
    * line keeps its position, the target roughly doubles. Horizontal is left alone so the
-   * " | Product strategy" beside each name does not shift.
+   * " | Founding partner" beside each name does not shift.
    */
   .gw-tap-inline {
     display: inline-block;

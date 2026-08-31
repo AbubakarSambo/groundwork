@@ -474,6 +474,41 @@ model EntryDraft {
 // invite-kind row per participant is mirrored onto
 // GroundParticipant.inviteDeliveryStatus for cheap rendering.
 // ---------------------------------------------------------------------------
+/// MAIL SENT TO US, RATHER THAN BY US.
+///
+/// `hello@myground.work` is on the marketing site, in the footer, and on the pricing page next to
+/// "Ask about Guided" - so it is the address a prospect writes to, and it landed in one person's
+/// inbox where nobody else could see it and nothing could be picked up if she were away.
+///
+/// STORED WHOLE AND NEVER PARSED FOR MEANING. A person reads these. Nothing extracts an intent, and
+/// nothing about a sender reaches any other part of the product: an inbound email is a message to
+/// the company, not evidence about anybody.
+model InboundMessage {
+  id String @id @default(uuid())
+
+  /// The provider's own id, so a webhook redelivery is not a second copy.
+  providerId String? @unique @map("provider_id")
+
+  fromAddress String  @map("from_address")
+  fromName    String? @map("from_name")
+  /// Which of our addresses it was sent to. More than one exists and they may not stay one inbox.
+  toAddress   String  @map("to_address")
+  subject     String? @db.Text
+  /// Plain text where the sender sent any. HTML is deliberately not stored - see the controller.
+  body        String? @db.Text
+
+  /// When the sender sent it, per the provider. Not when we processed it.
+  receivedAt DateTime  @map("received_at")
+  /// Who on our side has read it, and when. Null is unread.
+  readAt     DateTime? @map("read_at")
+  readById   String?   @map("read_by_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([receivedAt])
+  @@map("inbound_messages")
+}
+
 model EmailDelivery {
   id            String    @id @default(uuid())
   resendId      String    @unique @map("resend_id")
