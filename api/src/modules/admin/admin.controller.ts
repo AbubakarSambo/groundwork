@@ -1,16 +1,4 @@
-import {
-  Controller,
-  Get,
-  Patch,
-  Post,
-  Param,
-  Body,
-  Headers,
-  UseGuards,
-  Logger,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Get, Patch, Post, Param, Body, Headers, UseGuards, Logger, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
@@ -204,6 +192,32 @@ export class AdminController {
   @ApiOperation({ summary: 'Detailed usage for a single ContributorCode' })
   getCodeUsage(@Param('codeId') codeId: string) {
     return this.adminService.getCodeUsage(codeId);
+  }
+
+  @Get('call-requests')
+  @ApiOperation({ summary: 'Every call somebody has asked for, with what it is about' })
+  getCallRequests() {
+    return this.adminService.getCallRequests();
+  }
+
+  @Post('call-requests/:id/answered')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mark one call request answered' })
+  markCallAnswered(@Param('id') id: string) {
+    return this.adminService.markCallAnswered(id);
+  }
+
+  @Get('inbox')
+  @ApiOperation({ summary: 'Mail sent to our own addresses, newest first' })
+  getInbox() {
+    return this.adminService.getInbox();
+  }
+
+  @Post('inbox/:id/read')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Mark one inbound message read' })
+  markInboundRead(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.adminService.markInboundRead(id, userId);
   }
 
   @Get('feedback')

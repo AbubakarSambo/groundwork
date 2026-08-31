@@ -14,7 +14,13 @@ const svc = (open: any = null) => {
   s.logger = { log: () => {} };
   s.prisma = {
     callRequest: {
-      findFirst: async () => open,
+      /*
+       * A LIST, BECAUSE THE RULE IS PER SUBJECT NOW. `open` used to be one row or null, which
+       * could only ever answer "has this company asked for anything" - and the question is "has
+       * this company asked for THIS".
+       */
+      findMany: async () => (Array.isArray(open) ? open : open ? [open] : []),
+      findFirst: async () => (Array.isArray(open) ? open[0] ?? null : open),
       create: async (a: any) => { created.push(a); return { createdAt: new Date('2026-08-30') }; },
     },
   };
@@ -45,7 +51,7 @@ describe('a request for a call', () => {
   it('does not open a second one while the first is unanswered', async () => {
     /* A second click is somebody wondering whether the first worked. The same company four times
        in a queue is a queue that gets read less carefully. */
-    const { s, created } = svc({ id: 'r1', createdAt: new Date('2026-08-01') });
+    const { s, created } = svc({ id: 'r1', kind: 'CALL', createdAt: new Date('2026-08-01') });
     const out = await s.requestACall('org1', 'u1', 'again');
     expect(created).toHaveLength(0);
     expect(out.alreadyOpen).toBe(true);
@@ -57,5 +63,41 @@ describe('a request for a call', () => {
     const { s, created } = svc();
     await s.requestACall('org1', 'u1', 'x'.repeat(5000));
     expect(created[0].data.note.length).toBe(2000);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+describe('and the subject it is about', () => {
+  it('records what the call is about', async () => {
+    const { s, created } = svc(null);
+    await s.requestACall('org1', 'u1', 'about the HR sync', 'INTEGRATION');
+    expect(created[0].data.kind).toBe('INTEGRATION');
+  });
+
+  it('defaults to something else when nobody said', async () => {
+    const { s, created } = svc(null);
+    await s.requestACall('org1', 'u1');
+    expect(created[0].data.kind).toBe('CALL');
+  });
+
+  it('a coach request does not swallow an integration one', async () => {
+    /*
+     * THE BUG THE OLD RULE WOULD HAVE HAD. One open request per ORGANISATION meant the second ask
+     * reported success, wrote nothing down, and nobody ever rang back about the second thing.
+     */
+    const { s, created } = svc([{ id: 'r1', kind: 'COACHING', createdAt: new Date('2026-08-01') }]);
+    const out = await s.requestACall('org1', 'u1', 'and the HR sync', 'INTEGRATION');
+    expect(out.alreadyOpen).toBe(false);
+    expect(created).toHaveLength(1);
+    expect(created[0].data.kind).toBe('INTEGRATION');
+  });
+
+  it('but clicking the same one twice still does not', async () => {
+    const { s, created } = svc([{ id: 'r1', kind: 'COACHING', createdAt: new Date('2026-08-01') }]);
+    const out = await s.requestACall('org1', 'u1', 'again', 'COACHING');
+    expect(out.alreadyOpen).toBe(true);
+    expect(created).toHaveLength(0);
+    expect(out.at).toEqual(new Date('2026-08-01'));
   });
 });

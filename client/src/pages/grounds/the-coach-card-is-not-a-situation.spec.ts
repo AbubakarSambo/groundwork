@@ -33,8 +33,8 @@ describe('asking for a coach', () => {
   })
 
   it('shows what it costs, and that the software works without it', () => {
-    expect(COACH_CARD.cost).toContain('$5,000')
-    expect(COACH_CARD.cost).toContain('$500')
+    expect(COACH_CARD.cost).toContain('$7,500')
+    expect(COACH_CARD.cost).toContain('$700')
     expect(COACH_CARD.cost).toMatch(/works without it/)
   })
 

@@ -114,14 +114,20 @@ export function IntegrationsPage() {
     retry: false,
   })
   const callMut = useMutation({
-    mutationFn: () => apiClient.post('/users/call-request', {}),
+    /*
+     * SAYS WHAT THE CALL IS ABOUT. Asked from the Connect page it is nearly always about connecting
+     * something, and whoever rings back should not have to guess. The subject changes nothing about
+     * who may ask - it is a line on the request, not a gate.
+     */
+    mutationFn: () => apiClient.post('/users/call-request', { subject: 'INTEGRATION' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['call-request'] })
       toast.success('Asked. We will be in touch.')
     },
     onError: () => toast.error('Could not send that just now. Try again.'),
   })
-  const callAsked = !!call.data?.asked
+  /* Per subject now: an open coaching request must not make this page say they already asked. */
+  const callAsked = !!call.data?.open?.INTEGRATION
   const deliveries = useQuery({ queryKey: ['integrations', 'deliveries'], queryFn: () => integrationsApi.deliveries(), enabled: isAdmin })
   const imports = useQuery({ queryKey: ['integrations', 'imports'], queryFn: integrationsApi.listImports, enabled: isAdmin })
 

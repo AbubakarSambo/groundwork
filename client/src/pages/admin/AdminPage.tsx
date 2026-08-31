@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData } from '@/api/prompts'
-import { adminApi, type PricingPlanRow } from '@/api/admin'
+import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
@@ -975,7 +975,155 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
   )
 }
 
-type Tab = 'system' | 'dropoffs' | 'prompts' | 'orgs' | 'usage' | 'feedback' | 'coach' | 'errors'
+/**
+ * MAIL SENT TO US.
+ *
+ * `hello@myground.work` is on the marketing site, in the footer, and beside "Ask about Guided" on
+ * the pricing page - so it is the address a prospect writes to, and it went to one person's inbox
+ * where nobody else could see it and nothing could be picked up if she were away for a week.
+ *
+ * NOT A MAILBOX AND MUST NOT GROW INTO ONE. No replying, no threads, no assignment: replying
+ * happens in whatever mail client somebody already uses. This makes a message reaching the company
+ * visible to the company, which is the only part that was broken.
+ */
+function InboxTab({ data, onRead }: {
+  data: { messages: InboundMessage[]; unread: number }
+  onRead: (id: string) => void
+}) {
+  if (!data.messages.length) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+        Nothing has come in yet. Mail to hello@myground.work lands here once Resend is forwarding it
+        to the webhook - until then it only reaches whoever owns the mailbox.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+        {data.unread} unread of {data.messages.length}. Reply from your own mail - this is here so
+        nothing sits unseen.
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {data.messages.map(m => (
+          <div key={m.id} style={{
+            border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px',
+            background: m.readAt ? 'var(--gw-bg)' : 'white',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: m.readAt ? 600 : 800, color: 'var(--gw-navy)' }}>
+                {m.subject?.trim() || '(no subject)'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+                {new Date(m.receivedAt).toLocaleString()}
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7 }}>
+              {m.fromName ? `${m.fromName} · ` : ''}
+              <a href={`mailto:${m.fromAddress}?subject=${encodeURIComponent(`Re: ${m.subject ?? ''}`)}`}
+                 style={{ color: 'var(--gw-navy)' }}>{m.fromAddress}</a>
+              {' → '}{m.toAddress}
+            </div>
+            {m.body && (
+              /* Their words, as text. The sender's HTML is never stored and never rendered. */
+              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+                {m.body}
+              </div>
+            )}
+            {!m.readAt && (
+              <button
+                type="button"
+                onClick={() => onRead(m.id)}
+                style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >Mark read</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * EVERY CALL SOMEBODY HAS ASKED FOR.
+ *
+ * Coaching, setup help and integration support are the same request with a different subject:
+ * somebody asks, our team rings back, and what they agree is invoiced by hand. One queue, because a
+ * second one is a queue nobody opens - which is exactly what happened to the mail at hello@.
+ *
+ * WHETHER THEY PAY US IS SHOWN AND GATES NOTHING. The request is deliberately open to anybody,
+ * including somebody still deciding whether to subscribe - that is the call most likely to end in
+ * one. It is here because a call to a free account is a different conversation, and whoever picks
+ * it up should not have to go and look it up.
+ */
+const WHAT_IT_IS_ABOUT: Record<CallRequestRow['about'], string> = {
+  COACHING: 'A coach in the room',
+  HANDS_ON: 'Setting them up, training the team',
+  INTEGRATION: 'Connecting to their systems',
+  CALL: 'Something else',
+}
+
+function CallRequestsTab({ data, onAnswered }: {
+  data: { requests: CallRequestRow[] }
+  onAnswered: (id: string) => void
+}) {
+  if (!data.requests.length) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+        Nobody is waiting on a call. Requests arrive here from the pricing page, the Connect page and
+        the coach card, and stay until somebody marks them answered.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 12 }}>
+        {data.requests.length} waiting. Ring them, agree what it costs, and invoice it afterwards -
+        nothing here charges anybody.
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {data.requests.map(r => (
+          <div key={r.id} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 3 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-navy)' }}>
+                {WHAT_IT_IS_ABOUT[r.about] ?? 'Something else'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+                {new Date(r.askedAt).toLocaleString()}
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7 }}>
+              {r.who}{r.email ? ' · ' : ''}
+              {r.email && <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>}
+              {' · '}{r.orgName}
+              <span style={{
+                marginLeft: 8, fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em',
+                textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4,
+                background: r.paying ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
+                color: r.paying ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+                border: `1px solid ${r.paying ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+              }}>{r.paying ? 'Paying' : 'Free plan'}</span>
+            </div>
+            {r.note && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+                {r.note}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => onAnswered(r.id)}
+              style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 11px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >Mark answered</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+type Tab = 'system' | 'dropoffs' | 'prompts' | 'orgs' | 'usage' | 'calls' | 'inbox' | 'feedback' | 'coach' | 'errors'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'system',   label: 'System' },
@@ -983,6 +1131,9 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'prompts',  label: 'Prompts' },
   { id: 'orgs',     label: 'Orgs' },
   { id: 'usage',    label: 'Usage' },
+  /* Both of these are somebody waiting on us, so they sit above the reporting tabs. */
+  { id: 'calls',    label: 'Call requests' },
+  { id: 'inbox',    label: 'Inbox' },
   { id: 'feedback', label: 'Feedback' },
   /**
    * Beside feedback, not inside it. A coach request has a person, an organisation, a team size, a
@@ -1032,6 +1183,31 @@ export function AdminPage() {
     staleTime: 60 * 1000,
   })
 
+  const { data: calls, isLoading: callsLoading } = useQuery({
+    queryKey: ['platform-call-requests'],
+    queryFn: adminApi.getCallRequests,
+    enabled: !!user?.isPlatformAdmin && tab === 'calls',
+    staleTime: 30 * 1000,
+  })
+
+  const { data: inbox, isLoading: inboxLoading } = useQuery({
+    queryKey: ['platform-inbox'],
+    queryFn: adminApi.getInbox,
+    enabled: !!user?.isPlatformAdmin && tab === 'inbox',
+    /* Shorter than the rest: somebody writing to hello@ is waiting, and a five minute cache is a
+       five minute delay before anybody in the company can see they wrote. */
+    staleTime: 30 * 1000,
+  })
+  const pageQc = useQueryClient()
+  const markAnswered = useMutation({
+    mutationFn: (id: string) => adminApi.markCallAnswered(id),
+    onSuccess: () => pageQc.invalidateQueries({ queryKey: ['platform-call-requests'] }),
+  })
+  const markRead = useMutation({
+    mutationFn: (id: string) => adminApi.markInboundRead(id),
+    onSuccess: () => pageQc.invalidateQueries({ queryKey: ['platform-inbox'] }),
+  })
+
   const { data: feedback, isLoading: feedbackLoading } = useQuery({
     queryKey: ['platform-feedback'],
     queryFn: promptsApi.feedbackSummary,
@@ -1053,6 +1229,8 @@ export function AdminPage() {
     : tab === 'usage' ? usageLoading
     : tab === 'coach' ? coachLoading
     : tab === 'feedback' ? feedbackLoading
+    : tab === 'inbox' ? inboxLoading
+    : tab === 'calls' ? callsLoading
     : false
 
   return (
@@ -1062,7 +1240,18 @@ export function AdminPage() {
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork ops</div>
-          <button onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>← App</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {/*
+              * THE OTHER HALF OF THE BACK OFFICE, WHICH NOTHING LINKED TO.
+              *
+              * `/admin/dashboard` holds the destructive, OTP-gated actions - adding a platform
+              * admin among them - and the only way to reach it was to know the URL and type it.
+              * So a capability that has been built and working sat unreachable, and the way to add
+              * a super admin was to ask somebody to run a database write.
+              */}
+            <button onClick={() => navigate('/admin/dashboard')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Admins and codes →</button>
+            <button onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>← App</button>
+          </div>
         </div>
 
         {/* Tab bar */}
@@ -1096,6 +1285,12 @@ export function AdminPage() {
         {tab === 'prompts'  && <PromptsTab navigate={navigate} />}
         {tab === 'orgs'     && !orgsLoading  && orgs     && <OrgsTab orgs={orgs} />}
         {tab === 'usage'    && !usageLoading && usage    && <UsageTab data={usage} />}
+        {tab === 'calls' && !callsLoading && calls && (
+          <CallRequestsTab data={calls} onAnswered={(id) => markAnswered.mutate(id)} />
+        )}
+        {tab === 'inbox' && !inboxLoading && inbox && (
+          <InboxTab data={inbox} onRead={(id) => markRead.mutate(id)} />
+        )}
         {tab === 'feedback' && !feedbackLoading && feedback && <FeedbackTab data={feedback} />}
         {tab === 'coach' && !coachLoading && <CoachTab rows={coachRequests ?? []} onChanged={refetchCoach} />}
         {tab === 'errors'   && <ErrorsTab />}
