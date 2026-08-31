@@ -937,9 +937,24 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
         </div>
       )}
 
+      {/*
+        * THE METHOD, BEHIND A LINE, INSTEAD OF ABOVE THE FINDING.
+        *
+        * These three panels explain how Groundwork writes reports in general. They are true and
+        * worth keeping. They were also the first thing on the page, in three columns, above a
+        * reveal-status box and a stale-version banner - so roughly the top quarter of a report was
+        * about reports, and the reader reached "4 agreed, 1 still open" by scrolling past an
+        * explanation of what that sentence would mean.
+        *
+        * Somebody reading their second report does not need the manual again, and somebody reading
+        * their first needs it after they have seen the thing it describes. Same words, same place in
+        * the flow, closed until asked for.
+        */}
       {/* LEGEND */}
       <section style={{ background: 'white', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
+          <details className="gw-legend">
+            <summary>How this report is put together</summary>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {[
               // This said "every report OPENS with what runs across everyone's answers".
@@ -960,6 +975,7 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
               </div>
             ))}
           </div>
+          </details>
         </div>
       </section>
 
