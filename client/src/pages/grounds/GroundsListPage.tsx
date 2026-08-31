@@ -1,6 +1,7 @@
 import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
+import { railAttention } from '@/lib/rail-attention'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -23,7 +24,38 @@ const MODE_COLORS: Record<string, { bg: string; color: string }> = {
   Urgent:         { bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
 }
 
-function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
+/**
+ * WHAT THE CHIP SAYS, AND WHY IT CHANGED.
+ *
+ * It showed `g.moment` - "STARTING" - which is a property of the situation, the same on the day a
+ * check-in opens and the day it closes. So the one glanceable thing on a card said nothing about
+ * whether the card wanted anything from you, and somebody scanning ten of them had to open each to
+ * find out.
+ *
+ * The rail beside it has answered that question for a long time, with `railAttention`. Same data,
+ * same function: the sidebar was ranking by attention while the list showed the scenario, which is
+ * two answers to one question.
+ *
+ * The list's ordering is deliberately left alone. It already sorts by urgency, on
+ * `reportWaitingForMe` and `REPORT_READY`, which `railAttention` does not know about. Two rules for
+ * two jobs is fine.
+ */
+function whatThisWants(g: Ground, myUserId: string | null | undefined) {
+  const a = railAttention(g as any, myUserId)
+  switch (a.kind) {
+    case 'overdue':
+      return { text: a.daysLate === 1 ? 'Your turn · 1 day late' : `Your turn · ${a.daysLate} days late`,
+               bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
+    case 'yours':
+      return { text: 'Your turn', bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }
+    case 'waiting':
+      return { text: `Waiting on ${a.total - a.done} of ${a.total}`, bg: 'var(--gw-bg)', color: 'var(--gw-sub)' }
+    default:
+      return null
+  }
+}
+
+function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; myUserId?: string | null }) {
   // What the report holds, or nothing. The old "{score}/5 {band}" was a count
   // of completed check-ins wearing the word "Aligned".
   const read = alignmentLabel((g as any).alignment)
@@ -34,7 +66,12 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{g.label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: mc.bg, color: mc.color }}>{g.moment}</span>
+            {(() => {
+              const w = whatThisWants(g, myUserId)
+              return w
+                ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: w.bg, color: w.color }}>{w.text}</span>
+                : <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: mc.bg, color: mc.color }}>Nothing due</span>
+            })()}
             {/*
               A GROUND IN SOMEBODY ELSE'S ORGANISATION, SAID OUT LOUD.
 
@@ -522,7 +559,7 @@ export function GroundsListPage() {
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} onClick={() => navigate(`/grounds/${g.id}`)} />)}
+              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
             </div>
           </>
         ) : (
@@ -580,7 +617,7 @@ export function GroundsListPage() {
                 // assigned to run this ground) still needs the admin view - the
                 // participant page has no confirm-lead / add-participant / release
                 // actions. Only route to /p when they are genuinely a participant.
-                <GroundCard key={g.id} g={g} onClick={() => navigate(g.initiatorId === user?.id ? `/grounds/${g.id}` : `/grounds/${g.id}/p`)} />
+                <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(g.initiatorId === user?.id ? `/grounds/${g.id}` : `/grounds/${g.id}/p`)} />
               ))}
             </div>
           </>
