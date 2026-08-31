@@ -1081,3 +1081,28 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 .gw-rail-row:hover .gw-rename { opacity: 0.85; }
 .gw-rename:hover,
 .gw-rename:focus-visible { opacity: 1; }
+
+/* SEARCH THE SITUATIONS. Sits above the jump bar because typing your own words is the faster
+   route for the person who already knows their situation; the jump bar is for browsing, and it
+   hides while a search is running because jumping to a group is meaningless in an ungrouped list. */
+.cg-find {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0 2px;
+}
+.cg-find input {
+  flex: 1 1 auto; min-width: 0;
+  font: inherit; font-size: 13.5px;
+  padding: 9px 13px; border-radius: 8px;
+  border: 1px solid var(--gw-border); background: white; color: var(--gw-navy);
+}
+.cg-find input::placeholder { color: var(--gw-muted); }
+.cg-find input:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 1px; border-color: var(--gw-navy); }
+.cg-find [role="status"] {
+  flex: 0 0 auto; font-size: 12px; font-weight: 600;
+  color: var(--gw-muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cg-nomatch {
+  margin: 14px 0 24px; padding: 14px 16px;
+  font-size: 13.5px; line-height: 1.55; color: var(--gw-sub);
+  background: var(--gw-bg); border: 1px solid var(--gw-border); border-radius: 8px;
+}
