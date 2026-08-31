@@ -157,7 +157,13 @@ export const COACH_CARD = {
   label: 'Ask to speak to a coach',
   moment: 'You know what you are dealing with. You want a person in it with you.',
   whatHappens: 'Nothing is created and nobody on your team is contacted. You tell us what you are dealing with, we email you back, and a coach picks it up from there.',
-  cost: 'Coaching is $5,000 a year for twelve sessions, or $500 an hour with no retainer. The software works without it, and most teams run it themselves.',
+  /*
+   * THE SAME NUMBERS THE PRICING PAGE SHOWS, and they were not. This card said $5,000 and $500
+   * while the site said $7,500 and $700 - two prices for one thing, one of them inside the product
+   * somebody is already paying for. A person who read the card and then the page has no way to know
+   * which is real, and the one they will remember is the cheaper one.
+   */
+  cost: 'Coaching is $7,500 a year for twelve sessions, or $700 an hour with no retainer. The software works without it, and most teams run it themselves.',
 } as const
 
 

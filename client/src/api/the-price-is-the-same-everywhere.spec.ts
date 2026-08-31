@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs'
+import { COACH_CARD } from '../lib/scenario-catalog'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 import { type SubscriptionPlan } from './billing'
@@ -63,19 +64,22 @@ describe('the marketing site quotes the app price', () => {
   }
 
   /**
-   * COACHING IS SOLD, BUT IT IS NOT A PLAN. The Guided option on the pricing page quotes $5,000 a
-   * year for twelve sessions, or $500 an hour. Neither is a SubscriptionPlan: nothing in
-   * `pricing_plans` charges them, Stripe never sees them, and the seat cap does not apply - they
-   * are a human service bought alongside a subscription, invoiced by hand.
+   * COACHING IS SOLD, BUT IT IS NOT A PLAN. The Guided option is a human service bought alongside a
+   * subscription and invoiced by hand: nothing in `pricing_plans` charges it, Stripe never sees it,
+   * and the seat cap does not apply. So it has to be allowed through the check below, which only
+   * knows about seeded plans.
    *
-   * WHAT LISTING THEM HERE DOES AND DOES NOT PROVE. It stops the check below from failing on a
-   * price that is legitimately not seeded. It does NOT prove the coaching price is right, because
-   * there is no second place holding it to compare against - this file is the only other copy.
-   * So if the retainer changes, it changes in two places: the pricing page and this line. That is
-   * worse than the plan prices, which are checked against the database, and it is the honest
-   * position rather than deleting the check or formatting the number to slip past the regex.
+   * READ FROM THE PRODUCT RATHER THAN RETYPED HERE, WHICH IS THE FIX FOR WHAT THIS COMMENT USED TO
+   * ADMIT. It said: "if the retainer changes, it changes in two places: the pricing page and this
+   * line." It then did - the deck moved the retainer to $7,500 and the hour to $700, the page was
+   * updated, and this line still said $5,000. The check went red, which is the good outcome, and
+   * only because somebody happened to be running the suite.
+   *
+   * Now the numbers come from `COACH_CARD.cost`, the string the product itself shows a lead when it
+   * offers coaching. One copy, and `one-price-said-in-two-places.spec.ts` is what holds the
+   * marketing page to it.
    */
-  const COACHING_PRICES = ['$5,000', '$500']
+  const COACHING_PRICES = [...COACH_CARD.cost.matchAll(/\$\d[\d,]*/g)].map((m) => m[0])
 
   it('and does not quote a price the app has never heard of', () => {
     // Plus $0, the free tier, which has no SubscriptionPlan because nobody
