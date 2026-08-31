@@ -927,11 +927,24 @@ export function CreateGroundPage() {
         * exactly one column. So twenty-one situations came down as one column and one very long
         * scroll, and the jump bar above them exists because of it.
         *
-        * Only step one. The other five are a form - a timeline, a list of people, a brief - and a
+        * Only the picker. The others are a form - a timeline, a list of people, a brief - and a
         * form read across 1160px is worse, not better: the eye has to travel the width of the
         * screen between a label and its field. 1160 is four 275px cards and their gaps.
+        *
+        * IT SAID `step === 1`, AND THE PICKER IS STEP 2.
+        *
+        * The steps were renumbered - the same edit that left "Step 6 (was 5)" further down - and
+        * this condition kept the old number. So the widening above was written, explained at
+        * length, and then quietly stopped applying to anything: step 1 is the three-option "who is
+        * this for?" question, which wants the narrow column, and the twenty-one cards went back to
+        * being squeezed into 540px on a 1280px screen.
+        *
+        * Worse than a plain regression, because the card grid asks for its column count from the
+        * VIEWPORT, not from its container. At 1280px wide the grid asked for four columns and got
+        * a 508px box to put them in, so the cards came out about 119px across - narrower than they
+        * had ever been in a single column.
         */}
-      <div className="gw-bd" style={{ maxWidth: step === 1 ? 1160 : 540, margin: '0 auto', width: '100%' }}>
+      <div className="gw-bd" style={{ maxWidth: step === 2 ? 1160 : 540, margin: '0 auto', width: '100%' }}>
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
