@@ -859,6 +859,21 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
   // never the bare role word ("Admin"/"Participant") and never a raw email
   // local-part, both of which read as a label rather than a person.
   const adminHandle = adminParty ? participantLabel(adminParty) : 'the initiator'
+
+  /**
+   * A role label as the report stores it, turned into whoever it stands for.
+   *
+   * "the initiator" is the fallback label for a party with no `roleAsDescribed` - a schema word,
+   * shown to a reader beside a real job title. Anything that is already a role somebody described
+   * ("Renewals owner") is theirs and stays as it is.
+   */
+  const personFor = (label: string): string => {
+    if (!label) return label
+    const l = label.trim().toLowerCase()
+    if (l === 'the initiator') return adminHandle
+    if (l === 'the participant' || l === 'the other party') return partHandle
+    return label
+  }
   const partHandle = partParty ? participantLabel(partParty) : 'the other party'
 
   const agreements = report.agreements ?? []
@@ -1314,7 +1329,21 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
               {eng.parties.map((p: any, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid var(--gw-bg)' : 'none', background: 'white' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{p.label}</div>
+                  {/*
+                    * A LABEL IS NOT A PERSON. The row read "the initiator" beside "Renewals owner".
+                    *
+                    * Reports are stored without names on purpose: the model never receives one, and
+                    * parties reach it as role labels. `applyNames` puts the names back on the way
+                    * out - but it walks `engagement` with `walkTextOnly`, deliberately, because
+                    * `specificitySignal` is KEYED by those labels and rewriting a key would break
+                    * the lookup. So `parties[].label` stays raw, correctly, as an identifier.
+                    *
+                    * The mistake was rendering the identifier. This page already knows the people -
+                    * it resolves `adminHandle` and `partHandle` from the same participants a few
+                    * hundred lines up - so the label is resolved here, where a name is wanted, and
+                    * left alone in the payload, where it is a key.
+                    */}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{personFor(p.label)}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
                       {!p.contributed
