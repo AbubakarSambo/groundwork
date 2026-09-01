@@ -6,6 +6,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
+import { MyRecord } from '@/components/gw/MyRecord'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -73,7 +74,7 @@ const MOMENT_LABELS: Record<string, string> = {
  * being deleted: a lead scanning twelve sessions for who has not checked in wants the
  * list, and that is a genuinely different question from reading what was said.
  */
-type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
+type Tab = 'chat' | 'overview' | 'checkins' | 'myrecord' | 'docs' | 'report' | 'settings'
 
 /**
  * The shared tab keys from `ground-tabs.ts`, and this page's own older names for the same tabs.
@@ -82,12 +83,24 @@ type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
  */
 const FROM_TAB_KEY: Record<string, Tab> = {
   chat: 'chat', report: 'report', sessions: 'checkins', context: 'docs', settings: 'settings',
-  /* `?tab=record` used to mean this tab. Kept resolving so links already sent still land somewhere
-     sensible; `sessions` is what gets written from now on. */
-  record: 'checkins',
+  /**
+   * `record` MEANS ONE THING NOW, AND IT IS SOMEBODY'S OWN.
+   *
+   * On this page `?tab=record` used to open Sessions - everyone's state - while on the party view
+   * the same key opened your own account. That collision is what made the two views impossible to
+   * tell apart, and step one split them: `sessions` for everyone's, `record` for yours.
+   *
+   * This kept `record: 'checkins'` for a while so links written before that still landed somewhere
+   * sensible. It cannot stay: this page shows both tabs now, so the key has to pick one, and the
+   * honest pick is the meaning it has everywhere else.
+   *
+   * A link written before step one now opens My record rather than Sessions. Both are on this page,
+   * one tab apart, which is a nudge in the wrong direction rather than a broken link.
+   */
+  record: 'myrecord',
 }
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
-  chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', settings: 'settings',
+  chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', settings: 'settings',
 }
 type ReportSession = 's1' | 's2' | 'closing'
 
@@ -285,6 +298,34 @@ export function GroundAdminPage() {
    */
   const isOrgAdmin = user?.role === 'ADMIN'
   const canRunThisGround = isInitiator || isOrgAdmin
+  /**
+   * AND WHETHER THEY ARE IN IT, WHICH IS A DIFFERENT QUESTION.
+   *
+   * A lead is almost always also a party to their own check-in, and until now reaching their own
+   * record meant leaving for a second page that looks identical to this one. It was computed inline
+   * further down for the roster; named here because the tab row asks it too.
+   */
+  const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+
+  /**
+   * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
+   *
+   * Same endpoints the party view used. Gated on being a party so an admin looking at a check-in
+   * they are not in does not ask for a record they do not have.
+   */
+  const { data: myRecord } = useQuery({
+    queryKey: ['my-record', id],
+    queryFn: () => groundsApi.getMyRecord(id!),
+    enabled: !!id && viewerIsAParty,
+    retry: false,
+  })
+  const { data: mySpecificity } = useQuery({
+    queryKey: ['my-specificity', id],
+    queryFn: () => groundsApi.getMySpecificity(id!),
+    enabled: !!id && viewerIsAParty,
+    retry: false,
+  })
+
   /**
    * ONE READING OF HOW MANY SESSIONS THIS GROUND HAS. W8-4.
    *
@@ -1022,11 +1063,9 @@ export function GroundAdminPage() {
           tabs={groundTabs({
             contextEnabled,
             canRunThisCheckIn: true,
-            /* Not yet. The record lives on the other page until it is folded in here, and a tab
-               this page cannot render is worse than one it does not offer. */
-            isAParty: false,
+            isAParty: viewerIsAParty,
           })}
-          active={({ chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          active={({ chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
           onPick={k => {
             goTab(FROM_TAB_KEY[k] ?? 'chat')
           }}
@@ -1204,6 +1243,21 @@ export function GroundAdminPage() {
                 }))}
             />
           </div>
+        )}
+
+        {tab === 'myrecord' && (
+          <MyRecord
+            groundId={id}
+            ground={ground}
+            myRecord={myRecord}
+            viewerUserId={user?.id}
+            totalSessions={plannedSessions ?? null}
+            completedCount={sessionsDone}
+            specificity={mySpecificity}
+            /* This page calls the material tab `docs`; the component asks to be sent and the page
+               decides where that is. */
+            onGoToTab={(t) => goTab((FROM_TAB_KEY[t] ?? 'docs') as Tab)}
+          />
         )}
 
         {tab === 'checkins' && (
