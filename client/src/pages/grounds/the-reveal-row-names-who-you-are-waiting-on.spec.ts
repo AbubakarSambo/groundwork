@@ -59,7 +59,13 @@ describe('the heading counts past two', () => {
   })
 
   it('while still distinguishing the waiting state', () => {
-    /** The control: the heading must keep saying which of the two states this check-in is in. */
-    expect(CODE).toMatch(/activationStatus\.allActivated \? '· Everyone has revealed' : '· Waiting'/)
+    /**
+     * The control: the heading must keep saying which of the two states this check-in is in.
+     *
+     * Matched on the BRANCH rather than on both strings verbatim. It pinned the exact ternary, so
+     * adding a word - "Everyone has revealed theirs", after the heading was renamed to say WHICH
+     * reports it means - turned it red while both states were still perfectly distinguished.
+     */
+    expect(CODE).toMatch(/activationStatus\.allActivated \? '·[^']*revealed[^']*' : '· Waiting'/)
   })
 })

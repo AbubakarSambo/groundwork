@@ -1854,7 +1854,21 @@ export function GroundAdminPage() {
                       Hardcoded from when a ground was always two parties. This block sits directly
                       above a row of THREE cards on a three-party ground, counting them itself.
                   */}
-                  Report reveal status {activationStatus.allActivated ? '· Everyone has revealed' : '· Waiting'}
+                  {/**
+                    * WHICH REPORTS THIS IS ABOUT, BECAUSE THE HEADER IS TALKING ABOUT A DIFFERENT ONE.
+                    *
+                    * The strip above says "report sent to everyone" the moment the SHARED report is
+                    * released. This panel said "Report reveal status - Waiting", about each person's
+                    * OWN private report, which they reveal to each other separately.
+                    *
+                    * Both true. On one screen, five hundred pixels apart, they read as opposites:
+                    * sent to everyone, and nobody has seen it. Reproduced on a real released report.
+                    *
+                    * The product already separates these words - "Your private report" against
+                    * "Shared report" - everywhere except here. Same fix as "0 of 2 checked in for
+                    * session 2": say which one you mean and the contradiction stops being one.
+                    */}
+                  Private reports {activationStatus.allActivated ? '· Everyone has revealed theirs' : '· Waiting'}
                 </div>
                 {!activationStatus.allActivated && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
