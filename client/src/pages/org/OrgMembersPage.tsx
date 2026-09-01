@@ -452,6 +452,14 @@ export function OrgMembersPage() {
                         border: `1px solid ${m.role === 'ADMIN' ? 'var(--gw-blue-b)' : 'var(--gw-border)'}`,
                       }}
                     >
+                      {/* A guest belongs to another organisation and is only here for the
+                          check-in they were added to. They cannot be assigned this - it is
+                          listed so the control shows what they are instead of showing blank,
+                          which is what an unmatched value renders as. Choosing any of the
+                          three below makes them one of your people, deliberately. */}
+                      {m.role === 'GUEST' && (
+                        <option value="GUEST" disabled>Guest from another organisation</option>
+                      )}
                       <option value="MEMBER">Takes part</option>
                       <option value="LEAD">Can open check-ins</option>
                       <option value="ADMIN">Admin</option>

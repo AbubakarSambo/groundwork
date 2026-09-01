@@ -35,7 +35,7 @@ describe('joining a second organisation is written down', () => {
     expect(SRC).toContain('organizationMembership.upsert');
   });
 
-  it('as a member, never as whatever they are at home', () => {
+  it('as a guest, never as whatever they are at home', () => {
     /*
      * Being an admin of your own company says nothing about somebody else's.
      *
@@ -44,7 +44,11 @@ describe('joining a second organisation is written down', () => {
      * that is what keeps their own grounds reachable. A guard that cannot tell those two apart
      * would be satisfied by breaking the sign-in.
      */
-    expect(GUEST_ROLE).toBe('MEMBER');
+    /* `GUEST`, not `MEMBER`, since 20260901140000. It was MEMBER - the same role as this
+       organisation's own staff - and `mayOpen` asks only about the role, so in an organisation
+       whose setting is "anyone may open a check-in" a guest could open one here and invite THIS
+       organisation's people against ITS billing. See a-guest-is-not-one-of-your-people.spec.ts. */
+    expect(GUEST_ROLE).toBe('GUEST');
     const write = SRC.slice(SRC.indexOf('organizationMembership.upsert'));
     expect(write.slice(0, 400)).toContain('role: GUEST_ROLE');
     expect(write.slice(0, 400)).not.toMatch(/role:\s*user\.role/);

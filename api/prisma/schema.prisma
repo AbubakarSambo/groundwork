@@ -24,6 +24,14 @@ enum UserRole {
   /// say "my leads", and one field that says what somebody is beats two that have to agree.
   LEAD
   MEMBER // a regular person who checks in
+  /// Somebody from ANOTHER company, added to one of your check-ins.
+  ///
+  /// They hold a membership so the organisation appears in their switcher and the check-in they
+  /// were invited to is reachable - and nothing more. `MEMBER` was doing this job, which meant a
+  /// guest counted as one of your people: in an organisation whose setting is "anyone may open a
+  /// check-in", a guest from another company could open one and invite YOUR people, against YOUR
+  /// billing. "Anyone" means anyone here, not anyone you have ever collaborated with.
+  GUEST
 }
 
 enum TokenType {

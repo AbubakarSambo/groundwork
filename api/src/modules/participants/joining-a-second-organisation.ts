@@ -23,7 +23,7 @@
  * guest ends up holding the keys. If they should be an admin there, an admin there says so.
  */
 
-export const GUEST_ROLE = 'MEMBER' as const;
+export const GUEST_ROLE = 'GUEST' as const;
 
 /**
  * Whether joining this ground means joining a second organisation. False for the ordinary case,
