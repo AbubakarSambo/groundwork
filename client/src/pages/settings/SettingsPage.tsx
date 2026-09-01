@@ -284,6 +284,9 @@ export function SettingsPage() {
                 <button
                   onClick={() => checkInSettings.mutate({ needsApproval: !howCheckIns.needsApproval })}
                   disabled={checkInSettings.isPending}
+                  /* On its own the button reads "On, button" and names nothing it controls. */
+                  aria-label="Check-ins wait for an admin"
+                  aria-pressed={howCheckIns.needsApproval}
                   style={{
                     padding: '8px 14px', borderRadius: 7, fontFamily: 'inherit', fontSize: 13,
                     fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',

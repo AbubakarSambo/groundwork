@@ -612,6 +612,7 @@ export function AppSidebar() {
             onClick={() => setCollapsed(v => !v)}
             style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', fontFamily: 'inherit', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
             title={collapsed ? 'Expand menu' : 'Collapse menu'}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
           >
             {collapsed ? '»' : '«'}
           </button>
@@ -677,6 +678,7 @@ export function AppSidebar() {
                       onClick={() => { setEntryRenameVal(groundName); setRenamingEntry(true); setTimeout(() => entryRenameRef.current?.select(), 40) }}
                       style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 11, padding: '0 2px', fontFamily: 'inherit' }}
                       title="Rename"
+                      aria-label={`Rename ${groundName}`}
                     >✎</button>
                   </div>
                 )}
