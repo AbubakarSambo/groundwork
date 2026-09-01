@@ -20,6 +20,7 @@ import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { MyParticipation } from '@/components/gw/MyParticipation'
 import { ContextPage } from '@/components/gw/ContextPage'
 
 
@@ -739,57 +740,13 @@ export function GroundParticipantPage() {
             <div style={{ order: 5 }}><StartingPointPanel groundId={id!} canRecord={false} /></div>
 
             {/* Profile summary */}
-            <div style={{ order: 1, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
-                {(user?.firstName?.[0] ?? '?').toUpperCase()}
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{user?.firstName} {user?.lastName}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{user?.email}</div>
-              </div>
-            </div>
-
-            <div style={{ order: 2, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Scenario</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                {/*
-                  THE FALLBACK SAID NOTHING. Every other row here carries a value - the check-in's
-                  name, the scenario, ACTIVE, 0 of 8. This one fell back to "In this check-in",
-                  which reads as a caption for the label above it rather than an answer, so the row
-                  looked filled in while saying nothing at all. Only visible once the card moved to
-                  the top of the tab and became the first thing a party reads about themselves.
-                */}
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed || 'Not recorded'}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.status}</div>
-              </div>
-              <div style={{ padding: '13px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCheckIns.length} of {totalSessions}</div>
-              </div>
-            </div>
-
-            {/**
-              * The bare grade that stood here - "Overall quality label: low" - is gone. It was the
-              * same read as the one on the record tab, minus everything a person could act on, and
-              * a page that grades you twice is not twice as honest.
-              */}
-            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid var(--gw-clay-b)', borderRadius: 10, padding: '13px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
-              <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
-                Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.
-              </div>
-            </div>
+            <MyParticipation
+              viewer={user}
+              ground={ground}
+              myParticipant={myParticipant}
+              completedCount={completedCheckIns.length}
+              totalSessions={totalSessions ?? null}
+            />
           </div>
         )}
       </div>
