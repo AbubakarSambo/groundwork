@@ -1,7 +1,18 @@
 # Security note for Abubakar
 
 **Found:** 1 September 2026, during an unrelated audit.
-**Status:** nothing has been changed. Flagged only, so the decisions below are yours.
+**Status:** the file is untracked and `.gitignore` now covers every `.env*`. **The exposure is not
+closed** - only rotating the values does that, and that part needs you.
+
+## Two things checked since this note was written, both worse than it first read
+
+**The repository is PUBLIC.** This is not "three people with clones". Anyone can read the file, and
+could have since 31 July. GitHub is scraped continuously for exactly this.
+
+**The signing secret is still the one in use.** The `JWT_SECRET` committed in `api/.env.bak` is
+byte-identical to the one in the live `.env` today. It has not been rotated. The `DATABASE_URL`
+differs, so that one looks stale - worth confirming against what is actually deployed, which I
+cannot see.
 
 ---
 
@@ -37,8 +48,10 @@ contents. Treat both values as disclosed to anyone who has ever had access.
 
 ## What actually closes it
 
-1. **Rotate the JWT signing secret.** This signs everybody out - every current session
-   stops working. That is a decision about users, so pick the moment.
+1. **Rotate the JWT signing secret. This is the one that matters, and it is one line.**
+   Anyone holding it can mint a token the API accepts, as any user in any organisation, with no
+   password and nothing in the logs to tell it from a real session. It is present in 82 branches.
+   Rotating signs everybody out once. That is the entire cost.
 2. **Rotate the database password**, and update it wherever the API is deployed. The
    API will not start on the old one, so this needs doing together.
 3. **Add `.env*` to `.gitignore`** (the current rules name three files individually;
