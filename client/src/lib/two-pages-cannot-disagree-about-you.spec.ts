@@ -69,8 +69,19 @@ describe('neither page keeps its own copy of the rule', () => {
   for (const page of ['pages/grounds/GroundAdminPage.tsx', 'pages/grounds/GroundParticipantPage.tsx']) {
     it(`${page} asks the shared helper`, () => {
       const src = read(page)
-      expect(src).toMatch(/whichSessionAreWeOn\(/)
+      /**
+       * WHICH helper depends on the question. `whichSessionAreWeOn` answers about ONE person -
+       * what am I being asked to do - and `whichSessionIsThisCheckInOn` answers about the check-in,
+       * which is what a roster and a counter both need. Passing the viewer's own position to a
+       * roster about everybody is what made the two disagree on screen; see
+       * the-roster-and-the-counter-agree.spec.ts.
+       *
+       * What matters here is unchanged: the page asks, and does not keep its own copy.
+       */
+      expect(src).toMatch(/whichSessionAreWeOn\(|whichSessionIsThisCheckInOn\(/)
       expect(src).toMatch(/hasDoneThisSession\(/)
+      /* And it must not re-derive the round rule beside the helper that holds it. */
+      expect(src).not.toMatch(/Math\.min\(\.\.\.perParticipantDone\)/)
       /**
        * The specific thing that must not come back. `plannedSessions` as the fallback for "which
        * session are we on" is what made a six-session ground read "waiting" forever.

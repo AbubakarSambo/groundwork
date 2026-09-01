@@ -45,3 +45,29 @@ export function hasDoneThisSession(
 ): boolean {
   return theirCheckIns.some(c => (c.sessionNumber ?? 0) >= session && c.status === 'COMPLETED');
 }
+
+/**
+ * WHICH SESSION THE CHECK-IN ITSELF IS ON - not which one the person reading is on.
+ *
+ * `whichSessionAreWeOn` answers a question about ONE person: the session they have open, or failing
+ * that the last one they finished. That is the right question for "what am I being asked to do".
+ *
+ * It was also being used to decide the session for the ROSTER - the "who is in this" chips, which
+ * are about everybody. Both pages passed their own viewer's open check-in, so a lead who had
+ * finished session 2 while nobody else had judged the whole roster against session 1, and the chips
+ * said "checked in" beside a counter saying "0 of 2 checked in for session 2". Both were right. On
+ * one screen, inches apart, they read as the product losing the record.
+ *
+ * A round is open until EVERYBODY has finished it, so the session the check-in is on is one past the
+ * lowest number anybody has completed. That is the rule the counter already used; this is that rule,
+ * in one place, so the two cannot drift apart again.
+ *
+ * Takes each party's own completed sessions, because that is the shape both pages hold.
+ */
+export function whichSessionIsThisCheckInOn(
+  partiesCompletedSessions: number[][],
+): number {
+  if (!partiesCompletedSessions.length) return 1;
+  const finishedEach = partiesCompletedSessions.map(sessions => new Set(sessions).size);
+  return Math.min(...finishedEach) + 1;
+}

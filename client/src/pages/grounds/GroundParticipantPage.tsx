@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
+import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
@@ -473,10 +473,23 @@ export function GroundParticipantPage() {
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)
               .map((p: any) => {
-                /** One answer for both pages. See lib/which-session-are-we-on.ts. */
-                const currentSession = whichSessionAreWeOn(
-                  openCheckIn?.sessionNumber ?? null,
-                  completedCheckIns.map((c: any) => c.sessionNumber ?? 0),
+                /**
+                 * THE SESSION THE CHECK-IN IS ON, NOT THE ONE I AM ON.
+                 *
+                 * `openCheckIn` and `completedCheckIns` are MY check-ins, so this judged everybody
+                 * else's chip against my own progress: having finished session 2 before anyone else
+                 * made the whole roster answer for session 1, and every chip read "checked in"
+                 * beside a counter that said nobody had. Same defect as the other view, from the
+                 * same cause. See lib/which-session-are-we-on.ts.
+                 */
+                const currentSession = whichSessionIsThisCheckInOn(
+                  (ground.participants ?? [])
+                    .filter((q: any) => !q.managingOnly)
+                    .map((q: any) =>
+                      ((q.checkIns ?? []) as any[])
+                        .filter((c) => c.status === 'COMPLETED')
+                        .map((c) => c.sessionNumber ?? 0),
+                    ),
                 )
                 return {
                   name: participantLabel(p),

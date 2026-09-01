@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
+import { whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { groundTabs } from './ground-tabs'
 
 /**
@@ -167,9 +168,11 @@ describe('the four things mounting it exposed', () => {
    * done, and it also cannot exceed the total. That is the computation to pin now.
    */
   it('a session is done when everybody has finished it, not per row', () => {
-    expect(CODE).toMatch(/const perParticipantDone = /)
+    /* The rule lives in `whichSessionIsThisCheckInOn` now, shared with the roster so the two
+       cannot disagree on screen. Asserted by running it, not by where it used to be written. */
+    expect(CODE).toMatch(/whichSessionIsThisCheckInOn\(/)
     expect(CODE).toMatch(/c\.participantId === p\.id && c\.status === 'COMPLETED'/)
-    expect(CODE).toMatch(/Math\.min\(\.\.\.perParticipantDone\)/)
+    expect(whichSessionIsThisCheckInOn([[1, 2, 3], [1]])).toBe(2)
   })
 
   it('and the moment pill says it is a moment', () => {
