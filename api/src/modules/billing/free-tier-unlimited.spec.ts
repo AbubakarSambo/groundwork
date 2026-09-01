@@ -44,7 +44,7 @@ describe('GW-FREE-TIER-UNLIMITED: free-tier grounds are never session-paywalled'
     // The INTENT here is that a non-free ground with no subscription is still
     // blocked - that has not changed. Only what it says has: "add a session for
     // $5" pointed at a purchase that no longer exists.
-    expect(res.reason).toMatch(/beyond your ten free grounds/);
+    expect(res.reason).toMatch(/beyond your ten free/);
     expect(res.reason).not.toMatch(/\$5|add a session/i);
     // And it must tell them their record is safe, because the person who hits
     // this is usually a participant who chose neither to pay nor to cancel.

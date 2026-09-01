@@ -38,7 +38,7 @@ export class ParticipantRequestsController {
   private async assertIsInitiator(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the initiator can manage participant requests');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can manage requests to join it');
     return ground;
   }
 
