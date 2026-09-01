@@ -229,7 +229,7 @@ function PatternBlock({ label, content, dark }: { label: string; content: string
  *
  * THREE RULES FROM THE MODULE'S OWN DESIGN NOTES, KEPT HERE:
  *  - it is material, not a verdict, and it carries that sentence rather than implying it
- *  - it does not exist before the closing round, because a "what to weigh" panel visible from
+ *  - it does not exist before the closing session, because a "what to weigh" panel visible from
  *    week two turns every visit into an evaluation
  *  - the specificity score is NOT in it. It measures how somebody writes, and using it as a
  *    proxy for how they work is the quiet unfairness this product exists to prevent
@@ -1190,7 +1190,7 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
                 <HiddenContributorsSection groundId={id!} contributors={(report as any).engagement.hiddenContributors} isInitiator={isAdmin} />
               )}
 
-              {/* CLOSING ROUND: the choice now in front of the parties. Neutral
+              {/* CLOSING SESSION: the choice now in front of the parties. Neutral
                   framing - the report never recommends; the resolution step is
                   where the parties choose together. */}
               {(report as any).finalSynthesis?.closingComplete && (

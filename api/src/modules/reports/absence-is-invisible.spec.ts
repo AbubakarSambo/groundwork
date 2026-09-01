@@ -39,7 +39,7 @@ const base: WeighInput = {
 };
 
 describe('when it appears at all', () => {
-  it('not before the closing round', () => {
+  it('not before the closing session', () => {
     // THE REGRESSION. The overview is seen every week. A "what to weigh about
     // this person" panel sitting there from week two turns every visit into an
     // evaluation exercise and invites a verdict long before the record can

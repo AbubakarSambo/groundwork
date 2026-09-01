@@ -118,7 +118,7 @@ describe('what must not appear', () => {
     expect(CODE).not.toMatch(/specificityLevel|specificityScore|specificitySignal/)
   })
 
-  it('and nothing renders before the closing round', () => {
+  it('and nothing renders before the closing session', () => {
     /**
      * `whatALeaderCanWeigh` returns null unless `isClosing`, so the page shows this only when the
      * server sends it. Asserted as the absence of a client-side override: if this page ever

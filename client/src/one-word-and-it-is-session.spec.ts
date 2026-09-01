@@ -21,8 +21,10 @@ import { join } from 'path'
  * guard that fires on things nobody can fix gets deleted, so this names the surfaces that were
  * actually wrong instead of pattern-matching English.
  *
- * "Closing round" is deliberately left alone: it is a named phase with an endpoint and a service
- * method behind it, and renaming a feature is a different decision from settling a word.
+ * "Closing round" WAS left alone here, on the reasoning that a named phase with an endpoint
+ * behind it is a different decision from settling a word. That was over-cautious: the decision was
+ * already made, and the phase is called the closing session now - screen, route, service method
+ * and prompt. Nothing in the product says "round" to a person any more.
  */
 const read = (...p: string[]) =>
   readFileSync(join(__dirname, ...p), 'utf8')
@@ -48,6 +50,9 @@ const WAS_ROUND = [
   /end of each round/i,
   /completed this round/i,
   /first round sets out/i,
+  /* The closing phase, settled later than the rest - screen, route, service method and prompt. */
+  /closing round/i,
+  /Begin closing round/i,
 ]
 
 describe('one word and it is session', () => {

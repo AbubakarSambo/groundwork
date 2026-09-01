@@ -32,8 +32,8 @@ export async function recordRoundCompletion(
     select: { id: true },
   });
   /*
-   * A ground with nobody to hear from has not completed a round; it is misconfigured. Returning
-   * false keeps it out of the record rather than closing round after round against an empty list.
+   * A ground with nobody to hear from has not completed a session; it is misconfigured. Returning
+   * false keeps it out of the record rather than closing session after session against an empty list.
    */
   if (participants.length === 0) return false;
 

@@ -2550,17 +2550,17 @@ export class GroundsService {
    * Activate a ground. Moves status directly to ACTIVE with no payment gate.
    * Reports are generated and released automatically after each session completes.
    */
-  /** Begin the closing round: flag every participant's NEXT session as final
+  /** Begin the closing session: flag every participant's NEXT session as final
    * (creating it if none is open). Initiator only. Same conversation format -
    * the flag changes the opener, the thoroughness framing, and makes the
    * final report read the whole arc. */
-  async beginClosingRound(groundId: string, organizationId: string, userId: string) {
+  async beginClosingSession(groundId: string, organizationId: string, userId: string) {
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
       include: { participants: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing round');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing session');
     const terminal = ['RESOLVED', 'CLOSED', 'STALLED'];
     if (terminal.includes(ground.status as string)) throw new BadRequestException('This check-in has already ended');
 
@@ -2584,7 +2584,7 @@ export class GroundsService {
       }
       flagged += 1;
     }
-    return { groundId, closingRound: true, participantsFlagged: flagged };
+    return { groundId, closingSession: true, participantsFlagged: flagged };
   }
 
   async activate(groundId: string, organizationId: string) {
