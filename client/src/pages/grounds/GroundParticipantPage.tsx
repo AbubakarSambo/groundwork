@@ -496,24 +496,15 @@ export function GroundParticipantPage() {
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
         {tab === 'record' && (
-          <MyRecord
-            groundId={id}
-            ground={ground}
-            myRecord={myRecord}
-            viewerUserId={user?.id}
-            totalSessions={totalSessions ?? null}
-            completedCount={completedCheckIns.length}
-            specificity={specificity}
-            /* This page calls the material tab `docs`; the other calls it `context`. The component
-               should not have to know either, so it asks and the page translates. */
-            onGoToTab={(t) => goTab(t as any)}
-          />
-        )}
-
-        {/* REPORT TAB */}
-        {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
+            {/*
+              YOUR PRIVATE REPORT SITS WITH THE REST OF WHAT IS YOURS.
+              
+              It was on the Report tab, above the shared one, so that tab meant two things at once:
+              the account you wrote and the picture everybody gets. Report is the whole thing now and
+              My record is your part - the same whole-against-part split the two views' labels already
+              use, rather than a second axis to learn.
+            */}
             <MyPrivateReport
               groundId={id!}
               mySoloReport={mySoloReport}
@@ -524,6 +515,25 @@ export function GroundParticipantPage() {
                 .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <MyRecord
+            groundId={id}
+            ground={ground}
+            myRecord={myRecord}
+            viewerUserId={user?.id}
+            totalSessions={totalSessions ?? null}
+            completedCount={completedCheckIns.length}
+            specificity={specificity}
+            /* This page calls the material tab `docs`; the other calls it `context`. The component
+               should not have to know either, so it asks and the page translates. */
+            onGoToTab={(t) => goTab(t as any)}
+            />
+          </div>
+        )}
+
+        {/* REPORT TAB */}
+        {tab === 'report' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
             <SharedReportForAParty
               groundId={id!}
               report={report}

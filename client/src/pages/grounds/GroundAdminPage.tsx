@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
+import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -316,6 +317,12 @@ export function GroundAdminPage() {
   const { data: myRecord } = useQuery({
     queryKey: ['my-record', id],
     queryFn: () => groundsApi.getMyRecord(id!),
+    enabled: !!id && viewerIsAParty,
+    retry: false,
+  })
+  const { data: mySoloReport, refetch: refetchSoloReport } = useQuery({
+    queryKey: ['my-solo-report', id],
+    queryFn: () => groundsApi.getMySoloReport(id!),
     enabled: !!id && viewerIsAParty,
     retry: false,
   })
@@ -1245,8 +1252,38 @@ export function GroundAdminPage() {
           </div>
         )}
 
-        {tab === 'myrecord' && (
-          <MyRecord
+        {/**
+          * GATED ON BEING IN IT, NOT ONLY ON THE TAB BEING OFFERED.
+          *
+          * `groundTabs` leaves My record out for somebody who is not a party, so it is not in the
+          * row. That hides the door; it does not lock it - `?tab=record` in the address bar reaches
+          * this branch directly. An admin who is not in the check-in would have got two empty
+          * panels about a record they do not have.
+          *
+          * No data was ever at risk: both reads are gated the same way, so they return nothing, and
+          * the server refuses them independently. This is so the screen does not offer somebody a
+          * page about themselves that cannot be about them.
+          */}
+        {tab === 'myrecord' && viewerIsAParty && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/*
+              THE SAME SPLIT AS THE PARTY VIEW, AND THE SAME ORDER.
+              
+              Report is the whole check-in; My record is your part of it. Your private report is
+              yours, so it sits here rather than above the shared report - which otherwise made that
+              tab mean two things at once.
+            */}
+            <MyPrivateReport
+              groundId={id!}
+              mySoloReport={mySoloReport}
+              refetchSoloReport={refetchSoloReport}
+              myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
+              otherParties={(ground.participants ?? [])
+                .filter((p: any) => p.userId !== user?.id)
+                .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
+            />
+            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <MyRecord
             groundId={id}
             ground={ground}
             myRecord={myRecord}
@@ -1257,7 +1294,8 @@ export function GroundAdminPage() {
             /* This page calls the material tab `docs`; the component asks to be sent and the page
                decides where that is. */
             onGoToTab={(t) => goTab((FROM_TAB_KEY[t] ?? 'docs') as Tab)}
-          />
+            />
+          </div>
         )}
 
         {tab === 'checkins' && (
@@ -1892,6 +1930,15 @@ export function GroundAdminPage() {
                   `ReportBody` is that page's content, unchanged. Deleting the summary rather than
                   keeping both is the point: a summary nobody can tell is a summary is the defect.
                 */}
+                {/**
+                  * THE REPORT, BARE. I briefly rendered `SharedReportForAParty` here instead, to
+                  * give a lead four readings the party view appeared to have and this one did not.
+                  * They do not exist: `GET /grounds/:id/report` returns nineteen keys and
+                  * `assumptions`, `clarity`, `alignmentReached`, `areasRequiringAlignment` and
+                  * `pattern` are none of them - checked against a released report, not inferred.
+                  * Those sections come from the ENTRY flow's report shape and have never rendered
+                  * here for anybody. Nothing to hand over, so nothing changes.
+                  */}
                 <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
                 {/* Fix 17: Post-report offboarding */}
                 <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
