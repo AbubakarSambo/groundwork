@@ -814,7 +814,7 @@ export function GroundAdminPage() {
                   every time you come back.
                 */}
                 <span style={{ fontSize: 10, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
-                  running this check-in
+                  Everyone in it - you are running this
                 </span>
               </div>
             </div>
@@ -835,12 +835,21 @@ export function GroundAdminPage() {
               style={{ fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
             >
               {/*
-                NAMED FOR WHERE IT GOES. "My check-ins →" read as a list - and "Check-ins" in the left
-                rail IS that list, so one label pointed at two different things. This button does not
-                go to a list or to an account: it goes to THIS check-in seen as a party to it, which is
-                a different page with a different job.
+                THE TWO VIEWS ARE NAMED AS A PAIR, BECAUSE THAT IS THE THING PEOPLE MISS.
+
+                This was "My check-ins →", which read as a list - and "Check-ins" in the rail IS that
+                list. Then "My own account →", which reads as billing, because the same person has
+                "Billing" and "Settings" in the rail beside it. Reported: an admin could not tell what
+                the button was for, or how the page it reached differed from this one.
+
+                The problem was never one label. It was that the two views were described in unrelated
+                words, so nothing said they were two halves of one check-in. They are a contrast now,
+                on the same axis, on both pages and in both directions:
+
+                  here   "Everyone in it - you are running this"   button: "Just my own"
+                  there  "Just yours - only you see this ..."      button: "The whole check-in"
               */}
-              My own account →
+              Just my own →
             </button>
           )}
           {/*

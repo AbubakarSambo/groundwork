@@ -261,6 +261,18 @@ export function GroundParticipantPage() {
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
+  /**
+   * AND THE WAY BACK, FOR EVERYBODY WHO HAS ONE.
+   *
+   * The return button asked `isInitiator`, and the button that sends people HERE asks only whether
+   * they are a party. So an admin in this organisation who takes part in a check-in somebody else
+   * leads could cross over and had no way back: no button existed for them, and the two pages look
+   * identical, so the screen had simply changed and offered no way to undo it. The browser's back
+   * arrow or the rail was the only exit.
+   *
+   * The same question the other page asks to decide whether somebody may run this.
+   */
+  const canRunThisCheckIn = isInitiator || user?.role === 'ADMIN'
 
   if (!myParticipant) {
     return (
@@ -367,7 +379,7 @@ export function GroundParticipantPage() {
               where the check-in has got to belongs up here, on both pages, once.
             */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span>Your own account. Yours until the report releases.</span>
+              <span>Just yours - only you see this until the report releases.</span>
               {totalSessions != null && (
                 <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
               )}
@@ -387,12 +399,12 @@ export function GroundParticipantPage() {
             initiator has no admin view to switch to, and offering one would send
             them to a page that refuses them.
           */}
-          {isInitiator && (
+          {canRunThisCheckIn && (
             <button
               onClick={() => navigate(`/grounds/${id}`)}
               style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              Admin view →
+              The whole check-in →
             </button>
           )}
           {/*
