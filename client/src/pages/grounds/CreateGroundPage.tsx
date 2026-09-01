@@ -431,7 +431,35 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
 // Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
 // We use integer steps internally: 1,2,3,4,5,6
-const TOTAL_STEPS = 8
+/**
+ * THE STEPS HAVE NAMES NOW, AND THE NUMBERS ARE DERIVED FROM THEM.
+ *
+ * The flow was held as bare integers in thirty-three places - nine `setStep(n)` calls, twenty-one
+ * `step === n` comparisons, three relational ones - with no single statement of what the order is.
+ * Two of those are conditional jumps that encode plan state and card type, so reading the file did
+ * not tell you the order either.
+ *
+ * That has already cost something. The picker's wide layout was written for the situation step and
+ * its condition said `step === 1`; the steps were renumbered, the condition kept the old number,
+ * and the widening silently applied to the "who is this for?" question instead - for months, until
+ * an audit measured the page. Nothing failed, because a number is always a valid number.
+ *
+ * This changes no behaviour whatsoever: same values, same order, same screens. It means a renumber
+ * is one edit here rather than thirty-three edits that all still compile if you get one wrong. The
+ * eight-to-four cut this flow needs is not safe until that is true.
+ */
+const STAGE = {
+  who: 1,
+  situation: 2,
+  coach: 3,
+  describe: 4,
+  plan: 5,
+  timeline: 6,
+  people: 7,
+  brief: 8,
+} as const
+
+const TOTAL_STEPS = Object.keys(STAGE).length
 
 /**
  * What each step is asking, in the words already on that step's own heading.
@@ -442,14 +470,14 @@ const TOTAL_STEPS = 8
  * every link and saved position that already exists.
  */
 const STEP_NAMES: Record<number, string> = {
-  1: 'Who it is for',
-  2: 'The situation',
-  3: 'A coach',
-  4: 'Describe it',
-  5: 'Your plan',
-  6: 'How long it runs',
-  7: 'Who is in it',
-  8: 'The brief',
+  [STAGE.who]: 'Who it is for',
+  [STAGE.situation]: 'The situation',
+  [STAGE.coach]: 'A coach',
+  [STAGE.describe]: 'Describe it',
+  [STAGE.plan]: 'Your plan',
+  [STAGE.timeline]: 'How long it runs',
+  [STAGE.people]: 'Who is in it',
+  [STAGE.brief]: 'The brief',
 }
 
 /**
@@ -635,7 +663,7 @@ export function CreateGroundPage() {
 
   // When entering step 2 (billing), auto-check
   useEffect(() => {
-    if (step === 2 && !billingChecked) {
+    if (step === STAGE.situation && !billingChecked) {
       setBillingLoading(true)
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
@@ -820,13 +848,17 @@ export function CreateGroundPage() {
     /* Step 4 only exists on the free-text path, so going back from 5 has to skip it there too -
        otherwise Back lands on a screen the person was never shown on the way in. */
     /* Back from the situation lands on the coach step only where that step was shown. */
-    if (step === 5 && selectedCard !== 'DESCRIBE_OWN') { setStep(onAPaidPlan ? 3 : 2); return }
-    if (step > 1) setStep(s => s - 1)
+    if (step === STAGE.plan && selectedCard !== 'DESCRIBE_OWN') { setStep(onAPaidPlan ? STAGE.coach : STAGE.situation); return }
+    if (step > STAGE.who) setStep(s => s - 1)
     else navigate('/grounds')
   }
 
   // Display dot index: step 1 → dot 1, step 2 (billing) → dot 2, steps 3-6 → dots 3-6
-  // We show TOTAL_STEPS dots (6), mapping internal step directly
+  /**
+   * One dot per stage, and the dot count comes from STAGE rather than a number typed here - the
+   * comment this replaces said "(6)" while the constant said 8, which is what a second copy of a
+   * fact does when the first one changes.
+   */
   const displayStep = step
 
   const renderSituation = (card: ScenarioCard) => {
@@ -954,7 +986,7 @@ export function CreateGroundPage() {
         * a 508px box to put them in, so the cards came out about 119px across - narrower than they
         * had ever been in a single column.
         */}
-      <div className="gw-bd" style={{ maxWidth: step === 2 ? 1160 : 540, margin: '0 auto', width: '100%' }}>
+      <div className="gw-bd" style={{ maxWidth: step === STAGE.situation ? 1160 : 540, margin: '0 auto', width: '100%' }}>
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
           {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
@@ -963,10 +995,10 @@ export function CreateGroundPage() {
         </div>
 
         {/* Step 1: Scenario + Moment */}
-        {step >= 1 && step <= 4 && (
+        {step >= STAGE.who && step <= STAGE.describe && (
           <div>
             {/* ---- STEP 1: who this check-in is for ---- */}
-            {step === 1 && (<>
+            {step === STAGE.who && (<>
             {/* Say the limit is reached BEFORE the setup work, not after it.
                 The API refuses an eleventh ground correctly, but it refused it
                 at submit - so the admin picked a card, named the ground, set
@@ -1073,7 +1105,7 @@ export function CreateGroundPage() {
             </>)}
 
             {/* ---- STEP 2: which situation ---- */}
-            {step === 2 && (<>
+            {step === STAGE.situation && (<>
             <div className="gw-sub-t" style={{ marginBottom: 2 }}>
               Twenty situations, grouped by the question you are actually asking. Every one of them is an
               objective agreed at the start, then a run of check-ins testing the work against it. Pick the
@@ -1153,7 +1185,7 @@ export function CreateGroundPage() {
             </>)}
 
             {/* ---- STEP 3: a coach, before you decide ---- */}
-            {step === 3 && (<>
+            {step === STAGE.coach && (<>
             {/*
               * A STEP OF ITS OWN, BEFORE THE SITUATION IS WRITTEN DOWN.
               *
@@ -1187,7 +1219,7 @@ export function CreateGroundPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setStep(selectedCard === 'DESCRIBE_OWN' ? 4 : 5)}
+                    onClick={() => setStep(selectedCard === 'DESCRIBE_OWN' ? STAGE.describe : STAGE.plan)}
                     style={{ fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
                   >
                     Skip this
@@ -1319,7 +1351,7 @@ export function CreateGroundPage() {
             </>)}
 
             {/* ---- STEP 4: describe it in your own words ---- */}
-            {step === 4 && (<>
+            {step === STAGE.describe && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
                 <label className="gw-label" htmlFor="own-situation">Describe it in your own words</label>
@@ -1393,7 +1425,7 @@ export function CreateGroundPage() {
 
             {/* The moment belongs with the situation, so it is bound to step 2 rather than to
                 wherever it happens to sit in the file. */}
-            {step === 2 && scenario && (
+            {step === STAGE.situation && scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
@@ -1446,15 +1478,15 @@ export function CreateGroundPage() {
                   const describing = selectedCard === 'DESCRIBE_OWN'
 
                   const blocked =
-                    step === 1 ? alsoAParty === null
-                    : step === 2 ? (!scenario || !moment)
-                    : step === 4 ? needsRouting
+                    step === STAGE.who ? alsoAParty === null
+                    : step === STAGE.situation ? (!scenario || !moment)
+                    : step === STAGE.describe ? needsRouting
                     : false
 
                   const why =
-                    step === 1 ? 'Choose one to continue'
-                    : step === 2 ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
-                    : step === 4 ? 'Describe the situation above, then let us find the closest match'
+                    step === STAGE.who ? 'Choose one to continue'
+                    : step === STAGE.situation ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
+                    : step === STAGE.describe ? 'Describe the situation above, then let us find the closest match'
                     : ''
 
                   /* Step 4 only exists for the free-text path; a card already says what this is. */
@@ -1468,9 +1500,9 @@ export function CreateGroundPage() {
                    *
                    * Paid plans still get the step, with the card and without the block above it.
                    */
-                  const next = step === 3
+                  const next = step === STAGE.coach
                     ? (describing ? 4 : 5)
-                    : step === 2 && !onAPaidPlan
+                    : step === STAGE.situation && !onAPaidPlan
                       ? (describing ? 4 : 5)
                       : step + 1
 
@@ -1489,7 +1521,7 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 2 (1.5): Billing check */}
-        {step === 5 && (
+        {step === STAGE.plan && (
           <div>
             <h1 className="gw-ttl">Before you continue</h1>
 
@@ -1522,7 +1554,7 @@ export function CreateGroundPage() {
                     Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}
-                <button className="gw-btn" onClick={() => setStep(6)} style={{ margin: '12px 0 0' }}>Continue →</button>
+                <button className="gw-btn" onClick={() => setStep(STAGE.timeline)} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
@@ -1584,7 +1616,7 @@ export function CreateGroundPage() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Code applied</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the check-in is created.</div>
                     </div>
-                    <button className="gw-btn" onClick={() => setStep(6)}>Continue →</button>
+                    <button className="gw-btn" onClick={() => setStep(STAGE.timeline)}>Continue →</button>
                   </div>
                 )}
               </div>
@@ -1593,7 +1625,7 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 3 (was 2): Timeframe + cadence */}
-        {step === 6 && (
+        {step === STAGE.timeline && (
           <div>
             <h1 className="gw-ttl">How long will this run?</h1>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
@@ -1691,12 +1723,12 @@ export function CreateGroundPage() {
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>
               </div>
             </div>
-            <button className="gw-btn" onClick={() => setStep(7)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" onClick={() => setStep(STAGE.people)} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
         {/* Step 4 (was 3): Participants */}
-        {step === 7 && (
+        {step === STAGE.people && (
           <div>
             <h1 className="gw-ttl">Who is in this check-in?</h1>
             <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
@@ -1800,7 +1832,7 @@ export function CreateGroundPage() {
               * second says how many it is continuing with, so neither can be mistaken for the
               * other.
               */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(8)} style={{ margin: 0 }}>
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(STAGE.brief)} style={{ margin: 0 }}>
               {participants.length === 0
                 ? 'Continue'
                 : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
@@ -1823,7 +1855,7 @@ export function CreateGroundPage() {
               </div>
             ) : null}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(8) }}>
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(STAGE.brief) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
@@ -1855,7 +1887,7 @@ export function CreateGroundPage() {
         */}
 
         {/* Step 6 (was 5): Opening brief + ground name */}
-        {step === 8 && (
+        {step === STAGE.brief && (
           <div>
             <h1 className="gw-ttl">What is this about?</h1>
             <div className="gw-sub-t">Your version of the brief. Each person writes their own in their first session. The report shows where accounts agree and where they differ.</div>
