@@ -101,7 +101,7 @@ export class BillingService {
         // the reassuring half out loud: the person who hits this wall is
         // usually a participant who never chose to pay and never chose to
         // cancel, and their record is safe.
-        reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.',
+        reason: 'This check-in is beyond your ten free ones. Resubscribe to continue checking in - the report and board stay available either way.',
         sessionsBalance: 0,
         freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
       };
@@ -109,7 +109,7 @@ export class BillingService {
 
     const balance = ground?.sessionsBalance ?? 0;
     if (balance > 0) return { allowed: true, sessionsBalance: balance };
-    return { allowed: false, reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
+    return { allowed: false, reason: 'This check-in is beyond your ten free ones. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
   }
 
   /** Free ground limit for organizations without a subscription. */

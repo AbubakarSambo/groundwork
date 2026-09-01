@@ -296,7 +296,7 @@ export class GroundsService {
 
     const ground = await this.prisma.$transaction(async (tx) => {
       const initiator = await tx.user.findUnique({ where: { id: initiatorId } });
-      if (!initiator) throw new NotFoundException('Initiator not found');
+      if (!initiator) throw new NotFoundException('The lead of this check-in could not be found');
 
       // Determine free-ground fields from the billing gate result.
       const isFreeGround = canCreate.freeReason !== undefined;
@@ -1929,7 +1929,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the initiator can change this setting');
+      throw new ForbiddenException('Only the lead of this check-in can change this setting');
     }
     return this.prisma.ground.update({
       where: { id: groundId },
@@ -2475,7 +2475,7 @@ export class GroundsService {
    */
   async getParticipantInviteUrl(groundId: string, participantId: string, initiatorId: string): Promise<{ inviteUrl: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
-    if (!ground) throw new ForbiddenException('Not the initiator of this check-in');
+    if (!ground) throw new ForbiddenException('You are not the lead of this check-in');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
@@ -2513,7 +2513,7 @@ export class GroundsService {
     initiatorId: string,
   ): Promise<{ checkInUrl: string }> {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, initiatorId } });
-    if (!ground) throw new ForbiddenException('Not the initiator of this check-in');
+    if (!ground) throw new ForbiddenException('You are not the lead of this check-in');
 
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: participantId, groundId },
@@ -2560,7 +2560,7 @@ export class GroundsService {
       include: { participants: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the initiator can begin the closing round');
+    if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing round');
     const terminal = ['RESOLVED', 'CLOSED', 'STALLED'];
     if (terminal.includes(ground.status as string)) throw new BadRequestException('This check-in has already ended');
 
@@ -2622,7 +2622,7 @@ export class GroundsService {
     });
     const isInitiator = ground.initiatorId === requestingUserId;
     if (!isInitiator && !requesterLink) {
-      throw new ForbiddenException('Only the initiator or a party to this check-in may request a mediator brief');
+      throw new ForbiddenException('Only the lead, or somebody taking part in this check-in, can request a mediator brief');
     }
 
     const daysOpen = Math.floor((Date.now() - ground.createdAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -2699,7 +2699,7 @@ export class GroundsService {
     // than silently ignored, so a caller attempting it finds out.
     if ((dto as any).mode !== undefined && (dto as any).mode !== ground.mode) {
       throw new BadRequestException(
-        'A check-in\'s mode cannot be changed. It is fixed when the ground is created, because people check in on the understanding of what will and will not be shared.',
+        'A check-in\'s mode cannot be changed. It is fixed when the check-in is created, because people check in on the understanding of what will and will not be shared.',
       );
     }
 
@@ -3463,7 +3463,7 @@ export class GroundsService {
       where: { id: groundId, initiatorId: requestingUserId },
       select: { id: true, label: true },
     });
-    if (!ground) throw new ForbiddenException('Only the initiator can view conversation transcripts');
+    if (!ground) throw new ForbiddenException('Only the lead of this check-in can view conversation transcripts');
 
     const participants = await this.prisma.groundParticipant.findMany({
       where: { groundId },

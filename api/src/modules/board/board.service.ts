@@ -890,7 +890,7 @@ export class BoardService {
      * Same shape as the objectives gate above: write to the SECTION, not to the board.
      */
     if (!boardHasSection(ground.scenario, 'poll')) {
-      throw new ForbiddenException('This check-in does not schedule its own rounds');
+      throw new ForbiddenException('This check-in does not schedule its own sessions');
     }
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     if (!me) throw new ForbiddenException('You are not a party to this check-in');

@@ -32,6 +32,8 @@ describe('the words a person reads are the product\'s own', () => {
   const FILES = [
     'src/modules/billing/billing.service.ts',
     'src/modules/grounds/grounds.service.ts',
+    'src/modules/board/board.service.ts',
+    'src/modules/grounds/participant-requests.controller.ts',
   ];
 
   it('finds messages to check, so an empty list cannot pass', () => {
@@ -42,6 +44,30 @@ describe('the words a person reads are the product\'s own', () => {
   it('no message a person reads calls a check-in a "Ground"', () => {
     for (const f of FILES) {
       const offenders = userFacing(strip(f)).filter(s => /\bGrounds?\b/.test(s));
+      expect(offenders).toEqual([]);
+    }
+  });
+
+  it('and not in lower case either, which is how one slipped past', () => {
+    /*
+     * The first version of this matched `/\bGrounds?\b/` - capitalised, because that is how the
+     * schema writes it. "This ground is beyond your ten free grounds" sailed through twice.
+     *
+     * `ground` is also an ordinary English word, so this looks only for the shapes where a
+     * determiner or a number governs it, which is what makes it the product's noun rather than
+     * common ground or gaining ground.
+     */
+    const asTheThing = /\b(this|that|the|a|your|their|each|every|\d+|ten|free)\s+grounds?\b/i;
+    for (const f of FILES) {
+      const offenders = userFacing(strip(f)).filter(s => asTheThing.test(s));
+      expect(offenders).toEqual([]);
+    }
+  });
+
+  it('and no message names the schema role instead of the person', () => {
+    /* "the initiator" is a database enum. The good messages in these files say "the lead". */
+    for (const f of FILES) {
+      const offenders = userFacing(strip(f)).filter(s => /\binitiator\b/i.test(s));
       expect(offenders).toEqual([]);
     }
   });
