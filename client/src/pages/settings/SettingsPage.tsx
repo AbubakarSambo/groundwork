@@ -42,7 +42,7 @@ export function SettingsPage() {
   const [orgName, setOrgName] = useState(user?.organizationName ?? '')
   const renameOrgMut = useMutation({
     mutationFn: (name: string) => authApi.renameOrganization(name),
-    onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organization name updated') },
+    onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organisation name updated') },
     onError: () => toast.error('Could not rename the organisation. Try again.'),
   })
   /*
@@ -204,9 +204,9 @@ export function SettingsPage() {
 
         {user?.role === 'ADMIN' && (
           <section style={{ marginBottom: 32 }}>
-            <Sec title="Organization" />
+            <Sec title="Organisation" />
             <Card pad="block">
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organization name</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organisation name</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                 Everyone on your team sees this. If you signed up without being asked for it, we
                 guessed it from your email address.
@@ -215,7 +215,7 @@ export function SettingsPage() {
                 <input
                   value={orgName}
                   onChange={e => setOrgName(e.target.value)}
-                  placeholder={user?.organizationName ?? 'Organization name'}
+                  placeholder={user?.organizationName ?? 'Organisation name'}
                   style={{ flex: 1, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
                 />
                 <button
