@@ -88,10 +88,20 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
 /** An org created before it has a contact email can't run check-ins yet - only the admin who
  * created it can fix that, so only ADMIN is gated here. `subscriptionPlan` is deliberately NOT
  * part of this check: staying on the free tier means it is null forever - that's the free tier,
- * not an unfinished step - and /pricing has no "confirm free" action to ever set it. */
-function isOrgSetupComplete(user: User | null | undefined) {
-  if (!user) return true // let RequireAuth handle the unauthenticated case
-  return !!user.organization?.email
+ * not an unfinished step - and /pricing has no "confirm free" action to ever set it.
+ *
+ * THE RULE ITSELF NOW LIVES ON THE SERVER, as `mustSetUpOrganisation`. It read
+ * `role === 'ADMIN' && !organization.email` here, which sent anyone invited into another
+ * company's check-in to "Set up your organization" - they administer their own untouched
+ * workspace, so both halves were true and neither was the point. The server adds the missing
+ * clause (do they belong anywhere else) and answers in one field.
+ *
+ * Falls back to the old reading only when the field is absent - a `user` persisted by an older
+ * build, before the next `/auth/me` refreshes it. */
+function mustSetUpOrg(user: User | null | undefined) {
+  if (!user) return false // let RequireAuth handle the unauthenticated case
+  if (typeof user.mustSetUpOrganisation === 'boolean') return user.mustSetUpOrganisation
+  return user.role === 'ADMIN' && !user.organization?.email
 }
 
 /* The two doors. Each reads the one field that decides it, and nothing else. */
@@ -112,7 +122,7 @@ function RequireOrgSetup({ children }: { children: JSX.Element }) {
     const dest = window.location.pathname + window.location.search
     return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
-  if (user?.role === 'ADMIN' && !isOrgSetupComplete(user)) {
+  if (mustSetUpOrg(user)) {
     return <Navigate to="/org/setup" replace />
   }
   return children
@@ -143,7 +153,7 @@ function RootRoute() {
    * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
    * and it is easy to read this as unreachable.
    */
-  if (user?.role === 'ADMIN' && !isOrgSetupComplete(user)) {
+  if (mustSetUpOrg(user)) {
     return <Navigate to="/org/setup" replace />
   }
   return <GroundsListPage />

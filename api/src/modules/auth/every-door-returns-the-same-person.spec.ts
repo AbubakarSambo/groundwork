@@ -14,9 +14,12 @@ import { AuthService } from './auth.service';
  * was reported missing three times: you never landed on a page that has one.
  */
 describe('every door returns the same person', () => {
-  const built = () => {
+  const built = async () => {
     const svc = Object.create(AuthService.prototype) as any;
     svc.generateToken = () => 'tok';
+    /* `buildAuthResponse` now asks whether this person belongs to another organisation, to decide
+       `mustSetUpOrganisation`. Nobody else here, so: none. */
+    svc.prisma = { organizationMembership: { count: async () => 0 } };
     return svc.buildAuthResponse({
       id: 'u1', email: 'a@b.test', firstName: 'Ada', lastName: '',
       role: 'ADMIN', organizationId: 'o1', isPlatformAdmin: false, passwordHash: 'x',
@@ -27,29 +30,29 @@ describe('every door returns the same person', () => {
     });
   };
 
-  it('carries the organisation, not just its name', () => {
-    const { user } = built();
+  it('carries the organisation, not just its name', async () => {
+    const { user } = await built();
     expect(user.organization).toBeDefined();
     expect(user.organization.email).toBe('ops@test.test');
     expect(user.organization.name).toBe('Test Org');
   });
 
-  it('carries the field the org-setup gate actually reads', () => {
+  it('carries the field the org-setup gate actually reads', async () => {
     /*
      * `isOrgSetupComplete` in the client is `!!user.organization?.email` and nothing else. This is
      * the single property that decides whether a signed-in admin sees their product or a form.
      */
-    const { user } = built();
+    const { user } = await built();
     expect(Boolean(user.organization?.email)).toBe(true);
   });
 
-  it('carries the plan, so the product can say which one you are on', () => {
+  it('carries the plan, so the product can say which one you are on', async () => {
     /* The admin panel and the pricing page both read this to name the current plan. */
-    expect(built().user.organization.subscriptionPlan).toBe('STARTER');
+    expect((await built()).user.organization.subscriptionPlan).toBe('STARTER');
   });
 
-  it('still carries what it always did, so nothing reading the old shape breaks', () => {
-    const { user, accessToken } = built();
+  it('still carries what it always did, so nothing reading the old shape breaks', async () => {
+    const { user, accessToken } = await built();
     expect(accessToken).toBe('tok');
     expect(user.organizationId).toBe('o1');
     expect(user.organizationName).toBe('Test Org');
