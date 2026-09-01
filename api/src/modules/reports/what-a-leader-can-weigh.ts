@@ -73,7 +73,7 @@ export interface WeighInput {
   entries: WeighableEntry[];
   /** Which standards anything in the record actually reached. */
   standardsTouched: string[];
-  /** Whether the ground has reached its closing round. */
+  /** Whether the ground has reached its closing session. */
   isClosing: boolean;
 }
 

@@ -337,14 +337,14 @@ export function GroundAdminPage() {
   })
 
   const [confirmClosing, setConfirmClosing] = useState(false)
-  const closingRound = useMutation({
-    mutationFn: () => groundsApi.beginClosingRound(id!),
+  const closingSession = useMutation({
+    mutationFn: () => groundsApi.beginClosingSession(id!),
     onSuccess: (r) => {
-      toast.success(`Closing round begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final check-in.`)
+      toast.success(`Closing session begun - ${r.participantsFlagged} ${r.participantsFlagged === 1 ? 'person' : 'people'} will do their final check-in.`)
       setConfirmClosing(false)
       qc.invalidateQueries({ queryKey: ['ground', id] })
     },
-    onError: () => toast.error('The closing round did not open. Nothing has changed for anyone — try again.'),
+    onError: () => toast.error('The closing session did not open. Nothing has changed for anyone — try again.'),
   })
 
   const remind = useMutation({
@@ -1542,7 +1542,7 @@ export function GroundAdminPage() {
                   })()}
                   {/* Running the ground is the lead's job. Every party was being
                       shown these, so someone being evaluated on this ground could
-                      invite people to it or declare the closing round. */}
+                      invite people to it or declare the closing session. */}
                   {isInitiator && (
                     <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a person
@@ -1551,18 +1551,18 @@ export function GroundAdminPage() {
                   {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
                     confirmClosing ? (
                       <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing round?</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
                         <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
                           Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => closingRound.mutate()} disabled={closingRound.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing round</button>
+                          <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
                           <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
-                        Begin the closing round →
+                        Begin the closing session →
                       </button>
                     )
                   )}

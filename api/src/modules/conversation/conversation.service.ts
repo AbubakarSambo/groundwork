@@ -2597,7 +2597,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // AUTO-FLAG the closing session: the last cadence slot inside the ground's
     // timeline is final - the person is told to document thoroughly and the
     // final report reads the whole arc. (The other path is the initiator's
-    // explicit "Begin the closing round".)
+    // explicit "Begin the closing session".)
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { timelineDays: true, cadence: true },

@@ -344,7 +344,7 @@ export class ReportsService {
    * which is the lead's job to hold; handed to a participant they read as a note
    * about a colleague, which is precisely what they are written not to be.
    *
-   * Everything fails to nothing. A missing entry, a ground with no closing round,
+   * Everything fails to nothing. A missing entry, a ground with no closing seund,
    * a participant with no id: the field is absent rather than empty, because an
    * empty confidence read looks like a confident "no problems here".
    */
@@ -378,7 +378,7 @@ export class ReportsService {
 
       const out: Record<string, any> = {};
 
-      // G10. The closing round only, and never for a colleague.
+      // G10. The closing session only, and never for a colleague.
       const isClosing = closing?.status === GroundStatus.RESOLVED || !!closing?.resolutionState;
       const { statedStandards, standardsTouched } = standardsAndWhatTouchedThem(lead.id, entries);
 
@@ -605,7 +605,7 @@ export class ReportsService {
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
     }
-    // CLOSING ROUND: when every accepted party has completed a final-flagged
+    // CLOSING SESSION: when every accepted party has completed a final-flagged
     // session, the synthesis reads the WHOLE ARC. Deterministic features are
     // computed here (never by the model); the model narrates them.
     const arcByParticipant: Record<string, ArcSignals> = {};
@@ -648,7 +648,7 @@ export class ReportsService {
         // tier's advisory copy goes to the admin surface, never in here.
         return `- ${label}: ${tierCopy(sig.tier).shared} (record shape: ${sig.f1_concentration.detail}; ${sig.f5_evidenceTiming.detail})`;
       });
-      groundContextLines.push(`CLOSING ROUND - THIS IS THE FINAL REPORT. Structure the synthesis per goal as: what was AGREED (the target on record) -> what was DELIVERED (the final accounts) -> WHAT THE RECORD SHOWS OVER TIME. Use the arc lines below verbatim as the over-time basis - do not soften or contradict them, and never speculate about anyone's intent:
+      groundContextLines.push(`CLOSING SESSION - THIS IS THE FINAL REPORT. Structure the synthesis per goal as: what was AGREED (the target on record) -> what was DELIVERED (the final accounts) -> WHAT THE RECORD SHOWS OVER TIME. Use the arc lines below verbatim as the over-time basis - do not soften or contradict them, and never speculate about anyone's intent:
 ${arcLines.join('\n')}
 
 Close the report by framing - neutrally, without recommending one - the choice now in front of the parties among this ground's end states: ${endStates}. The resolution step is where they choose together.`);
@@ -2688,7 +2688,7 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
         if (!accepted.length || !accepted.every((p) => p.checkIns.length > 0)) continue;
 
         this.logger.warn(
-          `Ground ${g.id} finished its closing round and has no closing synthesis. Synthesising again - the first attempt failed and nothing retried it.`,
+          `Ground ${g.id} finished its closing session and has no closing synthesis. Synthesising again - the first attempt failed and nothing retried it.`,
         );
         await this.synthesize(g.id).catch((err) =>
           this.logger.error(`Repairing the closing synthesis for ${g.id} failed again: ${(err as Error)?.message}`),

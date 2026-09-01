@@ -53,7 +53,7 @@ const PAGES = [
 
 /** Everything the four ground surfaces can do, by the call that does it. */
 const OPERATIONS: Record<string, string[]> = {
-  'ground state': ['groundsApi.update(', 'confirmLead(', 'beginClosingRound('],
+  'ground state': ['groundsApi.update(', 'confirmLead(', 'beginClosingSession('],
   people: ['addParticipant(', 'getParticipantInviteUrl(', 'participantsApi.updateEmail(', 'participantsApi.updateRole('],
   requests: ['participantRequestsApi.list(', 'participantRequestsApi.update(', 'participantRequestsApi.create('],
   documents: ['documentsApi.list(', 'documentsApi.upload(', 'documentsApi.remove(', 'documentsApi.setVisibility('],
