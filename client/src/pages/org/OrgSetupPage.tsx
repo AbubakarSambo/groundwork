@@ -115,6 +115,30 @@ export function OrgSetupPage() {
           </button>
 
           {/*
+            * THE OTHER REASON SOMEBODY IS HERE, AND THE DOOR IT NEEDED.
+            *
+            * This page assumes everybody reaching it means to create an organisation. Somebody
+            * invited into a colleague's check-in reached it too - signing up provisions an
+            * organisation and makes you its admin, so they were an admin of an empty workspace
+            * they never asked for, being asked to name a company to join a check-in.
+            *
+            * `mustSetUpOrganisation` stops most of that now: anybody who belongs somewhere else is
+            * no longer sent here at all. This is for the case that remains - the invitation was
+            * never accepted, so there is no membership yet and nothing to switch to. `/join` has
+            * existed the whole time and nothing anywhere linked to it.
+            */}
+          <button
+            onClick={() => navigate('/join')}
+            style={{
+              display: 'block', margin: '18px auto 0', background: 'none', border: 'none',
+              color: 'var(--gw-navy)', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer',
+              textDecoration: 'underline', fontWeight: 600,
+            }}
+          >
+            Joining a team that already uses Groundwork? Open your invitation
+          </button>
+
+          {/*
             * A WAY OUT OF A PAGE THAT HAS NONE. Reported: "this page doesn't have a back button".
             *
             * A back button is the wrong answer and would have made it worse: every signed-in route

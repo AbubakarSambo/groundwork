@@ -269,7 +269,7 @@ model Organization {
   id                 String                @id @default(uuid())
   name               String
   slug               String                @unique
-  email              String?
+  email              String 
 
   // Billing (Stripe, USD). Care fee is the always-on commitment device.
   stripeCustomerId       String?       @map("stripe_customer_id")
