@@ -337,6 +337,9 @@ export function GroundParticipantPage() {
    */
   const tabs = groundTabs({
     contextEnabled,
+    /* This page is somebody's own account of the check-in. Running it is the other view's job. */
+    canRunThisCheckIn: false,
+    isAParty: true,
   }).map(t => {
     /**
      * This page's own keys predate the shared list and are not worth churning: `checkin` for the

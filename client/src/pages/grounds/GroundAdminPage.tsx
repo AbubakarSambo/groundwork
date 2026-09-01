@@ -81,10 +81,13 @@ type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
  * means.
  */
 const FROM_TAB_KEY: Record<string, Tab> = {
-  chat: 'chat', report: 'report', record: 'checkins', context: 'docs', settings: 'settings',
+  chat: 'chat', report: 'report', sessions: 'checkins', context: 'docs', settings: 'settings',
+  /* `?tab=record` used to mean this tab. Kept resolving so links already sent still land somewhere
+     sensible; `sessions` is what gets written from now on. */
+  record: 'checkins',
 }
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
-  chat: 'chat', report: 'report', checkins: 'record', docs: 'context', settings: 'settings',
+  chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', settings: 'settings',
 }
 type ReportSession = 's1' | 's2' | 'closing'
 
@@ -990,8 +993,14 @@ export function GroundAdminPage() {
           * seven tabs in a 390px row lands on both views at once rather than being written twice.
           */}
         <GroundTabRow
-          tabs={groundTabs({ contextEnabled})}
-          active={({ chat: 'chat', report: 'report', checkins: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          tabs={groundTabs({
+            contextEnabled,
+            canRunThisCheckIn: true,
+            /* Not yet. The record lives on the other page until it is folded in here, and a tab
+               this page cannot render is worse than one it does not offer. */
+            isAParty: false,
+          })}
+          active={({ chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
           onPick={k => {
             goTab(FROM_TAB_KEY[k] ?? 'chat')
           }}
