@@ -16,6 +16,8 @@ export interface User {
   role: 'ADMIN' | 'MEMBER'
   organizationId: string
   organizationName?: string
+  /** Server-decided: does this person still have to set their organisation up. See App.tsx. */
+  mustSetUpOrganisation?: boolean
   organization?: UserOrganization
   jobTitle?: string
   isPlatformAdmin?: boolean

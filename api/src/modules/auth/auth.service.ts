@@ -241,7 +241,7 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) throw new UnauthorizedException('Invalid email or password');
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
   async verifyEmail(dto: VerifyEmailDto): Promise<AuthResponseDto> {
@@ -267,7 +267,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.withPasswordSetup(this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
+        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -311,7 +311,7 @@ export class AuthService {
         return u;
       });
 
-      return this.withPasswordSetup(this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
+      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -328,7 +328,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return this.withPasswordSetup(this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
+    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -347,7 +347,7 @@ export class AuthService {
       return tokenRecord.user;
     });
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
   /**
@@ -686,7 +686,7 @@ export class AuthService {
       return tokenRecord.user;
     });
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
   /**
@@ -825,7 +825,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
     if (!user) throw new BadRequestException('User not found');
     /* One builder. A field added to it cannot fail to reach this route now. */
-    return { ...this.theUserShape(user as unknown as UserWithOrg), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
+    const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
+    return { ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
   }
 
   // --- helpers ---
@@ -852,7 +853,30 @@ export class AuthService {
     return { ...res, passwordSetupToken: token };
   }
 
-  private buildAuthResponse(user: UserWithOrg): AuthResponseDto {
+  /**
+   * DOES THIS PERSON BELONG TO AN ORGANISATION OTHER THAN THE ONE THEY ARE ACTIVE IN.
+   *
+   * Signing up provisions an organisation and makes you its ADMIN, so almost everybody administers
+   * something - usually their own workspace, which they may never use again. Being added to
+   * somebody else's check-in creates a membership row but does NOT change your active organisation,
+   * so you stay ADMIN of an unfinished workspace while your real work is elsewhere.
+   *
+   * `RequireOrgSetup` asked "an admin whose organisation has no contact email?" and sent them to
+   * "Set up your organization" - a participant, invited to another company's check-in, told to
+   * finish setting up a company they never meant to create, with no way past it. The redirect was
+   * doing what it was written to do; the question was missing a clause.
+   *
+   * So the question is now "an admin with nowhere else to be". Somebody who genuinely has only the
+   * one unfinished organisation still gets sent to finish it, which is the case the gate is for.
+   */
+  private async belongsElsewhere(userId: string, activeOrganizationId: string): Promise<boolean> {
+    const other = await this.prisma.organizationMembership.count({
+      where: { userId, organizationId: { not: activeOrganizationId } },
+    });
+    return other > 0;
+  }
+
+  private async buildAuthResponse(user: UserWithOrg): Promise<AuthResponseDto> {
     return {
       /**
        * Computed here rather than at each call site, because there are five doors into the app
@@ -861,7 +885,7 @@ export class AuthService {
        */
       needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
       accessToken: this.generateToken(user),
-      user: this.theUserShape(user),
+      user: this.theUserShape(user, await this.belongsElsewhere(user.id, user.organizationId)),
     };
   }
 
@@ -876,7 +900,7 @@ export class AuthService {
    * SEPARATE FROM `buildAuthResponse` RATHER THAN CALLING IT, because that one also mints an access
    * token, and fetching a profile is not a reason to issue a credential.
    */
-  private theUserShape(user: UserWithOrg) {
+  private theUserShape(user: UserWithOrg, belongsElsewhere: boolean) {
     return {
         id: user.id,
         email: user.email,
@@ -908,6 +932,16 @@ export class AuthService {
             needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
           },
         ).may,
+        /**
+         * WHETHER THIS PERSON STILL HAS TO SET THEIR ORGANISATION UP, DECIDED HERE.
+         *
+         * The client had this rule as `user.role === 'ADMIN' && !user.organization?.email`, in two
+         * places, and it was wrong in both for the same reason - see `belongsElsewhere`. Computed
+         * server-side for the reason `mayOpenCheckIns` is: the copy that drifts is the one deciding
+         * whether somebody can reach the product at all.
+         */
+        mustSetUpOrganisation:
+          user.role === 'ADMIN' && !user.organization.email && !belongsElsewhere,
         /**
          * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
          *
