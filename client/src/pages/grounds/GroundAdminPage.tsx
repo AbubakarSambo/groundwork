@@ -8,6 +8,7 @@ import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -897,38 +898,20 @@ export function GroundAdminPage() {
             </div>
           </div>
           {/*
-            MY VIEW. The participant page at /grounds/:id/p was reachable by
-            nothing at all - not a link, not a tab, not a menu - while being the
-            page with Check-in, Session history, My record and Documents on it.
-            The only way in was typing the URL.
+            THE DOOR IS GONE, BECAUSE THERE IS NOWHERE IT NEEDED TO GO.
 
-            Shown only to somebody who is actually a party to this ground: an
-            admin who is not in it has no record of their own to look at, and the
-            page would be empty and confusing.
+            This was "My check-ins", then "My own account", then "Just my own" - three names for a
+            button whose job was to send a lead to a second page that looked identical to this one,
+            because the things that were theirs lived only over there.
+
+            They are here now: My record holds their record and their private report, and Setup
+            holds their role and standing. A lead has no reason to leave, so the button that took
+            them away is the last thing to remove rather than the next thing to rename.
+
+            `/grounds/:id/p` is untouched and still serves a participant, who is sent there by
+            `GroundPage`. What is gone is the SECOND door for somebody who was already on their own
+            page - the thing that made two views of one check-in impossible to tell apart.
           */}
-          {ground.participants?.some((p: any) => p.userId === user?.id) && (
-            <button
-              onClick={() => navigate(`/grounds/${id}/p`)}
-              style={{ fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              {/*
-                THE TWO VIEWS ARE NAMED AS A PAIR, BECAUSE THAT IS THE THING PEOPLE MISS.
-
-                This was "My check-ins →", which read as a list - and "Check-ins" in the rail IS that
-                list. Then "My own account →", which reads as billing, because the same person has
-                "Billing" and "Settings" in the rail beside it. Reported: an admin could not tell what
-                the button was for, or how the page it reached differed from this one.
-
-                The problem was never one label. It was that the two views were described in unrelated
-                words, so nothing said they were two halves of one check-in. They are a contrast now,
-                on the same axis, on both pages and in both directions:
-
-                  here   "Everyone in it - you are running this"   button: "Just my own"
-                  there  "Just yours - only you see this ..."      button: "The whole check-in"
-              */}
-              Just my own →
-            </button>
-          )}
           {/*
             THE BOARD KEEPS ITS PAGE. WHAT IT LOSES IS ITS SECOND DOOR. W-UX-3.
             
@@ -2146,6 +2129,28 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/**
+            * WHAT IS TRUE ABOUT YOU, FOR A LEAD WHO IS ALSO IN IT.
+            *
+            * Your role, your status, how many sessions you have finished. It lived only on the
+            * party view, so a lead had to leave this page to see their own standing in their own
+            * check-in. The last thing that sent them away.
+            *
+            * The party view puts it above the panels somebody else fills in, deliberately - see
+            * `MyParticipation`. Here the panels ARE yours to fill in, so it goes first for a
+            * simpler reason: it is about you and they are about the check-in.
+            */}
+          {viewerIsAParty && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+              <MyParticipation
+                viewer={user}
+                ground={ground}
+                myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
+                completedCount={sessionsDone}
+                totalSessions={plannedSessions ?? null}
+              />
+            </div>
+          )}
             {/*
               THE DEFINING CHOICE GOES FIRST, AND SAYS WHAT IT DECIDES.
               

@@ -57,9 +57,30 @@ describe('the two views of a check-in are a pair', () => {
     expect(PARTY).toContain('Just yours - only you see this until the report releases.')
   })
 
-  it('and each door names the view it leads to, on that same axis', () => {
-    expect(ADMIN).toContain('Just my own →')
+  it('THE DOOR OUT OF THE LEAD\'S VIEW IS GONE, BECAUSE THERE IS NOWHERE IT LED', () => {
+    /*
+     * It was "My check-ins", then "My own account", then "Just my own" - three names for a button
+     * whose job was to send a lead to a second page that looked identical to this one, because the
+     * things that were theirs lived only over there.
+     *
+     * They are here now: My record holds their record and their private report, and Setup holds
+     * their role and standing. So the button is not renamed a fourth time, it is removed. What it
+     * existed to fix does not exist.
+     */
+    expect(ADMIN).not.toMatch(/Just my own/)
+    expect(ADMIN).not.toMatch(/My own account/)
+    expect(ADMIN).not.toMatch(/My check-ins →/)
+    /* And what replaced it: the things that used to be a page away. */
+    expect(ADMIN).toMatch(/<MyRecord/)
+    expect(ADMIN).toMatch(/<MyPrivateReport/)
+    expect(ADMIN).toMatch(/<MyParticipation/)
+  })
+
+  it('but the way BACK still exists, for anybody who lands on the party view and can run it', () => {
+    /* Unchanged, and still the thing that stranded people: an org admin who is a party to somebody
+       else's check-in can reach `/p` and must be able to leave. */
     expect(PARTY).toContain('The whole check-in →')
+    expect(PARTY).toContain("const canRunThisCheckIn = isInitiator || user?.role === 'ADMIN'")
   })
 
   it('neither calls it an "account", which is billing to the person reading it', () => {
