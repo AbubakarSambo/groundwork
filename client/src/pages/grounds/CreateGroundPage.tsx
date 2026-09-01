@@ -10,6 +10,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMM
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
+import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -448,18 +449,7 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
  * is one edit here rather than thirty-three edits that all still compile if you get one wrong. The
  * eight-to-four cut this flow needs is not safe until that is true.
  */
-const STAGE = {
-  who: 1,
-  situation: 2,
-  coach: 3,
-  describe: 4,
-  plan: 5,
-  timeline: 6,
-  people: 7,
-  brief: 8,
-} as const
 
-const TOTAL_STEPS = Object.keys(STAGE).length
 
 /**
  * What each step is asking, in the words already on that step's own heading.
@@ -844,13 +834,35 @@ export function CreateGroundPage() {
     setBulkMode(false)
   }
 
+  /**
+   * THE STEPS THIS PERSON WILL ACTUALLY SEE, IN ORDER.
+   *
+   * Three of the eight are conditional, and every part of the flow worked that out for itself:
+   * `next` had its own arithmetic, `back` had a special case with a comment apologising for it,
+   * and the counter said "of 8" to somebody who would be shown six. Skipping a step in three
+   * places and counting it in a fourth is how "Step 5 of 8" appeared directly after step 3.
+   *
+   * So the flow is a list now. Forward is the next entry, back is the previous one, and the
+   * counter is a position in it. A step that is not for this person is not in the list, and
+   * cannot be counted, landed on by Back, or stepped over by arithmetic that forgot it.
+   *
+   * THE BILLING STEP EARNS ITS PLACE OR IT IS NOT THERE. It has two states: "no payment needed,
+   * press Continue", and a real refusal with an access-code box. The first is a screen whose only
+   * content is that it has nothing to say - shown in the middle of setting something up, between
+   * describing the situation and saying how long it runs. It is in the list only when the check
+   * has come back and come back blocking. While the check is still running it stays in, because a
+   * person must not be walked past a refusal that had not arrived yet.
+   */
+  const visibleSteps = stepsThisPersonSees({
+    onAPaidPlan,
+    describingOwnSituation: selectedCard === 'DESCRIBE_OWN',
+    billingSettledAndFree: billingChecked && billingFree,
+  })
+
   function back() {
-    /* Step 4 only exists on the free-text path, so going back from 5 has to skip it there too -
-       otherwise Back lands on a screen the person was never shown on the way in. */
-    /* Back from the situation lands on the coach step only where that step was shown. */
-    if (step === STAGE.plan && selectedCard !== 'DESCRIBE_OWN') { setStep(onAPaidPlan ? STAGE.coach : STAGE.situation); return }
-    if (step > STAGE.who) setStep(s => s - 1)
-    else navigate('/grounds')
+    const previous = stepBefore(visibleSteps, step)
+    if (previous === null) navigate('/grounds')
+    else setStep(previous)
   }
 
   // Display dot index: step 1 → dot 1, step 2 (billing) → dot 2, steps 3-6 → dots 3-6
@@ -859,7 +871,9 @@ export function CreateGroundPage() {
    * comment this replaces said "(6)" while the constant said 8, which is what a second copy of a
    * fact does when the first one changes.
    */
-  const displayStep = step
+  const displayStep = Math.max(1, visibleSteps.indexOf(step) + 1)
+  /** Not `Object.keys(STAGE).length`: that counts steps this person is never shown. */
+  const totalStepsForThisPerson = visibleSteps.length
 
   const renderSituation = (card: ScenarioCard) => {
                         const facts = SCENARIO_FACTS[card.scenario]
@@ -956,7 +970,7 @@ export function CreateGroundPage() {
                 */}
               <h1 className="gw-logo gw-page-h1">Set up a check-in</h1>
               <span style={{ fontSize: 13, color: 'var(--gw-sub)', marginLeft: 10 }}>
-                Step {displayStep} of {TOTAL_STEPS} · {STEP_NAMES[displayStep] ?? ''}
+                Step {displayStep} of {totalStepsForThisPerson} · {STEP_NAMES[step] ?? ''}
               </span>
         <button className="gw-back" onClick={back}>← Back</button>
       </div>
@@ -989,7 +1003,7 @@ export function CreateGroundPage() {
       <div className="gw-bd" style={{ maxWidth: step === STAGE.situation ? 1160 : 540, margin: '0 auto', width: '100%' }}>
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
+          {Array.from({ length: totalStepsForThisPerson }, (_, i) => i + 1).map(n => (
             <div key={n} className={`cg-step-dot${displayStep === n ? ' active' : displayStep > n ? ' done' : ''}`} />
           ))}
         </div>
@@ -1219,7 +1233,7 @@ export function CreateGroundPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setStep(selectedCard === 'DESCRIBE_OWN' ? STAGE.describe : STAGE.plan)}
+                    onClick={() => setStep(stepAfter(visibleSteps, step))}
                     style={{ fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
                   >
                     Skip this
@@ -1475,7 +1489,6 @@ export function CreateGroundPage() {
                    * into steps, each has one thing to be waiting for, so the message is exact.
                    */
                   const needsRouting = selectedCard === 'DESCRIBE_OWN' && !routedTo && !routeFailed
-                  const describing = selectedCard === 'DESCRIBE_OWN'
 
                   const blocked =
                     step === STAGE.who ? alsoAParty === null
@@ -1500,11 +1513,10 @@ export function CreateGroundPage() {
                    *
                    * Paid plans still get the step, with the card and without the block above it.
                    */
-                  const next = step === STAGE.coach
-                    ? (describing ? 4 : 5)
-                    : step === STAGE.situation && !onAPaidPlan
-                      ? (describing ? 4 : 5)
-                      : step + 1
+                  /* Was its own arithmetic, with two bare 4s and two bare 5s the naming pass
+                     did not reach, and it had to know which steps get skipped - the same knowledge
+                     `back` and the counter each held separately. One list, asked three ways. */
+                  const next = stepAfter(visibleSteps, step)
 
                   return (
                     <>
@@ -1554,7 +1566,7 @@ export function CreateGroundPage() {
                     Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}
-                <button className="gw-btn" onClick={() => setStep(STAGE.timeline)} style={{ margin: '12px 0 0' }}>Continue →</button>
+                <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
@@ -1616,7 +1628,7 @@ export function CreateGroundPage() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Code applied</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the check-in is created.</div>
                     </div>
-                    <button className="gw-btn" onClick={() => setStep(STAGE.timeline)}>Continue →</button>
+                    <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))}>Continue →</button>
                   </div>
                 )}
               </div>
@@ -1723,7 +1735,7 @@ export function CreateGroundPage() {
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>
               </div>
             </div>
-            <button className="gw-btn" onClick={() => setStep(STAGE.people)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
@@ -1855,7 +1867,7 @@ export function CreateGroundPage() {
               </div>
             ) : null}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(STAGE.brief) }}>
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(stepAfter(visibleSteps, step)) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
