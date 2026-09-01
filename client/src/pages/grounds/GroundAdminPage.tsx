@@ -891,7 +891,10 @@ export function GroundAdminPage() {
                   standing label rather than a one-time announcement, because the confusion recurs
                   every time you come back.
                 */}
-                <span style={{ fontSize: 10, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+                {/* Wraps. It was `nowrap` when the text was "running this check-in"; the longer
+                    label that replaced it pushed a 375px page out to 403 and made the whole report
+                    scroll sideways. Found by measuring the report on mobile, not by reading this. */}
+                <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
                   Everyone in it - you are running this
                 </span>
               </div>
