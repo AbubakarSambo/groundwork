@@ -358,7 +358,7 @@ export function IntegrationsPage() {
       </div>
       <div style={S.card}>
         <div style={S.h3}>Results come back</div>
-        <p style={S.body}>When everybody in a round has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
+        <p style={S.body}>When everybody in a session has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
       </div>
 
       {/* GUIDED SETUP, and each step reports whether it actually happened rather than whether it was
@@ -600,7 +600,7 @@ export function IntegrationsPage() {
       {/* ---------------------------------------------------------------- delivery log */}
       <div style={S.sec}>Every message we tried to send</div>
       {!(deliveries.data ?? []).length && (
-        <div style={S.card}><p style={S.body}>Nothing yet. This fills in as rounds complete.</p></div>
+        <div style={S.card}><p style={S.body}>Nothing yet. This fills in as sessions complete.</p></div>
       )}
       {!!(deliveries.data ?? []).length && (
         <div style={S.card}>

@@ -928,7 +928,7 @@ export function ChatPage() {
               <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>You declined this session.</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
-                  That is recorded. The report for this round will say you declined and will not guess at
+                  That is recorded. The report for this session will say you declined and will not guess at
                   what you would have said. Nothing you write here counts towards it now.
                   {' '}If there is another session, you can take part in that one.
                 </div>
@@ -953,7 +953,7 @@ export function ChatPage() {
                 */}
                 <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
                   <li>This cannot be undone for this session.</li>
-                  <li>The round finishes without your account, so nobody is left waiting on you.</li>
+                  <li>The session finishes without your account, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
                   <li>Nothing you have written here is shown to anyone.</li>
                 </ul>

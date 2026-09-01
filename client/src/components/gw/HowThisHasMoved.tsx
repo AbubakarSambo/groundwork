@@ -33,7 +33,7 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
         How this has moved
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 12, maxWidth: 560 }}>
-        What the report said at the end of each round, as it stood then. Nothing here has been
+        What the report said at the end of each session, as it stood then. Nothing here has been
         rewritten since.
       </div>
 

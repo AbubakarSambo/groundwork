@@ -941,9 +941,14 @@ export function GroundAdminPage() {
                     * This counts the OPEN round. The report panel below counts the one that just closed.
                     * Both are right, and together they read as a contradiction: "0 of 2 checked in" above
                     * "2 of 2 have checked in for this round", which is enough to make somebody doubt the
-                    * record. Saying which round this is costs three words and removes the question.
+                    * record. Naming the session it counts costs three words and removes the question.
+                    *
+                    * SESSION, NOT ROUND. The first version of this said "Round 2 · 0 of 2 checked
+                    * in", which introduced a third word for a thing that already had two. Her call,
+                    * and the codebase agreed before she made it: "session" appears in 159 visible
+                    * strings and "round" in 25. One word, and it is session.
                     */}
-                  Round {openRound} · {roundDone} of {(ground.participants ?? []).length} checked in
+                  {roundDone} of {(ground.participants ?? []).length} checked in for session {openRound}
                 </span>
               )}
             </>
@@ -1857,7 +1862,7 @@ export function GroundAdminPage() {
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>A picture is forming</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
                         {(report as any)?.sessionProgress
-                          ? `${(report as any).sessionProgress.completed} of ${(report as any).sessionProgress.total} have checked in for this round. `
+                          ? `${(report as any).sessionProgress.completed} of ${(report as any).sessionProgress.total} have checked in for this session. `
                           : 'Not everyone has checked in yet. '}
                         You can release what there is now, and everybody will see it at the same moment. It will
                         be missing whoever has not answered.
