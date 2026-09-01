@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { describe, it, expect } from 'vitest'
+import { whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 
 /**
  * HOW A GROUND ENDS IS NOT THE FIRST THING YOU SEE ABOUT IT.
@@ -58,7 +59,11 @@ describe('the resolution panel', () => {
     // `sessionsDone` is the minimum across participants. Using the highest would
     // offer the exit while somebody is still four rounds behind - the same
     // optimism that once closed a check-in over a missing account.
-    const src = SRC.slice(SRC.indexOf('const perParticipantDone'), SRC.indexOf('const perParticipantDone') + 600)
-    expect(src).toMatch(/Math\.min\(\.\.\.perParticipantDone\)/)
+    /* Was asserted on the inline `Math.min(...perParticipantDone)`. That rule moved into
+       `whichSessionIsThisCheckInOn` so the roster and the counter could stop disagreeing, and a
+       spec pinned to where it used to live said nothing about whether it still held. Run it. */
+    expect(whichSessionIsThisCheckInOn([[1, 2, 3, 4], [1]])).toBe(2)
+    expect(whichSessionIsThisCheckInOn([[1, 2], [1, 2]])).toBe(3)
+    expect(SRC).toMatch(/whichSessionIsThisCheckInOn\(/)
   })
 })

@@ -21,10 +21,12 @@ import { join } from 'path'
  * no price can reach a participant by ANY path through this page, including
  * paths a test would have to contrive a state to reach.
  */
-const SRC = readFileSync(
-  join(__dirname, 'GroundParticipantPage.tsx'),
-  'utf8',
-)
+/* The page and the record it renders. `MyRecord` was lifted out of this page so the view that runs
+   a check-in can show a lead their own account; a paywall could now appear in either file. */
+const SRC = [
+  readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8'),
+  readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'MyRecord.tsx'), 'utf8'),
+].join('\n')
 
 /** Source with comment lines stripped, so our own explanations do not count. */
 const CODE = SRC.split('\n')

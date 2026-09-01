@@ -1,5 +1,5 @@
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
-import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
+import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
 import { railAttention } from '@/lib/rail-attention'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -81,10 +81,13 @@ type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
  * means.
  */
 const FROM_TAB_KEY: Record<string, Tab> = {
-  chat: 'chat', report: 'report', record: 'checkins', context: 'docs', settings: 'settings',
+  chat: 'chat', report: 'report', sessions: 'checkins', context: 'docs', settings: 'settings',
+  /* `?tab=record` used to mean this tab. Kept resolving so links already sent still land somewhere
+     sensible; `sessions` is what gets written from now on. */
+  record: 'checkins',
 }
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
-  chat: 'chat', report: 'report', checkins: 'record', docs: 'context', settings: 'settings',
+  chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', settings: 'settings',
 }
 type ReportSession = 's1' | 's2' | 'closing'
 
@@ -690,14 +693,22 @@ export function GroundAdminPage() {
    * while one party had only reached 4, which is the same optimism that let a
    * ground close over a missing account.
    */
-  const perParticipantDone = (ground.participants ?? []).map((p: any) =>
-    new Set(
-      (ground.checkIns ?? [])
-        .filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED')
-        .map((c: any) => c.sessionNumber),
-    ).size,
+  /**
+   * ONE COPY OF THE RULE, AND IT IS NOT THIS FILE'S.
+   *
+   * This computed "the lowest number of sessions anybody has finished" inline. That is the same
+   * rule `whichSessionIsThisCheckInOn` holds, so fixing the roster to agree with this counter would
+   * have left two copies of one rule on one screen - which is how the roster and the counter came
+   * to disagree in the first place.
+   */
+  const openRoundFromRule = whichSessionIsThisCheckInOn(
+    (ground.participants ?? []).map((p: any) =>
+      ((ground.checkIns ?? []) as any[])
+        .filter((c) => c.participantId === p.id && c.status === 'COMPLETED')
+        .map((c) => c.sessionNumber ?? 0),
+    ),
   )
-  const sessionsDone = perParticipantDone.length > 0 ? Math.min(...perParticipantDone) : 0
+  const sessionsDone = openRoundFromRule - 1
   /**
    * How many people have finished the round that is currently open. The round is
    * `sessionsDone + 1` - the one the header already names - so this and the
@@ -990,8 +1001,14 @@ export function GroundAdminPage() {
           * seven tabs in a 390px row lands on both views at once rather than being written twice.
           */}
         <GroundTabRow
-          tabs={groundTabs({ contextEnabled})}
-          active={({ chat: 'chat', report: 'report', checkins: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          tabs={groundTabs({
+            contextEnabled,
+            canRunThisCheckIn: true,
+            /* Not yet. The record lives on the other page until it is folded in here, and a tab
+               this page cannot render is worse than one it does not offer. */
+            isAParty: false,
+          })}
+          active={({ chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
           onPick={k => {
             goTab(FROM_TAB_KEY[k] ?? 'chat')
           }}
@@ -1125,12 +1142,18 @@ export function GroundAdminPage() {
                    * the position - on a six-session ground that made every roster read "waiting"
                    * forever. One answer for both pages now.
                    */
-                  const current = whichSessionAreWeOn(
-                    myOpenCheckIn?.sessionNumber ?? null,
-                    ((ground.checkIns ?? []) as any[])
-                      .filter((c) => c.status === 'COMPLETED')
-                      .map((c) => c.sessionNumber ?? 0),
-                  )
+                  /**
+                   * THE SESSION THE CHECK-IN IS ON, NOT THE ONE THIS READER IS ON.
+                   *
+                   * This passed `myOpenCheckIn` - the VIEWER's own open check-in - and then judged
+                   * everybody's chip against it. A lead who had finished session 2 while nobody
+                   * else had made the whole roster answer for session 1, so every chip read
+                   * "checked in" directly above "0 of 2 checked in for session 2". Both were right
+                   * and together they read as the product losing the record.
+                   *
+                   * `openRound` is the counter's own number. One session, named once.
+                   */
+                  const current = openRound
                   const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
                   return {
                     name: nameOfParticipant(p.id) ?? 'A participant',

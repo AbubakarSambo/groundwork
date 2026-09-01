@@ -19,9 +19,24 @@ import path from 'path'
  * the words are published for everybody including them.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const PARTY = readFileSync(path.join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/^\s*\/\/.*$/gm, '')
+/**
+ * WHAT A PARTY SEES, WHEREVER IT IS WRITTEN.
+ *
+ * This read the page alone. The record itself lives in `MyRecord` now, so that the page which RUNS
+ * a check-in can show a lead their own account without sending them to a second page - and reading
+ * only the page would have quietly stopped covering the thing this file is named after.
+ *
+ * Both, joined, so these assertions follow the content rather than the filename. They keep holding
+ * when the two views merge.
+ */
+const strip = (f: string) =>
+  readFileSync(f, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+const PARTY = [
+  strip(path.join(__dirname, 'GroundParticipantPage.tsx')),
+  strip(path.join(__dirname, '..', '..', 'components', 'gw', 'MyRecord.tsx')),
+].join('\n')
 
 describe('a party sees their own and only their own', () => {
   it('their sessions come from their own record, not the whole roster', () => {
@@ -35,7 +50,11 @@ describe('a party sees their own and only their own', () => {
 
   /** The words live in one published place; this points there rather than keeping a second copy. */
   it('which opens Context rather than restating it here', () => {
-    expect(PARTY).toMatch(/onClick=\{\(\) => setTab\('docs'\)\}/)
+    /* Was `setTab('docs')`, a call on the page's own state. `MyRecord` is rendered by two pages
+       that name their tabs differently, so it asks to be sent and the page decides where that is.
+       The rule is unchanged: the record LINKS to the material, it does not restate it. */
+    expect(PARTY).toMatch(/onGoToTab\('docs'\)/)
+    expect(PARTY).toMatch(/onGoToTab=\{/)
   })
 
   /**

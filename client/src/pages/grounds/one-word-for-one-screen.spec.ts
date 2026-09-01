@@ -31,8 +31,12 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * private copy. That second half is the part that would otherwise rot: a page could quietly go back
  * to its own list and the label checks would still pass against the shared file.
  */
-const leadTabs = groundTabs({ contextEnabled: true})
-const partyTabs = groundTabs({ contextEnabled: true})
+/* These were the same call twice, from when the list could not differ by role. It can now: the
+   tab showing EVERYONE's state and the tab showing YOUR OWN account shared one key and one label,
+   which is what made the two views indistinguishable. */
+const leadTabs = groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: false })
+const partyTabs = groundTabs({ contextEnabled: true, canRunThisCheckIn: false, isAParty: true })
+const bothTabs = groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true })
 const labelOf = (tabs: { key: string; label: string }[], key: string) => tabs.find(t => t.key === key)?.label
 
 describe('the conversation tab', () => {
@@ -83,24 +87,32 @@ describe('"Settings" says which settings', () => {
 })
 
 describe('and the two labels cannot collide', () => {
-  it('the record tab is not a plural of the conversation tab', () => {
+  it('no tab reads as the plural of another, and no two are near-homographs', () => {
     /**
      * It was "Check-ins" beside "Check-in", then "Sessions" for the lead and "My record" for a
-     * party, then "Record" for both - and "Record" sat next to "Report", which W-UX-6 found nobody
-     * could tell apart. It is "Sessions" for both now, which is not a plural of "Check-in" and is
-     * not a synonym of "Report".
+     * party, then "Sessions" for both - and now "Sessions" and "My record" again, because those are
+     * two different tabs rather than one tab wearing two names. Four labels, one rule.
      *
-     * THE RULE, which has outlived four labels: no tab may read as the plural of the tab beside it,
-     * and no two tabs may be near-homographs. The specific word is the changeable part.
+     * THE RULE, which has outlived all of them: no tab may read as the plural of the tab beside it,
+     * and no two may be near-homographs. Asserted over the whole list somebody can actually see -
+     * a lead who is also a party sees both of the two that used to be one, so that is the list where
+     * a collision would land.
      */
-    expect(labelOf(leadTabs, 'record')).toBe('Sessions')
-    expect(labelOf(partyTabs, 'record')).toBe('Sessions')
-    for (const t of [...leadTabs, ...partyTabs]) expect(t.label).not.toBe('Report ')
-    for (const t of [...leadTabs, ...partyTabs]) expect(t.label).not.toBe('Check-ins')
+    const labels = bothTabs.map(t => t.label)
+    expect(new Set(labels).size).toBe(labels.length)
+    for (const a of labels) {
+      for (const b of labels) {
+        if (a === b) continue
+        expect(b).not.toBe(`${a}s`)
+        expect(b.toLowerCase()).not.toBe(a.toLowerCase())
+      }
+    }
+    // The two that were confused for each other: neither may be a prefix of the other.
+    expect(labels).toContain('Sessions')
+    expect(labels).toContain('My record')
+    expect('Report'.startsWith('My record')).toBe(false)
   })
-})
 
-describe('the order she asked for', () => {
   it('chat first, report second, on both views', () => {
     // Her words: "we had a good thing going where tab 1 was chat, tab 2 reports etc."
     expect(leadTabs.slice(0, 2).map(t => t.key)).toEqual(['chat', 'report'])
@@ -112,7 +124,14 @@ describe('the order she asked for', () => {
      * THE ACTUAL COMPLAINT. Report was fifth for a lead and third for a party. Overview is the one
      * tab that exists for one role only, so it is excluded - everything else must line up.
      */
-    const shared = leadTabs.filter(t => t.key !== 'overview').map(t => t.key)
-    expect(partyTabs.map(t => t.key)).toEqual(shared)
+    /* The lists are no longer identical - `sessions` is the lead's and `record` is a party's, which
+       is the whole point. What must not move is anything BOTH of them see. */
+    const leadKeys = leadTabs.map(t => t.key)
+    const partyKeys = partyTabs.map(t => t.key)
+    const shared = leadKeys.filter(k => partyKeys.includes(k))
+    expect(shared).toEqual(partyKeys.filter(k => leadKeys.includes(k)))
+    expect(shared).toEqual(['chat', 'report', 'context', 'settings'])
+    // And the two role-specific ones sit in the same slot as each other.
+    expect(leadKeys.indexOf('sessions')).toBe(partyKeys.indexOf('record'))
   })
 })
