@@ -72,11 +72,14 @@ export function GroundParticipantPage() {
 
   const user = useAuthStore(s => s.user)
 
-  const { data: ground, isLoading } = useQuery({
+  const { data: ground, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
   })
+
+  /* Only a 404 means gone. Everything else is a failure to reach it - see the guard below. */
+  const definitelyGone = isError && (error as any)?.response?.status === 404
 
   const { data: report } = useQuery({
     queryKey: ['report', id],
@@ -237,6 +240,36 @@ export function GroundParticipantPage() {
   }, [myOpenForAutoOpen, probeSession])
 
   if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+  /*
+   * A FAILED REQUEST WAS TELLING PEOPLE THEY HAD BEEN REMOVED.
+   *
+   * This was `if (!ground)`, which sends every failure to GroundGone - and GroundGone reads
+   * "This check-in is not open to you ... it may have been closed, or you are no longer part of
+   * it." Driven in the browser with the endpoint forced to 500, that is what a party saw: an
+   * accusation that they had been taken out of a check-in, because a request failed.
+   *
+   * The admin page had already written the rule and this page had not been brought along with it:
+   * a check-in that is genuinely gone answers 404, and anything else is a failure to load.
+   */
+  if (isError && !definitelyGone) return (
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
+          We could not load this check-in
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 340, margin: '0 auto 18px' }}>
+          This is a connection problem, not a lost record. You are still part of it, and nothing you
+          have written is affected.
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+        >{isFetching ? 'Trying…' : 'Try again'}</button>
+      </div>
+    </div>
+  )
+
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
   if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>

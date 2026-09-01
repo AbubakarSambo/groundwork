@@ -3,6 +3,7 @@ import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GroundAdminPage } from './GroundAdminPage'
+import { GroundParticipantPage } from './GroundParticipantPage'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
 
@@ -52,11 +53,55 @@ describe('a check-in that is slow is not a check-in that is gone', () => {
      * not a guard, and this one had to be broken on purpose before it was worth anything.
      */
     await waitFor(() => expect(get).toHaveBeenCalled())
-    await waitFor(() => expect(container.textContent).not.toContain('This check-in is not open to you'))
-    await new Promise(r => setTimeout(r, 20))
+    await waitFor(() => expect(container.textContent).toContain('We could not load this check-in'))
 
-    expect(container.textContent).toContain('Loading')
+    /*
+     * THIS ASSERTION USED TO READ `toContain('Loading')`, AND THAT WAS THE BUG WRITTEN DOWN.
+     *
+     * Sending a failed request to the loading state fixed the flashing, and left the page saying
+     * "Loading..." for as long as anyone cared to watch. Driven in the browser with the endpoint
+     * forced to 500: React Query tried twice, gave up, and the word stayed on screen with nothing
+     * to press. Not gone, and not loading either - it could not be loaded, and it can be retried.
+     */
+    expect(container.textContent).not.toContain('Loading')
     expect(container.textContent).not.toContain('This check-in is not open to you')
+    expect(container.textContent).toContain('Try again')
+  })
+
+  it('and trying again is what recovers it', async () => {
+    /* The state is only honest if the button in it works. */
+    const get = vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('network'), { response: undefined }))
+    const { container, getByText } = show()
+    await waitFor(() => expect(container.textContent).toContain('We could not load this check-in'))
+
+    get.mockResolvedValue({
+      id: 'g1', label: 'Atlas delivery', scenario: 'NEW_HIRE', moment: 'STARTING',
+      status: 'ACTIVE', initiatorId: 'u1', organizationId: 'o1', participants: [], timelineDays: 90,
+    } as any)
+    getByText('Try again').click()
+
+    await waitFor(() => expect(container.textContent).not.toContain('We could not load this check-in'))
+    expect(container.textContent).not.toContain('This check-in is not open to you')
+  })
+
+  it('the party view does not accuse somebody of having been removed', async () => {
+    /*
+     * The same failure on `/grounds/:id/p` fell through to the same GroundGone, which reads
+     * "it may have been closed, or you are no longer part of it". So a request that failed told a
+     * party they had been taken out of a check-in. Observed in the browser before it was fixed.
+     */
+    vi.spyOn(groundsApi, 'get').mockRejectedValue(Object.assign(new Error('network'), { response: undefined }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { container } = render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/grounds/g1/p']}>
+          <Routes><Route path="/grounds/:id/p" element={<GroundParticipantPage />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await waitFor(() => expect(container.textContent).toContain('We could not load this check-in'))
+    expect(container.textContent).not.toContain('no longer part of it')
+    expect(container.textContent).toContain('You are still part of it')
   })
 
   it('still says so when the check-in really is gone', async () => {

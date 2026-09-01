@@ -180,7 +180,7 @@ export function GroundAdminPage() {
    * `isError` is what separates the two states that were being treated as one: nothing here yet,
    * and definitely not there. Only the second is GroundGone.
    */
-  const { data: ground, isLoading, isError, error } = useQuery({
+  const { data: ground, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
@@ -569,8 +569,35 @@ export function GroundAdminPage() {
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
   if (definitelyGone) return <Shell><GroundGone /></Shell>
-  /* Everything that is not a 404 is "not here yet", including a failed request about to be retried.
-     This used to be `!ground`, which said "gone" for both. */
+  /*
+   * "ABOUT TO BE RETRIED" RUNS OUT, AND THEN THE PAGE IS JUST LYING.
+   *
+   * This was `isLoading || !ground`, on the reasoning that anything which is not a 404 is "not here
+   * yet, including a failed request about to be retried". That holds only while retries remain.
+   * Driven in the browser with the check-in endpoint forced to 500, React Query tried twice, gave
+   * up, and the page sat on "Loading…" indefinitely - telling somebody that work is still in
+   * flight when it stopped seconds ago, with nothing to press and no way to find out.
+   *
+   * The list page already separates these two and says which happened; this is the same treatment.
+   */
+  if (isError && !definitelyGone) return (
+    <Shell>
+      <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
+          We could not load this check-in
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 340, margin: '0 auto 18px' }}>
+          This is a connection problem, not a lost record. Nothing you have written is affected.
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+        >{isFetching ? 'Trying…' : 'Try again'}</button>
+      </div>
+    </Shell>
+  )
+
   if (isLoading || !ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
 
   /**
