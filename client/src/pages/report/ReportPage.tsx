@@ -1057,10 +1057,23 @@ export function ReportBody({
           {/* SHARED / GROUND REPORT CARD */}
           {(!solo || tab === 'shared') && (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)', color: '#fff' }}>
-              <span style={{ fontSize: 13, fontWeight: 800 }}>Groundwork report</span>
-              <span style={{ fontSize: 11, opacity: 0.82 }}>for {adminHandle}</span>
-            </div>
+            {/**
+              * THE REPORT BEGINS ONCE.
+              *
+              * Standalone at `/grounds/:id/report` this line IS the beginning - nothing above it says
+              * whose check-in this is, so it stays there.
+              *
+              * Embedded, it is the second beginning. Measured on a real released report: the page header
+              * already names the check-in, the session and that the report went out, and then 856px lower
+              * this starts again with "Groundwork report for Lena Lead". A reader who has scrolled a full
+              * screen to reach the findings does not need to be told again which check-in they opened.
+              */}
+            {!embedded && (
+              <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)', color: '#fff' }}>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>Groundwork report</span>
+                <span style={{ fontSize: 11, opacity: 0.82 }}>for {adminHandle}</span>
+              </div>
+            )}
             <div style={{ padding: '16px 18px 18px' }}>
 
               {/*
