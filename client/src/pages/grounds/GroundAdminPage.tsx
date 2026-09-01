@@ -1870,11 +1870,23 @@ export function GroundAdminPage() {
                     */}
                   Private reports {activationStatus.allActivated ? '· Everyone has revealed theirs' : '· Waiting'}
                 </div>
+                {/**
+                  * SETTLED PANELS SHOW ONE LINE. WAITING PANELS SHOW THE WORK.
+                  *
+                  * This panel exists so a lead knows who to chase. Once everybody has revealed
+                  * there is nobody to chase, and it went on taking the same space at the top of
+                  * the report - a row of cards all saying "Revealed", above 856px of preamble
+                  * somebody has to scroll past to reach the findings.
+                  *
+                  * The heading already says which state it is in. When that state is "done", the
+                  * heading is the whole message.
+                  */}
                 {!activationStatus.allActivated && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
                     Each person sees their own report privately until they choose to reveal it. When everybody activates, the reports become visible to each other. Each person can do this from their own check-in page.
                   </div>
                 )}
+                {!activationStatus.allActivated && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activationStatus.parties.map((p, i) => (
                     <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
@@ -1898,6 +1910,7 @@ export function GroundAdminPage() {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 

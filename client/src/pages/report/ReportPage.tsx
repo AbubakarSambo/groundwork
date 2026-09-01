@@ -36,6 +36,43 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
   })
   const isClosed = data?.groundStatus === 'RESOLVED' || data?.groundStatus === 'CLOSED'
 
+  /**
+
+   * NOTHING SET IS ONE LINE, NOT A PANEL.
+
+   *
+
+   * This drew a full section - a heading, a "Current status" label and a sentence saying there
+
+   * was nothing - near the top of a report a lead scrolls 856px to read. A panel that says it
+
+   * has nothing to say takes the same space as one that does.
+
+   *
+
+   * It comes back whole the moment there is a resolution to show, which is when the lead is
+
+   * being asked to act on it. Same rule as the stat tiles: a count of nothing does not get a
+
+   * tile, and the signal returns the moment there is one.
+
+   */
+
+  if (!resolutionState && !data?.resolution) {
+
+    return (
+
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', padding: '2px 0' }}>
+
+        Resolution · not set yet
+
+      </div>
+
+    )
+
+  }
+
+
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
       <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>Resolution</div>
@@ -78,9 +115,6 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
             </div>
           )}
         </div>
-      )}
-      {!resolutionState && !data?.resolution && (
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No resolution state set yet.</div>
       )}
     </div>
   )
