@@ -224,12 +224,23 @@ describe('the same solo report reads the same to everybody', () => {
    */
   const PARTICIPANT = strip(readFileSync(join(SRC, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'))
   const LEAD = strip(readFileSync(join(SRC, 'pages/grounds/GroundAdminPage.tsx'), 'utf8'))
+  const PRIVATE_REPORT = strip(readFileSync(join(SRC, 'components/gw/MyPrivateReport.tsx'), 'utf8'))
 
   it('both pages render it through one component', () => {
-    for (const page of [PARTICIPANT, LEAD]) {
-      expect(page).toMatch(/import \{ SoloReportBody \}/)
-      expect(page).toMatch(/<SoloReportBody report=/)
+    /* The party view reaches it through `MyPrivateReport` now - the solo report and the whole
+       sharing decision moved there together so the page that runs a check-in can show a lead their
+       own. What this protects is unchanged: ONE component renders a solo report, so it cannot read
+       two ways. Asserted wherever it is rendered from. */
+    /* NAMED, NOT FILTERED. My first rewrite collected whichever files happened to render it and
+       asserted the list was non-empty - which passes while one of them quietly stops. Each route to
+       a solo report is named here, so losing any one of them fails. */
+    for (const src of [LEAD, PRIVATE_REPORT]) {
+      expect(src).toMatch(/import \{ SoloReportBody \}/)
+      expect(src).toMatch(/<SoloReportBody report=/)
     }
+    /* The party view reaches it through `MyPrivateReport`, where the solo report and the whole
+       sharing decision moved together. */
+    expect(PARTICIPANT).toMatch(/<MyPrivateReport/)
   })
 
   it('and neither walks the report itself any more', () => {
