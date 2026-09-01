@@ -54,6 +54,7 @@ const PAGES = [
   // fired for `setMySoloReportShared` and `signOff` the moment they moved, which is what it is for.
   '../../components/gw/MyRecord.tsx',
   '../../components/gw/MyPrivateReport.tsx',
+  '../../components/gw/SharedReportForAParty.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */

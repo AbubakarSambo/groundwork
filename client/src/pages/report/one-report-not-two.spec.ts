@@ -21,6 +21,7 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 const REPORT = strip(readFileSync(path.join(__dirname, 'ReportPage.tsx'), 'utf8'))
 const ADMIN = strip(readFileSync(path.join(__dirname, '../grounds/GroundAdminPage.tsx'), 'utf8'))
 const PARTICIPANT = strip(readFileSync(path.join(__dirname, '../grounds/GroundParticipantPage.tsx'), 'utf8'))
+const PARTY_REPORT = strip(readFileSync(path.join(__dirname, '../../components/gw/SharedReportForAParty.tsx'), 'utf8'))
 
 describe('one report, not two', () => {
   it('the report body is a component, not a page only', () => {
@@ -38,7 +39,11 @@ describe('one report, not two', () => {
    * real thing instead of linking to it.
    */
   it('and the participant page renders it too', () => {
-    expect(PARTICIPANT).toContain('<ReportBody groundId={id!} embedded />')
+    /* The party view reaches it through `SharedReportForAParty`, where the shared report moved so
+       a lead can be shown it on the page that runs the check-in. The call is unchanged - same
+       component, same props - it is just written one file along. */
+    expect(PARTY_REPORT).toContain('<ReportBody groundId={groundId} embedded />')
+    expect(PARTICIPANT).toContain('<SharedReportForAParty')
   })
 
   /**

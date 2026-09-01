@@ -18,7 +18,21 @@ import { describe, it, expect } from 'vitest'
  * went wrong: the kit's OWN components being reimplemented inline next to their imports.
  */
 
-const PAGES = join(__dirname, '../../pages')
+/**
+ * PAGES AND THE SHARED VIEWS BOTH.
+ *
+ * This scanned `pages/` only. That was true enough while the screens were written in the pages -
+ * and stopped being true when the party view's record, private report, participation block and
+ * shared report were lifted into `components/gw` so the view that runs a check-in could render
+ * them. Those files import the kit and could hand-roll a section label; nothing here would have
+ * noticed.
+ *
+ * The gap announced itself quietly, which is the point worth keeping: this file generates one test
+ * per file that imports the kit, so when `GroundParticipantPage` stopped importing it the test did
+ * not fail - it disappeared, and the suite went from 1374 to 1373 while staying green. A test that
+ * vanishes reads exactly like a test that passes.
+ */
+const ROOTS = [join(__dirname, '../../pages'), join(__dirname, '..', 'gw')]
 
 function files(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -37,9 +51,12 @@ function files(dir: string, out: string[] = []): string[] {
 const HAND_ROLLED_SECTION_LABEL = /fontSize: 1[01](\.\d)?, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '\.0\d+em', color: '#9B9590'/
 
 describe('a page that imports the kit does not also hand-roll it', () => {
-  for (const f of files(PAGES)) {
+  for (const f of ROOTS.flatMap(r => files(r))) {
     const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-    if (!src.includes("components/gw/kit")) continue
+    /* A file inside `components/gw` imports its neighbour as `./kit`, not by the full path. The
+       check tested for the long form only, so every view lifted out of the party page was skipped
+       silently - widening the search roots alone changed nothing. Both spellings. */
+    if (!src.includes('components/gw/kit') && !/from '\.\/kit'/.test(src)) continue
     it(`${f.split('/').pop()} uses Sec rather than rebuilding it`, () => {
       const matches = src.match(new RegExp(HAND_ROLLED_SECTION_LABEL, 'g')) ?? []
       expect(
