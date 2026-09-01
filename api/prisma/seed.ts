@@ -19,6 +19,10 @@ async function main() {
       name: 'Demo Organisation',
       slug: 'demo',
       companyStage: 'EARLY_REVENUE',
+      /* Every route that creates an organisation sets one; this did not, so the seed was the only
+         thing in the system still producing the row that sends an admin to "Set up your
+         organization" forever. `.example` cannot route anywhere, which is what a demo wants. */
+      email: 'demo@groundwork.example',
     },
   });
   console.log(`org "${demoOrg.slug}" ready (id: ${demoOrg.id})`);
