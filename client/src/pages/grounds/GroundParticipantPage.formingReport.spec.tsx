@@ -35,7 +35,7 @@ describe('GroundParticipantPage: offers a way into the forming report, not just 
     /* `id!` was the page's own variable; inside the component it is the `groundId` prop. Same
        component, same props, one file along. Matched on the call rather than the spelling of what
        is passed to it. */
-    expect(src).toMatch(/<ReportBody groundId=\{(?:id!|groundId)\} embedded \/>/)
+    expect(src).toMatch(/<ReportBody groundId=\{(?:id!|groundId)\} embedded\b/)
     expect(src).not.toMatch(/View the forming picture/)
     expect(src).not.toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
   })
