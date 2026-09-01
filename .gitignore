@@ -10,9 +10,22 @@ dist/
 .astro/
 
 # Environment
+#
+# A PATTERN, NOT A LIST. These three were named individually, so `api/.env.bak` - a backup
+# somebody made beside a real one - was never ignored and was committed on 31 July 2026 with a
+# live JWT signing secret in it. The repository is public.
+#
+# Every name that starts with `.env` now, and every directory, so a copy made in `api/` or
+# `client/` is caught the same way as one at the root. `.env.example` is deliberately excluded
+# below, because that one is meant to be tracked.
 .env
-.env.local
-.env.production
+.env.*
+**/.env
+**/.env.*
+
+# ...except the template, which carries no values and exists to be read.
+!.env.example
+!**/.env.example
 
 # Prisma
 api/dist/
