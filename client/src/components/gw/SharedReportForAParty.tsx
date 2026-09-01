@@ -47,6 +47,9 @@ export function SharedReportForAParty({
     mutationFn: () => reportsApi.activate(groundId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['report', groundId] })
+      /* The ground too: the report query is gated on `ground.report`, so refreshing only the
+         report would leave the gate shut and the new report unfetched. */
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
       toast.success('Report revealed')
     },
     onError: () => toast.error('That did not activate. Nothing has changed - try again.'),
@@ -86,7 +89,7 @@ export function SharedReportForAParty({
               </div>
               {(report as any)?.forming && (
                 <div style={{ marginTop: 10 }}>
-                  <ReportBody groundId={groundId} embedded />
+                  <ReportBody groundId={groundId} embedded reportExists={!!(ground as any)?.report} />
                 </div>
               )}
             </>
@@ -109,7 +112,7 @@ export function SharedReportForAParty({
             </div>
           ) : (
             <>
-              <ReportBody groundId={groundId} embedded />
+              <ReportBody groundId={groundId} embedded reportExists={!!(ground as any)?.report} />
 
               {/*
                 THE WAY INTO THE TEAM BOARD, WHICH A PARTICIPANT DID NOT HAVE.

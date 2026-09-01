@@ -696,7 +696,28 @@ function HiddenContributorsSection({
  * already says both.
  */
 
-export function ReportBody({ groundId, embedded = false }: { groundId?: string; embedded?: boolean }) {
+export function ReportBody({
+  groundId,
+  embedded = false,
+  reportExists,
+}: {
+  groundId?: string
+  embedded?: boolean
+  /**
+   * WHETHER THERE IS A REPORT TO FETCH, WHEN THE CALLER ALREADY KNOWS.
+   *
+   * `GET /grounds/:id/report` answers 404 for "no report yet" and must keep doing so - the same 404
+   * covers a check-in that does not exist and one that is not yours, so the three cannot be told
+   * apart (GW-PRI-04). The cost is a red 404 in the console on every check-in without a report.
+   *
+   * A page that renders this inside a check-in already holds `ground.report` and can say. Standalone
+   * at `/grounds/:id/report` there is no ground in hand, so it is left undefined and asked for.
+   *
+   * OMITTED MEANS ASK. Only an explicit `false` holds the request back, so no caller is changed by
+   * not knowing about this.
+   */
+  reportExists?: boolean
+}) {
   /** Embedded, the id comes from the page around it; standalone, from the route. */
   const params = useParams<{ id: string }>()
   const id = groundId ?? params.id
@@ -725,7 +746,7 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
   const { data: report, isLoading: rl } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
-    enabled: !!id,
+    enabled: !!id && reportExists !== false,
     retry: false,
     refetchInterval: reportIsStale ? 5000 : false,
   })

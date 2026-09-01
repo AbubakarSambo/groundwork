@@ -181,7 +181,20 @@ export function GroundAdminPage() {
   const { data: report } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
-    enabled: !!id && tab === 'report',
+    /**
+     * ONLY WHEN THE CHECK-IN SAYS THERE IS ONE.
+     *
+     * `GET /grounds/:id/report` answers 404 for "no report yet" - deliberately, and it must keep
+     * doing so: the same 404 covers a check-in that does not exist and one that is not yours, so a
+     * caller cannot tell those apart. See GW-PRI-04, `missing report does not leak ground
+     * existence`. Turning it into a 200 would make "this check-in exists and has no report" a
+     * distinguishable answer, which is the leak that spec prevents.
+     *
+     * So the fix is here rather than there: the ground payload already carries `report`, so the
+     * client knows before it asks. Asking anyway put a red 404 in the console on every check-in
+     * that has not reported yet - noise that makes a real error harder to see.
+     */
+    enabled: !!id && tab === 'report' && !!(ground as any)?.report,
     retry: false,
   })
 
@@ -195,7 +208,12 @@ export function GroundAdminPage() {
 
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['report', id] }),
+    onSuccess: () => {
+      /* The ground too: the report query is gated on `ground.report`, so refreshing only the
+         report would leave the gate shut and the new report unfetched. */
+      qc.invalidateQueries({ queryKey: ['report', id] })
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+    },
     onError: () => toast.error('The report was not released. Nobody has been sent anything — try again.'),
   })
 
@@ -1820,7 +1838,7 @@ export function GroundAdminPage() {
                   `ReportBody` is that page's content, unchanged. Deleting the summary rather than
                   keeping both is the point: a summary nobody can tell is a summary is the defect.
                 */}
-                <ReportBody groundId={id!} embedded />
+                <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
                 {/* Fix 17: Post-report offboarding */}
                 <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                   {/*
