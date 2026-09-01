@@ -1,0 +1,15 @@
+-- A GUEST IS NOT ONE OF YOUR PEOPLE.
+--
+-- Somebody added to a check-in from another company held `MEMBER`, the same role as your own
+-- staff. `mayOpen` asks only about the role, so an organisation whose setting is "anyone may open
+-- a check-in" let a guest open one and invite YOUR people against YOUR billing.
+--
+-- FORWARD ONLY, DELIBERATELY. Two paths created these rows - a check-in participant from another
+-- company, and an existing account invited onto a team - and BOTH wrote 'MEMBER'. Nothing in the
+-- data distinguishes them now, so a backfill would have to guess, and guessing here either strips
+-- a real colleague's access or leaves a guest holding it. New cross-org participants are GUEST
+-- from here; existing rows are listed in the PR for review by the people who know who they are.
+--
+-- The value is only ADDED here. Postgres will not let a new enum value be used in the same
+-- transaction that adds it, and Prisma runs each migration in one.
+ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'GUEST';

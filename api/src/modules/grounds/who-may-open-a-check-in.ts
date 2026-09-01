@@ -58,6 +58,17 @@ export type Answer =
  */
 export function mayOpen(who: WhoIsAsking, how: HowThisOrgWorks): Answer {
   if (who.role === 'ADMIN') return { may: true, waits: false };
+  /*
+   * A GUEST NEVER OPENS ONE, WHATEVER THE ORGANISATION'S SETTING SAYS.
+   *
+   * Checked before `whoMayOpen`, because the setting cannot speak for this case: "anyone may open
+   * a check-in" is written by an admin thinking of their own staff, and a guest is somebody from
+   * another company who was added to a single check-in. Letting the setting decide meant a guest
+   * could open check-ins here and invite THIS organisation's people, against its billing.
+   *
+   * They still take part in anything they are added to - that is what the membership is for.
+   */
+  if (who.role === 'GUEST') return { may: false, because: GUESTS_DO_NOT_OPEN };
 
   if (how.whoMayOpen === 'NAMED_LEADS' && who.role !== 'LEAD') {
     return { may: false, because: CANNOT_OPEN };
@@ -72,6 +83,10 @@ export function mayOpen(who: WhoIsAsking, how: HowThisOrgWorks): Answer {
  * with no next step reads as the product being broken. It does not apologise and it does not imply
  * anything about the person: not being named is a setting, not a judgement.
  */
+export const GUESTS_DO_NOT_OPEN =
+  'You are taking part here as a guest from another organisation. You can check in on anything '
+  + 'you are added to; opening a new check-in is done by someone in this organisation.';
+
 export const CANNOT_OPEN =
   'Opening a check-in here is limited to people your admin has named. You can still take part in '
   + 'any check-in somebody adds you to. Ask an admin if you should be able to open them.';

@@ -13,7 +13,10 @@ export interface User {
   email: string
   firstName: string
   lastName: string
-  role: 'ADMIN' | 'MEMBER'
+  /** LEAD opens check-ins without admin powers; GUEST is somebody from another organisation
+   *  who was added to one of your check-ins. The type said 'ADMIN' | 'MEMBER' and both of the
+   *  others were already reachable. */
+  role: 'ADMIN' | 'LEAD' | 'MEMBER' | 'GUEST'
   organizationId: string
   organizationName?: string
   /** Server-decided: does this person still have to set their organisation up. See App.tsx. */
