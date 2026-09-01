@@ -1,74 +1,80 @@
-# Security note for Abubakar
+# Security — for Abubakar. Before we go live.
 
-**Found:** 1 September 2026, during an unrelated audit.
-**Status:** the file is untracked and `.gitignore` now covers every `.env*`. **The exposure is not
-closed** - only rotating the values does that, and that part needs you.
+**Two live vulnerabilities, found 1 September 2026. Neither is closed. Both need you.**
 
-## Two things checked since this note was written, both worse than it first read
-
-**The repository is PUBLIC.** This is not "three people with clones". Anyone can read the file, and
-could have since 31 July. GitHub is scraped continuously for exactly this.
-
-**The signing secret is still the one in use.** The `JWT_SECRET` committed in `api/.env.bak` is
-byte-identical to the one in the live `.env` today. It has not been rotated. The `DATABASE_URL`
-differs, so that one looks stale - worth confirming against what is actually deployed, which I
-cannot see.
+Nothing here is a code change waiting for review. These are credentials and configuration, and
+only you can act on them.
 
 ---
 
-## A file with live credentials is committed to this repository
+## 1. A live signing secret is public
 
-`api/.env.bak` is tracked in git. It holds the values the API runs on, and two of
-them are not placeholders:
+`api/.env.bak` was committed on **31 July 2026**, inside a commit about board handoffs. It carries
+the API's `JWT_SECRET` and a `DATABASE_URL`.
 
-| What | Why it matters |
-|---|---|
-| The database URL, with its password | The door to everything stored |
-| The JWT signing secret | The key the API uses to tell a real signed-in person from someone claiming to be one |
+**This repository is public.** Not "the three of us with clones" — anyone, and GitHub is scraped
+continuously for exactly this filename.
 
-The Stripe, Resend and Google entries in the same file are empty placeholders and are
-not a concern.
+**The signing secret is still the one in use.** The value in that file is byte-identical to the one
+the API runs on today. It is present in 82 branches.
 
-**The signing secret is the one to act on first.** Anyone holding it can mint a token
-the API will accept, as any user, including an admin. It needs no password and leaves
-no failed-login trail.
+Anyone holding it can mint a token the API accepts — **as any user, in any organisation, including
+an admin** — with no password, no failed login, and nothing in the logs to separate it from a real
+session.
 
-## How it got there
+**Do now:** rotate `JWT_SECRET` wherever the API is deployed. One line. It signs everybody out
+once; that is the whole cost.
 
-`.gitignore` covers `.env`, `.env.local` and `.env.production`. It does not cover
-`.env.bak`, so the backup was never ignored. It was committed on 31 July 2026 inside a
-commit about board handoffs - an accident, not a decision, and nothing to do with the
-work going on around it now.
+**Also:** the committed `DATABASE_URL` differs from the one in my local file, so it may be stale.
+Confirm the deployed value is not the exposed one. I cannot see it.
 
-## Deleting the file is not the fix
-
-Removing it from the working tree stops it spreading, and it does **not** unpublish it.
-Git keeps history: every clone of this repository still contains the file and its
-contents. Treat both values as disclosed to anyone who has ever had access.
-
-## What actually closes it
-
-1. **Rotate the JWT signing secret. This is the one that matters, and it is one line.**
-   Anyone holding it can mint a token the API accepts, as any user in any organisation, with no
-   password and nothing in the logs to tell it from a real session. It is present in 82 branches.
-   Rotating signs everybody out once. That is the entire cost.
-2. **Rotate the database password**, and update it wherever the API is deployed. The
-   API will not start on the old one, so this needs doing together.
-3. **Add `.env*` to `.gitignore`** (the current rules name three files individually;
-   a pattern would have caught this) and remove the file from tracking.
-4. **Then decide about history.** Purging it rewrites every commit hash and breaks
-   every open branch and PR. Worth it if this repository has ever been public or widely
-   shared; probably not if access has always been the three of you. That judgement needs
-   what you know about who has had a clone.
-
-## How urgent
-
-It depends entirely on who can read this repository - which is something you know and I
-do not. Private, small, trusted team: sort it this week. Ever public, ever shared
-outside the team, or any former collaborator with a clone: today, starting with the
-signing secret.
+**Deleting the file does not fix it.** It is untracked now and `.gitignore` covers every `.env*`,
+which stops it spreading. The old copy stays in history, in every clone, and in every fork.
+Rotation is the fix. Purging history is a separate decision — it rewrites every commit hash.
 
 ---
 
-*Nothing here has been acted on. The file is untouched, the secrets are not repeated in
-this note, and no history has been rewritten.*
+## 2. `PLATFORM_ADMIN_BOOTSTRAP_EMAIL` hands out platform admin
+
+If that variable is set and no platform admin exists yet, the API promotes whoever holds that
+address to **platform admin** on startup.
+
+The API says so itself at boot:
+
+> `PLATFORM_ADMIN_BOOTSTRAP_EMAIL is set to "staff@groundwork.test" but no user has that address...
+> Sign that address up through the normal flow, then restart the API`
+
+So if that variable is set in production and nobody has registered the address, **anyone who signs
+up with it becomes platform admin at the next restart.**
+
+**Check now:** is it set in the deployed environment, and does a platform admin already exist? If
+it is set and no admin exists, unset it and create the account directly instead.
+
+---
+
+## 3. A security sweep before launch, not after
+
+These were both found while looking for something else. Neither was caught by tests, CI, or review
+— the repository has 5,100 passing tests and both of these sat green through all of them.
+
+That is the part worth acting on. A codebase that can hold a public signing secret for five weeks
+without a single check noticing does not have a secrets problem, it has a *coverage* problem, and
+the next one will be found the same way: by accident.
+
+**Before going live, someone should deliberately go looking for:**
+
+- every secret in git history, not just the working tree
+- every environment variable that grants privilege, and what happens when it is unset, wrong, or
+  set to an address nobody owns
+- every endpoint that trusts a token's claims rather than re-reading the record
+- every place a role is decided on the client and enforced nowhere else
+- account creation: what exists before an email is verified, and what a stranger can claim with an
+  address they do not own
+
+I can do that sweep and write up what it finds. What I cannot do is rotate the two values above,
+and until they are rotated the first item on this list is still open.
+
+---
+
+*Written by Claude, working with Hafsah, 1 September 2026. No values are repeated in this note —
+reading it is not a second disclosure.*
