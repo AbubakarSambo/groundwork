@@ -90,7 +90,7 @@
   --gw-muted: #706A65;
   --gw-sub: #6B6560;
   --gw-text: #1A1916;
-  --gw-clay: #B5675A;
+  --gw-clay: #9F5447;
   /**
    * WARMED, because it was four points from --gw-red-bg. W14-8 stage 1.
    *
@@ -134,7 +134,7 @@
   /** Pale mint, for a border on a good-news card. --gw-green-b is far more saturated. */
   --gw-green-b-soft: #B6E8D4;
   /** Mid green, for text that reads positive without the weight of --gw-green-t. */
-  --gw-green-t-soft: #3A7A60;
+  --gw-green-t-soft: #37745B;
   /** The bright red of a destructive control, distinct from --gw-red-t's dark prose red. */
   --gw-danger: #C0392B;
   /** Between --gw-text and --gw-sub: secondary prose that still has to be read. */
