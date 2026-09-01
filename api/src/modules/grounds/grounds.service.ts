@@ -2648,7 +2648,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2691,6 +2691,31 @@ export class GroundsService {
       throw new ForbiddenException(
         'Only the person leading this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
       );
+    }
+
+    /**
+     * RENAMING WAS ADVERTISED AND NEVER WRITTEN.
+     *
+     * The DTO documents `label` as "Rename the ground", the rail sends it, and this method's `data`
+     * block never included it - so renaming a check-in did nothing, and the refetch that follows put
+     * the old name straight back on screen. It looked like the product forgetting what you typed.
+     *
+     * THE LEAD'S CALL, LIKE THE SCHEDULE. A name is what everybody else sees this check-in as; a
+     * party renaming somebody else's is the same class of change as moving its dates, so it is
+     * gated the same way rather than left open to every participant.
+     */
+    const requestedLabel = dto.label?.trim();
+    if (dto.label !== undefined) {
+      if (!requestedLabel) {
+        /* Rejected rather than ignored: a blank name would leave the check-in unidentifiable in
+           every list it appears in, and silently keeping the old one teaches nothing. */
+        throw new BadRequestException('A check-in needs a name. Type one, or leave the name as it is.');
+      }
+      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+        throw new ForbiddenException(
+          'Only the person leading this check-in, or an admin in your organisation, can rename it',
+        );
+      }
     }
 
     // MODE IS IMMUTABLE. If a ground could flip from private to shared, someone
@@ -2751,6 +2776,14 @@ export class GroundsService {
       });
     }
 
+    if (requestedLabel && requestedLabel !== ground.label) {
+      auditData.timeline.push({
+        changedAt: new Date().toISOString(),
+        changedBy: requestingUserId,
+        changes: { label: { from: ground.label, to: requestedLabel } },
+      });
+    }
+
     if (dto.contextNote?.trim()) {
       auditData.contextNotes.push(dto.contextNote.trim());
     }
@@ -2768,6 +2801,7 @@ export class GroundsService {
           timelineStated: true,
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
+        ...(requestedLabel !== undefined && { label: requestedLabel }),
         groundAuditLog: auditData,
       },
     });
