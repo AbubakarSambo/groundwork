@@ -320,7 +320,20 @@ export function GroundsListPage() {
         </div>
       </div>
 
-      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      {/**
+        * A LIST OF CARDS IS NOT A COLUMN OF PROSE.
+        *
+        * 600px is right for reading - the check-in page and a party's own view keep it, and should.
+        * This page is a stack of cards carrying a name, a status, a lead, a participant count and a
+        * session count, and it had the same cap. Measured on the running page: a 600px column inside
+        * a 1194px main, so 594px of the screen sat empty either side while every card wrapped.
+        *
+        * Wide here for the same reason the situation picker is wide - see
+        * the-picker-gets-the-whole-width.spec.ts, which measured the same thing before and after.
+        * 1160 rather than the full width, so the page still has margins and a long check-in name
+        * still has a line length somebody can read.
+        */}
+      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 1160, margin: '0 auto', width: '100%' }}>
         {isAdmin && awaiting.length > 0 && (
           <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-amber-t)', marginBottom: 4 }}>
