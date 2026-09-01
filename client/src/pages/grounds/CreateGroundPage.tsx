@@ -260,9 +260,9 @@ export const SCENARIOS: ScenarioCard[] = [
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
   { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM, tag: 'Team', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
-    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the account. That first round sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
+    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the account. That first session sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
     moment: 'You and your ops lead have stopped agreeing on what matters.',
-    agreed: 'Each person gives their own read of the situation before the group talks, and that first round sets out what you do and do not agree on.',
+    agreed: 'Each person gives their own read of the situation before the group talks, and that first session sets out what you do and do not agree on.',
     tests: 'The check-ins after it test whether the gap closed or only went quiet.',
     examples: [
       'The team is pulling two ways on a decision and you want each person\'s honest read before the meeting.',

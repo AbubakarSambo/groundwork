@@ -751,7 +751,7 @@ export function GroundParticipantPage() {
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                   {ground?.sessionProgress?.requestingUserIsMissing
-                    ? "You haven't completed this round yet - that's part of what's holding the report."
+                    ? "You haven't completed this session yet - that's part of what's holding the report."
                     : 'The report generates once all parties have checked in.'}
                 </div>
               </div>

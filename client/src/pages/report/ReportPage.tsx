@@ -947,7 +947,7 @@ export function ReportBody({ groundId, embedded = false }: { groundId?: string; 
         <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
           <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: 'var(--gw-amber-t)' }}>
             <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in.
-            {progress.requestingUserIsMissing ? ' You haven\'t checked in yet for this round - that\'s part of what\'s still missing.' : ' This updates as more people check in.'}
+            {progress.requestingUserIsMissing ? ' You haven\'t checked in yet for this session - that\'s part of what\'s still missing.' : ' This updates as more people check in.'}
           </div>
         </div>
       )}
