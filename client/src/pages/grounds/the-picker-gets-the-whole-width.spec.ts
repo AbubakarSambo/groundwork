@@ -26,23 +26,32 @@ const SRC = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/^\s*\/\/.*$/gm, '')
 
-/** Which step renders the situation cards, read off the render rather than assumed. */
-const PICKER_STEP = (() => {
+/**
+ * Which stage renders the situation cards, read off the render rather than assumed.
+ *
+ * This used to read a NUMBER out of `{step === 2 &&`, because the flow was held as bare integers.
+ * When they were given names it found nothing and threw, which is the canary doing its job: it is
+ * here precisely because a renumber once moved the wide column onto the wrong screen and nothing
+ * noticed. It now reads the stage name the same way, and still fails if the column is given to a
+ * screen other than the one holding the cards.
+ */
+const PICKER_STAGE = (() => {
   const marker = SRC.indexOf('role="radiogroup" aria-label="What is this for?"')
   expect(marker).toBeGreaterThan(-1)
   const before = SRC.slice(0, marker)
-  const steps = [...before.matchAll(/\{step === (\d+) &&/g)]
-  return steps[steps.length - 1][1]
+  const stages = [...before.matchAll(/\{step === STAGE\.(\w+) &&/g)]
+  expect(stages.length, 'no named stage renders before the card grid').toBeGreaterThan(0)
+  return stages[stages.length - 1][1]
 })()
 
 describe('the picker gets the whole width', () => {
   it('the wide column is given to the step that renders the cards', () => {
-    expect(SRC).toContain(`maxWidth: step === ${PICKER_STEP} ? 1160 : 540`)
+    expect(SRC).toContain(`maxWidth: step === STAGE.${PICKER_STAGE} ? 1160 : 540`)
   })
 
-  it('and the picker is not step 1, which is what the condition used to say', () => {
-    /* If a renumber ever makes the picker step 1 again this is worth re-reading, not deleting. */
-    expect(PICKER_STEP).not.toBe('1')
+  it('and the picker is not the first stage, which is what the condition used to say', () => {
+    /* If the picker ever becomes the first stage again this is worth re-reading, not deleting. */
+    expect(PICKER_STAGE).not.toBe('who')
   })
 
   it('every other step keeps the narrow reading column', () => {
