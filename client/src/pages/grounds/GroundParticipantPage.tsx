@@ -11,7 +11,6 @@ import { reportsApi } from '@/api/reports'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
-import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { ReportBody } from '@/pages/report/ReportPage'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
@@ -20,6 +19,8 @@ import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
+import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { MyParticipation } from '@/components/gw/MyParticipation'
 import { ContextPage } from '@/components/gw/ContextPage'
 
 
@@ -69,7 +70,6 @@ export function GroundParticipantPage() {
   const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [showShareConfirm, setShowShareConfirm] = useState(false)
 
   const user = useAuthStore(s => s.user)
 
@@ -105,25 +105,6 @@ export function GroundParticipantPage() {
     queryFn: () => groundsApi.getMySoloReport(id!),
     enabled: !!id && tab === 'report',
     retry: false,
-  })
-
-  const setSoloSharedMut = useMutation({
-    mutationFn: (shared: boolean) => groundsApi.setMySoloReportShared(id!, shared),
-    onSuccess: () => {
-      refetchSoloReport()
-      setShowShareConfirm(false)
-    },
-    onError: () => toast.error('That did not change — try again.'),
-  })
-
-  // Explicit "my account is accurate" confirmation - the deadline for
-  // corrections, in place of a timer. Does not block later corrections; it
-  // just flags any that come after as "updated after sign-off" on the shared
-  // report (see reportsApi.get()'s `updates` field / SoloArtifactBlock above).
-  const signOffMut = useMutation({
-    mutationFn: () => groundsApi.signOff(id!),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: () => toast.error('Could not sign off. Try again.'),
   })
 
   // The checkout mutation behind the deleted subscription CTA is gone with it.
@@ -531,64 +512,15 @@ export function GroundParticipantPage() {
         {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* Individual report section */}
-            <Sec title="Your private report" />
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
-              This is from your own check-in only. Only you can see it unless you choose to share it.
-            </div>
-            {mySoloReport?.report ? (
-              <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
-                <SoloReportBody report={mySoloReport.report as Record<string, unknown>} />
-                <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
-                    {mySoloReport.shared
-                      ? 'Shared with all parties in this check-in'
-                      : 'Private - only you can see this'}
-                  </div>
-                  <button
-                    onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
-                    disabled={setSoloSharedMut.isPending}
-                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    {mySoloReport.shared ? 'Stop sharing' : 'Share with all parties'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Your private report is not ready yet.</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>It generates once you complete your check-in.</div>
-              </div>
-            )}
-
-            {/* Sign-off: the deadline for corrections, in place of a timer.
-                Does not block later corrections - it just flags any that come
-                after as "updated after sign-off" on the shared report. */}
-            {mySoloReport?.report && (
-              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 6 }}>
-                {myParticipant?.signedOffAt ? (
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', fontWeight: 600 }}>
-                    You signed off on {new Date(myParticipant.signedOffAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
-                    {' '}You can still correct it, but it will show as updated after sign-off.
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 8 }}>
-                      Confirm your account is accurate. This isn't a lock - you can still correct it later - but any correction after sign-off is flagged on the shared report.
-                    </div>
-                    <button
-                      onClick={() => signOffMut.mutate()}
-                      disabled={signOffMut.isPending}
-                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: signOffMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: signOffMut.isPending ? 0.6 : 1 }}
-                    >
-                      {signOffMut.isPending ? 'Signing off…' : "Sign off - this is accurate"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Divider */}
+            <MyPrivateReport
+              groundId={id!}
+              mySoloReport={mySoloReport}
+              refetchSoloReport={refetchSoloReport}
+              myParticipant={myParticipant}
+              otherParties={(ground.participants ?? [])
+                .filter((p: any) => p.userId !== user?.id)
+                .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
+            />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <Sec title="Shared report" />
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
@@ -808,57 +740,13 @@ export function GroundParticipantPage() {
             <div style={{ order: 5 }}><StartingPointPanel groundId={id!} canRecord={false} /></div>
 
             {/* Profile summary */}
-            <div style={{ order: 1, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
-                {(user?.firstName?.[0] ?? '?').toUpperCase()}
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{user?.firstName} {user?.lastName}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{user?.email}</div>
-              </div>
-            </div>
-
-            <div style={{ order: 2, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Scenario</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                {/*
-                  THE FALLBACK SAID NOTHING. Every other row here carries a value - the check-in's
-                  name, the scenario, ACTIVE, 0 of 8. This one fell back to "In this check-in",
-                  which reads as a caption for the label above it rather than an answer, so the row
-                  looked filled in while saying nothing at all. Only visible once the card moved to
-                  the top of the tab and became the first thing a party reads about themselves.
-                */}
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed || 'Not recorded'}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.status}</div>
-              </div>
-              <div style={{ padding: '13px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCheckIns.length} of {totalSessions}</div>
-              </div>
-            </div>
-
-            {/**
-              * The bare grade that stood here - "Overall quality label: low" - is gone. It was the
-              * same read as the one on the record tab, minus everything a person could act on, and
-              * a page that grades you twice is not twice as honest.
-              */}
-            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid var(--gw-clay-b)', borderRadius: 10, padding: '13px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
-              <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
-                Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.
-              </div>
-            </div>
+            <MyParticipation
+              viewer={user}
+              ground={ground}
+              myParticipant={myParticipant}
+              completedCount={completedCheckIns.length}
+              totalSessions={totalSessions ?? null}
+            />
           </div>
         )}
       </div>
@@ -964,43 +852,6 @@ export function GroundParticipantPage() {
         </div>
       )}
 
-      {/* Share solo report confirmation modal */}
-      {showShareConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
-              Your private report will become visible to all other parties on this check-in:
-            </div>
-            <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
-              {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (
-                <li key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 2 }}>
-                  {participantLabel(p)}
-                  {p.email ? <span style={{ color: 'var(--gw-muted)' }}> · {p.email}</span> : null}
-                </li>
-              ))}
-            </ul>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 18, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '10px 12px' }}>
-              This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setShowShareConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setSoloSharedMut.mutate(true)}
-                disabled={setSoloSharedMut.isPending}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
-              >
-                {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
