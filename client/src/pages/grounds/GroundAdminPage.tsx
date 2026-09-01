@@ -6,6 +6,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
+import { MyRecord } from '@/components/gw/MyRecord'
+import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -73,7 +75,7 @@ const MOMENT_LABELS: Record<string, string> = {
  * being deleted: a lead scanning twelve sessions for who has not checked in wants the
  * list, and that is a genuinely different question from reading what was said.
  */
-type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
+type Tab = 'chat' | 'overview' | 'checkins' | 'myrecord' | 'docs' | 'report' | 'settings'
 
 /**
  * The shared tab keys from `ground-tabs.ts`, and this page's own older names for the same tabs.
@@ -82,12 +84,24 @@ type Tab = 'chat' | 'overview' | 'checkins' | 'docs' | 'report' | 'settings'
  */
 const FROM_TAB_KEY: Record<string, Tab> = {
   chat: 'chat', report: 'report', sessions: 'checkins', context: 'docs', settings: 'settings',
-  /* `?tab=record` used to mean this tab. Kept resolving so links already sent still land somewhere
-     sensible; `sessions` is what gets written from now on. */
-  record: 'checkins',
+  /**
+   * `record` MEANS ONE THING NOW, AND IT IS SOMEBODY'S OWN.
+   *
+   * On this page `?tab=record` used to open Sessions - everyone's state - while on the party view
+   * the same key opened your own account. That collision is what made the two views impossible to
+   * tell apart, and step one split them: `sessions` for everyone's, `record` for yours.
+   *
+   * This kept `record: 'checkins'` for a while so links written before that still landed somewhere
+   * sensible. It cannot stay: this page shows both tabs now, so the key has to pick one, and the
+   * honest pick is the meaning it has everywhere else.
+   *
+   * A link written before step one now opens My record rather than Sessions. Both are on this page,
+   * one tab apart, which is a nudge in the wrong direction rather than a broken link.
+   */
+  record: 'myrecord',
 }
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
-  chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', settings: 'settings',
+  chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', settings: 'settings',
 }
 type ReportSession = 's1' | 's2' | 'closing'
 
@@ -285,6 +299,40 @@ export function GroundAdminPage() {
    */
   const isOrgAdmin = user?.role === 'ADMIN'
   const canRunThisGround = isInitiator || isOrgAdmin
+  /**
+   * AND WHETHER THEY ARE IN IT, WHICH IS A DIFFERENT QUESTION.
+   *
+   * A lead is almost always also a party to their own check-in, and until now reaching their own
+   * record meant leaving for a second page that looks identical to this one. It was computed inline
+   * further down for the roster; named here because the tab row asks it too.
+   */
+  const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+
+  /**
+   * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
+   *
+   * Same endpoints the party view used. Gated on being a party so an admin looking at a check-in
+   * they are not in does not ask for a record they do not have.
+   */
+  const { data: myRecord } = useQuery({
+    queryKey: ['my-record', id],
+    queryFn: () => groundsApi.getMyRecord(id!),
+    enabled: !!id && viewerIsAParty,
+    retry: false,
+  })
+  const { data: mySoloReport, refetch: refetchSoloReport } = useQuery({
+    queryKey: ['my-solo-report', id],
+    queryFn: () => groundsApi.getMySoloReport(id!),
+    enabled: !!id && viewerIsAParty,
+    retry: false,
+  })
+  const { data: mySpecificity } = useQuery({
+    queryKey: ['my-specificity', id],
+    queryFn: () => groundsApi.getMySpecificity(id!),
+    enabled: !!id && viewerIsAParty,
+    retry: false,
+  })
+
   /**
    * ONE READING OF HOW MANY SESSIONS THIS GROUND HAS. W8-4.
    *
@@ -1022,11 +1070,9 @@ export function GroundAdminPage() {
           tabs={groundTabs({
             contextEnabled,
             canRunThisCheckIn: true,
-            /* Not yet. The record lives on the other page until it is folded in here, and a tab
-               this page cannot render is worse than one it does not offer. */
-            isAParty: false,
+            isAParty: viewerIsAParty,
           })}
-          active={({ chat: 'chat', report: 'report', checkins: 'sessions', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          active={({ chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
           onPick={k => {
             goTab(FROM_TAB_KEY[k] ?? 'chat')
           }}
@@ -1202,6 +1248,52 @@ export function GroundAdminPage() {
                   text: sig.observationText,
                   session: sig.lastPeriodNumber ?? 1,
                 }))}
+            />
+          </div>
+        )}
+
+        {/**
+          * GATED ON BEING IN IT, NOT ONLY ON THE TAB BEING OFFERED.
+          *
+          * `groundTabs` leaves My record out for somebody who is not a party, so it is not in the
+          * row. That hides the door; it does not lock it - `?tab=record` in the address bar reaches
+          * this branch directly. An admin who is not in the check-in would have got two empty
+          * panels about a record they do not have.
+          *
+          * No data was ever at risk: both reads are gated the same way, so they return nothing, and
+          * the server refuses them independently. This is so the screen does not offer somebody a
+          * page about themselves that cannot be about them.
+          */}
+        {tab === 'myrecord' && viewerIsAParty && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/*
+              THE SAME SPLIT AS THE PARTY VIEW, AND THE SAME ORDER.
+              
+              Report is the whole check-in; My record is your part of it. Your private report is
+              yours, so it sits here rather than above the shared report - which otherwise made that
+              tab mean two things at once.
+            */}
+            <MyPrivateReport
+              groundId={id!}
+              mySoloReport={mySoloReport}
+              refetchSoloReport={refetchSoloReport}
+              myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
+              otherParties={(ground.participants ?? [])
+                .filter((p: any) => p.userId !== user?.id)
+                .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
+            />
+            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <MyRecord
+            groundId={id}
+            ground={ground}
+            myRecord={myRecord}
+            viewerUserId={user?.id}
+            totalSessions={plannedSessions ?? null}
+            completedCount={sessionsDone}
+            specificity={mySpecificity}
+            /* This page calls the material tab `docs`; the component asks to be sent and the page
+               decides where that is. */
+            onGoToTab={(t) => goTab((FROM_TAB_KEY[t] ?? 'docs') as Tab)}
             />
           </div>
         )}
@@ -1838,6 +1930,15 @@ export function GroundAdminPage() {
                   `ReportBody` is that page's content, unchanged. Deleting the summary rather than
                   keeping both is the point: a summary nobody can tell is a summary is the defect.
                 */}
+                {/**
+                  * THE REPORT, BARE. I briefly rendered `SharedReportForAParty` here instead, to
+                  * give a lead four readings the party view appeared to have and this one did not.
+                  * They do not exist: `GET /grounds/:id/report` returns nineteen keys and
+                  * `assumptions`, `clarity`, `alignmentReached`, `areasRequiringAlignment` and
+                  * `pattern` are none of them - checked against a released report, not inferred.
+                  * Those sections come from the ENTRY flow's report shape and have never rendered
+                  * here for anybody. Nothing to hand over, so nothing changes.
+                  */}
                 <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
                 {/* Fix 17: Post-report offboarding */}
                 <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>

@@ -147,61 +147,24 @@ export function SharedReportForAParty({
                 </button>
               )}
 
-              {/* Participant report sections */}
-              {report.pattern && (
-                <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '14px 16px' }}>
-                  <Sec title="What your record reveals" on="dark" />
-                  <div style={{ fontSize: 13, lineHeight: 1.65 }}>{report.pattern}</div>
-                </div>
-              )}
-              {(report.assumptions ?? []).length > 0 && (
-                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                  <Sec title="Assumptions you are carrying" />
-                  <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
-                    {(report.assumptions ?? []).map((a: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{a}</li>)}
-                  </ul>
-                </div>
-              )}
-              {(report.clarity ?? []).length > 0 && (
-                <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 16px' }}>
-                  <Sec title="Where you have clarity" />
-                  <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
-                    {(report.clarity ?? []).map((c: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{c}</li>)}
-                  </ul>
-                </div>
-              )}
+              {/*
+                FIVE SECTIONS THAT NEVER RENDERED, REMOVED.
 
-              {/* Cross-reference section (shared picture, after activation) */}
-              {(report.alignmentReached ?? []).length > 0 && (
-                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '13px 16px' }}>
-                  <Sec title="Shared picture: where you are aligned" />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(report.alignmentReached ?? []).map((a: any, i: number) => (
-                      <div key={i} style={{ borderLeft: '3px solid var(--gw-green-b)', paddingLeft: 10 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>{a.title ?? a}</div>
-                        {a.note && <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5, marginTop: 2 }}>{a.note}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(report.areasRequiringAlignment ?? []).length > 0 && (
-                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                  <Sec title="Shared picture: still to resolve" />
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference. They show where your account and the other party's account differ. Neither side's raw words are shown here.</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {(report.areasRequiringAlignment ?? []).map((a: any, i: number) => (
-                      <div key={i} style={{ borderLeft: '3px solid var(--gw-amber-b)', paddingLeft: 10 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{a.title ?? a}</div>
-                        {a.observation && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 2 }}>{a.observation}</div>}
-                        {a.recommendedMove && (
-                          <div style={{ fontSize: 12, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 4 }}>Next: {a.recommendedMove}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                "What your record reveals", "Assumptions you are carrying", "Where you have
+                clarity", and the two "Shared picture" blocks read `report.pattern`,
+                `.assumptions`, `.clarity`, `.alignmentReached` and `.areasRequiringAlignment`.
+
+                None of those are on a check-in report. `GET /grounds/:id/report` returns nineteen
+                keys and these are not among them - checked against a real released report, not
+                inferred from the code. They belong to the ENTRY flow's report shape, which
+                `EntryChatPage` reads correctly; this component was reading them off a different
+                object, so every one of these conditions has always been false.
+
+                Removed rather than wired: making them appear would be building a feature nobody
+                asked for, on a guess about what they were meant to say. If these readings should
+                exist on a check-in report, that is a decision and a build, not a tidy-up.
+              */}
+
 
               <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 13px' }}>
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
