@@ -8,10 +8,13 @@ import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
  * while the bodies of those same reports said things like "the current process is seen by both as
  * likely to yield four renewals this quarter", which no participant wrote.
  *
- * The old definition is why: an inference was "any claim that is not a direct quote", and rule 1
- * forbids quoting anyone at all. Followed honestly that makes every sentence an inference; followed
- * loosely it makes none. Both are useless to a reader. The definition now turns on whether a
- * participant actually said the thing.
+ * The definition is why: an inference was "any claim that is not a direct quote", which asks a
+ * writer to classify a sentence they have just written in their own words. The model answered by
+ * marking nothing. It now turns on whether a participant actually said the thing.
+ *
+ * (An earlier version of this comment said rule 1 forbids quoting and that the old definition was
+ * therefore self-contradictory. Rule 1 is PRESERVE SPECIFICS VERBATIM. The measurement stands; that
+ * explanation of it did not.)
  *
  * This is the check that an answer is being given. It warns rather than refuses, because a short
  * check-in that only restates one person's own words genuinely has nothing to mark, and losing a
