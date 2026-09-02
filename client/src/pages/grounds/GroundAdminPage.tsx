@@ -1898,7 +1898,7 @@ export function GroundAdminPage() {
                     * "Shared report" - everywhere except here. Same fix as "0 of 2 checked in for
                     * session 2": say which one you mean and the contradiction stops being one.
                     */}
-                  Private reports {activationStatus.allActivated ? '· Everyone has revealed theirs' : '· Waiting'}
+                  Private reports {activationStatus.allActivated ? '· Everyone has shown theirs' : '· Waiting'}
                 </div>
                 {/**
                   * SETTLED PANELS SHOW ONE LINE. WAITING PANELS SHOW THE WORK.
@@ -1913,7 +1913,7 @@ export function GroundAdminPage() {
                   */}
                 {!activationStatus.allActivated && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
-                    Each person sees their own report privately until they choose to reveal it. When everybody activates, the reports become visible to each other. Each person can do this from their own check-in page.
+                    Each person sees their own report privately until they show it. Once everybody has, the reports become visible to each other. Each person does this from their own check-in page.
                   </div>
                 )}
                 {!activationStatus.allActivated && (

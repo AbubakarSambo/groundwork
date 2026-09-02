@@ -38,21 +38,29 @@ export function SharedReportForAParty({
 }: SharedReportForAPartyProps) {
   const qc = useQueryClient()
   /**
-   * REVEALING THE REPORT, which came across with the button that does it.
+   * SHOWING YOUR REPORT TO THE OTHERS, which came across with the button that does it.
    *
    * It lived on the page with the other mutations while the only button calling it was here. The
    * same split that put the solo-report share button, its modal and its mutation in three places.
    */
   const activateMutation = useMutation({
     mutationFn: () => reportsApi.activate(groundId),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ['report', groundId] })
       /* The ground too: the report query is gated on `ground.report`, so refreshing only the
          report would leave the gate shut and the new report unfetched. */
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
-      toast.success('Report revealed')
+      /*
+       * "REPORT REVEALED" WAS NOT TRUE FOR ANYBODY BUT THE LAST PERSON.
+       *
+       * Showing yours takes effect only when everyone has done the same, so for all but the final
+       * person this said something had happened that had not. The response already carries
+       * `allActivated`, so it can say which of the two actually occurred.
+       */
+      if (res?.allActivated) toast.success('Everyone has shown theirs. You can all read them now.')
+      else toast.success('Noted. Yours becomes visible when everyone has done the same.')
     },
-    onError: () => toast.error('That did not activate. Nothing has changed - try again.'),
+    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
   })
 
   return (
@@ -97,7 +105,7 @@ export function SharedReportForAParty({
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
               <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
-                All parties reveal it at the same time. Once unlocked, everyone can read it - this cannot be undone.
+                Each of you shows your own when you are ready. Once everyone has, you can all read them - this cannot be undone.
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
                 The report shows where accounts agree and where they differ. It does not quote anyone.
@@ -107,7 +115,7 @@ export function SharedReportForAParty({
                 disabled={activateMutation.isPending}
                 style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
               >
-                {activateMutation.isPending ? 'Confirming…' : 'Reveal report'}
+                {activateMutation.isPending ? 'Confirming…' : 'Show mine'}
               </button>
             </div>
           ) : (
