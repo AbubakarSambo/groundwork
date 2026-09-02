@@ -178,7 +178,16 @@ export function OrgMembersPage() {
   const members = data?.data ?? []
 
   return (
-    <div style={{ padding: '40px 32px', maxWidth: 720 }}>
+    <div style={{ padding: '28px 20px 80px', maxWidth: 860, margin: '0 auto' }}>
+      {/*
+        TWO ADMIN PAGES, TWO DIFFERENT SHAPES. Measured side by side in the running product: Connect
+        is 860 wide and centred, this page was 720 and left-aligned - no `margin: '0 auto'`, so it
+        sat against the rail with the whole right-hand side empty. Nothing chose either number.
+
+        Connect's is the one kept, so People matches it. The narrower pages are left alone: 520 on
+        Settings and Billing is a single-column form, which is a reason, and the check-in list is
+        1160 because it is a working surface and was widened on purpose.
+      */}
       {/* This page had no internal link of any kind. The rail is there, so nobody was
           trapped, but an admin who came here to invite somebody had no way back to the
           thing they were doing. */}
