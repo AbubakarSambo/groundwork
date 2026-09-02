@@ -39,6 +39,21 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
    */
   '/signout': 'the Sign out link in the marketing site header, when it sees the signed-in flag',
   /**
+   * Groundwork's own prompt tools. Nothing in the app links to them and nothing should - they are
+   * back-office, opened by staff typing the address. They used to live at /prompts and /prompts/test,
+   * top-level addresses in a customer's app that rendered inside the customer's rail; under /admin
+   * they are chromeless like the rest of the back office.
+   *
+   * WORTH KNOWING ABOUT THIS GUARD: the old pair never needed declaring, because `isLinked` found
+   * the string '/prompts' in src/api/prompts.ts - an API path, not a link. So they passed as
+   * "linked" on a coincidence, and only the move to /admin, which has no such twin, made this
+   * check do its job. A route whose path happens to match an endpoint is invisible to it.
+   */
+  '/admin/prompts': 'typed by Groundwork staff; nothing in the app links to the back office',
+  '/admin/prompts/test': 'typed by Groundwork staff; nothing in the app links to the back office',
+  '/prompts': 'the old address, kept as a redirect for whoever bookmarked it',
+  '/prompts/test': 'the old address, kept as a redirect for whoever bookmarked it',
+  /**
    * `/demo/:persona` used to be exempted here as "pasted by hand when showing the
    * product". It is deleted, and so is the exemption. Five scripted conversations for a
    * fictional company, unlinked from anywhere, whose founder screen labelled named people

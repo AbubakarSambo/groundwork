@@ -281,8 +281,22 @@ export default function App() {
               *
               * Not a data exposure. A page that can only fail, shown to the wrong person.
               */}
-            <Route path="/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
-            <Route path="/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
+            {/*
+              * BACK-OFFICE TOOLING OFF THE CUSTOMER ROUTES.
+              *
+              * These are Groundwork's own prompt tools and they sat at /prompts and /prompts/test,
+              * top-level addresses in a customer's app, rendered inside the customer's rail. Under
+              * /admin they are covered by CHROMELESS_PREFIXES like the rest of the back office, so
+              * they no longer wear the shell of the product they are used to operate.
+              *
+              * Nothing in the app ever linked to them - they are reached by typing the address - so
+              * the move breaks no navigation. The two redirects are for whoever has them
+              * bookmarked, because a silent 404 on a tool you use daily reads as an outage.
+              */}
+            <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
+            <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
+            <Route path="/prompts/test" element={<Navigate to="/admin/prompts/test" replace />} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*
