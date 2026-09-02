@@ -43,6 +43,16 @@ describe('every page says what it is', () => {
     }
   })
 
+  it('the check-in list names its section with a heading, not a div that looks like one', () => {
+    /*
+     * "Setting up Local Test Co" was a 16px/700 div sitting under the page's h1. Swept across six
+     * pages in the running product it was the last one left, so the outline now reads
+     * H1 Check-ins -> H2 Setting up Local Test Co rather than stopping at the h1.
+     */
+    const firstRun = readFileSync(join(PAGES, 'grounds/an-admin-lands-on-a-check-in-list.tsx'), 'utf8')
+    expect(firstRun).toMatch(/<h2[^>]*>\s*\n?\s*Setting up\{orgName/)
+  })
+
   it('and neither has gone back to a 22px div standing in for one', () => {
     for (const f of ['billing/BillingPage.tsx', 'notfound/NotFoundPage.tsx']) {
       const src = strip(readFileSync(join(PAGES, f), 'utf8'))
