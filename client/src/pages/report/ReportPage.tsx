@@ -240,7 +240,7 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
 
 function PatternBlock({ label, content, dark }: { label: string; content: string; dark?: boolean }) {
   return (
-    <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 11, padding: '15px 17px', marginBottom: 16 }}>
+    <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 8 }}>
         {label}
       </div>
@@ -291,7 +291,7 @@ function WhereTheRecordIsThin({ spots, nameFor }: {
   const people = Object.entries(spots).filter(([, list]) => list.length)
   if (!people.length) return null
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 4 }}>
         Where this picture is thin
       </div>
@@ -368,7 +368,7 @@ function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionTo
   /** A sanitiser that dropped all three leaves nothing to say, and an empty card says it badly. */
   if (!rows.length) return null
   return (
-    <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 11, padding: '15px 17px', marginBottom: 16 }}>
+    <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
       <Sec title="Before you talk to them" />
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
         Yours alone, and not part of the shared report. Nobody else is shown this.
@@ -422,7 +422,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
     },
   ]
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 10 }}>
         What this check-in can tell you
       </div>
@@ -516,7 +516,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
 }) {
   return (
     <div style={{
-      border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10,
+      border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10,
       borderLeft: `3px solid ${reached ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}`,
     }}>
       <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{title}</div>
@@ -534,7 +534,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
         </div>
       )}
       {recommendedMove && (
-        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
+        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
           <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
           {recommendedMove}
         </div>
@@ -882,7 +882,7 @@ export function ReportBody({
   const isForming = !report.releasedAt
 
   const staleBanner = reportIsStale ? (
-    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
       Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own.
     </div>
   ) : null
@@ -1211,7 +1211,7 @@ export function ReportBody({
                         <AreaBlock key={i} title={area.title} note={area.note} reached />
                       ))
                     : agreements.map((a: string, i: number) => (
-                        <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10, borderLeft: '3px solid var(--gw-green-b)' }}>
+                        <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10, borderLeft: '3px solid var(--gw-green-b)' }}>
                           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{a}</div>
                         </div>
                       ))
@@ -1399,7 +1399,7 @@ export function ReportBody({
         {Array.isArray(eng.parties) && eng.parties.length > 0 && (
           <div style={{ marginTop: 32 }}>
             <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>On record</div>
-            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
               {eng.parties.map((p: any, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid var(--gw-bg)' : 'none', background: 'white' }}>
                   {/*
@@ -1459,7 +1459,7 @@ export function ReportBody({
 
         {/* Always-visible correction affordance (#21): the per-claim "Correct this"
             only appears when there are inferred claims, so make correction discoverable. */}
-        <div style={{ marginTop: 24, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ marginTop: 24, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Something not right in this report?</div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: myLatestCompletedSession != null ? 12 : 0 }}>
             {report.inferences && report.inferences.length > 0

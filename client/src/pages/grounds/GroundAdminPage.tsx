@@ -1877,7 +1877,7 @@ export function GroundAdminPage() {
             )}
 
             {report?.releasedAt && activationStatus && (
-              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 9, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
                   {/*
                       "BOTH" ON A GROUND WITH THREE PEOPLE IN IT.
@@ -1905,7 +1905,7 @@ export function GroundAdminPage() {
                   *
                   * This panel exists so a lead knows who to chase. Once everybody has revealed
                   * there is nobody to chase, and it went on taking the same space at the top of
-                  * the report - a row of cards all saying "Revealed", above 856px of preamble
+                  * the report - a row of cards all saying "Shown", above 856px of preamble
                   * somebody has to scroll past to reach the findings.
                   *
                   * The heading already says which state it is in. When that state is "done", the
@@ -1919,9 +1919,9 @@ export function GroundAdminPage() {
                 {!activationStatus.allActivated && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activationStatus.parties.map((p, i) => (
-                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
+                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>
-                        {p.activated ? 'Revealed' : 'Not yet'}
+                        {p.activated ? 'Shown' : 'Not yet'}
                       </div>
                       {/*
                           THE ONE THING THE LEAD NEEDS HERE IS WHO SHE IS WAITING ON.
