@@ -47,6 +47,7 @@ import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-the
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
+import { howThisSounds } from './how-this-sounds';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -2477,6 +2478,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       },
     });
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
+
+    /*
+     * HOW THIS ONE SOUNDED.
+     *
+     * "It sounds like an examiner" is a real complaint and an unfalsifiable one, so the habits that
+     * produce it are counted per conversation instead. Measured across 79 turns before the voice
+     * work: a quarter opened by grading the answer, half said "the record" to the person whose work
+     * it was, three quarters ended on a question, and not one carried a view.
+     *
+     * Logged rather than enforced, and after the write so it can never affect whether a check-in
+     * completes. Two of the four cannot be enforced anyway - you cannot make a model have an
+     * opinion, and a rule demanding one would produce fakes.
+     */
+    this.prisma.conversationTurn
+      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI }, select: { content: true } })
+      .then((turns) => {
+        const sound = howThisSounds(turns.map((t) => t.content));
+        if (!sound.turns) return;
+        this.logger.log(
+          `Check-in ${checkIn.id} voice: ${sound.turns} turns, ` +
+            `${sound.judgesTheAnswer} graded the answer, ${sound.saysTheRecord} said the record, ` +
+            `${sound.endsOnAQuestion} ended on a question, ${sound.offersAView} offered a view.`,
+        );
+      })
+      .catch(() => undefined);
 
     // Learn how to talk to this person next time - style only, never content.
     // On completion rather than per message, so an abandoned session teaches
