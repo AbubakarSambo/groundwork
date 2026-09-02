@@ -1000,6 +1000,67 @@ Close the report by framing - neutrally, without recommending one - the choice n
       if (retry) result = retry;
     }
 
+    /*
+     * TWO RULES THAT WERE ONLY EVER LOGGED, NOW ASKED FOR AGAIN.
+     *
+     * `tallyInReport` catches a report establishing something by counting accounts - "three of four
+     * people said the process is broken" - which the rules forbid, because a gap is real when the
+     * record supports it and not when it wins a vote. `doesThisReportMarkItsInferences` catches a
+     * full synthesis that marked nothing it concluded; ten of twelve reports on the local database
+     * came back that way.
+     *
+     * Both already ran. Both only ever wrote a line to a log nobody reads, and the report shipped
+     * with the fault in it. This is the same second pass the post-report guide already does: name
+     * exactly what was wrong and ask once. Once, not a loop - a model that does it twice is telling
+     * us the prompt needs work, and the log is what says so.
+     *
+     * The retry is not trusted blindly either. If the second attempt is worse on the same tests,
+     * the first one is kept: a rule is not worth a worse report.
+     */
+    const faultsIn = (r: SynthesisResult) => {
+      const faults: string[] = [];
+      const tally = tallyInReport(r as any, ground.peopleWorkTogether !== false);
+      if (tally) {
+        faults.push(
+          `it established something by counting accounts, in ${tally.field}: "${tally.phrase}". ` +
+            `State what the record supports, never how many people said it.`,
+        );
+      }
+      const marking = doesThisReportMarkItsInferences(
+        { sharedPicture: (r as any).sharedPicture, agreements: (r as any).agreements, divergences: (r as any).divergences },
+        ((r as any).inferences ?? []) as unknown[],
+      );
+      if (marking.looksUnmarked) {
+        faults.push(
+          `it marked no inferences at all, and ${marking.why} Every claim you concluded rather ` +
+            `than one somebody stated belongs in the inferences array.`,
+        );
+      }
+      return faults;
+    };
+
+    const faults = faultsIn(result);
+    if (faults.length) {
+      this.logger?.warn?.(`Ground ${groundId}: asking again. ${faults.join(' ')}`);
+      const secondPass = await this.anthropic
+        .extract<SynthesisResult>(
+          systemPrompt,
+          [{
+            role: 'user',
+            content:
+              `${corpus}\n\nA previous attempt had a problem and was not used. ` +
+              `Write the report again, fixing this: ${faults.join(' Also: ')}`,
+          }],
+          activeSchema,
+        )
+        .catch(() => null);
+      if (secondPass && faultsIn(secondPass).length < faults.length) {
+        result = secondPass;
+      } else if (secondPass) {
+        this.logger?.warn?.(`Ground ${groundId}: the second attempt was no better, keeping the first.`);
+      }
+    }
+
     // SECOND PASS: what is at stake, one gap at a time.
     //
     // Asking for atStake inside the synthesis schema did not work. It was tried
