@@ -1,3 +1,9 @@
+/*
+ * FIXTURE NOTE. This said "Both parties value clarity." and went red when the reader boundary
+ * started rewriting "parties" - a rule the prompt had asked for since August and never got.
+ * These tests are about the activation gate, not about wording, so the fixture moved rather
+ * than the expectation: a gate test that also pins vocabulary breaks every time the copy does.
+ */
 import { ReportsService } from './reports.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReportActivationStatus } from '@prisma/client';
@@ -39,7 +45,7 @@ const releasedReport = {
   groundId: 'g1',
   createdAt: new Date(),
   releasedAt: new Date(),
-  sharedPicture: 'Both parties value clarity.',
+  sharedPicture: 'You both value clarity.',
   engagement: {},
 };
 
@@ -99,7 +105,7 @@ describe('GW-PRI-ACT-02 - initiator bypasses activation gate', () => {
     };
     const service = makeService(prisma);
     const result = await service.get('g1', 'admin') as any;
-    expect(result.sharedPicture).toBe('Both parties value clarity.');
+    expect(result.sharedPicture).toBe('You both value clarity.');
     // Activation lookup should not be called for initiator
     expect(prisma.reportActivation.findUnique).not.toHaveBeenCalled();
   });
@@ -123,7 +129,7 @@ describe('GW-PRI-ACT-03 - get() returns full content after ACTIVATED', () => {
     const service = makeService(prisma);
     const result = await service.get('g1', 'u1') as any;
     expect(result.activated).toBe(true);
-    expect(result.sharedPicture).toBe('Both parties value clarity.');
+    expect(result.sharedPicture).toBe('You both value clarity.');
   });
 });
 
