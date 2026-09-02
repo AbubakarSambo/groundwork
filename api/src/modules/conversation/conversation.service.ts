@@ -48,6 +48,7 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
+import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -694,7 +695,25 @@ export class ConversationService {
        * authenticated check-in exactly as it reached the entry chat - it simply was not the screen
        * that got photographed. `hadMarker` is still needed, so it is read separately.
        */
-      const stripped = { text: forHumans(rawReply), hadMarker: textHadCloseMarker(rawReply) };
+      /*
+       * QUOTATION MARKS ARE A CLAIM ABOUT WHOSE WORDS THESE ARE.
+       *
+       * Seen live: this person wrote "Sam is waiting on me and I know it." and the reply quoted her
+       * back with "iss". One letter, and it is the promise the whole product rests on. The truth is
+       * right here in `turns`, so a quoted phrase either appears in what she typed or it does not.
+       * An unmatched one loses its quotation marks and stays as reported speech - the sentence
+       * around it is nearly always right, and only the claim that these were her words is wrong.
+       */
+      const theirWords = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content);
+      const honest = withoutQuotesTheyDidNotSay(forHumans(rawReply), theirWords);
+      const misquoted = unmatchedQuotes(forHumans(rawReply), theirWords);
+      if (misquoted.length) {
+        this.logger.warn(
+          `Check-in ${checkIn.id}: reply quoted ${misquoted.length} phrase(s) this person did not write. ` +
+            `Marks removed. First: "${misquoted[0].slice(0, 120)}"`,
+        );
+      }
+      const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) };
       /**
        * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
        *
