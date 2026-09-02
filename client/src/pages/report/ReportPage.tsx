@@ -1420,13 +1420,27 @@ export function ReportBody({
                         ? `${p.sessions ?? 0} session${(p.sessions ?? 0) !== 1 ? 's' : ''}`
                         : 'checked in, no record'}
                     </span>
-                    {p.contributed && p.recordEntries > 0 && p.specificityLabel && (
-                      <span title="How concrete they were" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
-                        background: p.specificityLabel === 'high' ? 'var(--gw-green-bg)' : p.specificityLabel === 'moderate' ? 'var(--gw-blue-bg)' : 'var(--gw-amber-bg)',
-                        color: p.specificityLabel === 'high' ? 'var(--gw-green-t)' : p.specificityLabel === 'moderate' ? 'var(--gw-navy)' : 'var(--gw-amber-t)' }}>
-                        {p.specificityLabel} specificity
-                      </span>
-                    )}
+                    {/*
+                      * A GRADE ON A NAMED COLLEAGUE, ON THE PAGE EVERYONE READS.
+                      *
+                      * This was a colour-coded badge - green, blue, amber - sitting beside a
+                      * person's name: "Lena Lead · 1 session · moderate specificity". The only
+                      * explanation was a `title` attribute, which most people never see and no
+                      * screen reader announces by default. Read on the page it says: here is how
+                      * well your colleague did.
+                      *
+                      * The report's own promise is that it shows where accounts agree or differ,
+                      * never anybody's raw answers. How concrete one person was is neither: it is
+                      * an assessment of them, published to the people they work with.
+                      *
+                      * Nothing is lost by taking it off this page. Each person keeps their own
+                      * specificity in My record, privately, where it is written as something to
+                      * act on - "your answers are getting more specific as this goes on" - rather
+                      * than a mark their colleagues can read.
+                      *
+                      * Who checked in and how many sessions they are on stays. That is a fact
+                      * about participation, not a judgement about a person.
+                      */}
                   </div>
                 </div>
               ))}
