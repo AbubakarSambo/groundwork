@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
 import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
@@ -564,14 +565,34 @@ export function AppSidebar() {
     setTimeout(() => renameRef.current?.select(), 50)
   }
 
+  /*
+   * A REFUSAL LEFT THE FIELD OPEN AND SAID NOTHING.
+   *
+   * There was no catch here. The server now answers 403 when somebody who is not the lead tries to
+   * rename a check-in, so the await rejected, `setRenamingId(null)` never ran, and the input sat
+   * there in edit mode with no error and no change - the same "pressed it and nothing happened"
+   * the audit found, just arriving by a different route.
+   *
+   * The pencil is hidden from people who cannot rename (see `mayRename` below), so this path is
+   * now only reached by somebody who may rename and whose request failed anyway - a dropped
+   * connection, a check-in closed in another tab. That still has to be said out loud.
+   */
   async function commitRename(id: string) {
     const val = renameValue.trim()
-    if (val) {
-      await groundsApi.update(id, { label: val })
-      qc.invalidateQueries({ queryKey: ['grounds'] })
-    }
     setRenamingId(null)
+    if (!val) return
+    try {
+      await groundsApi.update(id, { label: val }, { quiet: true })
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? 'The name did not change. Nothing else was altered — try again.')
+    }
   }
+
+  /* Renaming is the lead's call or an admin's, and the server enforces it. Showing the pencil to
+     anybody else offers something that will be refused. The rule is shared with the server's, in
+     `who-may-rename-a-check-in`, so the two cannot drift apart again. */
+  const mayRename = (g: Ground) => mayRenameACheckIn(g, user)
 
   const sidebarWidth = collapsed ? 60 : 240
 
@@ -789,13 +810,13 @@ export function AppSidebar() {
                         }}>
                           {g.label}
                         </span>
-                        <button
+                        {mayRename(g) && <button
                           className="gw-rename"
                           onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
                           title={`Rename ${g.label}`}
                           aria-label={`Rename ${g.label}`}
                           style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
-                        >✎</button>
+                        >✎</button>}
                       </div>
                     )}
 

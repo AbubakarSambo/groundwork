@@ -9,6 +9,11 @@ declare module 'axios' {
     // the global toast so the caller's own fallback UI isn't undercut by it.
     skipNotFoundToast?: boolean
     /**
+     * For calls whose own error handling names what did and did not survive. Without it, one
+     * failed rename produced two notifications: the useful sentence and "Something went wrong".
+     */
+    skipServerErrorToast?: boolean
+    /**
      * For calls where a 403 is an expected answer rather than a failure - e.g.
      * asking whether the viewer is a party to this ground. Without it, a page
      * that merely ASKS the question pops "Access denied" at someone who did
@@ -77,7 +82,9 @@ apiClient.interceptors.response.use(
       })
     } else if (error.response?.status === 422 || error.response?.status === 400) {
       // Validation errors - let the form handle them
-    } else if (error.response?.status && error.response.status >= 500) {
+    } else if (error.response?.status && error.response.status >= 500 && !error.config?.skipServerErrorToast) {
+      /* `skipServerErrorToast`, like the two above: a caller that says something specific about
+         what did and did not survive should not be followed by "Something went wrong". */
       toast.error('Server error', {
         description: 'Something went wrong. Please try again later.',
       })

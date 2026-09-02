@@ -170,8 +170,15 @@ export const groundsApi = {
   setPeopleWorkTogether: (groundId: string, together: boolean) =>
     apiClient.patch<{ id: string; peopleWorkTogether: boolean }>(`/grounds/${groundId}/people-work-together`, { together }).then(r => r.data),
 
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }) =>
-    apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
+  /*
+   * The rail's rename says what did and did not survive, so the generic toasts are turned off for
+   * it - otherwise one failed rename produced two notifications, the useful one and "Something
+   * went wrong".
+   */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }, opts?: { quiet?: boolean }) =>
+    apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
+      ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
+      : undefined).then(r => r.data),
 
   getMySpecificity: (groundId: string) =>
     apiClient.get<{
