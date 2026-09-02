@@ -12,6 +12,7 @@ import { alignmentLabel, alignmentShort } from '@/lib/alignment'
 import { personLabel, participantLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
+import { splitOutWhatWasWorkedOut } from '@/lib/which-of-this-was-worked-out'
 import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
@@ -238,13 +239,43 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
   )
 }
 
-function PatternBlock({ label, content, dark }: { label: string; content: string; dark?: boolean }) {
+function PatternBlock({ label, content, dark, inferences }: { label: string; content: string; dark?: boolean; inferences?: Array<{ id: string; text: string }> | null }) {
+  /*
+   * WHICH OF THIS NOBODY ACTUALLY SAID.
+   *
+   * This block reads as settled fact throughout, and some of it is: somebody wrote it in their own
+   * account. The rest the model worked out across two accounts. Both were set identically, so the
+   * person a report is about could end up arguing with a sentence nobody had written.
+   *
+   * The concluded ones are underlined and carry the words, so it is legible without colour and
+   * without hovering. Anything the model did not mark, or marked with a paraphrase that is not in
+   * the body verbatim, is left as ordinary text - see the matching note in the rule.
+   */
+  const pieces = splitOutWhatWasWorkedOut(content, inferences)
+  const anyWorkedOut = pieces.some(p => p.workedOut)
   return (
     <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 8 }}>
         {label}
       </div>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{content}</p>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>
+        {pieces.map((piece, i) => piece.workedOut ? (
+          <span
+            key={i}
+            style={{
+              textDecoration: 'underline',
+              textDecorationStyle: 'dotted',
+              textDecorationColor: 'var(--gw-green-b)',
+              textUnderlineOffset: 3,
+            }}
+          >{piece.text}</span>
+        ) : <span key={i}>{piece.text}</span>)}
+      </p>
+      {anyWorkedOut && (
+        <div style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(255,255,255,.72)' }}>
+          Underlined: worked out from what people wrote, not stated by anyone. You can correct it below.
+        </div>
+      )}
     </div>
   )
 }
@@ -1250,7 +1281,7 @@ export function ReportBody({
               )}
 
               {/* The full account, after the sharp part. W13-7. */}
-              <PatternBlock label="What we heard" content={report.sharedPicture} />
+              <PatternBlock label="What we heard" content={report.sharedPicture} inferences={report.inferences} />
 
               {report.centralQuestion && (
                 <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '10px 12px' }}>
