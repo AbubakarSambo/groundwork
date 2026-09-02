@@ -21,7 +21,7 @@ import { join } from 'path'
  * model emits, which is matched and never shown - so this guards the two that are read, and leaves
  * the key alone.
  *
- * The wording follows the server, which already tells people "the person leading this check-in"
+ * The wording follows the server, which already says "the lead"
  * when it refuses them, rather than adding a fifth way to name the same person.
  */
 const read = (p: string) => readFileSync(join(__dirname, p), 'utf8')
@@ -52,12 +52,12 @@ describe('a role should say what it does', () => {
 
   it('nobody is told a request went to "the initiator"', () => {
     expect(REPORT).not.toContain("Request sent to the initiator.")
-    expect(REPORT).toContain("Request sent to the person leading this check-in.")
+    expect(REPORT).toContain("Request sent to the lead.")
   })
 
   it('and the rendered fallback is not the schema word either', () => {
     expect(REPORT).not.toMatch(/adminParty \? participantLabel\(adminParty\) : 'the initiator'/)
-    expect(REPORT).toMatch(/adminParty \? participantLabel\(adminParty\) : 'the person leading this check-in'/)
+    expect(REPORT).toMatch(/adminParty \? participantLabel\(adminParty\) : 'the lead'/)
   })
 
   it('but the key the model emits is left alone, because it is matched and never shown', () => {

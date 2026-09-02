@@ -47,7 +47,7 @@ export class IntelligenceService {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
 
     return this.prisma.outcomeFeedback.upsert({
       where: { groundId_participantId: { groundId, participantId: participant.id } },
@@ -76,7 +76,7 @@ export class IntelligenceService {
     if (!ground) throw new NotFoundException('Check-in not found');
 
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
 
     // Enforce one-submission-per-ground guard (in addition to the DB unique constraint).
     const existing = await this.prisma.outcomeFeedback.findUnique({

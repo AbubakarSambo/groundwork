@@ -620,7 +620,7 @@ export function GroundAdminPage() {
             Setting up a check-in, inviting people and releasing the report belong to its lead, or to
             an admin in your organisation. {amAParty
               ? 'Your own check-ins and your record are on your page.'
-              : 'You are not a party to this check-in, so there is nothing here for you.'}
+              : 'You are not a participant in this check-in, so there is nothing here for you.'}
           </div>
           <button
             onClick={() => navigate(amAParty ? `/grounds/${id}/p` : '/grounds')}

@@ -1588,7 +1588,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
     const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     /* Nothing has been revealed yet, so there is nothing anybody may read. */
     if (!ground.report?.releasedAt) return { rounds: [] };
@@ -2185,7 +2185,7 @@ happened, and what is in the way.`;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     if (!ground.report.releasedAt) {
       // Before everyone has checked in, the report is a forming picture, not

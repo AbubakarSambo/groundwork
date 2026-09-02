@@ -1888,7 +1888,7 @@ export class GroundsService {
     const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
-        'Only the person leading this check-in, or an admin in your organisation, can add context to it.',
+        'Only the lead of this check-in, or an admin in your organisation, can add context to it.',
       );
     }
     const text = (dto.text ?? '').trim();
@@ -1966,7 +1966,7 @@ export class GroundsService {
     const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
-        'Only the person leading this check-in, or an admin in this organisation, can change this.',
+        'Only the lead of this check-in, or an admin in this organisation, can change this.',
       );
     }
 
@@ -2010,7 +2010,7 @@ export class GroundsService {
     const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
-        'Only the person leading this check-in, or an admin in this organisation, can change this.',
+        'Only the lead of this check-in, or an admin in this organisation, can change this.',
       );
     }
 
@@ -2668,7 +2668,7 @@ export class GroundsService {
     });
     const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a party to this check-in');
+      throw new ForbiddenException('You are not a participant in this check-in');
     }
 
     // HOW LONG THE GROUND RUNS IS THE LEAD'S CALL, NOT EVERY PARTY'S.
@@ -2689,7 +2689,7 @@ export class GroundsService {
     const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined;
     if (changesTheSchedule && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
-        'Only the person leading this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
+        'Only the lead of this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
       );
     }
 
@@ -2713,7 +2713,7 @@ export class GroundsService {
       }
       if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
         throw new ForbiddenException(
-          'Only the person leading this check-in, or an admin in your organisation, can rename it',
+          'Only the lead of this check-in, or an admin in your organisation, can rename it',
         );
       }
     }
@@ -2921,7 +2921,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     const note = await this.prisma.participantNote.create({
       data: { groundId, participantId: participant.id, text: trimmed },
       select: { id: true, text: true, createdAt: true, carriedIntoCheckInId: true },
@@ -2935,7 +2935,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     return this.prisma.participantNote.findMany({
       where: { participantId: participant.id },
       orderBy: { createdAt: 'asc' },
@@ -2949,7 +2949,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     // Scoped by participantId as well as id, so one person cannot delete another's
     // by guessing an id.
     const { count } = await this.prisma.participantNote.deleteMany({
@@ -3019,7 +3019,7 @@ export class GroundsService {
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a party to this check-in.');
+    if (!me) throw new ForbiddenException('You are not a participant in this check-in.');
 
     await this.prisma.personObjective.updateMany({
       where: { groundId, participantId: me.id, seenBySubject: false },
@@ -3063,7 +3063,7 @@ export class GroundsService {
       select: { id: true },
     });
     if (!me && ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('You are not a party to this check-in');
+      throw new ForbiddenException('You are not a participant in this check-in');
     }
 
     const { count } = await this.prisma.personObjective.updateMany({
@@ -3103,7 +3103,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
 
     // An expectation id is only accepted where it is one of THIS person's own on THIS check-in.
     // Otherwise a delivery could be filed against somebody else's target.
@@ -3129,7 +3129,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
     return this.prisma.delivery.findMany({
       where: { groundId, participantId: me.id },
       orderBy: { createdAt: 'desc' },
@@ -3142,7 +3142,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
     const { count } = await this.prisma.delivery.deleteMany({
       where: { id: deliveryId, participantId: me.id, carriedIntoCheckInId: null },
     });
@@ -3254,7 +3254,7 @@ export class GroundsService {
     });
     const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a party to this check-in');
+      throw new ForbiddenException('You are not a participant in this check-in');
     }
     const [entries, done] = await Promise.all([
       this.prisma.groundBaselineEntry.findMany({
@@ -3384,7 +3384,7 @@ export class GroundsService {
     });
     const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('You are not a party to this check-in');
+      throw new ForbiddenException('You are not a participant in this check-in');
     }
     const rows = await this.prisma.groundBaseline.findMany({
       where: { groundId },
@@ -3408,7 +3408,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true, specificityHistory: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     const raw: number[] = (participant.specificityHistory as number[]) ?? [];
     const scores = raw.filter(n => typeof n === 'number' && isFinite(n));
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -3470,7 +3470,7 @@ export class GroundsService {
    */
   async getMyCheckinStatus(groundId: string, userId: string) {
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },
@@ -3767,7 +3767,7 @@ export class GroundsService {
         },
       },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
 
     const sessions = (participant.checkIns ?? []).map(ci => ({
       sessionNumber: ci.sessionNumber,
@@ -3821,7 +3821,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { soloArtifact: true, soloArtifactShared: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     const report = participant.soloArtifact
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
       : null;
@@ -3833,7 +3833,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     await this.prisma.groundParticipant.update({
       where: { id: participant.id },
       data: { soloArtifactShared: shared },
@@ -3855,7 +3855,7 @@ export class GroundsService {
       where: { groundId, userId },
       select: { id: true, signedOffAt: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     if (participant.signedOffAt) return { signedOffAt: participant.signedOffAt };
     const updated = await this.prisma.groundParticipant.update({
       where: { id: participant.id },

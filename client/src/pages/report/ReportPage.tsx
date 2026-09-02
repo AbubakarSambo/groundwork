@@ -635,9 +635,9 @@ function HiddenContributorsSection({
       setDone(prev => new Set(prev).add(vars.key))
       setOpenFor(null)
       /* "the initiator" is the schema's word for this person, not one anybody says out loud.
-         The server already tells people "the person leading this check-in" when it refuses them,
+         The server already tells people "the lead" when it refuses them,
          so this matches that rather than adding a fifth way to name the same person. */
-      toast.success('Request sent to the person leading this check-in.')
+      toast.success('Request sent to the lead.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not send the request. Try again.'),
   })
@@ -918,7 +918,7 @@ export function ReportBody({
   // local-part, both of which read as a label rather than a person.
   /* The fallback is rendered, so it has to read like something a person would say. The bare
      'the initiator' below, in `personFor`, is a KEY the model emits and is matched, never shown. */
-  const adminHandle = adminParty ? participantLabel(adminParty) : 'the person leading this check-in'
+  const adminHandle = adminParty ? participantLabel(adminParty) : 'the lead'
 
   /**
    * A role label as the report stores it, turned into whoever it stands for.
