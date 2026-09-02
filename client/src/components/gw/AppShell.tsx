@@ -630,6 +630,7 @@ export function AppSidebar() {
             </a>
           )}
           <button
+            className="gw-tap44"
             onClick={() => setCollapsed(v => !v)}
             style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', fontFamily: 'inherit', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
             title={collapsed ? 'Expand menu' : 'Collapse menu'}

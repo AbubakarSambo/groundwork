@@ -1097,10 +1097,61 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 .gw-rename {
   opacity: 0.42;
   transition: opacity .12s ease;
+  position: relative;
 }
 .gw-rail-row:hover .gw-rename { opacity: 0.85; }
 .gw-rename:hover,
 .gw-rename:focus-visible { opacity: 1; }
+
+/*
+ * THE TARGET IS NOT THE GLYPH.
+ *
+ * Measured on a tablet-width viewport, this button is 14x11. The guideline is 44x44, and it sits
+ * inside the row's link - so a miss does not do nothing, it navigates. On a touch screen that is a
+ * small mark you have to hit exactly, next to something that takes you away if you do not.
+ *
+ * The tappable area is extended with a pseudo-element instead of padding, so nothing in the rail
+ * moves. It is widened to the full 44 and taken to the row's own height rather than past it:
+ * 45px tall inside a 35px row would reach into the rows above and below, and stealing taps from a
+ * neighbouring check-in is a worse bug than the one being fixed.
+ */
+.gw-rename::after {
+  content: '';
+  position: absolute;
+  inset: -12px -15px;
+}
+
+/*
+ * AND ON A TOUCH SCREEN THERE IS NO HOVER TO REVEAL IT.
+ *
+ * The pencil rests at 0.42 and brightens when the row is hovered. A phone or tablet never sends
+ * that, so it sat permanently at its faintest - the state meant to say "not yet" - on exactly the
+ * devices where it is hardest to hit.
+ */
+@media (hover: none) {
+  .gw-rename { opacity: 0.85; }
+}
+
+/*
+ * THE SAME PROBLEM WHEREVER AN ICON IS THE WHOLE CONTROL.
+ *
+ * The rail's collapse button measured 17x25. Unlike the rename pencil it stands alone in the rail
+ * header with space around it, so its target can go to the full 44x44 without reaching anything
+ * else. Applied as a class so the next icon-only control has somewhere to go instead of growing a
+ * third bespoke rule.
+ */
+.gw-tap44 {
+  position: relative;
+}
+.gw-tap44::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
 
 /* SEARCH THE SITUATIONS. Sits above the jump bar because typing your own words is the faster
    route for the person who already knows their situation; the jump bar is for browsing, and it
