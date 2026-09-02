@@ -193,8 +193,25 @@ export function OrgMembersPage() {
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
         People
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.6 }}>
         Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
+      </p>
+      {/*
+        * THE PILLS SAID "ADMIN" AND STOPPED THERE.
+        *
+        * A role badge appears beside people here and on the check-in list, and nothing anywhere
+        * said what any of them could do. This is the page where roles are set, so it is the page
+        * that should say. Written from what the code actually enforces, not from the role names:
+        * `who-may-open-a-check-in` for who opens and who waits, and the admin-only rail items for
+        * People, Connect and Billing.
+        */}
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.65 }}>
+        <strong style={{ color: 'var(--gw-text)' }}>Admins</strong> manage people and billing, and
+        approve check-ins when your organisation asks for that.{' '}
+        <strong style={{ color: 'var(--gw-text)' }}>Everybody else</strong> takes part in the
+        check-ins they are added to, and can open their own if your settings allow it.{' '}
+        <strong style={{ color: 'var(--gw-text)' }}>Guests</strong> come from another organisation:
+        they take part in what they are added to, and never open one here.
       </p>
 
       {/* Invite form */}
@@ -462,7 +479,10 @@ export function OrgMembersPage() {
                       )}
                       <option value="MEMBER">Takes part</option>
                       <option value="LEAD">Can open check-ins</option>
-                      <option value="ADMIN">Admin</option>
+                      {/* The other three options say what they do - "Takes part", "Can open
+                          check-ins", "Guest from another organisation". This one was the role name
+                          on its own, which is the only one you had to already know. */}
+                      <option value="ADMIN">Admin - manages people and billing</option>
                     </select>
                   )}
                   {/*
