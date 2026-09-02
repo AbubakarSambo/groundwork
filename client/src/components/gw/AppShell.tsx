@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'
 import { MARKETING_URL } from '@/lib/marketing'
 import { authApi } from '@/api/auth'
 import { railAttention, railRank, stillInRail } from '@/lib/rail-attention'
@@ -427,7 +428,7 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
         to={item.to}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-          padding: '6px 4px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.45)',
+          padding: '6px 4px', borderRadius: 10, color: active ? '#93C5FD' : 'rgba(255,255,255,.55)',
           textDecoration: 'none', fontSize: 10, fontWeight: active ? 700 : 500,
           background: active ? 'rgba(147,197,253,.1)' : 'transparent', flex: 1, minWidth: 0,
           /**
@@ -564,14 +565,34 @@ export function AppSidebar() {
     setTimeout(() => renameRef.current?.select(), 50)
   }
 
+  /*
+   * A REFUSAL LEFT THE FIELD OPEN AND SAID NOTHING.
+   *
+   * There was no catch here. The server now answers 403 when somebody who is not the lead tries to
+   * rename a check-in, so the await rejected, `setRenamingId(null)` never ran, and the input sat
+   * there in edit mode with no error and no change - the same "pressed it and nothing happened"
+   * the audit found, just arriving by a different route.
+   *
+   * The pencil is hidden from people who cannot rename (see `mayRename` below), so this path is
+   * now only reached by somebody who may rename and whose request failed anyway - a dropped
+   * connection, a check-in closed in another tab. That still has to be said out loud.
+   */
   async function commitRename(id: string) {
     const val = renameValue.trim()
-    if (val) {
-      await groundsApi.update(id, { label: val })
-      qc.invalidateQueries({ queryKey: ['grounds'] })
-    }
     setRenamingId(null)
+    if (!val) return
+    try {
+      await groundsApi.update(id, { label: val }, { quiet: true })
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? 'The name did not change. Nothing else was altered — try again.')
+    }
   }
+
+  /* Renaming is the lead's call or an admin's, and the server enforces it. Showing the pencil to
+     anybody else offers something that will be refused. The rule is shared with the server's, in
+     `who-may-rename-a-check-in`, so the two cannot drift apart again. */
+  const mayRename = (g: Ground) => mayRenameACheckIn(g, user)
 
   const sidebarWidth = collapsed ? 60 : 240
 
@@ -609,9 +630,11 @@ export function AppSidebar() {
             </a>
           )}
           <button
+            className="gw-tap44"
             onClick={() => setCollapsed(v => !v)}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.35)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', fontFamily: 'inherit', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', fontFamily: 'inherit', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
             title={collapsed ? 'Expand menu' : 'Collapse menu'}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
           >
             {collapsed ? '»' : '«'}
           </button>
@@ -675,19 +698,20 @@ export function AppSidebar() {
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.92)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundName}</span>
                     <button
                       onClick={() => { setEntryRenameVal(groundName); setRenamingEntry(true); setTimeout(() => entryRenameRef.current?.select(), 40) }}
-                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.25)', cursor: 'pointer', fontSize: 11, padding: '0 2px', fontFamily: 'inherit' }}
+                      style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.55)', cursor: 'pointer', fontSize: 11, padding: '0 2px', fontFamily: 'inherit' }}
                       title="Rename"
+                      aria-label={`Rename ${groundName}`}
                     >✎</button>
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>1/{sessions} sessions</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>1/{sessions} sessions</span>
                   <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--gw-green-live)', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
                 </div>
               </div>
             )}
             {!isEntryPage && grounds.length === 0 && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', padding: '8px 6px' }}>Nothing in progress yet</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', padding: '8px 6px' }}>Nothing in progress yet</div>
             )}
             {/*
               THE RAIL IS A CHANNEL LIST, so it is ordered by what needs you and it
@@ -799,16 +823,22 @@ export function AppSidebar() {
                           * refusal from the server for a control the rail had offered them.
                           *
                           * The same question the server asks, asked before the button is drawn.
+                          *
+                          * MERGE NOTE. Two branches fixed this independently and the conflict was
+                          * real: staging asked the question inline here, this branch had moved it
+                          * into `who-may-rename-a-check-in` so the rail and the server share one
+                          * rule rather than two copies of it. The shared rule is kept - it is what
+                          * stops them drifting apart again, which is how the pencil came to be
+                          * offered to everybody in the first place - and staging's account of the
+                          * history is kept with it, because it is the better explanation.
                           */}
-                        {(g.initiatorId === user?.id || user?.role === 'ADMIN') && (
-                        <button
+                        {mayRename(g) && <button
                           className="gw-rename"
                           onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
                           title={`Rename ${g.label}`}
                           aria-label={`Rename ${g.label}`}
                           style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0 2px', fontSize: 11, lineHeight: 1, flexShrink: 0, fontFamily: 'inherit' }}
-                        >✎</button>
-                        )}
+                        >✎</button>}
                       </div>
                     )}
 
@@ -850,7 +880,7 @@ export function AppSidebar() {
               const active = window.location.pathname.startsWith(item.to)
               return (
                 <NavLink key={item.to} to={item.to} title={item.label}
-                  style={{ color: active ? '#93C5FD' : 'rgba(255,255,255,.4)', padding: '8px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ color: active ? '#93C5FD' : 'rgba(255,255,255,.55)', padding: '8px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   {item.icon(active)}
                 </NavLink>
@@ -910,7 +940,7 @@ export function AppSidebar() {
               return (
                 <div key={item.to}>
                   {firstOrg && (
-                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.3)', fontWeight: 700, padding: '10px 10px 4px' }}>
+                    <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, padding: '10px 10px 4px' }}>
                       {user?.organizationName ?? 'Your organisation'}
                     </div>
                   )}
@@ -948,7 +978,7 @@ export function AppSidebar() {
         */}
         {isAuthenticated && !collapsed && myOrgs.length > 1 && (
           <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.3)', fontWeight: 700, marginBottom: 6 }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, marginBottom: 6 }}>
               Organisation
             </div>
             {myOrgs.map(o => (
@@ -991,7 +1021,7 @@ export function AppSidebar() {
               >
                 <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: o.active ? 'var(--gw-green-live)' : 'transparent' }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', textTransform: 'capitalize', flexShrink: 0 }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', textTransform: 'capitalize', flexShrink: 0 }}>
                   {o.role.toLowerCase()}
                 </span>
               </button>
@@ -1029,7 +1059,7 @@ export function AppSidebar() {
                       * exactly the thing in question, and because switching organisation happens two
                       * lines above. Role and org are one fact: you are a member OF something.
                       */}
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       <span style={{ textTransform: 'capitalize' }}>{(user?.role ?? '').toLowerCase()}</span>
                       {user?.organizationName ? ` at ${user.organizationName}` : ''}
                     </span>
@@ -1047,7 +1077,7 @@ export function AppSidebar() {
                       */}
                     <button
                       onClick={() => { logout(); navigate('/') }}
-                      style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                      style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                       title="Sign out of Groundwork on this device"
                     >
                       Sign out

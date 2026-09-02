@@ -56,14 +56,14 @@ interface Area { title: string; observation: string; whyItMatters: string; move:
 function AreaBlock({ area }: { area: Area }) {
   if (area.reached) {
     return (
-      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 9, padding: '11px 13px', borderLeft: '3px solid var(--gw-green-b)', marginBottom: 8 }}>
+      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '11px 13px', borderLeft: '3px solid var(--gw-green-b)', marginBottom: 8 }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>{area.title}</div>
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{area.reachedNote}</div>
       </div>
     )
   }
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 9, padding: '11px 13px', borderLeft: '3px solid var(--gw-amber-b)', marginBottom: 8 }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '11px 13px', borderLeft: '3px solid var(--gw-amber-b)', marginBottom: 8 }}>
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{area.title}</div>
       <div style={{ marginBottom: 6 }}>
         <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>

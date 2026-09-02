@@ -234,6 +234,8 @@ export function GroundsListPage() {
     g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
   )
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
+  /** What the list holds that the "In progress" tile above it does not count. */
+  const closedCount = grounds.length - active.length
   // Count reports waiting for THIS person. The old count was grounds in
   // REPORT_READY status, which is a different thing and sat permanently at
   // zero while every ground stayed ACTIVE.
@@ -320,7 +322,20 @@ export function GroundsListPage() {
         </div>
       </div>
 
-      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      {/**
+        * A LIST OF CARDS IS NOT A COLUMN OF PROSE.
+        *
+        * 600px is right for reading - the check-in page and a party's own view keep it, and should.
+        * This page is a stack of cards carrying a name, a status, a lead, a participant count and a
+        * session count, and it had the same cap. Measured on the running page: a 600px column inside
+        * a 1194px main, so 594px of the screen sat empty either side while every card wrapped.
+        *
+        * Wide here for the same reason the situation picker is wide - see
+        * the-picker-gets-the-whole-width.spec.ts, which measured the same thing before and after.
+        * 1160 rather than the full width, so the page still has margins and a long check-in name
+        * still has a line length somebody can read.
+        */}
+      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 1160, margin: '0 auto', width: '100%' }}>
         {isAdmin && awaiting.length > 0 && (
           <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-amber-t)', marginBottom: 4 }}>
@@ -558,6 +573,27 @@ export function GroundsListPage() {
               </>
             )}
 
+            {/**
+              * THE LIST SAYS WHAT IS IN IT, BECAUSE THE TILE ABOVE COUNTS SOMETHING ELSE.
+              *
+              * The tile reads `active.length` - check-ins that are running. This list shows every
+              * check-in, closed ones included. While nothing is closed the two agree and nobody
+              * notices. Close one and the screen reads "IN PROGRESS 9" directly above ten cards,
+              * with nothing saying why. Reproduced by closing one and looking.
+              *
+              * That is the defect `a-counter-must-count-what-it-says` is named for - a counter whose
+              * label promises one thing and whose value measures another - and the same shape as
+              * "0 of 2 checked in" over a roster showing two people checked in.
+              *
+              * Both numbers are right. Neither is wrong to show. What was missing is the sentence
+              * that makes them agree, so the heading says what the list holds and the difference
+              * stops being a contradiction.
+              */}
+            {closedCount > 0 && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 2 }}>
+                All {sortedGrounds.length} check-ins, including {closedCount} closed
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sortedGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
             </div>

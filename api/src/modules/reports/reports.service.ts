@@ -33,6 +33,7 @@ import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveC
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
+import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -194,11 +195,12 @@ export const REPORT_SCHEMA = {
             id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
             participantLabel: { type: 'string', description: 'Who this inference is about, using the same label as above.' },
-            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+            reason: { type: 'string', description: 'Brief explanation of what this was concluded from, given no participant stated it.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
         },
-        description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
+        description:
+          'Claims in this report that YOU concluded, which no participant stated in their own account. A claim somebody wrote down is not an inference even though you have rephrased it - you are never allowed to quote, so rephrasing is not what makes something inferred. Reading across two accounts, filling a gap from context, or drawing out an implication IS. Empty array only if every claim traces to something a participant actually said.',
       },
       hiddenContributors: {
         type: 'array',
@@ -295,7 +297,7 @@ Same facts every time. The second version of each sounds like a lawyer wrote it 
 
 Do not say "party" or "parties" in anything the reader sees. Say the person's label, "the two of you", "everyone in this ground", or just name what happened. Do not say "evidence", "testimony", "as stated", "per the account", "submitted", or "opted out".
 
-6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.
+6. LABEL INFERENCES, AND THE TEST IS NOT QUOTATION. An inference is a claim YOU concluded that no participant stated in their own account: something you read across two accounts, filled in from context, or drew out as an implication. A claim somebody actually made is not an inference even though you have rephrased it - rule 1 forbids you from quoting, so rephrasing is what you always do and it cannot be what marks something as inferred. List every inference in the inferences array with its id, text, participantLabel and reason, where text is the sentence as it appears in the report. Leave the array empty only if every claim in the report traces back to something a participant actually said.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
 8. NO FALSE CONSENSUS. Do not write "both agree" or "everyone is aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
@@ -1414,6 +1416,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
 
+    /* Ten of twelve reports came back marking nothing. Logged rather than refused - see the module. */
+    const marking = doesThisReportMarkItsInferences(
+      { sharedPicture: (result as any).sharedPicture, agreements: (result as any).agreements, divergences: (result as any).divergences },
+      inferences,
+    );
+    if (marking.looksUnmarked) {
+      this.logger.warn(`Ground ${groundId}: report marks no inferences. ${marking.why}`);
+    }
+
     /**
      * The private per-person guides, read back before the write that would
      * otherwise erase them. Everything else in engagement is rebuilt from this
@@ -1588,7 +1599,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
     const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     /* Nothing has been revealed yet, so there is nothing anybody may read. */
     if (!ground.report?.releasedAt) return { rounds: [] };
@@ -2185,7 +2196,7 @@ happened, and what is in the way.`;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     if (!ground.report.releasedAt) {
       // Before everyone has checked in, the report is a forming picture, not

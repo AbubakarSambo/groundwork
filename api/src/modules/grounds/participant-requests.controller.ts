@@ -30,7 +30,7 @@ export class ParticipantRequestsController {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const isParty = ground.initiatorId === userId || ground.participants.some((p) => p.userId === userId);
-    if (!isParty) throw new ForbiddenException('You are not a party to this check-in');
+    if (!isParty) throw new ForbiddenException('You are not a participant in this check-in');
     return ground;
   }
 

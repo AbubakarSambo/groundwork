@@ -1729,7 +1729,7 @@ export function CreateGroundPage() {
                 {sessionTotal} {sessionTotal === 1 ? 'check-in' : 'check-ins'} over {timelineDays} {timelineDays === 1 ? 'day' : 'days'}, {runDates(startsOn, timelineDays)}
               </div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                Both are set from the situation you picked, and you can change either one now. Every check-in produces a report for each person. Afterwards the person leading this check-in can still change the timeframe or the cadence at any time.
+                Both are set from the situation you picked, and you can change either one now. Every check-in produces a report for each person. Afterwards the lead can still change the timeframe or the cadence at any time.
               </div>
               <div style={{ marginTop: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>

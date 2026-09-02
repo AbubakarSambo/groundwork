@@ -1,5 +1,5 @@
 import { PageCrash } from '@/components/gw/PageCrash'
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
@@ -79,8 +79,34 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
     // W8-70.
     return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
+  /*
+   * A SILENT REDIRECT READS AS A BUG, NOT AS A REFUSAL.
+   *
+   * This was `<Navigate to="/grounds" replace />`: an admin in a customer organisation who opened
+   * one of these addresses was moved to their check-in list with nothing said. From the outside
+   * that is a link that does not work, and the natural response is to try it again.
+   *
+   * Say who the area is for and leave them somewhere to go, which is what every other refusal in
+   * this product now does.
+   */
   if (!isPlatformAdmin) {
-    return <Navigate to="/grounds" replace />
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ textAlign: 'center', maxWidth: 380 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
+            This part is for Groundwork staff
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+            It is not part of your organisation's admin, and there is nothing here that affects your
+            check-ins. Being an admin in your own organisation does not include it.
+          </div>
+          <Link
+            to="/grounds"
+            style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}
+          >Go to my check-ins</Link>
+        </div>
+      </div>
+    )
   }
   return children
 }
@@ -255,8 +281,22 @@ export default function App() {
               *
               * Not a data exposure. A page that can only fail, shown to the wrong person.
               */}
-            <Route path="/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
-            <Route path="/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
+            {/*
+              * BACK-OFFICE TOOLING OFF THE CUSTOMER ROUTES.
+              *
+              * These are Groundwork's own prompt tools and they sat at /prompts and /prompts/test,
+              * top-level addresses in a customer's app, rendered inside the customer's rail. Under
+              * /admin they are covered by CHROMELESS_PREFIXES like the rest of the back office, so
+              * they no longer wear the shell of the product they are used to operate.
+              *
+              * Nothing in the app ever linked to them - they are reached by typing the address - so
+              * the move breaks no navigation. The two redirects are for whoever has them
+              * bookmarked, because a silent 404 on a tool you use daily reads as an outage.
+              */}
+            <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
+            <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
+            <Route path="/prompts/test" element={<Navigate to="/admin/prompts/test" replace />} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*

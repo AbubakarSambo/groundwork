@@ -180,7 +180,7 @@ export function GroundAdminPage() {
    * `isError` is what separates the two states that were being treated as one: nothing here yet,
    * and definitely not there. Only the second is GroundGone.
    */
-  const { data: ground, isLoading, isError, error } = useQuery({
+  const { data: ground, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
@@ -569,8 +569,35 @@ export function GroundAdminPage() {
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
   if (definitelyGone) return <Shell><GroundGone /></Shell>
-  /* Everything that is not a 404 is "not here yet", including a failed request about to be retried.
-     This used to be `!ground`, which said "gone" for both. */
+  /*
+   * "ABOUT TO BE RETRIED" RUNS OUT, AND THEN THE PAGE IS JUST LYING.
+   *
+   * This was `isLoading || !ground`, on the reasoning that anything which is not a 404 is "not here
+   * yet, including a failed request about to be retried". That holds only while retries remain.
+   * Driven in the browser with the check-in endpoint forced to 500, React Query tried twice, gave
+   * up, and the page sat on "Loading…" indefinitely - telling somebody that work is still in
+   * flight when it stopped seconds ago, with nothing to press and no way to find out.
+   *
+   * The list page already separates these two and says which happened; this is the same treatment.
+   */
+  if (isError && !definitelyGone) return (
+    <Shell>
+      <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
+          We could not load this check-in
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 340, margin: '0 auto 18px' }}>
+          This is a connection problem, not a lost record. Nothing you have written is affected.
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+        >{isFetching ? 'Trying…' : 'Try again'}</button>
+      </div>
+    </Shell>
+  )
+
   if (isLoading || !ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
 
   /**
@@ -593,7 +620,7 @@ export function GroundAdminPage() {
             Setting up a check-in, inviting people and releasing the report belong to its lead, or to
             an admin in your organisation. {amAParty
               ? 'Your own check-ins and your record are on your page.'
-              : 'You are not a party to this check-in, so there is nothing here for you.'}
+              : 'You are not a participant in this check-in, so there is nothing here for you.'}
           </div>
           <button
             onClick={() => navigate(amAParty ? `/grounds/${id}/p` : '/grounds')}
@@ -891,7 +918,10 @@ export function GroundAdminPage() {
                   standing label rather than a one-time announcement, because the confusion recurs
                   every time you come back.
                 */}
-                <span style={{ fontSize: 10, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
+                {/* Wraps. It was `nowrap` when the text was "running this check-in"; the longer
+                    label that replaced it pushed a 375px page out to 403 and made the whole report
+                    scroll sideways. Found by measuring the report on mobile, not by reading this. */}
+                <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
                   Everyone in it - you are running this
                 </span>
               </div>
@@ -1847,25 +1877,51 @@ export function GroundAdminPage() {
             )}
 
             {report?.releasedAt && activationStatus && (
-              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 9, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
                   {/*
                       "BOTH" ON A GROUND WITH THREE PEOPLE IN IT.
                       Hardcoded from when a ground was always two parties. This block sits directly
                       above a row of THREE cards on a three-party ground, counting them itself.
                   */}
-                  Report reveal status {activationStatus.allActivated ? '· Everyone has revealed' : '· Waiting'}
+                  {/**
+                    * WHICH REPORTS THIS IS ABOUT, BECAUSE THE HEADER IS TALKING ABOUT A DIFFERENT ONE.
+                    *
+                    * The strip above says "report sent to everyone" the moment the SHARED report is
+                    * released. This panel said "Report reveal status - Waiting", about each person's
+                    * OWN private report, which they reveal to each other separately.
+                    *
+                    * Both true. On one screen, five hundred pixels apart, they read as opposites:
+                    * sent to everyone, and nobody has seen it. Reproduced on a real released report.
+                    *
+                    * The product already separates these words - "Your private report" against
+                    * "Shared report" - everywhere except here. Same fix as "0 of 2 checked in for
+                    * session 2": say which one you mean and the contradiction stops being one.
+                    */}
+                  Private reports {activationStatus.allActivated ? '· Everyone has shown theirs' : '· Waiting'}
                 </div>
+                {/**
+                  * SETTLED PANELS SHOW ONE LINE. WAITING PANELS SHOW THE WORK.
+                  *
+                  * This panel exists so a lead knows who to chase. Once everybody has revealed
+                  * there is nobody to chase, and it went on taking the same space at the top of
+                  * the report - a row of cards all saying "Shown", above 856px of preamble
+                  * somebody has to scroll past to reach the findings.
+                  *
+                  * The heading already says which state it is in. When that state is "done", the
+                  * heading is the whole message.
+                  */}
                 {!activationStatus.allActivated && (
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
-                    Each person sees their own report privately until they choose to reveal it. When everybody activates, the reports become visible to each other. Each person can do this from their own check-in page.
+                    Each person sees their own report privately until they show it. Once everybody has, the reports become visible to each other. Each person does this from their own check-in page.
                   </div>
                 )}
+                {!activationStatus.allActivated && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activationStatus.parties.map((p, i) => (
-                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 7, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
+                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>
-                        {p.activated ? 'Revealed' : 'Not yet'}
+                        {p.activated ? 'Shown' : 'Not yet'}
                       </div>
                       {/*
                           THE ONE THING THE LEAD NEEDS HERE IS WHO SHE IS WAITING ON.
@@ -1884,6 +1940,7 @@ export function GroundAdminPage() {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 

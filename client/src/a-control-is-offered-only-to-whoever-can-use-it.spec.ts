@@ -57,8 +57,23 @@ describe('a control is offered only to whoever can use it', () => {
   })
 
   it('BUG 19: the rename pencil asks the same question the server asks', () => {
+    /*
+     * This asserted the condition inline, as `g.initiatorId === user?.id || user?.role === 'ADMIN'`
+     * written at the button. Two branches fixed BUG 19 independently and the other one moved that
+     * question into `who-may-rename-a-check-in`, shared with the server's own rule, so the rail and
+     * the server cannot answer differently. The intent of this test - the pencil asks what the
+     * server asks - is better served by the shared rule than by a second copy of the condition, so
+     * it asserts the rule is what gates the button.
+     */
     const pencil = SHELL.slice(SHELL.indexOf('className="gw-rename"') - 400, SHELL.indexOf('className="gw-rename"'))
-    expect(pencil).toMatch(/g\.initiatorId === user\?\.id \|\| user\?\.role === 'ADMIN'/)
+    expect(pencil).toMatch(/\{mayRename\(g\) &&/)
+    expect(SHELL).toContain("import { mayRenameACheckIn } from '@/lib/who-may-rename-a-check-in'")
+    expect(SHELL).toMatch(/const mayRename = \(g: Ground\) => mayRenameACheckIn\(g, user\)/)
+
+    /* And the rule itself still asks that question, rather than having become something else. */
+    const rule = readFileSync(join(__dirname, 'lib/who-may-rename-a-check-in.ts'), 'utf8')
+    expect(rule).toMatch(/checkIn\.initiatorId === viewer\.id/)
+    expect(rule).toMatch(/viewer\.role === 'ADMIN'/)
   })
 
   it('and the server refuses the same people, so the two cannot drift apart', () => {

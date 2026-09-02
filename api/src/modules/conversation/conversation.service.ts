@@ -4129,7 +4129,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },

@@ -55,7 +55,7 @@ describe('changing how long a ground runs', () => {
   it('tells them who to ask, rather than just saying no', async () => {
     const svc = makeService(GROUND);
     await svc.updateTimeline('g1', 'participant', { timelineWeeks: 4 }).catch((e: any) => {
-      expect(e.message).toMatch(/person leading this check-in/i);
+      expect(e.message).toMatch(/lead of this check-in/i);
       expect(e.message).toMatch(/ask them/i);
     });
   });

@@ -79,7 +79,7 @@ export function MyPrivateReport({
               <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
                   {mySoloReport.shared
-                    ? 'Shared with all parties in this check-in'
+                    ? 'Shared with everyone in this check-in'
                     : 'Private - only you can see this'}
                 </div>
                 <button
@@ -87,7 +87,7 @@ export function MyPrivateReport({
                   disabled={setSoloSharedMut.isPending}
                   style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
-                  {mySoloReport.shared ? 'Stop sharing' : 'Share with all parties'}
+                  {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
                 </button>
               </div>
             </div>
@@ -132,7 +132,7 @@ export function MyPrivateReport({
         <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
-            Your private report will become visible to all other parties on this check-in:
+            Your private report will become visible to everyone else in this check-in:
           </div>
           <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
             {otherParties.map((p) => (

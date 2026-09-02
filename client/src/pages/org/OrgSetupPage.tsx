@@ -18,7 +18,7 @@ export function OrgSetupPage() {
     mutationFn: () => authApi.updateProfile({ orgName: orgName.trim(), orgEmail: orgEmail.trim() }),
     onSuccess: (updated) => {
       updateUser(updated)
-      toast.success('Organization details saved')
+      toast.success('Organisation details saved')
       navigate('/grounds', { replace: true })
     },
     onError: () => toast.error('That did not save. Everything you entered is still here — check the details and try again.'),
@@ -64,7 +64,7 @@ export function OrgSetupPage() {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
       <div style={{ width: '100%', maxWidth: 480 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
-          Set up your organization
+          Set up your organisation
         </h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
           A few details before your team can start check-ins. Asked once, and you can change both later
@@ -73,7 +73,7 @@ export function OrgSetupPage() {
 
         <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '24px 22px' }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 6 }}>
-            Organization name
+            Organisation name
           </label>
           <input
             type="text"
@@ -88,7 +88,7 @@ export function OrgSetupPage() {
           />
 
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 6 }}>
-            Organization contact email
+            Organisation contact email
           </label>
           <input
             type="email"

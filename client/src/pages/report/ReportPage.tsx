@@ -12,6 +12,7 @@ import { alignmentLabel, alignmentShort } from '@/lib/alignment'
 import { personLabel, participantLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
+import { splitOutWhatWasWorkedOut } from '@/lib/which-of-this-was-worked-out'
 import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
@@ -35,6 +36,43 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
     retry: false,
   })
   const isClosed = data?.groundStatus === 'RESOLVED' || data?.groundStatus === 'CLOSED'
+
+  /**
+
+   * NOTHING SET IS ONE LINE, NOT A PANEL.
+
+   *
+
+   * This drew a full section - a heading, a "Current status" label and a sentence saying there
+
+   * was nothing - near the top of a report a lead scrolls 856px to read. A panel that says it
+
+   * has nothing to say takes the same space as one that does.
+
+   *
+
+   * It comes back whole the moment there is a resolution to show, which is when the lead is
+
+   * being asked to act on it. Same rule as the stat tiles: a count of nothing does not get a
+
+   * tile, and the signal returns the moment there is one.
+
+   */
+
+  if (!resolutionState && !data?.resolution) {
+
+    return (
+
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', padding: '2px 0' }}>
+
+        Resolution · not set yet
+
+      </div>
+
+    )
+
+  }
+
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
@@ -78,9 +116,6 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
             </div>
           )}
         </div>
-      )}
-      {!resolutionState && !data?.resolution && (
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>No resolution state set yet.</div>
       )}
     </div>
   )
@@ -204,13 +239,43 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
   )
 }
 
-function PatternBlock({ label, content, dark }: { label: string; content: string; dark?: boolean }) {
+function PatternBlock({ label, content, dark, inferences }: { label: string; content: string; dark?: boolean; inferences?: Array<{ id: string; text: string }> | null }) {
+  /*
+   * WHICH OF THIS NOBODY ACTUALLY SAID.
+   *
+   * This block reads as settled fact throughout, and some of it is: somebody wrote it in their own
+   * account. The rest the model worked out across two accounts. Both were set identically, so the
+   * person a report is about could end up arguing with a sentence nobody had written.
+   *
+   * The concluded ones are underlined and carry the words, so it is legible without colour and
+   * without hovering. Anything the model did not mark, or marked with a paraphrase that is not in
+   * the body verbatim, is left as ordinary text - see the matching note in the rule.
+   */
+  const pieces = splitOutWhatWasWorkedOut(content, inferences)
+  const anyWorkedOut = pieces.some(p => p.workedOut)
   return (
-    <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 11, padding: '15px 17px', marginBottom: 16 }}>
+    <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 8 }}>
         {label}
       </div>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{content}</p>
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>
+        {pieces.map((piece, i) => piece.workedOut ? (
+          <span
+            key={i}
+            style={{
+              textDecoration: 'underline',
+              textDecorationStyle: 'dotted',
+              textDecorationColor: 'var(--gw-green-b)',
+              textUnderlineOffset: 3,
+            }}
+          >{piece.text}</span>
+        ) : <span key={i}>{piece.text}</span>)}
+      </p>
+      {anyWorkedOut && (
+        <div style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(255,255,255,.72)' }}>
+          Underlined: worked out from what people wrote, not stated by anyone. You can correct it below.
+        </div>
+      )}
     </div>
   )
 }
@@ -257,7 +322,7 @@ function WhereTheRecordIsThin({ spots, nameFor }: {
   const people = Object.entries(spots).filter(([, list]) => list.length)
   if (!people.length) return null
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 4 }}>
         Where this picture is thin
       </div>
@@ -334,7 +399,7 @@ function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionTo
   /** A sanitiser that dropped all three leaves nothing to say, and an empty card says it badly. */
   if (!rows.length) return null
   return (
-    <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 11, padding: '15px 17px', marginBottom: 16 }}>
+    <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
       <Sec title="Before you talk to them" />
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
         Yours alone, and not part of the shared report. Nobody else is shown this.
@@ -388,7 +453,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
     },
   ]
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 11, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
       <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 10 }}>
         What this check-in can tell you
       </div>
@@ -482,7 +547,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
 }) {
   return (
     <div style={{
-      border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10,
+      border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10,
       borderLeft: `3px solid ${reached ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}`,
     }}>
       <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{title}</div>
@@ -500,7 +565,7 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
         </div>
       )}
       {recommendedMove && (
-        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
+        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
           <span style={{ fontSize: 9.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
           {recommendedMove}
         </div>
@@ -600,7 +665,10 @@ function HiddenContributorsSection({
     onSuccess: (_data, vars) => {
       setDone(prev => new Set(prev).add(vars.key))
       setOpenFor(null)
-      toast.success('Request sent to the initiator.')
+      /* "the initiator" is the schema's word for this person, not one anybody says out loud.
+         The server already tells people "the lead" when it refuses them,
+         so this matches that rather than adding a fifth way to name the same person. */
+      toast.success('Request sent to the lead.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not send the request. Try again.'),
   })
@@ -845,7 +913,7 @@ export function ReportBody({
   const isForming = !report.releasedAt
 
   const staleBanner = reportIsStale ? (
-    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
       Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own.
     </div>
   ) : null
@@ -879,7 +947,9 @@ export function ReportBody({
   // Real name if given, else roleAsDescribed, else a neutral descriptor -
   // never the bare role word ("Admin"/"Participant") and never a raw email
   // local-part, both of which read as a label rather than a person.
-  const adminHandle = adminParty ? participantLabel(adminParty) : 'the initiator'
+  /* The fallback is rendered, so it has to read like something a person would say. The bare
+     'the initiator' below, in `personFor`, is a KEY the model emits and is matched, never shown. */
+  const adminHandle = adminParty ? participantLabel(adminParty) : 'the lead'
 
   /**
    * A role label as the report stores it, turned into whoever it stands for.
@@ -1057,10 +1127,23 @@ export function ReportBody({
           {/* SHARED / GROUND REPORT CARD */}
           {(!solo || tab === 'shared') && (
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)', color: '#fff' }}>
-              <span style={{ fontSize: 13, fontWeight: 800 }}>Groundwork report</span>
-              <span style={{ fontSize: 11, opacity: 0.82 }}>for {adminHandle}</span>
-            </div>
+            {/**
+              * THE REPORT BEGINS ONCE.
+              *
+              * Standalone at `/grounds/:id/report` this line IS the beginning - nothing above it says
+              * whose check-in this is, so it stays there.
+              *
+              * Embedded, it is the second beginning. Measured on a real released report: the page header
+              * already names the check-in, the session and that the report went out, and then 856px lower
+              * this starts again with "Groundwork report for Lena Lead". A reader who has scrolled a full
+              * screen to reach the findings does not need to be told again which check-in they opened.
+              */}
+            {!embedded && (
+              <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)', color: '#fff' }}>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>Groundwork report</span>
+                <span style={{ fontSize: 11, opacity: 0.82 }}>for {adminHandle}</span>
+              </div>
+            )}
             <div style={{ padding: '16px 18px 18px' }}>
 
               {/*
@@ -1159,7 +1242,7 @@ export function ReportBody({
                         <AreaBlock key={i} title={area.title} note={area.note} reached />
                       ))
                     : agreements.map((a: string, i: number) => (
-                        <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10, borderLeft: '3px solid var(--gw-green-b)' }}>
+                        <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10, borderLeft: '3px solid var(--gw-green-b)' }}>
                           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{a}</div>
                         </div>
                       ))
@@ -1198,7 +1281,7 @@ export function ReportBody({
               )}
 
               {/* The full account, after the sharp part. W13-7. */}
-              <PatternBlock label="What we heard" content={report.sharedPicture} />
+              <PatternBlock label="What we heard" content={report.sharedPicture} inferences={report.inferences} />
 
               {report.centralQuestion && (
                 <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '10px 12px' }}>
@@ -1347,7 +1430,7 @@ export function ReportBody({
         {Array.isArray(eng.parties) && eng.parties.length > 0 && (
           <div style={{ marginTop: 32 }}>
             <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>On record</div>
-            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
               {eng.parties.map((p: any, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid var(--gw-bg)' : 'none', background: 'white' }}>
                   {/*
@@ -1373,13 +1456,27 @@ export function ReportBody({
                         ? `${p.sessions ?? 0} session${(p.sessions ?? 0) !== 1 ? 's' : ''}`
                         : 'checked in, no record'}
                     </span>
-                    {p.contributed && p.recordEntries > 0 && p.specificityLabel && (
-                      <span title="How concrete they were" style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
-                        background: p.specificityLabel === 'high' ? 'var(--gw-green-bg)' : p.specificityLabel === 'moderate' ? 'var(--gw-blue-bg)' : 'var(--gw-amber-bg)',
-                        color: p.specificityLabel === 'high' ? 'var(--gw-green-t)' : p.specificityLabel === 'moderate' ? 'var(--gw-navy)' : 'var(--gw-amber-t)' }}>
-                        {p.specificityLabel} specificity
-                      </span>
-                    )}
+                    {/*
+                      * A GRADE ON A NAMED COLLEAGUE, ON THE PAGE EVERYONE READS.
+                      *
+                      * This was a colour-coded badge - green, blue, amber - sitting beside a
+                      * person's name: "Lena Lead · 1 session · moderate specificity". The only
+                      * explanation was a `title` attribute, which most people never see and no
+                      * screen reader announces by default. Read on the page it says: here is how
+                      * well your colleague did.
+                      *
+                      * The report's own promise is that it shows where accounts agree or differ,
+                      * never anybody's raw answers. How concrete one person was is neither: it is
+                      * an assessment of them, published to the people they work with.
+                      *
+                      * Nothing is lost by taking it off this page. Each person keeps their own
+                      * specificity in My record, privately, where it is written as something to
+                      * act on - "your answers are getting more specific as this goes on" - rather
+                      * than a mark their colleagues can read.
+                      *
+                      * Who checked in and how many sessions they are on stays. That is a fact
+                      * about participation, not a judgement about a person.
+                      */}
                   </div>
                 </div>
               ))}
@@ -1393,7 +1490,7 @@ export function ReportBody({
 
         {/* Always-visible correction affordance (#21): the per-claim "Correct this"
             only appears when there are inferred claims, so make correction discoverable. */}
-        <div style={{ marginTop: 24, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ marginTop: 24, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Something not right in this report?</div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: myLatestCompletedSession != null ? 12 : 0 }}>
             {report.inferences && report.inferences.length > 0
