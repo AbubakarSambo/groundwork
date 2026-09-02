@@ -34,6 +34,7 @@ import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
+import { notTheWordParty } from './not-the-word-party';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -2094,9 +2095,15 @@ happened, and what is in the way.`;
      * opened their private report and read "Hafsah Jumare described their role" about themselves.
      */
     const readerLabel = viewerLabelOf(viewerParticipantId, parties);
+    /*
+     * `notTheWordParty` runs here, at the read, because the prompt rule forbidding it has been
+     * ignored since the day it was written - see the module. It sits inside `t` so it reaches
+     * exactly what names reach and nothing else: the label fields are already excluded by
+     * NEVER_NAMED below, for the same reason.
+     */
     const t = (v: any): any =>
       typeof v === 'string'
-        ? withoutDashes(withNames(v, visible, allLabels, { viewerLabel: readerLabel }))
+        ? notTheWordParty(withoutDashes(withNames(v, visible, allLabels, { viewerLabel: readerLabel })))
         : v;
     const walk = (v: any): any => {
       if (typeof v === 'string') return t(v);
