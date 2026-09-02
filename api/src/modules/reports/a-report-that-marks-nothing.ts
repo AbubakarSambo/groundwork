@@ -6,10 +6,16 @@
  * while their own bodies said things like "the current process is seen by both as likely to yield
  * four renewals this quarter", which nobody wrote. The mechanism existed and was dead.
  *
- * The old definition is why. It said an inference was anything that was "not a direct quote", and
- * rule 1 forbids quoting anybody at all - so the honest answer was "everything", which is as
- * useless to a reader as "nothing". The definition now turns on whether a participant actually
- * said it. This is the check that the answer is being given at all.
+ * The old definition asked whether a claim was "a direct quote from the record", which is a hard
+ * question to answer about a sentence you have just written in your own words - and the model
+ * answered it by marking nothing. The definition now asks something a writer can actually check:
+ * did a participant say this, or did I work it out. This is the check that an answer is given.
+ *
+ * A CORRECTION TO THE FIRST VERSION OF THIS FILE. It said rule 1 forbids quoting anyone, and used
+ * that to argue the old definition was self-contradictory. Rule 1 is PRESERVE SPECIFICS VERBATIM -
+ * the opposite. The never-quote rules belong to the post-report guide, and inside the synthesis
+ * they are scoped to leadership gaps and to lead-supplied context, not to the report at large. The
+ * empty arrays are real and measured; that explanation of them was not.
  *
  * IT IS DELIBERATELY NOT A HARD FAILURE. A report that marks nothing may be correct - a single
  * short check-in where the model only restates what one person wrote genuinely has no inferences.

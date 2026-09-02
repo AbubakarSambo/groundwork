@@ -176,8 +176,16 @@ export function oneWordForTheThing(text: string): string {
  * not in that list, so the phrase fails a check it does not deserve to fail. Removing the phrase
  * resolves both without teaching the suite to accept something the product forbids.
  */
+/**
+ * MID-SENTENCE TOO, WHICH IS WHERE IT WAS ACTUALLY HIDING.
+ *
+ * This only fired at the start of a sentence, so "That's a specific reason, and it's now in the
+ * record:" sailed through - the narration sat after a comma, which is exactly where a model puts it
+ * when the sentence has already begun. Fifty-one per cent of turns on the local database mentioned
+ * the record to the person whose work it was; this had been catching the tidy ones.
+ */
 const NARRATION_LEAD_IN =
-  /(?:^|(?<=[.!?]\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+now\s+(?:in|on)\s+the\s+record|your\s+record\s+(?:now\s+)?(?:shows|reflects)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
+  /(?:^|(?<=[.!?]\s)|(?<=,\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+now\s+(?:in|on)\s+the\s+record|your\s+record(?:\s+\w+){0,3}\s+(?:shows|reflects|says)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
 
 export function withoutRecordNarration(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+/);
@@ -191,6 +199,35 @@ export function withoutRecordNarration(text: string): string {
     return t.charAt(0).toUpperCase() + t.slice(1);
   });
   return kept.filter((s) => s.trim() !== '').join(' ');
+}
+
+/**
+ * THE SENTENCE THAT ONLY MARKS THE ANSWER.
+ *
+ * "That's a specific example, which is helpful." "That's a really important distinction." "Thank
+ * you for starting with that." A quarter of turns on the local database opened this way, and it is
+ * the single habit that made the product feel like an examiner: your answer is graded, then the
+ * next question is put.
+ *
+ * ONLY WHEN THE SENTENCE IS NOTHING ELSE, which is the same rule the narration stripper follows and
+ * for the same reason. "Eighteen percent of recurring revenue is a clear and specific impact" is
+ * also a grade, and it carries the eighteen per cent - dropping it would delete what the person
+ * said in order to fix how it was received. Those are the character sketch's job, not this one.
+ *
+ * So this removes the sentences that are pure mark and nothing more, and leaves anything with
+ * content in it alone even when the framing is wrong.
+ */
+const A_MARK_AND_NOTHING_ELSE =
+  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|thank you for\s+(?:that|starting|sharing)(?:\s+\w+){0,4}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
+
+export function withoutTheMark(text: string): string {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const kept = sentences.filter((sentence) => {
+    const bare = sentence.trim().replace(/^["']|["']$/g, '');
+    return !A_MARK_AND_NOTHING_ELSE.test(bare);
+  });
+  /* If every sentence was a mark, the turn said nothing - keep it rather than send an empty one. */
+  return kept.length ? kept.join(' ') : text;
 }
 
 export function forHumans(text: string | null | undefined): string {
@@ -213,6 +250,8 @@ export function forHumans(text: string | null | undefined): string {
   out = oneWordForTheThing(out);
   out = withoutQuotedQuestions(out);
   out = withoutRecordNarration(out);
+  /** After the narration strip: a mark and a narration often share the same sentence. */
+  out = withoutTheMark(out);
   /** Collapse whatever the removals left behind, without touching paragraph breaks. */
   return out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 }

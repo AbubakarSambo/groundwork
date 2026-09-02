@@ -47,6 +47,8 @@ import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-the
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
+import { howThisSounds } from './how-this-sounds';
+import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -693,7 +695,25 @@ export class ConversationService {
        * authenticated check-in exactly as it reached the entry chat - it simply was not the screen
        * that got photographed. `hadMarker` is still needed, so it is read separately.
        */
-      const stripped = { text: forHumans(rawReply), hadMarker: textHadCloseMarker(rawReply) };
+      /*
+       * QUOTATION MARKS ARE A CLAIM ABOUT WHOSE WORDS THESE ARE.
+       *
+       * Seen live: this person wrote "Sam is waiting on me and I know it." and the reply quoted her
+       * back with "iss". One letter, and it is the promise the whole product rests on. The truth is
+       * right here in `turns`, so a quoted phrase either appears in what she typed or it does not.
+       * An unmatched one loses its quotation marks and stays as reported speech - the sentence
+       * around it is nearly always right, and only the claim that these were her words is wrong.
+       */
+      const theirWords = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content);
+      const honest = withoutQuotesTheyDidNotSay(forHumans(rawReply), theirWords);
+      const misquoted = unmatchedQuotes(forHumans(rawReply), theirWords);
+      if (misquoted.length) {
+        this.logger.warn(
+          `Check-in ${checkIn.id}: reply quoted ${misquoted.length} phrase(s) this person did not write. ` +
+            `Marks removed. First: "${misquoted[0].slice(0, 120)}"`,
+        );
+      }
+      const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) };
       /**
        * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
        *
@@ -2477,6 +2497,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       },
     });
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
+
+    /*
+     * HOW THIS ONE SOUNDED.
+     *
+     * "It sounds like an examiner" is a real complaint and an unfalsifiable one, so the habits that
+     * produce it are counted per conversation instead. Measured across 79 turns before the voice
+     * work: a quarter opened by grading the answer, half said "the record" to the person whose work
+     * it was, three quarters ended on a question, and not one carried a view.
+     *
+     * Logged rather than enforced, and after the write so it can never affect whether a check-in
+     * completes. Two of the four cannot be enforced anyway - you cannot make a model have an
+     * opinion, and a rule demanding one would produce fakes.
+     */
+    this.prisma.conversationTurn
+      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI }, select: { content: true } })
+      .then((turns) => {
+        const sound = howThisSounds(turns.map((t) => t.content));
+        if (!sound.turns) return;
+        this.logger.log(
+          `Check-in ${checkIn.id} voice: ${sound.turns} turns, ` +
+            `${sound.judgesTheAnswer} graded the answer, ${sound.saysTheRecord} said the record, ` +
+            `${sound.endsOnAQuestion} ended on a question, ${sound.offersAView} offered a view.`,
+        );
+      })
+      .catch(() => undefined);
 
     // Learn how to talk to this person next time - style only, never content.
     // On completion rather than per message, so an abandoned session teaches
