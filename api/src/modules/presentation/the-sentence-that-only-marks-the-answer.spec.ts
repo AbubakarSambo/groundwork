@@ -67,3 +67,17 @@ describe('the sentence that only marks the answer', () => {
     expect(out).toContain('pricing approval process is the main blocker');
   });
 })
+
+describe('praise moves when you block it', () => {
+  it('drops praise of the person, which is what appeared once grading the answer was banned', () => {
+    /*
+     * Live, on the first turn after the ban: "That is the kind of honesty that makes problems
+     * solvable." The same act as "that's a specific example", now aimed at the person rather than
+     * their answer - which is worse in a product whose whole claim is that it does not read people.
+     */
+    const out = forHumans('You named your part before I asked. That is the kind of honesty that makes problems solvable. The pattern has not changed.');
+    expect(out).not.toMatch(/kind of honesty/i);
+    expect(out).toContain('You named your part before I asked');
+    expect(out).toContain('The pattern has not changed');
+  });
+});

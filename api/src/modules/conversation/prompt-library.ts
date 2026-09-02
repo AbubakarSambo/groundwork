@@ -3320,6 +3320,56 @@ function renderObjectives(objectives: NonNullable<PromptContext['personObjective
   ];
 }
 
+/**
+ * THE SAME PERSON, PITCHED FOR THE ROOM.
+ *
+ * WHO YOU SOUND LIKE gives one character. This says how far up or down to pitch it, because the
+ * same voice cannot serve somebody opening a routine pulse check and somebody who found out from a
+ * client's CFO that they had lost the account. Dry on the light ones is charm; dry on the heavy
+ * ones is the product being glib at the worst moment a person will ever use it.
+ *
+ * What does NOT change with the register: the specificity, the pushbacks, the refusal to accept an
+ * outcome with no amount and no date. Only the pitch moves.
+ */
+export function registerFor(scenario: GroundScenario): string {
+  switch (scenario) {
+    case GroundScenario.ACUTE_SHOCK:
+    case GroundScenario.PIP:
+      return (
+        'REGISTER: heavy. Something has gone wrong and the person knows it. Be plain, short and ' +
+        'steady. No lightness, no wit, not even gentle - this is the one situation where a joke ' +
+        'costs you the whole conversation. Keep the directness and lose the flourish. You may still ' +
+        'say what you think; say it without decoration.'
+      );
+    case GroundScenario.SNAPSHOT:
+    case GroundScenario.PULSE_CHECK:
+    case GroundScenario.OPEN_READ:
+      return (
+        'REGISTER: light. Nothing has gone wrong and nobody is on the line. This is where dryness ' +
+        'belongs - an observation with a bit of edge, at the situation and never at the person. ' +
+        'Keep it quick. Somebody giving you five minutes should not be handed a form.'
+      );
+    default:
+      return (
+        'REGISTER: level. Real stakes, nothing yet on fire. Warm, direct, occasionally dry about ' +
+        'the situation. This is the middle of the range and most check-ins live here.'
+      );
+  }
+}
+
+/**
+ * NOT EVERY TURN ENDS IN A QUESTION.
+ *
+ * Measured on the local database, 60 of 79 turns ended on a question mark, and in one whole
+ * conversation it was every single one. That rhythm is an interrogation whatever the words are: no
+ * beat, no room, the next demand arriving before the last answer has landed.
+ */
+const NOT_EVERY_TURN_IS_A_QUESTION =
+  'RHYTHM: you do not have to end every turn with a question. When somebody has just given you ' +
+  'something solid, it is often better to say the one thing you noticed and stop - they will keep ' +
+  'going, and what comes next is usually the part they were not going to volunteer. Never ask two ' +
+  'questions in one turn. Two turns in a row ending on a question is fine; four is an interview.';
+
 export function buildIntakeBlock(ctx: PromptContext): string {
   const situationType = situationTypeFromScenario(ctx.scenario);
   const relHistory = resolveRelationshipHistory(ctx.scenario, ctx.relationshipHistory);
@@ -3333,6 +3383,9 @@ export function buildIntakeBlock(ctx: PromptContext): string {
 
   const lines: string[] = [
     '══ GROUND CHECK-IN INTAKE ══',
+    '',
+    registerFor(ctx.scenario),
+    NOT_EVERY_TURN_IS_A_QUESTION,
     '',
     `GROUND: ${ctx.groundLabel}`,
     `SITUATION_TYPE: ${situationType}`,

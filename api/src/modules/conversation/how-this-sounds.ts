@@ -38,8 +38,16 @@ export type VoiceReading = {
  */
 const GRADING_ADJECTIVE =
   '(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)';
+/**
+ * PRAISE MOVES WHEN YOU BLOCK IT. Banning "that's a specific example" produced "that is the kind
+ * of honesty that makes problems solvable" on the very next live turn - the same act, now about
+ * the person rather than the answer, which is arguably worse in a product that must not read
+ * people.
+ */
+const PRAISE_NOUN =
+  '(?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity|perspective)';
 export const JUDGES_THE_ANSWER = new RegExp(
-  `(?:\\bis\\s+(?:a\\s+|an\\s+)?(?:really\\s+|very\\s+|quite\\s+)?(?:\\w+\\s+and\\s+)?${GRADING_ADJECTIVE}\\b` +
+  `(?:\\bthe kind of ${PRAISE_NOUN}\\b|\\bthat (?:is|'s) (?:real|genuine|rare)\\s+${PRAISE_NOUN}\\b|\\bis\\s+(?:a\\s+|an\\s+)?(?:really\\s+|very\\s+|quite\\s+)?(?:\\w+\\s+and\\s+)?${GRADING_ADJECTIVE}\\b` +
     `|^\\s*(?:and\\s+)?that(?:'s| is)\\s+(?:a\\s+|an\\s+)?(?:really\\s+|very\\s+|quite\\s+)?${GRADING_ADJECTIVE}\\b` +
     `|\\bthank you for\\b|\\bwell put\\b|\\bnicely put\\b)`,
   'i',
@@ -74,6 +82,11 @@ export function howThisSounds(turns: string[]): VoiceReading {
     judgesTheAnswer: said.filter((t) => JUDGES_THE_ANSWER.test(theOpening(t))).length,
     endsOnAQuestion: said.filter((t) => /\?\s*$/.test(t)).length,
     saysTheRecord: said.filter((t) => SAYS_THE_RECORD.test(t)).length,
-    offersAView: said.filter((t) => OFFERS_A_VIEW.test(t)).length,
+    /*
+     * A GRADE IS NOT A VIEW, even when it is shaped like one. "That is the kind of honesty that
+     * makes problems solvable" matched the view pattern, so praise was being counted as insight -
+     * the number would have gone up while the habit got worse.
+     */
+    offersAView: said.filter((t) => OFFERS_A_VIEW.test(t) && !JUDGES_THE_ANSWER.test(theOpening(t))).length,
   };
 }
