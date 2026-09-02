@@ -811,6 +811,27 @@ export function AppSidebar() {
                         }}>
                           {g.label}
                         </span>
+                        {/**
+                          * OFFERED ONLY TO SOMEBODY WHO CAN ACTUALLY RENAME IT.
+                          *
+                          * This pencil rendered for every user beside every check-in, with no role
+                          * condition at all. For most of its life that was harmless in the worst
+                          * way - renaming did nothing for anybody, so nobody found out.
+                          *
+                          * It works now, and it is the lead's call or an admin's, the same gate as
+                          * changing how long a check-in runs. So a participant clicking this got a
+                          * refusal from the server for a control the rail had offered them.
+                          *
+                          * The same question the server asks, asked before the button is drawn.
+                          *
+                          * MERGE NOTE. Two branches fixed this independently and the conflict was
+                          * real: staging asked the question inline here, this branch had moved it
+                          * into `who-may-rename-a-check-in` so the rail and the server share one
+                          * rule rather than two copies of it. The shared rule is kept - it is what
+                          * stops them drifting apart again, which is how the pencil came to be
+                          * offered to everybody in the first place - and staging's account of the
+                          * history is kept with it, because it is the better explanation.
+                          */}
                         {mayRename(g) && <button
                           className="gw-rename"
                           onClick={e => { e.preventDefault(); e.stopPropagation(); startRename(g) }}
