@@ -81,3 +81,23 @@ describe('praise moves when you block it', () => {
     expect(out).toContain('The pattern has not changed');
   });
 });
+
+describe('thanking somebody for answering is still marking their answer', () => {
+  it('drops it however the sentence is phrased', () => {
+    /*
+     * Live, with every earlier ban already in place: "That's the real reason, isn't it. Thank you
+     * for naming it." The pattern only knew "thank you for that / starting / sharing", and the
+     * model had simply reached for a different object. Praise does not stop when you block a
+     * phrasing; it finds another one.
+     */
+    for (const turn of [
+      'Thank you for naming it. Who are the two account managers?',
+      'Thank you for being straight about that. What happens next?',
+      'Thank you for sharing that. When did it start?',
+    ]) {
+      const out = forHumans(turn);
+      expect(out).not.toMatch(/thank you/i);
+      expect(out.length).toBeGreaterThan(10);
+    }
+  });
+});

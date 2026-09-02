@@ -218,7 +218,7 @@ export function withoutRecordNarration(text: string): string {
  * content in it alone even when the framing is wrong.
  */
 const A_MARK_AND_NOTHING_ELSE =
-  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|thank you for\s+(?:that|starting|sharing)(?:\s+\w+){0,4}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
+  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
 
 export function withoutTheMark(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+/);

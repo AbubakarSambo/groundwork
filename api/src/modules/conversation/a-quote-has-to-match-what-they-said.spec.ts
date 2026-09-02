@@ -46,6 +46,24 @@ describe('a quote has to match what they said', () => {
     expect(unmatchedQuotes(reply, THEIR_TURNS)).toEqual(['Sam iss waiting on me and I know it.']);
   });
 
+  it('catches a misquote wearing an unbalanced quotation mark', () => {
+    /*
+     * Live, with the paired check already running: `Board prep took mostt of last week" and in that
+     * trade-off, the pricing band lost.` One closing mark, no opening one, and one letter wrong. The
+     * pair matcher never saw it, so it shipped and nothing was logged.
+     */
+    const said = ['Board prep took most of last week and I told myself the pricing band could wait.'];
+    const reply = 'Board prep took mostt of last week" and in that trade-off, the pricing band lost.';
+    expect(unmatchedQuotes(reply, said)).toEqual(['Board prep took mostt of last week']);
+    expect(withoutQuotesTheyDidNotSay(reply, said)).not.toContain('"');
+  });
+
+  it('leaves an unbalanced mark alone when the words really are theirs', () => {
+    const said = ['Board prep took most of last week and the band could wait.'];
+    const reply = 'Board prep took most of last week" and that is the trade-off.';
+    expect(unmatchedQuotes(reply, said)).toEqual([]);
+  });
+
   it('says nothing when there is nothing quoted, and survives an empty conversation', () => {
     expect(unmatchedQuotes('No quotation marks here at all.', THEIR_TURNS)).toEqual([]);
     expect(unmatchedQuotes('He said "something they never wrote down anywhere"', [])).toEqual(['something they never wrote down anywhere']);
