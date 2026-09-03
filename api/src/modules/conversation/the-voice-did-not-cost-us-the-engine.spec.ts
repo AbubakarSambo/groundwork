@@ -155,3 +155,31 @@ describe('the misquote guard is actually in the path', () => {
     expect(src).toMatch(/turns\.filter\(\(t\) => t\.role !== TurnRole\.AI\)/);
   });
 });
+
+/**
+ * And the rhythm nudge is on the path, reading the real history rather than being a rule nobody
+ * consults. Same reason as everything else in this file: a check that nothing calls is a comment.
+ */
+describe('the rhythm nudge reads what actually happened', () => {
+  const src = require('fs')
+    .readFileSync(__dirname + '/conversation.service.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ');
+
+  it('looks at this check-in\'s own last three AI turns', () => {
+    expect(src).toMatch(/tooManyQuestionsInARow\(rows\.map\(\(r\) => r\.content\)\.reverse\(\)\)/);
+    /* Asserted as two facts rather than one span: the first version wanted a comma straight after
+       TurnRole.AI and the code closes a brace there, so it failed on punctuation, not on substance. */
+    expect(src).toMatch(/checkInId: checkIn\.id, role: TurnRole\.AI/);
+    expect(src).toMatch(/take: 3,/);
+  });
+
+  it('and the line it produces goes into the prompt', () => {
+    expect(src).toMatch(/coachingBlock, rhythmNow, dynamicContext/);
+  });
+
+  it('never removes a question from a written turn, because that is the probe', () => {
+    /* The tempting enforcement is the wrong one: a warmer chat that asks for less is the failure. */
+    expect(src).not.toMatch(/replace\([^)]*\\\?[^)]*''\)/);
+  });
+});

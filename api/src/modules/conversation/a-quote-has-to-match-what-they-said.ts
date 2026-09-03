@@ -36,10 +36,35 @@ function comparable(text: string): string {
 /** Below this, a quoted run is a turn of phrase rather than an attributed statement. */
 const LONG_ENOUGH_TO_BE_A_QUOTE = 5;
 
+/**
+ * AN UNBALANCED QUOTE HIDES A MISQUOTE BEHIND BAD PUNCTUATION.
+ *
+ * Seen live, after the paired check was already in place: `Board prep took mostt of last week" and
+ * in that trade-off...` - a closing mark with no opening one, wrapped around a sentence the person
+ * had written with one fewer T. The pair matcher never saw it, so the misquote shipped and nothing
+ * was even logged.
+ *
+ * When the marks do not pair up, the run before the stray closing mark is treated as the claim.
+ * That is what a reader sees anyway: everything up to that quotation mark reads as quoted.
+ */
+function unbalancedClaim(text: string): string | null {
+  const marks = (text.match(/"/g) ?? []).length;
+  if (marks !== 1) return null;
+  const upTo = text.slice(0, text.indexOf('"')).trim();
+  /* Only the last sentence of it - the stray mark closes a phrase, never the whole paragraph. */
+  const last = upTo.split(/(?<=[.!?])\s+/).pop() ?? '';
+  return last.split(/\s+/).length >= LONG_ENOUGH_TO_BE_A_QUOTE ? last : null;
+}
+
 export function unmatchedQuotes(reply: string, whatTheySaid: string[]): string[] {
   const haystack = comparable(whatTheySaid.join(' • '));
   const out: string[] = [];
-  for (const m of reply.replace(SMART, (x) => ('“”'.includes(x) ? '"' : "'")).matchAll(/"([^"]{2,400})"/g)) {
+  const flat = reply.replace(SMART, (x) => ('“”'.includes(x) ? '"' : "'"));
+
+  const stray = unbalancedClaim(flat);
+  if (stray && !haystack.includes(comparable(stray))) out.push(stray);
+
+  for (const m of flat.matchAll(/"([^"]{2,400})"/g)) {
     const quoted = m[1].trim();
     if (quoted.split(/\s+/).length < LONG_ENOUGH_TO_BE_A_QUOTE) continue;
     if (!haystack.includes(comparable(quoted))) out.push(quoted);
@@ -56,6 +81,8 @@ export function withoutQuotesTheyDidNotSay(reply: string, whatTheySaid: string[]
     for (const [open, close] of [['"', '"'], ['“', '”']]) {
       out = out.split(`${open}${bad}${close}`).join(bad);
     }
+    /* The unbalanced case: the claim has no opening mark, so only the stray closer comes off. */
+    for (const close of ['"', '”']) out = out.split(`${bad}${close}`).join(bad);
   }
   return out;
 }
