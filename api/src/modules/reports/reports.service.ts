@@ -1689,7 +1689,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * how many accounts differed. No score and no direction: whether that is improvement is the
      * reader's judgement, and an arrow here would be a rating.
      */
-    return { rounds: kept, moved: howThisHasMoved(kept as any) };
+    /*
+     * THE SAME RULES THE REPORT ITSELF GETS. This returns stored report text straight from the
+     * column, and for a while it was the last place on the page still saying "Both parties agree"
+     * while the report tab beside it said "Both agree". Four endpoints serve this text and only the
+     * report's own read had the rule; this is one of the three that did not.
+     */
+    const cleaned = kept.map((round: any) => ({
+      ...round,
+      sharedPicture: typeof round.sharedPicture === 'string' ? notTheWordParty(round.sharedPicture) : round.sharedPicture,
+    }));
+    const moved = howThisHasMoved(cleaned as any).map((m: any) => ({
+      ...m,
+      says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
+    }));
+    return { rounds: cleaned, moved };
   }
 
   /**
