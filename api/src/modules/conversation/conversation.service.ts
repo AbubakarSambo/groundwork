@@ -49,6 +49,7 @@ import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
+import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1771,9 +1772,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
+    /*
+     * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
+     *
+     * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
+     * ended on a question before it, 80% after. A description of its own last three turns is harder
+     * to read past than a preference it met half an hour ago. Not text surgery - stripping a
+     * trailing question would take out the probe, and the probe is the product.
+     */
+    const rhythmNow = await this.prisma.conversationTurn
+      .findMany({
+        where: { checkInId: checkIn.id, role: TurnRole.AI },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { content: true },
+      })
+      .then((rows) => (tooManyQuestionsInARow(rows.map((r) => r.content).reverse()) ? landThisOneInstead() : ''))
+      .catch(() => '');
+
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /**
