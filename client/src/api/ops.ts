@@ -375,6 +375,81 @@ export interface OpsMoat {
   untouched: string[]
 }
 
+export interface OpsLedger {
+  person: { key: string; displayName: string; functionalRole: string }
+  note: string
+  origination: {
+    qualifiedOpportunities: number
+    pipelineValue: number
+    payingClients: number
+    mrr: number
+    arr: number
+    cashCollected: number
+    retained3Month: number
+    retained6Month: number
+    retained12Month: number
+    creditsEarned: number
+    creditsPossible: number
+    clients: Array<{ company: string; opportunity: string; stage: string; cash: number; credit: string }>
+  }
+  positioning: {
+    introductions: number
+    qualifiedAccess: number
+    qualifiedOpportunities: number
+    payingClients: number
+    revenue: number
+    retained6Month: number
+  }
+  notCounting: Array<{ opportunity: string; company: string; why: string | null }>
+}
+
+export interface OpsShareOfRevenue {
+  total: number
+  unattributed: number
+  says: string
+  rows: Array<{ person: string; personKey: string; revenue: number; share: number | null; clients: number }>
+}
+
+export interface OpsCommercialOpportunity {
+  id: string
+  name: string
+  stage: string
+  originatorState: string
+  positioningState: string
+  opportunityOriginatorId: string | null
+  positioningSourceId: string | null
+  estimatedContractValue: string | null
+  actualMrr: string | null
+  firstPaymentAt: string | null
+  nextAction: string | null
+  nextActionDueAt: string | null
+  company: { key: string; name: string }
+  payments: Array<{ amount: string; paidAt: string }>
+}
+
+export interface OpsClaim {
+  id: string
+  claimant: string
+  role: string
+  company: string
+  opportunity: string
+  claimedBasis: string
+  evidenceUrl: string | null
+  recordCreatedAt: string
+  claimedAt: string
+}
+
+export interface OpsPositioningRecord {
+  id: string
+  contributor: string | null
+  personOrNetwork: string
+  organization: string | null
+  accessType: string
+  stage: string
+  openedAt: string
+  evidenceUrl: string | null
+}
+
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
@@ -397,6 +472,33 @@ export const opsApi = {
 
   company: (key: string) =>
     apiClient.get<OpsCompanyDetail>(`/ops/companies/${key}`, QUIET).then((r) => r.data),
+  ledger: (personKey: string, from?: string, to?: string) =>
+    apiClient
+      .get<OpsLedger>(`/ops/commercial/ledger/${personKey}`, { ...QUIET, params: { from, to } })
+      .then((r) => r.data),
+  shareOfNewRevenue: (from?: string, to?: string) =>
+    apiClient
+      .get<OpsShareOfRevenue>('/ops/commercial/share-of-new-revenue', { ...QUIET, params: { from, to } })
+      .then((r) => r.data),
+  commercialPipeline: () =>
+    apiClient.get<OpsCommercialOpportunity[]>('/ops/commercial/pipeline', QUIET).then((r) => r.data),
+  openCommercial: (body: { companyKey: string; name: string; estimatedMrr?: number; estimatedContractValue?: number }) =>
+    apiClient.post('/ops/commercial/pipeline', body, QUIET).then((r) => r.data),
+  advanceCommercial: (id: string, stage: string) =>
+    apiClient.patch(`/ops/commercial/pipeline/${id}/stage`, { stage }, QUIET).then((r) => r.data),
+  recordCommercialPayment: (id: string, body: { amount: number; paidAt: string; reference?: string }) =>
+    apiClient.post(`/ops/commercial/pipeline/${id}/payments`, body, QUIET).then((r) => r.data),
+  claimContribution: (id: string, body: { role: string; claimedBasis: string; evidenceUrl?: string }) =>
+    apiClient.post(`/ops/commercial/pipeline/${id}/claims`, body, QUIET).then((r) => r.data),
+  claims: () => apiClient.get<OpsClaim[]>('/ops/commercial/claims', QUIET).then((r) => r.data),
+  decideClaim: (id: string, body: { state: string; note?: string; insteadPersonId?: string }) =>
+    apiClient.patch(`/ops/commercial/claims/${id}`, body, QUIET).then((r) => r.data),
+  positioningRecords: () =>
+    apiClient.get<OpsPositioningRecord[]>('/ops/commercial/positioning', QUIET).then((r) => r.data),
+  openPositioning: (body: { personOrNetwork: string; organization?: string; accessType: string; evidenceUrl?: string }) =>
+    apiClient.post('/ops/commercial/positioning', body, QUIET).then((r) => r.data),
+  advancePositioning: (id: string, stage: string) =>
+    apiClient.patch(`/ops/commercial/positioning/${id}/stage`, { stage }, QUIET).then((r) => r.data),
   pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline', QUIET).then((r) => r.data),
   deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments', QUIET).then((r) => r.data),
   campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns', QUIET).then((r) => r.data),

@@ -25,6 +25,10 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/spend', name: 'Spend', capability: 'spend:submit', group: 'Work' },
 
   { path: '/ops/sales', name: 'Pipeline', capability: 'sales:read', group: 'Selling' },
+  { path: '/ops/commercial', name: 'Commercial', capability: 'sales:read', group: 'Selling' },
+  { path: '/ops/contribution', name: 'Contribution', capability: 'sales:read', group: 'Selling' },
+  { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Selling' },
+  { path: '/ops/attribution', name: 'Attribution review', capability: 'commercial:approve', group: 'Selling' },
   { path: '/ops/marketing', name: 'Marketing', capability: 'marketing:read', group: 'Selling' },
   { path: '/ops/deployment', name: 'Deployment', capability: 'deployment:read', group: 'Selling' },
 

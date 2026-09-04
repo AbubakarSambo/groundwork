@@ -44,6 +44,10 @@ export const BOARDS: BoardDefinition[] = [
       'sprint.companies_onboarded',
       'product.use_cases_supported',
       'approvals.pending',
+      'commercial.claims_waiting',
+      'commercial.new_customers',
+      'commercial.cash_collected',
+      'commercial.attribution_unresolved',
       'commitments.blocked',
       'commitments.missed_last_cycle',
       'fundraise.pipeline',
@@ -59,11 +63,21 @@ export const BOARDS: BoardDefinition[] = [
     key: 'sales',
     name: 'Selling and onboarding',
     answers: 'Who am I talking to, what have I not followed up, and who is stuck getting live?',
+    /**
+     * Ordered as somebody actually asks: what came in, what it is worth, what is
+     * not being followed, and whether anybody has said who created it.
+     *
+     * `commercial.attribution_unresolved` is on this board rather than tucked
+     * into an admin corner on purpose. It is the number that decides whether the
+     * share-of-revenue figures mean anything, and a system whose attribution is
+     * mostly blank should say so where people look rather than where they do not.
+     */
     metrics: [
-      'sales.new_leads_contacted',
-      'sales.meetings_held',
-      'sales.conversions',
-      'sales.conversion_rate',
+      'commercial.new_customers',
+      'commercial.cash_collected',
+      'commercial.retained_6_month',
+      'commercial.attribution_unresolved',
+      'positioning.access_created',
       'sales.overdue_follow_ups',
       'sales.no_next_action',
       'marketing.leads_generated',
@@ -71,7 +85,13 @@ export const BOARDS: BoardDefinition[] = [
       'deployment.blocked',
       'deployment.days_to_onboard',
     ],
-    personalPanels: ['your-commitments'],
+    /*
+     * Sahar's own commercial contribution, held apart from the function above
+     * it. The function is hers to run; the contribution is only what she
+     * personally originated, and putting them in one list is exactly the
+     * conflation this system exists to prevent.
+     */
+    personalPanels: ['your-commitments', 'your-commercial-contribution'],
     landsFor: ['sales:write'],
   },
   {

@@ -170,3 +170,47 @@ describe('one person doing both things', () => {
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
+
+describe('the words on the page', () => {
+  /**
+   * The brief is explicit and it is not decoration: this is not a leaderboard,
+   * a ranking, a top performer or a scoreboard. Those words turn a record meant
+   * to make a conversation about contribution possible into internal
+   * competition, and the difference is entirely in the language.
+   */
+  const pagesDir = join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'ops');
+  const apiDir = __dirname;
+
+  /* Specs excluded, this one included. It holds the banned words in its own
+     list, so scanning itself finds every one of them and the rule passes on
+     nothing but its own text. */
+  const readAll = (dir: string) =>
+    readdirSync(dir)
+      .filter((f) => /\.tsx?$/.test(f) && !/\.spec\./.test(f))
+      .map((f) => readFileSync(join(dir, f), 'utf8'))
+      .join('\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it.each(['leaderboard', 'ranking', 'top performer', 'scoreboard', 'winner'])(
+    'never says "%s"',
+    (banned) => {
+      const everything = (readAll(pagesDir) + readAll(apiDir)).toLowerCase();
+      expect(everything).not.toContain(banned);
+    },
+  );
+
+  it('and the ledger always says whether commercial acquisition is that role', () => {
+    /**
+     * A page of zeroes with no explanation reads as a verdict. For most of this
+     * team commercial acquisition is not their job, and a contributor should not
+     * have to infer that from an empty row.
+     */
+    const controller = readFileSync(join(apiDir, 'ops-commercial.controller.ts'), 'utf8');
+    expect(controller).toContain('Commercial acquisition is not part of this role');
+    expect(controller).toContain('Commercial acquisition is part of this role');
+  });
+});
+
+import { readdirSync } from 'fs';

@@ -71,11 +71,21 @@ describe('a board computed for one person', () => {
   });
 
   it('and drops the ones they may not, rather than showing them empty', async () => {
+    /**
+     * Asserted against the CAPABILITY each metric declares, not against its
+     * name. The first version checked that every visible key started with
+     * `sales.` - which was true, and was a proxy: the moment commercial and
+     * positioning metrics joined that board, all of them readable with
+     * sales:read, a correct board failed a test that had nothing to say about
+     * it. A rule about permissions has to read permissions.
+     */
     const board = await service.board(person(['sales:read']), 'sales', {
       from: new Date('2026-09-01'),
       to: new Date('2026-09-30'),
     });
-    expect(board.numbers.every((n) => n.key.startsWith('sales.'))).toBe(true);
+
+    const shown = board.numbers.map((n) => METRICS_BY_KEY.get(n.key)!);
+    expect(shown.every((m) => m.capability === 'sales:read')).toBe(true);
     expect(board.hiddenFromYou.length).toBeGreaterThan(0);
   });
 

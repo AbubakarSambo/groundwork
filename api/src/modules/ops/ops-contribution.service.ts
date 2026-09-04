@@ -278,10 +278,14 @@ export class OpsContributionService {
       total,
       unattributed,
       rows: rows.sort((a, b) => b.revenue - a.revenue),
+      /* Money reads as money. "8200 attributed across 2" is a sentence somebody
+         has to decode, in the place they look first. */
       says:
         total === 0
           ? 'No attributed revenue in this window'
-          : `${total} attributed across ${rows.length}${unattributed > 0 ? `, and ${unattributed} not attributed to anybody` : ''}`,
+          : `$${total.toLocaleString()} attributed across ${rows.length} ${rows.length === 1 ? 'person' : 'people'}${
+              unattributed > 0 ? `, and $${unattributed.toLocaleString()} not attributed to anybody` : ''
+            }`,
     };
   }
 }

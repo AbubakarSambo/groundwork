@@ -681,6 +681,129 @@ export const METRICS: MetricDefinition[] = [
       };
     },
   },
+  {
+    key: 'commercial.new_customers',
+    label: 'New paying customers',
+    shape: 'count',
+    capability: 'sales:read',
+    counts: 'Opportunities whose first payment arrived inside the window.',
+    async compute(prisma, window) {
+      const rows = await prisma.opsCommercialOpportunity.findMany({
+        where: { firstPaymentAt: within(window) },
+        include: { company: true },
+      });
+      return {
+        value: rows.length,
+        unit: 'customers',
+        rows: rows.map((r) => ({ company: r.company.name, mrr: Number(r.actualMrr ?? 0), since: r.firstPaymentAt })),
+        says: `${rows.length} started paying`,
+      };
+    },
+  },
+  {
+    key: 'commercial.cash_collected',
+    label: 'Cash collected',
+    shape: 'sum',
+    capability: 'sales:read',
+    counts: 'Money that actually arrived inside the window. Not contract value, not pipeline.',
+    async compute(prisma, window) {
+      const rows = await prisma.opsCommercialPayment.findMany({
+        where: { paidAt: within(window) },
+        include: { opportunity: { include: { company: true } } },
+        orderBy: { paidAt: 'desc' },
+      });
+      return {
+        value: rows.reduce((sum, r) => sum + Number(r.amount), 0),
+        unit: 'USD',
+        rows: rows.map((r) => ({ company: r.opportunity.company.name, amount: Number(r.amount), paidAt: r.paidAt })),
+        says: rows.length === 0 ? 'Nothing arrived in this window' : `${rows.length} payments`,
+      };
+    },
+  },
+  {
+    key: 'commercial.retained_6_month',
+    label: 'Clients past six months',
+    shape: 'count',
+    capability: 'sales:read',
+    counts: 'Clients still paying six months after their first payment. The point at which a client value credit is fully earned.',
+    async compute(prisma) {
+      const rows = await prisma.opsCommercialOpportunity.findMany({
+        where: { stage: { in: ['RETAINED_6_MONTH', 'RETAINED_12_MONTH'] } },
+        include: { company: true },
+      });
+      return {
+        value: rows.length,
+        unit: 'clients',
+        rows: rows.map((r) => ({ company: r.company.name, mrr: Number(r.actualMrr ?? 0), since: r.firstPaymentAt })),
+        says: rows.length === 0 ? 'Nobody has reached six months yet' : `${rows.length} past six months`,
+      };
+    },
+  },
+  {
+    key: 'commercial.attribution_unresolved',
+    label: 'Opportunities nobody has claimed',
+    shape: 'count',
+    capability: 'sales:read',
+    counts: 'Opportunities where nobody has established who created them. Not an error - the honest state until somebody says.',
+    async compute(prisma) {
+      /*
+       * Ignores the window on purpose. An opportunity nobody has attributed is
+       * not a fact about a fortnight, and it is the number that decides whether
+       * the share-of-revenue figures mean anything.
+       */
+      const rows = await prisma.opsCommercialOpportunity.findMany({
+        where: { originatorState: 'NEEDS_REVIEW' },
+        include: { company: true },
+      });
+      return {
+        value: rows.length,
+        unit: 'opportunities',
+        rows: rows.map((r) => ({ company: r.company.name, opportunity: r.name, stage: r.stage })),
+        says:
+          rows.length === 0
+            ? 'Everything has somebody recorded as having created it'
+            : `${rows.length} with nobody recorded as having created them`,
+      };
+    },
+  },
+  {
+    key: 'commercial.claims_waiting',
+    label: 'Attribution awaiting review',
+    shape: 'count',
+    capability: 'commercial:approve',
+    counts: 'Claims of contribution that nobody has decided.',
+    async compute(prisma) {
+      const rows = await prisma.opsAttributionClaim.findMany({
+        where: { state: 'CLAIMED' },
+        include: { opportunity: { include: { company: true } } },
+        orderBy: { createdAt: 'asc' },
+      });
+      return {
+        value: rows.length,
+        unit: 'claims',
+        rows: rows.map((r) => ({ company: r.opportunity.company.name, role: r.role, basis: r.claimedBasis })),
+        says: rows.length === 0 ? 'Nothing waiting' : `${rows.length} waiting on you`,
+      };
+    },
+  },
+  {
+    key: 'positioning.access_created',
+    label: 'Access that reached qualified',
+    shape: 'count',
+    capability: 'sales:read',
+    counts: 'Positioning records that reached qualified access or further. An introduction on its own is not counted here.',
+    async compute(prisma) {
+      const rows = await prisma.opsPositioningRecord.findMany({
+        where: { stage: { in: ['QUALIFIED_ACCESS', 'OPPORTUNITY_CREATED', 'COMMERCIAL_OUTCOME'] } },
+      });
+      return {
+        value: rows.length,
+        unit: 'relationships',
+        rows: rows.map((r) => ({ who: r.personOrNetwork, organization: r.organization, stage: r.stage })),
+        says: `${rows.length} reached qualified access`,
+      };
+    },
+  },
 ];
 
 export const METRICS_BY_KEY = new Map(METRICS.map((m) => [m.key, m]));
