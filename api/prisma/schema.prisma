@@ -3943,9 +3943,11 @@ model OpsPerson {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  grants             OpsGrant[]             @relation("OpsGrantHolder")
-  attributions       OpsAttribution[]       @relation("OpsAttributionContributor")
-  contributorTargets OpsContributorTarget[] @relation("OpsContributorTargetHolder")
+  grants             OpsGrant[]               @relation("OpsGrantHolder")
+  attributions       OpsAttribution[]         @relation("OpsAttributionContributor")
+  positioning        OpsPositioningRecord[]   @relation("OpsPositioningContributor")
+  agreement          OpsContributorAgreement? @relation("OpsContributorAgreementHolder")
+  contributorTargets OpsContributorTarget[]   @relation("OpsContributorTargetHolder")
 
   @@index([active])
   @@map("ops_people")
@@ -4053,10 +4055,11 @@ model OpsCompany {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  attributions  OpsAttribution[]
-  useCases      OpsClientUseCase[]
-  deployments   OpsDeployment[]
-  opportunities OpsSalesOpportunity[]
+  attributions            OpsAttribution[]
+  useCases                OpsClientUseCase[]
+  deployments             OpsDeployment[]
+  opportunities           OpsSalesOpportunity[]
+  commercialOpportunities OpsCommercialOpportunity[]
 
   @@index([stage])
   @@index([sprintPeriodId])
@@ -4965,4 +4968,276 @@ model OpsMoatEntry {
 
   @@index([componentId, builtAt])
   @@map("ops_moat_entries")
+}
+
+// ===========================================================================
+// COMMERCIAL CONTRIBUTION AND ATTRIBUTION
+//
+// What each person actually created, kept apart from what they are responsible
+// for. The distinction is the whole system:
+//
+//   Company performance is not personal contribution.
+//   Function ownership is not personal attribution.
+//   Operational involvement is not origination.
+//
+// Sahar owns Sales and Market Acquisition. That means the health of the
+// function is hers. It does NOT mean a client somebody else originated counts
+// toward her personal target, and it does not mean a contributor with no
+// commercial contribution is underperforming - commercial acquisition is not
+// their job.
+//
+// There are exactly two contribution roles, and no others. No closer, no sales
+// owner, no supported-the-sale, no helped-with-follow-up. Categories like those
+// exist so that people can claim a piece of a deal for having been nearby, and
+// every one of them makes the record less true.
+// ===========================================================================
+
+/// The commercial pipeline, from first contact to a client who stayed a year.
+///
+/// Retention is in the stages rather than a separate flag because a client who
+/// paid once and left is a different commercial outcome from one who is still
+/// paying at six months, and the pipeline should say which.
+enum OpsCommercialStage {
+  LEAD
+  QUALIFIED
+  DEMO_DISCOVERY
+  PROPOSAL
+  VERBAL_YES
+  PAYING
+  RETAINED_3_MONTH
+  RETAINED_6_MONTH
+  RETAINED_12_MONTH
+  LOST
+}
+
+/// How far a positioning relationship has got.
+///
+/// The three middle stages are the point. An introduction is not a commercial
+/// outcome, a meeting is not a commercial outcome, and being connected to
+/// somebody important is not a commercial outcome - so the funnel records each
+/// separately and the value is read from what came out of the far end.
+enum OpsPositioningStage {
+  TARGET
+  INTRODUCTION
+  MEETING
+  QUALIFIED_ACCESS
+  OPPORTUNITY_CREATED
+  COMMERCIAL_OUTCOME
+  /// Went nowhere. Kept rather than deleted: an introduction that produced
+  /// nothing is a fact about the introduction, and hiding it would make every
+  /// contributor's funnel look better than it was.
+  CLOSED
+}
+
+/// Whether a claim of contribution has been looked at.
+///
+/// Attribution locks for ordinary users once an opportunity is QUALIFIED. Admin
+/// can still change it, and every change stays in the history - the point is to
+/// stop retrospective claims, not to stop corrections.
+enum OpsAttributionState {
+  /// Nobody has said who created this. The honest state for anything imported
+  /// or historical: we do not infer origination from who typed the record.
+  NEEDS_REVIEW
+  CLAIMED
+  APPROVED
+  REJECTED
+}
+
+/// The two contribution roles. There are no others, deliberately.
+enum OpsContributionRole {
+  /// Who created the strategic access that ultimately produced this.
+  POSITIONING_SOURCE
+  /// Who actually generated the qualified commercial opportunity.
+  OPPORTUNITY_ORIGINATOR
+}
+
+/// A commercial opportunity, with who created it and what it turned into.
+model OpsCommercialOpportunity {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  name            String
+  opportunityType String? @map("opportunity_type")
+
+  stage OpsCommercialStage @default(LEAD)
+
+  /// WHO CREATED THIS. Both nullable, and both meaning something specific.
+  ///
+  /// A null originator is NEEDS_REVIEW, not "the person who owns sales". We do
+  /// not infer origination from who created the record, who attended the
+  /// meeting, who sent the proposal or who owns the function.
+  positioningSourceId     String?             @map("positioning_source_id")
+  opportunityOriginatorId String?             @map("opportunity_originator_id")
+  attributionState        OpsAttributionState @default(NEEDS_REVIEW) @map("attribution_state")
+  attributionLockedAt     DateTime?           @map("attribution_locked_at")
+
+  /// Where the positioning came from, when it came from a tracked relationship.
+  positioningRecordId String? @map("positioning_record_id")
+
+  /// WHO DOES THE WORK. Operational, and it creates no attribution whatsoever.
+  nextAction        String?   @map("next_action")
+  nextActionOwnerId String?   @map("next_action_owner_id")
+  nextActionDueAt   DateTime? @map("next_action_due_at")
+
+  /// Projected. Shown for pipeline, and it can never earn a credit.
+  estimatedMrr           Decimal? @map("estimated_mrr") @db.Decimal(12, 2)
+  estimatedContractValue Decimal? @map("estimated_contract_value") @db.Decimal(14, 2)
+
+  /// Actual. What credits are computed from.
+  actualMrr           Decimal?  @map("actual_mrr") @db.Decimal(12, 2)
+  actualContractValue Decimal?  @map("actual_contract_value") @db.Decimal(14, 2)
+  firstPaymentAt      DateTime? @map("first_payment_at")
+  /// The date they stopped, when they stopped. Null while they are still paying.
+  churnedAt           DateTime? @map("churned_at")
+
+  currency String @default("USD")
+
+  evidenceUrl String? @map("evidence_url")
+  notes       String? @db.Text
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lostAt     DateTime? @map("lost_at")
+  lostReason String?   @map("lost_reason") @db.Text
+
+  company  OpsCompany             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payments OpsCommercialPayment[]
+  claims   OpsAttributionClaim[]
+
+  @@index([stage])
+  @@index([opportunityOriginatorId, stage])
+  @@index([positioningSourceId])
+  @@index([attributionState])
+  @@map("ops_commercial_opportunities")
+}
+
+/// Cash actually collected. Entered by hand until a payment provider is wired.
+///
+/// Separate from the opportunity's own amounts because a contract value is one
+/// number and what arrived is a series of them - and every credit, every
+/// revenue share and every retention milestone is computed from what arrived.
+model OpsCommercialPayment {
+  id            String @id @default(uuid())
+  opportunityId String @map("opportunity_id")
+
+  amount   Decimal  @db.Decimal(12, 2)
+  currency String   @default("USD")
+  paidAt   DateTime @map("paid_at")
+
+  /// Where it can be seen: a Stripe id, a bank reference, an invoice number.
+  reference String?
+  /// `manual` today. When a provider is wired this says which one, so nobody
+  /// has to guess whether a figure was typed or observed.
+  source    String  @default("manual")
+
+  recordedById String?  @map("recorded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  opportunity OpsCommercialOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, paidAt])
+  @@map("ops_commercial_payments")
+}
+
+/// Somebody says they created something, and somebody else decides.
+///
+/// Every claim is kept, decided or not, with what it was based on and who
+/// decided. A claim that was modified keeps the original: the history is the
+/// thing that makes attribution defensible in a conversation about equity, and
+/// a record that only holds the current answer cannot support one.
+model OpsAttributionClaim {
+  id            String @id @default(uuid())
+  opportunityId String @map("opportunity_id")
+
+  claimantId String              @map("claimant_id")
+  role       OpsContributionRole
+
+  /// What they say it was based on, in their words.
+  claimedBasis String  @map("claimed_basis") @db.Text
+  evidenceUrl  String? @map("evidence_url")
+
+  state OpsAttributionState @default(CLAIMED)
+
+  decidedById        String?   @map("decided_by_id")
+  decidedAt          DateTime? @map("decided_at")
+  decisionNote       String?   @map("decision_note") @db.Text
+  /// Set when an approver changed who it was attributed to, so the original
+  /// claim and the decision are both readable.
+  modifiedToPersonId String?   @map("modified_to_person_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  opportunity OpsCommercialOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([state, createdAt])
+  @@index([claimantId])
+  @@map("ops_attribution_claims")
+}
+
+/// Market access: a relationship, network or channel somebody opened up.
+///
+/// Recorded whether or not it produces anything, because that is the only way
+/// to tell ten introductions that produced two clients from ten that produced
+/// nothing. The counts are not stored - they are computed from the
+/// opportunities that name this record, so nobody can improve their funnel by
+/// editing a number.
+model OpsPositioningRecord {
+  id            String @id @default(uuid())
+  contributorId String @map("contributor_id")
+
+  /// Who or what was opened up. A person, an organisation, a network.
+  personOrNetwork String  @map("person_or_network")
+  organization    String?
+  /// Introduction, distribution relationship, procurement access, investor
+  /// access, ecosystem engagement. Free text: the kinds keep appearing.
+  accessType      String  @map("access_type")
+
+  stage       OpsPositioningStage @default(TARGET)
+  openedAt    DateTime            @map("opened_at")
+  evidenceUrl String?             @map("evidence_url")
+  notes       String?             @db.Text
+
+  /// The company it eventually concerned, where it concerned one.
+  companyId String? @map("company_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contributor OpsPerson @relation("OpsPositioningContributor", fields: [contributorId], references: [id], onDelete: Restrict)
+
+  @@index([contributorId, stage])
+  @@map("ops_positioning_records")
+}
+
+/// What a contributor has agreed, and what is being discussed.
+///
+/// ADMIN ONLY, and it is not a calculator. Nothing in this system ever outputs
+/// "this person deserves X%". These fields exist so that a conversation about
+/// equity has the evidence next to it rather than being had from memory.
+///
+/// Kept entirely apart from attribution. Attribution establishes what happened.
+/// The agreement establishes what somebody is entitled to. Inferring one from
+/// the other is the mistake this separation exists to prevent.
+model OpsContributorAgreement {
+  id       String @id @default(uuid())
+  personId String @unique @map("person_id")
+
+  agreedEquityPercent   Decimal? @map("agreed_equity_percent") @db.Decimal(6, 3)
+  proposedEquityPercent Decimal? @map("proposed_equity_percent") @db.Decimal(6, 3)
+  equityPathwayNote     String?  @map("equity_pathway_note") @db.Text
+  /// What the equity is attached to, in words.
+  commitmentsNote       String?  @map("commitments_note") @db.Text
+
+  /// Whether this person's agreement gives them the originator share at all.
+  /// Being recorded as originator does not create the entitlement - the
+  /// agreement does, and assuming otherwise is how somebody gets told they are
+  /// owed something they never agreed.
+  originatorSharePercent Decimal? @map("originator_share_percent") @db.Decimal(5, 2)
+  originatorShareMonths  Int?     @map("originator_share_months")
+  agreementNote          String?  @map("agreement_note") @db.Text
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  person OpsPerson @relation("OpsContributorAgreementHolder", fields: [personId], references: [id], onDelete: Cascade)
+
+  @@map("ops_contributor_agreements")
 }
