@@ -29,6 +29,7 @@ export const OPS_PAGES: OpsPage[] = [
    * same stages, no record of who created anything - and two pipelines is how a
    * company ends up with two answers to "how much are we selling".
    */
+  { path: '/ops/overview', name: 'Overview', capability: 'sales:read', group: 'Selling' },
   { path: '/ops/pipeline', name: 'Pipeline', capability: 'sales:read', group: 'Selling' },
   { path: '/ops/contribution', name: 'Contribution', capability: 'sales:read', group: 'Selling' },
   { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Selling' },

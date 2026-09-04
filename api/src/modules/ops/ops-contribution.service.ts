@@ -132,8 +132,15 @@ export class OpsContributionService {
       pipelineValue: live.reduce((sum, o) => sum + Number(o.estimatedContractValue ?? 0), 0),
       overdueFollowUps: live.filter((o) => o.nextActionDueAt !== null && o.nextActionDueAt < now).length,
       withNothingPlanned: live.filter((o) => !o.nextAction).length,
-      /** Records nobody has said who created. The CRM's own honesty measure. */
-      attributionUnresolved: all.filter((o) => o.originatorState === 'NEEDS_REVIEW').length,
+      /**
+       * Opportunities with nobody CREDITED - not merely nobody claiming.
+       *
+       * Counting only NEEDS_REVIEW read better than the truth: an opportunity
+       * somebody had claimed and nobody had decided showed as resolved, and it
+       * is not. Until a claim is approved it is not attribution, and this is the
+       * number that says whether the share figures mean anything.
+       */
+      attributionUnresolved: all.filter((o) => o.originatorState !== 'APPROVED').length,
       says:
         live.length === 0
           ? 'Nothing live in the pipeline'

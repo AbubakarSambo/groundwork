@@ -756,7 +756,7 @@ export const METRICS: MetricDefinition[] = [
     label: 'Opportunities nobody has claimed',
     shape: 'count',
     capability: 'sales:read',
-    counts: 'Opportunities where nobody has established who created them. Not an error - the honest state until somebody says.',
+    counts: 'Opportunities with nobody credited as having created them. A claim nobody has decided counts here too - until it is approved it is not attribution.',
     async compute(prisma) {
       /*
        * Ignores the window on purpose. An opportunity nobody has attributed is
@@ -764,13 +764,20 @@ export const METRICS: MetricDefinition[] = [
        * the share-of-revenue figures mean anything.
        */
       const rows = await prisma.opsCommercialOpportunity.findMany({
-        where: { originatorState: 'NEEDS_REVIEW' },
+        where: { originatorState: { not: 'APPROVED' } },
         include: { company: true },
       });
       return {
         value: rows.length,
         unit: 'opportunities',
-        rows: rows.map((r) => ({ company: r.company.name, opportunity: r.name, stage: r.stage })),
+        /* The state is on every row, because "claimed and undecided" and
+           "nobody has said" need different things doing about them. */
+        rows: rows.map((r) => ({
+          company: r.company.name,
+          opportunity: r.name,
+          stage: r.stage,
+          attribution: r.originatorState === 'CLAIMED' ? 'claimed, undecided' : 'nobody has said',
+        })),
         says:
           rows.length === 0
             ? 'Everything has somebody recorded as having created it'

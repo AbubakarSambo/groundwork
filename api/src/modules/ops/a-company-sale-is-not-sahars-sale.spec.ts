@@ -214,3 +214,24 @@ describe('the words on the page', () => {
 });
 
 import { readdirSync } from 'fs';
+
+describe('what counts as unattributed', () => {
+  /**
+   * The overview said "0 with nobody recorded as having created them" while an
+   * opportunity sat claimed and undecided. Counting only NEEDS_REVIEW reads
+   * better than the truth: until a claim is approved it is not attribution, and
+   * this is the number that says whether every share figure on the page means
+   * anything.
+   *
+   * Found on the overview, with a claim deliberately left waiting.
+   */
+  const service = readFileSync(join(__dirname, 'ops-contribution.service.ts'), 'utf8');
+
+  it('is anything not approved, rather than only what nobody has claimed', () => {
+    expect(service).toContain("attributionUnresolved: all.filter((o) => o.originatorState !== 'APPROVED')");
+  });
+
+  it('and the credit rule agrees with it: only APPROVED credits anybody', () => {
+    expect(countsAsOriginationFor({ ...theWorkedExample, originatorState: 'CLAIMED' }, HAFSAH)).toBe(false);
+  });
+});

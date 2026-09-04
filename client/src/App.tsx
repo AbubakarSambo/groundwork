@@ -37,6 +37,7 @@ import OpsSprintPage from '@/pages/ops/OpsSprintPage'
 import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
 import OpsPeoplePage from '@/pages/ops/OpsPeoplePage'
 import OpsMoatPage from '@/pages/ops/OpsMoatPage'
+import OpsOverviewPage from '@/pages/ops/OpsOverviewPage'
 import {
   OpsContributionPage,
   OpsPositioningPage,
@@ -331,6 +332,7 @@ export default function App() {
             <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/overview" element={<RequireAuth><OpsLayout><OpsOverviewPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/pipeline" element={<RequireAuth><OpsLayout><OpsCommercialPipelinePage /></OpsLayout></RequireAuth>} />
             {/* The old address, kept as a redirect: it is in people's history and
                 a silent 404 on a page somebody used daily reads as an outage. */}

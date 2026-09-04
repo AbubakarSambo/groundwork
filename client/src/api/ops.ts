@@ -445,6 +445,48 @@ export interface OpsPositioningRecord {
   evidenceUrl: string | null
 }
 
+export interface OpsCommercialOverview {
+  separates: string
+  questions: Array<{ n: number; question: string; from: string }>
+  performance: {
+    totalPipeline: number
+    qualifiedPipeline: number
+    newCustomers: number
+    newMrr: number
+    newArr: number
+    cashCollected: number
+    retained3Month: number
+    retained6Month: number
+    retained12Month: number
+    conversion: number | null
+    throughPositioning: number
+  }
+  functionHealth: {
+    livePipeline: number
+    pipelineValue: number
+    overdueFollowUps: number
+    withNothingPlanned: number
+    attributionUnresolved: number
+    says: string
+  }
+  share: OpsShareOfRevenue | null
+  positioning: Array<{
+    contributor: string | null
+    personOrNetwork: string
+    organization: string | null
+    accessType: string
+    stage: string
+  }>
+  /*
+   * `Omit` rather than an intersection. The overview spreads the ledger and
+   * overwrites `person` with a display name, so intersecting the two makes that
+   * field `never` - which TypeScript accepts silently and which fails the first
+   * time somebody renders it.
+   */
+  ledgers: Array<Omit<OpsLedger, 'person'> & { person: string; personKey: string; itIsTheirJob: boolean }>
+  claimsWaiting: number | null
+}
+
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
@@ -474,6 +516,10 @@ export const opsApi = {
   shareOfNewRevenue: (from?: string, to?: string) =>
     apiClient
       .get<OpsShareOfRevenue>('/ops/commercial/share-of-new-revenue', { ...QUIET, params: { from, to } })
+      .then((r) => r.data),
+  commercialOverview: (from?: string, to?: string) =>
+    apiClient
+      .get<OpsCommercialOverview>('/ops/commercial/overview', { ...QUIET, params: { from, to } })
       .then((r) => r.data),
   commercialPipeline: () =>
     apiClient.get<OpsCommercialOpportunity[]>('/ops/commercial/pipeline', QUIET).then((r) => r.data),

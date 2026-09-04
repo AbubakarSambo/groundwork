@@ -7,6 +7,7 @@ import { OpsContributionService } from './ops-contribution.service';
 import { OpsIdentity } from './ops-people.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { can } from './what-somebody-may-do';
+import { THE_THIRTEEN, WHAT_THIS_PAGE_SEPARATES } from './the-thirty-second-view';
 import {
   OpsCommercialStage,
   OpsPositioningStage,
@@ -99,6 +100,60 @@ export class OpsCommercialController {
   shareOfNewRevenue(@Query('from') from?: string, @Query('to') to?: string) {
     const w = this.window(from, to);
     return this.contribution.shareOfNewRevenue(w.from, w.to);
+  }
+
+  /**
+   * Everything on one page, in the order the questions get asked.
+   *
+   * Composed from the same three services the separate pages use rather than
+   * computing anything of its own - an overview that does its own arithmetic is
+   * an overview that eventually disagrees with the pages it summarises, and the
+   * disagreement is always discovered in a meeting.
+   */
+  @Get('overview')
+  @NeedsOps('sales:read')
+  @ApiOperation({ summary: 'The whole commercial picture, in the order somebody asks' })
+  async overview(@Req() req: OpsRequest, @Query('from') from?: string, @Query('to') to?: string) {
+    const w = this.window(from, to);
+    const mayReadAll = can(req.opsIdentity.capabilities, 'commercial:read-all');
+
+    const [performance, functionHealth, share, positioning, claims] = await Promise.all([
+      this.contribution.companyPerformance(w.from, w.to),
+      this.contribution.functionHealth(),
+      mayReadAll ? this.contribution.shareOfNewRevenue(w.from, w.to) : null,
+      this.commercial.positioning(),
+      can(req.opsIdentity.capabilities, 'commercial:approve') ? this.commercial.claimsAwaiting() : null,
+    ]);
+
+    const people = mayReadAll ? await this.prisma.opsPerson.findMany({ where: { active: true } }) : [];
+    const ledgers = await Promise.all(
+      (mayReadAll ? people : []).map(async (p) => ({
+        person: p.displayName,
+        personKey: p.key,
+        /* Whether commercial acquisition is their job, carried into the
+           overview so nobody reads a row of zeroes as a verdict. */
+        itIsTheirJob: p.functionalRole === 'SALES_MARKETING',
+        ...(await this.contribution.ledgerFor(p.id, w.from, w.to)),
+      })),
+    );
+
+    return {
+      separates: WHAT_THIS_PAGE_SEPARATES,
+      questions: THE_THIRTEEN,
+      performance,
+      functionHealth,
+      share,
+      /** Each person's funnel, so ten introductions and two clients read apart. */
+      positioning: positioning.map((r) => ({
+        contributor: r.contributor,
+        personOrNetwork: r.personOrNetwork,
+        organization: r.organization,
+        accessType: r.accessType,
+        stage: r.stage,
+      })),
+      ledgers,
+      claimsWaiting: claims?.length ?? null,
+    };
   }
 
   // --- The pipeline --------------------------------------------------------
