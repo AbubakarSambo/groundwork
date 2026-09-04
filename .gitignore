@@ -18,8 +18,6 @@ dist/
 # Every name that starts with `.env` now, and every directory, so a copy made in `api/` or
 # `client/` is caught the same way as one at the root. `.env.example` is deliberately excluded
 # below, because that one is meant to be tracked.
-.env
-.env.*
 **/.env
 **/.env.*
 
