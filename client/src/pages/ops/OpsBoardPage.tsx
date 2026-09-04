@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { opsApi, type OpsNumber } from '@/api/ops'
 
 /**
@@ -320,34 +319,33 @@ export default function OpsBoardPage() {
         <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>{board.data?.answers}</p>
       </header>
 
+      {/*
+        * The board switcher that used to live here is gone: the left-hand
+        * navigation already lists every board this person may open, and two
+        * navigations on one screen means neither is trusted. The period picker
+        * stays, because it belongs to this page rather than to the app.
+        */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
-        {(listing.data?.boards ?? []).map((b) => (
-          <button
-            key={b.key}
-            type="button"
-            onClick={() => setChosen(b.key)}
-            aria-current={b.key === boardKey}
-            style={{
-              ...CARD,
-              padding: '6px 12px',
-              cursor: 'pointer',
-              fontSize: 12.5,
-              fontWeight: b.key === boardKey ? 700 : 500,
-              background: b.key === boardKey ? 'var(--gw-navy)' : 'white',
-              color: b.key === boardKey ? 'white' : 'var(--gw-navy)',
-            }}
-          >
-            {b.name}
-            {b.yours && b.key !== boardKey ? ' ·' : ''}
-          </button>
-        ))}
-
-        <Link
-          to="/ops/sprint"
-          style={{ ...CARD, padding: '6px 12px', fontSize: 12.5, textDecoration: 'none', color: 'var(--gw-navy)' }}
-        >
-          The sprint →
-        </Link>
+        {(listing.data?.boards ?? []).length > 1 &&
+          (listing.data?.boards ?? []).map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              onClick={() => setChosen(b.key)}
+              aria-current={b.key === boardKey}
+              style={{
+                ...CARD,
+                padding: '6px 12px',
+                cursor: 'pointer',
+                fontSize: 12.5,
+                fontWeight: b.key === boardKey ? 700 : 500,
+                background: b.key === boardKey ? 'var(--gw-navy)' : 'white',
+                color: b.key === boardKey ? 'white' : 'var(--gw-navy)',
+              }}
+            >
+              {b.name}
+            </button>
+          ))}
 
         <label style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)' }}>
           Period{' '}

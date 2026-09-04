@@ -34,6 +34,18 @@ import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import OpsBoardPage from '@/pages/ops/OpsBoardPage'
 import OpsSprintPage from '@/pages/ops/OpsSprintPage'
+import { OpsLayout } from '@/pages/ops/OpsLayout'
+import { OpsSalesPage, OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
+import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
+import {
+  OpsQuarterPage,
+  OpsCommitmentsPage,
+  OpsApprovalsPage,
+  OpsSpendPage,
+  OpsFundraisePage,
+  OpsStrategyPage,
+  OpsIntegrationPage,
+} from '@/pages/ops/OpsCompanyPages'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
@@ -305,8 +317,22 @@ export default function App() {
               * somebody signed in who is not on this team gets a page that says so rather than six
               * failing requests.
               */}
-            <Route path="/ops" element={<RequireAuth><OpsBoardPage /></RequireAuth>} />
-            <Route path="/ops/sprint" element={<RequireAuth><OpsSprintPage /></RequireAuth>} />
+            <Route path="/ops" element={<RequireAuth><OpsLayout><OpsBoardPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/sprint" element={<RequireAuth><OpsLayout><OpsSprintPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/sales" element={<RequireAuth><OpsLayout><OpsSalesPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/marketing" element={<RequireAuth><OpsLayout><OpsMarketingPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/deployment" element={<RequireAuth><OpsLayout><OpsDeploymentPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/roadmap" element={<RequireAuth><OpsLayout><OpsRoadmapPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/readiness" element={<RequireAuth><OpsLayout><OpsReadinessPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/quarter" element={<RequireAuth><OpsLayout><OpsQuarterPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/approvals" element={<RequireAuth><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/fundraise" element={<RequireAuth><OpsLayout><OpsFundraisePage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/strategy" element={<RequireAuth><OpsLayout><OpsStrategyPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/integration" element={<RequireAuth><OpsLayout><OpsIntegrationPage /></OpsLayout></RequireAuth>} />
             <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
             <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />

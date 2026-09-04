@@ -95,6 +95,166 @@ export interface OpsTodo {
   dueDate: string | null
 }
 
+export interface OpsOpportunity {
+  id: string
+  stage: string
+  estimatedValue: string | null
+  nextAction: string | null
+  nextActionDueAt: string | null
+  lastActivityAt: string | null
+  lostReason: string | null
+  company: { name: string }
+  campaign: { title: string } | null
+}
+
+export interface OpsDeployment {
+  id: string
+  stage: string
+  startDate: string
+  targetLiveDate: string | null
+  blockerType: string | null
+  blockerSummary: string | null
+  nextAction: string | null
+  firstUseAt: string | null
+  company: { name: string }
+}
+
+export interface OpsRoadmapItem {
+  id: string
+  title: string
+  itemType: string
+  priority: number
+  status: string
+  approvalRequired: boolean
+  targetDate: string | null
+  rationale: string | null
+}
+
+export interface OpsUseCase {
+  id: string
+  title: string
+  productReadiness: string
+  productGap: string | null
+  uxGap: string | null
+  technicalGap: string | null
+  nextAction: string | null
+  company: { name: string }
+}
+
+export interface OpsWorkItem {
+  id: string
+  title: string
+  severity: string
+  status: string
+  itemType?: string
+  affectedFlow?: string | null
+  blockerReason?: string | null
+  targetDate?: string | null
+}
+
+export interface OpsObjective {
+  id: string
+  title: string
+  workstream: string | null
+  status: string
+  keyResults: Array<{
+    id: string
+    title: string
+    target: number
+    unit: string
+    current: number
+    progress: number | null
+    typedByHand: boolean
+    says: string
+    problem?: string
+    dueDate: string
+  }>
+}
+
+export interface OpsCommitment {
+  id: string
+  title: string
+  status: string
+  blocked: boolean
+  blockerReason: string | null
+  dueDate: string
+  target: number | null
+  unit: string | null
+  current: number
+  typedByHand: boolean
+  says: string
+  actualResult: string | null
+}
+
+export interface OpsExpense {
+  id: string
+  date: string
+  description: string
+  category: string
+  amount: string
+  status: string
+  rejectedReason: string | null
+}
+
+export interface OpsBalance {
+  earned: number
+  paid: number
+  approvedNotPaid: number
+  awaitingDecision: number
+  remaining: number
+  says: string
+  nobodyCanApprove: Array<{ id: string; description: string; amount: number; why: string }>
+}
+
+export interface OpsFundraise {
+  opportunities: Array<{
+    id: string
+    funderName: string
+    fundingType: string
+    stage: string
+    askAmount: string | null
+    committedAmount: string | null
+    closedAmount: string | null
+    nextAction: string | null
+    nextActionDueAt: string | null
+    applicationDeadline: string | null
+  }>
+  totals: { active: number; askedFor: number; committed: number; closed: number; overdue: number }
+}
+
+export interface OpsStrategic {
+  id: string
+  personOrNetwork: string
+  organization: string | null
+  opportunityType: string
+  status: string
+  nextStep: string | null
+  nextStepDueAt: string | null
+  convertedToType: string | null
+}
+
+export interface OpsCampaign {
+  id: string
+  title: string
+  activityType: string
+  channel: string | null
+  status: string
+  startDate: string
+  opportunities: Array<{ company: { name: string }; stage: string }>
+}
+
+export interface OpsIntegrationStatus {
+  configured: boolean
+  enabled: boolean
+  baseUrl?: string | null
+  clientId?: string | null
+  secretSet?: boolean
+  lastSyncAt?: string | null
+  lastSyncOk?: boolean | null
+  lastSyncSummary?: string | null
+  says: string
+}
+
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me').then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards').then((r) => r.data),
@@ -114,4 +274,23 @@ export const opsApi = {
       .then((r) => r.data),
   decide: (id: string, status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED', decisionNote?: string) =>
     apiClient.patch(`/ops/approvals/${id}`, { status, decisionNote }).then((r) => r.data),
+
+  pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline').then((r) => r.data),
+  deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments').then((r) => r.data),
+  campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns').then((r) => r.data),
+  roadmap: () => apiClient.get<OpsRoadmapItem[]>('/ops/roadmap').then((r) => r.data),
+  useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases').then((r) => r.data),
+  tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech').then((r) => r.data),
+  ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux').then((r) => r.data),
+  objectives: (periodKey: string) =>
+    apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`).then((r) => r.data),
+  commitments: (personKey: string, periodKey: string) =>
+    apiClient.get<OpsCommitment[]>(`/ops/commitments/${personKey}/${periodKey}`).then((r) => r.data),
+  spend: () => apiClient.get<OpsExpense[]>('/ops/spend').then((r) => r.data),
+  balance: () => apiClient.get<OpsBalance>('/ops/balance').then((r) => r.data),
+  fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise').then((r) => r.data),
+  strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy').then((r) => r.data),
+  integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration').then((r) => r.data),
+  pushToGroundwork: (period: string) =>
+    apiClient.post('/ops/integration/push', null, { params: { period } }).then((r) => r.data),
 }
