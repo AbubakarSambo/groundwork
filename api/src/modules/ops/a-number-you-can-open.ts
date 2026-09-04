@@ -570,10 +570,17 @@ export const METRICS: MetricDefinition[] = [
          * The oldest one is the number that matters. A count says how busy the
          * queue is; the age says whether somebody has been stuck for a fortnight.
          */
-        says:
-          rows.length === 0
-            ? 'Nothing waiting on a decision'
-            : `${rows.length} waiting, the oldest for ${days(rows[0].createdAt)} days`,
+        says: (() => {
+          if (rows.length === 0) return 'Nothing waiting on a decision';
+          const oldest = days(rows[0].createdAt);
+          /*
+           * "The oldest for 0 days" is what a counter says, not what a person
+           * says. Something asked for this morning has not been waiting; the
+           * age only starts being the point once it is measured in days.
+           */
+          if (oldest === 0) return `${rows.length} waiting, all asked today`;
+          return `${rows.length} waiting, the oldest for ${oldest} day${oldest === 1 ? '' : 's'}`;
+        })(),
       };
     },
   },

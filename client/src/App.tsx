@@ -32,6 +32,8 @@ import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
+import OpsBoardPage from '@/pages/ops/OpsBoardPage'
+import OpsSprintPage from '@/pages/ops/OpsSprintPage'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
@@ -293,6 +295,18 @@ export default function App() {
               * the move breaks no navigation. The two redirects are for whoever has them
               * bookmarked, because a silent 404 on a tool you use daily reads as an outage.
               */}
+            {/*
+              * THE TEAM'S OWN OPERATING SYSTEM.
+              *
+              * Under /ops and chromeless, for the same reason the prompt tools moved: it must not
+              * wear the shell of the product it is used to run. It is also not admin - a platform
+              * admin is Groundwork operating Groundwork, and this is our company operating itself.
+              * Who may see what is decided by ops grants, checked by the server on every route;
+              * somebody signed in who is not on this team gets a page that says so rather than six
+              * failing requests.
+              */}
+            <Route path="/ops" element={<RequireAuth><OpsBoardPage /></RequireAuth>} />
+            <Route path="/ops/sprint" element={<RequireAuth><OpsSprintPage /></RequireAuth>} />
             <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
             <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />

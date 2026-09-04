@@ -90,7 +90,13 @@ describe('which pages stand alone', () => {
 describe('the platform back office stands alone', () => {
   it('is matched by prefix, so its sub-pages are covered too', () => {
     /** An exact-path list is what let `/admin/dashboard` through while `/admin` was handled. */
-    expect(CODE).toMatch(/CHROMELESS_PREFIXES = \['\/admin'\]/)
+    /*
+     * That '/admin' is IN the list, not that it is the whole list. The exact
+     * literal was pinned, and adding the team's own back office at '/ops' broke
+     * two specs that had nothing to say about it - a failure that teaches people
+     * the spec is in the way rather than that something is wrong.
+     */
+    expect(CODE).toMatch(/CHROMELESS_PREFIXES = \[[^\]]*'\/admin'/)
     expect(CODE).toMatch(/location\.pathname\.startsWith\(`\$\{p\}\/`\)/)
   })
 

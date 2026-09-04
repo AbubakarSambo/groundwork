@@ -1197,7 +1197,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * Only platform staff can reach these at all (`RequirePlatformAdmin`), so nothing a customer sees
    * changes. It is last on the list for exactly that reason.
    */
-  const CHROMELESS_PREFIXES = ['/admin']
+  /**
+   * `/ops` joins `/admin` here. It is the team's own back office, and rendering
+   * it inside the customer's rail would put "New check-in" next to the funding
+   * pipeline — two different companies' navigation on one screen.
+   */
+  const CHROMELESS_PREFIXES = ['/admin', '/ops']
   const isBackOffice = CHROMELESS_PREFIXES.some(
     p => location.pathname === p || location.pathname.startsWith(`${p}/`),
   )
