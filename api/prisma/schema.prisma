@@ -4053,9 +4053,10 @@ model OpsCompany {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  attributions OpsAttribution[]
-  useCases     OpsClientUseCase[]
-  deployments  OpsDeployment[]
+  attributions  OpsAttribution[]
+  useCases      OpsClientUseCase[]
+  deployments   OpsDeployment[]
+  opportunities OpsSalesOpportunity[]
 
   @@index([stage])
   @@index([sprintPeriodId])
@@ -4235,7 +4236,8 @@ model OpsDeployment {
   id        String @id @default(uuid())
   companyId String @map("company_id")
 
-  useCaseId String? @map("use_case_id")
+  useCaseId          String? @map("use_case_id")
+  salesOpportunityId String? @map("sales_opportunity_id")
 
   deploymentOwnerId String  @map("deployment_owner_id")
   productOwnerId    String? @map("product_owner_id")
@@ -4270,4 +4272,94 @@ model OpsDeployment {
   @@index([stage])
   @@index([blockerType])
   @@map("ops_deployments")
+}
+
+// --- Phase 3: pipeline, campaigns, and getting people live -----------------
+
+enum OpsSalesStage {
+  LEAD
+  CONTACTED
+  MEETING
+  PROPOSAL_TRIAL
+  CONVERTED
+  /// Terminal. Kept as a stage rather than a flag so a pipeline view has one
+  /// column to read and a lost deal cannot also be at MEETING.
+  LOST
+}
+
+enum OpsMarketingStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+/// One company, one deal.
+///
+/// The company is the identity; this is what we are doing about them. Splitting
+/// the two is what stops "Northwind" existing three times because three people
+/// were working three angles.
+model OpsSalesOpportunity {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  salesOwnerId String        @map("sales_owner_id")
+  stage        OpsSalesStage @default(LEAD)
+
+  source                   String?
+  originatingContributorId String? @map("originating_contributor_id")
+  /// Which campaign, if any, claims this. The one link that makes a marketing
+  /// number checkable rather than asserted.
+  campaignId               String? @map("campaign_id")
+
+  estimatedValue Decimal? @map("estimated_value") @db.Decimal(12, 2)
+  currency       String   @default("USD")
+  useCaseSummary String?  @map("use_case_summary") @db.Text
+
+  lastActivityAt  DateTime? @map("last_activity_at")
+  nextAction      String?   @map("next_action")
+  nextActionDueAt DateTime? @map("next_action_due_at")
+
+  convertedAt DateTime? @map("converted_at")
+  lostAt      DateTime? @map("lost_at")
+  lostReason  String?   @map("lost_reason") @db.Text
+
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company  OpsCompany            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaign OpsMarketingActivity? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([stage, lastActivityAt])
+  @@index([salesOwnerId, stage])
+  @@index([nextActionDueAt])
+  @@map("ops_sales_opportunities")
+}
+
+/// A campaign, a piece of content, an event. Lightweight on purpose.
+model OpsMarketingActivity {
+  id    String @id @default(uuid())
+  title String
+
+  activityType String  @map("activity_type")
+  channel      String?
+  objective    String? @db.Text
+
+  ownerId   String    @map("owner_id")
+  startDate DateTime  @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  status OpsMarketingStatus @default(PLANNED)
+
+  /// The string an opportunity's `source` carries when it came from here.
+  /// Matching on it is how "this campaign generated two leads" gets checked.
+  campaignSource String? @map("campaign_source")
+
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  opportunities OpsSalesOpportunity[]
+
+  @@index([status, startDate])
+  @@map("ops_marketing_activities")
 }
