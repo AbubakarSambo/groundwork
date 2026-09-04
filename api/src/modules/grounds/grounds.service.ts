@@ -30,6 +30,7 @@ import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
+import { notTheWordParty } from '../reports/not-the-word-party';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1148,8 +1149,21 @@ export class GroundsService {
        a check-in set up three weeks before the person arrives spent three weeks counting down. */
     const daysLeft = daysRemaining(ground as any, new Date());
 
-    // brief: prefer the ground's own opening brief; fall back to the released report summary
-    const brief = (ground as any).brief ?? (ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null);
+    /*
+     * BRIEF: the ground's own opening brief, or the released report's summary when there is none.
+     *
+     * THE SECOND PATH TO REPORT TEXT, AND IT APPLIED NONE OF THE REPORT'S RULES. Seen in the running
+     * product: the report tab said "Both agree that..." and this said "Both parties agree that...",
+     * the same sentence twice on one page, because everything the reports service does on the way
+     * out - the party rewrite, the names - happens in its own read and this reads the column
+     * directly.
+     *
+     * `notTheWordParty` is applied here for that reason. Names are deliberately NOT resolved: who
+     * may see whose name is decided by the reports service with the viewer in hand, and this has no
+     * viewer. A role label is the safe thing to show, and showing one is not a defect.
+     */
+    const rawBrief = (ground as any).brief ?? (ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null);
+    const brief = typeof rawBrief === 'string' ? notTheWordParty(rawBrief) : rawBrief;
 
     const signals = (ground.patternDetections ?? [])
       .filter((pd) => pd.observationText)
@@ -1478,6 +1492,28 @@ export class GroundsService {
       (viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId);
     return {
       ...rest,
+      /*
+       * THE REPORT RIDES ALONG IN `rest`, AND IT IS REPORT TEXT WHEREVER IT IS READ.
+       *
+       * The query selects report.sharedPicture, so the whole object is spread into this response
+       * straight from the column. Seen on one page in the running product: the report tab said
+       * "Both agree that..." and the check-in page said "Both parties agree that...", the same
+       * sentence twice, because the reports service does its work in its own read and this does
+       * not go through it.
+       *
+       * Cleaning the brief was not enough - I fixed that first and the sentence was still on the
+       * screen, because it arrives by this field as well. Names stay unresolved here for the same
+       * reason as the brief: entitlement to a name is decided with a viewer in hand.
+       */
+      report: (rest as any).report
+        ? {
+            ...(rest as any).report,
+            sharedPicture:
+              typeof (rest as any).report.sharedPicture === 'string'
+                ? notTheWordParty((rest as any).report.sharedPicture)
+                : (rest as any).report.sharedPicture,
+          }
+        : (rest as any).report,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
       participants: participantsWithCheckIns,
       /**

@@ -18,7 +18,7 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'KEEP', label: 'Keep the hire' },
     { value: 'RESTRUCTURE', label: 'Restructure the role' },
     { value: 'EXIT', label: 'Let them go' },
-    { value: 'EXTEND', label: 'Extend evaluation period', description: 'Both parties agree the evaluation period should continue with a defined extension timeline.' },
+    { value: 'EXTEND', label: 'Extend evaluation period', description: 'Both agree the evaluation period should continue, with a defined extension timeline.' },
     { value: 'NOT_YET', label: 'Not yet - revisit with a named gap' },
   ],
   NEW_COFOUNDER: [
