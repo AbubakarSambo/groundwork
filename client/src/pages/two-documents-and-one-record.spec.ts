@@ -61,6 +61,6 @@ describe('two documents and one record', () => {
   it('and /admin is what makes them chromeless, so the move actually changed something', () => {
     /* If this prefix ever loses /admin, the tools go back to wearing the customer rail. */
     const shell = readFileSync(join(__dirname, '../components/gw/AppShell.tsx'), 'utf8')
-    expect(shell).toMatch(/CHROMELESS_PREFIXES = \['\/admin'\]/)
+    expect(shell).toMatch(/CHROMELESS_PREFIXES = \[[^\]]*'\/admin'/)
   })
 })

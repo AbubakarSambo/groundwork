@@ -92,8 +92,24 @@ function walk(dir: string, out: string[] = []): string[] {
  * Fixtures are imported by specs only, which is what they are for.
  */
 const allFiles = walk(SRC);
+
+/**
+ * The seed and migration scripts under `prisma/` are importers too.
+ *
+ * They sit outside `src/` because Prisma expects them there, not because they
+ * are less real than a controller - `npm run seed:ops` is as much a live entry
+ * point as an HTTP route. Scanning only `src/` made a module imported by a seed
+ * look orphaned, which is a false positive that would have been paid for with an
+ * allow-list entry saying the opposite of the truth.
+ *
+ * Scanned, never checked: a seed script has no importer BY DESIGN, the way
+ * main.ts has none.
+ */
+const PRISMA_SCRIPTS = walk(join(SRC, '..', 'prisma'));
+
 const sources = new Map<string, string>();
-for (const f of allFiles) sources.set(f, readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''));
+for (const f of [...allFiles, ...PRISMA_SCRIPTS])
+  sources.set(f, readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''));
 
 const files = allFiles.filter(
   (f) => basename(f) !== 'index.ts' && !f.includes('__fixtures__'),

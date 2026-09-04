@@ -74,9 +74,26 @@ function withoutComments(text: string): string {
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + m.slice(p1.length).replace(/./g, ' '))
 }
 
+/**
+ * The rule is about the PRODUCT's vocabulary, and the ops system is not the
+ * product.
+ *
+ * "Contributor" was the product's competing word for a participant, and the
+ * decision was that the word is participant. In the Groundwork team's own back
+ * office a contributor is a different thing entirely: somebody on our team who
+ * brings companies in, against a target of six by the end of the year. It has
+ * nothing to do with a person answering a check-in.
+ *
+ * Two systems get two vocabularies, which is the whole point of them being two
+ * systems - and the alternative was renaming a real role in our own company to
+ * avoid a word the product had discarded.
+ */
+const NOT_THE_PRODUCT = ['/pages/ops/', '/api/ops.ts']
+
 describe('the product has one word for a person in a check-in', () => {
   const offenders: string[] = []
   for (const f of files(SRC)) {
+    if (NOT_THE_PRODUCT.some((prefix) => f.includes(prefix))) continue
     // The `demoData` exemption is gone with the demo page it was written for: a fictional
     // pitch report is no longer a reason for this rule to have a hole in it.
     withoutComments(readFileSync(f, 'utf8')).split('\n').forEach((line, i) => {

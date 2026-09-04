@@ -80,6 +80,17 @@ const REACHED_FROM_OUTSIDE = [
    * otherwise). Nothing should link to it directly; arriving is the redirect's job, not a click's.
    */
   '/org/setup',
+  /**
+   * The Groundwork team's own back office. Reached by typing the address, like
+   * the prompt tools under /admin, and deliberately not linked from the product:
+   * a customer's navigation must never carry a way into our company's operating
+   * system, even one that would 403.
+   *
+   * Declared here rather than left to satisfy the scan by accident. /ops and
+   * /ops/sprint link to EACH OTHER, which is enough for the check below and
+   * proves nothing about either having a door - a circle is not an entrance.
+   */
+  '/ops',
 ]
 
 describe('every route the app serves has a way in', () => {
