@@ -85,6 +85,18 @@ export class ScimService {
     return out;
   }
 
+  /**
+   * Whether a userName is an email address.
+   *
+   * Deliberately loose. The job is not to validate an address, it is to tell
+   * `sahar@groundwork.test` from `sahar` - and a stricter test that rejected an
+   * unusual but real address would put us back where we started, with a person
+   * who has no email and a failure three calls later.
+   */
+  private looksLikeAnEmail(value: string | undefined): boolean {
+    return typeof value === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim());
+  }
+
   async upsert(organizationId: string, sourceSystem: string, dto: ScimUser) {
     if (!dto?.externalId?.trim()) {
       throw new BadRequestException('externalId is required - it is how a person stays the same person across pushes.');
@@ -94,10 +106,34 @@ export class ScimService {
     const externalId = dto.externalId.trim();
     const prior = await this.prisma.person.findFirst({
       where: { organizationId, sourceSystem, externalId },
-      select: { id: true, active: true, deactivatedAt: true, managerExternalId: true },
+      /* `email` joins the others so the fill below needs no second query - and
+         so five specs whose stubs know about one lookup keep working. */
+      select: { id: true, active: true, deactivatedAt: true, managerExternalId: true, email: true },
     });
 
     const active = dto.active ?? true;
+
+    /**
+     * A userName that is an email BECOMES the email, when we have none.
+     *
+     * The SCIM shape puts addresses in `emails[]`, and a caller who sends only
+     * `{ externalId, userName: "sahar@example.com", displayName }` got a 201 and
+     * a person with NO EMAIL AT ALL. Nothing went wrong until three calls later,
+     * opening a check-in, which refused with "that person has no email address
+     * here" - a true sentence about a call made three steps earlier, with
+     * nothing pointing back at it. An integrator's first instinct is that the
+     * check-in endpoint is broken.
+     *
+     * Found by walking the whole path as a customer for the first time.
+     *
+     * FILLED, NEVER OVERWRITTEN. Only when there is no email on the record, so a
+     * later minimal push - the deprovisioning `{ externalId, userName, active:
+     * false }` that every identity provider sends - cannot replace a good
+     * address with a login handle. That is the same class of destruction the
+     * absent-is-not-null rule above exists to prevent, and this must not
+     * reintroduce it.
+     */
+
     /*
      * DEACTIVATION IS STAMPED ONCE, AT THE MOMENT IT FIRST BECAME TRUE.
      *
@@ -109,6 +145,12 @@ export class ScimService {
     const deactivatedAt = active ? null : (prior?.deactivatedAt ?? new Date());
 
     const data: any = { ...this.fields(dto), active, deactivatedAt, syncedAt: new Date() };
+
+    /* See the note on the push above. A fill, only into an empty field. */
+    const haveNoEmail = data.email == null && prior?.email == null;
+    if (haveNoEmail && this.looksLikeAnEmail(dto.userName)) {
+      data.email = dto.userName!.trim().toLowerCase();
+    }
 
     const row = prior
       ? await this.prisma.person.update({ where: { id: prior.id }, data })
