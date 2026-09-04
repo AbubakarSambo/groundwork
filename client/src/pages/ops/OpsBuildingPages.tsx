@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
@@ -58,7 +59,14 @@ export function OpsReadinessPage() {
   const useCases = useQuery({ queryKey: ['ops', 'use-cases'], queryFn: opsApi.useCases, retry: false })
 
   const columns: Column<OpsUseCase>[] = [
-    { head: 'Company', cell: (u) => <strong>{u.company.name}</strong> },
+    {
+      head: 'Company',
+      cell: (u) => (
+        <Link to={`/ops/companies/${u.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+          {u.company.name}
+        </Link>
+      ),
+    },
     { head: 'Use case', cell: (u) => u.title },
     { head: 'Where it is', cell: (u) => readEnum(u.productReadiness) },
     {

@@ -12,9 +12,9 @@
  * single truth about what exists.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
-import { OPS_PAGES, pagesFor, GROUPS } from './what-you-can-open'
+import { OPS_PAGES, pagesFor, GROUPS, REACHED_BY_CLICKING } from './what-you-can-open'
 
 const APP = readFileSync(join(__dirname, '../../App.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -33,9 +33,28 @@ describe('the back office navigation and the router agree', () => {
     expect(dead).toEqual([])
   })
 
-  it('and every ops route appears in the navigation', () => {
-    const unreachable = routedOpsPaths.filter((path) => !OPS_PAGES.some((p) => p.path === path))
+  it('and every ops route is either in the navigation or declared as reached by clicking', () => {
+    const unreachable = routedOpsPaths.filter(
+      (path) =>
+        !OPS_PAGES.some((p) => p.path === path) &&
+        !REACHED_BY_CLICKING.some((p) => p.path === path),
+    )
     expect(unreachable).toEqual([])
+  })
+
+  it('and every declared click-through says what clicks through to it', () => {
+    /*
+     * The register is only worth having if the entries carry the reason. "Not
+     * in the menu" and "forgotten" look identical from outside; the `from` line
+     * is what tells them apart six months later.
+     */
+    const vague = REACHED_BY_CLICKING.filter((p) => p.from.length < 10).map((p) => p.path)
+    expect(vague).toEqual([])
+  })
+
+  it('and a declared click-through is actually routed, not just described', () => {
+    const imaginary = REACHED_BY_CLICKING.filter((p) => !routedOpsPaths.includes(p.path)).map((p) => p.path)
+    expect(imaginary).toEqual([])
   })
 
   it('and every page sits in a group the navigation renders', () => {
@@ -88,5 +107,32 @@ describe('what each person is offered', () => {
     const theirs = pagesFor([]).map((p) => p.path)
     expect(theirs).toContain('/ops')
     expect(theirs.length).toBeGreaterThan(0)
+  })
+})
+
+describe('a page reached by clicking has something that clicks through to it', () => {
+  /**
+   * The register says the company page is reached from a company name. That is
+   * a claim about other files, and an unchecked claim in a register is worse
+   * than no register — it reads as verified.
+   *
+   * The failure it catches is ordinary: the detail page ships, the register
+   * entry ships, and the link is added "next". Nothing is broken, nothing is
+   * red, and the page is unreachable.
+   */
+  const pageSources = readdirSync(__dirname)
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => readFileSync(join(__dirname, f), 'utf8'))
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+
+  it('has a link to the company page', () => {
+    expect(pageSources).toMatch(/to=\{`\/ops\/companies\/\$\{[^}]+\}`\}/)
+  })
+
+  it('from more than one place, because a company appears on more than one list', () => {
+    const links = pageSources.match(/to=\{`\/ops\/companies\//g) ?? []
+    expect(links.length).toBeGreaterThan(1)
   })
 })

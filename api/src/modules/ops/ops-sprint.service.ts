@@ -5,6 +5,7 @@ import { countsTowardTarget, isAQualifyingStatus } from './what-counts-toward-a-
 import { OpsCompanyStage, OpsQualifyingStatus } from '@prisma/client';
 import { OpsIdentity } from './ops-people.service';
 import { can } from './what-somebody-may-do';
+import { furthestReached, isBehind } from './a-company-is-as-far-as-it-has-got';
 
 /** The order companies move through, so "how far has this got" is arithmetic. */
 const STAGE_ORDER: OpsCompanyStage[] = [
@@ -39,16 +40,32 @@ export class OpsSprintService {
         attributions: { include: { contributor: true } },
         useCases: true,
         deployments: true,
+        opportunities: true,
       },
       orderBy: { name: 'asc' },
     });
 
-    const rows = companies.map((company) => ({
+    const rows = companies.map((company) => {
+      /*
+       * The stage a company is AT, not the stage somebody last typed. Three
+       * fields described one journey and only one of them was on this board, so
+       * a company being onboarded still counted as lined up.
+       */
+      const stage = furthestReached({
+        stored: company.stage,
+        salesStages: company.opportunities.map((o) => o.stage),
+        deploymentStages: company.deployments.map((d) => d.stage),
+      });
+
+      return {
       id: company.id,
       key: company.key,
       name: company.name,
-      stage: company.stage,
-      stageIndex: STAGE_ORDER.indexOf(company.stage),
+      stage,
+      storedStage: company.stage,
+      /** Said rather than silently corrected, so a moving number has a reason. */
+      summaryIsStale: isBehind(company.stage, stage),
+      stageIndex: STAGE_ORDER.indexOf(stage),
       owner: company.ownerPersonId,
       nextAction: company.nextAction,
       nextActionDueAt: company.nextActionDueAt,
@@ -67,7 +84,8 @@ export class OpsSprintService {
       })),
       deploymentStage: company.deployments[0]?.stage ?? null,
       deploymentBlocker: company.deployments[0]?.blockerType ?? null,
-    }));
+      };
+    });
 
     const byStage = Object.fromEntries(
       STAGE_ORDER.map((stage) => [stage, rows.filter((r) => r.stage === stage).length]),

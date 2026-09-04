@@ -50,6 +50,19 @@ export const OPS_PAGES: OpsPage[] = [
 
 export const GROUPS: OpsPage['group'][] = ['Work', 'Selling', 'Building', 'Company']
 
+/**
+ * Routes that exist and are deliberately NOT in the menu.
+ *
+ * A company page is about one company, so it is reached by clicking that
+ * company's name — never from a list of sixteen destinations. Declared here
+ * rather than left to be caught, because "not in the menu" and "forgotten" look
+ * identical from outside, and the whole point of the register is that they
+ * cannot.
+ */
+export const REACHED_BY_CLICKING: Array<{ path: string; from: string }> = [
+  { path: '/ops/companies/:key', from: 'a company name on the sprint or the pipeline' },
+]
+
 export function pagesFor(capabilities: readonly string[]): OpsPage[] {
   return OPS_PAGES.filter((p) => p.capability === null || capabilities.includes(p.capability))
 }

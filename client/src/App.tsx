@@ -34,6 +34,7 @@ import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import OpsBoardPage from '@/pages/ops/OpsBoardPage'
 import OpsSprintPage from '@/pages/ops/OpsSprintPage'
+import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
 import { OpsLayout } from '@/pages/ops/OpsLayout'
 import { OpsSalesPage, OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
@@ -319,6 +320,7 @@ export default function App() {
               */}
             <Route path="/ops" element={<RequireAuth><OpsLayout><OpsBoardPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/sprint" element={<RequireAuth><OpsLayout><OpsSprintPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/sales" element={<RequireAuth><OpsLayout><OpsSalesPage /></OpsLayout></RequireAuth>} />

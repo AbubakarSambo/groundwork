@@ -39,6 +39,7 @@ const company = (name: string, useCases: Array<{ productReadiness: string }>) =>
   nextActionDueAt: null,
   blockerSummary: null,
   attributions: [],
+  opportunities: [],
   useCases: useCases.map((u, i) => ({
     title: `use case ${i}`,
     productReadiness: u.productReadiness,

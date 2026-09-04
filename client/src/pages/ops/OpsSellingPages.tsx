@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsOpportunity, type OpsDeployment, type OpsCampaign } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
@@ -11,7 +12,16 @@ export function OpsSalesPage() {
   const pipeline = useQuery({ queryKey: ['ops', 'pipeline'], queryFn: opsApi.pipeline, retry: false })
 
   const columns: Column<OpsOpportunity>[] = [
-    { head: 'Company', cell: (o) => <strong>{o.company.name}</strong> },
+    {
+      head: 'Company',
+      // Through to the company rather than to the deal: somebody clicking a
+      // name wants everything about them, not a bigger version of this row.
+      cell: (o) => (
+        <Link to={`/ops/companies/${o.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+          {o.company.name}
+        </Link>
+      ),
+    },
     { head: 'Stage', cell: (o) => readEnum(o.stage) },
     { head: 'Worth', cell: (o) => money(o.estimatedValue), numeric: true },
     { head: 'Came from', cell: (o) => o.campaign?.title ?? '—' },
@@ -48,7 +58,14 @@ export function OpsDeploymentPage() {
   })
 
   const columns: Column<OpsDeployment>[] = [
-    { head: 'Client', cell: (d) => <strong>{d.company.name}</strong> },
+    {
+      head: 'Client',
+      cell: (d) => (
+        <Link to={`/ops/companies/${d.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+          {d.company.name}
+        </Link>
+      ),
+    },
     { head: 'Stage', cell: (d) => readEnum(d.stage) },
     {
       head: 'Days in it',

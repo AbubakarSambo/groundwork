@@ -41,6 +41,14 @@ export class OpsSprintController {
     return this.companies.list(sprint);
   }
 
+  /** Everything about one company, in the order somebody asks. */
+  @Get('companies/:key')
+  @NeedsOps('sprint:read')
+  @ApiOperation({ summary: 'One company, every angle, and what has happened' })
+  detail(@Param('key') key: string) {
+    return this.companies.detail(key);
+  }
+
   @Post('companies')
   @NeedsOps('sales:write')
   @ApiOperation({ summary: 'Add a company' })

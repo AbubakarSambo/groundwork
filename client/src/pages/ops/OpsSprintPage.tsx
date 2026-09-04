@@ -54,10 +54,9 @@ export default function OpsSprintPage() {
   return (
     <main id="main" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
-        <Link to="/ops" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
-          ← Your board
-        </Link>
-        <p style={{ ...LABEL, marginTop: 6 }}>The sprint</p>
+        {/* The back-link went with the board switcher: the navigation is on
+            every page now, and a second way home is clutter rather than help. */}
+        <p style={LABEL}>The sprint</p>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
           {data?.period.name ?? 'Loading'}
         </h1>
@@ -133,8 +132,28 @@ export default function OpsSprintPage() {
               <tbody>
                 {data.companies.map((c) => (
                   <tr key={c.id} style={{ borderTop: '0.5px solid var(--gw-border)' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>{c.name}</td>
-                    <td style={{ padding: '10px 12px' }}>{readStage(c.stage)}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>
+                      <Link
+                        to={`/ops/companies/${c.key}`}
+                        style={{ color: 'var(--gw-navy)', textDecoration: 'none' }}
+                      >
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td style={{ padding: '10px 12px' }}>
+                      {readStage(c.stage)}
+                      {/*
+                        Said, not silently corrected. The stage shown is the
+                        furthest the deal and the deployment prove; the typed
+                        summary being behind is worth seeing, because otherwise a
+                        number moves on its own and people stop trusting the board.
+                      */}
+                      {c.summaryIsStale && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                          from the work — the summary still says {readStage(c.storedStage)}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '10px 12px', color: 'var(--gw-sub)' }}>
                       {c.broughtBy.map((b) => b.contributor).join(', ') || '—'}
                     </td>

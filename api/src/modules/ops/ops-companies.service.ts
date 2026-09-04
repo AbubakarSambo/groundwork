@@ -171,6 +171,72 @@ export class OpsCompaniesService {
     });
   }
 
+  /**
+   * One company, every angle, in the order somebody actually asks.
+   *
+   * Who are they and who brought them, what do they want to do and can we do
+   * it, where are they in the pipeline, how is the deployment going — and then
+   * everything that has happened, newest first.
+   *
+   * The timeline is the part that cannot be assembled from the other pages. A
+   * stage on a table says where something is; only the log says whether it got
+   * there last week or in July, and "how far has this got" and "is this moving"
+   * are different questions with different answers.
+   */
+  async detail(key: string) {
+    const company = await this.byKey(key);
+
+    const [attributions, useCases, opportunities, deployments, activity, people] = await Promise.all([
+      this.prisma.opsAttribution.findMany({
+        where: { companyId: company.id },
+        include: { contributor: true },
+      }),
+      this.prisma.opsClientUseCase.findMany({ where: { companyId: company.id } }),
+      this.prisma.opsSalesOpportunity.findMany({
+        where: { companyId: company.id },
+        include: { campaign: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.opsDeployment.findMany({ where: { companyId: company.id } }),
+      this.prisma.opsActivity.findMany({
+        where: { companyId: company.id },
+        orderBy: { happenedAt: 'desc' },
+        take: 100,
+      }),
+      this.prisma.opsPerson.findMany(),
+    ]);
+
+    const name = new Map(people.map((p) => [p.id, p.displayName]));
+
+    return {
+      company: {
+        ...company,
+        owner: company.ownerPersonId ? name.get(company.ownerPersonId) ?? null : null,
+      },
+      broughtBy: attributions.map((a) => ({
+        contributor: a.contributor.displayName,
+        contributorKey: a.contributor.key,
+        sourceType: a.sourceType,
+        sourceDetail: a.sourceDetail,
+        introducedAt: a.introducedAt,
+        qualifyingStatus: a.qualifyingStatus,
+      })),
+      useCases,
+      opportunities,
+      deployments,
+      /** Who did it, in words. An actor id in a timeline is nobody. */
+      activity: activity.map((a) => ({
+        id: a.id,
+        kind: a.kind,
+        domain: a.domain,
+        happenedAt: a.happenedAt,
+        note: a.note,
+        evidenceUrl: a.evidenceUrl,
+        by: a.actorPersonId ? name.get(a.actorPersonId) ?? 'somebody since removed' : null,
+      })),
+    };
+  }
+
   private async byKey(key: string) {
     const company = await this.prisma.opsCompany.findUnique({ where: { key } });
     if (!company) throw new NotFoundException(`No company called ${key}`);

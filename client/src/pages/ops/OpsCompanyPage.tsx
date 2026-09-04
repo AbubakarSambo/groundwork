@@ -1,0 +1,227 @@
+import { Link, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { opsApi } from '@/api/ops'
+import { PAGE, CARD, LABEL } from './OpsLayout'
+import { readEnum, readDate, DueDate } from './OpsTable'
+
+/**
+ * One company, every angle.
+ *
+ * The page that exists because the other seven make you assemble an answer.
+ * "What is going on with Meridian" is a question about a company, and every
+ * other page is organised by function — so answering it meant reading four
+ * tables and holding the join in your head.
+ */
+
+const money = (v: string | null) => (v === null ? '—' : `$${Number(v).toLocaleString()}`)
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ ...CARD, marginBottom: 12 }}>
+      <p style={LABEL}>{title}</p>
+      <div style={{ marginTop: 8 }}>{children}</div>
+    </section>
+  )
+}
+
+const NOTHING: React.CSSProperties = { fontSize: 13, color: 'var(--gw-sub)', margin: 0 }
+
+export default function OpsCompanyPage() {
+  const { key = '' } = useParams()
+  const detail = useQuery({
+    queryKey: ['ops', 'company', key],
+    queryFn: () => opsApi.company(key),
+    retry: false,
+  })
+
+  if (detail.isError) {
+    return (
+      <main id="main" style={PAGE}>
+        <h1 style={{ fontSize: 20, marginBottom: 8 }}>No company called {key}</h1>
+        <Link to="/ops/sprint" style={{ fontSize: 13.5 }}>
+          Back to the sprint
+        </Link>
+      </main>
+    )
+  }
+
+  const d = detail.data
+  if (!d) return <main id="main" style={PAGE}><p style={NOTHING}>Working it out…</p></main>
+
+  return (
+    <main id="main" style={PAGE}>
+      <header style={{ marginBottom: 18 }}>
+        <Link to="/ops/sprint" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
+          ← The sprint
+        </Link>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '6px 0 2px' }}>
+          {d.company.name}
+        </h1>
+        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>
+          {readEnum(d.company.stage)}
+          {d.company.owner ? ` · ${d.company.owner} owns it` : ' · nobody owns it'}
+          {d.company.source ? ` · came from ${d.company.source}` : ''}
+        </p>
+      </header>
+
+      {/*
+        * What is next and what is in the way come first, above everything
+        * historical. Somebody opening a company page is nearly always about to
+        * do something about it.
+        */}
+      <Section title="Where it stands">
+        {d.company.nextAction ? (
+          <p style={{ fontSize: 14, margin: 0 }}>
+            <strong>Next:</strong> {d.company.nextAction}{' '}
+            {d.company.nextActionDueAt && (
+              <span style={{ fontSize: 12.5 }}>
+                (<DueDate value={d.company.nextActionDueAt} />)
+              </span>
+            )}
+          </p>
+        ) : (
+          <p style={NOTHING}>Nothing planned next.</p>
+        )}
+        {d.company.blockerSummary && (
+          <p style={{ fontSize: 14, margin: '8px 0 0', color: 'var(--gw-red-t)' }}>
+            <strong>In the way:</strong> {d.company.blockerSummary}
+          </p>
+        )}
+        {d.company.primaryContactName && (
+          <p style={{ fontSize: 13, margin: '8px 0 0', color: 'var(--gw-sub)' }}>
+            {d.company.primaryContactName}
+            {d.company.primaryContactEmail ? ` · ${d.company.primaryContactEmail}` : ''}
+          </p>
+        )}
+      </Section>
+
+      <Section title="Who brought them">
+        {d.broughtBy.length === 0 ? (
+          <p style={NOTHING}>Nobody. They came to us.</p>
+        ) : (
+          d.broughtBy.map((b) => (
+            <p key={b.contributor} style={{ fontSize: 14, margin: '0 0 6px' }}>
+              <strong>{b.contributor}</strong> · {b.sourceType} · {readEnum(b.qualifyingStatus)}
+              {b.sourceDetail && (
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                  {b.sourceDetail}
+                </span>
+              )}
+            </p>
+          ))
+        )}
+      </Section>
+
+      <Section title="What they want to do">
+        {d.useCases.length === 0 ? (
+          <p style={NOTHING}>
+            Nobody has asked. Until somebody does, we do not know whether we support them.
+          </p>
+        ) : (
+          d.useCases.map((u) => {
+            const gaps = [
+              u.productGap && `Product: ${u.productGap}`,
+              u.uxGap && `UX: ${u.uxGap}`,
+              u.technicalGap && `Tech: ${u.technicalGap}`,
+            ].filter(Boolean) as string[]
+            return (
+              <div key={u.id} style={{ marginBottom: 10 }}>
+                <p style={{ fontSize: 14, margin: 0 }}>
+                  <strong>{u.title}</strong> — {readEnum(u.productReadiness)}
+                </p>
+                {u.expectedWorkflow && (
+                  <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '3px 0 0' }}>
+                    {u.expectedWorkflow}
+                  </p>
+                )}
+                {gaps.map((g) => (
+                  <p key={g} style={{ fontSize: 13, margin: '3px 0 0', color: 'var(--gw-red-t)' }}>
+                    {g}
+                  </p>
+                ))}
+              </div>
+            )
+          })
+        )}
+      </Section>
+
+      <Section title="The deal">
+        {d.opportunities.length === 0 ? (
+          <p style={NOTHING}>No opportunity open.</p>
+        ) : (
+          d.opportunities.map((o) => (
+            <p key={o.id} style={{ fontSize: 14, margin: '0 0 6px' }}>
+              {readEnum(o.stage)} · {money(o.estimatedValue)}
+              {o.campaign ? ` · from ${o.campaign.title}` : ''}
+              {o.lostReason && (
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                  Lost: {o.lostReason}
+                </span>
+              )}
+            </p>
+          ))
+        )}
+      </Section>
+
+      <Section title="Getting them live">
+        {d.deployments.length === 0 ? (
+          <p style={NOTHING}>Not being deployed.</p>
+        ) : (
+          d.deployments.map((dep) => (
+            <div key={dep.id}>
+              <p style={{ fontSize: 14, margin: 0 }}>
+                {readEnum(dep.stage)}
+                {dep.targetLiveDate && <> · target <DueDate value={dep.targetLiveDate} /></>}
+              </p>
+              {/* First use and first result, which mean "they used it" and "they got
+                  something out of it" - neither of which the stage alone tells you. */}
+              <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '3px 0 0' }}>
+                First used {readDate(dep.firstUseAt)} · first result {readDate(dep.firstResultAt)}
+              </p>
+              {dep.blockerType && (
+                <p style={{ fontSize: 13, margin: '4px 0 0', color: 'var(--gw-red-t)' }}>
+                  Waiting on {dep.blockerType}: {dep.blockerSummary}
+                </p>
+              )}
+            </div>
+          ))
+        )}
+      </Section>
+
+      {/*
+        * The timeline is the thing this page has that no other does. A stage
+        * says where something is; only this says whether it got there last week
+        * or in July.
+        */}
+      <Section title="What has happened">
+        {d.activity.length === 0 ? (
+          <p style={NOTHING}>Nothing recorded yet.</p>
+        ) : (
+          <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {d.activity.map((a) => (
+              <li
+                key={a.id}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  padding: '6px 0',
+                  borderTop: '0.5px solid var(--gw-border)',
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: 'var(--gw-sub)', flex: 'none', width: 78 }}>
+                  {readDate(a.happenedAt)}
+                </span>
+                <span style={{ flex: 1 }}>
+                  {readEnum(a.kind)}
+                  {a.note && <span style={{ color: 'var(--gw-sub)' }}> — {a.note}</span>}
+                </span>
+                <span style={{ color: 'var(--gw-sub)', flex: 'none' }}>{a.by ?? 'the system'}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
+    </main>
+  )
+}

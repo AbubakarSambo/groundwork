@@ -70,6 +70,8 @@ export interface OpsSprintBoard {
     key: string
     name: string
     stage: string
+    storedStage: string
+    summaryIsStale: boolean
     nextAction: string | null
     nextActionDueAt: string | null
     blockerSummary: string | null
@@ -103,7 +105,7 @@ export interface OpsOpportunity {
   nextActionDueAt: string | null
   lastActivityAt: string | null
   lostReason: string | null
-  company: { name: string }
+  company: { key: string; name: string }
   campaign: { title: string } | null
 }
 
@@ -116,7 +118,7 @@ export interface OpsDeployment {
   blockerSummary: string | null
   nextAction: string | null
   firstUseAt: string | null
-  company: { name: string }
+  company: { key: string; name: string }
 }
 
 export interface OpsRoadmapItem {
@@ -138,7 +140,7 @@ export interface OpsUseCase {
   uxGap: string | null
   technicalGap: string | null
   nextAction: string | null
-  company: { name: string }
+  company: { key: string; name: string }
 }
 
 export interface OpsWorkItem {
@@ -255,6 +257,66 @@ export interface OpsIntegrationStatus {
   says: string
 }
 
+export interface OpsCompanyDetail {
+  company: {
+    id: string
+    key: string
+    name: string
+    stage: string
+    owner: string | null
+    source: string | null
+    primaryContactName: string | null
+    primaryContactEmail: string | null
+    nextAction: string | null
+    nextActionDueAt: string | null
+    blockerSummary: string | null
+    liveAt: string | null
+    notes: string | null
+    createdAt: string
+  }
+  broughtBy: Array<{
+    contributor: string
+    sourceType: string
+    sourceDetail: string | null
+    introducedAt: string
+    qualifyingStatus: string
+  }>
+  useCases: Array<{
+    id: string
+    title: string
+    productReadiness: string
+    productGap: string | null
+    uxGap: string | null
+    technicalGap: string | null
+    expectedWorkflow: string | null
+  }>
+  opportunities: Array<{
+    id: string
+    stage: string
+    estimatedValue: string | null
+    nextAction: string | null
+    lostReason: string | null
+    campaign: { title: string } | null
+  }>
+  deployments: Array<{
+    id: string
+    stage: string
+    blockerType: string | null
+    blockerSummary: string | null
+    targetLiveDate: string | null
+    firstUseAt: string | null
+    firstResultAt: string | null
+  }>
+  activity: Array<{
+    id: string
+    kind: string
+    domain: string
+    happenedAt: string
+    note: string | null
+    by: string | null
+  }>
+}
+
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me').then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards').then((r) => r.data),
@@ -275,6 +337,8 @@ export const opsApi = {
   decide: (id: string, status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED', decisionNote?: string) =>
     apiClient.patch(`/ops/approvals/${id}`, { status, decisionNote }).then((r) => r.data),
 
+  company: (key: string) =>
+    apiClient.get<OpsCompanyDetail>(`/ops/companies/${key}`).then((r) => r.data),
   pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline').then((r) => r.data),
   deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments').then((r) => r.data),
   campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns').then((r) => r.data),
