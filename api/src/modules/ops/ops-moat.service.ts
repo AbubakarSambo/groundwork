@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  THE_MOAT,
   THE_COMPOUNDING_LOOP,
+  PRIVACY_IS_ARCHITECTURE,
   MAXIMUM_LEARNING_MINIMUM_EXPOSURE,
+  WHAT_THE_PRIVACY_ARCHITECTURE_IS,
   WHAT_AN_ACQUIRER_IS_BUYING,
   WHAT_GROUNDWORK_IS_BUILDING,
 } from './what-the-moat-is-made-of';
@@ -32,9 +35,13 @@ export class OpsMoatService {
     const name = new Map(people.map((p) => [p.id, p.displayName]));
 
     return {
+      title: THE_MOAT,
       building: WHAT_GROUNDWORK_IS_BUILDING,
       loop: THE_COMPOUNDING_LOOP,
+      /** Three parts, and all three are shown. See the note on the constants. */
+      privacyFraming: PRIVACY_IS_ARCHITECTURE,
       privacy: MAXIMUM_LEARNING_MINIMUM_EXPOSURE,
+      privacyArchitecture: WHAT_THE_PRIVACY_ARCHITECTURE_IS,
       acquirer: WHAT_AN_ACQUIRER_IS_BUYING,
       components: components.map((c) => ({
         key: c.key,

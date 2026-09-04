@@ -350,9 +350,12 @@ export interface OpsPerson {
 }
 
 export interface OpsMoat {
+  title: string
   building: string
   loop: string
+  privacyFraming: string
   privacy: string
+  privacyArchitecture: string
   acquirer: string
   components: Array<{
     key: string

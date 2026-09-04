@@ -15,10 +15,13 @@
  * and a paraphrase loses exactly that.
  */
 import {
+  THE_MOAT,
   MOAT_COMPONENTS,
   WHAT_GROUNDWORK_IS_BUILDING,
   THE_COMPOUNDING_LOOP,
+  PRIVACY_IS_ARCHITECTURE,
   MAXIMUM_LEARNING_MINIMUM_EXPOSURE,
+  WHAT_THE_PRIVACY_ARCHITECTURE_IS,
   WHAT_AN_ACQUIRER_IS_BUYING,
 } from './what-the-moat-is-made-of';
 import { METRICS_BY_KEY } from './a-number-you-can-open';
@@ -58,6 +61,84 @@ describe('the five components', () => {
     ]) {
       expect(all).toContain(phrase);
     }
+  });
+});
+
+describe('the document is held to the words it was written in', () => {
+  /**
+   * The first version of this file lost seven things: the title, the sentence
+   * framing privacy as architecture, the whole paragraph saying what that
+   * architecture consists of, and four pieces of punctuation - em dashes
+   * flattened to hyphens and arrows rewritten as ->.
+   *
+   * None of it was a decision. It is the ordinary drift of retyping somebody
+   * else's writing, and it took out two complete sentences on the way, one of
+   * which is the only place consent, retention and de-identification are named
+   * as things to build.
+   *
+   * So the source text is asserted rather than described. A clause missing from
+   * this list is a clause somebody removed on purpose; a clause missing from the
+   * file is an accident, and this is the difference.
+   */
+  const EXACTLY_AS_WRITTEN = [
+    ['the title', THE_MOAT, 'The Groundwork Moat'],
+    [
+      'the em dash in the opening sentence',
+      WHAT_GROUNDWORK_IS_BUILDING,
+      'how people work together — how to get to the truth',
+    ],
+    [
+      'the em dash in the dataset statement',
+      MOAT_COMPONENTS[1].statement,
+      'behavioural signals—not merely metadata',
+    ],
+    ['the arrows in the loop', THE_COMPOUNDING_LOOP, 'More situations → better elicitation'],
+    [
+      'the em dash in what an acquirer is buying',
+      WHAT_AN_ACQUIRER_IS_BUYING,
+      'human dynamics at work — with a dataset',
+    ],
+  ] as const;
+
+  it.each(EXACTLY_AS_WRITTEN)('keeps %s', (_what, actual, fragment) => {
+    expect(actual).toContain(fragment);
+  });
+
+  it('and keeps the sentence that frames privacy as architecture rather than a ceiling', () => {
+    expect(PRIVACY_IS_ARCHITECTURE).toBe(
+      'And importantly, privacy is part of the architecture, not a limit on the ambition:',
+    );
+  });
+
+  it('and the paragraph saying what that architecture actually consists of', () => {
+    /**
+     * The one that was dropped. Without it, "maximum learning, minimum necessary
+     * exposure" is a slogan; with it, it is a list of work - consent, access,
+     * retention, de-identification, learning - and every item on that list is
+     * something somebody has to build.
+     */
+    for (const named of ['consent', 'access', 'retention', 'de-identification', 'learning']) {
+      expect(WHAT_THE_PRIVACY_ARCHITECTURE_IS).toContain(named);
+    }
+    expect(WHAT_THE_PRIVACY_ARCHITECTURE_IS).toContain("protect people's ability to speak candidly");
+  });
+
+  it('and nothing has been flattened to a hyphen or an ASCII arrow', () => {
+    /*
+     * The specific way this was lost the first time, checked directly. An em
+     * dash becoming a hyphen is invisible in review and reads as normalisation
+     * rather than as somebody editing a strategy document.
+     */
+    const everything = [
+      WHAT_GROUNDWORK_IS_BUILDING,
+      THE_COMPOUNDING_LOOP,
+      WHAT_AN_ACQUIRER_IS_BUYING,
+      ...MOAT_COMPONENTS.map((c) => c.statement),
+    ].join(' ');
+
+    expect(everything).not.toContain(' -> ');
+    expect(everything).not.toContain('work together - how');
+    expect(everything).not.toContain('signals - not merely');
   });
 });
 

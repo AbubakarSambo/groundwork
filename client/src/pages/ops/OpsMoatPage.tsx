@@ -19,7 +19,10 @@ export default function OpsMoatPage() {
 
   return (
     <main id="main" style={PAGE}>
-      <OpsHeader name="The moat" answers="What is the defensible advantage, and what have we built on it?" />
+      <OpsHeader
+        name={d?.title ?? 'The Groundwork Moat'}
+        answers="What is the defensible advantage, and what have we built on it?"
+      />
 
       {d && (
         <>
@@ -30,10 +33,21 @@ export default function OpsMoatPage() {
             <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '10px 0 0', maxWidth: '62ch' }}>
               {d.loop}
             </p>
-            {/* Kept next to the loop rather than in a footnote: the loop is what
-                would justify collecting anything, and this decides how. */}
-            <p style={{ fontSize: 13.5, margin: '10px 0 0', fontWeight: 600, color: 'var(--gw-navy)' }}>
+            {/*
+              Privacy in three parts, all three shown. The framing says what
+              privacy IS here; the line is the rule; the paragraph is what the
+              rule consists of - and the paragraph is the only place consent,
+              retention and de-identification are named as things to build.
+              Showing the line alone makes it a slogan.
+            */}
+            <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '14px 0 0', maxWidth: '62ch' }}>
+              {d.privacyFraming}
+            </p>
+            <p style={{ fontSize: 15, margin: '6px 0 0', fontWeight: 700, color: 'var(--gw-navy)' }}>
               {d.privacy}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '8px 0 0', maxWidth: '62ch' }}>
+              {d.privacyArchitecture}
             </p>
           </section>
 
