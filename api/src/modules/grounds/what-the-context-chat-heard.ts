@@ -1,3 +1,5 @@
+import { worthRecording } from './what-setup-agreed';
+import { whoTheyMeant } from './who-they-meant';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
  *
@@ -44,13 +46,22 @@ export interface Heard {
   cadence?: string | null;
   /** What doing well looks like, in the lead's own words. */
   success?: string | null;
+  /**
+   * What the lead expects of one named person, in the lead's own words.
+   *
+   * One at a time and only where they named somebody. An expectation with no person attached is a
+   * statement about the work, which is what `success` already holds.
+   */
+  expectationPerson?: string | null;
+  expectationText?: string | null;
 }
 
 export type Proposal =
   | { kind: 'none'; why: string }
   | { kind: 'timeline'; days: number; say: string }
   | { kind: 'cadence'; cadence: Cadence; say: string }
-  | { kind: 'success'; text: string; say: string };
+  | { kind: 'success'; text: string; say: string }
+  | { kind: 'expectation'; participantId: string; personLabel: string; text: string; say: string };
 
 /**
  * A day count somebody would actually choose. Below a week there is nothing to check in against;
@@ -69,7 +80,12 @@ const MAX_SUCCESS = 600;
  * which is the difference between a product that helps and one that edits your record while you talk
  * to it.
  */
-export function proposalFrom(gap: string | null, heard: Heard): Proposal {
+export function proposalFrom(
+  gap: string | null,
+  heard: Heard,
+  /** Who is on this ground, so a name in an answer can be matched to somebody real. */
+  parties: { id: string; email: string; name?: string | null }[] = [],
+): Proposal {
   if (!gap) return { kind: 'none', why: 'There is no open question for this to answer.' };
 
   if (gap === 'timeline') {
@@ -117,10 +133,50 @@ export function proposalFrom(gap: string | null, heard: Heard): Proposal {
   }
 
   /**
-   * `parties`, `objectives` and `documents` are asked about and deliberately not written from here.
-   * Adding a person, setting somebody's objective and sharing a document each already have their own
-   * screen, each with its own consequences - an invite email, a visible objective, a file everybody
-   * can read. A chat quietly doing any of those is the version of this feature nobody asked for.
+   * OBJECTIVES ARE WRITTEN FROM HERE NOW, AND THE COMMENT THAT SAID OTHERWISE WAS WRONG.
+   *
+   * It read: "setting somebody's objective... already has its own screen". It does not. The
+   * expectations panel is explicitly read-only - "nobody edits anything here" - and the only two
+   * things in the codebase that create a `PersonObjective` run INSIDE a check-in conversation. So
+   * an expectation could not exist until the lead had finished their own check-in, and the first
+   * check-in opened with nothing to measure anybody against. That is most of why it feels shapeless.
+   *
+   * The objection in that comment was to a chat QUIETLY writing to somebody's record, and it was
+   * right. This is not quiet: it returns a proposal like every other gap, the lead sees the sentence
+   * and confirms it, and nothing is written until they do.
+   *
+   * IT IS RECORDED AS THE LEAD'S EXPECTATION AND MARKED UNSEEN, which is true by construction - the
+   * person it is about has not arrived yet. That flag is what the whole record reads to refuse
+   * pressing anybody about something nobody showed them.
+   */
+  if (gap === 'objectives') {
+    const person = (heard.expectationPerson ?? '').trim();
+    const text = (heard.expectationText ?? '').trim();
+    if (!person || !text) {
+      return { kind: 'none', why: 'No expectation of a named person in that answer.' };
+    }
+    if (!worthRecording(text)) {
+      return { kind: 'none', why: 'That is not specific enough to hold anybody to, so it is better left to the check-in.' };
+    }
+    const match = whoTheyMeant(person, parties);
+    if (!match) {
+      return { kind: 'none', why: `Nobody on this check-in matches "${person}".` };
+    }
+    return {
+      kind: 'expectation',
+      participantId: match.id,
+      personLabel: match.label,
+      text,
+      say: `I will record that as what you expect of ${match.label}: "${text}". It goes down as YOUR expectation, `
+        + 'not as agreed, and marked as not yet seen by them.',
+    };
+  }
+
+  /**
+   * `parties` and `documents` are asked about and deliberately not written from here. Adding a
+   * person and sharing a document each have their own screen and their own consequences - an invite
+   * email, a file everybody can read - and a chat doing either on its own is the version of this
+   * feature nobody asked for.
    */
   return { kind: 'none', why: 'That one is not something this conversation changes on its own.' };
 }
@@ -141,6 +197,17 @@ export function extractionToolFor(gap: string) {
       description: 'How often people should check in, from what they said. ONE_TIME means a single session at the end. Omit if they did not say.',
     };
   }
+  if (gap === 'objectives') {
+    props.expectationPerson = {
+      type: 'string',
+      description: 'The NAME or email of the one person this expectation is about, exactly as they said it. Omit unless they named somebody.',
+    };
+    props.expectationText = {
+      type: 'string',
+      description: 'What they expect of that person, in THEIR words, trimmed to the expectation itself. Omit if they did not say, and never invent a sensible one.',
+    };
+  }
+
   if (gap === 'success') {
     props.success = {
       type: 'string',

@@ -65,7 +65,7 @@ INCLUDED_IN_PLAN = "Included in your plan"
 # here from every route, so a brand-new admin meets it on the way to their first check-in. The two
 # placeholders are how the fields are found: the labels here are plain text beside the input rather
 # than bound to it, so get_by_label matches nothing.
-ORG_SETUP_HEADING = "Set up your organization"
+ORG_SETUP_HEADING = "Set up your organisation"
 ORG_SETUP_NAME_PLACEHOLDER = "Acme Inc."
 ORG_SETUP_EMAIL_PLACEHOLDER = "hello@acme.com"
 

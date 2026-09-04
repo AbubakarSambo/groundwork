@@ -1,11 +1,12 @@
 import { PageCrash } from '@/components/gw/PageCrash'
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
+import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
 import { SignOutPage } from '@/pages/auth/SignOutPage'
 import { MagicVerifyPage } from '@/pages/auth/MagicVerifyPage'
@@ -78,8 +79,34 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
     // W8-70.
     return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
+  /*
+   * A SILENT REDIRECT READS AS A BUG, NOT AS A REFUSAL.
+   *
+   * This was `<Navigate to="/grounds" replace />`: an admin in a customer organisation who opened
+   * one of these addresses was moved to their check-in list with nothing said. From the outside
+   * that is a link that does not work, and the natural response is to try it again.
+   *
+   * Say who the area is for and leave them somewhere to go, which is what every other refusal in
+   * this product now does.
+   */
   if (!isPlatformAdmin) {
-    return <Navigate to="/grounds" replace />
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ textAlign: 'center', maxWidth: 380 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
+            This part is for Groundwork staff
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+            It is not part of your organisation's admin, and there is nothing here that affects your
+            check-ins. Being an admin in your own organisation does not include it.
+          </div>
+          <Link
+            to="/grounds"
+            style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}
+          >Go to my check-ins</Link>
+        </div>
+      </div>
+    )
   }
   return children
 }
@@ -87,10 +114,20 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
 /** An org created before it has a contact email can't run check-ins yet - only the admin who
  * created it can fix that, so only ADMIN is gated here. `subscriptionPlan` is deliberately NOT
  * part of this check: staying on the free tier means it is null forever - that's the free tier,
- * not an unfinished step - and /pricing has no "confirm free" action to ever set it. */
-function isOrgSetupComplete(user: User | null | undefined) {
-  if (!user) return true // let RequireAuth handle the unauthenticated case
-  return !!user.organization?.email
+ * not an unfinished step - and /pricing has no "confirm free" action to ever set it.
+ *
+ * THE RULE ITSELF NOW LIVES ON THE SERVER, as `mustSetUpOrganisation`. It read
+ * `role === 'ADMIN' && !organization.email` here, which sent anyone invited into another
+ * company's check-in to "Set up your organization" - they administer their own untouched
+ * workspace, so both halves were true and neither was the point. The server adds the missing
+ * clause (do they belong anywhere else) and answers in one field.
+ *
+ * Falls back to the old reading only when the field is absent - a `user` persisted by an older
+ * build, before the next `/auth/me` refreshes it. */
+function mustSetUpOrg(user: User | null | undefined) {
+  if (!user) return false // let RequireAuth handle the unauthenticated case
+  if (typeof user.mustSetUpOrganisation === 'boolean') return user.mustSetUpOrganisation
+  return user.role === 'ADMIN' && !user.organization?.email
 }
 
 /* The two doors. Each reads the one field that decides it, and nothing else. */
@@ -111,7 +148,7 @@ function RequireOrgSetup({ children }: { children: JSX.Element }) {
     const dest = window.location.pathname + window.location.search
     return <Navigate to={`/auth?next=${encodeURIComponent(dest)}`} replace />
   }
-  if (user?.role === 'ADMIN' && !isOrgSetupComplete(user)) {
+  if (mustSetUpOrg(user)) {
     return <Navigate to="/org/setup" replace />
   }
   return children
@@ -142,7 +179,7 @@ function RootRoute() {
    * than leaving as an unlabelled fall-through, because the signed-out branch above returns early
    * and it is easy to read this as unreachable.
    */
-  if (user?.role === 'ADMIN' && !isOrgSetupComplete(user)) {
+  if (mustSetUpOrg(user)) {
     return <Navigate to="/org/setup" replace />
   }
   return <GroundsListPage />
@@ -150,6 +187,8 @@ function RootRoute() {
 
 function SessionGuard({ children }: { children: React.ReactNode }) {
   useSessionTimeout()
+  /* The stored user is a copy from sign-in day; ask the server what is true now. */
+  useWhoTheServerSaysYouAre()
   return <>{children}</>
 }
 
@@ -158,6 +197,9 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <SessionGuard>
+          {/* First in the document, so it is the first thing a keyboard reaches. It was inside the
+              shell, behind the help button, which made it the second stop and therefore useless. */}
+          <a href="#main" className="gw-skip">Skip to content</a>
           <Toaster position="top-right" richColors />
           <HelpModal />
           <HelpButton />
@@ -227,8 +269,34 @@ export default function App() {
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
-            <Route path="/prompts" element={<RequireOrgSetup><PromptVersioningPage /></RequireOrgSetup>} />
-            <Route path="/prompts/test" element={<RequireOrgSetup><PromptTestPage /></RequireOrgSetup>} />
+            {/*
+              * INTERNAL TOOLING, ON A CUSTOMER ROUTE.
+              *
+              * These two were guarded only by `RequireOrgSetup`, which means "you are signed in and
+              * your organisation is named" - true of every customer. Neither is linked from the
+              * navigation, so nobody found them by accident, and every endpoint behind them already
+              * carries `PlatformAdminGuard` at the class level: a customer who reached them got a
+              * page whose every request returned 403, written in internal language, with no way to
+              * know why.
+              *
+              * Not a data exposure. A page that can only fail, shown to the wrong person.
+              */}
+            {/*
+              * BACK-OFFICE TOOLING OFF THE CUSTOMER ROUTES.
+              *
+              * These are Groundwork's own prompt tools and they sat at /prompts and /prompts/test,
+              * top-level addresses in a customer's app, rendered inside the customer's rail. Under
+              * /admin they are covered by CHROMELESS_PREFIXES like the rest of the back office, so
+              * they no longer wear the shell of the product they are used to operate.
+              *
+              * Nothing in the app ever linked to them - they are reached by typing the address - so
+              * the move breaks no navigation. The two redirects are for whoever has them
+              * bookmarked, because a silent 404 on a tool you use daily reads as an outage.
+              */}
+            <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
+            <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
+            <Route path="/prompts/test" element={<Navigate to="/admin/prompts/test" replace />} />
             <Route path="/settings" element={<RequireOrgSetup><SettingsPage /></RequireOrgSetup>} />
             <Route path="/org/members" element={<RequireOrgSetup><AdminsOnly><OrgMembersPage /></AdminsOnly></RequireOrgSetup>} />
             {/*

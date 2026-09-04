@@ -110,6 +110,15 @@ export type _PlanRef = SubscriptionPlan
  * shelf marked "something is off".
  */
 export const SCENARIO_GROUPS = [
+  /**
+   * FIRST, NOT LAST. It sat at the bottom of six groups, which is where you put a last resort - and
+   * the person who cannot name their situation is precisely the person who will not read to the
+   * bottom of twenty cards to find out they did not have to. Putting it first costs the person who
+   * DOES know their situation one line of scrolling, and saves the person who does not from the
+   * whole wall. It is also the honest answer when the search finds nothing.
+   */
+  { key: 'open', heading: 'Not sure yet',
+    question: 'You cannot name it, so nothing below should be guessed on your behalf.' },
   { key: 'starting', heading: 'Starting something',
     question: 'Nothing has gone wrong. You want the expectations written down before they harden into assumptions.' },
   { key: 'planning', heading: 'Setting the target',
@@ -120,8 +129,6 @@ export const SCENARIO_GROUPS = [
     question: 'Something is being decided about somebody, and both of you should be reading the same record when it is.' },
   { key: 'off', heading: 'Something is off',
     question: 'It has already happened. What separates these is whether the gap is against something agreed, between two people, or the result of one event.' },
-  { key: 'open', heading: 'Not sure yet',
-    question: 'You cannot name it, so nothing above should be guessed on your behalf.' },
 ] as const
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
@@ -157,7 +164,13 @@ export const COACH_CARD = {
   label: 'Ask to speak to a coach',
   moment: 'You know what you are dealing with. You want a person in it with you.',
   whatHappens: 'Nothing is created and nobody on your team is contacted. You tell us what you are dealing with, we email you back, and a coach picks it up from there.',
-  cost: 'Coaching is $5,000 a year for twelve sessions, or $500 an hour with no retainer. The software works without it, and most teams run it themselves.',
+  /*
+   * THE SAME NUMBERS THE PRICING PAGE SHOWS, and they were not. This card said $5,000 and $500
+   * while the site said $7,500 and $700 - two prices for one thing, one of them inside the product
+   * somebody is already paying for. A person who read the card and then the page has no way to know
+   * which is real, and the one they will remember is the cheaper one.
+   */
+  cost: 'Coaching is $7,500 a year for twelve sessions, or $700 an hour with no retainer. The software works without it, and most teams run it themselves.',
 } as const
 
 

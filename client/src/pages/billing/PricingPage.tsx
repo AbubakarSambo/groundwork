@@ -10,9 +10,9 @@ const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
   STARTER: 'For small teams getting started with structured check-ins.',
   SMALL_TEAM: 'For growing teams running multiple check-ins at once.',
   GROWTH: 'For organisations running Groundwork across departments or client groups.',
-  BUSINESS: 'For larger organizations with multiple teams and check-ins in flight.',
-  SCALE: 'For organizations running Groundwork across many teams at once.',
-  ENTERPRISE: 'For organizations with custom needs, volume pricing, or dedicated support.',
+  BUSINESS: 'For larger organisations with multiple teams and check-ins in flight.',
+  SCALE: 'For organisations running Groundwork across many teams at once.',
+  ENTERPRISE: 'For organisations with custom needs, volume pricing, or dedicated support.',
 }
 
 

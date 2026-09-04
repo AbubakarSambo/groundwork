@@ -32,8 +32,11 @@ describe('who you are is built in one place', () => {
   });
 
   it('and signing in uses the same one', () => {
-    const build = SRC.slice(SRC.indexOf('private buildAuthResponse('), SRC.indexOf('private theUserShape('));
-    expect(build).toContain('user: this.theUserShape(user)');
+    /* Matched loosely on purpose: this pinned `private buildAuthResponse(` and the exact
+       argument list, so making the helper async broke the guard without anything being wrong.
+       What it protects is that signing in goes through the one builder, not how it is spelled. */
+    const build = SRC.slice(SRC.indexOf('buildAuthResponse(user: UserWithOrg'), SRC.indexOf('private theUserShape('));
+    expect(build).toContain('this.theUserShape(user');
   });
 
   it('so the permission field cannot reach one door and miss the other', () => {

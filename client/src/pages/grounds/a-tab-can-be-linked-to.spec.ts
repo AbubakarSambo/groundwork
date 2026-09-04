@@ -19,12 +19,20 @@ const ADMIN = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 const PARTY = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-const KEYS = groundTabs({ contextEnabled: true }).map((t) => t.key)
+/* Each view offers a different list now - `sessions` is the lead's, `record` is a party's - so each
+   is checked against the keys IT can be sent, not against every key that exists. A page failing to
+   map a key it never shows is not a broken link. */
+const KEYS_FOR = {
+  'the lead': groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: false }).map(t => t.key),
+  'a party': groundTabs({ contextEnabled: true, canRunThisCheckIn: false, isAParty: true }).map(t => t.key),
+} as const
 
 describe('every tab in the row can be linked to', () => {
-  it('found the shared keys', () => {
-    expect(KEYS).toContain('context')
-    expect(KEYS).toContain('record')
+  it('found the keys each view offers, so an empty list cannot pass', () => {
+    expect(KEYS_FOR['the lead']).toContain('context')
+    expect(KEYS_FOR['the lead']).toContain('sessions')
+    expect(KEYS_FOR['a party']).toContain('context')
+    expect(KEYS_FOR['a party']).toContain('record')
   })
 
   for (const [name, src] of [['the lead', ADMIN], ['a party', PARTY]] as const) {
@@ -37,7 +45,7 @@ describe('every tab in the row can be linked to', () => {
 
       it('maps every shared key, so none falls through to the default', () => {
         const map = code.slice(code.indexOf('FROM_TAB_KEY: Record'), code.indexOf('}', code.indexOf('FROM_TAB_KEY: Record')))
-        const missing = KEYS.filter((k) => !map.includes(`${k}:`))
+        const missing = KEYS_FOR[name].filter((k) => !map.includes(`${k}:`))
         expect(missing).toEqual([])
       })
 

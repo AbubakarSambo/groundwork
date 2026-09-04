@@ -3,23 +3,23 @@ import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { whichSessionAreWeOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
+import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { GroundChat } from '@/components/gw/GroundChat'
-import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
-import { SoloReportBody } from '@/components/gw/SoloReportBody'
-import { ReportBody } from '@/pages/report/ReportPage'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
-import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { MyRecord } from '@/components/gw/MyRecord'
+import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { MyParticipation } from '@/components/gw/MyParticipation'
+import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
 
 
@@ -69,20 +69,35 @@ export function GroundParticipantPage() {
   const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
   const [paywallCode, setPaywallCode] = useState('')
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [showShareConfirm, setShowShareConfirm] = useState(false)
 
   const user = useAuthStore(s => s.user)
 
-  const { data: ground, isLoading } = useQuery({
+  const { data: ground, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
   })
 
+  /* Only a 404 means gone. Everything else is a failure to reach it - see the guard below. */
+  const definitelyGone = isError && (error as any)?.response?.status === 404
+
   const { data: report } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
-    enabled: !!id,
+    /**
+     * ONLY WHEN THE CHECK-IN SAYS THERE IS ONE.
+     *
+     * `GET /grounds/:id/report` answers 404 for "no report yet" - deliberately, and it must keep
+     * doing so: the same 404 covers a check-in that does not exist and one that is not yours, so a
+     * caller cannot tell those apart. See GW-PRI-04, `missing report does not leak ground
+     * existence`. Turning it into a 200 would make "this check-in exists and has no report" a
+     * distinguishable answer, which is the leak that spec prevents.
+     *
+     * So the fix is here rather than there: the ground payload already carries `report`, so the
+     * client knows before it asks. Asking anyway put a red 404 in the console on every check-in
+     * that has not reported yet - noise that makes a real error harder to see.
+     */
+    enabled: !!id && !!(ground as any)?.report,
     retry: false,
   })
 
@@ -105,25 +120,6 @@ export function GroundParticipantPage() {
     queryFn: () => groundsApi.getMySoloReport(id!),
     enabled: !!id && tab === 'report',
     retry: false,
-  })
-
-  const setSoloSharedMut = useMutation({
-    mutationFn: (shared: boolean) => groundsApi.setMySoloReportShared(id!, shared),
-    onSuccess: () => {
-      refetchSoloReport()
-      setShowShareConfirm(false)
-    },
-    onError: () => toast.error('Could not update. Try again.'),
-  })
-
-  // Explicit "my account is accurate" confirmation - the deadline for
-  // corrections, in place of a timer. Does not block later corrections; it
-  // just flags any that come after as "updated after sign-off" on the shared
-  // report (see reportsApi.get()'s `updates` field / SoloArtifactBlock above).
-  const signOffMut = useMutation({
-    mutationFn: () => groundsApi.signOff(id!),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['ground', id] }),
-    onError: () => toast.error('Could not sign off. Try again.'),
   })
 
   // The checkout mutation behind the deleted subscription CTA is gone with it.
@@ -188,16 +184,6 @@ export function GroundParticipantPage() {
     onError: () => toast.error('Could not start checkout. Try again.'),
   })
 
-  const activateMutation = useMutation({
-    mutationFn: () => reportsApi.activate(id!),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['report', id] })
-      toast.success('Report revealed')
-      setTab('report')
-    },
-    onError: () => toast.error('Could not activate. Try again.'),
-  })
-
 
 
   /**
@@ -254,6 +240,36 @@ export function GroundParticipantPage() {
   }, [myOpenForAutoOpen, probeSession])
 
   if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+  /*
+   * A FAILED REQUEST WAS TELLING PEOPLE THEY HAD BEEN REMOVED.
+   *
+   * This was `if (!ground)`, which sends every failure to GroundGone - and GroundGone reads
+   * "This check-in is not open to you ... it may have been closed, or you are no longer part of
+   * it." Driven in the browser with the endpoint forced to 500, that is what a party saw: an
+   * accusation that they had been taken out of a check-in, because a request failed.
+   *
+   * The admin page had already written the rule and this page had not been brought along with it:
+   * a check-in that is genuinely gone answers 404, and anything else is a failure to load.
+   */
+  if (isError && !definitelyGone) return (
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
+          We could not load this check-in
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 340, margin: '0 auto 18px' }}>
+          This is a connection problem, not a lost record. You are still part of it, and nothing you
+          have written is affected.
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+        >{isFetching ? 'Trying…' : 'Try again'}</button>
+      </div>
+    </div>
+  )
+
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
   if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>
@@ -261,6 +277,18 @@ export function GroundParticipantPage() {
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
+  /**
+   * AND THE WAY BACK, FOR EVERYBODY WHO HAS ONE.
+   *
+   * The return button asked `isInitiator`, and the button that sends people HERE asks only whether
+   * they are a party. So an admin in this organisation who takes part in a check-in somebody else
+   * leads could cross over and had no way back: no button existed for them, and the two pages look
+   * identical, so the screen had simply changed and offered no way to undo it. The browser's back
+   * arrow or the rail was the only exit.
+   *
+   * The same question the other page asks to decide whether somebody may run this.
+   */
+  const canRunThisCheckIn = isInitiator || user?.role === 'ADMIN'
 
   if (!myParticipant) {
     return (
@@ -325,6 +353,9 @@ export function GroundParticipantPage() {
    */
   const tabs = groundTabs({
     contextEnabled,
+    /* This page is somebody's own account of the check-in. Running it is the other view's job. */
+    canRunThisCheckIn: false,
+    isAParty: true,
   }).map(t => {
     /**
      * This page's own keys predate the shared list and are not worth churning: `checkin` for the
@@ -367,7 +398,7 @@ export function GroundParticipantPage() {
               where the check-in has got to belongs up here, on both pages, once.
             */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span>Your own account. Yours until the report releases.</span>
+              <span>Just yours - only you see this until the report releases.</span>
               {totalSessions != null && (
                 <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
               )}
@@ -387,12 +418,12 @@ export function GroundParticipantPage() {
             initiator has no admin view to switch to, and offering one would send
             them to a page that refuses them.
           */}
-          {isInitiator && (
+          {canRunThisCheckIn && (
             <button
               onClick={() => navigate(`/grounds/${id}`)}
               style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              Admin view →
+              The whole check-in →
             </button>
           )}
           {/*
@@ -458,10 +489,23 @@ export function GroundParticipantPage() {
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)
               .map((p: any) => {
-                /** One answer for both pages. See lib/which-session-are-we-on.ts. */
-                const currentSession = whichSessionAreWeOn(
-                  openCheckIn?.sessionNumber ?? null,
-                  completedCheckIns.map((c: any) => c.sessionNumber ?? 0),
+                /**
+                 * THE SESSION THE CHECK-IN IS ON, NOT THE ONE I AM ON.
+                 *
+                 * `openCheckIn` and `completedCheckIns` are MY check-ins, so this judged everybody
+                 * else's chip against my own progress: having finished session 2 before anyone else
+                 * made the whole roster answer for session 1, and every chip read "checked in"
+                 * beside a counter that said nobody had. Same defect as the other view, from the
+                 * same cause. See lib/which-session-are-we-on.ts.
+                 */
+                const currentSession = whichSessionIsThisCheckInOn(
+                  (ground.participants ?? [])
+                    .filter((q: any) => !q.managingOnly)
+                    .map((q: any) =>
+                      ((q.checkIns ?? []) as any[])
+                        .filter((c) => c.status === 'COMPLETED')
+                        .map((c) => c.sessionNumber ?? 0),
+                    ),
                 )
                 return {
                   name: participantLabel(p),
@@ -485,192 +529,37 @@ export function GroundParticipantPage() {
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
         {tab === 'record' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {/*
-              WHAT IS EXPECTED OF ME IS ON CONTEXT, IN PLAIN VIEW, WITH EVERYBODY ELSE'S.
+              YOUR PRIVATE REPORT SITS WITH THE REST OF WHAT IS YOURS.
               
-              An ObjectivePanel stood here with an Accept button and the line "Nothing is read against
-              this until you accept it or write your own". That is the old propose-and-accept model,
-              and it contradicted the one the product now runs on:
-              
-                "Participants should not be able to rewrite their targets or accept it. One person is
-                 doing this, we dont want chaos. But they can see it."
-              
-              Both models were live at once, on the same PersonObjective rows - a lead stated an
-              expectation, it published to Context as designed, and this page offered a button to
-              accept it. Seeing it is right; agreeing to it by form is not the mechanism. If they think
-              it is wrong they say so in their check-in, where it is probed and recorded.
+              It was on the Report tab, above the shared one, so that tab meant two things at once:
+              the account you wrote and the picture everybody gets. Report is the whole thing now and
+              My record is your part - the same whole-against-part split the two views' labels already
+              use, rather than a second axis to learn.
             */}
-
-            {/*
-              THE EXIT BELONGS AT THE EXIT, ON THIS PAGE TOO. W8-5, half-fixed.
-
-              I gated this on the admin page and marked the item done. Here it
-              stayed unconditional and first, so "My record" opened with "Each
-              person picks the outcome they think the record supports. The ground
-              closes only when everyone picks the same one, and nobody closes it
-              alone" - above four buttons including one that stops the project - on
-              a ground with one session done. Hafsah found it in the same words she
-              used the first time.
-
-              Same rule as the admin page: near the end, or already started.
-            */}
-            {id && ((totalSessions != null && completedCheckIns.length >= totalSessions - 1) || (ground as any).resolutionState) && (
-              <ResolutionPanel groundId={id} />
-            )}
-
-            {/* The empty state, and NO price.
-                `insightsLocked` does not mean "unpaid" - it means "no completed
-                session yet", and the server says so: the first session of every
-                ground is free, so there is no billing gate here at all. A
-                monthly-subscription button had been attached to that empty
-                state anyway, shown to the one person who has contributed
-                nothing and is deciding whether to begin - and wired to a
-                ONE-OFF purchase call, so the label was wrong twice over.
-                Participants are never charged. The state is real; the price
-                was scaffolding. */}
-            {myRecord?.insightsLocked !== false && (
-              <div style={{ background: 'var(--gw-navy)', borderRadius: 10, padding: '18px 20px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
-                  Complete your first check-in to start building your record. Your specificity trend,
-                  confidence score, and observations across sessions appear here as you go.
-                </div>
-              </div>
-            )}
-
-              {/*
-                WHAT IS EXPECTED OF YOU, AS A STATE, BESIDE YOUR OWN SESSIONS.
-                
-                Who Sees What: a participant's Sessions tab is "their own sessions only, and their own
-                target". The sessions were already theirs alone; the target used to be an editing
-                panel with an Accept button, which is the model this product no longer runs on.
-                
-                So it is the same one line the lead's rows carry - set, seen, or nothing yet - and it
-                opens Context, where the words are published for everyone including them. The state
-                belongs next to the sessions it is read against; the words belong where everybody
-                reads the same copy.
-              */}
-              {(() => {
-                const mine = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
-                const o = mine?.objective
-                return (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                    <Sec title="What is expected of you" />
-                    <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-                      {!o?.text?.trim()
-                        ? 'Nothing yet. This comes out of the lead\u2019s own check-in, where they are asked what they expect of each person.'
-                        : o.text}
-                    </div>
-                    <button
-                      onClick={() => setTab('docs')}
-                      style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}
-                    >
-                      {o?.text?.trim() ? 'See it in context, with everyone else\u2019s' : 'Open Context'}
-                    </button>
-                  </div>
-                )
-              })()}
-
-            {/* Session history summary - always visible */}
-            {(myRecord?.sessions ?? []).length > 0 && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                <Sec title="Sessions on record" />
-                {(myRecord?.sessions ?? []).map(s => (
-                  <div key={s.sessionNumber} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--gw-bg)' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Session {s.sessionNumber}</div>
-                    <div style={{ fontSize: 11, color: s.status === 'COMPLETED' ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: s.status === 'COMPLETED' ? 700 : 500 }}>
-                      {s.status === 'COMPLETED' ? (s.completedAt ? new Date(s.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Complete') : 'In progress'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Specificity trend - unlocked only */}
-            {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                <Sec title="Specificity across sessions" />
-                <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                  {myRecord.specificity.scores.map((s, i) => (
-                    <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? 'var(--gw-green-b)' : s >= 0.35 ? 'var(--gw-amber-b)' : 'var(--gw-border)' }} />
-                  ))}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-                  {specificity?.trend === 'rising'
-                    ? 'Your answers are getting more specific as this goes on.'
-                    : specificity?.trend === 'falling'
-                      ? 'Your recent answers carry less detail than your earlier ones.'
-                      : specificity?.trend === 'steady'
-                        ? 'Your level of detail has held steady across these sessions.'
-                        : 'Too early to read a trend. This fills in as you check in.'}
-                </div>
-
-                {/**
-                  * The half that makes this worth showing anybody. Nobody can act on a word like
-                  * "low"; everybody can act on "none of your answers say when".
-                  */}
-                {specificity?.whatWouldHelp && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gw-bg)' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 3 }}>What would make the next one land harder</div>
-                    {specificity.whatWouldHelp}
-                  </div>
-                )}
-
-                {/**
-                  * Their own best answer, quoted back. Showing what a checkable account looked like
-                  * in their own words teaches what no description of specificity can.
-                  */}
-                {specificity?.strongest && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 10 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 3 }}>This one of yours was easy to check</div>
-                    <span style={{ fontStyle: 'italic' }}>"{specificity.strongest}"</span>
-                  </div>
-                )}
-
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
-                  Only you see this. It is never shown to the lead or to anybody else in this check-in.
-                </div>
-              </div>
-            )}
-
-            {/* Confidence score - unlocked only */}
-            {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Sec title="Record confidence" />
-                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-navy)' }}>{myRecord.confidence.label}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                  {[1,2,3,4,5].map(i => (
-                    <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= myRecord.confidence!.score ? 'var(--gw-navy)' : 'var(--gw-border)' }} />
-                  ))}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{myRecord.confidence.description}</div>
-              </div>
-            )}
-
-            {/* Pattern observations - unlocked, diplomatic */}
-            {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                <Sec title="Observations from your record" />
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                  These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
-                </div>
-                {myRecord.patterns.map((p, i) => (
-                  <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? '1px solid var(--gw-bg)' : '1px solid var(--gw-bg)', fontSize: 13, color: '#3A3630', lineHeight: 1.6 }}>
-                    {p.observation}
-                    {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>First noticed in Session {p.sessionNumber}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
-              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
-                No patterns have surfaced yet. Patterns appear after they have been observed across multiple sessions. This is intentional.
-              </div>
-            )}
+            <MyPrivateReport
+              groundId={id!}
+              mySoloReport={mySoloReport}
+              refetchSoloReport={refetchSoloReport}
+              myParticipant={myParticipant}
+              otherParties={(ground.participants ?? [])
+                .filter((p: any) => p.userId !== user?.id)
+                .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
+            />
+            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <MyRecord
+            groundId={id}
+            ground={ground}
+            myRecord={myRecord}
+            viewerUserId={user?.id}
+            totalSessions={totalSessions ?? null}
+            completedCount={completedCheckIns.length}
+            specificity={specificity}
+            /* This page calls the material tab `docs`; the other calls it `context`. The component
+               should not have to know either, so it asks and the page translates. */
+            onGoToTab={(t) => goTab(t as any)}
+            />
           </div>
         )}
 
@@ -678,218 +567,12 @@ export function GroundParticipantPage() {
         {tab === 'report' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* Individual report section */}
-            <Sec title="Your private report" />
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
-              This is from your own check-in only. Only you can see it unless you choose to share it.
-            </div>
-            {mySoloReport?.report ? (
-              <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
-                <SoloReportBody report={mySoloReport.report as Record<string, unknown>} />
-                <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
-                    {mySoloReport.shared
-                      ? 'Shared with all parties in this check-in'
-                      : 'Private - only you can see this'}
-                  </div>
-                  <button
-                    onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
-                    disabled={setSoloSharedMut.isPending}
-                    style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    {mySoloReport.shared ? 'Stop sharing' : 'Share with all parties'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Your private report is not ready yet.</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>It generates once you complete your check-in.</div>
-              </div>
-            )}
-
-            {/* Sign-off: the deadline for corrections, in place of a timer.
-                Does not block later corrections - it just flags any that come
-                after as "updated after sign-off" on the shared report. */}
-            {mySoloReport?.report && (
-              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 6 }}>
-                {myParticipant?.signedOffAt ? (
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', fontWeight: 600 }}>
-                    You signed off on {new Date(myParticipant.signedOffAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
-                    {' '}You can still correct it, but it will show as updated after sign-off.
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 8 }}>
-                      Confirm your account is accurate. This isn't a lock - you can still correct it later - but any correction after sign-off is flagged on the shared report.
-                    </div>
-                    <button
-                      onClick={() => signOffMut.mutate()}
-                      disabled={signOffMut.isPending}
-                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: signOffMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: signOffMut.isPending ? 0.6 : 1 }}
-                    >
-                      {signOffMut.isPending ? 'Signing off…' : "Sign off - this is accurate"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Divider */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <Sec title="Shared report" />
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
-              Shows where your account and the other party's account agree or differ. It does not quote anyone.
-            </div>
-
-            {!report ? (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: 'var(--gw-muted)', marginBottom: 4 }}>
-                  {ground?.sessionProgress
-                    ? `Report pending - ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in`
-                    : 'No report yet.'}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-                  {ground?.sessionProgress?.requestingUserIsMissing
-                    ? "You haven't completed this round yet - that's part of what's holding the report."
-                    : 'The report generates once all parties have checked in.'}
-                </div>
-              </div>
-            ) : !report.releasedAt ? (
-              <>
-                <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                    {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: 0 }}>
-                    {(report as any)?.forming
-                      ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
-                      : 'Your report will be available once it is released.'}
-                  </div>
-                </div>
-                {(report as any)?.forming && (
-                  <div style={{ marginTop: 10 }}>
-                    <ReportBody groundId={id!} embedded />
-                  </div>
-                )}
-              </>
-            ) : !report.activated ? (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
-                  All parties reveal it at the same time. Once unlocked, everyone can read it - this cannot be undone.
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
-                  The report shows where accounts agree and where they differ. It does not quote anyone.
-                </div>
-                <button
-                  onClick={() => activateMutation.mutate()}
-                  disabled={activateMutation.isPending}
-                  style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
-                >
-                  {activateMutation.isPending ? 'Confirming…' : 'Reveal report'}
-                </button>
-              </div>
-            ) : (
-              <>
-                <ReportBody groundId={id!} embedded />
-
-                {/*
-                  THE WAY INTO THE TEAM BOARD, WHICH A PARTICIPANT DID NOT HAVE.
-
-                  The board stopped being a tab for a good reason - it leaves the page rather than
-                  changing what is under the tab row - and the lead got a replacement door at the
-                  foot of their report. A participant got nothing. The route stayed live, the board
-                  still rendered, and for everybody who is not the lead it simply ceased to exist.
-
-                  Hafsah found it the only way it could be found: "the team board no longer exists."
-
-                  Same gate as the lead's, because a board with nothing to draw is a worse door than
-                  no door, and same place - the board is the shared picture you talk over once you
-                  have read what the accounts said.
-                */}
-                {!!(ground as any).boardRenders && (
-                  <button
-                    onClick={() => navigate(`/grounds/${id}/board`)}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                      background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)',
-                      borderRadius: 10, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
-                    <span style={{ textAlign: 'left' }}>
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Team board</span>
-                      <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
-                        The same check-in side by side, so you can see where the accounts meet. Opens full screen.
-                      </span>
-                    </span>
-                    <span style={{ fontSize: 13 }}>&rarr;</span>
-                  </button>
-                )}
-
-                {/* Participant report sections */}
-                {report.pattern && (
-                  <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '14px 16px' }}>
-                    <Sec title="What your record reveals" on="dark" />
-                    <div style={{ fontSize: 13, lineHeight: 1.65 }}>{report.pattern}</div>
-                  </div>
-                )}
-                {(report.assumptions ?? []).length > 0 && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                    <Sec title="Assumptions you are carrying" />
-                    <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
-                      {(report.assumptions ?? []).map((a: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{a}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {(report.clarity ?? []).length > 0 && (
-                  <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '13px 16px' }}>
-                    <Sec title="Where you have clarity" />
-                    <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0 }}>
-                      {(report.clarity ?? []).map((c: string, i: number) => <li key={i} style={{ fontSize: 13, lineHeight: 1.65, marginBottom: 5 }}>{c}</li>)}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Cross-reference section (shared picture, after activation) */}
-                {(report.alignmentReached ?? []).length > 0 && (
-                  <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '13px 16px' }}>
-                    <Sec title="Shared picture: where you are aligned" />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {(report.alignmentReached ?? []).map((a: any, i: number) => (
-                        <div key={i} style={{ borderLeft: '3px solid var(--gw-green-b)', paddingLeft: 10 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>{a.title ?? a}</div>
-                          {a.note && <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5, marginTop: 2 }}>{a.note}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {(report.areasRequiringAlignment ?? []).length > 0 && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                    <Sec title="Shared picture: still to resolve" />
-                    <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>These gaps appear in the cross-reference. They show where your account and the other party's account differ. Neither side's raw words are shown here.</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {(report.areasRequiringAlignment ?? []).map((a: any, i: number) => (
-                        <div key={i} style={{ borderLeft: '3px solid var(--gw-amber-b)', paddingLeft: 10 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{a.title ?? a}</div>
-                          {a.observation && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 2 }}>{a.observation}</div>}
-                          {a.recommendedMove && (
-                            <div style={{ fontSize: 12, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 4 }}>Next: {a.recommendedMove}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 13px' }}>
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
-                    This report shows where both accounts agree and where they differ. The other party's exact words are never visible to you, and yours are never visible to them.
-                  </div>
-                </div>
-              </>
-            )}
+            <SharedReportForAParty
+              groundId={id!}
+              report={report}
+              ground={ground}
+              onOpenBoard={() => navigate(`/grounds/${id}/board`)}
+            />
           </div>
         )}
 
@@ -955,57 +638,13 @@ export function GroundParticipantPage() {
             <div style={{ order: 5 }}><StartingPointPanel groundId={id!} canRecord={false} /></div>
 
             {/* Profile summary */}
-            <div style={{ order: 1, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gw-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
-                {(user?.firstName?.[0] ?? '?').toUpperCase()}
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{user?.firstName} {user?.lastName}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{user?.email}</div>
-              </div>
-            </div>
-
-            <div style={{ order: 2, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Check-in</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Scenario</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-                {/*
-                  THE FALLBACK SAID NOTHING. Every other row here carries a value - the check-in's
-                  name, the scenario, ACTIVE, 0 of 8. This one fell back to "In this check-in",
-                  which reads as a caption for the label above it rather than an answer, so the row
-                  looked filled in while saying nothing at all. Only visible once the card moved to
-                  the top of the tab and became the first thing a party reads about themselves.
-                */}
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed || 'Not recorded'}</div>
-              </div>
-              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.status}</div>
-              </div>
-              <div style={{ padding: '13px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCheckIns.length} of {totalSessions}</div>
-              </div>
-            </div>
-
-            {/**
-              * The bare grade that stood here - "Overall quality label: low" - is gone. It was the
-              * same read as the one on the record tab, minus everything a person could act on, and
-              * a page that grades you twice is not twice as honest.
-              */}
-            <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid var(--gw-clay-b)', borderRadius: 10, padding: '13px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
-              <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
-                Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.
-              </div>
-            </div>
+            <MyParticipation
+              viewer={user}
+              ground={ground}
+              myParticipant={myParticipant}
+              completedCount={completedCheckIns.length}
+              totalSessions={totalSessions ?? null}
+            />
           </div>
         )}
       </div>
@@ -1111,43 +750,6 @@ export function GroundParticipantPage() {
         </div>
       )}
 
-      {/* Share solo report confirmation modal */}
-      {showShareConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
-              Your private report will become visible to all other parties on this check-in:
-            </div>
-            <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
-              {(ground?.participants ?? []).filter((p: any) => p.userId !== user?.id).map((p: any) => (
-                <li key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 2 }}>
-                  {participantLabel(p)}
-                  {p.email ? <span style={{ color: 'var(--gw-muted)' }}> · {p.email}</span> : null}
-                </li>
-              ))}
-            </ul>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 18, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '10px 12px' }}>
-              This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setShowShareConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setSoloSharedMut.mutate(true)}
-                disabled={setSoloSharedMut.isPending}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
-              >
-                {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

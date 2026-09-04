@@ -72,7 +72,19 @@ describe('GW-EXP-6: but it is not a session', () => {
      * Two sibling queries feed the same array. When only one selected `isSetup`, TypeScript caught it -
      * but had the field been optional, the filter would have quietly kept every row instead.
      */
-    expect((SERVICE.match(/createdAt: true, isSetup: true \}/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    /*
+     * MATCHED ON THE FIELD, NOT ON WHAT FOLLOWS IT.
+     *
+     * This read `/createdAt: true, isSetup: true \}/` - the flag AND the closing brace - so it
+     * asserted that `isSetup` is the LAST thing in the select. Adding `availableFrom` after it broke
+     * this test while leaving its meaning perfectly intact, which is a guard failing for a reason
+     * it does not care about. The rule is that both list queries select the flag; where it sits in
+     * the object is not the rule.
+     */
+    const selects = SERVICE.match(/select:\s*\{[^}]*participantId:\s*true[^}]*sessionNumber:\s*true[^}]*\}/g) ?? [];
+    const listSelects = selects.filter(sel => /createdAt:\s*true/.test(sel));
+    expect(listSelects.length).toBeGreaterThanOrEqual(2);
+    expect(listSelects.filter(sel => !/isSetup:\s*true/.test(sel))).toEqual([]);
   });
 
   it('THE ONE THAT MATTERS: the report still cannot wait on it', () => {

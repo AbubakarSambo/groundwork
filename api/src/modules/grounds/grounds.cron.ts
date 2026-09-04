@@ -421,7 +421,7 @@ export class GroundsCron {
     for (const ci of newlyOpen) {
       const p = ci.participant;
       const lastContext = p.recordEntries[0]?.text;
-      const checkInUrl = `${frontend}/checkin/${ci.id}`;
+      const checkInUrl = this.email.buildCheckInUrl(ci.id);
       try {
         /**
          * WHATSAPP IS IN ADDITION TO EMAIL, NOT INSTEAD OF IT. Her decision.
@@ -498,7 +498,7 @@ export class GroundsCron {
       if (ci.availableFrom && ci.availableFrom > now) continue; // not due yet
       const specificThing = p.recordEntries[0]?.text ?? p.ground.label;
       try {
-        await this.email.sendNudge(p.email, specificThing, `${frontend}/checkin/${ci.id}`);
+        await this.email.sendNudge(p.email, specificThing, this.email.buildCheckInUrl(ci.id));
         await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
         returnNudges++;
       } catch (err: any) {

@@ -49,11 +49,17 @@ const PAGES = [
   // The Context tab, which used to be assembled inline in the two pages above. When it moved, this
   // guard fired for every document and lead-context call - which is exactly what it is for.
   '../../components/gw/ContextPage.tsx',
+  // And the two lifted out of the party page so the view that RUNS a check-in can show a lead their
+  // own account and their own private report without sending them to a second page. This guard
+  // fired for `setMySoloReportShared` and `signOff` the moment they moved, which is what it is for.
+  '../../components/gw/MyRecord.tsx',
+  '../../components/gw/MyPrivateReport.tsx',
+  '../../components/gw/SharedReportForAParty.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */
 const OPERATIONS: Record<string, string[]> = {
-  'ground state': ['groundsApi.update(', 'confirmLead(', 'beginClosingRound('],
+  'ground state': ['groundsApi.update(', 'confirmLead(', 'beginClosingSession('],
   people: ['addParticipant(', 'getParticipantInviteUrl(', 'participantsApi.updateEmail(', 'participantsApi.updateRole('],
   requests: ['participantRequestsApi.list(', 'participantRequestsApi.update(', 'participantRequestsApi.create('],
   documents: ['documentsApi.list(', 'documentsApi.upload(', 'documentsApi.remove(', 'documentsApi.setVisibility('],

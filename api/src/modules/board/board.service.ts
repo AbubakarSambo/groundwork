@@ -147,7 +147,7 @@ export class BoardService {
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     if (!me && !isInitiator && !isSetupAdmin) {
-      throw new ForbiddenException('You are not a party to this check-in');
+      throw new ForbiddenException('You are not a participant in this check-in');
     }
 
     // Collapse duplicate handoffs before anything reads them, so existing
@@ -890,10 +890,10 @@ export class BoardService {
      * Same shape as the objectives gate above: write to the SECTION, not to the board.
      */
     if (!boardHasSection(ground.scenario, 'poll')) {
-      throw new ForbiddenException('This check-in does not schedule its own rounds');
+      throw new ForbiddenException('This check-in does not schedule its own sessions');
     }
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me) throw new ForbiddenException('You are not a party to this check-in');
+    if (!me) throw new ForbiddenException('You are not a participant in this check-in');
 
     const option = await this.prisma.groundPollOption.findUnique({
       where: { id: optionId },

@@ -156,10 +156,10 @@ export const groundsApi = {
   activate: (groundId: string) =>
     apiClient.post<Ground>(`/grounds/${groundId}/activate`).then(r => r.data),
 
-  // Begin the closing round: every participant's next session is flagged
+  // Begin the closing session: every participant's next session is flagged
   // final (same conversation, closing framing, arc-aware final report).
-  beginClosingRound: (groundId: string) =>
-    apiClient.post<{ groundId: string; closingRound: boolean; participantsFlagged: number }>(`/grounds/${groundId}/closing-round`).then(r => r.data),
+  beginClosingSession: (groundId: string) =>
+    apiClient.post<{ groundId: string; closingSession: boolean; participantsFlagged: number }>(`/grounds/${groundId}/closing-session`).then(r => r.data),
 
   resendParticipantInvite: (groundId: string, participantId: string) =>
     apiClient.post(`/grounds/${groundId}/participants/${participantId}/resend-invite`).then(r => r.data),
@@ -170,8 +170,15 @@ export const groundsApi = {
   setPeopleWorkTogether: (groundId: string, together: boolean) =>
     apiClient.patch<{ id: string; peopleWorkTogether: boolean }>(`/grounds/${groundId}/people-work-together`, { together }).then(r => r.data),
 
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }) =>
-    apiClient.patch<Ground>(`/grounds/${groundId}`, body).then(r => r.data),
+  /*
+   * The rail's rename says what did and did not survive, so the generic toasts are turned off for
+   * it - otherwise one failed rename produced two notifications, the useful one and "Something
+   * went wrong".
+   */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }, opts?: { quiet?: boolean }) =>
+    apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
+      ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
+      : undefined).then(r => r.data),
 
   getMySpecificity: (groundId: string) =>
     apiClient.get<{
@@ -215,6 +222,16 @@ export const groundsApi = {
   getParticipantInviteUrl: (groundId: string, participantId: string) =>
     apiClient
       .get<{ inviteUrl: string }>(`/grounds/${groundId}/participants/${participantId}/invite-url`)
+      .then(r => r.data),
+
+  /**
+   * The other half of it. `getParticipantInviteUrl` refuses the moment somebody accepts, and from
+   * that point the only thing that could produce the address of their check-in was a scheduled
+   * email. If that email was missed, nobody could recover it.
+   */
+  getParticipantCheckInUrl: (groundId: string, participantId: string) =>
+    apiClient
+      .get<{ checkInUrl: string }>(`/grounds/${groundId}/participants/${participantId}/check-in-url`)
       .then(r => r.data),
 
   /**

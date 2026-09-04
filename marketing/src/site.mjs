@@ -15,3 +15,29 @@
  * the page bundle and the build refuses.
  */
 export const SITE = 'https://myground.work';
+
+/**
+ * WHAT WE SELL THAT IS NOT A SUBSCRIPTION, WITH THE NUMBER IN ONE PLACE.
+ *
+ * Coaching and integration support are bought alongside a plan and invoiced by hand. Nothing in
+ * `pricing_plans` charges them, Stripe never sees them, and the seat cap does not apply - so the
+ * database cannot be the source of truth for them the way it is for a plan price.
+ *
+ * That makes them exactly the numbers most likely to drift, and they already have: the retainer
+ * lived in three files at two different prices before this. The page reads these, and the app's
+ * price guard reads these, so changing one changes it everywhere it is said.
+ */
+export const SERVICES = {
+  /* Twelve sessions, retained. About $625 a session against the hourly rate. */
+  coachingRetainer: '$7,500',
+  coachingHourly: '$700',
+  /**
+   * INTEGRATION SUPPORT, NOT INTEGRATION. Anybody can connect Groundwork themselves - the API and
+   * its keys are part of the subscription, and most engineering teams will not want help. This is
+   * for the ones that do, and it is priced from rather than at, because a two-system sync and a
+   * whole HR platform are not the same week of work.
+   */
+  integrationSupportFrom: '$2,200',
+  /* Somebody to get you running and train your team, in the first month. */
+  handsOnFirstMonth: '$1,500',
+};

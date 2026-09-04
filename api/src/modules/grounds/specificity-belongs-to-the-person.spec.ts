@@ -28,7 +28,7 @@ describe('what my-specificity returns', () => {
   it('is still owner only', () => {
     // The one thing that must survive every change to this method.
     expect(METHOD).toContain("where: { groundId, userId }");
-    expect(METHOD).toContain("ForbiddenException('You are not a party to this check-in')");
+    expect(METHOD).toContain("ForbiddenException('You are not a participant in this check-in')");
   });
 
   it('reads a direction, not just an average', () => {
@@ -56,10 +56,22 @@ describe('what my-specificity returns', () => {
 });
 
 describe('and the page shows it once, with the actionable half', () => {
-  const PAGE = readFileSync(
-    join(__dirname, '../../../../client/src/pages/grounds/GroundParticipantPage.tsx'),
-    'utf8',
-  ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  /**
+   * WHAT A PARTY SEES, WHEREVER IT IS WRITTEN.
+   *
+   * This read the participant page alone. The record moved into `MyRecord` so the view that RUNS a
+   * check-in can show a lead their own account without sending them to a second page - and this
+   * spec went red while every rule it protects still held.
+   *
+   * An API spec reading a client file is already a long reach; making it reach for one exact
+   * filename as well is what turned a refactor into a failing build. Both files, joined, so these
+   * follow the content.
+   */
+  const CLIENT = join(__dirname, '../../../../client/src');
+  const PAGE = [
+    readFileSync(join(CLIENT, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'),
+    readFileSync(join(CLIENT, 'components/gw/MyRecord.tsx'), 'utf8'),
+  ].join('\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('the bare grade line is gone', () => {
     // The exact string a participant read. If it comes back, so does the grade.

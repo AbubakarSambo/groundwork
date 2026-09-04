@@ -93,8 +93,9 @@ describe('GroundsService - participant serialization (GW-01)', () => {
 });
 
 /**
- * GW-24: participant invite resend - generates a fresh token and re-sends
- * the email. Throws when the participant has already accepted.
+ * GW-24: participant invite resend - keeps the existing token alive (minting
+ * one only if the row somehow has none) and re-sends the email. Throws when
+ * the participant has already accepted.
  */
 describe('GroundsService.resendParticipantInvite - GW-24', () => {
   function makePrisma(ground: any, participant: any, initiator: any) {
@@ -131,6 +132,26 @@ describe('GroundsService.resendParticipantInvite - GW-24', () => {
     expect(updated[0].inviteToken).toBeTruthy();
     expect(updated[0].inviteTokenExpiresAt).toBeInstanceOf(Date);
     expect(emailSent).toHaveLength(1);
+  });
+
+  it('keeps the existing token instead of rotating it, so earlier emails stay live', async () => {
+    // A resend used to overwrite the token, silently killing every invite
+    // email sent before it - whichever copy the person actually opens, if it
+    // isn't the newest, they land on "this link has already been used"
+    // despite never having clicked anything.
+    const ground = { id: 'g1', organizationId: 'org1', label: 'Test Ground', initiatorId: 'u1' };
+    const participant = { id: 'p1', groundId: 'g1', email: 'other@test.com', userId: null, inviteToken: 'the-original-token' };
+    const initiator = { id: 'u1', firstName: 'Alice' };
+    const { prisma, updated } = makePrisma(ground, participant, initiator);
+    const email: any = { sendParticipantInvite: jest.fn(async () => undefined) };
+
+    const service = new GroundsService(prisma, email, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any,
+      { respond: async () => '' } as any,
+    );
+    await service.resendParticipantInvite('g1', 'p1', 'org1');
+
+    expect(updated[0].inviteToken).toBe('the-original-token');
+    expect(email.sendParticipantInvite.mock.calls[0][3]).toBe('the-original-token');
   });
 
   it('throws BadRequest when the participant has already accepted', async () => {

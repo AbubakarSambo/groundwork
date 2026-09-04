@@ -81,16 +81,50 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
   report: T,
   { viewerLabel, viewerParticipantId, viewerIsLead }: OwnReadsInput,
 ): T {
-  if (viewerIsLead) return report;
+  /**
+   * WHAT A PERSON WAS PRIVATELY ADVISED TO SAY IS NOBODY ELSE'S, INCLUDING THE LEAD'S.
+   *
+   * `postReportGuides` is a map of participantId -> the private preparation written for that one
+   * person: the line they might open with, what to take seriously in the other account, the
+   * question to carry. The report page renders it under a promise in plain words - "Yours alone,
+   * and not part of the shared report. Nobody else is shown this."
+   *
+   * It shipped to everybody. The page was innocent: it picks out the reader's own guide by id and
+   * renders only that. The whole map rode along inside `engagement`, so a lead fetching the report
+   * received the participant's opening line for the conversation they were about to have WITH the
+   * lead. Verified against a real report before this was written.
+   *
+   * This is stripped BEFORE the lead's early return below, and that is the point. The rule this
+   * file already states - the lead sees everyone's reads, because leading is what the board is for
+   * - is about how somebody is DOING. A private rehearsal is a different kind of thing: knowing it
+   * gives the other side of a conversation the other side's notes. Nothing about running a
+   * check-in requires that, and a person who suspects it stops using the guide honestly, which is
+   * the same second-order harm this file was written about.
+   *
+   * The single correct guide still reaches its owner: `get()` reads it out by id into a top-level
+   * `postReportGuide` before this runs.
+   */
+  const withoutGuides = ((): T => {
+    const eng = report.engagement && typeof report.engagement === 'object'
+      ? { ...(report.engagement as Record<string, any>) }
+      : null;
+    if (!eng || !('postReportGuides' in eng)) return report;
+    delete eng.postReportGuides;
+    return { ...report, engagement: eng };
+  })();
 
-  const engagement = report.engagement && typeof report.engagement === 'object'
-    ? { ...(report.engagement as Record<string, any>) }
+  if (viewerIsLead) return withoutGuides;
+
+  const engagement = withoutGuides.engagement && typeof withoutGuides.engagement === 'object'
+    ? { ...(withoutGuides.engagement as Record<string, any>) }
     : null;
 
   if (engagement) {
     if ('specificityNotes' in engagement) engagement.specificityNotes = keepOwnByLabel(engagement.specificityNotes, viewerLabel);
     if ('recallNotes' in engagement) engagement.recallNotes = keepOwnByLabel(engagement.recallNotes, viewerLabel);
     if ('specificitySignal' in engagement) engagement.specificitySignal = keepOwnByKey(engagement.specificitySignal, viewerLabel);
+    /* Keyed by label the same way, and missed the same way: a per-person confidence band. */
+    if ('pictureConfidence' in engagement) engagement.pictureConfidence = keepOwnByKey(engagement.pictureConfidence, viewerLabel);
     if ('specificityCauses' in engagement) engagement.specificityCauses = keepOwnByLabel(engagement.specificityCauses, viewerLabel);
     // Concerns about people. Not a participant's to read about anyone, including
     // themselves - a concern is raised with a person, never delivered to them in
@@ -104,8 +138,8 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
     }
   }
 
-  const finalSynthesis = report.finalSynthesis && typeof report.finalSynthesis === 'object'
-    ? { ...(report.finalSynthesis as Record<string, any>) }
+  const finalSynthesis = withoutGuides.finalSynthesis && typeof withoutGuides.finalSynthesis === 'object'
+    ? { ...(withoutGuides.finalSynthesis as Record<string, any>) }
     : null;
   if (finalSynthesis && 'tiers' in finalSynthesis) {
     finalSynthesis.tiers = keepOwnById(finalSynthesis.tiers, viewerParticipantId);
@@ -128,7 +162,7 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
    * everyone is not that answer.
    */
   const out: Record<string, any> = {
-    ...report,
+    ...withoutGuides,
     ...(engagement ? { engagement } : {}),
     ...(finalSynthesis ? { finalSynthesis } : {}),
   };

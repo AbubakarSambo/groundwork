@@ -70,20 +70,20 @@ export function BoardPage() {
       target: newObjTarget.trim() ? Number(newObjTarget) : null,
     }),
     onSuccess: () => { setNewObjName(''); setNewObjTarget(''); invalidate() },
-    onError: () => toast.error('Could not add that target. Try again.'),
+    onError: () => toast.error('The target was not added. What you typed is still here — try again.'),
   })
 
   const bumpObjective = useMutation({
     mutationFn: (v: { objectiveId: string; count: number }) =>
       boardApi.updateObjective(id!, v.objectiveId, { count: v.count }),
     onSuccess: invalidate,
-    onError: () => toast.error('Could not update that count. Try again.'),
+    onError: () => toast.error('That count did not change — try again.'),
   })
 
   const removeObjective = useMutation({
     mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
     onSuccess: invalidate,
-    onError: () => toast.error('Could not remove that target. Try again.'),
+    onError: () => toast.error('The target was not removed. Nothing has changed — try again.'),
   })
 
   const savePoll = useMutation({
@@ -92,13 +92,13 @@ export function BoardPage() {
       options: pollOpts.split('\n').map((o) => o.trim()).filter(Boolean),
     }),
     onSuccess: () => { setShowPollForm(false); setPollQ(''); setPollOpts(''); invalidate() },
-    onError: () => toast.error('Could not save the poll. Try again.'),
+    onError: () => toast.error('The poll did not save. Your answers are still here — try again.'),
   })
 
   const togglePoll = useMutation({
     mutationFn: (optionId: string) => boardApi.togglePoll(id!, optionId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', id] }),
-    onError: () => toast.error('Could not update your availability. Try again.'),
+    onError: () => toast.error('Your availability did not change — try again.'),
   })
 
   if (isLoading) {
@@ -287,6 +287,22 @@ export function BoardPage() {
                 If someone disagrees with what the record shows about them, they{' '}
                 <b style={{ color: '#8BE0AE', fontWeight: 600 }}>put it in their next check-in</b>, not debate the board until it gives way.
                 It shows the record, never a verdict. Each person is shown against their own role in its own terms, never on one shared scale.
+              </p>
+              {/*
+                * WHICH OF THE TWO IS THE RECORD.
+                *
+                * The board and the report both show a shared picture of the same check-in, and
+                * nothing on either page said how they relate - so a reader had two documents and no
+                * way to know which one to trust when they differ. The answer already exists, written
+                * where nobody reading the product can see it, in board.service.ts: the board is a
+                * delivery-shaped rendering of the delivery-relevant parts of the report, its
+                * divergence section is a pointer, and the report holds the detail.
+                */}
+              <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
+                This board is the report arranged for running the work: the parts that bear on
+                delivery, and no more. Where it points at a difference,{' '}
+                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>the report is where that is set out in full</b>.
+                If the two ever read differently, the report is the record.
               </p>
             </>
           )}

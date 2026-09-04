@@ -254,14 +254,14 @@ export class GroundsController {
     return this.grounds.addLeadContext(id, userId, dto);
   }
 
-  @Post(':id/closing-round')
-  @ApiOperation({ summary: "Begin the closing round: flag every participant's next session as final (initiator only)" })
-  async beginClosingRound(
+  @Post(':id/closing-session')
+  @ApiOperation({ summary: "Begin the closing session: flag every participant's next session as final (initiator only)" })
+  async beginClosingSession(
     @Param('id') id: string,
     @CurrentUser('organizationId') organizationId: string,
     @CurrentUser('id') userId: string,
   ) {
-    return this.grounds.beginClosingRound(id, organizationId, userId);
+    return this.grounds.beginClosingSession(id, organizationId, userId);
   }
 
   @Post(':id/activate')
@@ -279,6 +279,17 @@ export class GroundsController {
     @CurrentUser('id') userId: string,
   ) {
     return this.grounds.getParticipantInviteUrl(id, participantId, userId);
+  }
+
+  /** The other half of invite-url: once they have accepted, that one refuses and this is the link. */
+  @Get(':id/participants/:participantId/check-in-url')
+  @ApiOperation({ summary: 'Get the link to a participant\'s open check-in (initiator only)' })
+  async getParticipantCheckInUrl(
+    @Param('id') id: string,
+    @Param('participantId') participantId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.getParticipantCheckInUrl(id, participantId, userId);
   }
 
   @Post(':id/participants/:participantId/resend-invite')

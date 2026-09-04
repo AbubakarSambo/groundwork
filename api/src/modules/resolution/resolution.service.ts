@@ -390,7 +390,7 @@ export class ResolutionService {
       where: { groundId, userId },
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
     return { ground, participant };
   }
 }

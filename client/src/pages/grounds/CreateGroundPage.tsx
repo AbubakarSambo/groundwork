@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
+import { whatMatches, alsoTyped, NOTHING_MATCHED } from '@/lib/finding-your-situation'
 import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
+import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -259,9 +261,9 @@ export const SCENARIOS: ScenarioCard[] = [
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
   { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM, tag: 'Team', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
-    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the account. That first round sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
+    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the account. That first session sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
     moment: 'You and your ops lead have stopped agreeing on what matters.',
-    agreed: 'Each person gives their own read of the situation before the group talks, and that first round sets out what you do and do not agree on.',
+    agreed: 'Each person gives their own read of the situation before the group talks, and that first session sets out what you do and do not agree on.',
     tests: 'The check-ins after it test whether the gap closed or only went quiet.',
     examples: [
       'The team is pulling two ways on a decision and you want each person\'s honest read before the meeting.',
@@ -430,7 +432,24 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
 // Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
 // We use integer steps internally: 1,2,3,4,5,6
-const TOTAL_STEPS = 8
+/**
+ * THE STEPS HAVE NAMES NOW, AND THE NUMBERS ARE DERIVED FROM THEM.
+ *
+ * The flow was held as bare integers in thirty-three places - nine `setStep(n)` calls, twenty-one
+ * `step === n` comparisons, three relational ones - with no single statement of what the order is.
+ * Two of those are conditional jumps that encode plan state and card type, so reading the file did
+ * not tell you the order either.
+ *
+ * That has already cost something. The picker's wide layout was written for the situation step and
+ * its condition said `step === 1`; the steps were renumbered, the condition kept the old number,
+ * and the widening silently applied to the "who is this for?" question instead - for months, until
+ * an audit measured the page. Nothing failed, because a number is always a valid number.
+ *
+ * This changes no behaviour whatsoever: same values, same order, same screens. It means a renumber
+ * is one edit here rather than thirty-three edits that all still compile if you get one wrong. The
+ * eight-to-four cut this flow needs is not safe until that is true.
+ */
+
 
 /**
  * What each step is asking, in the words already on that step's own heading.
@@ -441,14 +460,14 @@ const TOTAL_STEPS = 8
  * every link and saved position that already exists.
  */
 const STEP_NAMES: Record<number, string> = {
-  1: 'Who it is for',
-  2: 'The situation',
-  3: 'A coach',
-  4: 'Describe it',
-  5: 'Your plan',
-  6: 'How long it runs',
-  7: 'Who is in it',
-  8: 'The brief',
+  [STAGE.who]: 'Who it is for',
+  [STAGE.situation]: 'The situation',
+  [STAGE.coach]: 'A coach',
+  [STAGE.describe]: 'Describe it',
+  [STAGE.plan]: 'Your plan',
+  [STAGE.timeline]: 'How long it runs',
+  [STAGE.people]: 'Who is in it',
+  [STAGE.brief]: 'The brief',
 }
 
 /**
@@ -478,6 +497,15 @@ export function CreateGroundPage() {
     retry: false,
   })
   const navigate = useNavigate()
+  /* Twenty cards is a wall even in six groups, if your words are not our headings. */
+  const [situationSearch, setSituationSearch] = useState('')
+  /* null means "not searching" - show the grouped list. An empty array means "searched, found
+     nothing", which is a different thing and gets a different message. */
+  const matches = useMemo(
+    () => whatMatches(alsoTyped(SCENARIOS), situationSearch),
+    [situationSearch],
+  )
+
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
   /* Coaching is a paid feature, the same as the integration API. Null means nobody has ever paid. */
@@ -609,10 +637,23 @@ export function CreateGroundPage() {
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
   const briefShort = briefWords > 0 && briefWords < 20
+  /**
+   * MUST MATCH GroundsService.MEANS_SOMETHING (api/src/modules/grounds/grounds.service.ts).
+   *
+   * Below this, the server has nothing to invite anyone into: a brief this
+   * short doesn't clear `assertSomethingToBeInvitedInto`, so `POST /grounds`
+   * succeeds but the very next call, adding whoever was staged on "Who is in
+   * it", 400s - "Nobody can be invited yet". The button used to only require
+   * a non-empty brief, so it happily let people through to that dead end.
+   * Matching the real gate here means the button itself is honest about what
+   * "Continue" is actually going to do.
+   */
+  const BRIEF_MEANS_SOMETHING = 40
+  const briefTooShortToInvite = participants.length > 0 && brief.trim().length < BRIEF_MEANS_SOMETHING
 
   // When entering step 2 (billing), auto-check
   useEffect(() => {
-    if (step === 2 && !billingChecked) {
+    if (step === STAGE.situation && !billingChecked) {
       setBillingLoading(true)
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
@@ -690,21 +731,18 @@ export function CreateGroundPage() {
         ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
         brief: (brief.trim() || ownDescription.trim()) || undefined,
         ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
-      } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string })
+        /**
+         * Sent at CREATE now, not via the follow-up confirmLead call that used to
+         * run here. An admin's own ground is created OPEN, not AWAITING_LEAD, so
+         * confirmLead's AWAITING_LEAD-only guard threw "already been confirmed"
+         * on every single call for this flow, into a silent catch - meaning the
+         * choice on the very first wizard step was dropped every time. The server
+         * applies it at creation and skips the creator's own check-in when set.
+         */
+        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
+      } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string; managingOnly?: boolean })
       // Use allSettled so a failed invite email never blocks navigation to the
       // newly-created ground. Failed invites are surfaced as warnings after redirect.
-      // Record whether the person opening this is a party to it before anyone is
-      // invited, so the very first check-in round already knows who it is for.
-      if (alsoAParty !== null) {
-        try {
-          await groundsApi.confirmLead(ground.id, {
-            managingOnly: !alsoAParty,
-            remit: alsoAParty ? (myRemit.trim() || undefined) : undefined,
-          })
-        } catch {
-          // Non-fatal: the same choice can still be made on the ground page.
-        }
-      }
       const results = await Promise.allSettled(participants.map(p =>
         groundsApi.addParticipant(ground.id, {
           email: p.email,
@@ -796,18 +834,126 @@ export function CreateGroundPage() {
     setBulkMode(false)
   }
 
+  /**
+   * THE STEPS THIS PERSON WILL ACTUALLY SEE, IN ORDER.
+   *
+   * Three of the eight are conditional, and every part of the flow worked that out for itself:
+   * `next` had its own arithmetic, `back` had a special case with a comment apologising for it,
+   * and the counter said "of 8" to somebody who would be shown six. Skipping a step in three
+   * places and counting it in a fourth is how "Step 5 of 8" appeared directly after step 3.
+   *
+   * So the flow is a list now. Forward is the next entry, back is the previous one, and the
+   * counter is a position in it. A step that is not for this person is not in the list, and
+   * cannot be counted, landed on by Back, or stepped over by arithmetic that forgot it.
+   *
+   * THE BILLING STEP EARNS ITS PLACE OR IT IS NOT THERE. It has two states: "no payment needed,
+   * press Continue", and a real refusal with an access-code box. The first is a screen whose only
+   * content is that it has nothing to say - shown in the middle of setting something up, between
+   * describing the situation and saying how long it runs. It is in the list only when the check
+   * has come back and come back blocking. While the check is still running it stays in, because a
+   * person must not be walked past a refusal that had not arrived yet.
+   */
+  const visibleSteps = stepsThisPersonSees({
+    onAPaidPlan,
+    describingOwnSituation: selectedCard === 'DESCRIBE_OWN',
+    billingSettledAndFree: billingChecked && billingFree,
+  })
+
   function back() {
-    /* Step 4 only exists on the free-text path, so going back from 5 has to skip it there too -
-       otherwise Back lands on a screen the person was never shown on the way in. */
-    /* Back from the situation lands on the coach step only where that step was shown. */
-    if (step === 5 && selectedCard !== 'DESCRIBE_OWN') { setStep(onAPaidPlan ? 3 : 2); return }
-    if (step > 1) setStep(s => s - 1)
-    else navigate('/grounds')
+    const previous = stepBefore(visibleSteps, step)
+    if (previous === null) navigate('/grounds')
+    else setStep(previous)
   }
 
   // Display dot index: step 1 → dot 1, step 2 (billing) → dot 2, steps 3-6 → dots 3-6
-  // We show TOTAL_STEPS dots (6), mapping internal step directly
-  const displayStep = step
+  /**
+   * One dot per stage, and the dot count comes from STAGE rather than a number typed here - the
+   * comment this replaces said "(6)" while the constant said 8, which is what a second copy of a
+   * fact does when the first one changes.
+   */
+  const displayStep = Math.max(1, visibleSteps.indexOf(step) + 1)
+  /** Not `Object.keys(STAGE).length`: that counts steps this person is never shown. */
+  const totalStepsForThisPerson = visibleSteps.length
+
+  const renderSituation = (card: ScenarioCard) => {
+                        const facts = SCENARIO_FACTS[card.scenario]
+                        const sessions = recommendedSessions(card.scenario)
+                        const isSel = selectedCard === card.cardKey
+                        const arcOpen = openArc === card.cardKey
+                        const pick = () => {
+                          setScenario(card.scenario)
+                          setSelectedCard(card.cardKey)
+                          sessionStorage.setItem('gw-new-ground-card', card.cardKey)
+                          /* Seeding, not setting. Both were hardcoded here - 90 days and
+                             fortnightly for every situation - so the engine's per-scenario
+                             timeline was never reached on the path people use. The lead still
+                             changes either one at step 3. */
+                          setTimelineDays(facts.timelineDays)
+                          setCadence(CADENCE_VALUE[facts.cadence] as GroundCadence)
+                          /* And where in the arc. Step one required this second choice and disabled
+                             Continue until it was answered, without saying which choice was missing -
+                             while the card just clicked already answered it. Still changeable below. */
+                          setMoment(RECOMMENDED_MOMENT[card.scenario] as GroundMoment)
+                        }
+                        return (
+                          <div
+                            key={card.cardKey}
+                            role="radio"
+                            tabIndex={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
+                            aria-checked={isSel}
+                            aria-label={`${card.label}. ${card.moment} ${card.desc}`}
+                            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
+                            className={`cg-sit-card${isSel ? ' selected' : ''}`}
+                            onClick={pick}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
+                              <div className="cg-sit-check" />
+                            </div>
+                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{card.label}</div>
+                            <p className="cg-moment">{card.moment}</p>
+
+                            <button
+                              type="button"
+                              className="cg-more"
+                              aria-expanded={arcOpen}
+                              onClick={(e) => { e.stopPropagation(); setOpenArc(arcOpen ? null : card.cardKey) }}
+                            >
+                              {arcOpen ? 'How it runs \u2039' : 'How it runs \u203A'}
+                            </button>
+                            {arcOpen && (
+                              <dl className="cg-arc">
+                                <div>
+                                  <dt>Agreed at the start</dt>
+                                  <dd>{card.agreed}</dd>
+                                </div>
+                                <div>
+                                  <dt>What the check-ins test</dt>
+                                  <dd>{card.tests}</dd>
+                                </div>
+                                {facts.notThisOneIf && (
+                                  <div className="warn">
+                                    <dt>Not this one if</dt>
+                                    <dd>{facts.notThisOneIf}</dd>
+                                  </div>
+                                )}
+                                {card.examples && card.examples.length > 0 && (
+                                  <div>
+                                    <dt>Also this</dt>
+                                    <dd>{card.examples.map((ex, i) => <div key={i}>{ex}</div>)}</dd>
+                                  </div>
+                                )}
+                              </dl>
+                            )}
+
+                            <dl className="cg-meta">
+                              <div><dt>Recommended cadence</dt><dd>{facts.cadence}</dd></div>
+                              <div><dt>Runs for</dt><dd>{facts.timelineDays === 1 ? 'Once' : `${facts.timelineDays} days`}</dd></div>
+                              <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
+                            </dl>
+                          </div>
+                        )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -822,9 +968,9 @@ export function CreateGroundPage() {
                 * screens that were asking five other things. A person halfway through had no way to
                 * tell how far in they were except by counting six grey dots.
                 */}
-              <span className="gw-logo">Set up a check-in</span>
+              <h1 className="gw-logo gw-page-h1">Set up a check-in</h1>
               <span style={{ fontSize: 13, color: 'var(--gw-sub)', marginLeft: 10 }}>
-                Step {displayStep} of {TOTAL_STEPS} · {STEP_NAMES[displayStep] ?? ''}
+                Step {displayStep} of {totalStepsForThisPerson} · {STEP_NAMES[step] ?? ''}
               </span>
         <button className="gw-back" onClick={back}>← Back</button>
       </div>
@@ -837,23 +983,36 @@ export function CreateGroundPage() {
         * exactly one column. So twenty-one situations came down as one column and one very long
         * scroll, and the jump bar above them exists because of it.
         *
-        * Only step one. The other five are a form - a timeline, a list of people, a brief - and a
+        * Only the picker. The others are a form - a timeline, a list of people, a brief - and a
         * form read across 1160px is worse, not better: the eye has to travel the width of the
         * screen between a label and its field. 1160 is four 275px cards and their gaps.
+        *
+        * IT SAID `step === 1`, AND THE PICKER IS STEP 2.
+        *
+        * The steps were renumbered - the same edit that left "Step 6 (was 5)" further down - and
+        * this condition kept the old number. So the widening above was written, explained at
+        * length, and then quietly stopped applying to anything: step 1 is the three-option "who is
+        * this for?" question, which wants the narrow column, and the twenty-one cards went back to
+        * being squeezed into 540px on a 1280px screen.
+        *
+        * Worse than a plain regression, because the card grid asks for its column count from the
+        * VIEWPORT, not from its container. At 1280px wide the grid asked for four columns and got
+        * a 508px box to put them in, so the cards came out about 119px across - narrower than they
+        * had ever been in a single column.
         */}
-      <div className="gw-bd" style={{ maxWidth: step === 1 ? 1160 : 540, margin: '0 auto', width: '100%' }}>
+      <div className="gw-bd" style={{ maxWidth: step === STAGE.situation ? 1160 : 540, margin: '0 auto', width: '100%' }}>
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
+          {Array.from({ length: totalStepsForThisPerson }, (_, i) => i + 1).map(n => (
             <div key={n} className={`cg-step-dot${displayStep === n ? ' active' : displayStep > n ? ' done' : ''}`} />
           ))}
         </div>
 
         {/* Step 1: Scenario + Moment */}
-        {step >= 1 && step <= 4 && (
+        {step >= STAGE.who && step <= STAGE.describe && (
           <div>
             {/* ---- STEP 1: who this check-in is for ---- */}
-            {step === 1 && (<>
+            {step === STAGE.who && (<>
             {/* Say the limit is reached BEFORE the setup work, not after it.
                 The API refuses an eleventh ground correctly, but it refused it
                 at submit - so the admin picked a card, named the ground, set
@@ -960,25 +1119,63 @@ export function CreateGroundPage() {
             </>)}
 
             {/* ---- STEP 2: which situation ---- */}
-            {step === 2 && (<>
+            {step === STAGE.situation && (<>
             <div className="gw-sub-t" style={{ marginBottom: 2 }}>
               Twenty situations, grouped by the question you are actually asking. Every one of them is an
               objective agreed at the start, then a run of check-ins testing the work against it. Pick the
               closest fit: it sets the questions people are asked and how often.
             </div>
 
+            {/* Type it in your own words. The groups fixed the card nobody could find; this is for
+                the person who knows their situation but not our heading for it. */}
+            <div className="cg-find">
+              <input
+                type="search"
+                value={situationSearch}
+                onChange={e => setSituationSearch(e.target.value)}
+                placeholder="Search in your own words - handover, conflict, off track, new hire"
+                aria-label="Search the situations"
+                aria-describedby="cg-find-count"
+              />
+              {matches !== null && (
+                <span id="cg-find-count" role="status">
+                  {/* Matches, not "n of 21". There are twenty-one cards covering twenty
+                      situations - COHORT_ONBOARDING shares COHORT_CHECK's situation - so a total
+                      here would contradict the "Twenty situations" line directly above it. */}
+                  {matches.length === 0
+                    ? 'No match'
+                    : `${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}
+                </span>
+              )}
+            </div>
+
             {/* Jump bar. The concrete failure this fixes: the recurring read sat at position
                 eleven of twenty in one unbroken list, and the person who built the product
-                could not find it. Nothing was wrong with the card. */}
+                could not find it. Nothing was wrong with the card. Hidden while searching,
+                because jumping to a group is meaningless when the list is not grouped. */}
+            {matches === null && (
             <nav className="cg-jump" aria-label="Jump to a group of situations">
               {SCENARIO_GROUPS.map(g => (
                 <a key={g.key} href={`#cg-${g.key}`}>{g.heading} <b>{cardsInGroup(g.key).length}</b></a>
               ))}
             </nav>
+            )}
 
+            {matches !== null && (
+              matches.length === 0
+                ? <p className="cg-nomatch">{NOTHING_MATCHED}</p>
+                : <div role="radiogroup" aria-label="Situations matching your search" className="cg-group-grid" style={{ marginBottom: 24 }}>
+                    {matches.map(renderSituation)}
+                  </div>
+            )}
+
+            {/* ONE renderer for both lists. The search results and the grouped list show the same
+                card with the same behaviour, because they are the same card - duplicating this JSX
+                is how the two lists start disagreeing about what a situation is. */}
             {/* Real radios in ONE radiogroup spanning every group, not one per section:
                 a person arrowing through this is choosing among twenty situations, not
                 among six lists. The headings are structure, not separate controls. */}
+            {matches === null && (
             <div role="radiogroup" aria-label="What is this for?" style={{ marginBottom: 24 }}>
               {SCENARIO_GROUPS.map(g => {
                 const cards = cardsInGroup(g.key)
@@ -991,95 +1188,18 @@ export function CreateGroundPage() {
                     </div>
                     <p className="cg-group-q">{g.question}</p>
                     <div className={`cg-group-grid${cards.length === 1 ? ' one' : ''}`}>
-                      {cards.map(s => {
-                        const facts = SCENARIO_FACTS[s.scenario]
-                        const sessions = recommendedSessions(s.scenario)
-                        const isSel = selectedCard === s.cardKey
-                        const open = openArc === s.cardKey
-                        const pick = () => {
-                          setScenario(s.scenario)
-                          setSelectedCard(s.cardKey)
-                          sessionStorage.setItem('gw-new-ground-card', s.cardKey)
-                          /* Seeding, not setting. Both were hardcoded here - 90 days and
-                             fortnightly for every situation - so the engine's per-scenario
-                             timeline was never reached on the path people use. The lead still
-                             changes either one at step 3. */
-                          setTimelineDays(facts.timelineDays)
-                          setCadence(CADENCE_VALUE[facts.cadence] as GroundCadence)
-                          /* And where in the arc. Step one required this second choice and disabled
-                             Continue until it was answered, without saying which choice was missing -
-                             while the card just clicked already answered it. Still changeable below. */
-                          setMoment(RECOMMENDED_MOMENT[s.scenario] as GroundMoment)
-                        }
-                        return (
-                          <div
-                            key={s.cardKey}
-                            role="radio"
-                            tabIndex={isSel || (!selectedCard && s.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
-                            aria-checked={isSel}
-                            aria-label={`${s.label}. ${s.moment} ${s.desc}`}
-                            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
-                            className={`cg-sit-card${isSel ? ' selected' : ''}`}
-                            onClick={pick}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: s.tagBg, color: s.tagColor }}>{s.tag}</span>
-                              <div className="cg-sit-check" />
-                            </div>
-                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{s.label}</div>
-                            <p className="cg-moment">{s.moment}</p>
-
-                            <button
-                              type="button"
-                              className="cg-more"
-                              aria-expanded={open}
-                              onClick={(e) => { e.stopPropagation(); setOpenArc(open ? null : s.cardKey) }}
-                            >
-                              {open ? 'How it runs \u2039' : 'How it runs \u203A'}
-                            </button>
-                            {open && (
-                              <dl className="cg-arc">
-                                <div>
-                                  <dt>Agreed at the start</dt>
-                                  <dd>{s.agreed}</dd>
-                                </div>
-                                <div>
-                                  <dt>What the check-ins test</dt>
-                                  <dd>{s.tests}</dd>
-                                </div>
-                                {facts.notThisOneIf && (
-                                  <div className="warn">
-                                    <dt>Not this one if</dt>
-                                    <dd>{facts.notThisOneIf}</dd>
-                                  </div>
-                                )}
-                                {s.examples && s.examples.length > 0 && (
-                                  <div>
-                                    <dt>Also this</dt>
-                                    <dd>{s.examples.map((ex, i) => <div key={i}>{ex}</div>)}</dd>
-                                  </div>
-                                )}
-                              </dl>
-                            )}
-
-                            <dl className="cg-meta">
-                              <div><dt>Recommended cadence</dt><dd>{facts.cadence}</dd></div>
-                              <div><dt>Runs for</dt><dd>{facts.timelineDays === 1 ? 'Once' : `${facts.timelineDays} days`}</dd></div>
-                              <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
-                            </dl>
-                          </div>
-                        )
-                      })}
+                      {cards.map(renderSituation)}
                     </div>
                   </section>
                 )
               })}
             </div>
+            )}
 
             </>)}
 
             {/* ---- STEP 3: a coach, before you decide ---- */}
-            {step === 3 && (<>
+            {step === STAGE.coach && (<>
             {/*
               * A STEP OF ITS OWN, BEFORE THE SITUATION IS WRITTEN DOWN.
               *
@@ -1113,7 +1233,7 @@ export function CreateGroundPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setStep(selectedCard === 'DESCRIBE_OWN' ? 4 : 5)}
+                    onClick={() => setStep(stepAfter(visibleSteps, step))}
                     style={{ fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', padding: '7px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)' }}
                   >
                     Skip this
@@ -1245,7 +1365,7 @@ export function CreateGroundPage() {
             </>)}
 
             {/* ---- STEP 4: describe it in your own words ---- */}
-            {step === 4 && (<>
+            {step === STAGE.describe && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
                 <label className="gw-label" htmlFor="own-situation">Describe it in your own words</label>
@@ -1319,7 +1439,7 @@ export function CreateGroundPage() {
 
             {/* The moment belongs with the situation, so it is bound to step 2 rather than to
                 wherever it happens to sit in the file. */}
-            {step === 2 && scenario && (
+            {step === STAGE.situation && scenario && (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
@@ -1369,18 +1489,17 @@ export function CreateGroundPage() {
                    * into steps, each has one thing to be waiting for, so the message is exact.
                    */
                   const needsRouting = selectedCard === 'DESCRIBE_OWN' && !routedTo && !routeFailed
-                  const describing = selectedCard === 'DESCRIBE_OWN'
 
                   const blocked =
-                    step === 1 ? alsoAParty === null
-                    : step === 2 ? (!scenario || !moment)
-                    : step === 4 ? needsRouting
+                    step === STAGE.who ? alsoAParty === null
+                    : step === STAGE.situation ? (!scenario || !moment)
+                    : step === STAGE.describe ? needsRouting
                     : false
 
                   const why =
-                    step === 1 ? 'Choose one to continue'
-                    : step === 2 ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
-                    : step === 4 ? 'Describe the situation above, then let us find the closest match'
+                    step === STAGE.who ? 'Choose one to continue'
+                    : step === STAGE.situation ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
+                    : step === STAGE.describe ? 'Describe the situation above, then let us find the closest match'
                     : ''
 
                   /* Step 4 only exists for the free-text path; a card already says what this is. */
@@ -1394,11 +1513,10 @@ export function CreateGroundPage() {
                    *
                    * Paid plans still get the step, with the card and without the block above it.
                    */
-                  const next = step === 3
-                    ? (describing ? 4 : 5)
-                    : step === 2 && !onAPaidPlan
-                      ? (describing ? 4 : 5)
-                      : step + 1
+                  /* Was its own arithmetic, with two bare 4s and two bare 5s the naming pass
+                     did not reach, and it had to know which steps get skipped - the same knowledge
+                     `back` and the counter each held separately. One list, asked three ways. */
+                  const next = stepAfter(visibleSteps, step)
 
                   return (
                     <>
@@ -1415,9 +1533,9 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 2 (1.5): Billing check */}
-        {step === 5 && (
+        {step === STAGE.plan && (
           <div>
-            <div className="gw-ttl">Before you continue</div>
+            <h1 className="gw-ttl">Before you continue</h1>
 
             {billingLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: 'var(--gw-sub)', fontSize: 14 }}>
@@ -1448,7 +1566,7 @@ export function CreateGroundPage() {
                     Only {freeLimit - groundsUsed} {freeLimit - groundsUsed === 1 ? 'check-in' : 'check-ins'} left on the free plan. After that you will need a subscription to open another.
                   </div>
                 )}
-                <button className="gw-btn" onClick={() => setStep(6)} style={{ margin: '12px 0 0' }}>Continue →</button>
+                <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))} style={{ margin: '12px 0 0' }}>Continue →</button>
               </div>
             )}
 
@@ -1510,7 +1628,7 @@ export function CreateGroundPage() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Code applied</div>
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Your access code has been validated and will be used when the check-in is created.</div>
                     </div>
-                    <button className="gw-btn" onClick={() => setStep(6)}>Continue →</button>
+                    <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))}>Continue →</button>
                   </div>
                 )}
               </div>
@@ -1519,9 +1637,9 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 3 (was 2): Timeframe + cadence */}
-        {step === 6 && (
+        {step === STAGE.timeline && (
           <div>
-            <div className="gw-ttl">How long will this run?</div>
+            <h1 className="gw-ttl">How long will this run?</h1>
             <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
             <div className="gw-fld">
               <label className="gw-label" htmlFor="gw-timeframe">Recommended timeframe</label>
@@ -1611,20 +1729,20 @@ export function CreateGroundPage() {
                 {sessionTotal} {sessionTotal === 1 ? 'check-in' : 'check-ins'} over {timelineDays} {timelineDays === 1 ? 'day' : 'days'}, {runDates(startsOn, timelineDays)}
               </div>
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                Both are set from the situation you picked, and you can change either one now. Every check-in produces a report for each person. Afterwards the person leading this check-in can still change the timeframe or the cadence at any time.
+                Both are set from the situation you picked, and you can change either one now. Every check-in produces a report for each person. Afterwards the lead can still change the timeframe or the cadence at any time.
               </div>
               <div style={{ marginTop: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>
               </div>
             </div>
-            <button className="gw-btn" onClick={() => setStep(7)} style={{ margin: 0 }}>Continue</button>
+            <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))} style={{ margin: 0 }}>Continue</button>
           </div>
         )}
 
         {/* Step 4 (was 3): Participants */}
-        {step === 7 && (
+        {step === STAGE.people && (
           <div>
-            <div className="gw-ttl">Who is in this check-in?</div>
+            <h1 className="gw-ttl">Who is in this check-in?</h1>
             <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
 
 
@@ -1726,7 +1844,7 @@ export function CreateGroundPage() {
               * second says how many it is continuing with, so neither can be mistaken for the
               * other.
               */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(8)} style={{ margin: 0 }}>
+            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(STAGE.brief)} style={{ margin: 0 }}>
               {participants.length === 0
                 ? 'Continue'
                 : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
@@ -1749,7 +1867,7 @@ export function CreateGroundPage() {
               </div>
             ) : null}
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(8) }}>
+              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(stepAfter(visibleSteps, step)) }}>
               Skip - add participants after
             </div>
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
@@ -1781,9 +1899,9 @@ export function CreateGroundPage() {
         */}
 
         {/* Step 6 (was 5): Opening brief + ground name */}
-        {step === 8 && (
+        {step === STAGE.brief && (
           <div>
-            <div className="gw-ttl">What is this about?</div>
+            <h1 className="gw-ttl">What is this about?</h1>
             <div className="gw-sub-t">Your version of the brief. Each person writes their own in their first session. The report shows where accounts agree and where they differ.</div>
 
             <div style={{ position: 'relative', marginBottom: 6 }}>
@@ -1797,7 +1915,11 @@ export function CreateGroundPage() {
               <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>{briefWords} words</div>
             </div>
 
-            {briefShort && (
+            {briefTooShortToInvite ? (
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
+                A little more before you can invite anyone: with nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about - a few more words closes this.
+              </div>
+            ) : briefShort && (
               <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
                 A brief this short will produce weaker first sessions. The questions are shaped by what you write here. Add more context.
               </div>
@@ -1845,7 +1967,7 @@ export function CreateGroundPage() {
               </div>
             </div>
 
-            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim()} style={{ margin: 0 }}>
+            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim() || briefTooShortToInvite} style={{ margin: 0 }}>
               {/* "Talk it through" described the conversation and not the button. It opens the
                   check-in, so it says so. */}
               {create.isPending ? 'Opening…' : 'Start check-in →'}

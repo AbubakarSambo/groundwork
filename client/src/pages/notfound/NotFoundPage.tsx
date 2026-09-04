@@ -34,9 +34,9 @@ export function NotFoundPage() {
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
           Page not found
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', lineHeight: 1.25 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px', letterSpacing: '-.01em', lineHeight: 1.25 }}>
           There is nothing at this address.
-        </div>
+        </h1>
         <div style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.65 }}>
           The link you followed may be out of date, or the address may have been typed incorrectly.
         </div>

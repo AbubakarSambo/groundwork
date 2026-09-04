@@ -44,7 +44,7 @@ export function Arrival({ title, sub, children, wide }: {
           flexDirection: 'column',
         }}
       >
-        {title && <div className="gw-ttl" style={{ textAlign: 'center' }}>{title}</div>}
+        {title && <h1 className="gw-ttl" style={{ textAlign: 'center' }}>{title}</h1>}
         {sub && (
           <div className="gw-sub-t" style={{ textAlign: 'center', margin: '8px auto 20px', maxWidth: 340 }}>
             {sub}

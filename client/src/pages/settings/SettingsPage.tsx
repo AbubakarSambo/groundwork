@@ -34,7 +34,7 @@ export function SettingsPage() {
       updateUser({ firstName: u.firstName, lastName: u.lastName } as any)
       toast.success('Your name is updated. This is what your team sees.')
     },
-    onError: () => toast.error('Could not save your name. Try again.'),
+    onError: () => toast.error('Your name did not change. Nothing else was altered — try again.'),
   })
   const nameChanged =
     firstName.trim() !== (user?.firstName ?? '') || lastName.trim() !== (user?.lastName ?? '')
@@ -42,7 +42,7 @@ export function SettingsPage() {
   const [orgName, setOrgName] = useState(user?.organizationName ?? '')
   const renameOrgMut = useMutation({
     mutationFn: (name: string) => authApi.renameOrganization(name),
-    onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organization name updated') },
+    onSuccess: org => { updateUser({ organizationName: org.name } as any); toast.success('Organisation name updated') },
     onError: () => toast.error('Could not rename the organisation. Try again.'),
   })
   /*
@@ -60,7 +60,7 @@ export function SettingsPage() {
     mutationFn: (change: { whoMayOpen?: string; needsApproval?: boolean }) =>
       apiClient.patch('/users/organization/check-ins', change),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['how-check-ins-work'] }); toast.success('Saved') },
-    onError: () => toast.error('Could not save that. Try again.'),
+    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
   })
   /* The defaults, which are the stricter of each - the same two this product starts an org on. */
   const howCheckIns = checkInsQuery.data ?? { whoMayOpen: 'NAMED_LEADS', needsApproval: true }
@@ -153,7 +153,7 @@ export function SettingsPage() {
       </div>
 
       <div className="gw-bd" style={{ maxWidth: 520, margin: '0 auto', width: '100%', paddingTop: 28 }}>
-        <div className="gw-ttl">Settings</div>
+        <h1 className="gw-ttl">Settings</h1>
 
         <section style={{ marginBottom: 32 }}>
           <Sec title="Profile" />
@@ -204,9 +204,9 @@ export function SettingsPage() {
 
         {user?.role === 'ADMIN' && (
           <section style={{ marginBottom: 32 }}>
-            <Sec title="Organization" />
+            <Sec title="Organisation" />
             <Card pad="block">
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organization name</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Organisation name</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                 Everyone on your team sees this. If you signed up without being asked for it, we
                 guessed it from your email address.
@@ -215,7 +215,7 @@ export function SettingsPage() {
                 <input
                   value={orgName}
                   onChange={e => setOrgName(e.target.value)}
-                  placeholder={user?.organizationName ?? 'Organization name'}
+                  placeholder={user?.organizationName ?? 'Organisation name'}
                   style={{ flex: 1, padding: '9px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
                 />
                 <button
@@ -284,6 +284,9 @@ export function SettingsPage() {
                 <button
                   onClick={() => checkInSettings.mutate({ needsApproval: !howCheckIns.needsApproval })}
                   disabled={checkInSettings.isPending}
+                  /* On its own the button reads "On, button" and names nothing it controls. */
+                  aria-label="Check-ins wait for an admin"
+                  aria-pressed={howCheckIns.needsApproval}
                   style={{
                     padding: '8px 14px', borderRadius: 7, fontFamily: 'inherit', fontSize: 13,
                     fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',

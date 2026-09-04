@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
+import { isSubscribed } from '../../common/subscription';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -323,6 +324,94 @@ export class AdminService implements OnApplicationBootstrap {
         : { exists: false, releasedAt: null, createdAt: null },
       pendingParticipantRequests,
     };
+  }
+
+  /**
+   * EVERY CALL SOMEBODY HAS ASKED FOR, IN ONE LIST.
+   *
+   * Coaching, setup help and integration support are all the same request with a different subject:
+   * somebody asks, our team rings back, and what they agree is invoiced by hand. There is no second
+   * queue for them and there must not be - a request sitting in a list nobody opens is the same as
+   * a request nobody made, which is what happened to the mail at hello@ for months.
+   *
+   * WITH WHO TO RING AND WHETHER THEY PAY US. Not to gate anything - the request is never gated -
+   * but because a call to somebody on the free plan is a different conversation from a call to a
+   * customer, and whoever picks it up should not have to go and look it up.
+   */
+  async getCallRequests() {
+    const rows = await this.prisma.callRequest.findMany({
+      where: { status: 'new' },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: {
+        id: true, kind: true, note: true, createdAt: true, status: true,
+        requestedById: true,
+        organization: { select: { name: true, subscriptionPlan: true, subscriptionStatus: true } },
+      },
+    }).catch(() => [] as any[]);
+
+    /*
+     * WHO ASKED, LOOKED UP SEPARATELY. `CallRequest` keeps the id and has no relation to `User` -
+     * adding one would be a migration for a queue read, and a queue read is the last thing that
+     * should be shaping the schema. Two hundred rows, one extra query.
+     */
+    const people = rows.length
+      ? await this.prisma.user.findMany({
+        where: { id: { in: [...new Set(rows.map((r: any) => r.requestedById))] } },
+        select: { id: true, email: true, firstName: true, lastName: true },
+      }).catch(() => [] as any[])
+      : [];
+    const byId = new Map(people.map((p: any) => [p.id, p]));
+
+    return {
+      requests: rows.map((r: any) => ({
+        id: r.id,
+        about: r.kind,
+        note: r.note,
+        askedAt: r.createdAt,
+        orgName: r.organization?.name ?? 'an organisation',
+        paying: isSubscribed(r.organization ?? { subscriptionPlan: null, subscriptionStatus: null }),
+        who: [byId.get(r.requestedById)?.firstName, byId.get(r.requestedById)?.lastName]
+          .filter(Boolean).join(' ').trim()
+          || byId.get(r.requestedById)?.email || 'somebody',
+        email: byId.get(r.requestedById)?.email ?? null,
+      })),
+    };
+  }
+
+  /** Answered is the only thing anybody does to one here. The call happens on a phone. */
+  async markCallAnswered(id: string) {
+    await this.prisma.callRequest.update({ where: { id }, data: { status: 'answered' } });
+    return this.getCallRequests();
+  }
+
+  /**
+   * MAIL SENT TO US, NEWEST FIRST.
+   *
+   * The address is on the marketing site and went to one person's inbox, where nobody else could
+   * see it and nothing could be picked up if she were away. Unread first is deliberately NOT the
+   * order: a message somebody has read is still the one that might need answering, and hiding it
+   * below fifty older ones is how an inbox becomes a place things go missing.
+   */
+  async getInbox() {
+    const messages = await this.prisma.inboundMessage.findMany({
+      orderBy: { receivedAt: 'desc' },
+      take: 200,
+      select: {
+        id: true, fromAddress: true, fromName: true, toAddress: true,
+        subject: true, body: true, receivedAt: true, readAt: true,
+      },
+    });
+    return { messages, unread: messages.filter((m) => !m.readAt).length };
+  }
+
+  /** Marking one read is the only thing anybody can do to it here. Replying happens in real mail. */
+  async markInboundRead(id: string, userId: string) {
+    await this.prisma.inboundMessage.update({
+      where: { id },
+      data: { readAt: new Date(), readById: userId },
+    });
+    return this.getInbox();
   }
 
   async getFeedback() {

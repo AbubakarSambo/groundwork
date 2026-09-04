@@ -35,7 +35,15 @@ describe('a member is refused at the door, not on submit', () => {
 
   it('each door reads one field and nothing else', () => {
     const may = APP.slice(APP.indexOf('function MayOpenCheckIns'), APP.indexOf('function AdminsOnly'));
+    /*
+     * `!== false`, deliberately - see nobody-sees-a-button-that-refuses-them.spec.ts, where that
+     * trade-off is made, revisited and kept. I changed it to `=== true` and reverted: hiding the
+     * product's main action between rehydration and `/auth/me` answering is a certain cost paid
+     * constantly, against an uncertain one paid rarely, and the real defence is upstream.
+     */
     expect(may).toContain('user?.mayOpenCheckIns !== false');
+    /* And nothing else: no second copy of the server's rule rebuilt here. */
+    expect(may).not.toMatch(/whoMayOpen|NAMED_LEADS|role === 'LEAD'/);
     const admins = APP.slice(APP.indexOf('function AdminsOnly'), APP.indexOf('function RequireOrgSetup'));
     expect(admins).toContain("user?.role === 'ADMIN'");
   });

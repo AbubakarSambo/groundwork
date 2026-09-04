@@ -78,10 +78,19 @@
   --gw-blue-t: #0C447C;
   --gw-blue-b: #B5D4F4;
   --gw-border: #E2E0DB;
-  --gw-muted: #9B9590;
+  /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.
+     Measured: 2.51 on --gw-bg, 2.96 on white, 2.84 on --gw-paper, 2.67 on --gw-paper-2, against
+     the 4.5 normal text needs. It carries the smallest text in the product - 10 and 11px section
+     labels, "no report yet", the metadata row under a check-in title - so the least readable colour
+     was on the least readable sizes.
+     #706A65 is the same hue and saturation, darkened until the worst of those four grounds clears
+     4.5 (it reaches 4.52). Checked first that the token is never painted on a dark surface: the
+     rail uses its own colours, so nothing is made worse by this.
+     --gw-sub was measured at the same time and left alone - it already passes at 4.87. */
+  --gw-muted: #706A65;
   --gw-sub: #6B6560;
   --gw-text: #1A1916;
-  --gw-clay: #B5675A;
+  --gw-clay: #9F5447;
   /**
    * WARMED, because it was four points from --gw-red-bg. W14-8 stage 1.
    *
@@ -125,7 +134,7 @@
   /** Pale mint, for a border on a good-news card. --gw-green-b is far more saturated. */
   --gw-green-b-soft: #B6E8D4;
   /** Mid green, for text that reads positive without the weight of --gw-green-t. */
-  --gw-green-t-soft: #3A7A60;
+  --gw-green-t-soft: #37745B;
   /** The bright red of a destructive control, distinct from --gw-red-t's dark prose red. */
   --gw-danger: #C0392B;
   /** Between --gw-text and --gw-sub: secondary prose that still has to be read. */
@@ -433,7 +442,10 @@ body {
 @media (min-width: 641px) {
   .cg-fixed-bar { left: var(--gw-sidebar-w, 240px); }
 }
-.gw-ttl { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; color: var(--gw-text); }
+/* THE PAGE TITLE IS A HEADING, NOT A DIV THAT LOOKS LIKE ONE.
+   Every usage is now an <h1>, so `margin-top` and the browser's own font-size have to be
+   overridden here or every page shifts. The rendered result is byte-identical to the div. */
+.gw-ttl { font-size: 20px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; color: var(--gw-text); }
 .gw-sub-t { font-size: 13px; color: var(--gw-sub); margin-bottom: 20px; line-height: 1.65; }
 .gw-sec { font-size: 11px; color: var(--gw-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin: 16px 0 8px; }
 
@@ -597,10 +609,18 @@ body {
      removing overflow:auto from .gw-bd, which is app-wide. Neither is worth it for a
      jump bar: the grouping is what makes twenty cards findable, and the bar is a
      shortcut to the groups. */
-  display: flex; gap: 8px;
+  /* IT WRAPS, BECAUSE SCROLLING HID HALF OF IT.
+     This was `overflow-x: auto`, and measured on the real page at a normal desktop width three of
+     the six groups - "A read on live work", "A decision about one person", "Something is off" -
+     sat past the right edge with nothing on screen to say they were there. A horizontal scroller
+     with no affordance reads as a bar with three groups in it. That is the same failure this bar
+     was built to fix, one level up: the cards were unfindable, so we added navigation, and then
+     half the navigation was unfindable.
+     Six short pills wrap to two rows at worst and cost a line of vertical space. Nothing is
+     hidden, and there is no affordance to get right. */
+  display: flex; flex-wrap: wrap; gap: 8px;
   padding: 10px 0 10px; margin-bottom: 4px;
   background: var(--gw-bg); border-bottom: 1px solid var(--gw-border);
-  overflow-x: auto; scrollbar-width: thin;
 }
 .cg-jump a {
   flex: 0 0 auto; font-size: 12px; font-weight: 600; text-decoration: none;
@@ -1077,7 +1097,123 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 .gw-rename {
   opacity: 0.42;
   transition: opacity .12s ease;
+  position: relative;
 }
 .gw-rail-row:hover .gw-rename { opacity: 0.85; }
 .gw-rename:hover,
 .gw-rename:focus-visible { opacity: 1; }
+
+/*
+ * THE TARGET IS NOT THE GLYPH.
+ *
+ * Measured on a tablet-width viewport, this button is 14x11. The guideline is 44x44, and it sits
+ * inside the row's link - so a miss does not do nothing, it navigates. On a touch screen that is a
+ * small mark you have to hit exactly, next to something that takes you away if you do not.
+ *
+ * The tappable area is extended with a pseudo-element instead of padding, so nothing in the rail
+ * moves. It is widened to the full 44 and taken to the row's own height rather than past it:
+ * 45px tall inside a 35px row would reach into the rows above and below, and stealing taps from a
+ * neighbouring check-in is a worse bug than the one being fixed.
+ */
+.gw-rename::after {
+  content: '';
+  position: absolute;
+  inset: -12px -15px;
+}
+
+/*
+ * AND ON A TOUCH SCREEN THERE IS NO HOVER TO REVEAL IT.
+ *
+ * The pencil rests at 0.42 and brightens when the row is hovered. A phone or tablet never sends
+ * that, so it sat permanently at its faintest - the state meant to say "not yet" - on exactly the
+ * devices where it is hardest to hit.
+ */
+@media (hover: none) {
+  .gw-rename { opacity: 0.85; }
+}
+
+/*
+ * THE SAME PROBLEM WHEREVER AN ICON IS THE WHOLE CONTROL.
+ *
+ * The rail's collapse button measured 17x25. Unlike the rename pencil it stands alone in the rail
+ * header with space around it, so its target can go to the full 44x44 without reaching anything
+ * else. Applied as a class so the next icon-only control has somewhere to go instead of growing a
+ * third bespoke rule.
+ */
+.gw-tap44 {
+  position: relative;
+}
+.gw-tap44::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* SEARCH THE SITUATIONS. Sits above the jump bar because typing your own words is the faster
+   route for the person who already knows their situation; the jump bar is for browsing, and it
+   hides while a search is running because jumping to a group is meaningless in an ungrouped list. */
+.cg-find {
+  display: flex; align-items: center; gap: 10px;
+  margin: 10px 0 2px;
+}
+.cg-find input {
+  flex: 1 1 auto; min-width: 0;
+  font: inherit; font-size: 13.5px;
+  padding: 9px 13px; border-radius: 8px;
+  border: 1px solid var(--gw-border); background: white; color: var(--gw-navy);
+}
+.cg-find input::placeholder { color: var(--gw-muted); }
+.cg-find input:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 1px; border-color: var(--gw-navy); }
+.cg-find [role="status"] {
+  flex: 0 0 auto; font-size: 12px; font-weight: 600;
+  color: var(--gw-muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cg-nomatch {
+  margin: 14px 0 24px; padding: 14px 16px;
+  font-size: 13.5px; line-height: 1.55; color: var(--gw-sub);
+  background: var(--gw-bg); border: 1px solid var(--gw-border); border-radius: 8px;
+}
+
+/* Visible only when focused - the one moment it is wanted. Positioned over the rail so it
+   is the first thing seen as well as the first thing reached. */
+.gw-skip {
+  position: fixed; top: 8px; left: 8px; z-index: 1000;
+  transform: translateY(-200%);
+  background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700;
+  padding: 10px 16px; border-radius: 8px; text-decoration: none;
+}
+.gw-skip:focus { transform: translateY(0); outline: 2px solid white; outline-offset: 2px; }
+
+/* A page title that happens to sit in the header strip. Neutralises the h1 defaults so the
+   header keeps the size and spacing it had as a span. */
+.gw-page-h1 { margin: 0; font-size: inherit; }
+
+/* The report's own manual: present, one line high, open on request. */
+.gw-legend > summary {
+  list-style: none; cursor: pointer;
+  padding: 13px 0; font-size: 12.5px; font-weight: 600; color: var(--gw-sub);
+  display: flex; align-items: center; gap: 7px;
+}
+.gw-legend > summary::-webkit-details-marker { display: none; }
+.gw-legend > summary::after { content: '›'; font-size: 15px; line-height: 1; color: var(--gw-muted); }
+.gw-legend[open] > summary::after { content: '⌄'; }
+.gw-legend > summary:hover { color: var(--gw-text); }
+.gw-legend > div { padding-bottom: 6px; }
+@media (max-width: 760px) { .gw-legend > div { grid-template-columns: 1fr !important; } }
+
+/* The report's own manual: present, one line high, opened on request. */
+.gw-legend > summary {
+  list-style: none; cursor: pointer;
+  padding: 13px 0; font-size: 12.5px; font-weight: 600; color: var(--gw-sub);
+  display: flex; align-items: center; gap: 7px;
+}
+.gw-legend > summary::-webkit-details-marker { display: none; }
+.gw-legend > summary::after { content: '\203A'; font-size: 15px; line-height: 1; color: var(--gw-muted); }
+.gw-legend[open] > summary::after { content: '\2304'; }
+.gw-legend > summary:hover { color: var(--gw-text); }
+.gw-legend > div { padding-bottom: 6px; }
+@media (max-width: 760px) { .gw-legend > div { grid-template-columns: 1fr !important; } }

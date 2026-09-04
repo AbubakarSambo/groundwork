@@ -1,6 +1,7 @@
 import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
+import { railAttention } from '@/lib/rail-attention'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -23,7 +24,38 @@ const MODE_COLORS: Record<string, { bg: string; color: string }> = {
   Urgent:         { bg: 'var(--gw-red-bg)', color: 'var(--gw-red-t)' },
 }
 
-function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
+/**
+ * WHAT THE CHIP SAYS, AND WHY IT CHANGED.
+ *
+ * It showed `g.moment` - "STARTING" - which is a property of the situation, the same on the day a
+ * check-in opens and the day it closes. So the one glanceable thing on a card said nothing about
+ * whether the card wanted anything from you, and somebody scanning ten of them had to open each to
+ * find out.
+ *
+ * The rail beside it has answered that question for a long time, with `railAttention`. Same data,
+ * same function: the sidebar was ranking by attention while the list showed the scenario, which is
+ * two answers to one question.
+ *
+ * The list's ordering is deliberately left alone. It already sorts by urgency, on
+ * `reportWaitingForMe` and `REPORT_READY`, which `railAttention` does not know about. Two rules for
+ * two jobs is fine.
+ */
+function whatThisWants(g: Ground, myUserId: string | null | undefined) {
+  const a = railAttention(g as any, myUserId)
+  switch (a.kind) {
+    case 'overdue':
+      return { text: a.daysLate === 1 ? 'Your turn · 1 day late' : `Your turn · ${a.daysLate} days late`,
+               bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
+    case 'yours':
+      return { text: 'Your turn', bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }
+    case 'waiting':
+      return { text: `Waiting on ${a.total - a.done} of ${a.total}`, bg: 'var(--gw-bg)', color: 'var(--gw-sub)' }
+    default:
+      return null
+  }
+}
+
+function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; myUserId?: string | null }) {
   // What the report holds, or nothing. The old "{score}/5 {band}" was a count
   // of completed check-ins wearing the word "Aligned".
   const read = alignmentLabel((g as any).alignment)
@@ -34,7 +66,12 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{g.label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: mc.bg, color: mc.color }}>{g.moment}</span>
+            {(() => {
+              const w = whatThisWants(g, myUserId)
+              return w
+                ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: w.bg, color: w.color }}>{w.text}</span>
+                : <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: mc.bg, color: mc.color }}>Nothing due</span>
+            })()}
             {/*
               A GROUND IN SOMEBODY ELSE'S ORGANISATION, SAID OUT LOUD.
 
@@ -61,7 +98,7 @@ function GroundCard({ g, onClick }: { g: Ground; onClick: () => void }) {
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
           {read
             ? <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', maxWidth: 132, lineHeight: 1.35 }}>{read}</div>
-            : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No read yet</div>}
+            : <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right' }}>No report yet</div>}
         </div>
       </div>
       {g.brief && <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>{g.brief}</div>}
@@ -158,10 +195,21 @@ export function GroundsListPage() {
       setColleagueEmail('')
       setShowInviteColleague(false)
     },
-    onError: () => toast.error('Could not send invite. Please try again.'),
+    onError: () => toast.error('The invite did not send. Nobody has been emailed — try again.'),
   })
 
-  const { data: grounds = [], isLoading } = useQuery({
+  /**
+   * `isError` MATTERS BECAUSE THE FALLBACK IS A LIE.
+   *
+   * This destructured `data = []` and nothing else, so a failed fetch fell through to the same
+   * branch as a genuinely empty account: "Your first check-in is one tap away", shown to somebody
+   * who may have ten of them. A person whose connection dropped is told their work does not exist -
+   * the worst available reading, and the one they are least able to check.
+   *
+   * "Nothing here yet" and "we could not load this" are different sentences. The page has to be
+   * able to say both.
+   */
+  const { data: grounds = [], isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['grounds'],
     queryFn: groundsApi.list,
     enabled: !!user,
@@ -186,6 +234,8 @@ export function GroundsListPage() {
     g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
   )
   const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
+  /** What the list holds that the "In progress" tile above it does not count. */
+  const closedCount = grounds.length - active.length
   // Count reports waiting for THIS person. The old count was grounds in
   // REPORT_READY status, which is a different thing and sat permanently at
   // zero while every ground stayed ACTIVE.
@@ -230,12 +280,12 @@ export function GroundsListPage() {
   const approveMut = useMutation({
     mutationFn: (groundId: string) => groundsApi.approve(groundId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); qc.invalidateQueries({ queryKey: ['grounds'] }); toast.success('Approved. The people involved can be invited now.') },
-    onError: () => toast.error('Could not approve. Try again.'),
+    onError: () => toast.error('Not approved. Nothing has changed — try again.'),
   })
   const declineMut = useMutation({
     mutationFn: ({ groundId, reason }: { groundId: string; reason: string }) => groundsApi.declineGround(groundId, reason),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['awaiting-approval'] }); toast.success('Declined. Nobody was invited.') },
-    onError: () => toast.error('Could not decline. Try again.'),
+    onError: () => toast.error('Not declined. Nothing has changed — try again.'),
   })
   const [declining, setDeclining] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState('')
@@ -252,7 +302,7 @@ export function GroundsListPage() {
           {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
               chrome could usefully carry. W13-11. */}
-              <span className="gw-logo">In progress</span>
+              <h1 className="gw-logo gw-page-h1">Check-ins</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
@@ -272,7 +322,20 @@ export function GroundsListPage() {
         </div>
       </div>
 
-      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      {/**
+        * A LIST OF CARDS IS NOT A COLUMN OF PROSE.
+        *
+        * 600px is right for reading - the check-in page and a party's own view keep it, and should.
+        * This page is a stack of cards carrying a name, a status, a lead, a participant count and a
+        * session count, and it had the same cap. Measured on the running page: a 600px column inside
+        * a 1194px main, so 594px of the screen sat empty either side while every card wrapped.
+        *
+        * Wide here for the same reason the situation picker is wide - see
+        * the-picker-gets-the-whole-width.spec.ts, which measured the same thing before and after.
+        * 1160 rather than the full width, so the page still has margins and a long check-in name
+        * still has a line length somebody can read.
+        */}
+      <div className="gw-bd" style={{ paddingTop: 8, maxWidth: 1160, margin: '0 auto', width: '100%' }}>
         {isAdmin && awaiting.length > 0 && (
           <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-amber-t)', marginBottom: 4 }}>
@@ -471,9 +534,26 @@ export function GroundsListPage() {
               * opened one - which is step two of five. It hid the list exactly when it started
               * being useful. It decides for itself when it is finished, and hides then.
               */}
-            {!isLoading && <AdminFirstRun />}
+            {!isLoading && !isError && <AdminFirstRun />}
 
-            {!isLoading && grounds.length === 0 && (
+            {!isLoading && isError && (
+              /* Could not load. Say which of the two things happened, and offer the one that helps. */
+              <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
+                  We could not load your check-ins
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 320, margin: '0 auto 18px' }}>
+                  This is a connection problem, not a lost record. Nothing you have written is affected.
+                </div>
+                <button
+                  onClick={() => refetch()}
+                  disabled={isFetching}
+                  style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+                >{isFetching ? 'Trying\u2026' : 'Try again'}</button>
+              </div>
+            )}
+
+            {!isLoading && !isError && grounds.length === 0 && (
               <>
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 10, marginBottom: 24, height: 44 }}>
@@ -493,8 +573,29 @@ export function GroundsListPage() {
               </>
             )}
 
+            {/**
+              * THE LIST SAYS WHAT IS IN IT, BECAUSE THE TILE ABOVE COUNTS SOMETHING ELSE.
+              *
+              * The tile reads `active.length` - check-ins that are running. This list shows every
+              * check-in, closed ones included. While nothing is closed the two agree and nobody
+              * notices. Close one and the screen reads "IN PROGRESS 9" directly above ten cards,
+              * with nothing saying why. Reproduced by closing one and looking.
+              *
+              * That is the defect `a-counter-must-count-what-it-says` is named for - a counter whose
+              * label promises one thing and whose value measures another - and the same shape as
+              * "0 of 2 checked in" over a roster showing two people checked in.
+              *
+              * Both numbers are right. Neither is wrong to show. What was missing is the sentence
+              * that makes them agree, so the heading says what the list holds and the difference
+              * stops being a contradiction.
+              */}
+            {closedCount > 0 && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 2 }}>
+                All {sortedGrounds.length} check-ins, including {closedCount} closed
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} onClick={() => navigate(`/grounds/${g.id}`)} />)}
+              {sortedGrounds.map(g => <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(`/grounds/${g.id}`)} />)}
             </div>
           </>
         ) : (
@@ -552,7 +653,7 @@ export function GroundsListPage() {
                 // assigned to run this ground) still needs the admin view - the
                 // participant page has no confirm-lead / add-participant / release
                 // actions. Only route to /p when they are genuinely a participant.
-                <GroundCard key={g.id} g={g} onClick={() => navigate(g.initiatorId === user?.id ? `/grounds/${g.id}` : `/grounds/${g.id}/p`)} />
+                <GroundCard key={g.id} g={g} myUserId={user?.id} onClick={() => navigate(g.initiatorId === user?.id ? `/grounds/${g.id}` : `/grounds/${g.id}/p`)} />
               ))}
             </div>
           </>

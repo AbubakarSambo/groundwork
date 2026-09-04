@@ -83,9 +83,11 @@ export function AdminFirstRun() {
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)', padding: '20px 22px', marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 3 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)' }}>
+        {/* A heading, not a div that looks like one: this names the section under the page's h1,
+            and heading navigation is how most screen reader users move around a page. */}
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: 0 }}>
           Setting up{orgName ? ` ${orgName}` : ''}
-        </div>
+        </h2>
         {/*
           * PROGRESS AS A FACT, not a bar. "2 of 4" is read in the time it takes to look at it, and
           * a percentage of a four-item list is a decoration pretending to be information.

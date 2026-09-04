@@ -54,13 +54,13 @@ export class ReportsController {
   }
 
   @Post('activate')
-  @ApiOperation({ summary: 'Participant confirms they are ready to see the report (mutual reveal gate)' })
+  @ApiOperation({ summary: 'Participant shows their report to the others (takes effect when everyone has)' })
   async activate(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
     return this.reports.activate(groundId, userId);
   }
 
   @Get('activation-status')
-  @ApiOperation({ summary: 'Check which parties have activated their report view' })
+  @ApiOperation({ summary: 'Check which participants have shown theirs' })
   async activationStatus(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
     return this.reports.getActivationStatusForUser(groundId, userId);
   }

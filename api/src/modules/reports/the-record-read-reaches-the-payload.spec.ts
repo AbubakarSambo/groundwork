@@ -136,7 +136,7 @@ describe('the switch, and the close', () => {
     expect(res.sharedPicture).toBe(RELEASED.sharedPicture);
   });
 
-  it('nothing before the closing round', async () => {
+  it('nothing before the closing session', async () => {
     // A "what to weigh about this person" panel sitting on the overview from week
     // two turns every visit into an evaluation exercise.
     const { service } = makeService({ closed: false });

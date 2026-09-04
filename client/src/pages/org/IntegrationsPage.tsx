@@ -114,14 +114,20 @@ export function IntegrationsPage() {
     retry: false,
   })
   const callMut = useMutation({
-    mutationFn: () => apiClient.post('/users/call-request', {}),
+    /*
+     * SAYS WHAT THE CALL IS ABOUT. Asked from the Connect page it is nearly always about connecting
+     * something, and whoever rings back should not have to guess. The subject changes nothing about
+     * who may ask - it is a line on the request, not a gate.
+     */
+    mutationFn: () => apiClient.post('/users/call-request', { subject: 'INTEGRATION' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['call-request'] })
       toast.success('Asked. We will be in touch.')
     },
-    onError: () => toast.error('Could not send that just now. Try again.'),
+    onError: () => toast.error('That did not send. What you wrote is still here — try again.'),
   })
-  const callAsked = !!call.data?.asked
+  /* Per subject now: an open coaching request must not make this page say they already asked. */
+  const callAsked = !!call.data?.open?.INTEGRATION
   const deliveries = useQuery({ queryKey: ['integrations', 'deliveries'], queryFn: () => integrationsApi.deliveries(), enabled: isAdmin })
   const imports = useQuery({ queryKey: ['integrations', 'imports'], queryFn: integrationsApi.listImports, enabled: isAdmin })
 
@@ -352,7 +358,7 @@ export function IntegrationsPage() {
       </div>
       <div style={S.card}>
         <div style={S.h3}>Results come back</div>
-        <p style={S.body}>When everybody in a round has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
+        <p style={S.body}>When everybody in a session has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
       </div>
 
       {/* GUIDED SETUP, and each step reports whether it actually happened rather than whether it was
@@ -594,7 +600,7 @@ export function IntegrationsPage() {
       {/* ---------------------------------------------------------------- delivery log */}
       <div style={S.sec}>Every message we tried to send</div>
       {!(deliveries.data ?? []).length && (
-        <div style={S.card}><p style={S.body}>Nothing yet. This fills in as rounds complete.</p></div>
+        <div style={S.card}><p style={S.body}>Nothing yet. This fills in as sessions complete.</p></div>
       )}
       {!!(deliveries.data ?? []).length && (
         <div style={S.card}>

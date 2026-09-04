@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 
 /**
- * Closing-round arc features - the anti-gaming core.
+ * Closing-session arc features - the anti-gaming core.
  *
  * DETERMINISTIC FIRST, MODEL SECOND: these features are computed from stored
  * rows (record entries, sessions, documents); the synthesis prompt narrates

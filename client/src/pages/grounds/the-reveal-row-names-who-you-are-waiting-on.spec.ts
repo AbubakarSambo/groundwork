@@ -55,11 +55,23 @@ describe('the heading counts past two', () => {
   })
 
   it('and says something true for any number of them', () => {
-    expect(CODE).toMatch(/Everyone has revealed/)
+    /*
+     * Matched on the shape, not the verb. This read /Everyone has revealed/ and went red when the
+     * act was renamed from "reveal" to "show" - a vocabulary decision, with the heading still
+     * saying the true thing for any number of people. That is the second time this file has been
+     * broken by pinning a word rather than the claim; the comment below records the first.
+     */
+    expect(CODE).toMatch(/Everyone has \w+ theirs/)
   })
 
   it('while still distinguishing the waiting state', () => {
-    /** The control: the heading must keep saying which of the two states this check-in is in. */
-    expect(CODE).toMatch(/activationStatus\.allActivated \? '· Everyone has revealed' : '· Waiting'/)
+    /**
+     * The control: the heading must keep saying which of the two states this check-in is in.
+     *
+     * Matched on the BRANCH rather than on both strings verbatim. It pinned the exact ternary, so
+     * adding a word - "Everyone has shown theirs", after the heading was renamed to say WHICH
+     * reports it means - turned it red while both states were still perfectly distinguished.
+     */
+    expect(CODE).toMatch(/activationStatus\.allActivated \? '·[^']*' : '· Waiting'/)
   })
 })

@@ -2,7 +2,7 @@ import { GroundsService } from './grounds.service';
 
 /**
  * GW-CLOSING tripwires - the flagging paths.
- *   - beginClosingRound: initiator-only; flags each participant's OPEN session
+ *   - beginClosingSession: initiator-only; flags each participant's OPEN session
  *     final, or creates a fresh final session when none is open; refuses on
  *     terminal grounds.
  *   - the flag never rewrites history: only NOT_STARTED / IN_PROGRESS rows are
@@ -40,10 +40,10 @@ function makeService(overrides: { ground?: any } = {}) {
   return { service, prisma };
 }
 
-describe('GW-CLOSING: beginClosingRound', () => {
+describe('GW-CLOSING: beginClosingSession', () => {
   it('flags the open session when one exists, creates a final one when none does', async () => {
     const { service, prisma } = makeService();
-    const res = await service.beginClosingRound('g1', 'org1', 'u-init');
+    const res = await service.beginClosingSession('g1', 'org1', 'u-init');
 
     expect(res.participantsFlagged).toBe(3);
     // p1's open session flagged in place - never a new row for them
@@ -58,13 +58,13 @@ describe('GW-CLOSING: beginClosingRound', () => {
 
   it('refuses anyone but the initiator', async () => {
     const { service } = makeService();
-    await expect(service.beginClosingRound('g1', 'org1', 'u-member')).rejects.toThrow('Only the initiator');
+    await expect(service.beginClosingSession('g1', 'org1', 'u-member')).rejects.toThrow('Only the lead of this check-in');
   });
 
   it('refuses terminal grounds', async () => {
     const { service } = makeService({
       ground: { id: 'g1', status: 'RESOLVED', initiatorId: 'u-init', organizationId: 'org1', participants: [] },
     });
-    await expect(service.beginClosingRound('g1', 'org1', 'u-init')).rejects.toThrow('already ended');
+    await expect(service.beginClosingSession('g1', 'org1', 'u-init')).rejects.toThrow('already ended');
   });
 });

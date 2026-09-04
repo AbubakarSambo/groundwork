@@ -119,7 +119,7 @@ export function ContextPage({
     mutationFn: ({ docId, visibility }: { docId: string; visibility: 'OPEN' | 'OWN' | 'CLOSED' }) =>
       documentsApi.setVisibility(id, docId, visibility),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['docs', id] }),
-    onError: () => toast.error('Could not change who can see that.'),
+    onError: () => toast.error('That did not change. It is still visible to the same people — try again.'),
   })
 
   const deleteDoc = useMutation({
@@ -132,7 +132,7 @@ export function ContextPage({
   const addNote = useMutation({
     mutationFn: (note: string) => groundsApi.update(id, { contextNote: note }),
     onSuccess: () => { setCtxNote(''); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save note.'),
+    onError: () => toast.error('The note did not save. It is still in the box — try again.'),
   })
 
   /**
@@ -145,7 +145,7 @@ export function ContextPage({
   const addSharedNoteMut = useMutation({
     mutationFn: () => groundsApi.addLeadContext(id, { text: sharedNoteText.trim(), audience: 'EVERYONE' }),
     onSuccess: () => { setSharedNoteText(''); setSharedNoteSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save that note.'),
+    onError: () => toast.error('The note did not save. It is still in the box — try again.'),
   })
 
   const [leadCtxText, setLeadCtxText] = useState('')
@@ -157,7 +157,7 @@ export function ContextPage({
       text: leadCtxText.trim(),
     }),
     onSuccess: () => { setLeadCtxText(''); setLeadCtxSaved(true); qc.invalidateQueries({ queryKey: ['ground', id] }) },
-    onError: () => toast.error('Could not save context.'),
+    onError: () => toast.error('That did not save. Your text is still here — try again.'),
   })
 
   /**
@@ -175,6 +175,14 @@ export function ContextPage({
     (ground.participants ?? []).every((p: any) => ((p.objective?.all ?? []).length === 0)) &&
     docs.length === 0
 
+  /**
+   * The lead's own answer to "What is this about? What needs to be true at the end?", typed at
+   * setup. Trimmed here so a brief of nothing but whitespace is treated as no brief, the way the
+   * readiness check below already treats it.
+   */
+  const theBrief: string = ((ground as any).brief ?? '').trim()
+  const objectives: any[] = (ground as any).objectives ?? []
+
   const contextStrength = whatThisGroundCanTellYou({
     partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
     /**
@@ -189,7 +197,7 @@ export function ContextPage({
     hasSuccessDefinition: !!((ground as any).baseline?.successLooksLike?.trim() || (ground as any).brief?.trim()),
     conditionCount: ((ground as any).baseline?.conditions ?? []).length,
     hasBaseline: !!(ground as any).baseline,
-    perPersonObjectiveCount: ((ground as any).objectives ?? []).length,
+    perPersonObjectiveCount: objectives.length,
     openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
     peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
     plannedSessions: plannedSessionsFor(
@@ -220,10 +228,46 @@ export function ContextPage({
             */}
 
             {/* 1 - WHAT THIS CHECK-IN IS FOR */}
-            <Sec title="What this check-in is for" src="from the lead&rsquo;s own check-in" />
-            {((ground as any).objectives ?? []).length > 0 ? (
+            {/*
+              THE BRIEF IS THE ANSWER TO THIS BAND'S OWN QUESTION, AND IT WAS NOT ON THE PAGE.
+
+              Setup asks the lead "What is this about? What needs to be true at the end?" and stores
+              the answer on the ground. This band - whose entire job is to say what the check-in is
+              for - rendered only the structured objectives that get extracted LATER from the lead's
+              own check-in, so a lead who had just written a full brief was told "Nothing yet."
+
+              The brief was not unused, which is what made it hard to see: it counts towards
+              `hasSuccessDefinition` a few lines above, so the page already treated it as the
+              statement of what doing well means. It just never showed it to anybody.
+
+              Both are shown when both exist. They are different things and neither replaces the
+              other - the brief is the lead's own words about the situation, the objectives are the
+              checkable statements the engine drew out of their session - so the source line names
+              whichever is actually there rather than claiming the check-in for both.
+            */}
+            <Sec
+              title="What this check-in is for"
+              src={
+                theBrief && objectives.length > 0 ? 'from setup, and the lead\u2019s own check-in'
+                : theBrief ? 'from setup, in the lead\u2019s own words'
+                : 'from the lead\u2019s own check-in'
+              }
+            />
+            {theBrief && (
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
+                <span style={{
+                  display: 'inline-block', fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em',
+                  padding: '1px 7px', borderRadius: 10, marginBottom: 4,
+                  color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
+                }}>
+                  the brief
+                </span>
+                <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{theBrief}</div>
+              </div>
+            )}
+            {objectives.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
-                {((ground as any).objectives as any[]).map(o => (
+                {objectives.map((o: any) => (
                   <div key={o.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
                     <span style={{
                       display: 'inline-block', fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em',
@@ -250,9 +294,12 @@ export function ContextPage({
                 band with nothing in it should still say what would go there - that has not changed -
                 but it should not be the loudest thing on the page while it does.
               */
-              <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
-                Nothing yet. This comes out of the lead&rsquo;s own check-in.
-              </div>
+              /* Only when there is genuinely nothing - a brief alone is not nothing. */
+              !theBrief && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
+                  Nothing yet. This comes out of the lead&rsquo;s own check-in.
+                </div>
+              )
             )}
 
             {/*

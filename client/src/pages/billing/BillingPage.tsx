@@ -3,12 +3,79 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { billingApi, PLAN_LABELS, PLAN_PRICES, formatMemberCap, formatMonthlyPrice, type SubscriptionPlan, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { groundsApi } from '@/api/grounds'
+import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { scrollToId } from '@/lib/scroll-to'
 import { Stat, Pill } from '@/components/gw/kit'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
+
+
+/**
+ * ASKING FOR A CALL ABOUT COACHING OR SETUP.
+ *
+ * The pricing page names all three and this is where somebody acts on it. Integration has its own
+ * button on the Connect page, next to the keys, which is where that question actually occurs.
+ *
+ * ONE OPEN REQUEST PER SUBJECT. Clicking the same one twice is somebody checking the first click
+ * worked; asking about a coach must not make the setup button claim it was already asked.
+ */
+function ThingsWeDoByHand() {
+  const qc = useQueryClient()
+  const asked = useQuery({
+    queryKey: ['call-request'],
+    queryFn: () => apiClient.get('/users/call-request').then((r: any) => r.data.data ?? r.data),
+    retry: false,
+  })
+  const ask = useMutation({
+    mutationFn: (subject: string) => apiClient.post('/users/call-request', { subject }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['call-request'] })
+      toast.success('Asked. We will be in touch.')
+    },
+    onError: () => toast.error('That did not send. What you wrote is still here — try again.'),
+  })
+
+  const open: Record<string, string> = asked.data?.open ?? {}
+
+  const rows = [
+    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar reads the report with your team and turns what it found into a decision somebody owns.' },
+    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person to get you running and train your team, over the first month.' },
+  ]
+
+  return (
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginTop: 18, background: 'var(--gw-card)' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>Things our team does by hand</div>
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+        Not part of your plan and not charged to your card. Ask for a call, we tell you what it costs
+        before anybody starts, and it is invoiced afterwards.
+      </div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {rows.map(r => (
+          <div key={r.subject} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 260px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{r.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{r.what}</div>
+            </div>
+            {open[r.subject] ? (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap', paddingTop: 2 }}>
+                Asked. We will be in touch.
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={ask.isPending}
+                onClick={() => ask.mutate(r.subject)}
+                style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, padding: '7px 14px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >Request a call</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function BillingPage() {
   const navigate = useNavigate()
@@ -118,7 +185,7 @@ export function BillingPage() {
       setSendEmail('')
       qc.invalidateQueries({ queryKey: ['contributor-codes'] })
     },
-    onError: () => toast.error('Could not send code. Check the email and try again.'),
+    onError: () => toast.error('The code did not send. Check the address and try again.'),
   })
 
   const createSubscriptionMut = useMutation({
@@ -134,7 +201,7 @@ export function BillingPage() {
       qc.invalidateQueries({ queryKey: ['billing-status'] })
       toast.success(`Switched to ${PLAN_LABELS[plan]}. The difference is prorated on your next invoice.`)
     },
-    onError: () => toast.error('Could not change plan. Try again.'),
+    onError: () => toast.error('Your plan did not change. You have not been charged — try again.'),
   })
 
   /**
@@ -228,7 +295,7 @@ export function BillingPage() {
           Back
         </div>
 
-        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>Billing</div>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', margin: '0 0 4px' }}>Billing</h1>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
           Manage sessions for your check-ins and generate access codes.
         </div>
@@ -663,6 +730,20 @@ export function BillingPage() {
             </div>
           )}
         </div>}
+
+
+      {/*
+        * THE THREE THINGS OUR TEAM DOES BY HAND, WHERE SOMEBODY IS ALREADY THINKING ABOUT MONEY.
+        *
+        * None of them is bought here and none of them ever will be: each is a person's time, priced
+        * from rather than at, and a form cannot quote a week of work. So this asks for a call, our
+        * team rings back, and what is agreed is invoiced afterwards.
+        *
+        * NOT GATED ON THE PLAN. The services are for subscribers and our team says so on the call.
+        * Somebody on the free plan asking about coaching is the conversation most likely to end in
+        * a subscription, and refusing it here would lose exactly that.
+        */}
+      {isAdmin && <ThingsWeDoByHand />}
 
       </div>
     </div>

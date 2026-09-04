@@ -323,9 +323,9 @@ export function AuthPage() {
         {/* The link-sent panel carries its own heading, so "Sign in" above it read as
             two screens stacked. W8-62. */}
         {!linkSent && (
-          <div className="gw-ttl">
+          <h1 className="gw-ttl">
             {view === 'create' ? 'Create your account' : view === 'link' ? 'Get a sign-in link' : 'Sign in'}
-          </div>
+          </h1>
         )}
 
         {view === 'password' && !linkSent && passwordlessNotice && (

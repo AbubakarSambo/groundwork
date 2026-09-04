@@ -382,7 +382,7 @@ function DraftEditor({
       if (data?.error === 'invariant_violation' && Array.isArray(data?.missing)) {
         setInvariantError(data.missing as string[])
       } else {
-        toast.error('Failed to save draft.')
+        toast.error('The draft did not save. What you typed is still here — try again.')
       }
     },
   })
@@ -397,7 +397,7 @@ function DraftEditor({
       setConfirmPublish(false)
       onPublish()
     },
-    onError: () => toast.error('Failed to publish draft.'),
+    onError: () => toast.error('The draft did not publish. It is still saved — try again.'),
   })
 
   const discard = useMutation({
@@ -408,7 +408,7 @@ function DraftEditor({
       toast.success('Draft discarded.')
       onDiscard()
     },
-    onError: () => toast.error('Failed to discard draft.'),
+    onError: () => toast.error('The draft was not discarded. Nothing has changed — try again.'),
   })
 
   // Auto-save on change with debounce
@@ -683,7 +683,7 @@ export function PromptVersioningPage() {
       setConfirmActivateId(null)
       toast.success('Version activated')
     },
-    onError: () => toast.error('Failed to activate version'),
+    onError: () => toast.error('That version was not activated. The live one is unchanged — try again.'),
   })
 
   const startDraft = useMutation({
@@ -693,7 +693,7 @@ export function PromptVersioningPage() {
       qc.invalidateQueries({ queryKey: ['prompts', 'by-key', selectedKey] })
       setActivePanel('draft')
     },
-    onError: () => toast.error('Failed to start draft.'),
+    onError: () => toast.error('The draft did not start. Nothing has changed — try again.'),
   })
 
   const uniqueKeys: string[] = allVersions

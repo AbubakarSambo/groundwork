@@ -33,6 +33,8 @@ import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveC
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
+import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
+import { notTheWordParty } from './not-the-word-party';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -194,11 +196,12 @@ export const REPORT_SCHEMA = {
             id: { type: 'string', description: 'A short unique slug for this inference (e.g. "initiator-ownership-1").' },
             text: { type: 'string', description: 'The inferred statement as it appears in the report.' },
             participantLabel: { type: 'string', description: 'Who this inference is about, using the same label as above.' },
-            reason: { type: 'string', description: 'Brief explanation of why this was inferred rather than directly quoted.' },
+            reason: { type: 'string', description: 'Brief explanation of what this was concluded from, given no participant stated it.' },
           },
           required: ['id', 'text', 'participantLabel', 'reason'],
         },
-        description: 'Claims in this report that were inferred from context rather than directly stated. Empty array if everything is directly quoted.',
+        description:
+          'Claims in this report that YOU concluded, which no participant stated in their own account. A claim somebody wrote down is not an inference even when you have put it in your own words. Reading across two accounts, filling a gap from context, or drawing out an implication IS. Empty array only if every claim traces to something a participant actually said.',
       },
       hiddenContributors: {
         type: 'array',
@@ -295,7 +298,7 @@ Same facts every time. The second version of each sounds like a lawyer wrote it 
 
 Do not say "party" or "parties" in anything the reader sees. Say the person's label, "the two of you", "everyone in this ground", or just name what happened. Do not say "evidence", "testimony", "as stated", "per the account", "submitted", or "opted out".
 
-6. LABEL INFERENCES. Any claim you make that is not a direct quote from the record is an inference. List every inference in the inferences array with its id, text, participantLabel, and reason. An inference is anything you concluded from context, implied meaning, or pattern - not from an explicit statement. If a claim appears in the report body and is not a direct quote, it must appear in inferences. An empty inferences array means everything in the report is directly quoted.
+6. LABEL INFERENCES, AND THE TEST IS WHETHER SOMEBODY SAID IT. An inference is a claim YOU concluded that no participant stated in their own account: something you read across two accounts, filled in from context, or drew out as an implication. A claim somebody actually made is not an inference even when you have put it in your own words - rewording what a person said does not make it yours. List every inference in the inferences array with its id, text, participantLabel and reason, where text is the sentence as it appears in the report. Leave the array empty only if every claim in the report traces back to something a participant actually said.
 7. CROSS-REFERENCE SESSIONS. Each record entry is labeled with the session it came from (e.g. "[the initiator session 1]", "[participant A session 3]"). If the same party's position has changed across sessions, name that change explicitly - "in session 1 the initiator described X; by session 3 they described Y." If a commitment from an earlier session has not been followed up in later sessions, name it. The longitudinal arc is the product's core value. A report that reads as a snapshot of only the latest session has failed.
 8. NO FALSE CONSENSUS. Do not write "both agree" or "everyone is aligned" unless every party's record contains explicit matching statements on that specific point. If parties described the same topic differently in any session, that is a divergence - surface it. Smoothing a disagreement into apparent consensus is a more serious error than noting the gap.
 9. SURFACE HIDDEN CONTRIBUTORS. If any party's record references someone else's input, work, or decisions - someone who is not themselves a party with their own account on this ground - name them in hiddenContributors with the evidence. Do not invent a hidden contributor; only surface what is explicitly referenced.
@@ -344,7 +347,7 @@ export class ReportsService {
    * which is the lead's job to hold; handed to a participant they read as a note
    * about a colleague, which is precisely what they are written not to be.
    *
-   * Everything fails to nothing. A missing entry, a ground with no closing round,
+   * Everything fails to nothing. A missing entry, a ground with no closing seund,
    * a participant with no id: the field is absent rather than empty, because an
    * empty confidence read looks like a confident "no problems here".
    */
@@ -378,7 +381,7 @@ export class ReportsService {
 
       const out: Record<string, any> = {};
 
-      // G10. The closing round only, and never for a colleague.
+      // G10. The closing session only, and never for a colleague.
       const isClosing = closing?.status === GroundStatus.RESOLVED || !!closing?.resolutionState;
       const { statedStandards, standardsTouched } = standardsAndWhatTouchedThem(lead.id, entries);
 
@@ -605,7 +608,7 @@ export class ReportsService {
     if (leadSignals.length) {
       groundContextLines.push(`LEAD PROFILE (from past grounds - use to add alignment recommendations at the end of the report):\n${leadSignals.map(s => `- ${s}`).join('\n')}`);
     }
-    // CLOSING ROUND: when every accepted party has completed a final-flagged
+    // CLOSING SESSION: when every accepted party has completed a final-flagged
     // session, the synthesis reads the WHOLE ARC. Deterministic features are
     // computed here (never by the model); the model narrates them.
     const arcByParticipant: Record<string, ArcSignals> = {};
@@ -648,7 +651,7 @@ export class ReportsService {
         // tier's advisory copy goes to the admin surface, never in here.
         return `- ${label}: ${tierCopy(sig.tier).shared} (record shape: ${sig.f1_concentration.detail}; ${sig.f5_evidenceTiming.detail})`;
       });
-      groundContextLines.push(`CLOSING ROUND - THIS IS THE FINAL REPORT. Structure the synthesis per goal as: what was AGREED (the target on record) -> what was DELIVERED (the final accounts) -> WHAT THE RECORD SHOWS OVER TIME. Use the arc lines below verbatim as the over-time basis - do not soften or contradict them, and never speculate about anyone's intent:
+      groundContextLines.push(`CLOSING SESSION - THIS IS THE FINAL REPORT. Structure the synthesis per goal as: what was AGREED (the target on record) -> what was DELIVERED (the final accounts) -> WHAT THE RECORD SHOWS OVER TIME. Use the arc lines below verbatim as the over-time basis - do not soften or contradict them, and never speculate about anyone's intent:
 ${arcLines.join('\n')}
 
 Close the report by framing - neutrally, without recommending one - the choice now in front of the parties among this ground's end states: ${endStates}. The resolution step is where they choose together.`);
@@ -995,6 +998,67 @@ Close the report by framing - neutrally, without recommending one - the choice n
         activeSchema,
       );
       if (retry) result = retry;
+    }
+
+    /*
+     * TWO RULES THAT WERE ONLY EVER LOGGED, NOW ASKED FOR AGAIN.
+     *
+     * `tallyInReport` catches a report establishing something by counting accounts - "three of four
+     * people said the process is broken" - which the rules forbid, because a gap is real when the
+     * record supports it and not when it wins a vote. `doesThisReportMarkItsInferences` catches a
+     * full synthesis that marked nothing it concluded; ten of twelve reports on the local database
+     * came back that way.
+     *
+     * Both already ran. Both only ever wrote a line to a log nobody reads, and the report shipped
+     * with the fault in it. This is the same second pass the post-report guide already does: name
+     * exactly what was wrong and ask once. Once, not a loop - a model that does it twice is telling
+     * us the prompt needs work, and the log is what says so.
+     *
+     * The retry is not trusted blindly either. If the second attempt is worse on the same tests,
+     * the first one is kept: a rule is not worth a worse report.
+     */
+    const faultsIn = (r: SynthesisResult) => {
+      const faults: string[] = [];
+      const tally = tallyInReport(r as any, ground.peopleWorkTogether !== false);
+      if (tally) {
+        faults.push(
+          `it established something by counting accounts, in ${tally.field}: "${tally.phrase}". ` +
+            `State what the record supports, never how many people said it.`,
+        );
+      }
+      const marking = doesThisReportMarkItsInferences(
+        { sharedPicture: (r as any).sharedPicture, agreements: (r as any).agreements, divergences: (r as any).divergences },
+        ((r as any).inferences ?? []) as unknown[],
+      );
+      if (marking.looksUnmarked) {
+        faults.push(
+          `it marked no inferences at all, and ${marking.why} Every claim you concluded rather ` +
+            `than one somebody stated belongs in the inferences array.`,
+        );
+      }
+      return faults;
+    };
+
+    const faults = faultsIn(result);
+    if (faults.length) {
+      this.logger?.warn?.(`Ground ${groundId}: asking again. ${faults.join(' ')}`);
+      const secondPass = await this.anthropic
+        .extract<SynthesisResult>(
+          systemPrompt,
+          [{
+            role: 'user',
+            content:
+              `${corpus}\n\nA previous attempt had a problem and was not used. ` +
+              `Write the report again, fixing this: ${faults.join(' Also: ')}`,
+          }],
+          activeSchema,
+        )
+        .catch(() => null);
+      if (secondPass && faultsIn(secondPass).length < faults.length) {
+        result = secondPass;
+      } else if (secondPass) {
+        this.logger?.warn?.(`Ground ${groundId}: the second attempt was no better, keeping the first.`);
+      }
     }
 
     // SECOND PASS: what is at stake, one gap at a time.
@@ -1414,6 +1478,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
 
+    /* Ten of twelve reports came back marking nothing. Logged rather than refused - see the module. */
+    const marking = doesThisReportMarkItsInferences(
+      { sharedPicture: (result as any).sharedPicture, agreements: (result as any).agreements, divergences: (result as any).divergences },
+      inferences,
+    );
+    if (marking.looksUnmarked) {
+      this.logger.warn(`Ground ${groundId}: report marks no inferences. ${marking.why}`);
+    }
+
     /**
      * The private per-person guides, read back before the write that would
      * otherwise erase them. Everything else in engagement is rebuilt from this
@@ -1588,7 +1661,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
     const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     /* Nothing has been revealed yet, so there is nothing anybody may read. */
     if (!ground.report?.releasedAt) return { rounds: [] };
@@ -1616,7 +1689,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * how many accounts differed. No score and no direction: whether that is improvement is the
      * reader's judgement, and an arrow here would be a rating.
      */
-    return { rounds: kept, moved: howThisHasMoved(kept as any) };
+    /*
+     * THE SAME RULES THE REPORT ITSELF GETS. This returns stored report text straight from the
+     * column, and for a while it was the last place on the page still saying "Both parties agree"
+     * while the report tab beside it said "Both agree". Four endpoints serve this text and only the
+     * report's own read had the rule; this is one of the three that did not.
+     */
+    const cleaned = kept.map((round: any) => ({
+      ...round,
+      sharedPicture: typeof round.sharedPicture === 'string' ? notTheWordParty(round.sharedPicture) : round.sharedPicture,
+    }));
+    const moved = howThisHasMoved(cleaned as any).map((m: any) => ({
+      ...m,
+      says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
+    }));
+    return { rounds: cleaned, moved };
   }
 
   /**
@@ -2083,9 +2170,15 @@ happened, and what is in the way.`;
      * opened their private report and read "Hafsah Jumare described their role" about themselves.
      */
     const readerLabel = viewerLabelOf(viewerParticipantId, parties);
+    /*
+     * `notTheWordParty` runs here, at the read, because the prompt rule forbidding it has been
+     * ignored since the day it was written - see the module. It sits inside `t` so it reaches
+     * exactly what names reach and nothing else: the label fields are already excluded by
+     * NEVER_NAMED below, for the same reason.
+     */
     const t = (v: any): any =>
       typeof v === 'string'
-        ? withoutDashes(withNames(v, visible, allLabels, { viewerLabel: readerLabel }))
+        ? notTheWordParty(withoutDashes(withNames(v, visible, allLabels, { viewerLabel: readerLabel })))
         : v;
     const walk = (v: any): any => {
       if (typeof v === 'string') return t(v);
@@ -2185,7 +2278,7 @@ happened, and what is in the way.`;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     if (!ground.report.releasedAt) {
       // Before everyone has checked in, the report is a forming picture, not
@@ -2688,7 +2781,7 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
         if (!accepted.length || !accepted.every((p) => p.checkIns.length > 0)) continue;
 
         this.logger.warn(
-          `Ground ${g.id} finished its closing round and has no closing synthesis. Synthesising again - the first attempt failed and nothing retried it.`,
+          `Ground ${g.id} finished its closing session and has no closing synthesis. Synthesising again - the first attempt failed and nothing retried it.`,
         );
         await this.synthesize(g.id).catch((err) =>
           this.logger.error(`Repairing the closing synthesis for ${g.id} failed again: ${(err as Error)?.message}`),

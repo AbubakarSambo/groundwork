@@ -73,11 +73,18 @@ describe('what somebody is here', () => {
   const control = PAGE.slice(PAGE.indexOf('SUB-ADMINS'), PAGE.indexOf('</select>'))
 
   it('offers the three things an admin means, not two', () => {
-    /* Takes part, can open check-ins, admin. The middle one is the named lead. */
+    /*
+     * Takes part, can open check-ins, admin. The middle one is the named lead.
+     *
+     * Asserted by value rather than by label. This read `>Admin<` and broke when that option
+     * started saying what an admin does - "Admin - manages people and billing" - which was the
+     * point: the other two options are verb phrases and this one was the role name on its own,
+     * the only one you had to already know. What matters here is that all three are offered.
+     */
     expect(control).toContain('roleMut.mutate({ id: m.id, what: e.target.value')
     expect(control).toContain('>Takes part<')
     expect(control).toContain('>Can open check-ins<')
-    expect(control).toContain('>Admin<')
+    expect(control).toMatch(/<option value="ADMIN">Admin\b/)
   })
 
   it('writes one field, because a role is what an admin means', () => {

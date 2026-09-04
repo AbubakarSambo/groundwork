@@ -47,6 +47,9 @@ import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-the
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
+import { howThisSounds } from './how-this-sounds';
+import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
+import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -693,7 +696,25 @@ export class ConversationService {
        * authenticated check-in exactly as it reached the entry chat - it simply was not the screen
        * that got photographed. `hadMarker` is still needed, so it is read separately.
        */
-      const stripped = { text: forHumans(rawReply), hadMarker: textHadCloseMarker(rawReply) };
+      /*
+       * QUOTATION MARKS ARE A CLAIM ABOUT WHOSE WORDS THESE ARE.
+       *
+       * Seen live: this person wrote "Sam is waiting on me and I know it." and the reply quoted her
+       * back with "iss". One letter, and it is the promise the whole product rests on. The truth is
+       * right here in `turns`, so a quoted phrase either appears in what she typed or it does not.
+       * An unmatched one loses its quotation marks and stays as reported speech - the sentence
+       * around it is nearly always right, and only the claim that these were her words is wrong.
+       */
+      const theirWords = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content);
+      const honest = withoutQuotesTheyDidNotSay(forHumans(rawReply), theirWords);
+      const misquoted = unmatchedQuotes(forHumans(rawReply), theirWords);
+      if (misquoted.length) {
+        this.logger.warn(
+          `Check-in ${checkIn.id}: reply quoted ${misquoted.length} phrase(s) this person did not write. ` +
+            `Marks removed. First: "${misquoted[0].slice(0, 120)}"`,
+        );
+      }
+      const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) };
       /**
        * W2. THE NAME GOES BACK BEFORE THE SENTENCE IS STORED OR SHOWN.
        *
@@ -1751,9 +1772,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const coachingBlock = await this.coachingBlock(checkIn.participantId, checkIn.sessionNumber);
 
+    /*
+     * WHAT IT HAS JUST BEEN DOING, SAID AT THE MOMENT IT MATTERS.
+     *
+     * The rhythm rule sits near the top of a long prompt and the number did not move: 76% of turns
+     * ended on a question before it, 80% after. A description of its own last three turns is harder
+     * to read past than a preference it met half an hour ago. Not text surgery - stripping a
+     * trailing question would take out the probe, and the probe is the product.
+     */
+    const rhythmNow = await this.prisma.conversationTurn
+      .findMany({
+        where: { checkInId: checkIn.id, role: TurnRole.AI },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { content: true },
+      })
+      .then((rows) => (tooManyQuestionsInARow(rows.map((r) => r.content).reverse()) ? landThisOneInstead() : ''))
+      .catch(() => '');
+
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2331,9 +2370,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const minTurns = checkIn.isSelfCorrection ? 1 : 3;
     if (personTurnRows.length < minTurns && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
-      throw new BadRequestException(
-        'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
-      );
+      throw new BadRequestException({
+        message:
+          'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
+        /** See ANSWERABLE below: this refusal asks for something, so it must be possible to give it. */
+        canContinue: true,
+      });
     }
     // SUBSTANCE, NOT LENGTH. Counting characters rejected two of one person's
     // real check-ins in a live run - answers that named a buyer, a number and a
@@ -2360,10 +2402,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
     const MIN_REAL_TURNS = checkIn.isSelfCorrection ? 1 : 2;
 
+    /**
+     * ANSWERABLE. A REFUSAL THAT ASKS FOR SOMETHING HAS TO LEAVE A WAY TO GIVE IT.
+     *
+     * These two gates say "answer one or two more questions, then complete" - and the person they
+     * say it to often cannot. When the engine decides a session is over it returns sessionComplete,
+     * the chat sets `done`, and `done` disables the composer. So the sequence is: the engine closes
+     * the session, the person presses Complete, the server tells them to answer more, and the box
+     * they would answer in is already switched off. There is nothing left to press. That is the
+     * dead end behind "I could not complete the check-in".
+     *
+     * The turn floor above already had half of this fixed - it lets somebody out when they SAID
+     * they were done. This gate is deliberately unconditional and stays that way: leaving early is
+     * fine, leaving nothing behind is not, and weakening it would put empty records into shared
+     * reports. What was missing was not a softer gate but an honest one, so it now tells the client
+     * that this particular refusal is answerable, and the client re-opens the composer.
+     *
+     * `canContinue` is on the refusal rather than inferred from its wording, because matching on
+     * the sentence would make the copy load-bearing: somebody rewording it later would silently
+     * reinstate the trap.
+     */
     if (totalPersonChars < MIN_CHARS || substantiveTurns.length < MIN_REAL_TURNS) {
-      throw new BadRequestException(
-        'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
-      );
+      throw new BadRequestException({
+        message: 'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
+        canContinue: true,
+      });
     }
 
     // Score session specificity from person's turns before marking complete
@@ -2453,6 +2516,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       },
     });
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
+
+    /*
+     * HOW THIS ONE SOUNDED.
+     *
+     * "It sounds like an examiner" is a real complaint and an unfalsifiable one, so the habits that
+     * produce it are counted per conversation instead. Measured across 79 turns before the voice
+     * work: a quarter opened by grading the answer, half said "the record" to the person whose work
+     * it was, three quarters ended on a question, and not one carried a view.
+     *
+     * Logged rather than enforced, and after the write so it can never affect whether a check-in
+     * completes. Two of the four cannot be enforced anyway - you cannot make a model have an
+     * opinion, and a rule demanding one would produce fakes.
+     */
+    this.prisma.conversationTurn
+      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI }, select: { content: true } })
+      .then((turns) => {
+        const sound = howThisSounds(turns.map((t) => t.content));
+        if (!sound.turns) return;
+        this.logger.log(
+          `Check-in ${checkIn.id} voice: ${sound.turns} turns, ` +
+            `${sound.judgesTheAnswer} graded the answer, ${sound.saysTheRecord} said the record, ` +
+            `${sound.endsOnAQuestion} ended on a question, ${sound.offersAView} offered a view.`,
+        );
+      })
+      .catch(() => undefined);
 
     // Learn how to talk to this person next time - style only, never content.
     // On completion rather than per message, so an abandoned session teaches
@@ -2573,7 +2661,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // AUTO-FLAG the closing session: the last cadence slot inside the ground's
     // timeline is final - the person is told to document thoroughly and the
     // final report reads the whole arc. (The other path is the initiator's
-    // explicit "Begin the closing round".)
+    // explicit "Begin the closing session".)
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { timelineDays: true, cadence: true },
@@ -4105,7 +4193,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { groundId, userId: requestingUserId },
       select: { id: true },
     });
-    if (!participant) throw new ForbiddenException('You are not a party to this check-in');
+    if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
 
     const checkIns = await this.prisma.checkIn.findMany({
       where: { participantId: participant.id },

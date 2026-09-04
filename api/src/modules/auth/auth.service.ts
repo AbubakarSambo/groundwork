@@ -104,8 +104,20 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      /*
+       * THE CONTACT EMAIL IS THE ADMIN'S, UNTIL THEY SAY OTHERWISE.
+       *
+       * `isOrgSetupComplete` on the client is `!!organization.email` - so an organisation created
+       * without one sends its admin to "Set up your organization" on EVERY sign-in, forever, asking
+       * for a name it already has and an address it could have worked out. Signing up with Google
+       * landed exactly there: the org was created with a name and a slug and nothing else.
+       *
+       * Defaulting it is not a guess. The person creating an organisation is its first admin and
+       * their address is the one we already write to; Settings changes it in one field, and the
+       * setup screen says as much. Asking again for something already known is the defect.
+       */
       const organization = await tx.organization.create({
-        data: { name: orgName, slug },
+        data: { name: orgName, slug, email: dto.email.toLowerCase() },
       });
 
       const user = await tx.user.create({
@@ -165,7 +177,8 @@ export class AuthService {
     const slug = await this.generateUniqueSlug(organizationName);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const organization = await tx.organization.create({ data: { name: organizationName, slug } });
+      /* The contact email is the admin's until they say otherwise - see the note on register. */
+      const organization = await tx.organization.create({ data: { name: organizationName, slug, email: dto.email.toLowerCase() } });
       const user = await tx.user.create({
         data: {
           organizationId: organization.id,
@@ -228,7 +241,7 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) throw new UnauthorizedException('Invalid email or password');
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
   async verifyEmail(dto: VerifyEmailDto): Promise<AuthResponseDto> {
@@ -254,7 +267,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.withPasswordSetup(this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
+        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -263,7 +276,8 @@ export class AuthService {
       const slug = await this.generateUniqueSlug(orgName);
 
       const created = await this.prisma.$transaction(async (tx) => {
-        const org = await tx.organization.create({ data: { name: orgName, slug } });
+        /* The contact email is the admin's until they say otherwise - see the note on register. */
+        const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -297,7 +311,7 @@ export class AuthService {
         return u;
       });
 
-      return this.withPasswordSetup(this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
+      return this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg), created.id);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -314,7 +328,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return this.withPasswordSetup(this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
+    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg), user.id);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -333,7 +347,7 @@ export class AuthService {
       return tokenRecord.user;
     });
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
   /**
@@ -530,7 +544,8 @@ export class AuthService {
           // Fallback: create a standalone workspace only when no inviter org is known.
           const domainBase = lower.split('@')[1]?.split('.')[0] ?? 'workspace';
           const slug = await this.generateUniqueSlug(domainBase);
-          const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug } });
+          /* Their own workspace, so their own address. See the note on register. */
+          const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug, email: lower } });
           organizationId = org.id;
         }
         const u = await tx.user.create({
@@ -553,7 +568,38 @@ export class AuthService {
 
       await this.emailService.sendUserInvite(lower, result.firstName, result.token, inviterOrgName);
     } else {
-      // User exists - send them a magic sign-in link.
+      /*
+       * THEY ALREADY HAVE AN ACCOUNT, AND THE INVITE USED TO DO NOTHING.
+       *
+       * This sent a magic sign-in link and stopped. The link works, it signs them into THEIR OWN
+       * organisation, and they are never added to the one that invited them - so an admin invites a
+       * colleague who happens to have signed up elsewhere, is told "Invite sent", and the person
+       * never appears in People. Nothing failed loudly; the invite simply had no effect.
+       *
+       * A membership for the inviting organisation is what an invite actually is. Their home
+       * organisation is untouched - they keep their own grounds and their own role there - and this
+       * is what puts the inviting company in their switcher.
+       *
+       * ALWAYS MEMBER, never their role at home: being an admin of their own company says nothing
+       * about what they should hold in somebody else's.
+       */
+      if (inviterOrganizationId && user.organizationId !== inviterOrganizationId) {
+        const already = await this.prisma.organizationMembership.findUnique({
+          where: { userId_organizationId: { userId: user.id, organizationId: inviterOrganizationId } },
+          select: { id: true },
+        });
+        if (!already) {
+          /* A person joining costs a seat here exactly as a new account does. */
+          const canInvite = await this.billing.canInviteMember(inviterOrganizationId);
+          if (!canInvite.allowed) throw new BadRequestException(canInvite.reason);
+          await this.prisma.organizationMembership.create({
+            data: { userId: user.id, organizationId: inviterOrganizationId, role: 'MEMBER' },
+          });
+          this.logger?.log?.(`Existing account ${lower} added to org ${inviterOrganizationId} as a member.`);
+        }
+      }
+
+      // Send them a magic sign-in link.
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
         data: { usedAt: new Date() },
@@ -640,7 +686,7 @@ export class AuthService {
       return tokenRecord.user;
     });
 
-    return this.buildAuthResponse(user as unknown as UserWithOrg);
+    return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }
 
   /**
@@ -723,7 +769,8 @@ export class AuthService {
         const slug = await this.generateUniqueSlug(orgName);
 
         user = await this.prisma.$transaction(async (tx) => {
-          const organization = await tx.organization.create({ data: { name: orgName, slug } });
+          /* The contact email is the admin's until they say otherwise - see the note on register. */
+          const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,
@@ -778,7 +825,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
     if (!user) throw new BadRequestException('User not found');
     /* One builder. A field added to it cannot fail to reach this route now. */
-    return { ...this.theUserShape(user as unknown as UserWithOrg), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
+    const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
+    return { ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
   }
 
   // --- helpers ---
@@ -805,7 +853,30 @@ export class AuthService {
     return { ...res, passwordSetupToken: token };
   }
 
-  private buildAuthResponse(user: UserWithOrg): AuthResponseDto {
+  /**
+   * DOES THIS PERSON BELONG TO AN ORGANISATION OTHER THAN THE ONE THEY ARE ACTIVE IN.
+   *
+   * Signing up provisions an organisation and makes you its ADMIN, so almost everybody administers
+   * something - usually their own workspace, which they may never use again. Being added to
+   * somebody else's check-in creates a membership row but does NOT change your active organisation,
+   * so you stay ADMIN of an unfinished workspace while your real work is elsewhere.
+   *
+   * `RequireOrgSetup` asked "an admin whose organisation has no contact email?" and sent them to
+   * "Set up your organization" - a participant, invited to another company's check-in, told to
+   * finish setting up a company they never meant to create, with no way past it. The redirect was
+   * doing what it was written to do; the question was missing a clause.
+   *
+   * So the question is now "an admin with nowhere else to be". Somebody who genuinely has only the
+   * one unfinished organisation still gets sent to finish it, which is the case the gate is for.
+   */
+  private async belongsElsewhere(userId: string, activeOrganizationId: string): Promise<boolean> {
+    const other = await this.prisma.organizationMembership.count({
+      where: { userId, organizationId: { not: activeOrganizationId } },
+    });
+    return other > 0;
+  }
+
+  private async buildAuthResponse(user: UserWithOrg): Promise<AuthResponseDto> {
     return {
       /**
        * Computed here rather than at each call site, because there are five doors into the app
@@ -814,7 +885,7 @@ export class AuthService {
        */
       needsPassword: !(user as unknown as { passwordHash?: string | null }).passwordHash,
       accessToken: this.generateToken(user),
-      user: this.theUserShape(user),
+      user: this.theUserShape(user, await this.belongsElsewhere(user.id, user.organizationId)),
     };
   }
 
@@ -829,7 +900,7 @@ export class AuthService {
    * SEPARATE FROM `buildAuthResponse` RATHER THAN CALLING IT, because that one also mints an access
    * token, and fetching a profile is not a reason to issue a credential.
    */
-  private theUserShape(user: UserWithOrg) {
+  private theUserShape(user: UserWithOrg, belongsElsewhere: boolean) {
     return {
         id: user.id,
         email: user.email,
@@ -861,6 +932,16 @@ export class AuthService {
             needsApproval: user.organization.checkInsNeedApproval ?? HOW_A_NEW_ORG_WORKS.needsApproval,
           },
         ).may,
+        /**
+         * WHETHER THIS PERSON STILL HAS TO SET THEIR ORGANISATION UP, DECIDED HERE.
+         *
+         * The client had this rule as `user.role === 'ADMIN' && !user.organization?.email`, in two
+         * places, and it was wrong in both for the same reason - see `belongsElsewhere`. Computed
+         * server-side for the reason `mayOpenCheckIns` is: the copy that drifts is the one deciding
+         * whether somebody can reach the product at all.
+         */
+        mustSetUpOrganisation:
+          user.role === 'ADMIN' && !user.organization.email && !belongsElsewhere,
         /**
          * THE ORGANISATION ITSELF, WHICH SIGNING IN DID NOT RETURN.
          *

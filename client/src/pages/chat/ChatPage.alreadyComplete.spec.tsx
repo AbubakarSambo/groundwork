@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+/**
+ * A 15-SECOND BUDGET, BECAUSE THESE WAIT FOUR INSIDE A DEFAULT FIVE.
+ *
+ * Each of these waits up to 4000ms for the third acknowledged message before the Complete control
+ * appears - the wait is deliberate and correct. But vitest's default budget for a whole test is
+ * 5000ms, so under a parallel full-suite run the setup plus that wait tips over it: seen failing at
+ * 5455ms in one run and passing alone and on the next full run. A flake, and the kind that teaches
+ * people to re-run rather than read.
+ */
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -82,7 +91,7 @@ describe('finishing a check-in the engine already closed', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /Finish check-in/i })).toBeNull()
     })
-  })
+  }, 15_000)
 
   it('does not swallow a genuine failure', async () => {
     ;(conversationApi.complete as any).mockRejectedValue({
@@ -98,7 +107,7 @@ describe('finishing a check-in the engine already closed', () => {
     // left to do, and hiding the button would strand them.
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
     expect(await screen.findByRole('button', { name: /Finish check-in/i })).toBeTruthy()
-  })
+  }, 15_000)
 
   it('still finishes normally when the server accepts the completion', async () => {
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'completed' })
@@ -110,5 +119,5 @@ describe('finishing a check-in the engine already closed', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /Finish check-in/i })).toBeNull()
     })
-  })
+  }, 15_000)
 })

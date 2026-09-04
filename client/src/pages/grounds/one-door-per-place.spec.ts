@@ -33,7 +33,7 @@ const BOARD = readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8')
 describe('the board still exists and is still reachable', () => {
   /** Not in the tab row: every other tab stays on the page and this one never did. */
   it('is not a tab', () => {
-    expect(groundTabs({ contextEnabled: true }).map(t => t.key)).not.toContain('board')
+    expect(groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true }).map(t => t.key)).not.toContain('board')
   })
 
   it('and the report is what opens it', () => {

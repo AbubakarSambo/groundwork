@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { STAGE, stepsThisPersonSees, type WhoIsSettingUp } from './the-steps-this-person-sees'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -20,7 +21,17 @@ import { join } from 'path'
  * The coach is paid, like the integration API, and greyed the same way rather than hidden. Somebody
  * on the free plan sees what it is, what it costs, and the two real answers - go and pay, or carry
  * on without one.
- */
+  *
+ * THE STEPS ARE NAMED NOW, AND THESE ASSERTIONS FOLLOW THEM.
+ *
+ * They used to pin numbers - `step === 3`, `setStep(onAPaidPlan ? 3 : 2)` - which is what the flow
+ * itself used. Both have moved to `STAGE.coach`, `STAGE.situation` and so on, so that a renumber is
+ * one edit in one object rather than thirty-three edits that all still compile if you miss one. The
+ * numbers behind the names are unchanged; this file asserts the same rules about the same screens.
+ *
+ * Which is also the point of the note further down about not pinning a whole expression: a guard
+ * that fails when a neighbour moves is one people learn to edit rather than read.
+*/
 const PAGE = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
 
 describe('the setup flow asks one thing at a time', () => {
@@ -28,10 +39,10 @@ describe('the setup flow asks one thing at a time', () => {
     for (const n of [1, 2, 3, 4]) {
       expect(PAGE).toMatch(new RegExp(`STEP ${n}:`))
     }
-    expect(PAGE).toContain("1: 'Who it is for'")
-    expect(PAGE).toContain("2: 'The situation'")
-    expect(PAGE).toContain("3: 'A coach'")
-    expect(PAGE).toContain("4: 'Describe it'")
+    expect(PAGE).toContain("[STAGE.who]: 'Who it is for'")
+    expect(PAGE).toContain("[STAGE.situation]: 'The situation'")
+    expect(PAGE).toContain("[STAGE.coach]: 'A coach'")
+    expect(PAGE).toContain("[STAGE.describe]: 'Describe it'")
   })
 
   it('gates the coach on a paid plan, and greys it rather than hiding it', () => {
@@ -51,29 +62,39 @@ describe('the setup flow asks one thing at a time', () => {
     expect(notice.slice(0, 1800)).toContain('Skip this')
   })
 
+  /*
+   * THESE TWO ASK THE ORDERING, NOT THE PAGE'S SOURCE.
+   *
+   * They pinned the text of the `next` expression - `(describing ? 4 : 5)` and all - so replacing
+   * that arithmetic with a list turned them red while both rules held perfectly. The first one's
+   * own comment already said a guard that fails when a neighbour moves is one people learn to edit
+   * rather than read; it had been loosened once instead of being pointed at the behaviour.
+   *
+   * The ordering is `the-steps-this-person-sees.ts` now, so they ask it directly. Forward and back
+   * both, which is what these were always about: Back must not land on a screen nobody was shown.
+   */
+  const seen = (o: Partial<WhoIsSettingUp>) => stepsThisPersonSees({
+    onAPaidPlan: false, describingOwnSituation: false, billingSettledAndFree: true, ...o,
+  })
+
   it('skips the free-text step when a card already said what this is', () => {
-    /*
-     * Forward and back both, or Back lands on a screen the person was never shown.
-     *
-     * ASSERTED ON THE BRANCH, NOT THE WHOLE LINE. This pinned the exact text of the `next`
-     * expression, so adding a second skip beside the first turned it red without anything about
-     * this rule having changed. A guard that fails when a neighbour moves is a guard people learn
-     * to edit rather than read.
-     */
-    const forward = PAGE.slice(PAGE.indexOf('const next = step === 3'), PAGE.indexOf('const next = step === 3') + 400)
-    expect(forward).toContain('step === 3')
-    expect(forward).toContain('(describing ? 4 : 5)')
+    expect(seen({ describingOwnSituation: false })).not.toContain(STAGE.describe)
+    expect(seen({ describingOwnSituation: true })).toContain(STAGE.describe)
+    // Back is the same list read backwards, so it cannot land on the skipped step either.
+    const path = seen({ describingOwnSituation: false })
+    expect(path[path.indexOf(STAGE.timeline) - 1]).toBe(STAGE.situation)
   })
 
   it('and skips the coach step for anybody who cannot use it', () => {
     /*
      * On the free plan that step showed two cards to say one thing - coaching is paid, and a coach
      * card dimmed and inert beneath it - in the middle of setting a check-in up, to somebody who
-     * could act on neither. Forward and back both, again.
+     * could act on neither.
      */
-    const forward = PAGE.slice(PAGE.indexOf('const next = step === 3'), PAGE.indexOf('const next = step === 3') + 400)
-    expect(forward).toContain('step === 2 && !onAPaidPlan')
-    expect(PAGE).toContain("setStep(onAPaidPlan ? 3 : 2)")
+    expect(seen({ onAPaidPlan: false })).not.toContain(STAGE.coach)
+    expect(seen({ onAPaidPlan: true })).toContain(STAGE.coach)
+    const path = seen({ onAPaidPlan: false })
+    expect(path[path.indexOf(STAGE.situation) - 1]).toBe(STAGE.who)
   })
 
   it('asks for one thing per step rather than everything at once', () => {
@@ -81,14 +102,29 @@ describe('the setup flow asks one thing at a time', () => {
      * The old bar gated on situation AND moment AND the description together, with one line of help
      * trying to say which was missing. Each step now has its own reason for being blocked.
      */
-    expect(PAGE).toMatch(/step === 1 \? alsoAParty === null/)
-    expect(PAGE).toMatch(/step === 2 \? \(!scenario \|\| !moment\)/)
-    expect(PAGE).toMatch(/step === 4 \? needsRouting/)
+    expect(PAGE).toMatch(/step === STAGE\.who \? alsoAParty === null/)
+    expect(PAGE).toMatch(/step === STAGE\.situation \? \(!scenario \|\| !moment\)/)
+    expect(PAGE).toMatch(/step === STAGE\.describe \? needsRouting/)
   })
 
   it('still ends where it always did, at the brief that creates the check-in', () => {
-    expect(PAGE).toContain('const TOTAL_STEPS = 8')
-    expect(PAGE).toContain("8: 'The brief'")
-    expect(PAGE).toMatch(/\{step === 8 && \(/)
+    /*
+     * The count is derived rather than typed, so this asserts the derivation and the stage rather
+     * than the literal 8. A number typed in two places is what let the dot comment say "(6)" while
+     * the constant said 8.
+     *
+     * It derives from the steps THIS PERSON sees, not from every stage that exists: three of the
+     * eight are conditional, so `Object.keys(STAGE).length` told somebody they were on "Step 5 of
+     * 8" when they would be shown six screens.
+     */
+    expect(PAGE).toContain('const totalStepsForThisPerson = visibleSteps.length')
+    expect(PAGE).not.toContain('const TOTAL_STEPS')
+    expect(PAGE).toContain("[STAGE.brief]: 'The brief'")
+    // The brief is last for everyone, whichever steps they were shown.
+    for (const o of [{}, { onAPaidPlan: true }, { describingOwnSituation: true }, { billingSettledAndFree: false }]) {
+      const path = seen(o)
+      expect(path[path.length - 1]).toBe(STAGE.brief)
+    }
+    expect(PAGE).toMatch(/\{step === STAGE\.brief && \(/)
   })
 })

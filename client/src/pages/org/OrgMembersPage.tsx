@@ -96,7 +96,7 @@ export function OrgMembersPage() {
       setInviteEmail('')
       qc.invalidateQueries({ queryKey: ['org-members'] })
     },
-    onError: () => toast.error('Could not send invite. Try again.'),
+    onError: () => toast.error('The invite did not send. Nobody has been emailed — try again.'),
   })
 
   /*
@@ -117,7 +117,7 @@ export function OrgMembersPage() {
       qc.invalidateQueries({ queryKey: ['org-members'] })
       toast.success(a.summary)
     },
-    onError: () => toast.error('Could not send those invitations. Try again.'),
+    onError: () => toast.error('None of those invitations sent. Nobody has been emailed — try again.'),
   })
 
   /*
@@ -178,7 +178,16 @@ export function OrgMembersPage() {
   const members = data?.data ?? []
 
   return (
-    <div style={{ padding: '40px 32px', maxWidth: 720 }}>
+    <div style={{ padding: '28px 20px 80px', maxWidth: 860, margin: '0 auto' }}>
+      {/*
+        TWO ADMIN PAGES, TWO DIFFERENT SHAPES. Measured side by side in the running product: Connect
+        is 860 wide and centred, this page was 720 and left-aligned - no `margin: '0 auto'`, so it
+        sat against the rail with the whole right-hand side empty. Nothing chose either number.
+
+        Connect's is the one kept, so People matches it. The narrower pages are left alone: 520 on
+        Settings and Billing is a single-column form, which is a reason, and the check-in list is
+        1160 because it is a working surface and was widened on purpose.
+      */}
       {/* This page had no internal link of any kind. The rail is there, so nobody was
           trapped, but an admin who came here to invite somebody had no way back to the
           thing they were doing. */}
@@ -193,8 +202,25 @@ export function OrgMembersPage() {
       <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', marginBottom: 6, letterSpacing: '-.02em' }}>
         People
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.6 }}>
         Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
+      </p>
+      {/*
+        * THE PILLS SAID "ADMIN" AND STOPPED THERE.
+        *
+        * A role badge appears beside people here and on the check-in list, and nothing anywhere
+        * said what any of them could do. This is the page where roles are set, so it is the page
+        * that should say. Written from what the code actually enforces, not from the role names:
+        * `who-may-open-a-check-in` for who opens and who waits, and the admin-only rail items for
+        * People, Connect and Billing.
+        */}
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.65 }}>
+        <strong style={{ color: 'var(--gw-text)' }}>Admins</strong> manage people and billing, and
+        approve check-ins when your organisation asks for that.{' '}
+        <strong style={{ color: 'var(--gw-text)' }}>Everybody else</strong> takes part in the
+        check-ins they are added to, and can open their own if your settings allow it.{' '}
+        <strong style={{ color: 'var(--gw-text)' }}>Guests</strong> come from another organisation:
+        they take part in what they are added to, and never open one here.
       </p>
 
       {/* Invite form */}
@@ -452,9 +478,20 @@ export function OrgMembersPage() {
                         border: `1px solid ${m.role === 'ADMIN' ? 'var(--gw-blue-b)' : 'var(--gw-border)'}`,
                       }}
                     >
+                      {/* A guest belongs to another organisation and is only here for the
+                          check-in they were added to. They cannot be assigned this - it is
+                          listed so the control shows what they are instead of showing blank,
+                          which is what an unmatched value renders as. Choosing any of the
+                          three below makes them one of your people, deliberately. */}
+                      {m.role === 'GUEST' && (
+                        <option value="GUEST" disabled>Guest from another organisation</option>
+                      )}
                       <option value="MEMBER">Takes part</option>
                       <option value="LEAD">Can open check-ins</option>
-                      <option value="ADMIN">Admin</option>
+                      {/* The other three options say what they do - "Takes part", "Can open
+                          check-ins", "Guest from another organisation". This one was the role name
+                          on its own, which is the only one you had to already know. */}
+                      <option value="ADMIN">Admin - manages people and billing</option>
                     </select>
                   )}
                   {/*

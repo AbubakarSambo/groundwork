@@ -101,7 +101,7 @@ export class BillingService {
         // the reassuring half out loud: the person who hits this wall is
         // usually a participant who never chose to pay and never chose to
         // cancel, and their record is safe.
-        reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.',
+        reason: 'This check-in is beyond your ten free ones. Resubscribe to continue checking in - the report and board stay available either way.',
         sessionsBalance: 0,
         freeExtensionAvailable: !(org?.freeExtensionUsed ?? false),
       };
@@ -109,7 +109,7 @@ export class BillingService {
 
     const balance = ground?.sessionsBalance ?? 0;
     if (balance > 0) return { allowed: true, sessionsBalance: balance };
-    return { allowed: false, reason: 'This ground is beyond your ten free grounds. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
+    return { allowed: false, reason: 'This check-in is beyond your ten free ones. Resubscribe to continue checking in - the report and board stay available either way.', sessionsBalance: 0 };
   }
 
   /** Free ground limit for organizations without a subscription. */
@@ -183,7 +183,15 @@ export class BillingService {
     // 5. Free limit reached, no active subscription and no care fee.
     return {
       allowed: false,
-      reason: `Your free plan includes ${freeGroundLimit} Grounds. Subscribe to create unlimited Grounds.`,
+      /*
+       * "Grounds" IS OUR WORD FOR IT, NOT THEIRS.
+       *
+       * This sentence is rendered verbatim by the client, under a heading that reads "You have used
+       * all 10 of your free check-ins". One screen, two names for one object, at the exact moment
+       * somebody is being asked for money. The schema calls it a Ground; nothing a person reads
+       * should.
+       */
+      reason: `Your free plan includes ${freeGroundLimit} check-ins. Subscribe to open more.`,
       groundsUsed: groundCount,
     };
   }
@@ -656,7 +664,7 @@ export class BillingService {
   ): Promise<{ ok: boolean; message: string; sessionsAdded?: number }> {
     if (callerOrganizationId) {
       const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId: callerOrganizationId } });
-      if (!ground) return { ok: false, message: 'Ground not found or does not belong to your organization.' };
+      if (!ground) return { ok: false, message: 'That check-in is not in your organisation.' };
     }
 
     const record = await this.prisma.contributorCode.findUnique({ where: { code } });

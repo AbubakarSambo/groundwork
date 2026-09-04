@@ -38,7 +38,7 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
       onCorrected(doc.assessment ?? corrected)
       setEditing(false)
     } catch {
-      toast.error('Could not save your correction. Try again.')
+      toast.error('The correction did not save. What you wrote is still here — try again.')
     } finally {
       setSaving(false)
     }
@@ -284,6 +284,25 @@ export function ChatPage() {
     onError: (err: any) => {
       const message: string = err?.response?.data?.message ?? ''
       if (/already complete/i.test(message)) { setCompleted(true); return }
+      /**
+       * A REFUSAL THAT ASKS FOR MORE HAS TO LET THEM GIVE IT.
+       *
+       * When the engine decides a session is over it returns sessionComplete, which sets `done`,
+       * and `done` disables the composer. If the server then refuses the completion because the
+       * record is too thin - "answer a couple of the questions properly, then complete" - the box
+       * they would answer in is already switched off. The person is told what to do and given no
+       * way to do it, which is the dead end behind "I could not complete my check-in".
+       *
+       * The server marks those two refusals `canContinue`, so re-open the session rather than
+       * leaving them looking at a disabled box and an instruction. Not matched on the wording:
+       * rewording the sentence would otherwise quietly bring the trap back.
+       */
+      if (err?.response?.data?.canContinue) {
+        setDone(false)
+        setConfirmingFinish(false)
+        toast.error(message || 'A little more is needed before this can close.')
+        return
+      }
       toast.error(message || 'Could not complete this session.')
     },
   })
@@ -327,7 +346,7 @@ export function ChatPage() {
       setPendingDoc(file)
       setDocContext(ctx)
       setDocContextMode(true)
-      toast.error('Upload failed. Try again.')
+      toast.error('That did not upload. Nothing was added to the record — try again.')
     },
   })
 
@@ -476,7 +495,7 @@ export function ChatPage() {
         setLoading(false)
       } else {
         setLoading(false)
-        toast.error('The reply was cut off. You can send again.')
+        toast.error('The reply was cut off. What you sent is on the record — send again to carry on.')
       }
     }
   }
@@ -909,7 +928,7 @@ export function ChatPage() {
               <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>You declined this session.</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
-                  That is recorded. The report for this round will say you declined and will not guess at
+                  That is recorded. The report for this session will say you declined and will not guess at
                   what you would have said. Nothing you write here counts towards it now.
                   {' '}If there is another session, you can take part in that one.
                 </div>
@@ -934,7 +953,7 @@ export function ChatPage() {
                 */}
                 <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
                   <li>This cannot be undone for this session.</li>
-                  <li>The round finishes without your account, so nobody is left waiting on you.</li>
+                  <li>The session finishes without your account, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
                   <li>Nothing you have written here is shown to anyone.</li>
                 </ul>
