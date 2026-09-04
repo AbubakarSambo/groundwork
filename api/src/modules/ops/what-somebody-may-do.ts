@@ -59,6 +59,13 @@ export const OPS_CAPABILITIES = [
   'resourcing:approve',
 
   // The seam out to Groundwork
+  /**
+   * Split from manage for the same reason every other domain here is split:
+   * she holds the read and delegates the write. Without it the CEO could not
+   * see whether the connection to Groundwork was even up, which she noticed
+   * the first time she tried.
+   */
+  'integration:read',
   'integration:manage',
 ] as const;
 
@@ -104,6 +111,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'spend:approve',
     'spend:submit',
     'resourcing:approve',
+    'integration:read',
   ],
 
   SALES_MARKETING: [
@@ -141,6 +149,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'deployment:read',
     'contributor:self',
     'spend:submit',
+    'integration:read',
     'integration:manage',
   ],
 

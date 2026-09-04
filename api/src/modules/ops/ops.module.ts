@@ -17,6 +17,7 @@ import { OpsIntentController } from './ops-intent.controller';
 import { OpsIntentService } from './ops-intent.service';
 import { OpsCeoController } from './ops-ceo.controller';
 import { OpsCeoService } from './ops-ceo.service';
+import { OpsIntegrationService } from './ops-integration.service';
 
 /**
  * The back office the Groundwork team runs on.
@@ -39,6 +40,7 @@ import { OpsCeoService } from './ops-ceo.service';
     OpsBuildService,
     OpsIntentService,
     OpsCeoService,
+    OpsIntegrationService,
   ],
   exports: [OpsPeopleService],
 })

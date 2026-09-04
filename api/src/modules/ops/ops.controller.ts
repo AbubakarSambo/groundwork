@@ -4,6 +4,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard } from './ops-capability.guard';
 import { OpsPeopleService } from './ops-people.service';
 import { OpsFoundationService } from './ops-foundation.service';
+import { OpsIntegrationService } from './ops-integration.service';
+import { NeedsOps } from './ops-capability.guard';
+import { Post, Patch, Body, Query } from '@nestjs/common';
 
 @ApiTags('Operating system')
 @ApiBearerAuth()
@@ -13,6 +16,7 @@ export class OpsController {
   constructor(
     private readonly people: OpsPeopleService,
     private readonly foundation: OpsFoundationService,
+    private readonly integration: OpsIntegrationService,
   ) {}
 
   /**
@@ -30,6 +34,34 @@ export class OpsController {
   @ApiOperation({ summary: 'Sprints, quarters and cycles' })
   async periods() {
     return this.foundation.periods();
+  }
+
+  /**
+   * Whether Groundwork is connected, and what the last push did. Never the secret.
+   */
+  @Get('integration')
+  @NeedsOps('integration:read')
+  @ApiOperation({ summary: 'The connection out to Groundwork' })
+  integrationStatus() {
+    return this.integration.status();
+  }
+
+  @Patch('integration')
+  @NeedsOps('integration:manage')
+  @ApiOperation({ summary: 'Point it at a Groundwork, or switch it off' })
+  configure(
+    @Req() req: { opsIdentity: { key: string } },
+    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean },
+  ) {
+    return this.integration.configure(body, req.opsIdentity.key);
+  }
+
+  /** Sends our objectives and activity across. Nothing here reads back. */
+  @Post('integration/push')
+  @NeedsOps('integration:manage')
+  @ApiOperation({ summary: 'Send this period across to Groundwork' })
+  push(@Query('period') period = 'sept-2026-sprint') {
+    return this.integration.push(period);
   }
 
   @Get('workstreams')

@@ -4872,3 +4872,33 @@ model OpsEarningsEntry {
   @@index([date])
   @@map("ops_earnings_entries")
 }
+
+// --- Phase 8: the seam out to Groundwork -----------------------------------
+
+/// How the ops system reaches Groundwork, and what happened last time it did.
+///
+/// One row. The secret is never read back out of it — `PATCH` writes, nothing
+/// returns it — because a connection screen that shows a client secret is a
+/// credential printed on a monitor in an open-plan office.
+model OpsIntegration {
+  id String @id @default("the-one-row")
+
+  /// Off by default, and turning it off must change nothing on any ops board.
+  /// That is the test of whether these are two systems or one.
+  enabled Boolean @default(false)
+
+  baseUrl      String? @map("base_url")
+  clientId     String? @map("client_id")
+  clientSecret String? @map("client_secret")
+
+  /// What the last push did, in the API's own words.
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastSyncOk      Boolean?  @map("last_sync_ok")
+  lastSyncSummary String?   @map("last_sync_summary") @db.Text
+  lastSyncDetail  String?   @map("last_sync_detail") @db.Text
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("ops_integration")
+}
