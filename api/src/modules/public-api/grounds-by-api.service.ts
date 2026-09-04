@@ -76,7 +76,18 @@ export class GroundsByApiService {
       throw new ForbiddenException('That person is deactivated here, so they cannot open a check-in.');
     }
     if (!person.email) {
-      throw new BadRequestException('That person has no email address here, so nobody can be matched to them.');
+      /*
+       * NAMES THE CALL THAT CAUSED IT. This is three steps downstream of the
+       * SCIM push, and the message used to describe only the symptom - so an
+       * integrator's first instinct was that this endpoint was broken, when the
+       * fault was in a call they made and got a 201 for.
+       *
+       * An error that can point at its own cause should.
+       */
+      throw new BadRequestException(
+        `"${personExternalId}" has no email address here, so nobody can be matched to them. ` +
+          'Push them again with an address in emails[] - or a userName that is one - and try this again.',
+      );
     }
 
     const user = await this.prisma.user.findFirst({
