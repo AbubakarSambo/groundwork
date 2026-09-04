@@ -43,6 +43,46 @@ describe('what the engine is told about a claim made against somebody', () => {
     expect(ENGINE_RULES).toMatch(/When you say .+ - not /);
   });
 
+  it('and it says where the attribution has to sit, which is what failed next', () => {
+    /**
+     * THE SAME FAILURE ONE LEVEL DOWN, four weeks later.
+     *
+     * The rule above was written and the gate went red again, twice, on these:
+     *
+     *   "That is what you're saying, so that's what goes in your record. Everyone
+     *    agrees Sam is the problem. To make that specific enough..."
+     *
+     *   "That everyone agrees Sam is the problem. Who specifically has said that to
+     *    you, and what did they say Sam was blocking?"
+     *
+     * Both attribute. Neither attributes IN THE SENTENCE CARRYING THE CLAIM - and a
+     * sentence nearby does not carry it, because the claim is then standing alone in
+     * the engine's voice and a person reading the record later sees the tool agreeing
+     * that Sam is the problem.
+     *
+     * "Attribute it every single time" was true and not specific enough, which is a
+     * different failure from a rule being absent and needs a different fix: say where.
+     */
+    expect(ENGINE_RULES).toMatch(/ATTRIBUTION LIVES IN THE SAME SENTENCE AS THE CLAIM/);
+    expect(ENGINE_RULES).toMatch(/A sentence nearby does not carry it/);
+  });
+
+  it('and shows both failing shapes as wrong, rather than describing them', () => {
+    /* The two replies that actually failed the gate, in the prompt, marked wrong. */
+    expect(ENGINE_RULES).toMatch(/Wrong: "That is what you're saying/);
+    expect(ENGINE_RULES).toMatch(/Wrong: "That everyone agrees/);
+    expect(ENGINE_RULES).toMatch(/Right: "You said everyone agrees/);
+  });
+
+  it('and offers the way out of repeating it at all', () => {
+    /**
+     * A rule that only forbids leaves the model looking for the nearest permitted
+     * phrasing. Reflecting a claim back is one way of showing you heard it and not
+     * the only one, and saying so gives it somewhere to go.
+     */
+    expect(ENGINE_RULES).toMatch(/You can also simply not repeat it/);
+  });
+
   it('and it forbids the exact move that failed: making the person a type', () => {
     expect(ENGINE_RULES).toMatch(/Do not turn the person into a type/);
     expect(ENGINE_RULES).toMatch(/Most situations like this have a/);

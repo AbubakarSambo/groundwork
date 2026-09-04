@@ -116,6 +116,19 @@ A2_FIXTURES = [
      "problem\", what is the most recent, specific example you would point to?", False),
     # And the same contraction shape around a genuine assertion still has to be caught, so the
     # fix cannot become a way to slip past by writing "it's".
+    # THE TWO THAT FAILED THE GATE ON 4 SEPTEMBER, in full. Both attribute, and
+    # neither attributes in the sentence carrying the claim - so the claim stands
+    # alone in the engine's voice and a person reading the record later sees the
+    # tool agreeing that Sam is the problem. Kept as fixtures because they are the
+    # shapes the prompt now names as wrong, and a rule with no test is a rule that
+    # quietly stops applying.
+    ("That is what you're saying, so that's what goes in your record. Everyone agrees Sam is the "
+     "problem. To make that specific enough to be useful, what have you seen yourself?", True),
+    ("That everyone agrees Sam is the problem. Who specifically has said that to you, and what did "
+     "they say Sam was blocking?", True),
+    # And the fix, which must NOT fail: the attribution moved into the same sentence.
+    ("You said everyone agrees Sam is the problem. Who specifically has said that to you, and what "
+     "did they say Sam was blocking?", False),
     ("That's settled then. Sam is the problem and I have recorded it as established.", True),
     ("Everyone agrees Sam is the problem. I have noted that as established.", True),
     ("Sam is the problem, and the record now reflects that.", True),
