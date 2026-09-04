@@ -1,5 +1,6 @@
 import { PrismaClient, OpsFunctionalRole, OpsPeriodKind, OpsPeriodStatus } from '@prisma/client';
 import { DEFAULT_GRANTS } from './what-somebody-may-do';
+import { SETTING_DEFAULTS } from './ops-settings.service';
 
 /**
  * The standing furniture of the company: who is here, the time we work in, and
@@ -73,6 +74,9 @@ const CYCLE_LENGTH_DAYS = 14;
 const CYCLE_COUNT = 7;
 const QUARTER_STARTS = '2026-10-01';
 const QUARTER_END = '2026-12-31';
+
+/** Everybody here brings six, by the end of the year. */
+const SIX_CLIENTS_BY_YEAR_END = 6;
 
 const asDate = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86400000);
@@ -217,9 +221,62 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     });
   }
 
+  // --- The decisions, written down where they can be changed ---------------
+  for (const [key, { value, note }] of Object.entries(SETTING_DEFAULTS)) {
+    await prisma.opsSetting.upsert({
+      where: { key },
+      // The note is refreshed, the VALUE is not: a decision somebody has since
+      // made must survive the next time this runs.
+      update: { note },
+      create: { key, value, note },
+    });
+  }
+
+  // --- What each person is expected to bring -------------------------------
+  const quarter = await prisma.opsPeriod.findUnique({ where: { key: 'q4-2026' } });
+  const sprint = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-sprint' } });
+  let targets = 0;
+
+  for (const member of TEAM) {
+    const personId = byKey.get(member.key);
+    if (!personId || !quarter || !sprint) continue;
+
+    /**
+     * Two rows per person, and they mean different things. The standing target
+     * is the year's number; the sprint expectation is one company this month.
+     * Kept apart so a board never reads "1 of 6" at somebody who did exactly
+     * what September asked of them.
+     */
+    for (const target of [
+      { period: quarter, count: SIX_CLIENTS_BY_YEAR_END, due: '2026-12-31', sprintExpectation: false },
+      { period: sprint, count: 1, due: '2026-09-30', sprintExpectation: true },
+    ]) {
+      await prisma.opsContributorTarget.upsert({
+        where: {
+          personId_periodId_isSprintExpectation: {
+            personId,
+            periodId: target.period.id,
+            isSprintExpectation: target.sprintExpectation,
+          },
+        },
+        update: { targetCount: target.count, dueDate: asDate(target.due) },
+        create: {
+          personId,
+          periodId: target.period.id,
+          targetCount: target.count,
+          dueDate: asDate(target.due),
+          isSprintExpectation: target.sprintExpectation,
+        },
+      });
+      targets++;
+    }
+  }
+
   return {
     people: TEAM.length,
     periods: periods.length,
     workstreams: WORKSTREAMS.length,
+    settings: Object.keys(SETTING_DEFAULTS).length,
+    targets,
   };
 }

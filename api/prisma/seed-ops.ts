@@ -14,7 +14,8 @@ const prisma = new PrismaClient();
 async function main() {
   const counts = await seedTheFoundations(prisma);
   console.log(
-    `Ops foundations: ${counts.people} people, ${counts.periods} periods, ${counts.workstreams} workstreams.`,
+    `Ops foundations: ${counts.people} people, ${counts.periods} periods, ` +
+      `${counts.workstreams} workstreams, ${counts.settings} settings, ${counts.targets} targets.`,
   );
 }
 

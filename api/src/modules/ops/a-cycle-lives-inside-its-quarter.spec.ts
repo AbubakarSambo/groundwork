@@ -48,6 +48,8 @@ function recordingPrisma() {
       },
       opsGrant: { createMany: async () => ({ count: 0 }) },
       opsWorkstream: table(() => undefined),
+      opsSetting: table(() => undefined),
+      opsContributorTarget: table(() => undefined),
       opsPeriod: table((d) => {
         const row = d as unknown as Row;
         periods.set(row.key, { ...row, id: `id-${row.key}` });

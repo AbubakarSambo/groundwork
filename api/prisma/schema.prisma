@@ -3943,7 +3943,9 @@ model OpsPerson {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  grants OpsGrant[] @relation("OpsGrantHolder")
+  grants             OpsGrant[]             @relation("OpsGrantHolder")
+  attributions       OpsAttribution[]       @relation("OpsAttributionContributor")
+  contributorTargets OpsContributorTarget[] @relation("OpsContributorTargetHolder")
 
   @@index([active])
   @@map("ops_people")
@@ -3990,6 +3992,8 @@ model OpsPeriod {
   status OpsPeriodStatus @default(PLANNED)
 
   parentPeriodId String? @map("parent_period_id")
+
+  contributorTargets OpsContributorTarget[] @relation("OpsContributorTargetPeriod")
 
   parentPeriod OpsPeriod?  @relation("OpsPeriodParent", fields: [parentPeriodId], references: [id], onDelete: Restrict, map: "ops_periods_parent_fkey")
   childPeriods OpsPeriod[] @relation("OpsPeriodParent")
@@ -4049,6 +4053,10 @@ model OpsCompany {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  attributions OpsAttribution[]
+  useCases     OpsClientUseCase[]
+  deployments  OpsDeployment[]
+
   @@index([stage])
   @@index([sprintPeriodId])
   @@map("ops_companies")
@@ -4089,4 +4097,177 @@ model OpsActivity {
   @@index([companyId, happenedAt])
   @@index([actorPersonId, happenedAt])
   @@map("ops_activities")
+}
+
+// --- Phase 2: the September sprint -----------------------------------------
+
+/// How far a contributor's introduction has got. The line at which one counts
+/// toward a target is a SETTING, not a hard-coded stage — see `OpsSetting`.
+enum OpsQualifyingStatus {
+  INTRODUCED
+  READY
+  QUALIFIED
+}
+
+/// Whether the product supports what a company actually wants to do.
+enum OpsUseCaseReadiness {
+  UNKNOWN
+  REVIEWING
+  GAP_IDENTIFIED
+  IN_PROGRESS
+  PRODUCT_READY
+}
+
+/// A client's journey from signed to getting something out of it.
+///
+/// Product-neutral on purpose. `FIRST_USE` and `firstUseAt` mean "they used the
+/// thing"; for us that happens to be a check-in, and it would still mean exactly
+/// what it says if we sold something else tomorrow.
+enum OpsDeploymentStage {
+  READY_SIGNED
+  SETUP
+  ONBOARDING
+  FIRST_USE
+  LIVE
+}
+
+/// A decision, stored rather than hard-coded.
+///
+/// Anything on this table is something a person chose and could choose
+/// differently: where the qualifying line sits, what currency we count in, which
+/// clock the boards show. Burying those in code makes changing one a deploy and
+/// makes disagreeing with one an argument about a constant.
+model OpsSetting {
+  key   String  @id
+  value String
+  /// What choosing differently would change, so the next person is not guessing.
+  note  String? @db.Text
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("ops_settings")
+}
+
+/// A contributor brought this company to us.
+///
+/// Unique on (company, contributor) so the same introduction cannot be counted
+/// twice — which is the only way a target made of introductions stays honest.
+model OpsAttribution {
+  id            String @id @default(uuid())
+  companyId     String @map("company_id")
+  contributorId String @map("contributor_id")
+
+  /// How they know them, in the contributor's own words.
+  sourceType   String  @map("source_type")
+  sourceDetail String? @map("source_detail") @db.Text
+
+  introducedAt     DateTime            @map("introduced_at")
+  qualifyingStatus OpsQualifyingStatus @default(INTRODUCED) @map("qualifying_status")
+  qualifiedAt      DateTime?           @map("qualified_at")
+
+  notes String? @db.Text
+
+  company     OpsCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contributor OpsPerson  @relation("OpsAttributionContributor", fields: [contributorId], references: [id], onDelete: Restrict)
+
+  @@unique([companyId, contributorId])
+  @@index([contributorId, qualifyingStatus])
+  @@map("ops_attributions")
+}
+
+/// How many companies somebody is expected to bring, and by when.
+model OpsContributorTarget {
+  id       String @id @default(uuid())
+  personId String @map("person_id")
+  periodId String @map("period_id")
+
+  targetCount Int      @map("target_count")
+  dueDate     DateTime @map("due_date") @db.Date
+  active      Boolean  @default(true)
+
+  /// A standing target, or an expectation of one sprint. Kept apart so a
+  /// sprint's "bring one ready company" never reads as the year's number.
+  isSprintExpectation Boolean @default(false) @map("is_sprint_expectation")
+
+  person OpsPerson @relation("OpsContributorTargetHolder", fields: [personId], references: [id], onDelete: Cascade)
+  period OpsPeriod @relation("OpsContributorTargetPeriod", fields: [periodId], references: [id], onDelete: Restrict)
+
+  @@unique([personId, periodId, isSprintExpectation])
+  @@map("ops_contributor_targets")
+}
+
+/// What one company actually wants to do, and whether we support it yet.
+model OpsClientUseCase {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  title            String
+  description      String? @db.Text
+  /// What they expect to happen, step by step, in their words.
+  expectedWorkflow String? @map("expected_workflow") @db.Text
+  category         String?
+
+  productReadiness OpsUseCaseReadiness @default(UNKNOWN) @map("product_readiness")
+  /// Three separate gaps because three different people close them.
+  productGap       String?             @map("product_gap") @db.Text
+  uxGap            String?             @map("ux_gap") @db.Text
+  technicalGap     String?             @map("technical_gap") @db.Text
+
+  ownerId  String? @map("owner_id")
+  priority Int     @default(3)
+
+  nextAction      String?   @map("next_action")
+  targetReadyDate DateTime? @map("target_ready_date")
+  statusNotes     String?   @map("status_notes") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company       OpsCompany      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  OpsDeployment OpsDeployment[]
+
+  @@index([productReadiness])
+  @@map("ops_client_use_cases")
+}
+
+/// Getting one company from signed to actually using the thing.
+model OpsDeployment {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  useCaseId String? @map("use_case_id")
+
+  deploymentOwnerId String  @map("deployment_owner_id")
+  productOwnerId    String? @map("product_owner_id")
+  technicalOwnerId  String? @map("technical_owner_id")
+
+  stage OpsDeploymentStage @default(READY_SIGNED)
+
+  startDate      DateTime  @map("start_date")
+  targetLiveDate DateTime? @map("target_live_date")
+  actualLiveDate DateTime? @map("actual_live_date")
+
+  onboardingStartedAt   DateTime? @map("onboarding_started_at")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  /// They used the thing. For us that is a check-in; the field does not know that.
+  firstUseAt            DateTime? @map("first_use_at")
+  /// They got something out of it. For us that is a report.
+  firstResultAt         DateTime? @map("first_result_at")
+
+  /// Which of the three teams is holding this up, when one is.
+  blockerType    String? @map("blocker_type")
+  blockerSummary String? @map("blocker_summary") @db.Text
+
+  nextAction        String?   @map("next_action")
+  nextActionOwnerId String?   @map("next_action_owner_id")
+  nextActionDueAt   DateTime? @map("next_action_due_at")
+
+  notes String? @db.Text
+
+  company OpsCompany        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  useCase OpsClientUseCase? @relation(fields: [useCaseId], references: [id], onDelete: SetNull)
+
+  @@index([stage])
+  @@index([blockerType])
+  @@map("ops_deployments")
 }
