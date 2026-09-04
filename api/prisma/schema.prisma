@@ -4224,8 +4224,9 @@ model OpsClientUseCase {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  company       OpsCompany      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  OpsDeployment OpsDeployment[]
+  company     OpsCompany       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  links       OpsUseCaseLink[]
+  deployments OpsDeployment[]
 
   @@index([productReadiness])
   @@map("ops_client_use_cases")
@@ -4362,4 +4363,181 @@ model OpsMarketingActivity {
 
   @@index([status, startDate])
   @@map("ops_marketing_activities")
+}
+
+// --- Phase 4: what we build, and who says so -------------------------------
+
+enum OpsRoadmapStatus {
+  PROPOSED
+  READY
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+enum OpsWorkItemStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  RESOLVED
+}
+
+enum OpsApprovalType {
+  ROADMAP
+  REPRIORITISATION
+  COMMERCIAL
+  SPEND
+  RESOURCING
+}
+
+enum OpsApprovalStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+/// Something we intend to build.
+///
+/// `approvalRequired` is the field that makes the roadmap a decision rather than
+/// a list: an item carrying it cannot leave PROPOSED until an approval says so.
+/// The rule lives in the service and is asserted by a spec, because a boolean
+/// nobody enforces is a comment.
+model OpsRoadmapItem {
+  id          String  @id @default(uuid())
+  title       String
+  description String? @db.Text
+
+  productArea String? @map("product_area")
+  itemType    String  @map("item_type")
+  priority    Int     @default(3)
+
+  ownerId      String? @map("owner_id")
+  proposedById String  @map("proposed_by_id")
+
+  relatedCompanyId String? @map("related_company_id")
+  relatedUseCaseId String? @map("related_use_case_id")
+
+  targetDate DateTime?        @map("target_date")
+  status     OpsRoadmapStatus @default(PROPOSED)
+
+  approvalRequired Boolean @default(false) @map("approval_required")
+
+  rationale     String? @db.Text
+  expectedValue String? @map("expected_value") @db.Text
+  evidenceUrl   String? @map("evidence_url")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  /// A stable handle for the seeded items, so re-seeding does not duplicate them.
+  key String? @unique
+
+  @@index([status, priority])
+  @@map("ops_roadmap_items")
+}
+
+/// A bug, a piece of infrastructure, a technical blocker.
+model OpsTechItem {
+  id          String  @id @default(uuid())
+  title       String
+  description String? @db.Text
+
+  itemType String @map("item_type")
+  /// How bad. Free text so a new severity does not need a migration, and
+  /// nothing branches on the value — the board sorts by it and that is all.
+  severity String
+
+  ownerId String? @map("owner_id")
+
+  relatedCompanyId     String? @map("related_company_id")
+  relatedUseCaseId     String? @map("related_use_case_id")
+  relatedRoadmapItemId String? @map("related_roadmap_item_id")
+  relatedDeploymentId  String? @map("related_deployment_id")
+
+  status        OpsWorkItemStatus @default(OPEN)
+  targetDate    DateTime?         @map("target_date")
+  blockerReason String?           @map("blocker_reason") @db.Text
+  evidenceUrl   String?           @map("evidence_url")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([status, severity])
+  @@index([relatedCompanyId])
+  @@map("ops_tech_items")
+}
+
+/// An interface problem, and where it was noticed.
+model OpsUXItem {
+  id           String  @id @default(uuid())
+  title        String
+  affectedFlow String? @map("affected_flow")
+  description  String? @db.Text
+  /// Whose words this came from. A UX problem somebody reported is worth more
+  /// than one somebody thought of, and the board should be able to tell.
+  sourceNote   String? @map("source_note") @db.Text
+
+  relatedCompanyId String? @map("related_company_id")
+  relatedUseCaseId String? @map("related_use_case_id")
+
+  severity String
+  ownerId  String? @map("owner_id")
+
+  status      OpsWorkItemStatus @default(OPEN)
+  targetDate  DateTime?         @map("target_date")
+  evidenceUrl String?           @map("evidence_url")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([status, severity])
+  @@map("ops_ux_items")
+}
+
+/// What a use case needs, whatever kind of item that is.
+///
+/// One table rather than three arrays: a readiness row has to ask "what is
+/// outstanding against this" once, not once per item type.
+model OpsUseCaseLink {
+  id        String @id @default(uuid())
+  useCaseId String @map("use_case_id")
+
+  /// `OpsRoadmapItem`, `OpsTechItem` or `OpsUXItem`.
+  targetType String @map("target_type")
+  targetId   String @map("target_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  useCase OpsClientUseCase @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([useCaseId, targetType, targetId])
+  @@map("ops_use_case_links")
+}
+
+/// One mechanism for every decision.
+///
+/// Roadmap, spend, resourcing and commercial all come through here, so the CEO
+/// has one queue rather than four, and so "who decided this, and when" has the
+/// same answer everywhere.
+model OpsApproval {
+  id           String          @id @default(uuid())
+  approvalType OpsApprovalType @map("approval_type")
+
+  requesterId String @map("requester_id")
+  approverId  String @map("approver_id")
+
+  relatedRecordType String @map("related_record_type")
+  relatedRecordId   String @map("related_record_id")
+
+  requestSummary String            @map("request_summary") @db.Text
+  status         OpsApprovalStatus @default(PENDING)
+  decisionNote   String?           @map("decision_note") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  decidedAt DateTime? @map("decided_at")
+
+  @@index([status, createdAt])
+  @@index([relatedRecordType, relatedRecordId])
+  @@map("ops_approvals")
 }

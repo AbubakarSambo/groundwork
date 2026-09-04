@@ -82,6 +82,67 @@ const asDate = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86400000);
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
+
+/**
+ * The five roadmap items, as given.
+ *
+ * Real content, so it seeds. Progress against it does not: every one of these
+ * starts PROPOSED and awaiting a decision, because seeding an item as READY
+ * would be this system's first lie about itself.
+ */
+const ROADMAP: Array<{
+  key: string;
+  title: string;
+  description: string;
+  itemType: string;
+  priority: number;
+  note?: string;
+}> = [
+  {
+    key: 'solidify-the-core-product',
+    title: 'Solidify the core product',
+    description:
+      'Deploy with the first ten and validate the priority use cases end to end. Fix the stability, UX, reliability and deployment problems that real usage turns up. Strengthen it against what people actually do. Get a meaningful share to repeat or paid usage.',
+    itemType: 'stability',
+    priority: 1,
+  },
+  {
+    key: 'solidify-the-moat',
+    title: 'Solidify the moat',
+    description:
+      'Define the defensible advantage. Strengthen the data, the organisational memory, the workflow intelligence and the accumulated context that improve with use. Make the architecture deepen it on purpose.',
+    itemType: 'moat',
+    priority: 2,
+    note: 'The only one of the five nothing can report on. Companies live, issues closed, accounts moved and coaches onboarded are all countable; "strengthen the moat" is not, as written. It needs one key result a query can answer - most plausibly something about accumulated context per organisation, since that is the thing that compounds with use. Left unmeasured, this is the objective that quietly stops being worked on.',
+  },
+  {
+    key: 'separate-the-infrastructure',
+    title: 'Separate the infrastructure',
+    description:
+      'GitHub organisation and access, Stripe and billing, domains, hosting, databases, cloud, storage, email, AI and API credentials, analytics, monitoring, deployment tooling. Groundwork owning its own code, data, credentials and billing relationships, with team access controls.',
+    itemType: 'infrastructure',
+    priority: 3,
+    note: 'Lands on the API adapter. Separating infrastructure moves the credential that adapter uses, the Stripe account behind billing, and the AI credentials the Assistant runs on - so the adapter credential has to be created in whatever organisation and secret store this settles on, or it gets created twice.',
+  },
+  {
+    key: 'build-the-coaching-module',
+    title: 'Build the coaching module',
+    description:
+      'Recruit and onboard outside coaches. Let a customer add a coach to an engagement if they want one. Coach permissions, workflow, delivery and the commercial model. Test with real customers before scaling.',
+    itemType: 'feature',
+    priority: 4,
+    note: 'Needs a name before any code: the product already has two things called this. One is the in-chat coaching step; the other is a lead form for people asking for a coach. This is a third thing - an outside person with standing access to a customer\'s engagement.',
+  },
+  {
+    key: 'decide-the-next-components',
+    title: 'Decide the next components',
+    description:
+      'Review with the team against what the first ten taught us. Prioritise on demand, revenue and moat. Do not expand before the core is proven.',
+    itemType: 'improvement',
+    priority: 5,
+  },
+];
+
 export async function seedTheFoundations(prisma: PrismaClient) {
   // --- People, and the grants their role comes with -----------------------
   for (const member of TEAM) {
@@ -272,11 +333,36 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     }
   }
 
+  // --- What we intend to build --------------------------------------------
+  const james = byKey.get('james');
+  for (const item of ROADMAP) {
+    if (!james) break;
+    await prisma.opsRoadmapItem.upsert({
+      where: { key: item.key },
+      update: { title: item.title, description: item.description, priority: item.priority },
+      create: {
+        key: item.key,
+        title: item.title,
+        description: item.description,
+        itemType: item.itemType,
+        priority: item.priority,
+        proposedById: james,
+        ownerId: james,
+        // Every one of these is a material commitment of the team's time, so
+        // every one waits for a decision. Seeding one as approved would be this
+        // system's first lie about itself.
+        approvalRequired: true,
+        rationale: item.note,
+      },
+    });
+  }
+
   return {
     people: TEAM.length,
     periods: periods.length,
     workstreams: WORKSTREAMS.length,
     settings: Object.keys(SETTING_DEFAULTS).length,
     targets,
+    roadmap: ROADMAP.length,
   };
 }

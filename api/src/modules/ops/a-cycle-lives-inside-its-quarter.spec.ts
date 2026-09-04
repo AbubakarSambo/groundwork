@@ -21,41 +21,40 @@ type Row = {
   parentPeriodId: string | null;
 };
 
-/** A recording stand-in: the seed's writes are what we want to look at. */
+/**
+ * A recording stand-in for Prisma: the seed's writes are what we want to look at.
+ *
+ * Every table it does not care about is invented on demand. The first version
+ * listed them by hand and broke every time the seed learned to write somewhere
+ * new — three green tests turning red for a reason that had nothing to do with
+ * cycles or quarters, which is how a spec teaches people to ignore it.
+ */
 function recordingPrisma() {
   const periods = new Map<string, Row & { id: string }>();
   const seededPeople: Array<{ id: string; key: string }> = [];
-  const table = (write: (data: Record<string, unknown>) => void) => ({
+
+  const anyTable = (name: string) => ({
     upsert: async ({ where, create }: never) => {
-      write({ ...(create as object), key: (where as { key: string }).key });
-      return { id: `id-${(where as { key: string }).key}` };
+      const key = (where as { key?: string }).key ?? 'row';
+      if (name === 'opsPeriod') {
+        const row = { ...(create as object), key } as unknown as Row;
+        periods.set(key, { ...row, id: `id-${key}` });
+      }
+      if (name === 'opsPerson') seededPeople.push({ id: `id-${key}`, key });
+      return { id: `id-${key}` };
     },
-    findMany: async () => [],
     findUnique: async ({ where }: never) => periods.get((where as { key: string }).key) ?? null,
+    findMany: async () => (name === 'opsPerson' ? seededPeople : []),
     createMany: async () => ({ count: 0 }),
+    create: async () => ({ id: 'id' }),
   });
 
-  return {
-    periods,
-    client: {
-      opsPerson: {
-        upsert: async ({ where }: never) => {
-          const key = (where as { key: string }).key;
-          seededPeople.push({ id: `id-${key}`, key });
-          return { id: `id-${key}` };
-        },
-        findMany: async () => seededPeople,
-      },
-      opsGrant: { createMany: async () => ({ count: 0 }) },
-      opsWorkstream: table(() => undefined),
-      opsSetting: table(() => undefined),
-      opsContributorTarget: table(() => undefined),
-      opsPeriod: table((d) => {
-        const row = d as unknown as Row;
-        periods.set(row.key, { ...row, id: `id-${row.key}` });
-      }),
-    } as unknown as PrismaClient,
-  };
+  const client = new Proxy(
+    {},
+    { get: (_t, name: string) => anyTable(name) },
+  ) as unknown as PrismaClient;
+
+  return { periods, client };
 }
 
 describe('every seeded cycle sits inside the quarter it hangs off', () => {
