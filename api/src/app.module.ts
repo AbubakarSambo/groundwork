@@ -24,6 +24,7 @@ import { IntelligenceModule } from './modules/intelligence';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { EntryModule } from './modules/entry/entry.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { OpsModule } from './modules/ops/ops.module';
 /**
  * FEEDBACK WAS NEVER REGISTERED, AND THE CLIENT HAS BEEN POSTING TO IT.
  *
@@ -69,6 +70,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     DocumentsModule,
     EntryModule,
     AdminModule,
+    OpsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -269,7 +269,7 @@ model Organization {
   id                 String                @id @default(uuid())
   name               String
   slug               String                @unique
-  email              String 
+  email              String
 
   // Billing (Stripe, USD). Care fee is the always-on commitment device.
   stripeCustomerId       String?       @map("stripe_customer_id")
@@ -3855,4 +3855,238 @@ model PrimaryActionEvent {
   @@unique([organizationId, sourceSystem, externalId])
   @@index([organizationId, personExternalId, actionKey, occurredAt])
   @@map("primary_action_events")
+}
+
+// ===========================================================================
+// THE OPS SYSTEM — the back office the Groundwork team runs on.
+//
+// This is not part of the Groundwork product. It is our own company's
+// management system, and it happens to live in the same database because we
+// are one company with one deployment, not because the two are related.
+//
+// Two rules hold this boundary, and both are enforced by spec:
+//
+//   1. No `Ops*` model may hold a foreign key into a product table. The one
+//      link is `OpsPerson.userId`, and it exists so a person can sign in with
+//      the account they already have. Nothing reads through it.
+//   2. No product code may import ops code, and no ops code may import
+//      product code.
+//
+// The test of the boundary: swap this system for somebody else's ERP and
+// every check-in still works; turn check-ins off and we can still run the
+// company.
+// ===========================================================================
+
+/// What somebody does here. Gives default capabilities and nothing more —
+/// `OpsGrant` is the truth about what a person may do.
+enum OpsFunctionalRole {
+  CEO
+  SALES_MARKETING
+  PRODUCT_TECH_LEAD
+  TECH
+  CONTRIBUTOR
+}
+
+enum OpsPeriodKind {
+  SPRINT
+  QUARTER
+  /// A biweekly operating cycle. Hangs off a quarter.
+  CYCLE
+}
+
+enum OpsPeriodStatus {
+  PLANNED
+  OPEN
+  CLOSED
+}
+
+/// Where a company has got to with us. Deliberately product-neutral: these are
+/// the stages any company would use for a client going live on anything.
+enum OpsCompanyStage {
+  LINED_UP
+  USE_CASE_CONFIRMED
+  PRODUCT_READY
+  ONBOARDED
+  LIVE
+}
+
+/// Which part of the company an activity belongs to. One log, seven domains —
+/// so that "count these within a window, and show me which ones" is written
+/// once instead of five times that drift.
+enum OpsActivityDomain {
+  SALES
+  FUNDING
+  DEPLOYMENT
+  PRODUCT
+  TECH
+  STRATEGY
+  MARKETING
+}
+
+/// A person in our team. Not a Groundwork user — some of us have no account,
+/// and a person who leaves keeps their record and loses their grants.
+model OpsPerson {
+  id String @id @default(uuid())
+
+  /// Stable handle used by the seed and by anything that names a person in
+  /// config. Survives a name change.
+  key         String  @unique
+  displayName String  @map("display_name")
+  email       String? @unique
+
+  /// Sign-in only. The single nullable link to the product's user table, and
+  /// nothing in the ops system reads through it for anything but auth.
+  userId String? @unique @map("user_id")
+
+  functionalRole OpsFunctionalRole @map("functional_role")
+  active         Boolean           @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  grants OpsGrant[] @relation("OpsGrantHolder")
+
+  @@index([active])
+  @@map("ops_people")
+}
+
+/// One capability held by one person. A role suggests a set; this table decides.
+///
+/// Kept as rows rather than an array so that granting and revoking are ordinary
+/// writes with a timestamp and an author, and so a capability check is an index
+/// lookup rather than a scan of somebody's role.
+model OpsGrant {
+  id       String @id @default(uuid())
+  personId String @map("person_id")
+
+  /// `domain:action`, e.g. `sales:write`, `roadmap:approve`. The route asks for
+  /// one of these by name; it never asks what somebody's role is.
+  capability String
+
+  grantedAt DateTime @default(now()) @map("granted_at")
+  /// Who granted it. Null for the seed, which grants the defaults.
+  grantedBy String?  @map("granted_by")
+
+  person OpsPerson @relation("OpsGrantHolder", fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, capability])
+  @@index([capability])
+  @@map("ops_grants")
+}
+
+/// A window of time the company works in: the September sprint, a quarter, or
+/// a biweekly cycle inside one.
+model OpsPeriod {
+  id   String        @id @default(uuid())
+  key  String        @unique
+  name String
+  kind OpsPeriodKind
+
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+
+  /// What this period is for, in a sentence. Optional because a cycle usually
+  /// inherits its point from the quarter above it.
+  goal   String?         @db.Text
+  status OpsPeriodStatus @default(PLANNED)
+
+  parentPeriodId String? @map("parent_period_id")
+
+  parentPeriod OpsPeriod?  @relation("OpsPeriodParent", fields: [parentPeriodId], references: [id], onDelete: Restrict, map: "ops_periods_parent_fkey")
+  childPeriods OpsPeriod[] @relation("OpsPeriodParent")
+
+  @@index([kind, startsOn])
+  @@map("ops_periods")
+}
+
+/// A standing area of the company with an owner. Five of these, seeded.
+model OpsWorkstream {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
+
+  ownerPersonId            String  @map("owner_person_id")
+  /// Who watches it without running it. Usually the CEO.
+  oversightPersonId        String? @map("oversight_person_id")
+  /// Who does the building where the owner does not build.
+  technicalPartnerPersonId String? @map("technical_partner_person_id")
+
+  /// The named areas this workstream covers, for the board headings.
+  areas String[]
+
+  @@map("ops_workstreams")
+}
+
+/// A company we are selling to, deploying for, or already serving.
+///
+/// One identity. Sales, use cases, deployment and attribution all point here,
+/// which is how "do not create duplicate company records" becomes a property of
+/// the schema instead of a rule somebody has to remember.
+model OpsCompany {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
+
+  primaryContactName  String? @map("primary_contact_name")
+  primaryContactEmail String? @map("primary_contact_email")
+  primaryContactPhone String? @map("primary_contact_phone")
+
+  /// How they reached us, in our own words.
+  source                   String?
+  /// The contributor who brought them, when one did.
+  originatingContributorId String? @map("originating_contributor_id")
+  /// The sprint they belong to, when they are part of one.
+  sprintPeriodId           String? @map("sprint_period_id")
+
+  stage         OpsCompanyStage @default(LINED_UP)
+  ownerPersonId String?         @map("owner_person_id")
+
+  nextAction      String?   @map("next_action")
+  nextActionDueAt DateTime? @map("next_action_due_at")
+  blockerSummary  String?   @map("blocker_summary") @db.Text
+
+  liveAt DateTime? @map("live_at")
+  notes  String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([stage])
+  @@index([sprintPeriodId])
+  @@map("ops_companies")
+}
+
+/// Something that happened, in any part of the company.
+///
+/// Every metric in this system needs the same three things from its evidence: a
+/// count inside a window, a first-occurrence test, and a list you can open. One
+/// log gives all three one implementation.
+model OpsActivity {
+  id String @id @default(uuid())
+
+  domain OpsActivityDomain
+  /// The specific kind within the domain — `call`, `demo`, `proposal_sent`,
+  /// `application_submitted`. Free text on purpose: new kinds appear faster
+  /// than migrations ship, and nothing branches on the value.
+  kind   String
+
+  actorPersonId String? @map("actor_person_id")
+
+  /// What it happened against. Not a foreign key: an activity outlives the
+  /// record it describes, and losing the history to a delete is worse than
+  /// holding a pointer that can go stale.
+  recordType String  @map("record_type")
+  recordId   String  @map("record_id")
+  companyId  String? @map("company_id")
+
+  happenedAt  DateTime @map("happened_at")
+  note        String?  @db.Text
+  /// Where somebody else can go and see this for themselves.
+  evidenceUrl String?  @map("evidence_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([domain, happenedAt])
+  @@index([recordType, recordId])
+  @@index([companyId, happenedAt])
+  @@index([actorPersonId, happenedAt])
+  @@map("ops_activities")
 }
