@@ -4697,3 +4697,174 @@ model OpsTodo {
   @@index([ownerId, status])
   @@map("ops_todos")
 }
+
+// --- Phase 6: the CEO's own functions --------------------------------------
+
+enum OpsFundingStage {
+  TARGET
+  CONTACTED
+  MEETING
+  FOLLOW_UP
+  APPLICATION_DILIGENCE
+  COMMITTED
+  CLOSED
+  /// Terminal.
+  DECLINED
+}
+
+enum OpsStrategicStatus {
+  IDENTIFIED
+  OUTREACH
+  ENGAGED
+  OPPORTUNITY_CREATED
+  COMPLETED
+  DORMANT
+  CLOSED
+}
+
+enum OpsRequestStatus {
+  OPEN
+  DECIDED
+}
+
+enum OpsExpenseStatus {
+  REQUESTED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+/// Somebody who might fund us.
+model OpsFundingOpportunity {
+  id             String  @id @default(uuid())
+  funderName     String  @map("funder_name")
+  primaryContact String? @map("primary_contact")
+
+  fundingType String  @map("funding_type")
+  source      String?
+  ownerId     String  @map("owner_id")
+
+  stage OpsFundingStage @default(TARGET)
+
+  askAmount  Decimal? @map("ask_amount") @db.Decimal(14, 2)
+  currency   String   @default("USD")
+  instrument String?
+
+  lastActivityAt      DateTime? @map("last_activity_at")
+  nextAction          String?   @map("next_action")
+  nextActionDueAt     DateTime? @map("next_action_due_at")
+  applicationDeadline DateTime? @map("application_deadline")
+
+  /// What they said yes to, and what actually arrived. Kept apart because the
+  /// gap between them is the only interesting number in a fundraise.
+  committedAmount Decimal? @map("committed_amount") @db.Decimal(14, 2)
+  closedAmount    Decimal? @map("closed_amount") @db.Decimal(14, 2)
+
+  statusNote String? @map("status_note") @db.Text
+  notes      String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([stage, lastActivityAt])
+  @@index([nextActionDueAt])
+  @@map("ops_funding_opportunities")
+}
+
+/// A relationship that could turn into a customer, a funder, a partner or a
+/// contributor. Tracked because network access is work, and untracked work
+/// stops happening.
+model OpsStrategicOpportunity {
+  id              String  @id @default(uuid())
+  personOrNetwork String  @map("person_or_network")
+  organization    String?
+
+  opportunityType String  @map("opportunity_type")
+  objective       String? @db.Text
+  ownerId         String  @map("owner_id")
+
+  status OpsStrategicStatus @default(IDENTIFIED)
+  source String?
+
+  lastActivityAt DateTime? @map("last_activity_at")
+  nextStep       String?   @map("next_step")
+  nextStepDueAt  DateTime? @map("next_step_due_at")
+
+  impactNote      String? @map("impact_note") @db.Text
+  /// What this turned into, so a conversion is a link rather than a claim.
+  convertedToType String? @map("converted_to_type")
+  convertedToId   String? @map("converted_to_id")
+
+  linkedContributorId String? @map("linked_contributor_id")
+  notes               String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("ops_strategic_opportunities")
+}
+
+/// "We cannot deliver X without Y." The decision lives on an approval.
+model OpsResourceRequest {
+  id          String @id @default(uuid())
+  requesterId String @map("requester_id")
+
+  supportNeeded String @map("support_needed") @db.Text
+  reason        String @db.Text
+
+  affectedWorkType String? @map("affected_work_type")
+  affectedRecordId String? @map("affected_record_id")
+
+  urgency         String
+  requestedByDate DateTime? @map("requested_by_date")
+
+  status OpsRequestStatus @default(OPEN)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("ops_resource_requests")
+}
+
+/// Somebody spent money and wants it back.
+model OpsExpense {
+  id          String   @id @default(uuid())
+  requesterId String   @map("requester_id")
+  date        DateTime @db.Date
+  description String   @db.Text
+  category    String
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("USD")
+
+  receiptUrl String? @map("receipt_url")
+  notes      String? @db.Text
+
+  status OpsExpenseStatus @default(REQUESTED)
+
+  submittedAt    DateTime  @default(now()) @map("submitted_at")
+  approvedById   String?   @map("approved_by_id")
+  approvedAt     DateTime? @map("approved_at")
+  paidAt         DateTime? @map("paid_at")
+  rejectedReason String?   @map("rejected_reason") @db.Text
+
+  @@index([requesterId, status])
+  @@index([status])
+  @@map("ops_expenses")
+}
+
+/// Money in. Entered by hand, which is what gives the balance a real basis
+/// rather than a computed guess.
+model OpsEarningsEntry {
+  id       String   @id @default(uuid())
+  date     DateTime @db.Date
+  amount   Decimal  @db.Decimal(14, 2)
+  currency String   @default("USD")
+  source   String
+  note     String?  @db.Text
+
+  recordedById String?  @map("recorded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("ops_earnings_entries")
+}

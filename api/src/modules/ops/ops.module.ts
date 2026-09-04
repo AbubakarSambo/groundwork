@@ -15,6 +15,8 @@ import { OpsBuildController } from './ops-build.controller';
 import { OpsBuildService } from './ops-build.service';
 import { OpsIntentController } from './ops-intent.controller';
 import { OpsIntentService } from './ops-intent.service';
+import { OpsCeoController } from './ops-ceo.controller';
+import { OpsCeoService } from './ops-ceo.service';
 
 /**
  * The back office the Groundwork team runs on.
@@ -24,7 +26,7 @@ import { OpsIntentService } from './ops-intent.service';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController],
+  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController],
   providers: [
     OpsPeopleService,
     OpsFoundationService,
@@ -36,6 +38,7 @@ import { OpsIntentService } from './ops-intent.service';
     OpsMetricsService,
     OpsBuildService,
     OpsIntentService,
+    OpsCeoService,
   ],
   exports: [OpsPeopleService],
 })
