@@ -96,7 +96,7 @@ describe('what each person is offered', () => {
     const theirs = pagesFor([
       'sprint:read', 'sales:read', 'sales:write', 'marketing:read', 'deployment:read', 'product:read', 'contributor:self', 'spend:submit',
     ]).map((p) => p.path)
-    expect(theirs).toContain('/ops/sales')
+    expect(theirs).toContain('/ops/pipeline')
     expect(theirs).toContain('/ops/deployment')
     expect(theirs).toContain('/ops/roadmap') // read-only: whether a company is supported is their business
     expect(theirs).not.toContain('/ops/tech')

@@ -192,9 +192,9 @@ export class OpsCompaniesService {
         include: { contributor: true },
       }),
       this.prisma.opsClientUseCase.findMany({ where: { companyId: company.id } }),
-      this.prisma.opsSalesOpportunity.findMany({
+      this.prisma.opsCommercialOpportunity.findMany({
         where: { companyId: company.id },
-        include: { campaign: true },
+        include: { payments: true },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.opsDeployment.findMany({ where: { companyId: company.id } }),

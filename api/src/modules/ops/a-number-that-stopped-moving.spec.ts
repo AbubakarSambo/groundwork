@@ -14,7 +14,11 @@ import { resolveNumber, MANUAL, progressToward } from './where-this-number-comes
 
 const WINDOW = { from: new Date('2026-10-01'), to: new Date('2026-12-31') };
 const prisma = {
-  opsSalesOpportunity: { findMany: async () => [{ company: { name: 'A' }, convertedAt: new Date('2026-11-01'), estimatedValue: null }] },
+  opsCommercialOpportunity: {
+    findMany: async () => [
+      { company: { name: 'A' }, firstPaymentAt: new Date('2026-11-01'), actualMrr: 500 },
+    ],
+  },
   opsActivity: { findMany: async () => [] },
   opsDeployment: { findMany: async () => [] },
 } as never;

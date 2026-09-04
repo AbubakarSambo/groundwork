@@ -40,7 +40,7 @@ export class OpsSprintService {
         attributions: { include: { contributor: true } },
         useCases: true,
         deployments: true,
-        opportunities: true,
+        commercialOpportunities: true,
       },
       orderBy: { name: 'asc' },
     });
@@ -53,7 +53,7 @@ export class OpsSprintService {
        */
       const stage = furthestReached({
         stored: company.stage,
-        salesStages: company.opportunities.map((o) => o.stage),
+        salesStages: company.commercialOpportunities.map((o) => o.stage),
         deploymentStages: company.deployments.map((d) => d.stage),
       });
 

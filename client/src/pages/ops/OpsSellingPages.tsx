@@ -1,149 +1,20 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { opsApi, type OpsOpportunity, type OpsDeployment, type OpsCampaign } from '@/api/ops'
+import { opsApi, type OpsDeployment, type OpsCampaign } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
 import { OpsTable, Filters, readEnum, readDate, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
 
-const SALES_STAGES = ['LEAD', 'CONTACTED', 'MEETING', 'PROPOSAL_TRIAL', 'CONVERTED', 'LOST'] as const
 const DEPLOYMENT_STAGES = ['READY_SIGNED', 'SETUP', 'ONBOARDING', 'FIRST_USE', 'LIVE'] as const
 
-/** Selling and getting people live: the pipeline, the campaigns, the deployments. */
+/** Getting people live, and the campaigns that reach them. */
 
-const money = (v: string | null) => (v === null ? '—' : `$${Number(v).toLocaleString()}`)
-
-export function OpsSalesPage() {
-  const pipeline = useQuery({ queryKey: ['ops', 'pipeline'], queryFn: opsApi.pipeline, retry: false })
-  const [filter, setFilter] = useState<string | null>(null)
-
-  /* The three questions somebody actually has about a pipeline. */
-  const filters: Filter<OpsOpportunity>[] = [
-    { label: 'Live', keep: (o) => !['CONVERTED', 'LOST'].includes(o.stage) },
-    {
-      label: 'Overdue',
-      keep: (o) =>
-        !['CONVERTED', 'LOST'].includes(o.stage) &&
-        o.nextActionDueAt !== null &&
-        new Date(o.nextActionDueAt) < new Date(),
-    },
-    {
-      label: 'Nothing planned',
-      keep: (o) => !['CONVERTED', 'LOST'].includes(o.stage) && !o.nextAction,
-    },
-  ]
-
-  const all = pipeline.data
-  const shown = all && (filter ? all.filter(filters.find((f) => f.label === filter)!.keep) : all)
-
-  const columns: Column<OpsOpportunity>[] = [
-    {
-      head: 'Company',
-      // Through to the company rather than to the deal: somebody clicking a
-      // name wants everything about them, not a bigger version of this row.
-      cell: (o) => (
-        <Link to={`/ops/companies/${o.company.key}`} style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
-          {o.company.name}
-        </Link>
-      ),
-    },
-    {
-      head: 'Stage',
-      cell: (o) => (
-        <Choose
-          label={`Stage for ${o.company.name}`}
-          value={o.stage}
-          options={SALES_STAGES}
-          onPick={(next) => opsApi.advanceOpportunity(o.id, next)}
-          invalidate={[['ops']]}
-        />
-      ),
-    },
-    { head: 'Worth', cell: (o) => money(o.estimatedValue), numeric: true },
-    { head: 'Came from', cell: (o) => o.campaign?.title ?? '—' },
-    {
-      head: 'Next',
-      cell: (o) => (
-        <>
-          {o.nextAction ?? <span style={{ color: 'var(--gw-sub)' }}>nothing planned</span>}
-          <Adder
-            title={o.nextAction ? 'change' : 'set one'}
-            fields={[
-              { name: 'nextAction', label: 'What happens next', required: true },
-              { name: 'dueAt', label: 'By', type: 'date' },
-            ]}
-            submit={(v) => opsApi.setFollowUp(o.id, v.nextAction, v.dueAt || undefined)}
-            invalidate={[['ops']]}
-            submitLabel="Set it"
-          />
-        </>
-      ),
-    },
-    { head: 'Due', cell: (o) => <DueDate value={o.nextActionDueAt} /> },
-    {
-      head: 'Log',
-      /* A call or a demo, recorded where the deal is. Every stage metric counts
-         these, so a conversation nobody logs is a cycle that looks quiet. */
-      cell: (o) => (
-        <Adder
-          title="what happened"
-          fields={[
-            { name: 'kind', label: 'What', required: true, placeholder: 'call, demo, proposal_sent' },
-            { name: 'note', label: 'Anything worth keeping', type: 'textarea' },
-          ]}
-          submit={(v) => opsApi.logActivity(o.id, { kind: v.kind, note: v.note || undefined })}
-          invalidate={[['ops']]}
-          submitLabel="Log it"
-        />
-      ),
-    },
-    {
-      head: 'Last touched',
-      // The number that says whether a deal is being worked or is simply sitting.
-      cell: (o) => readDate(o.lastActivityAt),
-    },
-  ]
-
-  return (
-    <main id="main" style={PAGE}>
-      <OpsHeader
-        name="Pipeline"
-        answers="Who am I talking to, and what have I not followed up?"
-      />
-      <Adder
-        title="Open an opportunity"
-        fields={[
-          { name: 'companyKey', label: 'Company key', required: true, placeholder: 'meridian-care' },
-          { name: 'estimatedValue', label: 'Worth', type: 'number' },
-          { name: 'useCaseSummary', label: 'What they want', type: 'textarea' },
-        ]}
-        submit={(v) =>
-          opsApi.openOpportunity({
-            companyKey: v.companyKey,
-            estimatedValue: v.estimatedValue ? Number(v.estimatedValue) : undefined,
-            useCaseSummary: v.useCaseSummary || undefined,
-          })
-        }
-        invalidate={[['ops']]}
-        submitLabel="Open it"
-      />
-      <Filters
-        filters={filters}
-        active={filter}
-        onPick={setFilter}
-        showing={shown?.length ?? 0}
-        total={all?.length ?? 0}
-      />
-      <OpsTable
-        rows={shown}
-        columns={columns}
-        keyOf={(o) => o.id}
-        filteredOutOf={all?.length}
-        empty="No opportunities open. Add a company, then open one against it."
-      />
-    </main>
-  )
-}
+/*
+ * OpsSalesPage is gone with the pipeline it rendered. `/ops/pipeline` is the
+ * one pipeline now, and it is the one that records who created each
+ * opportunity - which was the entire reason for replacing it.
+ */
 
 export function OpsDeploymentPage() {
   const deployments = useQuery({

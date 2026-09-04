@@ -1,4 +1,4 @@
-import { OpsCompanyStage, OpsSalesStage, OpsDeploymentStage } from '@prisma/client';
+import { OpsCompanyStage, OpsCommercialStage, OpsDeploymentStage } from '@prisma/client';
 
 /**
  * How far a company has actually got, from the things that actually happened.
@@ -28,10 +28,15 @@ const ORDER: OpsCompanyStage[] = [
 ];
 
 /** What a deal at this stage proves about the company. */
-const FROM_SALES: Partial<Record<OpsSalesStage, OpsCompanyStage>> = {
-  MEETING: 'USE_CASE_CONFIRMED',
-  PROPOSAL_TRIAL: 'USE_CASE_CONFIRMED',
-  CONVERTED: 'PRODUCT_READY',
+const FROM_SALES: Partial<Record<OpsCommercialStage, OpsCompanyStage>> = {
+  QUALIFIED: 'USE_CASE_CONFIRMED',
+  DEMO_DISCOVERY: 'USE_CASE_CONFIRMED',
+  PROPOSAL: 'USE_CASE_CONFIRMED',
+  VERBAL_YES: 'PRODUCT_READY',
+  PAYING: 'ONBOARDED',
+  RETAINED_3_MONTH: 'LIVE',
+  RETAINED_6_MONTH: 'LIVE',
+  RETAINED_12_MONTH: 'LIVE',
 };
 
 /** And what a deployment proves. These are stronger, because they are later. */
@@ -45,7 +50,7 @@ const FROM_DEPLOYMENT: Partial<Record<OpsDeploymentStage, OpsCompanyStage>> = {
 
 export function furthestReached(input: {
   stored: OpsCompanyStage;
-  salesStages: OpsSalesStage[];
+  salesStages: OpsCommercialStage[];
   deploymentStages: OpsDeploymentStage[];
 }): OpsCompanyStage {
   const candidates: OpsCompanyStage[] = [

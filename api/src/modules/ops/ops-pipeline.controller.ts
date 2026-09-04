@@ -5,7 +5,7 @@ import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsPipelineService } from './ops-pipeline.service';
 import { OpsMetricsService } from './ops-metrics.service';
 import { OpsIdentity } from './ops-people.service';
-import { OpsSalesStage, OpsDeploymentStage } from '@prisma/client';
+import { OpsDeploymentStage } from '@prisma/client';
 
 interface OpsRequest {
   opsIdentity: OpsIdentity;
@@ -21,65 +21,11 @@ export class OpsPipelineController {
     private readonly metrics: OpsMetricsService,
   ) {}
 
-  // --- Sales --------------------------------------------------------------
-
-  @Get('pipeline')
-  @NeedsOps('sales:read')
-  @ApiOperation({ summary: 'The pipeline, optionally by stage or owner' })
-  list(@Query('stage') stage?: OpsSalesStage, @Query('owner') owner?: string) {
-    return this.pipeline.pipeline({ stage, ownerId: owner });
-  }
-
-  @Post('pipeline')
-  @NeedsOps('sales:write')
-  @ApiOperation({ summary: 'Open an opportunity against a company' })
-  open(
-    @Req() req: OpsRequest,
-    @Body() body: { companyKey: string; source?: string; campaignId?: string; estimatedValue?: number; useCaseSummary?: string },
-  ) {
-    return this.pipeline.openOpportunity({ ...body, salesOwnerId: req.opsIdentity.personId });
-  }
-
-  @Patch('pipeline/:id/stage')
-  @NeedsOps('sales:write')
-  @ApiOperation({ summary: 'Move an opportunity along, or lose it' })
-  advance(
-    @Req() req: OpsRequest,
-    @Param('id') id: string,
-    @Body() body: { stage: OpsSalesStage; lostReason?: string },
-  ) {
-    return this.pipeline.advance(id, body.stage, req.opsIdentity.personId, body.lostReason);
-  }
-
-  @Patch('pipeline/:id/follow-up')
-  @NeedsOps('sales:write')
-  @ApiOperation({ summary: 'Set the next action and when it is due' })
-  followUp(@Req() req: OpsRequest, @Param('id') id: string, @Body() body: { nextAction: string; dueAt?: string }) {
-    return this.pipeline.setFollowUp(
-      id,
-      body.nextAction,
-      body.dueAt ? new Date(body.dueAt) : null,
-      req.opsIdentity.personId,
-    );
-  }
-
-  @Post('pipeline/:id/activity')
-  @NeedsOps('sales:write')
-  @ApiOperation({ summary: 'Log a call, a demo, a proposal' })
-  activity(
-    @Req() req: OpsRequest,
-    @Param('id') id: string,
-    @Body() body: { kind: string; note?: string; evidenceUrl?: string; happenedAt?: string },
-  ) {
-    return this.pipeline.logActivity({
-      opportunityId: id,
-      kind: body.kind,
-      note: body.note,
-      evidenceUrl: body.evidenceUrl,
-      happenedAt: body.happenedAt ? new Date(body.happenedAt) : undefined,
-      actorPersonId: req.opsIdentity.personId,
-    });
-  }
+  /*
+   * The sales routes are gone with the pipeline they served. `/ops/commercial`
+   * is the one pipeline now, and it is the one that records who created each
+   * opportunity.
+   */
 
   // --- Deployment ---------------------------------------------------------
 

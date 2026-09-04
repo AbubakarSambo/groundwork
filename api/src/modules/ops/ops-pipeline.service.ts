@@ -1,150 +1,21 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OpsSalesStage, OpsDeploymentStage, OpsActivityDomain } from '@prisma/client';
-
-/** Terminal stages. Nothing moves out of one without somebody saying so. */
-const CONCLUDED: OpsSalesStage[] = ['CONVERTED', 'LOST'];
+import { OpsDeploymentStage, OpsActivityDomain } from '@prisma/client';
 
 @Injectable()
 export class OpsPipelineService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // --- Sales --------------------------------------------------------------
-
-  /**
-   * One live opportunity per company.
+  /*
+   * THE SALES HALF OF THIS FILE IS GONE.
    *
-   * A second one is nearly always two people working the same account without
-   * knowing, which is the thing the single company identity exists to prevent.
-   * Won and lost deals do not count, so a company we lost can be reopened.
-   */
-  async openOpportunity(input: {
-    companyKey: string;
-    salesOwnerId: string;
-    source?: string;
-    campaignId?: string;
-    estimatedValue?: number;
-    useCaseSummary?: string;
-  }) {
-    const company = await this.company(input.companyKey);
-
-    const live = await this.prisma.opsSalesOpportunity.findFirst({
-      where: { companyId: company.id, stage: { notIn: CONCLUDED } },
-    });
-    if (live) {
-      throw new ConflictException(
-        `${company.name} already has a live opportunity at ${live.stage}. Work that one rather than opening a second.`,
-      );
-    }
-
-    const opportunity = await this.prisma.opsSalesOpportunity.create({
-      data: {
-        companyId: company.id,
-        salesOwnerId: input.salesOwnerId,
-        source: input.source,
-        campaignId: input.campaignId,
-        estimatedValue: input.estimatedValue,
-        useCaseSummary: input.useCaseSummary,
-        lastActivityAt: new Date(),
-      },
-    });
-
-    await this.log('SALES', 'opportunity_opened', input.salesOwnerId, opportunity.id, company.id);
-    return opportunity;
-  }
-
-  /**
-   * Moves a deal, and records that it moved.
+   * It ran a second pipeline beside the commercial one - same companies, same
+   * stages, a different set of numbers - and two pipelines is how a company
+   * ends up with two answers to "how much are we selling". The commercial
+   * pipeline is the one with attribution on it, so it is the one that survived.
    *
-   * The activity row is what every stage metric counts: without it, "five leads
-   * contacted this cycle" would have to be read off the current stage, and a
-   * deal that went LEAD → CONTACTED → MEETING inside one fortnight would show
-   * up as a meeting and never as a lead.
+   * What is left here is deployment and marketing, which were never duplicated.
    */
-  async advance(opportunityId: string, stage: OpsSalesStage, actorPersonId: string, lostReason?: string) {
-    const opportunity = await this.prisma.opsSalesOpportunity.findUnique({
-      where: { id: opportunityId },
-    });
-    if (!opportunity) throw new NotFoundException('No such opportunity');
-
-    const updated = await this.prisma.opsSalesOpportunity.update({
-      where: { id: opportunityId },
-      data: {
-        stage,
-        lastActivityAt: new Date(),
-        convertedAt: stage === 'CONVERTED' ? new Date() : opportunity.convertedAt,
-        lostAt: stage === 'LOST' ? new Date() : opportunity.lostAt,
-        lostReason: stage === 'LOST' ? lostReason ?? opportunity.lostReason : opportunity.lostReason,
-        // A concluded deal has nothing left to chase, and leaving the old date
-        // in place would keep it on the overdue list for ever.
-        nextAction: CONCLUDED.includes(stage) ? null : opportunity.nextAction,
-        nextActionDueAt: CONCLUDED.includes(stage) ? null : opportunity.nextActionDueAt,
-      },
-    });
-
-    await this.log(
-      'SALES',
-      `stage_${stage.toLowerCase()}`,
-      actorPersonId,
-      opportunity.id,
-      opportunity.companyId,
-      lostReason,
-    );
-    return updated;
-  }
-
-  async setFollowUp(opportunityId: string, nextAction: string, dueAt: Date | null, actorPersonId: string) {
-    const updated = await this.prisma.opsSalesOpportunity.update({
-      where: { id: opportunityId },
-      data: { nextAction, nextActionDueAt: dueAt, lastActivityAt: new Date() },
-    });
-    await this.log('SALES', 'follow_up_set', actorPersonId, opportunityId, updated.companyId, nextAction);
-    return updated;
-  }
-
-  async logActivity(input: {
-    opportunityId: string;
-    kind: string;
-    actorPersonId: string;
-    note?: string;
-    evidenceUrl?: string;
-    happenedAt?: Date;
-  }) {
-    const opportunity = await this.prisma.opsSalesOpportunity.findUnique({
-      where: { id: input.opportunityId },
-    });
-    if (!opportunity) throw new NotFoundException('No such opportunity');
-
-    await this.prisma.opsSalesOpportunity.update({
-      where: { id: opportunity.id },
-      data: { lastActivityAt: input.happenedAt ?? new Date() },
-    });
-
-    return this.prisma.opsActivity.create({
-      data: {
-        domain: 'SALES',
-        kind: input.kind,
-        actorPersonId: input.actorPersonId,
-        recordType: 'OpsSalesOpportunity',
-        recordId: opportunity.id,
-        companyId: opportunity.companyId,
-        happenedAt: input.happenedAt ?? new Date(),
-        note: input.note,
-        evidenceUrl: input.evidenceUrl,
-      },
-    });
-  }
-
-  pipeline(filter?: { stage?: OpsSalesStage; ownerId?: string }) {
-    return this.prisma.opsSalesOpportunity.findMany({
-      where: {
-        stage: filter?.stage,
-        salesOwnerId: filter?.ownerId,
-      },
-      include: { company: true, campaign: true },
-      orderBy: [{ stage: 'asc' }, { nextActionDueAt: 'asc' }],
-    });
-  }
 
   // --- Deployment ---------------------------------------------------------
 
@@ -260,12 +131,16 @@ export class OpsPipelineService {
     return this.prisma.opsMarketingActivity.create({ data: input });
   }
 
-  /** A campaign with the opportunities that name it, so its number is checkable. */
+  /**
+   * Campaigns.
+   *
+   * They no longer carry the opportunities they produced: that link belonged to
+   * the retired pipeline, and the commercial one does not have it yet. A
+   * campaign here is currently an activity record and not a claim about revenue,
+   * which is worse than it was and better than a number nothing supports.
+   */
   campaigns() {
-    return this.prisma.opsMarketingActivity.findMany({
-      include: { opportunities: { include: { company: true } } },
-      orderBy: { startDate: 'desc' },
-    });
+    return this.prisma.opsMarketingActivity.findMany({ orderBy: { startDate: 'desc' } });
   }
 
   // --- Shared -------------------------------------------------------------

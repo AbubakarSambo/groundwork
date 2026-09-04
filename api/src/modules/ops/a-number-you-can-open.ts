@@ -126,15 +126,15 @@ export const METRICS: MetricDefinition[] = [
     capability: 'sales:read',
     counts: 'Opportunities converted inside the window.',
     async compute(prisma, window) {
-      const rows = await prisma.opsSalesOpportunity.findMany({
-        where: { convertedAt: within(window) },
+      const rows = await prisma.opsCommercialOpportunity.findMany({
+        where: { firstPaymentAt: within(window) },
         include: { company: true },
       });
       return {
         value: rows.length,
         unit: 'conversions',
-        rows: rows.map((r) => ({ company: r.company.name, convertedAt: r.convertedAt, value: r.estimatedValue })),
-        says: `${rows.length} converted`,
+        rows: rows.map((r) => ({ company: r.company.name, startedPaying: r.firstPaymentAt, mrr: Number(r.actualMrr ?? 0) })),
+        says: `${rows.length} started paying`,
       };
     },
   },
@@ -145,9 +145,9 @@ export const METRICS: MetricDefinition[] = [
     capability: 'sales:read',
     counts: 'Live opportunities whose next action was due before the end of the window.',
     async compute(prisma, window) {
-      const rows = await prisma.opsSalesOpportunity.findMany({
+      const rows = await prisma.opsCommercialOpportunity.findMany({
         where: {
-          stage: { notIn: ['CONVERTED', 'LOST'] },
+          stage: { notIn: ['PAYING', 'RETAINED_3_MONTH', 'RETAINED_6_MONTH', 'RETAINED_12_MONTH', 'LOST'] },
           nextActionDueAt: { lt: window.to },
         },
         include: { company: true },
@@ -180,8 +180,10 @@ export const METRICS: MetricDefinition[] = [
        * next step for is not a fact about a fortnight — it is true right now,
        * and dating it would let it disappear from the very view meant to catch it.
        */
-      const live = await prisma.opsSalesOpportunity.findMany({
-        where: { stage: { notIn: ['CONVERTED', 'LOST'] } },
+      const live = await prisma.opsCommercialOpportunity.findMany({
+        where: {
+          stage: { notIn: ['PAYING', 'RETAINED_3_MONTH', 'RETAINED_6_MONTH', 'RETAINED_12_MONTH', 'LOST'] },
+        },
         include: { company: true },
       });
       const rows = live.filter((r) => r.nextAction === null);
@@ -211,20 +213,20 @@ export const METRICS: MetricDefinition[] = [
     capability: 'sales:read',
     counts: 'Converted, as a share of everything that reached a conclusion inside the window.',
     async compute(prisma, window) {
-      const concluded = await prisma.opsSalesOpportunity.findMany({
+      const concluded = await prisma.opsCommercialOpportunity.findMany({
         where: {
-          OR: [{ convertedAt: within(window) }, { lostAt: within(window) }],
+          OR: [{ firstPaymentAt: within(window) }, { lostAt: within(window) }],
         },
         include: { company: true },
       });
-      const won = concluded.filter((o) => o.convertedAt !== null);
+      const won = concluded.filter((o) => o.firstPaymentAt !== null);
 
       return {
         value: concluded.length === 0 ? 0 : Math.round((won.length / concluded.length) * 100),
         unit: '%',
         rows: concluded.map((o) => ({
           company: o.company.name,
-          outcome: o.convertedAt ? 'converted' : 'lost',
+          outcome: o.firstPaymentAt ? 'paying' : 'lost',
           reason: o.lostReason,
         })),
         /**
@@ -245,15 +247,21 @@ export const METRICS: MetricDefinition[] = [
     capability: 'marketing:read',
     counts: 'Opportunities created inside the window that name a campaign.',
     async compute(prisma, window) {
-      const rows = await prisma.opsSalesOpportunity.findMany({
-        where: { campaignId: { not: null }, createdAt: within(window) },
-        include: { company: true, campaign: true },
+      /*
+       * Campaigns pointed at the old pipeline. They point at nothing now, and
+       * saying so is better than a zero that reads as "no campaign worked".
+       */
+      const campaigns = await prisma.opsMarketingActivity.findMany({
+        where: { startDate: within(window) },
       });
       return {
-        value: rows.length,
+        value: 0,
         unit: 'leads',
-        rows: rows.map((r) => ({ company: r.company.name, campaign: r.campaign?.title, stage: r.stage })),
-        says: `${rows.length} from campaigns`,
+        rows: [],
+        says:
+          campaigns.length === 0
+            ? 'No campaigns in this window'
+            : `${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'} ran, and nothing is yet linked back to them`,
       };
     },
   },

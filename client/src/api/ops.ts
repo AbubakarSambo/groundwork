@@ -117,18 +117,6 @@ export interface OpsTodo {
   dueDate: string | null
 }
 
-export interface OpsOpportunity {
-  id: string
-  stage: string
-  estimatedValue: string | null
-  nextAction: string | null
-  nextActionDueAt: string | null
-  lastActivityAt: string | null
-  lostReason: string | null
-  company: { key: string; name: string }
-  campaign: { title: string } | null
-}
-
 export interface OpsDeployment {
   id: string
   stage: string
@@ -499,7 +487,6 @@ export const opsApi = {
     apiClient.post('/ops/commercial/positioning', body, QUIET).then((r) => r.data),
   advancePositioning: (id: string, stage: string) =>
     apiClient.patch(`/ops/commercial/positioning/${id}/stage`, { stage }, QUIET).then((r) => r.data),
-  pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline', QUIET).then((r) => r.data),
   deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments', QUIET).then((r) => r.data),
   campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns', QUIET).then((r) => r.data),
   moat: () => apiClient.get<OpsMoat>('/ops/moat', QUIET).then((r) => r.data),
@@ -541,14 +528,6 @@ export const opsApi = {
   attribute: (body: { companyKey: string; sourceType: string; sourceDetail?: string }) =>
     apiClient.post('/ops/attributions', body, QUIET).then((r) => r.data),
 
-  openOpportunity: (body: { companyKey: string; estimatedValue?: number; useCaseSummary?: string }) =>
-    apiClient.post('/ops/pipeline', body, QUIET).then((r) => r.data),
-  advanceOpportunity: (id: string, stage: string, lostReason?: string) =>
-    apiClient.patch(`/ops/pipeline/${id}/stage`, { stage, lostReason }, QUIET).then((r) => r.data),
-  setFollowUp: (id: string, nextAction: string, dueAt?: string) =>
-    apiClient.patch(`/ops/pipeline/${id}/follow-up`, { nextAction, dueAt }, QUIET).then((r) => r.data),
-  logActivity: (id: string, body: { kind: string; note?: string }) =>
-    apiClient.post(`/ops/pipeline/${id}/activity`, body, QUIET).then((r) => r.data),
 
   startDeployment: (body: { companyKey: string; targetLiveDate?: string }) =>
     apiClient.post('/ops/deployments', body, QUIET).then((r) => r.data),

@@ -24,8 +24,12 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/commitments', name: 'Commitments', capability: null, group: 'Work' },
   { path: '/ops/spend', name: 'Spend', capability: 'spend:submit', group: 'Work' },
 
-  { path: '/ops/sales', name: 'Pipeline', capability: 'sales:read', group: 'Selling' },
-  { path: '/ops/commercial', name: 'Commercial', capability: 'sales:read', group: 'Selling' },
+  /*
+   * ONE PIPELINE. The old `/ops/sales` ran beside this one - same companies,
+   * same stages, no record of who created anything - and two pipelines is how a
+   * company ends up with two answers to "how much are we selling".
+   */
+  { path: '/ops/pipeline', name: 'Pipeline', capability: 'sales:read', group: 'Selling' },
   { path: '/ops/contribution', name: 'Contribution', capability: 'sales:read', group: 'Selling' },
   { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Selling' },
   { path: '/ops/attribution', name: 'Attribution review', capability: 'commercial:approve', group: 'Selling' },
@@ -67,6 +71,12 @@ export const GROUPS: OpsPage['group'][] = ['Work', 'Selling', 'Building', 'Compa
  */
 export const REACHED_BY_CLICKING: Array<{ path: string; from: string }> = [
   { path: '/ops/companies/:key', from: 'a company name on the sprint or the pipeline' },
+  /*
+   * The old pipeline's address. Redirected rather than deleted: it is in
+   * people's history and a silent 404 on a page somebody used daily reads as an
+   * outage rather than as a move.
+   */
+  { path: '/ops/sales', from: 'a bookmark or an old link, and it redirects to /ops/pipeline' },
 ]
 
 export function pagesFor(capabilities: readonly string[]): OpsPage[] {

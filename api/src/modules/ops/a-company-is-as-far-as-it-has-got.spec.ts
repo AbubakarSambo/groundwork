@@ -22,12 +22,12 @@ describe('how far a company has actually got', () => {
 
   it('is pulled forward by a deployment in progress — the case that started this', () => {
     expect(
-      furthestReached({ stored: 'LINED_UP', salesStages: ['MEETING'], deploymentStages: ['ONBOARDING'] }),
+      furthestReached({ stored: 'LINED_UP', salesStages: ['DEMO_DISCOVERY'], deploymentStages: ['ONBOARDING'] }),
     ).toBe('ONBOARDED');
   });
 
-  it('and by a deal that reached a meeting, even with no deployment', () => {
-    expect(furthestReached({ stored: 'LINED_UP', salesStages: ['MEETING'], deploymentStages: [] })).toBe(
+  it('and by a deal that reached a demo, even with no deployment', () => {
+    expect(furthestReached({ stored: 'LINED_UP', salesStages: ['DEMO_DISCOVERY'], deploymentStages: [] })).toBe(
       'USE_CASE_CONFIRMED',
     );
   });
@@ -50,7 +50,7 @@ describe('how far a company has actually got', () => {
     expect(
       furthestReached({
         stored: 'LINED_UP',
-        salesStages: ['LOST', 'CONVERTED', 'LEAD'],
+        salesStages: ['LOST', 'VERBAL_YES', 'LEAD'],
         deploymentStages: ['LIVE', 'SETUP'],
       }),
     ).toBe('LIVE');

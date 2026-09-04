@@ -44,7 +44,7 @@ import {
   OpsCommercialPipelinePage,
 } from '@/pages/ops/OpsContributionPages'
 import { OpsLayout } from '@/pages/ops/OpsLayout'
-import { OpsSalesPage, OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
+import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
   OpsQuarterPage,
@@ -331,8 +331,10 @@ export default function App() {
             <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/sales" element={<RequireAuth><OpsLayout><OpsSalesPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/commercial" element={<RequireAuth><OpsLayout><OpsCommercialPipelinePage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/pipeline" element={<RequireAuth><OpsLayout><OpsCommercialPipelinePage /></OpsLayout></RequireAuth>} />
+            {/* The old address, kept as a redirect: it is in people's history and
+                a silent 404 on a page somebody used daily reads as an outage. */}
+            <Route path="/ops/sales" element={<Navigate to="/ops/pipeline" replace />} />
             <Route path="/ops/contribution" element={<RequireAuth><OpsLayout><OpsContributionPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/positioning" element={<RequireAuth><OpsLayout><OpsPositioningPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/attribution" element={<RequireAuth><OpsLayout><OpsAttributionPage /></OpsLayout></RequireAuth>} />
