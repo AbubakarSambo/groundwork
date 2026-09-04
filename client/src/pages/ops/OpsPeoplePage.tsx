@@ -15,6 +15,32 @@ import { Adder } from './OpsForm'
  * keeping them apart is being able to see when they have come apart.
  */
 
+/**
+ * What this person has agreed, shown before the form that changes it.
+ *
+ * A form with no current value is a form somebody fills in twice: you cannot
+ * tell whether the field is empty because nothing was agreed or because nobody
+ * has looked. Those are different, and one of them is a conversation to have.
+ */
+function TheirAgreement({ personKey }: { personKey: string }) {
+  const agreement = useQuery({
+    queryKey: ['ops', 'agreement', personKey],
+    queryFn: () => opsApi.agreement(personKey),
+    retry: false,
+  })
+
+  const a = agreement.data
+  return (
+    <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+      {a?.originatorSharePercent
+        ? `Agreed: ${Number(a.originatorSharePercent)}% originator share${
+            a.originatorShareMonths ? ` for ${a.originatorShareMonths} months` : ''
+          }${a.agreementNote ? ` — ${a.agreementNote}` : ''}`
+        : 'No revenue share recorded. Being the originator does not create one.'}
+    </p>
+  )
+}
+
 function Capability({
   person,
   capability,
@@ -167,6 +193,32 @@ export default function OpsPeoplePage() {
             and no write, which is the single most useful thing this page can
             tell you.
           */}
+          {/*
+            The agreement sits with the person rather than with their
+            contribution, because it is a contract and not a record of work. The
+            two are never shown as one number anywhere.
+          */}
+          <div style={{ marginTop: 8 }}>
+            <TheirAgreement personKey={p.key} />
+            <Adder
+              title="What they agreed"
+              fields={[
+                { name: 'originatorSharePercent', label: 'Originator share (%)', type: 'number', placeholder: '40' },
+                { name: 'originatorShareMonths', label: 'For how many months', type: 'number', placeholder: '6' },
+                { name: 'agreementNote', label: 'Anything worth recording', type: 'textarea' },
+              ]}
+              submit={(v) =>
+                opsApi.setAgreement(p.key, {
+                  originatorSharePercent: v.originatorSharePercent ? Number(v.originatorSharePercent) : null,
+                  originatorShareMonths: v.originatorShareMonths ? Number(v.originatorShareMonths) : null,
+                  agreementNote: v.agreementNote || undefined,
+                })
+              }
+              invalidate={[['ops']]}
+              submitLabel="Record it"
+            />
+          </div>
+
           <div style={{ marginTop: 10 }}>
             {groupCapabilities(capabilities.data ?? []).map(([domain, caps]) => (
               <div key={domain} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>

@@ -28,6 +28,7 @@ export class OpsCommercialService {
     companyKey: string;
     name: string;
     opportunityType?: string;
+    campaignId?: string;
     estimatedMrr?: number;
     estimatedContractValue?: number;
   }) {
@@ -39,6 +40,7 @@ export class OpsCommercialService {
         companyId: company.id,
         name: input.name,
         opportunityType: input.opportunityType,
+        campaignId: input.campaignId,
         estimatedMrr: input.estimatedMrr,
         estimatedContractValue: input.estimatedContractValue,
       },

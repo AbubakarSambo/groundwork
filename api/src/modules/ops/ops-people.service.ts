@@ -187,6 +187,30 @@ export class OpsPeopleService {
     });
   }
 
+  /**
+   * What somebody's agreement entitles them to. Nothing about equity.
+   *
+   * Separate from anything that reports contribution, because the two must not
+   * be readable as one number: attribution establishes what happened, and this
+   * establishes what was agreed.
+   */
+  agreementFor(personKey: string) {
+    return this.prisma.opsContributorAgreement.findFirst({ where: { person: { key: personKey } } });
+  }
+
+  async setAgreement(
+    personKey: string,
+    input: { originatorSharePercent?: number | null; originatorShareMonths?: number | null; agreementNote?: string },
+    updatedBy: string,
+  ) {
+    const person = await this.byKey(personKey);
+    return this.prisma.opsContributorAgreement.upsert({
+      where: { personId: person.id },
+      update: { ...input, updatedBy },
+      create: { personId: person.id, ...input, updatedBy },
+    });
+  }
+
   /** Throws unless they hold the capability. The only way a route gets past a check. */
   assert(identity: OpsIdentity | null, capability: OpsCapability): OpsIdentity {
     if (!identity) {

@@ -104,6 +104,28 @@ export class OpsController {
     return this.people.revoke(key, capability);
   }
 
+  /**
+   * What somebody agreed to, which is never inferred from what they created.
+   * Behind people:admin because it is a contract, not a record of work.
+   */
+  @Get('people/:key/agreement')
+  @NeedsOps('people:admin')
+  @ApiOperation({ summary: "What this person's agreement entitles them to" })
+  agreement(@Param('key') key: string) {
+    return this.people.agreementFor(key);
+  }
+
+  @Patch('people/:key/agreement')
+  @NeedsOps('people:admin')
+  @ApiOperation({ summary: 'Record what was agreed' })
+  setAgreement(
+    @Req() req: { opsIdentity: { key: string } },
+    @Param('key') key: string,
+    @Body() body: { originatorSharePercent?: number | null; originatorShareMonths?: number | null; agreementNote?: string },
+  ) {
+    return this.people.setAgreement(key, body, req.opsIdentity.key);
+  }
+
   @Patch('people/:key/active')
   @NeedsOps('people:admin')
   @ApiOperation({ summary: 'Somebody joined, or somebody left' })

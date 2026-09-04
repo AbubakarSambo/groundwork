@@ -114,7 +114,7 @@ export class OpsCommercialController {
   @NeedsOps('sales:write')
   @ApiOperation({ summary: 'Open an opportunity. Records nobody as having created it.' })
   open(
-    @Body() body: { companyKey: string; name: string; opportunityType?: string; estimatedMrr?: number; estimatedContractValue?: number },
+    @Body() body: { companyKey: string; name: string; opportunityType?: string; campaignId?: string; estimatedMrr?: number; estimatedContractValue?: number },
   ) {
     return this.commercial.open(body);
   }

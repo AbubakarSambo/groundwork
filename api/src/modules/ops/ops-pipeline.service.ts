@@ -132,15 +132,16 @@ export class OpsPipelineService {
   }
 
   /**
-   * Campaigns.
+   * Campaigns, with what each one actually produced.
    *
-   * They no longer carry the opportunities they produced: that link belonged to
-   * the retired pipeline, and the commercial one does not have it yet. A
-   * campaign here is currently an activity record and not a claim about revenue,
-   * which is worse than it was and better than a number nothing supports.
+   * Named rather than counted: "two leads" says a campaign was busy, and the two
+   * companies with what they have paid says whether it was worth running again.
    */
   campaigns() {
-    return this.prisma.opsMarketingActivity.findMany({ orderBy: { startDate: 'desc' } });
+    return this.prisma.opsMarketingActivity.findMany({
+      include: { opportunities: { include: { company: true, payments: true } } },
+      orderBy: { startDate: 'desc' },
+    });
   }
 
   // --- Shared -------------------------------------------------------------

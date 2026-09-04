@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsSettingsService, OPS_SETTINGS } from './ops-settings.service';
 import { earnedCredit, DEFAULT_VALUE_BANDS, ValueBand } from './what-a-client-is-worth';
+import { originatorShareOf } from './attribution-is-not-entitlement';
 import {
   countsAsOriginationFor,
   countsAsPositioningFor,
@@ -173,6 +174,26 @@ export class OpsContributionService {
       where: { contributorId: personId },
     });
 
+    /**
+     * What their agreement entitles them to, kept entirely apart from what they
+     * created. Attribution says what happened; the agreement says what they are
+     * owed. Reaching for the company's standing model when somebody has no
+     * agreement is how a person gets told they are owed money they never agreed.
+     */
+    const agreement = await this.prisma.opsContributorAgreement.findUnique({
+      where: { personId },
+    });
+    const entitlement = originatorShareOf(
+      paying.flatMap((o) => o.payments.map((p) => ({ amount: Number(p.amount), paidAt: p.paidAt }))),
+      agreement
+        ? {
+            originatorSharePercent:
+              agreement.originatorSharePercent === null ? null : Number(agreement.originatorSharePercent),
+            originatorShareMonths: agreement.originatorShareMonths,
+          }
+        : null,
+    );
+
     const positioningPaying = positioned.filter((o) => PAYING_ONWARD.includes(o.stage));
 
     return {
@@ -199,6 +220,12 @@ export class OpsContributionService {
           credit: credits[i].says,
         })),
       },
+      /**
+       * Deliberately its own branch of the response rather than a field on
+       * origination. A reader glancing at this must not be able to mistake what
+       * somebody created for what somebody is owed.
+       */
+      entitlement,
       positioning: {
         /*
          * Every stage counted separately. "Ten introductions" and "ten

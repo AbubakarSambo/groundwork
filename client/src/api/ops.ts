@@ -388,6 +388,13 @@ export interface OpsLedger {
     revenue: number
     retained6Month: number
   }
+  entitlement: {
+    originatorShare: number
+    eligibleCash: number
+    percent: number | null
+    months: number | null
+    says: string
+  }
   notCounting: Array<{ opportunity: string; company: string; why: string | null }>
 }
 
@@ -506,6 +513,15 @@ export const opsApi = {
   strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
   people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => r.data),
+  agreement: (key: string) =>
+    apiClient
+      .get<{ originatorSharePercent: string | null; originatorShareMonths: number | null; agreementNote: string | null } | null>(
+        `/ops/people/${key}/agreement`,
+        QUIET,
+      )
+      .then((r) => r.data),
+  setAgreement: (key: string, body: { originatorSharePercent?: number | null; originatorShareMonths?: number | null; agreementNote?: string }) =>
+    apiClient.patch(`/ops/people/${key}/agreement`, body, QUIET).then((r) => r.data),
   capabilities: () => apiClient.get<string[]>('/ops/capabilities', QUIET).then((r) => r.data),
   addPerson: (body: { key: string; displayName: string; email?: string; functionalRole: string }) =>
     apiClient.post('/ops/people', body, QUIET).then((r) => r.data),

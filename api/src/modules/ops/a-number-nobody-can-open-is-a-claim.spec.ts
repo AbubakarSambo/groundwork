@@ -38,6 +38,8 @@ const aGenericRow = {
   role: 'OPPORTUNITY_ORIGINATOR',
   claimedBasis: 'a basis',
   opportunity: { name: 'An opportunity', company: { name: 'A Company' } },
+  campaign: { title: 'A Campaign' },
+  payments: [{ amount: 500 }],
   createdAt: new Date('2026-09-01'),
   requestSummary: 'a decision',
   approvalType: 'ROADMAP',

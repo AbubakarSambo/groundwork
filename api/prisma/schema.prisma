@@ -4320,6 +4320,8 @@ model OpsMarketingActivity {
   notes     String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
+  opportunities OpsCommercialOpportunity[]
+
   @@index([status, startDate])
   @@map("ops_marketing_activities")
 }
@@ -5038,6 +5040,14 @@ model OpsCommercialOpportunity {
   /// Where the positioning came from, when it came from a tracked relationship.
   positioningRecordId String? @map("positioning_record_id")
 
+  /// The campaign that produced this, where one did.
+  ///
+  /// Re-linked after the old pipeline was retired: campaigns pointed at that
+  /// table, and without this a campaign could only report that it ran. A
+  /// campaign that cannot name what it produced is an activity record, and this
+  /// system is supposed to tell activity from outcomes.
+  campaignId String? @map("campaign_id")
+
   /// WHO DOES THE WORK. Operational, and it creates no attribution whatsoever.
   nextAction        String?   @map("next_action")
   nextActionOwnerId String?   @map("next_action_owner_id")
@@ -5064,6 +5074,7 @@ model OpsCommercialOpportunity {
   lostReason String?   @map("lost_reason") @db.Text
 
   company  OpsCompany             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaign OpsMarketingActivity?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   payments OpsCommercialPayment[]
   claims   OpsAttributionClaim[]
 

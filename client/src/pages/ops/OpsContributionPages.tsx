@@ -168,6 +168,27 @@ export function OpsContributionPage() {
             </ul>
           )}
 
+          {/*
+            What they are OWED, in its own block, visually apart from what they
+            created. A reader glancing at this must never be able to mistake one
+            for the other - that confusion is the whole reason the two are kept
+            in different tables.
+          */}
+          <p
+            style={{
+              fontSize: 12.5,
+              margin: '10px 0 0',
+              paddingTop: 8,
+              borderTop: '0.5px solid var(--gw-border)',
+              color: l.entitlement.percent === null ? 'var(--gw-sub)' : 'var(--gw-navy)',
+            }}
+          >
+            <strong>Their agreement: </strong>
+            {l.entitlement.percent === null
+              ? l.entitlement.says
+              : `${money(l.entitlement.originatorShare)} — ${l.entitlement.says}`}
+          </p>
+
           {l.notCounting.length > 0 && (
             <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0' }}>
               {l.notCounting.length} not counting: {l.notCounting[0].why}

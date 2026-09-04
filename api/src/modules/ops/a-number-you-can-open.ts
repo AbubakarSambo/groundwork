@@ -247,21 +247,25 @@ export const METRICS: MetricDefinition[] = [
     capability: 'marketing:read',
     counts: 'Opportunities created inside the window that name a campaign.',
     async compute(prisma, window) {
-      /*
-       * Campaigns pointed at the old pipeline. They point at nothing now, and
-       * saying so is better than a zero that reads as "no campaign worked".
-       */
-      const campaigns = await prisma.opsMarketingActivity.findMany({
-        where: { startDate: within(window) },
+      const rows = await prisma.opsCommercialOpportunity.findMany({
+        where: { campaignId: { not: null }, createdAt: within(window) },
+        include: { company: true, campaign: true, payments: true },
       });
       return {
-        value: 0,
+        value: rows.length,
         unit: 'leads',
-        rows: [],
-        says:
-          campaigns.length === 0
-            ? 'No campaigns in this window'
-            : `${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'} ran, and nothing is yet linked back to them`,
+        /*
+         * Named with what they turned into, not counted. "Two leads" says a
+         * campaign was busy; "two leads, one paying, $7,000" says whether it was
+         * worth running again.
+         */
+        rows: rows.map((r) => ({
+          company: r.company.name,
+          campaign: r.campaign?.title,
+          stage: r.stage,
+          cash: r.payments.reduce((sum, p) => sum + Number(p.amount), 0),
+        })),
+        says: `${rows.length} from campaigns`,
       };
     },
   },
