@@ -36,6 +36,18 @@ const UNGUARDED_ON_PURPOSE = [
    * secret, which the caller does not have.
    */
   "@Post('embed/session')",
+  /*
+   * A DESCRIPTION OF THE API, containing nothing that is not already in an
+   * error message somebody would get by guessing.
+   *
+   * Behind a token it would be useless: the person who needs it is holding a
+   * client id they are about to use for the first time, and putting the answer
+   * behind the exchange they are trying to get right is how a six-call
+   * integration becomes an afternoon. There is no customer data here and no
+   * organisation is named - it is the six calls, three closed sets of enum
+   * values, and the four places people trip.
+   */
+  "@Get('how-to-connect')",
 ];
 
 /**
@@ -110,9 +122,47 @@ describe('every public route is guarded', () => {
   });
 
   it('the unguarded list stays very short', () => {
-    /* Not a style rule. Every entry is a route on the public internet with no guard. It was one and
-       is now two; a third should be hard to add without somebody asking why. */
-    expect(UNGUARDED_ON_PURPOSE.length).toBeLessThanOrEqual(2);
+    /*
+     * Not a style rule. Every entry is a route on the public internet with no guard.
+     *
+     * One, then two, and now three. The third is `how-to-connect`, which returns
+     * the six calls, three enum lists and the four places people trip - all of
+     * it already reachable by guessing wrong once, none of it about any
+     * organisation. It was asked for by the ratchet doing exactly what it says:
+     * the number did not move until somebody wrote the paragraph.
+     *
+     * The bar for a fourth is unchanged. It is not "the third one was fine".
+     */
+    expect(UNGUARDED_ON_PURPOSE.length).toBeLessThanOrEqual(3);
+  });
+
+  it('and an unguarded route that describes the API touches no data at all', () => {
+    /**
+     * The cap counts entries; this reads what they do. A short list of routes
+     * that each leak something is worse than a long list of harmless ones, and
+     * only one of those is checked by counting.
+     *
+     * The distinction is what the route is FOR. Two of the three authenticate
+     * the caller, so they necessarily read a credential and the organisation
+     * behind it - my first version of this test asserted they touched neither
+     * and failed on the token exchange, which was the test being wrong rather
+     * than the route. The third describes the API and should reach nothing.
+     */
+    const describesTheApi = ["@Get('how-to-connect')"];
+
+    for (const r of routes()) {
+      if (!describesTheApi.includes(r.decorator)) continue;
+      for (const forbidden of ['organizationId', 'req.machine', 'this.prisma', 'this.credentials']) {
+        expect(r.block).not.toContain(forbidden);
+      }
+    }
+
+    /* And every unguarded route is one of the two kinds, rather than a third
+       nobody has thought about. */
+    for (const decorator of UNGUARDED_ON_PURPOSE) {
+      const authenticatesTheCaller = ["@Post('oauth/token')", "@Post('embed/session')"];
+      expect([...describesTheApi, ...authenticatesTheCaller]).toContain(decorator);
+    }
   });
 
   it('every scope it declares is a scope that exists', () => {

@@ -56,7 +56,10 @@ export function normalise(input: SeedInput) {
 export const NOT_A_KIND =
   `kind must be one of: ${Object.values(ObjectiveKind).join(', ')}. `
   + 'These are not interchangeable - a TARGET is a number crossing a line and a COMMITMENT is '
-  + 'something somebody else is waiting on, and the questions differ.';
+  + 'something somebody else is waiting on, and the questions differ. '
+  /* Where the rest of them are, so somebody guessing one wrong learns the shape
+     rather than the single value. */
+  + 'GET /api/org/v1/how-to-connect lists every closed set on this API.';
 
 /**
  * A COMMITMENT IS OWED TO SOMEBODY, and refusing one without a name is the point of the kind.
