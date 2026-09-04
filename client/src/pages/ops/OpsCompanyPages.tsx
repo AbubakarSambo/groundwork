@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { opsApi, type OpsCommitment, type OpsExpense, type OpsStrategic } from '@/api/ops'
 import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
 import { OpsTable, readEnum, readDate, DueDate, type Column } from './OpsTable'
+import { Adder, Choose } from './OpsForm'
+
+const FUNDING_STAGES = ['TARGET', 'CONTACTED', 'MEETING', 'FOLLOW_UP', 'APPLICATION_DILIGENCE', 'COMMITTED', 'CLOSED', 'DECLINED'] as const
+const STRATEGIC_STATUSES = ['IDENTIFIED', 'OUTREACH', 'ENGAGED', 'OPPORTUNITY_CREATED', 'COMPLETED', 'DORMANT', 'CLOSED'] as const
 
 /** Objectives, commitments, approvals, spend, fundraise, strategy, the seam. */
 
@@ -104,6 +108,7 @@ export function OpsCommitmentsPage() {
   const [period, setPeriod] = useState('sept-2026-sprint')
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
+  const metrics = useQuery({ queryKey: ['ops', 'metric-keys'], queryFn: opsApi.metricKeys, retry: false })
   const commitments = useQuery({
     queryKey: ['ops', 'commitments', me.data?.key, period],
     queryFn: () => opsApi.commitments(me.data!.key, period),
@@ -132,6 +137,37 @@ export function OpsCommitmentsPage() {
       cell: (c) => (c.blocked ? c.blockerReason ?? 'yes' : '—'),
     },
     { head: 'Due', cell: (c) => <DueDate value={c.dueDate} /> },
+    {
+      head: 'Close it',
+      /*
+       * Closed with what actually happened, in words, rather than by flipping a
+       * status. A commitment whose outcome is only a status is one nobody can
+       * learn anything from a quarter later.
+       */
+      cell: (c) =>
+        c.status === 'COMPLETED' || c.status === 'MISSED' ? (
+          <span style={{ color: 'var(--gw-sub)' }}>{c.actualResult ?? 'closed'}</span>
+        ) : (
+          <Adder
+            title="close"
+            fields={[
+              {
+                name: 'status',
+                label: 'How it went',
+                required: true,
+                options: [
+                  { value: 'COMPLETED', label: 'Did it' },
+                  { value: 'MISSED', label: 'Did not' },
+                ],
+              },
+              { name: 'actualResult', label: 'What actually happened', type: 'textarea', required: true },
+            ]}
+            submit={(v) => opsApi.closeCommitment(c.id, { status: v.status, actualResult: v.actualResult })}
+            invalidate={[['ops']]}
+            submitLabel="Close it"
+          />
+        ),
+    },
   ]
 
   return (
@@ -148,6 +184,40 @@ export function OpsCommitmentsPage() {
           </option>
         ))}
       </select>
+      <Adder
+        title="Say what you will do this cycle"
+        fields={[
+          { name: 'title', label: 'What', required: true },
+          { name: 'measureType', label: 'Measured how', required: true, placeholder: 'count, done' },
+          { name: 'targetValue', label: 'Target', type: 'number' },
+          { name: 'unit', label: 'Unit', placeholder: 'leads' },
+          {
+            name: 'measurementSource',
+            label: 'Where the number comes from',
+            required: true,
+            /* MANUAL is offered plainly rather than hidden. Somebody's word is a
+               legitimate source; it just has to be declared as one. */
+            options: [
+              { value: 'MANUAL', label: 'I will keep it up to date myself' },
+              ...(metrics.data ?? []).map((m) => ({ value: m.key, label: m.label })),
+            ],
+          },
+          { name: 'dueDate', label: 'By', type: 'date', required: true },
+        ]}
+        submit={(v) =>
+          opsApi.makeCommitment({
+            operatingPeriodKey: period,
+            title: v.title,
+            measureType: v.measureType,
+            targetValue: v.targetValue ? Number(v.targetValue) : undefined,
+            unit: v.unit || undefined,
+            measurementSource: v.measurementSource,
+            dueDate: v.dueDate,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Commit to it"
+      />
       <OpsTable
         rows={commitments.data}
         columns={columns}
@@ -216,6 +286,30 @@ export function OpsSpendPage() {
       cell: (e) => (
         <>
           {readEnum(e.status)}
+          {/* Only somebody else's claim, and only while it is undecided. The
+              server refuses your own regardless; offering the control anyway
+              would just be a button that always fails. */}
+          {e.status === 'REQUESTED' && (
+            <Adder
+              title="decide"
+              fields={[
+                {
+                  name: 'status',
+                  label: 'What happens to it',
+                  required: true,
+                  options: [
+                    { value: 'APPROVED', label: 'Approve' },
+                    { value: 'PAID', label: 'Mark paid' },
+                    { value: 'REJECTED', label: 'Refuse' },
+                  ],
+                },
+                { name: 'rejectedReason', label: 'Why, if refusing', type: 'textarea' },
+              ]}
+              submit={(v) => opsApi.decideExpense(e.id, v.status, v.rejectedReason || undefined)}
+              invalidate={[['ops']]}
+              submitLabel="Do it"
+            />
+          )}
           {/* RECORDED is not APPROVED, and the ledger must never imply it was. */}
           {e.status === 'RECORDED' && (
             <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>not reviewed by a second person</div>
@@ -251,6 +345,30 @@ export function OpsSpendPage() {
         </section>
       )}
 
+      <Adder
+        title="Claim something back"
+        fields={[
+          { name: 'description', label: 'What', required: true },
+          {
+            name: 'category',
+            label: 'Category',
+            required: true,
+            options: ['Travel', 'Client', 'Software', 'Equipment', 'Other'].map((c) => ({ value: c, label: c })),
+          },
+          { name: 'amount', label: 'How much', type: 'number', required: true },
+          { name: 'date', label: 'When', type: 'date', required: true },
+        ]}
+        submit={(v) =>
+          opsApi.submitExpense({
+            description: v.description,
+            category: v.category,
+            amount: Number(v.amount),
+            date: v.date,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Claim it"
+      />
       <OpsTable rows={spend.data} columns={columns} keyOf={(e) => e.id} empty="Nothing claimed." />
     </main>
   )
@@ -282,12 +400,40 @@ export function OpsFundraisePage() {
         </div>
       )}
 
+      <Adder
+        title="Add a funder"
+        fields={[
+          { name: 'funderName', label: 'Who', required: true },
+          { name: 'fundingType', label: 'Kind', required: true, placeholder: 'Pre-seed, grant' },
+          { name: 'askAmount', label: 'Asking for', type: 'number' },
+        ]}
+        submit={(v) =>
+          opsApi.addFunder({
+            funderName: v.funderName,
+            fundingType: v.fundingType,
+            askAmount: v.askAmount ? Number(v.askAmount) : undefined,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Add them"
+      />
       <OpsTable
         rows={fundraise.data?.opportunities}
         columns={[
           { head: 'Funder', cell: (f) => <strong>{f.funderName}</strong> },
           { head: 'Kind', cell: (f) => f.fundingType },
-          { head: 'Stage', cell: (f) => readEnum(f.stage) },
+          {
+            head: 'Stage',
+            cell: (f) => (
+              <Choose
+                label={`Stage for ${f.funderName}`}
+                value={f.stage}
+                options={FUNDING_STAGES}
+                onPick={(next) => opsApi.advanceFunding(f.id, next)}
+                invalidate={[['ops']]}
+              />
+            ),
+          },
           { head: 'Ask', cell: (f) => money(f.askAmount), numeric: true },
           { head: 'Committed', cell: (f) => money(f.committedAmount), numeric: true },
           { head: 'In', cell: (f) => money(f.closedAmount), numeric: true },
@@ -308,7 +454,18 @@ export function OpsStrategyPage() {
     { head: 'Who', cell: (s) => <strong>{s.personOrNetwork}</strong> },
     { head: 'Where', cell: (s) => s.organization ?? '—' },
     { head: 'For', cell: (s) => s.opportunityType },
-    { head: 'Status', cell: (s) => readEnum(s.status) },
+    {
+      head: 'Status',
+      cell: (s) => (
+        <Choose
+          label={`Status for ${s.personOrNetwork}`}
+          value={s.status}
+          options={STRATEGIC_STATUSES}
+          onPick={(next) => opsApi.setStrategicStatus(s.id, next)}
+          invalidate={[['ops']]}
+        />
+      ),
+    },
     {
       head: 'Became',
       // A pointer, not a claim. Without it, "this network produced three
@@ -322,6 +479,23 @@ export function OpsStrategyPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Strategy" answers="Which relationships could become something?" />
+      <Adder
+        title="Record a relationship"
+        fields={[
+          { name: 'personOrNetwork', label: 'Who', required: true },
+          { name: 'organization', label: 'Where' },
+          { name: 'opportunityType', label: 'Could become', required: true, placeholder: 'Introduction to a buyer' },
+        ]}
+        submit={(v) =>
+          opsApi.addStrategic({
+            personOrNetwork: v.personOrNetwork,
+            opportunityType: v.opportunityType,
+            organization: v.organization || undefined,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Record it"
+      />
       <OpsTable rows={strategy.data} columns={columns} keyOf={(s) => s.id} empty="Nothing tracked." />
     </main>
   )

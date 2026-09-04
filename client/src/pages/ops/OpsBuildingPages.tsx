@@ -2,7 +2,12 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
-import { OpsTable, readEnum, DueDate, type Column } from './OpsTable'
+import { OpsTable, DueDate, type Column } from './OpsTable'
+import { Adder, Choose } from './OpsForm'
+
+const ROADMAP_STATUSES = ['PROPOSED', 'READY', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'] as const
+const WORK_STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'RESOLVED'] as const
+const READINESS = ['UNKNOWN', 'REVIEWING', 'GAP_IDENTIFIED', 'IN_PROGRESS', 'PRODUCT_READY'] as const
 
 /** What we build: the roadmap, whether a client is supported, tech and UX. */
 
@@ -29,7 +34,20 @@ export function OpsRoadmapPage() {
       ),
     },
     { head: 'Kind', cell: (r) => r.itemType },
-    { head: 'Status', cell: (r) => readEnum(r.status) },
+    {
+      head: 'Status',
+      /* The refusal lands here when a decision is outstanding, which is where
+         somebody who just tried to start it is looking. */
+      cell: (r) => (
+        <Choose
+          label={`Status of ${r.title}`}
+          value={r.status}
+          options={ROADMAP_STATUSES}
+          onPick={(next) => opsApi.setRoadmapStatus(r.id, next)}
+          invalidate={[['ops']]}
+        />
+      ),
+    },
     {
       head: 'Decision',
       cell: (r) =>
@@ -45,6 +63,34 @@ export function OpsRoadmapPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Roadmap" answers="What are we building, and in what order?" />
+      <Adder
+        title="Propose something"
+        fields={[
+          { name: 'title', label: 'What', required: true },
+          { name: 'description', label: 'What it covers', type: 'textarea' },
+          { name: 'itemType', label: 'Kind', required: true, placeholder: 'feature, stability, infrastructure' },
+          { name: 'priority', label: 'Priority', type: 'number', placeholder: '3' },
+          {
+            name: 'approvalRequired',
+            label: 'Needs a decision before it starts',
+            options: [
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ],
+          },
+        ]}
+        submit={(v) =>
+          opsApi.propose({
+            title: v.title,
+            description: v.description || undefined,
+            itemType: v.itemType,
+            priority: v.priority ? Number(v.priority) : undefined,
+            approvalRequired: v.approvalRequired === 'yes',
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Propose it"
+      />
       <OpsTable
         rows={roadmap.data}
         columns={columns}
@@ -68,7 +114,20 @@ export function OpsReadinessPage() {
       ),
     },
     { head: 'Use case', cell: (u) => u.title },
-    { head: 'Where it is', cell: (u) => readEnum(u.productReadiness) },
+    {
+      head: 'Where it is',
+      /* Refuses PRODUCT_READY while a gap is written down, and says which gap.
+         The refusal appearing next to the gaps is the whole point. */
+      cell: (u) => (
+        <Choose
+          label={`Readiness of ${u.title}`}
+          value={u.productReadiness}
+          options={READINESS}
+          onPick={(next) => opsApi.setReadiness(u.id, { readiness: next })}
+          invalidate={[['ops']]}
+        />
+      ),
+    },
     {
       head: 'What is missing',
       /*
@@ -102,6 +161,23 @@ export function OpsReadinessPage() {
         name="Readiness"
         answers="Whose use case are we not supporting, and what would it take?"
       />
+      <Adder
+        title="Record what a company wants to do"
+        fields={[
+          { name: 'companyKey', label: 'Company key', required: true, placeholder: 'meridian-care' },
+          { name: 'title', label: 'The use case', required: true },
+          { name: 'expectedWorkflow', label: 'What they expect to happen', type: 'textarea' },
+        ]}
+        submit={(v) =>
+          opsApi.addUseCase({
+            companyKey: v.companyKey,
+            title: v.title,
+            expectedWorkflow: v.expectedWorkflow || undefined,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Record it"
+      />
       <OpsTable
         rows={useCases.data}
         columns={columns}
@@ -120,7 +196,20 @@ function workItemColumns(kind: 'tech' | 'ux'): Column<OpsWorkItem>[] {
       cell: (i) => (kind === 'tech' ? i.itemType ?? '—' : i.affectedFlow ?? '—'),
     },
     { head: 'Severity', cell: (i) => i.severity },
-    { head: 'Status', cell: (i) => readEnum(i.status) },
+    {
+      head: 'Status',
+      cell: (i) => (
+        <Choose
+          label={`Status of ${i.title}`}
+          value={i.status}
+          options={WORK_STATUSES}
+          onPick={(next) =>
+            kind === 'tech' ? opsApi.setTechStatus(i.id, next) : opsApi.setUXStatus(i.id, next)
+          }
+          invalidate={[['ops']]}
+        />
+      ),
+    },
     ...(kind === 'tech'
       ? [{ head: 'Blocked on', cell: (i: OpsWorkItem) => i.blockerReason ?? '—' }]
       : []),
@@ -133,6 +222,30 @@ export function OpsTechPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Tech" answers="What is in my way, and what is holding a client up?" />
+      <Adder
+        title="Raise something"
+        fields={[
+          { name: 'title', label: 'What is wrong', required: true },
+          { name: 'itemType', label: 'Kind', required: true, placeholder: 'bug, infrastructure' },
+          {
+            name: 'severity',
+            label: 'How bad',
+            required: true,
+            options: ['critical', 'high', 'medium', 'low'].map((s) => ({ value: s, label: s })),
+          },
+          { name: 'targetDate', label: 'Due', type: 'date' },
+        ]}
+        submit={(v) =>
+          opsApi.addTech({
+            title: v.title,
+            itemType: v.itemType,
+            severity: v.severity,
+            targetDate: v.targetDate || undefined,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Raise it"
+      />
       <OpsTable
         rows={tech.data}
         columns={workItemColumns('tech')}
@@ -148,6 +261,32 @@ export function OpsUXPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="UX" answers="What is hard to use, and where did we notice?" />
+      <Adder
+        title="Record an interface problem"
+        fields={[
+          { name: 'title', label: 'What is hard', required: true },
+          { name: 'affectedFlow', label: 'Where', placeholder: 'Check-in list' },
+          {
+            name: 'severity',
+            label: 'How bad',
+            required: true,
+            options: ['critical', 'high', 'medium', 'low'].map((s) => ({ value: s, label: s })),
+          },
+          /* Whose words this came from. A problem somebody reported is worth
+             more than one somebody thought of, and the board should be able to tell. */
+          { name: 'sourceNote', label: 'Where we noticed it', type: 'textarea' },
+        ]}
+        submit={(v) =>
+          opsApi.addUX({
+            title: v.title,
+            affectedFlow: v.affectedFlow || undefined,
+            severity: v.severity,
+            sourceNote: v.sourceNote || undefined,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Record it"
+      />
       <OpsTable
         rows={ux.data}
         columns={workItemColumns('ux')}

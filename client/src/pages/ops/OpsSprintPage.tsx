@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
+import { Adder } from './OpsForm'
 
 /**
  * The sprint: every company, how far it has got, and what is in the way.
@@ -117,6 +118,27 @@ export default function OpsSprintPage() {
               </p>
             </section>
           )}
+
+          <Adder
+            title="Add a company"
+            fields={[
+              { name: 'name', label: 'Their name', required: true },
+              { name: 'source', label: 'How they reached us', placeholder: 'Inbound from the site' },
+              { name: 'primaryContactName', label: 'Who we talk to' },
+              { name: 'primaryContactEmail', label: 'Their email' },
+            ]}
+            submit={(v) =>
+              opsApi.addCompany({
+                name: v.name,
+                sprintPeriodKey: periodKey,
+                source: v.source || undefined,
+                primaryContactName: v.primaryContactName || undefined,
+                primaryContactEmail: v.primaryContactEmail || undefined,
+              })
+            }
+            invalidate={[['ops']]}
+            submitLabel="Add them"
+          />
 
           <div style={{ overflowX: 'auto', ...CARD, padding: 0 }}>
             <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, minWidth: 720 }}>

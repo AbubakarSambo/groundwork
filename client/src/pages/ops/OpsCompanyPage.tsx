@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
 import { PAGE, CARD, LABEL } from './OpsLayout'
 import { readEnum, readDate, DueDate } from './OpsTable'
+import { Adder } from './OpsForm'
 
 /**
  * One company, every angle.
@@ -87,6 +88,52 @@ export default function OpsCompanyPage() {
             <strong>In the way:</strong> {d.company.blockerSummary}
           </p>
         )}
+        {/* Both writes live where the fact does. Setting a next action from a
+            list means picking a row first; setting it here means you were
+            already looking at the company you meant. */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <Adder
+            title={d.company.nextAction ? 'Change what is next' : 'Say what is next'}
+            fields={[
+              { name: 'nextAction', label: 'What happens next', required: true },
+              { name: 'dueAt', label: 'By', type: 'date' },
+            ]}
+            submit={(v) => opsApi.setCompanyNextAction(key, v.nextAction, v.dueAt || undefined)}
+            invalidate={[['ops']]}
+            submitLabel="Set it"
+          />
+          <Adder
+            title={d.company.blockerSummary ? 'Change what is in the way' : 'Say what is in the way'}
+            fields={[{ name: 'summary', label: 'What is holding them up', type: 'textarea', required: true }]}
+            submit={(v) => opsApi.setCompanyBlocker(key, v.summary)}
+            invalidate={[['ops']]}
+            submitLabel="Record it"
+          />
+          {/*
+            Setting the stage by hand is still allowed even though the board
+            derives it, because a company can legitimately be moved ahead before
+            any deal or deployment exists — and the derived value never goes
+            backwards, so this can only ever help.
+          */}
+          <Adder
+            title="Move the stage by hand"
+            fields={[
+              {
+                name: 'stage',
+                label: 'Where they are',
+                required: true,
+                options: ['LINED_UP', 'USE_CASE_CONFIRMED', 'PRODUCT_READY', 'ONBOARDED', 'LIVE'].map((v) => ({
+                  value: v,
+                  label: v.replace(/_/g, ' ').toLowerCase(),
+                })),
+              },
+            ]}
+            submit={(v) => opsApi.setCompanyStage(key, v.stage)}
+            invalidate={[['ops']]}
+            submitLabel="Move it"
+          />
+        </div>
+
         {d.company.primaryContactName && (
           <p style={{ fontSize: 13, margin: '8px 0 0', color: 'var(--gw-sub)' }}>
             {d.company.primaryContactName}
@@ -96,6 +143,18 @@ export default function OpsCompanyPage() {
       </Section>
 
       <Section title="Who brought them">
+        <Adder
+          title="I brought them"
+          fields={[
+            { name: 'sourceType', label: 'How you know them', required: true, placeholder: 'Former colleague' },
+            { name: 'sourceDetail', label: 'Anything worth knowing', type: 'textarea' },
+          ]}
+          submit={(v) =>
+            opsApi.attribute({ companyKey: key, sourceType: v.sourceType, sourceDetail: v.sourceDetail || undefined })
+          }
+          invalidate={[['ops']]}
+          submitLabel="Record it"
+        />
         {d.broughtBy.length === 0 ? (
           <p style={NOTHING}>Nobody. They came to us.</p>
         ) : (

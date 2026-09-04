@@ -3,6 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsOpportunity, type OpsDeployment, type OpsCampaign } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
 import { OpsTable, readEnum, readDate, DueDate, type Column } from './OpsTable'
+import { Adder, Choose } from './OpsForm'
+
+const SALES_STAGES = ['LEAD', 'CONTACTED', 'MEETING', 'PROPOSAL_TRIAL', 'CONVERTED', 'LOST'] as const
+const DEPLOYMENT_STAGES = ['READY_SIGNED', 'SETUP', 'ONBOARDING', 'FIRST_USE', 'LIVE'] as const
 
 /** Selling and getting people live: the pipeline, the campaigns, the deployments. */
 
@@ -22,11 +26,56 @@ export function OpsSalesPage() {
         </Link>
       ),
     },
-    { head: 'Stage', cell: (o) => readEnum(o.stage) },
+    {
+      head: 'Stage',
+      cell: (o) => (
+        <Choose
+          label={`Stage for ${o.company.name}`}
+          value={o.stage}
+          options={SALES_STAGES}
+          onPick={(next) => opsApi.advanceOpportunity(o.id, next)}
+          invalidate={[['ops']]}
+        />
+      ),
+    },
     { head: 'Worth', cell: (o) => money(o.estimatedValue), numeric: true },
     { head: 'Came from', cell: (o) => o.campaign?.title ?? '—' },
-    { head: 'Next', cell: (o) => o.nextAction ?? '—' },
+    {
+      head: 'Next',
+      cell: (o) => (
+        <>
+          {o.nextAction ?? <span style={{ color: 'var(--gw-sub)' }}>nothing planned</span>}
+          <Adder
+            title={o.nextAction ? 'change' : 'set one'}
+            fields={[
+              { name: 'nextAction', label: 'What happens next', required: true },
+              { name: 'dueAt', label: 'By', type: 'date' },
+            ]}
+            submit={(v) => opsApi.setFollowUp(o.id, v.nextAction, v.dueAt || undefined)}
+            invalidate={[['ops']]}
+            submitLabel="Set it"
+          />
+        </>
+      ),
+    },
     { head: 'Due', cell: (o) => <DueDate value={o.nextActionDueAt} /> },
+    {
+      head: 'Log',
+      /* A call or a demo, recorded where the deal is. Every stage metric counts
+         these, so a conversation nobody logs is a cycle that looks quiet. */
+      cell: (o) => (
+        <Adder
+          title="what happened"
+          fields={[
+            { name: 'kind', label: 'What', required: true, placeholder: 'call, demo, proposal_sent' },
+            { name: 'note', label: 'Anything worth keeping', type: 'textarea' },
+          ]}
+          submit={(v) => opsApi.logActivity(o.id, { kind: v.kind, note: v.note || undefined })}
+          invalidate={[['ops']]}
+          submitLabel="Log it"
+        />
+      ),
+    },
     {
       head: 'Last touched',
       // The number that says whether a deal is being worked or is simply sitting.
@@ -39,6 +88,23 @@ export function OpsSalesPage() {
       <OpsHeader
         name="Pipeline"
         answers="Who am I talking to, and what have I not followed up?"
+      />
+      <Adder
+        title="Open an opportunity"
+        fields={[
+          { name: 'companyKey', label: 'Company key', required: true, placeholder: 'meridian-care' },
+          { name: 'estimatedValue', label: 'Worth', type: 'number' },
+          { name: 'useCaseSummary', label: 'What they want', type: 'textarea' },
+        ]}
+        submit={(v) =>
+          opsApi.openOpportunity({
+            companyKey: v.companyKey,
+            estimatedValue: v.estimatedValue ? Number(v.estimatedValue) : undefined,
+            useCaseSummary: v.useCaseSummary || undefined,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Open it"
       />
       <OpsTable
         rows={pipeline.data}
@@ -66,7 +132,18 @@ export function OpsDeploymentPage() {
         </Link>
       ),
     },
-    { head: 'Stage', cell: (d) => readEnum(d.stage) },
+    {
+      head: 'Stage',
+      cell: (d) => (
+        <Choose
+          label={`Stage for ${d.company.name}`}
+          value={d.stage}
+          options={DEPLOYMENT_STAGES}
+          onPick={(next) => opsApi.advanceDeployment(d.id, next)}
+          invalidate={[['ops']]}
+        />
+      ),
+    },
     {
       head: 'Days in it',
       // Reading the start date and doing the arithmetic in your head is the
@@ -75,7 +152,29 @@ export function OpsDeploymentPage() {
       numeric: true,
     },
     { head: 'First used', cell: (d) => readDate(d.firstUseAt) },
-    { head: 'Waiting on', cell: (d) => d.blockerType ?? '—' },
+    {
+      head: 'Waiting on',
+      cell: (d) => (
+        <>
+          {d.blockerType ?? <span style={{ color: 'var(--gw-sub)' }}>nothing</span>}
+          <Adder
+            title={d.blockerType ? 'change' : 'record one'}
+            fields={[
+              {
+                name: 'type',
+                label: 'Who it is waiting on',
+                required: true,
+                options: ['Product', 'Tech', 'UX', 'Them', 'Us'].map((t) => ({ value: t, label: t })),
+              },
+              { name: 'summary', label: 'What exactly', type: 'textarea', required: true },
+            ]}
+            submit={(v) => opsApi.setDeploymentBlocker(d.id, v.type, v.summary)}
+            invalidate={[['ops']]}
+            submitLabel="Record it"
+          />
+        </>
+      ),
+    },
     { head: 'Why', cell: (d) => d.blockerSummary ?? '—' },
     { head: 'Target live', cell: (d) => <DueDate value={d.targetLiveDate} /> },
   ]
@@ -83,6 +182,18 @@ export function OpsDeploymentPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Deployment" answers="Who is stuck getting live, and on what?" />
+      <Adder
+        title="Start a deployment"
+        fields={[
+          { name: 'companyKey', label: 'Company key', required: true, placeholder: 'meridian-care' },
+          { name: 'targetLiveDate', label: 'Target live', type: 'date' },
+        ]}
+        submit={(v) =>
+          opsApi.startDeployment({ companyKey: v.companyKey, targetLiveDate: v.targetLiveDate || undefined })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Start it"
+      />
       <OpsTable
         rows={deployments.data}
         columns={columns}
@@ -118,6 +229,25 @@ export function OpsMarketingPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Marketing" answers="What did we put out, and what did it bring in?" />
+      <Adder
+        title="Plan a campaign"
+        fields={[
+          { name: 'title', label: 'What is it', required: true },
+          { name: 'activityType', label: 'Kind', required: true, placeholder: 'Outbound sequence' },
+          { name: 'channel', label: 'Channel', placeholder: 'Email' },
+          { name: 'startDate', label: 'Starts', type: 'date', required: true },
+        ]}
+        submit={(v) =>
+          opsApi.addCampaign({
+            title: v.title,
+            activityType: v.activityType,
+            channel: v.channel || undefined,
+            startDate: v.startDate,
+          })
+        }
+        invalidate={[['ops']]}
+        submitLabel="Plan it"
+      />
       <OpsTable
         rows={campaigns.data}
         columns={columns}

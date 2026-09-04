@@ -1,4 +1,24 @@
 import { apiClient } from './client'
+import type { AxiosRequestConfig } from 'axios'
+
+/**
+ * Every back-office call opts out of the generic error toasts.
+ *
+ * The refusals ARE the product here. "That company is already here at LINED_UP",
+ * "still has a product gap recorded, clear it or say it is not one", "this needs
+ * sales:write" — each is specific, actionable, and rendered next to the thing it
+ * refers to.
+ *
+ * Without this, a 403 also raised "Access denied · You do not have permission to
+ * perform this action" in the corner. Two messages, and the louder one was
+ * wrong: James DOES have the capability, and what actually stopped him was a
+ * gap he had written down himself. Seen on screen, not in the code.
+ */
+const QUIET: AxiosRequestConfig = {
+  skipForbiddenToast: true,
+  skipNotFoundToast: true,
+  skipServerErrorToast: true,
+}
 
 /**
  * The back office the Groundwork team runs on.
@@ -318,43 +338,115 @@ export interface OpsCompanyDetail {
 }
 
 export const opsApi = {
-  me: () => apiClient.get<OpsIdentity>('/ops/me').then((r) => r.data),
-  boards: () => apiClient.get<OpsBoardListing>('/ops/boards').then((r) => r.data),
+  me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
+  boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
   board: (key: string, period: string) =>
-    apiClient.get<OpsBoard>(`/ops/boards/${key}`, { params: { period } }).then((r) => r.data),
-  periods: () => apiClient.get<Array<{ key: string; name: string; kind: string }>>('/ops/periods').then((r) => r.data),
+    apiClient.get<OpsBoard>(`/ops/boards/${key}`, { ...QUIET, params: { period } }).then((r) => r.data),
+  periods: () => apiClient.get<Array<{ key: string; name: string; kind: string }>>('/ops/periods', QUIET).then((r) => r.data),
   sprint: (periodKey: string) =>
-    apiClient.get<OpsSprintBoard>(`/ops/sprint/${periodKey}`).then((r) => r.data),
+    apiClient.get<OpsSprintBoard>(`/ops/sprint/${periodKey}`, QUIET).then((r) => r.data),
   standing: (personKey: string) =>
-    apiClient.get<OpsStanding>(`/ops/standing/${personKey}`).then((r) => r.data),
-  todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`).then((r) => r.data),
+    apiClient.get<OpsStanding>(`/ops/standing/${personKey}`, QUIET).then((r) => r.data),
+  todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`, QUIET).then((r) => r.data),
   closeTodo: (id: string, status: 'DONE' | 'CANCELLED') =>
-    apiClient.patch<OpsTodo>(`/ops/todos/${id}/status`, { status }).then((r) => r.data),
+    apiClient.patch(`/ops/todos/${id}/status`, { status }, QUIET).then((r) => r.data),
   approvals: () =>
     apiClient
       .get<Array<{ id: string; approvalType: string; requestSummary: string; createdAt: string }>>('/ops/approvals')
       .then((r) => r.data),
   decide: (id: string, status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED', decisionNote?: string) =>
-    apiClient.patch(`/ops/approvals/${id}`, { status, decisionNote }).then((r) => r.data),
+    apiClient.patch(`/ops/approvals/${id}`, { status, decisionNote }, QUIET).then((r) => r.data),
 
   company: (key: string) =>
-    apiClient.get<OpsCompanyDetail>(`/ops/companies/${key}`).then((r) => r.data),
-  pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline').then((r) => r.data),
-  deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments').then((r) => r.data),
-  campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns').then((r) => r.data),
-  roadmap: () => apiClient.get<OpsRoadmapItem[]>('/ops/roadmap').then((r) => r.data),
-  useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases').then((r) => r.data),
-  tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech').then((r) => r.data),
-  ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux').then((r) => r.data),
+    apiClient.get<OpsCompanyDetail>(`/ops/companies/${key}`, QUIET).then((r) => r.data),
+  pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline', QUIET).then((r) => r.data),
+  deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments', QUIET).then((r) => r.data),
+  campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns', QUIET).then((r) => r.data),
+  roadmap: () => apiClient.get<OpsRoadmapItem[]>('/ops/roadmap', QUIET).then((r) => r.data),
+  useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => r.data),
+  tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => r.data),
+  ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux', QUIET).then((r) => r.data),
   objectives: (periodKey: string) =>
-    apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`).then((r) => r.data),
+    apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`, QUIET).then((r) => r.data),
   commitments: (personKey: string, periodKey: string) =>
-    apiClient.get<OpsCommitment[]>(`/ops/commitments/${personKey}/${periodKey}`).then((r) => r.data),
-  spend: () => apiClient.get<OpsExpense[]>('/ops/spend').then((r) => r.data),
-  balance: () => apiClient.get<OpsBalance>('/ops/balance').then((r) => r.data),
-  fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise').then((r) => r.data),
-  strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy').then((r) => r.data),
-  integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration').then((r) => r.data),
+    apiClient.get<OpsCommitment[]>(`/ops/commitments/${personKey}/${periodKey}`, QUIET).then((r) => r.data),
+  spend: () => apiClient.get<OpsExpense[]>('/ops/spend', QUIET).then((r) => r.data),
+  balance: () => apiClient.get<OpsBalance>('/ops/balance', QUIET).then((r) => r.data),
+  fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise', QUIET).then((r) => r.data),
+  strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
+  integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
+  // --- Writes ---------------------------------------------------------------
+  addCompany: (body: { name: string; sprintPeriodKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string }) =>
+    apiClient.post('/ops/companies', body, QUIET).then((r) => r.data),
+  setCompanyStage: (key: string, stage: string) =>
+    apiClient.patch(`/ops/companies/${key}/stage`, { stage }, QUIET).then((r) => r.data),
+  setCompanyNextAction: (key: string, nextAction: string, dueAt?: string) =>
+    apiClient.patch(`/ops/companies/${key}/next-action`, { nextAction, dueAt }, QUIET).then((r) => r.data),
+  setCompanyBlocker: (key: string, summary: string | null) =>
+    apiClient.patch(`/ops/companies/${key}/blocker`, { summary }, QUIET).then((r) => r.data),
+  attribute: (body: { companyKey: string; sourceType: string; sourceDetail?: string }) =>
+    apiClient.post('/ops/attributions', body, QUIET).then((r) => r.data),
+
+  openOpportunity: (body: { companyKey: string; estimatedValue?: number; useCaseSummary?: string }) =>
+    apiClient.post('/ops/pipeline', body, QUIET).then((r) => r.data),
+  advanceOpportunity: (id: string, stage: string, lostReason?: string) =>
+    apiClient.patch(`/ops/pipeline/${id}/stage`, { stage, lostReason }, QUIET).then((r) => r.data),
+  setFollowUp: (id: string, nextAction: string, dueAt?: string) =>
+    apiClient.patch(`/ops/pipeline/${id}/follow-up`, { nextAction, dueAt }, QUIET).then((r) => r.data),
+  logActivity: (id: string, body: { kind: string; note?: string }) =>
+    apiClient.post(`/ops/pipeline/${id}/activity`, body, QUIET).then((r) => r.data),
+
+  startDeployment: (body: { companyKey: string; targetLiveDate?: string }) =>
+    apiClient.post('/ops/deployments', body, QUIET).then((r) => r.data),
+  advanceDeployment: (id: string, stage: string) =>
+    apiClient.patch(`/ops/deployments/${id}/stage`, { stage }, QUIET).then((r) => r.data),
+  setDeploymentBlocker: (id: string, type: string | null, summary: string | null) =>
+    apiClient.patch(`/ops/deployments/${id}/blocker`, { type, summary }, QUIET).then((r) => r.data),
+
+  addCampaign: (body: { title: string; activityType: string; channel?: string; startDate: string }) =>
+    apiClient.post('/ops/campaigns', body, QUIET).then((r) => r.data),
+
+  propose: (body: { title: string; description?: string; itemType: string; priority?: number; approvalRequired?: boolean }) =>
+    apiClient.post('/ops/roadmap', body, QUIET).then((r) => r.data),
+  setRoadmapStatus: (id: string, status: string) =>
+    apiClient.patch(`/ops/roadmap/${id}/status`, { status }, QUIET).then((r) => r.data),
+
+  addUseCase: (body: { companyKey: string; title: string; expectedWorkflow?: string }) =>
+    apiClient.post('/ops/use-cases', body, QUIET).then((r) => r.data),
+  setReadiness: (id: string, body: { readiness: string; productGap?: string | null; uxGap?: string | null; technicalGap?: string | null }) =>
+    apiClient.patch(`/ops/use-cases/${id}/readiness`, body, QUIET).then((r) => r.data),
+
+  addTech: (body: { title: string; itemType: string; severity: string; targetDate?: string }) =>
+    apiClient.post('/ops/tech', body, QUIET).then((r) => r.data),
+  setTechStatus: (id: string, status: string, blockerReason?: string) =>
+    apiClient.patch(`/ops/tech/${id}/status`, { status, blockerReason }, QUIET).then((r) => r.data),
+  addUX: (body: { title: string; affectedFlow?: string; severity: string; sourceNote?: string }) =>
+    apiClient.post('/ops/ux', body, QUIET).then((r) => r.data),
+  setUXStatus: (id: string, status: string) =>
+    apiClient.patch(`/ops/ux/${id}/status`, { status }, QUIET).then((r) => r.data),
+
+  makeCommitment: (body: { operatingPeriodKey: string; title: string; measureType: string; targetValue?: number; unit?: string; measurementSource: string; dueDate: string }) =>
+    apiClient.post('/ops/commitments', body, QUIET).then((r) => r.data),
+  closeCommitment: (id: string, body: { status: string; actualResult: string }) =>
+    apiClient.patch(`/ops/commitments/${id}/close`, body, QUIET).then((r) => r.data),
+
+  submitExpense: (body: { date: string; description: string; category: string; amount: number }) =>
+    apiClient.post('/ops/spend', body, QUIET).then((r) => r.data),
+  decideExpense: (id: string, status: string, rejectedReason?: string) =>
+    apiClient.patch(`/ops/spend/${id}`, { status, rejectedReason }, QUIET).then((r) => r.data),
+
+  addFunder: (body: { funderName: string; fundingType: string; askAmount?: number }) =>
+    apiClient.post('/ops/fundraise', body, QUIET).then((r) => r.data),
+  advanceFunding: (id: string, stage: string) =>
+    apiClient.patch(`/ops/fundraise/${id}/stage`, { stage }, QUIET).then((r) => r.data),
+  addStrategic: (body: { personOrNetwork: string; opportunityType: string; organization?: string }) =>
+    apiClient.post('/ops/strategy', body, QUIET).then((r) => r.data),
+  setStrategicStatus: (id: string, status: string) =>
+    apiClient.patch(`/ops/strategy/${id}/status`, { status }, QUIET).then((r) => r.data),
+
+  metricKeys: () =>
+    apiClient.get<Array<{ key: string; label: string }>>('/ops/metrics', QUIET).then((r) => r.data),
+
   pushToGroundwork: (period: string) =>
-    apiClient.post('/ops/integration/push', null, { params: { period } }).then((r) => r.data),
+    apiClient.post('/ops/integration/push', null, { ...QUIET, params: { period } }).then((r) => r.data),
 }
