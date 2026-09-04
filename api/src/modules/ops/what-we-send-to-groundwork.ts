@@ -41,6 +41,33 @@ export interface InteractionPayload {
 /** The one name our records travel under, so nothing else can claim to be us. */
 export const OUR_SOURCE_SYSTEM = 'groundwork-ops';
 
+export interface PersonPayload {
+  externalId: string
+  displayName: string
+  email: string
+}
+
+export interface PersonShape {
+  key: string
+  displayName: string
+  email: string | null
+  active: boolean
+}
+
+/**
+ * Our team, as an identity provider would send them.
+ *
+ * Anybody without an email is dropped rather than sent with a blank one: the
+ * API accepts a person with no email and then refuses, several calls later, to
+ * open a check-in as them — so sending them is worse than not, because it
+ * produces a directory entry that looks fine and cannot be used.
+ */
+export function peopleFrom(people: PersonShape[]): PersonPayload[] {
+  return people
+    .filter((p) => p.active && p.email)
+    .map((p) => ({ externalId: p.key, displayName: p.displayName, email: p.email as string }))
+}
+
 export interface ObjectiveShape {
   id: string;
   title: string;
@@ -76,6 +103,18 @@ export function subjectsFrom(objectives: ObjectiveShape[]): SubjectPayload[] {
  * built on it should be able to ask a different question than one built on a
  * number the system computed.
  */
+/** The same key results, in the shape the check-in's objectives endpoint takes. */
+export function objectivesFrom(objectives: ObjectiveShape[]) {
+  return objectives.flatMap((objective) =>
+    objective.keyResults.map((kr) => ({
+      externalId: kr.id,
+      text: `${objective.title} — ${kr.title}`,
+      measure: kr.unit,
+      target: String(kr.target),
+    })),
+  )
+}
+
 export function evidenceFrom(objectives: ObjectiveShape[], observedAt = new Date()): EvidencePayload[] {
   return objectives.flatMap((objective) =>
     objective.keyResults.map((kr) => ({

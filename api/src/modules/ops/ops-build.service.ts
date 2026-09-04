@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { mayMoveOutOfProposed } from './nothing-executes-until-it-is-approved';
 import { OpsIdentity } from './ops-people.service';
+import { decidesSomething } from './who-decides-anything';
 
 /**
  * What we build: the roadmap, whether a client's use case is supported, the
@@ -251,8 +252,20 @@ export class OpsBuildService {
    *
    * Filtered by approver rather than showing everything pending, because a queue
    * that includes other people's decisions is a list somebody stops reading.
+   *
+   * Refused outright to somebody who decides nothing. It returned an empty list
+   * to them instead, which leaked nothing and was still wrong: the menu hid the
+   * page and the server allowed it, so "may I see this" was being answered by
+   * the interface. The first person to type the address would have found a
+   * page the navigation says is not theirs.
    */
   queueFor(identity: OpsIdentity, status: OpsApprovalStatus = 'PENDING') {
+    if (!decidesSomething(identity)) {
+      throw new ForbiddenException(
+        'This is the list of decisions waiting on you, and nothing waits on you. Ask through the record instead.',
+      );
+    }
+
     return this.prisma.opsApproval.findMany({
       where: { approverId: identity.personId, status },
       orderBy: { createdAt: 'asc' },

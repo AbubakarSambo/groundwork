@@ -4891,6 +4891,16 @@ model OpsIntegration {
   clientId     String? @map("client_id")
   clientSecret String? @map("client_secret")
 
+  /// The check-in our objectives are attached to, in the Groundwork we push to.
+  ///
+  /// Evidence attaches to an objective that exists ON a check-in, so without
+  /// this there is nowhere for our numbers to land - which is exactly what
+  /// happened for the whole of the first build: every push returned 200 and
+  /// wrote nothing. The adapter does not open one itself: opening a check-in
+  /// invites people and starts a conversation, and a nightly job should not do
+  /// that on anybody's behalf.
+  checkInId String? @map("check_in_id")
+
   /// What the last push did, in the API's own words.
   lastSyncAt      DateTime? @map("last_sync_at")
   lastSyncOk      Boolean?  @map("last_sync_ok")

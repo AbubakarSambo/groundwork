@@ -249,7 +249,7 @@ describe('a 200 is not the same as something happening', () => {
    */
   const { OpsIntegrationService } = jest.requireActual('./ops-integration.service');
 
-  const serviceWith = (evidenceBody: unknown) => {
+  const serviceWith = (evidenceBody: unknown, checkInId: string | null = 'ground-1') => {
     const recorded: Record<string, unknown>[] = [];
     const prisma = {
       opsIntegration: {
@@ -259,6 +259,9 @@ describe('a 200 is not the same as something happening', () => {
           baseUrl: 'https://gw.test',
           clientId: 'c',
           clientSecret: 's',
+          /* A check-in to land on. Without one the advice is about that instead,
+             which is a different problem with a different answer. */
+          checkInId,
         }),
         update: async ({ data }: never) => {
           recorded.push(data as Record<string, unknown>);
@@ -267,6 +270,8 @@ describe('a 200 is not the same as something happening', () => {
       },
       opsPeriod: { findUnique: async () => ({ startsOn: new Date('2026-09-01'), endsOn: new Date('2026-09-30') }) },
       opsActivity: { findMany: async () => [] },
+      opsPerson: { findMany: async () => [] },
+      opsGrant: { findFirst: async () => ({ person: { key: 'hafsah' } }) },
     };
 
     const intent = {
@@ -294,6 +299,7 @@ describe('a 200 is not the same as something happening', () => {
     const replies = [
       { status: 200, body: { access_token: 't', expires_in: 900, scope: '' } },
       { status: 201, body: { externalId: 'kr1' } },
+      { status: 200, body: { seeded: [{ externalId: 'kr1' }] } },
       { status: 200, body: evidenceBody },
     ];
     /**
@@ -324,7 +330,20 @@ describe('a 200 is not the same as something happening', () => {
   it('and says what to do about it, rather than just failing', async () => {
     const { service } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: false }] });
     const result = await service.push('sept-2026-sprint');
-    expect(result.advice).toMatch(/objective on a check-in/);
+    expect(result.advice).toMatch(/objectives may not have seeded/);
+  });
+
+  it('and gives different advice when there is no check-in at all', async () => {
+    /*
+     * Two different problems with two different answers, and the first version
+     * gave one sentence for both. "Somebody has to open a check-in" is useless
+     * to somebody who already has, and "the objectives may not have seeded" is
+     * useless to somebody with nowhere for them to seed onto.
+     */
+    const { service } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: false }] }, null);
+    const result = await service.push('sept-2026-sprint');
+    expect(result.advice).toMatch(/no check-in for these numbers to land on/);
+    expect(result.advice).toMatch(/will not open one for you/);
   });
 
   it('and the connection screen says it too, so it is not only in one response', async () => {
@@ -349,5 +368,74 @@ describe('a 200 is not the same as something happening', () => {
     });
     const result = await service.push('sept-2026-sprint');
     expect(result.ok).toBe(true);
+  });
+});
+
+describe('the order of the push, and why it is that order', () => {
+  /**
+   * People, then subjects, then objectives on the check-in, then evidence.
+   *
+   * Every one of those refers to the one before it. Sending an objective for
+   * somebody Groundwork has never heard of fails — with a message about the
+   * objective, which is the wrong place to look. And evidence with no objective
+   * to attach to returns 200 and writes nothing, which is worse than failing.
+   *
+   * That last one was the whole first build: subjects and evidence, no people
+   * and no objectives, going green every time.
+   */
+  const { peopleFrom, objectivesFrom, evidenceFrom, subjectsFrom } = jest.requireActual(
+    './what-we-send-to-groundwork',
+  );
+
+  const objectives = [
+    {
+      id: 'o1',
+      title: 'Ten lined up',
+      keyResults: [
+        { id: 'kr1', title: 'Companies', target: 10, unit: 'companies', current: 4, dueDate: new Date('2026-09-30'), typedByHand: false },
+      ],
+    },
+  ];
+
+  it('sends people in the shape an identity provider does, with emails', () => {
+    const [person] = peopleFrom([
+      { key: 'hafsah', displayName: 'Hafsah Jumare', email: 'h@example.test', active: true },
+    ]);
+    expect(person).toMatchObject({ externalId: 'hafsah', email: 'h@example.test' });
+  });
+
+  it('and drops anybody with no email rather than sending a blank one', () => {
+    /*
+     * The API accepts a person with no email and then refuses, several calls
+     * later, to open a check-in as them. Sending them is worse than not: it
+     * produces a directory entry that looks fine and cannot be used.
+     */
+    const sent = peopleFrom([
+      { key: 'sahar', displayName: 'Sahar', email: null, active: true },
+      { key: 'gone', displayName: 'Gone', email: 'g@example.test', active: false },
+      { key: 'hafsah', displayName: 'Hafsah', email: 'h@example.test', active: true },
+    ]);
+    expect(sent.map((p: { externalId: string }) => p.externalId)).toEqual(['hafsah']);
+  });
+
+  it('sends objectives with text and a kind, which is what that endpoint takes', () => {
+    const [objective] = objectivesFrom(objectives);
+    expect(objective).toMatchObject({ externalId: 'kr1', measure: 'companies', target: '10' });
+    expect(objective.text).toContain('Ten lined up');
+    // `described` is what a reasonable person sends and it is rejected.
+    expect(objective).not.toHaveProperty('described');
+  });
+
+  it('and the evidence points at the same externalId the objective was seeded under', () => {
+    /*
+     * The join. Seed an objective under one id and push evidence under another
+     * and both calls succeed, separately, for ever.
+     */
+    const [objective] = objectivesFrom(objectives);
+    const [evidence] = evidenceFrom(objectives);
+    const [subject] = subjectsFrom(objectives);
+
+    expect(evidence.objectiveExternalId).toBe(objective.externalId);
+    expect(subject.externalId).toBe(objective.externalId);
   });
 });

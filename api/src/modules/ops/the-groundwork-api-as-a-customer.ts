@@ -123,6 +123,43 @@ export class GroundworkApiClient {
     };
   }
 
+  /**
+   * A person, in the shape an identity provider sends.
+   *
+   * `emails` rather than `userName`, and this is not a detail. Sent with only a
+   * userName the call returns 201 and stores no email at all — and the failure
+   * appears three calls later, opening a check-in, as "that person has no email
+   * address here". Nothing points back at the push that caused it.
+   */
+  pushPerson(person: { externalId: string; displayName: string; email: string }) {
+    return this.send('/scim/v2/Users', 'POST', {
+      externalId: person.externalId,
+      userName: person.email,
+      displayName: person.displayName,
+      emails: [{ value: person.email, primary: true }],
+      active: true,
+    });
+  }
+
+  /**
+   * Our key results, as objectives ON a check-in.
+   *
+   * The step the first version of this adapter did not have, which is why every
+   * evidence push it ever made matched nothing. `text` rather than `described`,
+   * and `kind` is required — TARGET, because a key result is a number crossing
+   * a line rather than something somebody promised.
+   */
+  seedObjectives(
+    checkInId: string,
+    personExternalId: string,
+    objectives: Array<{ externalId: string; text: string; measure?: string; target?: string }>,
+  ) {
+    return this.send(`/grounds/${checkInId}/objectives`, 'POST', {
+      personExternalId,
+      objectives: objectives.map((o) => ({ ...o, kind: 'TARGET' })),
+    });
+  }
+
   pushSubject(subject: object, idempotencyKey?: string) {
     return this.send('/subjects', 'POST', subject, idempotencyKey);
   }

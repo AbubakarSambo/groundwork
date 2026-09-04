@@ -4,8 +4,10 @@ import { OpsIntentService } from './ops-intent.service';
 import { GroundworkApiClient } from './the-groundwork-api-as-a-customer';
 import {
   subjectsFrom,
+  objectivesFrom,
   evidenceFrom,
   interactionsFrom,
+  peopleFrom,
   OUR_SOURCE_SYSTEM,
 } from './what-we-send-to-groundwork';
 
@@ -66,9 +68,12 @@ export class OpsIntegrationService {
       secretSet: Boolean(row.clientSecret),
       lastSyncAt: row.lastSyncAt,
       lastSyncOk: row.lastSyncOk,
+      checkInId: row.checkInId,
       lastSyncSummary: row.lastSyncSummary,
       lastSyncDetail: row.lastSyncDetail,
-      says: row.enabled
+      says: !row.checkInId && row.enabled
+        ? 'Connected, but there is no check-in for the numbers to land on.'
+        : row.enabled
         ? row.lastSyncAt
           ? `Last sent ${row.lastSyncOk ? 'successfully' : 'with a problem'}: ${row.lastSyncSummary}`
           : 'Connected, nothing sent yet'
@@ -77,7 +82,7 @@ export class OpsIntegrationService {
   }
 
   async configure(
-    input: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean },
+    input: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string },
     updatedBy: string,
   ) {
     await this.prisma.opsIntegration.upsert({
@@ -103,6 +108,19 @@ export class OpsIntegrationService {
       throw new BadRequestException('The connection is missing a URL, a client id or a secret');
     }
 
+    /**
+     * Whose objectives these are, on the check-in.
+     *
+     * The CEO, because the objectives are the company's and she owns the
+     * period. Read from the grants rather than named, so it follows the person
+     * rather than the file.
+     */
+    const ceoGrant = await this.prisma.opsGrant.findFirst({
+      where: { capability: 'ceo:board' },
+      include: { person: true },
+    });
+    const ourLead = ceoGrant?.person.key ?? 'unknown';
+
     const client = new GroundworkApiClient({
       baseUrl: row.baseUrl,
       clientId: row.clientId,
@@ -110,6 +128,7 @@ export class OpsIntegrationService {
     });
 
     const objectives = await this.intent.objectives(periodKey);
+    const team = await this.prisma.opsPerson.findMany();
     const period = await this.prisma.opsPeriod.findUnique({ where: { key: periodKey } });
     const activities = await this.prisma.opsActivity.findMany({
       where: period
@@ -128,9 +147,31 @@ export class OpsIntegrationService {
     }> = [];
 
     try {
+      /*
+       * People first, and in this order for a reason: everything after this
+       * refers to them. Sending an objective for somebody Groundwork has never
+       * heard of fails, and the message it fails with talks about the objective.
+       */
+      for (const person of peopleFrom(team)) {
+        results.push({ what: `person ${person.externalId}`, ...(await client.pushPerson(person)) });
+      }
+
       for (const subject of subjectsFrom(objectives)) {
         const result = await client.pushSubject(subject, `${OUR_SOURCE_SYSTEM}:${subject.externalId}`);
         results.push({ what: `subject ${subject.externalId}`, ...result });
+      }
+
+      /*
+       * Then the objectives ON THE CHECK-IN. This is the step the first version
+       * of this adapter did not have, and its absence is why every push it made
+       * returned 200 and wrote nothing.
+       */
+      const objectivePayload = objectivesFrom(objectives);
+      if (row.checkInId && objectivePayload.length) {
+        results.push({
+          what: `objectives x${objectivePayload.length}`,
+          ...(await client.seedObjectives(row.checkInId, ourLead, objectivePayload)),
+        });
       }
 
       const evidence = evidenceFrom(objectives);
@@ -185,9 +226,15 @@ export class OpsIntegrationService {
        * against their ids is the obvious thing to try, it returns 200, and it
        * does nothing at all.
        */
-      advice: unmatched
-        ? 'The evidence reached Groundwork and matched nothing. Evidence attaches to an objective on a check-in, not to a subject - so somebody has to open a check-in and put these objectives on it before the numbers have anywhere to land.'
-        : undefined,
+      /*
+       * Two different problems with two different answers, and the earlier
+       * version gave the same sentence for both.
+       */
+      advice: !row.checkInId
+        ? 'There is no check-in for these numbers to land on. Open one in Groundwork, then put its id in the connection here - this adapter will not open one for you, because opening a check-in invites people and starts a conversation.'
+        : unmatched
+          ? 'The evidence reached Groundwork and matched nothing, even with a check-in set. The objectives may not have seeded - look at what the objectives call said above.'
+          : undefined,
       /** Verbatim, including the refusals. */
       results,
     };

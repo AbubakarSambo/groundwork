@@ -53,7 +53,7 @@ export class OpsController {
   @ApiOperation({ summary: 'Point it at a Groundwork, or switch it off' })
   configure(
     @Req() req: { opsIdentity: { key: string } },
-    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean },
+    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string },
   ) {
     return this.integration.configure(body, req.opsIdentity.key);
   }
