@@ -39,6 +39,32 @@ export interface MetricDefinition {
 
 const within = (window: MetricWindow) => ({ gte: window.from, lte: window.to });
 
+/**
+ * Turns the company ids on activity rows into names.
+ *
+ * The activity log holds an id rather than a relation, deliberately — an
+ * activity outlives the record it describes. But a drill-down that opens onto
+ * `b69a2617-856b-...` is not openable by a person, which is most of the point
+ * of having one. So the names are looked up when the rows are handed over.
+ */
+async function withCompanyNames(
+  prisma: PrismaService,
+  rows: Array<{ companyId: string | null; [k: string]: unknown }>,
+) {
+  const ids = [...new Set(rows.map((r) => r.companyId).filter((id): id is string => id !== null))];
+  const companies = ids.length
+    ? await prisma.opsCompany.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+    : [];
+  const name = new Map(companies.map((c) => [c.id, c.name]));
+
+  return rows.map(({ companyId, ...rest }) => ({
+    company: companyId ? name.get(companyId) ?? 'a company since deleted' : null,
+    ...rest,
+  }));
+}
+
+
+
 export const METRICS: MetricDefinition[] = [
   {
     key: 'sales.new_leads_contacted',
@@ -53,7 +79,10 @@ export const METRICS: MetricDefinition[] = [
       return {
         value: rows.length,
         unit: 'leads',
-        rows: rows.map((r) => ({ when: r.happenedAt, companyId: r.companyId, note: r.note })),
+        rows: await withCompanyNames(
+          prisma,
+          rows.map((r) => ({ when: r.happenedAt, companyId: r.companyId, note: r.note })),
+        ),
         says: `${rows.length} contacted`,
       };
     },
@@ -71,7 +100,7 @@ export const METRICS: MetricDefinition[] = [
       return {
         value: rows.length,
         unit: 'meetings',
-        rows: rows.map((r) => ({ when: r.happenedAt, companyId: r.companyId })),
+        rows: await withCompanyNames(prisma, rows.map((r) => ({ when: r.happenedAt, companyId: r.companyId }))),
         says: `${rows.length} meetings`,
       };
     },
@@ -286,6 +315,115 @@ export const METRICS: MetricDefinition[] = [
           durations.length === 0
             ? 'No onboarding finished in this window, so there is no average'
             : `${durations.length} finished, averaging ${Math.round(durations.reduce((s, d) => s + d.days, 0) / durations.length)} days`,
+      };
+    },
+  },
+  {
+    key: 'sprint.companies_lined_up',
+    label: 'Companies lined up',
+    capability: 'sprint:read',
+    counts: 'Companies attached to a sprint, whatever stage they have reached.',
+    async compute(prisma) {
+      const rows = await prisma.opsCompany.findMany({
+        where: { sprintPeriodId: { not: null } },
+        orderBy: { name: 'asc' },
+      });
+      return {
+        value: rows.length,
+        unit: 'companies',
+        rows: rows.map((r) => ({ company: r.name, stage: r.stage, owner: r.ownerPersonId })),
+        says: `${rows.length} lined up`,
+      };
+    },
+  },
+  {
+    key: 'sprint.companies_onboarded',
+    label: 'Companies onboarded',
+    capability: 'sprint:read',
+    counts: 'Companies whose deployment has reached first use or gone live.',
+    async compute(prisma) {
+      const rows = await prisma.opsDeployment.findMany({
+        where: { stage: { in: ['FIRST_USE', 'LIVE'] } },
+        include: { company: true },
+      });
+      return {
+        value: rows.length,
+        unit: 'companies',
+        rows: rows.map((r) => ({ company: r.company.name, stage: r.stage, firstUseAt: r.firstUseAt })),
+        says: `${rows.length} onboarded`,
+      };
+    },
+  },
+  {
+    key: 'product.use_cases_supported',
+    label: 'Use cases we support',
+    capability: 'product:read',
+    counts: 'Use cases at PRODUCT_READY, which means no gap is recorded against them.',
+    async compute(prisma) {
+      const rows = await prisma.opsClientUseCase.findMany({
+        where: { productReadiness: 'PRODUCT_READY' },
+        include: { company: true },
+      });
+      return {
+        value: rows.length,
+        unit: 'use cases',
+        rows: rows.map((r) => ({ company: r.company.name, useCase: r.title })),
+        says: `${rows.length} supported`,
+      };
+    },
+  },
+  {
+    key: 'tech.open_client_blockers',
+    label: 'Technical blockers against a client',
+    capability: 'tech:read',
+    counts: 'Unresolved technical items that name a company.',
+    async compute(prisma) {
+      const rows = await prisma.opsTechItem.findMany({
+        where: { status: { not: 'RESOLVED' }, relatedCompanyId: { not: null } },
+        orderBy: { severity: 'asc' },
+      });
+      return {
+        value: rows.length,
+        unit: 'items',
+        rows: await withCompanyNames(
+          prisma,
+          rows.map((r) => ({ title: r.title, severity: r.severity, status: r.status, companyId: r.relatedCompanyId })),
+        ),
+        says: rows.length === 0 ? 'Nothing technical blocking a client' : `${rows.length} blocking a client`,
+      };
+    },
+  },
+  {
+    key: 'tech.resolved_this_window',
+    label: 'Technical items resolved',
+    capability: 'tech:read',
+    counts: 'Technical items completed inside the window.',
+    async compute(prisma, window) {
+      const rows = await prisma.opsTechItem.findMany({
+        where: { completedAt: { gte: window.from, lte: window.to } },
+      });
+      return {
+        value: rows.length,
+        unit: 'items',
+        rows: rows.map((r) => ({ title: r.title, severity: r.severity, completedAt: r.completedAt })),
+        says: `${rows.length} resolved`,
+      };
+    },
+  },
+  {
+    key: 'product.roadmap_completed',
+    label: 'Roadmap items completed',
+    capability: 'product:read',
+    counts: 'Roadmap items finished inside the window.',
+    async compute(prisma, window) {
+      const rows = await prisma.opsRoadmapItem.findMany({
+        where: { completedAt: { gte: window.from, lte: window.to } },
+      });
+      return {
+        value: rows.length,
+        unit: 'items',
+        rows: rows.map((r) => ({ title: r.title, completedAt: r.completedAt })),
+        says: `${rows.length} completed`,
       };
     },
   },

@@ -4541,3 +4541,159 @@ model OpsApproval {
   @@index([relatedRecordType, relatedRecordId])
   @@map("ops_approvals")
 }
+
+// --- Phase 5: what we said we would do, and what happened ------------------
+
+enum OpsObjectiveStatus {
+  DRAFT
+  ACTIVE
+  ACHIEVED
+  MISSED
+  ARCHIVED
+}
+
+enum OpsCommitmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum OpsTodoStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+/// What a workstream is trying to achieve this quarter.
+model OpsObjective {
+  id           String @id @default(uuid())
+  periodId     String @map("period_id")
+  workstreamId String @map("workstream_id")
+
+  title       String
+  description String? @db.Text
+  ownerId     String  @map("owner_id")
+
+  status   OpsObjectiveStatus @default(DRAFT)
+  priority Int                @default(3)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  keyResults OpsKeyResult[]
+
+  @@index([periodId, status])
+  @@map("ops_objectives")
+}
+
+/// A number that says whether the objective happened.
+///
+/// `measurementSource` is either a metric key or the literal MANUAL. Anything
+/// else is a typo, and a key result measured by a typo silently becomes a
+/// number nobody updates — so the resolver refuses rather than falling back.
+model OpsKeyResult {
+  id          String @id @default(uuid())
+  objectiveId String @map("objective_id")
+
+  title      String
+  metricType String @map("metric_type")
+
+  targetValue  Decimal  @map("target_value") @db.Decimal(14, 2)
+  unit         String
+  startValue   Decimal? @map("start_value") @db.Decimal(14, 2)
+  /// Only ever read for a MANUAL key result. A sourced one computes on read, so
+  /// a stored value would be a second answer that goes stale.
+  currentValue Decimal  @default(0) @map("current_value") @db.Decimal(14, 2)
+
+  measurementSource String @map("measurement_source")
+
+  ownerId String   @map("owner_id")
+  dueDate DateTime @map("due_date") @db.Date
+
+  status OpsObjectiveStatus @default(ACTIVE)
+
+  objective OpsObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@map("ops_key_results")
+}
+
+/// What one person said they would do in one cycle.
+model OpsCommitment {
+  id                String  @id @default(uuid())
+  ownerId           String  @map("owner_id")
+  operatingPeriodId String  @map("operating_period_id")
+  workstreamId      String? @map("workstream_id")
+
+  linkedObjectiveId String? @map("linked_objective_id")
+  linkedKeyResultId String? @map("linked_key_result_id")
+
+  title       String
+  description String? @db.Text
+
+  measureType String   @map("measure_type")
+  targetValue Decimal? @map("target_value") @db.Decimal(14, 2)
+  unit        String?
+
+  startDate DateTime @map("start_date") @db.Date
+  dueDate   DateTime @map("due_date") @db.Date
+
+  /// As with a key result, only read when the commitment is measured by hand.
+  currentValue Decimal? @map("current_value") @db.Decimal(14, 2)
+
+  status        OpsCommitmentStatus @default(NOT_STARTED)
+  /// Orthogonal to status on purpose: work that is blocked is still in
+  /// progress, and collapsing the two loses the fact somebody needs help.
+  blocked       Boolean             @default(false)
+  blockerReason String?             @map("blocker_reason") @db.Text
+
+  measurementSource String @map("measurement_source")
+
+  actualResult String?   @map("actual_result") @db.Text
+  evidenceUrl  String?   @map("evidence_url")
+  closedAt     DateTime? @map("closed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  links OpsCommitmentLink[]
+
+  @@index([ownerId, operatingPeriodId])
+  @@index([status, dueDate])
+  @@map("ops_commitments")
+}
+
+/// What a commitment is pointed at, whatever kind of record that is.
+model OpsCommitmentLink {
+  id           String @id @default(uuid())
+  commitmentId String @map("commitment_id")
+
+  targetType String @map("target_type")
+  targetId   String @map("target_id")
+
+  commitment OpsCommitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@unique([commitmentId, targetType, targetId])
+  @@map("ops_commitment_links")
+}
+
+/// A task. Deliberately the lightest record here.
+model OpsTodo {
+  id      String @id @default(uuid())
+  title   String
+  ownerId String @map("owner_id")
+
+  assignedById String?   @map("assigned_by_id")
+  dueDate      DateTime? @map("due_date") @db.Date
+
+  status OpsTodoStatus @default(OPEN)
+
+  relatedRecordType String? @map("related_record_type")
+  relatedRecordId   String? @map("related_record_id")
+
+  notes String? @db.Text
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([ownerId, status])
+  @@map("ops_todos")
+}

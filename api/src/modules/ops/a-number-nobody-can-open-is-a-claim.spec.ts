@@ -17,6 +17,18 @@ import { ForbiddenException } from '@nestjs/common';
 const WINDOW = { from: new Date('2026-09-01'), to: new Date('2026-09-30') };
 
 const aRow = { happenedAt: new Date('2026-09-10'), companyId: 'c1', note: 'called them' };
+/** Enough fields for any metric that reads a company, a use case, a roadmap or a tech row. */
+const aGenericRow = {
+  name: 'A Company',
+  title: 'A thing',
+  stage: 'LINED_UP',
+  severity: 'high',
+  status: 'OPEN',
+  ownerPersonId: null,
+  relatedCompanyId: 'c1',
+  completedAt: new Date('2026-09-14'),
+  company: { name: 'A Company' },
+};
 const anOpportunity = {
   id: 'o1',
   stage: 'MEETING',
@@ -41,13 +53,17 @@ const aDeployment = {
   startDate: new Date('2026-09-01'),
 };
 
-/** Every table a metric might read, each returning nothing. */
-const emptyPrisma = {
-  opsActivity: { findMany: async () => [] },
-  opsSalesOpportunity: { findMany: async () => [] },
-  opsDeployment: { findMany: async () => [] },
-  opsMarketingActivity: { findMany: async () => [] },
-} as never;
+/**
+ * A Prisma stand-in that answers for any table.
+ *
+ * Listing them by hand meant every new metric turned five unrelated tests red
+ * for a reason that had nothing to do with what they assert. A spec that breaks
+ * when you add a feature it does not cover is a spec people start ignoring.
+ */
+const prismaReturning = (rows: () => unknown[]) =>
+  new Proxy({}, { get: () => ({ findMany: async () => rows() }) }) as never;
+
+const emptyPrisma = prismaReturning(() => []);
 
 describe('the metric registry', () => {
   it('has metrics in it, so nothing below passes on an empty list', () => {
@@ -81,14 +97,21 @@ describe('every metric returns its evidence', () => {
    * looked exactly like a test that did. A count has to be shown its own rows,
    * which only happens when there are some.
    */
-  const populated = {
-    opsActivity: { findMany: async () => [aRow, aRow, aRow] },
-    opsSalesOpportunity: {
-      findMany: async () => [anOpportunity, { ...anOpportunity, convertedAt: null, lostAt: new Date('2026-09-12') }],
+  const populated = new Proxy(
+    {},
+    {
+      get: (_t, table: string) => ({
+        findMany: async () => {
+          if (table === 'opsSalesOpportunity') {
+            return [anOpportunity, { ...anOpportunity, convertedAt: null, lostAt: new Date('2026-09-12') }];
+          }
+          if (table === 'opsDeployment') return [aDeployment, aDeployment];
+          if (table === 'opsActivity') return [aRow, aRow, aRow];
+          return [aGenericRow, aGenericRow];
+        },
+      }),
     },
-    opsDeployment: { findMany: async () => [aDeployment, aDeployment] },
-    opsMarketingActivity: { findMany: async () => [] },
-  } as never;
+  ) as never;
 
   it.each(METRICS.map((m) => [m.key, m]))('%s comes back with a rows array', async (_key, metric) => {
     const result = await (metric as (typeof METRICS)[number]).compute(emptyPrisma, WINDOW);
@@ -161,14 +184,10 @@ describe('a comfortable sentence over an empty pipeline', () => {
    * can carry: it says the same thing whether sales is well tended or has dried
    * up entirely, and it reads as praise on the worst possible day.
    */
-  const noPipeline = { opsSalesOpportunity: { findMany: async () => [] } } as never;
-  const tended = {
-    opsSalesOpportunity: {
-      findMany: async () => [
-        { nextAction: 'call them', stage: 'MEETING', createdAt: new Date(), company: { name: 'A' } },
-      ],
-    },
-  } as never;
+  const noPipeline = prismaReturning(() => []);
+  const tended = prismaReturning(() => [
+    { nextAction: 'call them', stage: 'MEETING', createdAt: new Date(), company: { name: 'A' } },
+  ]);
 
   const metric = METRICS_BY_KEY.get('sales.no_next_action')!;
 
@@ -181,5 +200,45 @@ describe('a comfortable sentence over an empty pipeline', () => {
   it('and only reassures when there is something to be reassured about', async () => {
     const result = await metric.compute(tended, WINDOW);
     expect(result.says).toMatch(/All 1 have a next step/);
+  });
+});
+
+describe('evidence a person can actually read', () => {
+  /**
+   * The activity log holds a company id rather than a relation, on purpose: an
+   * activity outlives the record it describes. But the first live drill-down
+   * came back as `{"companyId": "b69a2617-856b-4bfb-..."}`, which is not
+   * evidence — nobody opens a number to be shown a UUID. Found by reading the
+   * commitments board, not the code.
+   */
+  const withActivity = prismaReturning(() => [
+    { happenedAt: new Date('2026-09-10'), companyId: 'c1', note: null },
+    { happenedAt: new Date('2026-09-11'), companyId: 'c1', note: null },
+  ]);
+
+  it.each(['sales.new_leads_contacted', 'sales.meetings_held', 'tech.open_client_blockers'])(
+    "%s names the company rather than handing over its id",
+    async (key) => {
+      const result = await METRICS_BY_KEY.get(key)!.compute(withActivity, WINDOW);
+      for (const row of result.rows) {
+        expect(row).not.toHaveProperty('companyId');
+        expect(row).toHaveProperty('company');
+      }
+    },
+  );
+
+  it('and says so plainly when the company is gone, rather than showing nothing', async () => {
+    const orphaned = new Proxy(
+      {},
+      {
+        get: (_t, table: string) => ({
+          findMany: async () =>
+            table === 'opsCompany' ? [] : [{ happenedAt: new Date(), companyId: 'deleted', note: null }],
+        }),
+      },
+    ) as never;
+
+    const result = await METRICS_BY_KEY.get('sales.new_leads_contacted')!.compute(orphaned, WINDOW);
+    expect(result.rows[0].company).toMatch(/since deleted/);
   });
 });

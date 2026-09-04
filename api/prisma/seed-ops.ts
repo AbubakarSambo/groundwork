@@ -16,7 +16,7 @@ async function main() {
   console.log(
     `Ops foundations: ${counts.people} people, ${counts.periods} periods, ` +
       `${counts.workstreams} workstreams, ${counts.settings} settings, ${counts.targets} targets, ` +
-      `${counts.roadmap} roadmap items.`,
+      `${counts.roadmap} roadmap items, ${counts.objectives} objectives.`,
   );
 }
 

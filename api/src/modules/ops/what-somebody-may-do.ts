@@ -10,6 +10,12 @@ import { OpsFunctionalRole } from '@prisma/client';
 export const OPS_CAPABILITIES = [
   // Running the company
   'ceo:board',
+  /**
+   * The sprint board. Held by everybody, including contributors — the point of
+   * a sprint is that the whole team is looking at the same companies, and a
+   * board half the team cannot open is a status report.
+   */
+  'sprint:read',
   'periods:write',
   'people:admin',
   'todos:assign',
@@ -76,6 +82,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   // point of having given them away.
   CEO: [
     'ceo:board',
+    'sprint:read',
     'periods:write',
     'people:admin',
     'todos:assign',
@@ -100,6 +107,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   ],
 
   SALES_MARKETING: [
+    'sprint:read',
     'sales:read',
     'sales:write',
     'marketing:read',
@@ -112,6 +120,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   ],
 
   PRODUCT_TECH_LEAD: [
+    'sprint:read',
     'product:read',
     'product:write',
     'ux:read',
@@ -125,6 +134,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   ],
 
   TECH: [
+    'sprint:read',
     'tech:read',
     'tech:write',
     'product:read',
@@ -136,7 +146,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
 
   // A contributor brings companies in and claims their own expenses. They do
   // not see the pipeline, the fundraise, or anybody else's attributions.
-  CONTRIBUTOR: ['contributor:self', 'spend:submit'],
+  CONTRIBUTOR: ['sprint:read', 'contributor:self', 'spend:submit'],
 };
 
 /** Everything a person may do, given the grants they actually hold. */

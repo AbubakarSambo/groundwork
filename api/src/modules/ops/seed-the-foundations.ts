@@ -125,13 +125,13 @@ const ROADMAP: Array<{
     note: 'Lands on the API adapter. Separating infrastructure moves the credential that adapter uses, the Stripe account behind billing, and the AI credentials the Assistant runs on - so the adapter credential has to be created in whatever organisation and secret store this settles on, or it gets created twice.',
   },
   {
-    key: 'build-the-coaching-module',
-    title: 'Build the coaching module',
+    key: 'coach-network',
+    title: 'Build the coach network',
     description:
-      'Recruit and onboard outside coaches. Let a customer add a coach to an engagement if they want one. Coach permissions, workflow, delivery and the commercial model. Test with real customers before scaling.',
+      'Partner with coaches outside the company. A customer using Groundwork can opt in to having a coach support them through the work and the reports. Recruit and onboard the coaches, give them the access and the workflow they need, and take a share of what they earn. Test with real customers before scaling.',
     itemType: 'feature',
     priority: 4,
-    note: 'Needs a name before any code: the product already has two things called this. One is the in-chat coaching step; the other is a lead form for people asking for a coach. This is a third thing - an outside person with standing access to a customer\'s engagement.',
+    note: 'Named coach network because the product already has two things called coaching: the in-chat coaching step, and a lead form for people asking for one. This is a third thing - an outside person a customer opts into, who works alongside them and whose earnings we take a cut of. The access shape already exists: a coach is guest-shaped, so what this really adds is the commercial model and the coach\'s own workflow, not a new permission concept.',
   },
   {
     key: 'decide-the-next-components',
@@ -140,6 +140,72 @@ const ROADMAP: Array<{
       'Review with the team against what the first ten taught us. Prioritise on demand, revenue and moat. Do not expand before the core is proven.',
     itemType: 'improvement',
     priority: 5,
+  },
+];
+
+
+/**
+ * What September is for, per person, as objectives with numbers attached.
+ *
+ * Every one of these is sourced from a metric. None is MANUAL, and that is the
+ * test of whether the sprint is actually measurable: a target nobody can
+ * compute is a target somebody has to remember to update, which means by
+ * November it says whatever it said in September.
+ */
+const SEPTEMBER_OBJECTIVES: Array<{
+  key: string;
+  workstream: string;
+  owner: string;
+  title: string;
+  keyResult: { title: string; target: number; unit: string; source: string };
+}> = [
+  {
+    key: 'sept-ten-lined-up',
+    workstream: 'sales',
+    owner: 'hafsah',
+    title: 'Ten companies lined up for the sprint',
+    keyResult: {
+      title: 'Companies attached to the September sprint',
+      target: 10,
+      unit: 'companies',
+      source: 'sprint.companies_lined_up',
+    },
+  },
+  {
+    key: 'sept-onboard-the-ten',
+    workstream: 'deployment',
+    owner: 'sahar',
+    title: 'Get the ten onboarded and using it',
+    keyResult: {
+      title: 'Companies that have reached first use or gone live',
+      target: 10,
+      unit: 'companies',
+      source: 'sprint.companies_onboarded',
+    },
+  },
+  {
+    key: 'sept-use-cases-supported',
+    workstream: 'product-and-tech',
+    owner: 'james',
+    title: 'The product supports what these ten actually want to do',
+    keyResult: {
+      title: 'Use cases at product ready, with no gap recorded',
+      target: 10,
+      unit: 'use cases',
+      source: 'product.use_cases_supported',
+    },
+  },
+  {
+    key: 'sept-nothing-technical-in-the-way',
+    workstream: 'product-and-tech',
+    owner: 'abubakar',
+    title: 'Nothing technical is standing between a company and using it',
+    keyResult: {
+      title: 'Unresolved technical items naming a company',
+      target: 0,
+      unit: 'items',
+      source: 'tech.open_client_blockers',
+    },
   },
 ];
 
@@ -357,6 +423,58 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     });
   }
 
+  // --- What September is for ----------------------------------------------
+  const septemberPeriod = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-sprint' } });
+  let objectives = 0;
+
+  for (const objective of SEPTEMBER_OBJECTIVES) {
+    const ownerId = byKey.get(objective.owner);
+    const workstream = await prisma.opsWorkstream.findUnique({ where: { key: objective.workstream } });
+    if (!ownerId || !workstream || !septemberPeriod) continue;
+
+    /**
+     * Keyed on title within the period rather than upserted on an id, because
+     * an objective has no natural key and creating a second copy of "Ten
+     * companies lined up" every time this runs would be worse than any
+     * awkwardness here.
+     */
+    const already = await prisma.opsObjective.findFirst({
+      where: { periodId: septemberPeriod.id, title: objective.title },
+      include: { keyResults: true },
+    });
+
+    const record =
+      already ??
+      (await prisma.opsObjective.create({
+        data: {
+          periodId: septemberPeriod.id,
+          workstreamId: workstream.id,
+          title: objective.title,
+          ownerId,
+          status: 'ACTIVE',
+          priority: objectives + 1,
+        },
+        include: { keyResults: true },
+      }));
+
+    if (record.keyResults.length === 0) {
+      await prisma.opsKeyResult.create({
+        data: {
+          objectiveId: record.id,
+          title: objective.keyResult.title,
+          metricType: 'count',
+          targetValue: objective.keyResult.target,
+          unit: objective.keyResult.unit,
+          startValue: 0,
+          measurementSource: objective.keyResult.source,
+          ownerId,
+          dueDate: asDate('2026-09-30'),
+        },
+      });
+    }
+    objectives++;
+  }
+
   return {
     people: TEAM.length,
     periods: periods.length,
@@ -364,5 +482,6 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     settings: Object.keys(SETTING_DEFAULTS).length,
     targets,
     roadmap: ROADMAP.length,
+    objectives,
   };
 }

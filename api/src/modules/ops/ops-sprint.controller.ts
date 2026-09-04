@@ -28,6 +28,7 @@ export class OpsSprintController {
    * a sprint is that the six of us are looking at the same ten companies.
    */
   @Get('sprint/:periodKey')
+  @NeedsOps('sprint:read')
   @ApiOperation({ summary: 'Every company in a sprint, how far it has got, and what is next' })
   board(@Param('periodKey') periodKey: string) {
     return this.sprint.board(periodKey);
