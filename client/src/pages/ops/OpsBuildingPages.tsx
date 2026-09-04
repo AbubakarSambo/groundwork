@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
-import { OpsTable, DueDate, type Column } from './OpsTable'
+import { OpsTable, Filters, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
 
 const ROADMAP_STATUSES = ['PROPOSED', 'READY', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'] as const
@@ -13,6 +14,17 @@ const READINESS = ['UNKNOWN', 'REVIEWING', 'GAP_IDENTIFIED', 'IN_PROGRESS', 'PRO
 
 export function OpsRoadmapPage() {
   const roadmap = useQuery({ queryKey: ['ops', 'roadmap'], queryFn: opsApi.roadmap, retry: false })
+  const [filter, setFilter] = useState<string | null>(null)
+
+  const filters: Filter<OpsRoadmapItem>[] = [
+    { label: 'Awaiting a decision', keep: (r) => r.approvalRequired && r.status === 'PROPOSED' },
+    { label: 'Being built', keep: (r) => r.status === 'IN_PROGRESS' },
+    { label: 'Blocked', keep: (r) => r.status === 'BLOCKED' },
+    { label: 'Done', keep: (r) => r.status === 'COMPLETED' },
+  ]
+
+  const all = roadmap.data
+  const shown = all && (filter ? all.filter(filters.find((f) => f.label === filter)!.keep) : all)
 
   const columns: Column<OpsRoadmapItem>[] = [
     { head: '#', cell: (r) => r.priority, numeric: true },
@@ -91,10 +103,18 @@ export function OpsRoadmapPage() {
         invalidate={[['ops']]}
         submitLabel="Propose it"
       />
+      <Filters
+        filters={filters}
+        active={filter}
+        onPick={setFilter}
+        showing={shown?.length ?? 0}
+        total={all?.length ?? 0}
+      />
       <OpsTable
-        rows={roadmap.data}
+        rows={shown}
         columns={columns}
         keyOf={(r) => r.id}
+        filteredOutOf={all?.length}
         empty="Nothing proposed yet."
       />
     </main>

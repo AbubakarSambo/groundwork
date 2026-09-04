@@ -35,6 +35,7 @@ import { JoinPage } from '@/pages/join/JoinPage'
 import OpsBoardPage from '@/pages/ops/OpsBoardPage'
 import OpsSprintPage from '@/pages/ops/OpsSprintPage'
 import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
+import OpsPeoplePage from '@/pages/ops/OpsPeoplePage'
 import { OpsLayout } from '@/pages/ops/OpsLayout'
 import { OpsSalesPage, OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
@@ -334,6 +335,7 @@ export default function App() {
             <Route path="/ops/approvals" element={<RequireAuth><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/fundraise" element={<RequireAuth><OpsLayout><OpsFundraisePage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/strategy" element={<RequireAuth><OpsLayout><OpsStrategyPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/people" element={<RequireAuth><OpsLayout><OpsPeoplePage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/integration" element={<RequireAuth><OpsLayout><OpsIntegrationPage /></OpsLayout></RequireAuth>} />
             <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
             <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />

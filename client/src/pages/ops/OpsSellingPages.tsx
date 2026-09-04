@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsOpportunity, type OpsDeployment, type OpsCampaign } from '@/api/ops'
 import { OpsHeader, PAGE } from './OpsLayout'
-import { OpsTable, readEnum, readDate, DueDate, type Column } from './OpsTable'
+import { OpsTable, Filters, readEnum, readDate, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
 
 const SALES_STAGES = ['LEAD', 'CONTACTED', 'MEETING', 'PROPOSAL_TRIAL', 'CONVERTED', 'LOST'] as const
@@ -14,6 +15,26 @@ const money = (v: string | null) => (v === null ? '—' : `$${Number(v).toLocale
 
 export function OpsSalesPage() {
   const pipeline = useQuery({ queryKey: ['ops', 'pipeline'], queryFn: opsApi.pipeline, retry: false })
+  const [filter, setFilter] = useState<string | null>(null)
+
+  /* The three questions somebody actually has about a pipeline. */
+  const filters: Filter<OpsOpportunity>[] = [
+    { label: 'Live', keep: (o) => !['CONVERTED', 'LOST'].includes(o.stage) },
+    {
+      label: 'Overdue',
+      keep: (o) =>
+        !['CONVERTED', 'LOST'].includes(o.stage) &&
+        o.nextActionDueAt !== null &&
+        new Date(o.nextActionDueAt) < new Date(),
+    },
+    {
+      label: 'Nothing planned',
+      keep: (o) => !['CONVERTED', 'LOST'].includes(o.stage) && !o.nextAction,
+    },
+  ]
+
+  const all = pipeline.data
+  const shown = all && (filter ? all.filter(filters.find((f) => f.label === filter)!.keep) : all)
 
   const columns: Column<OpsOpportunity>[] = [
     {
@@ -106,10 +127,18 @@ export function OpsSalesPage() {
         invalidate={[['ops']]}
         submitLabel="Open it"
       />
+      <Filters
+        filters={filters}
+        active={filter}
+        onPick={setFilter}
+        showing={shown?.length ?? 0}
+        total={all?.length ?? 0}
+      />
       <OpsTable
-        rows={pipeline.data}
+        rows={shown}
         columns={columns}
         keyOf={(o) => o.id}
+        filteredOutOf={all?.length}
         empty="No opportunities open. Add a company, then open one against it."
       />
     </main>
@@ -122,6 +151,19 @@ export function OpsDeploymentPage() {
     queryFn: opsApi.deployments,
     retry: false,
   })
+  const [filter, setFilter] = useState<string | null>(null)
+
+  const filters: Filter<OpsDeployment>[] = [
+    { label: 'Not live yet', keep: (d) => d.stage !== 'LIVE' },
+    { label: 'Blocked', keep: (d) => d.blockerType !== null && d.stage !== 'LIVE' },
+    {
+      label: 'Past target',
+      keep: (d) => d.stage !== 'LIVE' && d.targetLiveDate !== null && new Date(d.targetLiveDate) < new Date(),
+    },
+  ]
+
+  const all = deployments.data
+  const shown = all && (filter ? all.filter(filters.find((f) => f.label === filter)!.keep) : all)
 
   const columns: Column<OpsDeployment>[] = [
     {
@@ -194,10 +236,18 @@ export function OpsDeploymentPage() {
         invalidate={[['ops']]}
         submitLabel="Start it"
       />
+      <Filters
+        filters={filters}
+        active={filter}
+        onPick={setFilter}
+        showing={shown?.length ?? 0}
+        total={all?.length ?? 0}
+      />
       <OpsTable
-        rows={deployments.data}
+        rows={shown}
         columns={columns}
         keyOf={(d) => d.id}
+        filteredOutOf={all?.length}
         empty="Nobody is being deployed. Start one once a company converts."
       />
     </main>

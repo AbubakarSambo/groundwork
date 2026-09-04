@@ -337,6 +337,18 @@ export interface OpsCompanyDetail {
   }>
 }
 
+export interface OpsPerson {
+  id: string
+  key: string
+  displayName: string
+  email: string | null
+  functionalRole: string
+  active: boolean
+  hasAnAccount: boolean
+  capabilities: string[]
+  holdsNothing: boolean
+}
+
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
@@ -375,6 +387,17 @@ export const opsApi = {
   fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise', QUIET).then((r) => r.data),
   strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
+  people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => r.data),
+  capabilities: () => apiClient.get<string[]>('/ops/capabilities', QUIET).then((r) => r.data),
+  addPerson: (body: { key: string; displayName: string; email?: string; functionalRole: string }) =>
+    apiClient.post('/ops/people', body, QUIET).then((r) => r.data),
+  grant: (key: string, capability: string) =>
+    apiClient.post(`/ops/people/${key}/grants`, { capability }, QUIET).then((r) => r.data),
+  revoke: (key: string, capability: string) =>
+    apiClient.delete(`/ops/people/${key}/grants/${capability}`, QUIET).then((r) => r.data),
+  setActive: (key: string, active: boolean) =>
+    apiClient.patch(`/ops/people/${key}/active`, { active }, QUIET).then((r) => r.data),
+
   // --- Writes ---------------------------------------------------------------
   addCompany: (body: { name: string; sprintPeriodKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string }) =>
     apiClient.post('/ops/companies', body, QUIET).then((r) => r.data),

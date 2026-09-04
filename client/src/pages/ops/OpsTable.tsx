@@ -38,21 +38,93 @@ export function DueDate({ value }: { value: string | null | undefined }) {
   )
 }
 
+/**
+ * The filters above a table.
+ *
+ * Every list here gets the same three, because they are the same three
+ * questions on every list: is it mine, is it live, and is it late. Written once
+ * so a page cannot invent a fourth way of asking them — and so a filter that
+ * matches nothing says so rather than showing an empty table that looks like no
+ * data.
+ */
+export interface Filter<T> {
+  label: string
+  keep: (row: T) => boolean
+}
+
+export function Filters<T>({
+  filters,
+  active,
+  onPick,
+  showing,
+  total,
+}: {
+  filters: Filter<T>[]
+  active: string | null
+  onPick: (label: string | null) => void
+  showing: number
+  total: number
+}) {
+  if (total === 0) return null
+
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline', marginBottom: 10 }}>
+      {[{ label: 'All', keep: () => true }, ...filters].map((f) => {
+        const on = f.label === 'All' ? active === null : active === f.label
+        return (
+          <button
+            key={f.label}
+            type="button"
+            onClick={() => onPick(f.label === 'All' ? null : f.label)}
+            aria-pressed={on}
+            style={{
+              border: '0.5px solid var(--gw-border)',
+              borderRadius: 20,
+              padding: '3px 11px',
+              fontSize: 12,
+              cursor: 'pointer',
+              background: on ? 'var(--gw-navy)' : 'white',
+              color: on ? 'white' : 'var(--gw-navy)',
+            }}
+          >
+            {f.label}
+          </button>
+        )
+      })}
+      {active !== null && (
+        <span style={{ fontSize: 12, color: 'var(--gw-sub)', marginLeft: 4 }}>
+          {showing} of {total}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function OpsTable<T>({
   rows,
   columns,
   empty,
   keyOf,
+  filteredOutOf,
 }: {
   rows: T[] | undefined
   columns: Column<T>[]
   /** What to say when there is nothing. Say what it means, not "no data". */
   empty: string
   keyOf: (row: T) => string
+  /** How many there were before filtering, so an empty filter is not read as an empty list. */
+  filteredOutOf?: number
 }) {
   if (rows === undefined) {
     return <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Working it out…</p>
   }
+
+  /*
+   * "Nothing matches that filter" and "there is nothing here" are different
+   * facts, and an empty table cannot tell them apart. Getting this wrong sends
+   * somebody looking for missing data that was never missing.
+   */
+  const emptyBecauseFiltered = rows.length === 0 && (filteredOutOf ?? 0) > 0
 
   return (
     <div style={{ ...CARD, padding: 0, overflowX: 'auto' }}>
@@ -95,7 +167,9 @@ export function OpsTable<T>({
           {rows.length === 0 && (
             <tr>
               <td colSpan={columns.length} style={{ padding: '16px 12px', color: 'var(--gw-sub)' }}>
-                {empty}
+                {emptyBecauseFiltered
+                  ? `None of the ${filteredOutOf} here match that. Try All.`
+                  : empty}
               </td>
             </tr>
           )}

@@ -1,6 +1,12 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OpsCapability, DEFAULT_GRANTS, can } from './what-somebody-may-do';
+import { OpsCapability, DEFAULT_GRANTS, can, isAKnownCapability, OPS_CAPABILITIES } from './what-somebody-may-do';
 import { OpsFunctionalRole } from '@prisma/client';
 
 export interface OpsIdentity {
@@ -40,6 +46,145 @@ export class OpsPeopleService {
       functionalRole: person.functionalRole,
       capabilities: person.grants.map((g) => g.capability),
     };
+  }
+
+  /**
+   * Everybody on the team, with what each holds.
+   *
+   * Grants are listed in full rather than summarised as a role, because a role
+   * is what somebody was hired as and a grant is what they can actually do —
+   * and the whole point of keeping them apart is being able to see when they
+   * have come apart.
+   */
+  async everybody() {
+    const people = await this.prisma.opsPerson.findMany({
+      include: { grants: true },
+      orderBy: [{ active: 'desc' }, { displayName: 'asc' }],
+    });
+
+    return people.map((p) => ({
+      id: p.id,
+      key: p.key,
+      displayName: p.displayName,
+      email: p.email,
+      functionalRole: p.functionalRole,
+      active: p.active,
+      /** Whether they can actually sign in. Nothing else reads through this. */
+      hasAnAccount: p.userId !== null,
+      capabilities: p.grants.map((g) => g.capability).sort(),
+      /*
+       * A person with no grants is on the team and can do nothing — which is
+       * either somebody mid-onboarding or somebody who was quietly stripped,
+       * and both are worth seeing rather than having to notice.
+       */
+      holdsNothing: p.grants.length === 0,
+    }));
+  }
+
+  async addPerson(input: {
+    key: string;
+    displayName: string;
+    email?: string;
+    functionalRole: OpsFunctionalRole;
+  }) {
+    const existing = await this.prisma.opsPerson.findUnique({ where: { key: input.key } });
+    if (existing) {
+      throw new ConflictException(
+        `${existing.displayName} already has the handle ${input.key}. Reactivate them rather than adding a second record.`,
+      );
+    }
+
+    const person = await this.prisma.opsPerson.create({ data: input });
+    await this.grantRoleDefaults(person.id, input.functionalRole);
+    return person;
+  }
+
+  /**
+   * Grants a capability, one at a time and on the record.
+   *
+   * Not a "set these grants" call. Replacing the whole set means an accidental
+   * omission silently revokes something, and revoking is the operation that
+   * should be hardest to do by accident.
+   */
+  async grant(personKey: string, capability: string, grantedBy: string) {
+    if (!isAKnownCapability(capability)) {
+      throw new BadRequestException(`${capability} is not a capability this system has`);
+    }
+    const person = await this.byKey(personKey);
+
+    return this.prisma.opsGrant.upsert({
+      where: { personId_capability: { personId: person.id, capability } },
+      update: {},
+      create: { personId: person.id, capability, grantedBy },
+    });
+  }
+
+  async revoke(personKey: string, capability: string) {
+    const person = await this.byKey(personKey);
+
+    /*
+     * Refuses to remove the last holder of an approval capability. Somebody has
+     * to be able to decide, and a system where nobody can approve spend is one
+     * where every claim strands silently — which we have already watched happen
+     * once, from the other direction.
+     */
+    if (capability.endsWith(':approve')) {
+      const holders = await this.prisma.opsGrant.count({ where: { capability } });
+      if (holders <= 1) {
+        throw new ConflictException(
+          `${person.displayName} is the only person who holds ${capability}. Give it to somebody else first, or nothing of that kind can ever be decided again.`,
+        );
+      }
+    }
+
+    await this.prisma.opsGrant.deleteMany({
+      where: { personId: person.id, capability },
+    });
+    return { revoked: capability, from: person.key };
+  }
+
+  /**
+   * A person who has left keeps their record and loses their grants.
+   *
+   * Deleting them would take their attributions, their commitments and their
+   * name off every timeline they appear in — which is exactly the history
+   * somebody asks about after they go.
+   */
+  async setActive(personKey: string, active: boolean) {
+    const person = await this.byKey(personKey);
+
+    if (!active) {
+      await this.prisma.opsGrant.deleteMany({ where: { personId: person.id } });
+    }
+
+    return this.prisma.opsPerson.update({
+      where: { id: person.id },
+      data: { active, ...(active ? {} : { userId: null }) },
+    });
+  }
+
+  /** Connects somebody's ops record to the account they sign in with. */
+  async linkAccount(personKey: string, userId: string | null) {
+    const person = await this.byKey(personKey);
+    return this.prisma.opsPerson.update({ where: { id: person.id }, data: { userId } });
+  }
+
+  private async byKey(key: string) {
+    const person = await this.prisma.opsPerson.findUnique({ where: { key } });
+    if (!person) throw new NotFoundException(`No one here called ${key}`);
+    return person;
+  }
+
+  /**
+   * Writes a role's default grants for somebody, without disturbing any they
+   * already hold. Used when adding a person; never on a request path that
+   * changes an existing one.
+   */
+  async grantRoleDefaults(personId: string, role: OpsFunctionalRole, grantedBy?: string) {
+    await this.prisma.opsGrant.createMany({
+      data: DEFAULT_GRANTS[role].map((capability) => ({ personId, capability, grantedBy })),
+      skipDuplicates: true,
+    });
   }
 
   /** Throws unless they hold the capability. The only way a route gets past a check. */

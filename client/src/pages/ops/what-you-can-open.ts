@@ -45,6 +45,7 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/approvals', name: 'Approvals', capability: 'ceo:board', group: 'Company' },
   { path: '/ops/fundraise', name: 'Fundraise', capability: 'fundraise:read', group: 'Company' },
   { path: '/ops/strategy', name: 'Strategy', capability: 'strategy:read', group: 'Company' },
+  { path: '/ops/people', name: 'The team', capability: 'people:admin', group: 'Company' },
   { path: '/ops/integration', name: 'Groundwork', capability: 'integration:read', group: 'Company' },
 ]
 
