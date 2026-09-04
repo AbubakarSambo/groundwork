@@ -54,18 +54,24 @@ export function isQualified(stage: OpsCommercialStage): boolean {
  * claiming. An admin can still change it and every change stays in the history:
  * the aim is to stop retrospective claims, not to stop corrections.
  */
-export function attributionIsOpen(opportunity: {
-  stage: OpsCommercialStage;
-  attributionState: OpsAttributionState;
-}): boolean {
-  if (opportunity.attributionState === 'APPROVED') return false;
+export function attributionIsOpen(
+  opportunity: { stage: OpsCommercialStage; originatorState: OpsAttributionState; positioningState: OpsAttributionState },
+  role?: 'OPPORTUNITY_ORIGINATOR' | 'POSITIONING_SOURCE',
+): boolean {
+  const state =
+    role === 'POSITIONING_SOURCE' ? opportunity.positioningState : opportunity.originatorState;
+  if (role && state === 'APPROVED') return false;
+  if (!role && opportunity.originatorState === 'APPROVED' && opportunity.positioningState === 'APPROVED') {
+    return false;
+  }
   return !isQualified(opportunity.stage);
 }
 
 export interface OpportunityForCredit {
   opportunityOriginatorId: string | null;
+  originatorState: OpsAttributionState;
   positioningSourceId: string | null;
-  attributionState: OpsAttributionState;
+  positioningState: OpsAttributionState;
   stage: OpsCommercialStage;
 }
 
@@ -85,7 +91,7 @@ export function countsAsOriginationFor(
   opportunity: OpportunityForCredit,
   personId: string,
 ): boolean {
-  if (opportunity.attributionState !== 'APPROVED') return false;
+  if (opportunity.originatorState !== 'APPROVED') return false;
   return opportunity.opportunityOriginatorId === personId;
 }
 
@@ -94,7 +100,7 @@ export function countsAsPositioningFor(
   opportunity: OpportunityForCredit,
   personId: string,
 ): boolean {
-  if (opportunity.attributionState !== 'APPROVED') return false;
+  if (opportunity.positioningState !== 'APPROVED') return false;
   return opportunity.positioningSourceId === personId;
 }
 
@@ -125,13 +131,13 @@ export function whyNoCredit(opportunity: OpportunityForCredit): string | null {
   if (opportunity.opportunityOriginatorId === null) {
     return 'Nobody has been recorded as having created this. It is not credited to anyone until somebody says who did.';
   }
-  if (opportunity.attributionState === 'NEEDS_REVIEW') {
+  if (opportunity.originatorState === 'NEEDS_REVIEW') {
     return 'Waiting for somebody to confirm who created it.';
   }
-  if (opportunity.attributionState === 'CLAIMED') {
+  if (opportunity.originatorState === 'CLAIMED') {
     return 'Claimed, and not yet approved.';
   }
-  if (opportunity.attributionState === 'REJECTED') {
+  if (opportunity.originatorState === 'REJECTED') {
     return 'The claim was not accepted.';
   }
   return null;

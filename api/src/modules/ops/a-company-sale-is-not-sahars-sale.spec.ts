@@ -38,8 +38,9 @@ const SAHAR = 'sahar';
 /** The example, exactly. */
 const theWorkedExample = {
   positioningSourceId: NATE,
+  positioningState: 'APPROVED' as const,
   opportunityOriginatorId: HAFSAH,
-  attributionState: 'APPROVED' as const,
+  originatorState: 'APPROVED' as const,
   stage: 'PAYING' as const,
 };
 
@@ -91,42 +92,60 @@ describe('what is deliberately not an input', () => {
 
 describe('an unapproved claim is not evidence', () => {
   it.each(['NEEDS_REVIEW', 'CLAIMED', 'REJECTED'] as const)('credits nothing while %s', (state) => {
-    expect(countsAsOriginationFor({ ...theWorkedExample, attributionState: state }, HAFSAH)).toBe(false);
+    expect(countsAsOriginationFor({ ...theWorkedExample, originatorState: state }, HAFSAH)).toBe(false);
+  });
+
+  it('and rejecting one role leaves the other role alone', () => {
+    /**
+     * THE BUG THIS SPLIT EXISTS FOR, found by running the worked example rather
+     * than reading it.
+     *
+     * One shared attribution state meant that rejecting Sahar's claim to have
+     * originated the deal - the correct decision - set the field back to
+     * NEEDS_REVIEW and silently took away Nate's approved positioning AND
+     * Hafsah's approved origination on the same opportunity. Every write was
+     * correct on its own; only the sequence was wrong, and only the ledgers
+     * showed it, as four rows of zeroes.
+     */
+    const sahasClaimRejected = { ...theWorkedExample, originatorState: 'NEEDS_REVIEW' as const };
+    expect(countsAsPositioningFor(sahasClaimRejected, NATE)).toBe(true);
   });
 
   it('and says which of those it is, rather than leaving a blank', () => {
     /* "No credit" and "nobody has looked at this yet" are different facts, and
        a contributor reading their own ledger deserves to know which. */
-    expect(whyNoCredit({ ...theWorkedExample, attributionState: 'NEEDS_REVIEW' })).toMatch(/confirm who created it/);
-    expect(whyNoCredit({ ...theWorkedExample, attributionState: 'CLAIMED' })).toMatch(/not yet approved/);
-    expect(whyNoCredit({ ...theWorkedExample, attributionState: 'REJECTED' })).toMatch(/not accepted/);
+    expect(whyNoCredit({ ...theWorkedExample, originatorState: 'NEEDS_REVIEW' })).toMatch(/confirm who created it/);
+    expect(whyNoCredit({ ...theWorkedExample, originatorState: 'CLAIMED' })).toMatch(/not yet approved/);
+    expect(whyNoCredit({ ...theWorkedExample, originatorState: 'REJECTED' })).toMatch(/not accepted/);
     expect(whyNoCredit(theWorkedExample)).toBeNull();
   });
 
   it('and an opportunity nobody has attributed says so plainly', () => {
-    const orphan = { ...theWorkedExample, opportunityOriginatorId: null, attributionState: 'NEEDS_REVIEW' as const };
+    const orphan = { ...theWorkedExample, opportunityOriginatorId: null, originatorState: 'NEEDS_REVIEW' as const };
     expect(whyNoCredit(orphan)).toMatch(/not credited to anyone until somebody says who did/);
   });
 });
 
 describe('attribution locks when a deal becomes worth claiming', () => {
   it('is open while it is only a lead', () => {
-    expect(attributionIsOpen({ stage: 'LEAD', attributionState: 'NEEDS_REVIEW' })).toBe(true);
+    expect(attributionIsOpen({ stage: 'LEAD', originatorState: 'NEEDS_REVIEW', positioningState: 'NEEDS_REVIEW' })).toBe(true);
   });
 
   it('and closes at qualified, which is the point somebody would want to claim it', () => {
-    expect(attributionIsOpen({ stage: 'QUALIFIED', attributionState: 'NEEDS_REVIEW' })).toBe(false);
+    expect(attributionIsOpen({ stage: 'QUALIFIED', originatorState: 'NEEDS_REVIEW', positioningState: 'NEEDS_REVIEW' })).toBe(false);
   });
 
   it('and stays closed all the way through paying and retention', () => {
     for (const stage of ['PROPOSAL', 'VERBAL_YES', 'PAYING', 'RETAINED_6_MONTH'] as const) {
       expect(isQualified(stage)).toBe(true);
-      expect(attributionIsOpen({ stage, attributionState: 'CLAIMED' })).toBe(false);
+      expect(attributionIsOpen({ stage, originatorState: 'CLAIMED', positioningState: 'CLAIMED' })).toBe(false);
     }
   });
 
   it('and an approved attribution is closed even on a lead', () => {
-    expect(attributionIsOpen({ stage: 'LEAD', attributionState: 'APPROVED' })).toBe(false);
+    expect(
+      attributionIsOpen({ stage: 'LEAD', originatorState: 'APPROVED', positioningState: 'APPROVED' }),
+    ).toBe(false);
   });
 });
 

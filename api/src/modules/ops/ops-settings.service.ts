@@ -19,6 +19,14 @@ export const OPS_SETTINGS = {
   displayTimezone: 'display.timezone',
   /** The day the fortnightly cycles are counted from. */
   cycleAnchorDate: 'cycle.anchorDate',
+  /**
+   * What a paying client is worth, by monthly value.
+   *
+   * A judgement about what a client is worth to this company at this size, and
+   * that judgement will change - so it is data rather than a constant. Editing
+   * it recomputes every credit, because nothing is stored.
+   */
+  clientValueBands: 'commercial.clientValueBands',
 } as const;
 
 /** Used until somebody sets one. Written by the seed so they are visible, not implied. */
@@ -34,6 +42,16 @@ export const SETTING_DEFAULTS: Record<string, { value: string; note: string }> =
   [OPS_SETTINGS.displayTimezone]: {
     value: 'America/New_York',
     note: 'The clock the boards date themselves by. Awaiting a decision.',
+  },
+  [OPS_SETTINGS.clientValueBands]: {
+    value: JSON.stringify([
+      { fromMonthly: 0, toMonthly: 100, credits: 0.25 },
+      { fromMonthly: 100, toMonthly: 500, credits: 0.5 },
+      { fromMonthly: 500, toMonthly: 1000, credits: 1 },
+      { fromMonthly: 1000, toMonthly: 2500, credits: 2 },
+      { fromMonthly: 2500, toMonthly: null, credits: 3 },
+    ]),
+    note: 'What a paying client is worth in Client Value Credits, by monthly value. A $25 client is not a $1,000 client, and counting clients treats them as if they were. Editing this recomputes every credit in the system, because none is stored.',
   },
   [OPS_SETTINGS.cycleAnchorDate]: {
     value: '2026-10-01',

@@ -14,6 +14,9 @@ import { OpsMetricsService } from './ops-metrics.service';
 import { OpsBuildController } from './ops-build.controller';
 import { OpsBuildService } from './ops-build.service';
 import { OpsMoatService } from './ops-moat.service';
+import { OpsCommercialController } from './ops-commercial.controller';
+import { OpsCommercialService } from './ops-commercial.service';
+import { OpsContributionService } from './ops-contribution.service';
 import { OpsIntentController } from './ops-intent.controller';
 import { OpsIntentService } from './ops-intent.service';
 import { OpsCeoController } from './ops-ceo.controller';
@@ -28,7 +31,7 @@ import { OpsIntegrationService } from './ops-integration.service';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController],
+  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController],
   providers: [
     OpsPeopleService,
     OpsFoundationService,
@@ -40,6 +43,8 @@ import { OpsIntegrationService } from './ops-integration.service';
     OpsMetricsService,
     OpsBuildService,
     OpsMoatService,
+    OpsCommercialService,
+    OpsContributionService,
     OpsIntentService,
     OpsCeoService,
     OpsIntegrationService,

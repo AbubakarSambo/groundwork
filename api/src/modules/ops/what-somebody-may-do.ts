@@ -53,6 +53,12 @@ export const OPS_CAPABILITIES = [
   'strategy:write',
 
   // Decisions
+  /**
+   * Somebody's own contribution ledger is theirs; everybody's is a management
+   * view. Split for the same reason spend is: a person seeing their own record
+   * is normal, and seeing everybody's is an act of management.
+   */
+  'commercial:read-all',
   'commercial:approve',
   'spend:submit',
   'spend:approve',
@@ -107,7 +113,13 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'strategy:read',
     'strategy:write',
     'roadmap:approve',
-    'commercial:approve',
+    /**
+   * Somebody's own contribution ledger is theirs; everybody's is a management
+   * view. Split for the same reason spend is: a person seeing their own record
+   * is normal, and seeing everybody's is an act of management.
+   */
+  'commercial:read-all',
+  'commercial:approve',
     'spend:approve',
     'spend:submit',
     'resourcing:approve',

@@ -5066,9 +5066,17 @@ model OpsCommercialOpportunity {
   /// A null originator is NEEDS_REVIEW, not "the person who owns sales". We do
   /// not infer origination from who created the record, who attended the
   /// meeting, who sent the proposal or who owns the function.
+  /// A STATE PER ROLE, because they are two independent decisions.
+  ///
+  /// One shared state looked simpler and was wrong: approving Nate's positioning
+  /// and Hafsah's origination, then rejecting Sahar's claim on the same deal, set
+  /// the single field back to NEEDS_REVIEW and silently took the credit away from
+  /// both of them. Found by running the worked example end to end, and invisible
+  /// in the code - each write was correct on its own.
   positioningSourceId     String?             @map("positioning_source_id")
+  positioningState        OpsAttributionState @default(NEEDS_REVIEW) @map("positioning_state")
   opportunityOriginatorId String?             @map("opportunity_originator_id")
-  attributionState        OpsAttributionState @default(NEEDS_REVIEW) @map("attribution_state")
+  originatorState         OpsAttributionState @default(NEEDS_REVIEW) @map("originator_state")
   attributionLockedAt     DateTime?           @map("attribution_locked_at")
 
   /// Where the positioning came from, when it came from a tracked relationship.
@@ -5106,7 +5114,7 @@ model OpsCommercialOpportunity {
   @@index([stage])
   @@index([opportunityOriginatorId, stage])
   @@index([positioningSourceId])
-  @@index([attributionState])
+  @@index([originatorState])
   @@map("ops_commercial_opportunities")
 }
 
@@ -5207,29 +5215,26 @@ model OpsPositioningRecord {
   @@map("ops_positioning_records")
 }
 
-/// What a contributor has agreed, and what is being discussed.
+/// What a contributor's agreement entitles them to.
 ///
-/// ADMIN ONLY, and it is not a calculator. Nothing in this system ever outputs
-/// "this person deserves X%". These fields exist so that a conversation about
-/// equity has the evidence next to it rather than being had from memory.
+/// NO EQUITY IS STORED HERE. Not agreed, not proposed, not a pathway. The
+/// numbers this system produces are meant to be good enough to hold up in a
+/// conversation about equity - which is a different thing from the software
+/// holding a figure for what somebody owns, and holding one would invite
+/// exactly the inference this whole design refuses to make.
 ///
-/// Kept entirely apart from attribution. Attribution establishes what happened.
-/// The agreement establishes what somebody is entitled to. Inferring one from
-/// the other is the mistake this separation exists to prevent.
+/// What is here is revenue share, because the alternative is worse. Without it
+/// the system would assume every recorded originator receives the originator
+/// share, and somebody would be told they are owed something they never agreed.
+///
+/// Attribution establishes what happened. The agreement establishes what
+/// somebody is entitled to. Neither is ever inferred from the other.
 model OpsContributorAgreement {
   id       String @id @default(uuid())
   personId String @unique @map("person_id")
 
-  agreedEquityPercent   Decimal? @map("agreed_equity_percent") @db.Decimal(6, 3)
-  proposedEquityPercent Decimal? @map("proposed_equity_percent") @db.Decimal(6, 3)
-  equityPathwayNote     String?  @map("equity_pathway_note") @db.Text
-  /// What the equity is attached to, in words.
-  commitmentsNote       String?  @map("commitments_note") @db.Text
-
-  /// Whether this person's agreement gives them the originator share at all.
-  /// Being recorded as originator does not create the entitlement - the
-  /// agreement does, and assuming otherwise is how somebody gets told they are
-  /// owed something they never agreed.
+  /// The originator share, where this person's agreement gives them one at all.
+  /// Null means no entitlement, which is the default and is not a mistake.
   originatorSharePercent Decimal? @map("originator_share_percent") @db.Decimal(5, 2)
   originatorShareMonths  Int?     @map("originator_share_months")
   agreementNote          String?  @map("agreement_note") @db.Text
