@@ -1,6 +1,7 @@
 import { PrismaClient, OpsFunctionalRole, OpsPeriodKind, OpsPeriodStatus } from '@prisma/client';
 import { DEFAULT_GRANTS } from './what-somebody-may-do';
 import { SETTING_DEFAULTS } from './ops-settings.service';
+import { MOAT_COMPONENTS, WHAT_GROUNDWORK_IS_BUILDING } from './what-the-moat-is-made-of';
 
 /**
  * The standing furniture of the company: who is here, the time we work in, and
@@ -109,11 +110,10 @@ const ROADMAP: Array<{
   {
     key: 'solidify-the-moat',
     title: 'Solidify the moat',
-    description:
-      'Define the defensible advantage. Strengthen the data, the organisational memory, the workflow intelligence and the accumulated context that improve with use. Make the architecture deepen it on purpose.',
+    description: WHAT_GROUNDWORK_IS_BUILDING,
     itemType: 'moat',
     priority: 2,
-    note: 'The only one of the five nothing can report on. Companies live, issues closed, accounts moved and coaches onboarded are all countable; "strengthen the moat" is not, as written. It needs one key result a query can answer - most plausibly something about accumulated context per organisation, since that is the thing that compounds with use. Left unmeasured, this is the objective that quietly stops being worked on.',
+    note: 'Was the only one of the five nothing could report on - "strengthen the moat" is not countable the way companies live or issues closed are, and an objective that cannot be counted is the one that quietly stops being worked on. It now has five named components and a record of what gets built on each, so the number is entries built in a window and it opens onto them.',
   },
   {
     key: 'separate-the-infrastructure',
@@ -475,6 +475,17 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     objectives++;
   }
 
+  // --- What the defensible advantage is made of ---------------------------
+  for (const component of MOAT_COMPONENTS) {
+    await prisma.opsMoatComponent.upsert({
+      where: { key: component.key },
+      // The statement is refreshed on every run: it is a strategy document, and
+      // the file is where it is edited.
+      update: { name: component.name, statement: component.statement, ordinal: component.ordinal },
+      create: component,
+    });
+  }
+
   return {
     people: TEAM.length,
     periods: periods.length,
@@ -483,5 +494,6 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     targets,
     roadmap: ROADMAP.length,
     objectives,
+    moat: MOAT_COMPONENTS.length,
   };
 }

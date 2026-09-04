@@ -13,6 +13,7 @@ import { OpsPipelineService } from './ops-pipeline.service';
 import { OpsMetricsService } from './ops-metrics.service';
 import { OpsBuildController } from './ops-build.controller';
 import { OpsBuildService } from './ops-build.service';
+import { OpsMoatService } from './ops-moat.service';
 import { OpsIntentController } from './ops-intent.controller';
 import { OpsIntentService } from './ops-intent.service';
 import { OpsCeoController } from './ops-ceo.controller';
@@ -38,6 +39,7 @@ import { OpsIntegrationService } from './ops-integration.service';
     OpsPipelineService,
     OpsMetricsService,
     OpsBuildService,
+    OpsMoatService,
     OpsIntentService,
     OpsCeoService,
     OpsIntegrationService,

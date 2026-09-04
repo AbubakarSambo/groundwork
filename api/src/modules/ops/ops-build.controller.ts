@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsBuildService } from './ops-build.service';
+import { OpsMoatService } from './ops-moat.service';
 import { OpsIdentity } from './ops-people.service';
 import {
   OpsRoadmapStatus,
@@ -21,7 +22,10 @@ interface OpsRequest {
 @Controller('ops')
 @UseGuards(JwtAuthGuard, OpsCapabilityGuard)
 export class OpsBuildController {
-  constructor(private readonly build: OpsBuildService) {}
+  constructor(
+    private readonly build: OpsBuildService,
+    private readonly moatService: OpsMoatService,
+  ) {}
 
   // --- Roadmap ------------------------------------------------------------
 
@@ -145,6 +149,30 @@ export class OpsBuildController {
   @ApiOperation({ summary: 'Move or resolve a UX item' })
   setUXStatus(@Req() req: OpsRequest, @Param('id') id: string, @Body() body: { status: OpsWorkItemStatus }) {
     return this.build.setUXStatus(id, body.status, req.opsIdentity.personId);
+  }
+
+  // --- The moat -----------------------------------------------------------
+
+  /** The five components, their statements, and what has been built on each. */
+  @Get('moat')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'What the defensible advantage is made of, and what has been built on it' })
+  moat() {
+    return this.moatService.board();
+  }
+
+  @Post('moat')
+  @NeedsOps('product:write')
+  @ApiOperation({ summary: 'Record something built on the moat' })
+  recordMoat(
+    @Req() req: OpsRequest,
+    @Body() body: { componentKey: string; title: string; description?: string; evidenceUrl?: string; builtAt?: string },
+  ) {
+    return this.moatService.record({
+      ...body,
+      builtById: req.opsIdentity.personId,
+      builtAt: body.builtAt ? new Date(body.builtAt) : undefined,
+    });
   }
 
   // --- Approvals ----------------------------------------------------------

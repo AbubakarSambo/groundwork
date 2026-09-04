@@ -4912,3 +4912,57 @@ model OpsIntegration {
 
   @@map("ops_integration")
 }
+
+// --- The moat, and what gets built on it -----------------------------------
+
+/// One of the five things the defensible advantage is made of.
+///
+/// Seeded and stable: these are the components of the moat as the company
+/// defines them, and they change when the strategy changes rather than when
+/// somebody has an idea.
+model OpsMoatComponent {
+  id        String @id @default(uuid())
+  key       String @unique
+  ordinal   Int
+  name      String
+  /// The definition, in the words it was written in. Not paraphrased.
+  statement String @db.Text
+
+  entries OpsMoatEntry[]
+
+  @@map("ops_moat_components")
+}
+
+/// Something actually built on the moat.
+///
+/// The reason this table exists: "solidify the moat" was the one roadmap item
+/// nothing could report on. Everything else — companies live, issues closed,
+/// accounts moved — is countable, and an objective that cannot be counted is
+/// the one that quietly stops being worked on while the measurable ones get
+/// attention.
+///
+/// A row here is a claim that something was built, and it carries evidence, so
+/// the count is openable like every other number in this system.
+model OpsMoatEntry {
+  id          String @id @default(uuid())
+  componentId String @map("component_id")
+
+  title       String
+  description String? @db.Text
+
+  /// Where somebody can go and see it: a pull request, a commit, a screen.
+  evidenceUrl       String? @map("evidence_url")
+  /// What it points at in our own records, when it points at something.
+  relatedRecordType String? @map("related_record_type")
+  relatedRecordId   String? @map("related_record_id")
+
+  builtById String?  @map("built_by_id")
+  builtAt   DateTime @map("built_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  component OpsMoatComponent @relation(fields: [componentId], references: [id], onDelete: Restrict)
+
+  @@index([componentId, builtAt])
+  @@map("ops_moat_entries")
+}

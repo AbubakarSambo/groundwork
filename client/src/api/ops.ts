@@ -349,6 +349,29 @@ export interface OpsPerson {
   holdsNothing: boolean
 }
 
+export interface OpsMoat {
+  building: string
+  loop: string
+  privacy: string
+  acquirer: string
+  components: Array<{
+    key: string
+    ordinal: number
+    name: string
+    statement: string
+    built: number
+    entries: Array<{
+      id: string
+      title: string
+      description: string | null
+      evidenceUrl: string | null
+      builtAt: string
+      by: string | null
+    }>
+  }>
+  untouched: string[]
+}
+
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
@@ -374,6 +397,9 @@ export const opsApi = {
   pipeline: () => apiClient.get<OpsOpportunity[]>('/ops/pipeline', QUIET).then((r) => r.data),
   deployments: () => apiClient.get<OpsDeployment[]>('/ops/deployments', QUIET).then((r) => r.data),
   campaigns: () => apiClient.get<OpsCampaign[]>('/ops/campaigns', QUIET).then((r) => r.data),
+  moat: () => apiClient.get<OpsMoat>('/ops/moat', QUIET).then((r) => r.data),
+  recordMoat: (body: { componentKey: string; title: string; description?: string; evidenceUrl?: string }) =>
+    apiClient.post('/ops/moat', body, QUIET).then((r) => r.data),
   roadmap: () => apiClient.get<OpsRoadmapItem[]>('/ops/roadmap', QUIET).then((r) => r.data),
   useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => r.data),
   tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => r.data),

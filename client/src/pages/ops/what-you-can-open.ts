@@ -29,6 +29,7 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/deployment', name: 'Deployment', capability: 'deployment:read', group: 'Selling' },
 
   { path: '/ops/roadmap', name: 'Roadmap', capability: 'product:read', group: 'Building' },
+  { path: '/ops/moat', name: 'The moat', capability: 'product:read', group: 'Building' },
   { path: '/ops/readiness', name: 'Readiness', capability: 'product:read', group: 'Building' },
   { path: '/ops/tech', name: 'Tech', capability: 'tech:read', group: 'Building' },
   { path: '/ops/ux', name: 'UX', capability: 'ux:read', group: 'Building' },

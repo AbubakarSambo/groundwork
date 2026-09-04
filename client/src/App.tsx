@@ -36,6 +36,7 @@ import OpsBoardPage from '@/pages/ops/OpsBoardPage'
 import OpsSprintPage from '@/pages/ops/OpsSprintPage'
 import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
 import OpsPeoplePage from '@/pages/ops/OpsPeoplePage'
+import OpsMoatPage from '@/pages/ops/OpsMoatPage'
 import { OpsLayout } from '@/pages/ops/OpsLayout'
 import { OpsSalesPage, OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
@@ -328,6 +329,7 @@ export default function App() {
             <Route path="/ops/marketing" element={<RequireAuth><OpsLayout><OpsMarketingPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/deployment" element={<RequireAuth><OpsLayout><OpsDeploymentPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/roadmap" element={<RequireAuth><OpsLayout><OpsRoadmapPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/moat" element={<RequireAuth><OpsLayout><OpsMoatPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/readiness" element={<RequireAuth><OpsLayout><OpsReadinessPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />

@@ -620,6 +620,67 @@ export const METRICS: MetricDefinition[] = [
       };
     },
   },
+  {
+    key: 'moat.built_this_window',
+    label: 'Built on the moat',
+    shape: 'count',
+    capability: 'product:read',
+    counts: 'Things recorded against a moat component inside the window, and which component each belongs to.',
+    async compute(prisma, window) {
+      const rows = await prisma.opsMoatEntry.findMany({
+        where: { builtAt: within(window) },
+        include: { component: true },
+        orderBy: { builtAt: 'desc' },
+      });
+      return {
+        value: rows.length,
+        unit: 'things',
+        rows: rows.map((r) => ({
+          what: r.title,
+          component: r.component.name,
+          builtAt: r.builtAt,
+          evidence: r.evidenceUrl,
+        })),
+        /*
+         * The count alone is the wrong shape for this one. Five things all on
+         * elicitation and nothing on the dataset is a different quarter from one
+         * thing on each, and only naming the components says which happened.
+         */
+        says:
+          rows.length === 0
+            ? 'Nothing recorded against the moat in this window'
+            : `${rows.length} on ${new Set(rows.map((r) => r.component.name)).size} of the five`,
+      };
+    },
+  },
+  {
+    key: 'moat.components_untouched',
+    label: 'Moat components with nothing on them',
+    shape: 'count',
+    capability: 'product:read',
+    counts: 'Components of the defensible advantage that nothing has ever been built against.',
+    async compute(prisma) {
+      /*
+       * Deliberately ignores the window. A component nobody has touched all year
+       * is not a fact about a fortnight, and dating it would let it disappear
+       * from the very view meant to catch it.
+       */
+      const components = await prisma.opsMoatComponent.findMany({
+        include: { entries: true },
+        orderBy: { ordinal: 'asc' },
+      });
+      const untouched = components.filter((c) => c.entries.length === 0);
+      return {
+        value: untouched.length,
+        unit: 'components',
+        rows: untouched.map((c) => ({ component: c.name, statement: c.statement.slice(0, 120) })),
+        says:
+          untouched.length === 0
+            ? 'Something has been built on all five'
+            : `${untouched.length} of five have nothing on them`,
+      };
+    },
+  },
 ];
 
 export const METRICS_BY_KEY = new Map(METRICS.map((m) => [m.key, m]));
