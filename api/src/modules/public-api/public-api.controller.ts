@@ -24,6 +24,7 @@ import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 import { WhatHappenedWithACustomerService } from './what-happened-with-a-customer.service';
+import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
 const TOKEN_TTL_SECONDS = 900;
@@ -116,6 +117,27 @@ export class PublicApiController {
       { expiresIn: TOKEN_TTL_SECONDS },
     );
     return { access_token, token_type: 'Bearer', expires_in: TOKEN_TTL_SECONDS, scope: granted.scopes.join(' ') };
+  }
+
+  /**
+   * WHAT YOU NEED TO KNOW BEFORE YOU START.
+   *
+   * Deliberately unauthenticated. Somebody reading this has a client id they
+   * are about to use for the first time, and making them exchange it for a
+   * token before they can find out what the calls want puts the answer behind
+   * the thing they are trying to get right. There is nothing here that is not
+   * already in an error message.
+   */
+  @Get('how-to-connect')
+  @Public()
+  @ApiOperation({ summary: 'The six calls, the closed sets, and what usually goes wrong' })
+  howToConnect() {
+    return {
+      sequence: THE_SEQUENCE,
+      vocabulary: VOCABULARY,
+      wordsThatDiffer: WORDS_THAT_DIFFER,
+      says: 'Six calls. One of them is a person signing in, which nothing else will tell you.',
+    };
   }
 
   @Post('subjects')

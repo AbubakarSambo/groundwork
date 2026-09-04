@@ -152,7 +152,10 @@ export class GroundsByApiService {
     const moment = dto.moment ? String(dto.moment).toUpperCase() : undefined;
     if (moment && !(MOMENTS as readonly string[]).includes(moment)) {
       throw new BadRequestException(
-        `"${dto.moment}" is not a moment we have. Send one of: ${MOMENTS.join(', ')}.`,
+        /* Points at where the rest of the closed sets are, so somebody who has
+           just guessed one wrong does not have to guess the next. */
+        `"${dto.moment}" is not a moment we have. Send one of: ${MOMENTS.join(', ')}. ` +
+          'GET /api/org/v1/how-to-connect lists every closed set on this API.',
       );
     }
 
@@ -333,7 +336,17 @@ export class GroundsByApiService {
     const out: { externalId: string; id: string; kind: string | null }[] = [];
     for (const item of items) {
       if (!item.externalId) throw new BadRequestException('Each objective needs an externalId of its own.');
-      if (!item.text?.trim()) throw new BadRequestException(`Objective "${item.externalId}" has no text.`);
+      if (!item.text?.trim()) {
+        /*
+         * NAMES THE FIELD. "has no text" reads as an empty value, and the
+         * commonest cause is a caller who sent `described` - which is the word
+         * every other part of this product uses for the same idea. An error that
+         * knows the likely mistake should say it.
+         */
+        throw new BadRequestException(
+          `Objective "${item.externalId}" has no text. The field is \`text\` - if you sent \`described\`, rename it. See GET /api/org/v1/how-to-connect.`,
+        );
+      }
       if (!(Object.values(ObjectiveKind) as string[]).includes(item.kind)) {
         throw new BadRequestException(NOT_A_KIND);
       }
