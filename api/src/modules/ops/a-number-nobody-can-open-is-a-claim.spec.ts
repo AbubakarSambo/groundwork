@@ -27,6 +27,22 @@ const aGenericRow = {
   ownerPersonId: null,
   relatedCompanyId: 'c1',
   completedAt: new Date('2026-09-14'),
+  createdAt: new Date('2026-09-01'),
+  requestSummary: 'a decision',
+  approvalType: 'ROADMAP',
+  askAmount: 5000,
+  closedAmount: 2500,
+  funderName: 'A Funder',
+  personOrNetwork: 'Somebody',
+  convertedToType: 'OpsSalesOpportunity',
+  convertedToId: 'o1',
+  description: 'a claim',
+  amount: 100,
+  submittedAt: new Date('2026-09-02'),
+  actualResult: null,
+  blocked: false,
+  blockerReason: null,
+  dueDate: new Date('2026-09-30'),
   company: { name: 'A Company' },
 };
 const anOpportunity = {
@@ -130,16 +146,25 @@ describe('every metric returns its evidence', () => {
     },
   );
 
-  it.each(METRICS.map((m) => [m.key, m]))(
+  /**
+   * Only a COUNT has to equal its rows, and the registry says which metrics
+   * those are. The first version inferred it from the unit — "skip this if the
+   * unit is % or days" — which is a rule that quietly stops applying to the
+   * next metric measured in something else. A declared shape cannot drift.
+   */
+  it.each(METRICS.filter((m) => m.shape === 'count').map((m) => [m.key, m]))(
     '%s counts exactly as many rows as it returns',
     async (_key, metric) => {
-    const m = metric as (typeof METRICS)[number];
-    const result = await m.compute(populated, WINDOW);
-    // A derived figure (a rate, an average) is not a count of its rows; a count is.
-    if (result.unit === '%' || result.unit === 'days') return;
-    expect(result.value).toBe(result.rows.length);
+      const m = metric as (typeof METRICS)[number];
+      const result = await m.compute(populated, WINDOW);
+      expect(result.value).toBe(result.rows.length);
     },
   );
+
+  it('and most metrics are counts, so the rule above is not covering a handful', () => {
+    const counts = METRICS.filter((m) => m.shape === 'count').length;
+    expect(counts).toBeGreaterThan(METRICS.length / 2);
+  });
 });
 
 describe('a metric with nothing to report says so rather than saying zero', () => {
