@@ -5,6 +5,7 @@ import { resolveNumber, progressToward, MANUAL } from './where-this-number-comes
 import { METRICS_BY_KEY } from './a-number-you-can-open';
 import { OpsIdentity } from './ops-people.service';
 import { can } from './what-somebody-may-do';
+import { mayPutAToDoOn } from './whose-list-you-may-write-on';
 import {
   OpsObjectiveStatus,
   OpsCommitmentStatus,
@@ -305,9 +306,9 @@ export class OpsIntentService {
     const owner = await this.prisma.opsPerson.findUnique({ where: { key: input.ownerKey } });
     if (!owner) throw new NotFoundException(`No one here called ${input.ownerKey}`);
 
-    if (owner.id !== identity.personId && !can(identity.capabilities, 'todos:assign')) {
-      throw new ForbiddenException('Giving somebody else a to-do needs todos:assign');
-    }
+    const workstreams = await this.prisma.opsWorkstream.findMany();
+    const gate = mayPutAToDoOn(identity, owner.id, workstreams);
+    if (!gate.allowed) throw new ForbiddenException(gate.because);
 
     return this.prisma.opsTodo.create({
       data: {
@@ -323,11 +324,14 @@ export class OpsIntentService {
   }
 
   async todosFor(identity: OpsIdentity, personKey: string) {
-    if (identity.key !== personKey && !can(identity.capabilities, 'todos:assign')) {
-      throw new ForbiddenException(`${personKey}'s to-dos are theirs.`);
-    }
     const person = await this.prisma.opsPerson.findUnique({ where: { key: personKey } });
     if (!person) throw new NotFoundException(`No one here called ${personKey}`);
+
+    const workstreams = await this.prisma.opsWorkstream.findMany();
+    // Reading somebody's list and writing on it are the same reach: if you may
+    // not give them work, their list is not your business either.
+    const gate = mayPutAToDoOn(identity, person.id, workstreams);
+    if (!gate.allowed) throw new ForbiddenException(`${personKey}'s to-dos are theirs. ${gate.because}`);
 
     return this.prisma.opsTodo.findMany({
       where: { ownerId: person.id },
@@ -338,7 +342,8 @@ export class OpsIntentService {
   async setTodoStatus(id: string, status: OpsTodoStatus, identity: OpsIdentity) {
     const todo = await this.prisma.opsTodo.findUnique({ where: { id } });
     if (!todo) throw new NotFoundException('No such to-do');
-    if (todo.ownerId !== identity.personId && !can(identity.capabilities, 'todos:assign')) {
+    const workstreams = await this.prisma.opsWorkstream.findMany();
+    if (!mayPutAToDoOn(identity, todo.ownerId, workstreams).allowed) {
       throw new ForbiddenException('Somebody else closes their own to-dos');
     }
 

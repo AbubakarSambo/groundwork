@@ -4729,6 +4729,10 @@ enum OpsRequestStatus {
 
 enum OpsExpenseStatus {
   REQUESTED
+  /// Claimed by somebody who holds the decision themselves. Money out, but not
+  /// reviewed by a second person, and kept apart so the ledger never implies
+  /// it was.
+  RECORDED
   APPROVED
   PAID
   REJECTED

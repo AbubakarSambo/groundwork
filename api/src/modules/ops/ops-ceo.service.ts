@@ -182,7 +182,17 @@ export class OpsCeoService {
 
   // --- Spend --------------------------------------------------------------
 
-  submitExpense(input: {
+  /**
+   * Records a claim.
+   *
+   * Somebody who holds spend:approve does not need a decision on their own
+   * spend - there is nobody above them to give one, and the alternative is a
+   * claim that sits at REQUESTED for ever looking like an oversight. So theirs
+   * is RECORDED rather than requested, and the difference is kept visible: it
+   * was not reviewed by a second person, and the ledger says so rather than
+   * quietly filing it among the ones that were.
+   */
+  async submitExpense(input: {
     requesterId: string;
     date: Date;
     description: string;
@@ -191,7 +201,16 @@ export class OpsCeoService {
     receiptUrl?: string;
     notes?: string;
   }) {
-    return this.prisma.opsExpense.create({ data: input });
+    const holdsTheDecision = await this.prisma.opsGrant.findFirst({
+      where: { personId: input.requesterId, capability: 'spend:approve' },
+    });
+
+    return this.prisma.opsExpense.create({
+      data: {
+        ...input,
+        status: holdsTheDecision ? 'RECORDED' : 'REQUESTED',
+      },
+    });
   }
 
   /**
@@ -238,7 +257,9 @@ export class OpsCeoService {
      * the person who claims" is exactly the arrangement an auditor asks about.
      */
     if (expense.requesterId === identity.personId) {
-      throw new ForbiddenException('Somebody else approves your spend, not you');
+      throw new ForbiddenException(
+        'Somebody else approves your spend, not you. Yours is recorded rather than approved.',
+      );
     }
 
     return this.prisma.opsExpense.update({
@@ -280,14 +301,11 @@ export class OpsCeoService {
     /**
      * Claims nobody is allowed to approve.
      *
-     * Nobody approves their own spend, and today one person holds
-     * spend:approve — so her own claims can never be decided by anybody. The
-     * request sits at REQUESTED for ever, which looks exactly like a claim
-     * somebody has not got round to yet.
-     *
-     * Found by submitting one and watching it strand. The system does not get
-     * to fix this - who else may approve spend is a decision - but it must not
-     * hide it either.
+     * Mostly answered now - somebody who holds spend:approve records their
+     * spend rather than requesting it - but the check stays, because the
+     * situation comes back the moment a second approver is added and then
+     * removed, and a claim that can never be decided must never again look
+     * like one somebody has not got round to.
      */
     const whoMayApprove = new Set(approvers.map((g) => g.personId));
     const stranded = expenses.filter(
@@ -296,8 +314,13 @@ export class OpsCeoService {
 
     const earned = earnings.reduce((t, e) => t + Number(e.amount), 0);
     const paid = expenses.filter((e) => e.status === 'PAID').reduce((t, e) => t + Number(e.amount), 0);
+    /**
+     * RECORDED counts here alongside APPROVED. It is money that is going out
+     * whether or not a second person looked at it, and a balance that left it
+     * out would be the more comfortable number rather than the true one.
+     */
     const approvedNotPaid = expenses
-      .filter((e) => e.status === 'APPROVED')
+      .filter((e) => e.status === 'APPROVED' || e.status === 'RECORDED')
       .reduce((t, e) => t + Number(e.amount), 0);
     const awaiting = expenses
       .filter((e) => e.status === 'REQUESTED')
