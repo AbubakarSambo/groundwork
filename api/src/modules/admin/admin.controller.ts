@@ -5,6 +5,7 @@ import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PricingService } from '../billing/pricing.service';
+import { StripeService } from '../billing/stripe.service';
 /**
  * Stripe's own USD floor is 50 cents; the ceiling is a typo guard rather than a policy, set well
  * above any plan we would plausibly sell.
@@ -63,6 +64,7 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly whatsapp: WhatsAppService,
     private readonly pricing: PricingService,
+    private readonly stripe: StripeService,
   ) {}
 
   // ── Pricing (System -> Pricing) ──────────────────────────────────────────
@@ -160,6 +162,25 @@ export class AdminController {
   // Single Groundwork-owned number, no per-org setting - this is the one
   // global on/off switch, for once Abubakar's WhatsApp Business API
   // credentials are in place and verified.
+
+  /**
+   * Whether this deployment can take money.
+   *
+   * The Pricing section below lets somebody set what we charge, which reads as a
+   * promise that charging works. With no key it does not, and the only way to
+   * find out was for a customer to press Pay. Never the key itself — only
+   * whether one is set.
+   */
+  @Get('stripe')
+  @ApiOperation({ summary: 'Whether a Stripe key is configured on this deployment. Never the key.' })
+  stripeStatus() {
+    return {
+      isConfigured: this.stripe.isConfigured,
+      says: this.stripe.isConfigured
+        ? 'A Stripe key is set. Checkout and subscriptions will reach Stripe.'
+        : 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited; they will apply when a key is set.',
+    };
+  }
 
   @Get('whatsapp')
   @ApiOperation({ summary: 'WhatsApp integration status: credentials configured, admin toggle, and whether it is actually live' })
