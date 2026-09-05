@@ -109,7 +109,7 @@ export class OpsBuildService {
    * Sets readiness, and refuses PRODUCT_READY while a gap is still recorded.
    *
    * Without this, "product ready" is an opinion typed over the top of three
-   * written-down reasons it is not — and the readiness number on the sprint
+   * written-down reasons it is not — and the readiness number on the target list
    * board goes up while the gaps sit underneath it, unchanged.
    */
   async setReadiness(

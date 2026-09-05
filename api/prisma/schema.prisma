@@ -3899,7 +3899,10 @@ enum OpsFunctionalRole {
 }
 
 enum OpsPeriodKind {
-  SPRINT
+  /// A named, dated list of the companies we are trying to land. Was called a
+  /// SPRINT, which is engineering vocabulary for something that is not
+  /// engineering — and read as a two-week iteration to everybody who met it.
+  TARGET_LIST
   QUARTER
   /// A biweekly operating cycle. Hangs off a quarter.
   CYCLE
@@ -4051,8 +4054,8 @@ model OpsCompany {
   source                   String?
   /// The contributor who brought them, when one did.
   originatingContributorId String? @map("originating_contributor_id")
-  /// The sprint they belong to, when they are part of one.
-  sprintPeriodId           String? @map("sprint_period_id")
+  /// The target list they are on, when they are on one.
+  targetListId           String? @map("target_list_id")
 
   stage         OpsCompanyStage @default(LINED_UP)
   ownerPersonId String?         @map("owner_person_id")
@@ -4072,7 +4075,7 @@ model OpsCompany {
   commercialOpportunities OpsCommercialOpportunity[]
 
   @@index([stage])
-  @@index([sprintPeriodId])
+  @@index([targetListId])
   @@map("ops_companies")
 }
 
@@ -4202,12 +4205,12 @@ model OpsContributorTarget {
 
   /// A standing target, or an expectation of one sprint. Kept apart so a
   /// sprint's "bring one ready company" never reads as the year's number.
-  isSprintExpectation Boolean @default(false) @map("is_sprint_expectation")
+  isTargetListExpectation Boolean @default(false) @map("is_sprint_expectation")
 
   person OpsPerson @relation("OpsContributorTargetHolder", fields: [personId], references: [id], onDelete: Cascade)
   period OpsPeriod @relation("OpsContributorTargetPeriod", fields: [periodId], references: [id], onDelete: Restrict)
 
-  @@unique([personId, periodId, isSprintExpectation])
+  @@unique([personId, periodId, isTargetListExpectation])
   @@map("ops_contributor_targets")
 }
 

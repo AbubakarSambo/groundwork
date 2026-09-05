@@ -1717,7 +1717,7 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
        A_NUMBER - a number crosses a line.
        A_JUDGEMENT - a person would have to weigh it up. This is a real answer, not a failure.
        NOT_CHECKABLE - nothing in what they said could be checked, by you or by the person it is about.
-   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if it
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or targetList, STANDING if it
      has no end, NOT_SAID if they did not say.
    - dueSaid: their own words for the deadline - "Thursday", "end of the quarter". Empty otherwise.
    - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.
@@ -1920,7 +1920,7 @@ For each one:
        GOAL - a direction judged rather than counted, over a period.
    - check: how anybody would know it had happened.
        DONE_OR_NOT, A_NUMBER, A_JUDGEMENT, or NOT_CHECKABLE.
-   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or sprint, STANDING if
+   - dueKind: A_DATE if they named a day or deadline, A_CYCLE for a quarter or targetList, STANDING if
      it has no end, NOT_SAID if they did not say.
    - dueSaid: their own words for the deadline - "Thursday", "end of October". Empty otherwise.
    - owedTo: for COMMITMENT only, the name of the person waiting on it. Empty otherwise.

@@ -17,14 +17,14 @@ const STAGE_ORDER: OpsCompanyStage[] = [
 ];
 
 @Injectable()
-export class OpsSprintService {
+export class OpsTargetCompaniesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settings: OpsSettingsService,
   ) {}
 
   /**
-   * The sprint as one page: every company, how far it has got, what is next,
+   * Target companies as one page: every company, how far it has got, what is next,
    * and who is holding it up.
    *
    * Counts are derived from the rows returned alongside them, never stored, so
@@ -35,7 +35,7 @@ export class OpsSprintService {
     if (!period) throw new NotFoundException(`No period called ${periodKey}`);
 
     const companies = await this.prisma.opsCompany.findMany({
-      where: { sprintPeriodId: period.id },
+      where: { targetListId: period.id },
       include: {
         attributions: { include: { contributor: true } },
         useCases: true,
@@ -164,7 +164,7 @@ export class OpsSprintService {
         periodKey: t.period.key,
         targetCount: t.targetCount,
         dueDate: t.dueDate,
-        isSprintExpectation: t.isSprintExpectation,
+        isTargetListExpectation: t.isTargetListExpectation,
         countedSoFar: counting.length,
       })),
       /** The rows behind the number, so it can be checked rather than believed. */

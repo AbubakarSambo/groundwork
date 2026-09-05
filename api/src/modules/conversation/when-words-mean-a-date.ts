@@ -32,13 +32,13 @@ const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'frida
  * Phrases that sound like deadlines and are not.
  *
  * Every one of these was a real thing somebody could say in a check-in. None of them survives
- * being turned into a date: "soon" is a feeling, "next sprint" needs a calendar this product does
+ * being turned into a date: "soon" is a feeling, "next target list" needs a calendar this product does
  * not have, and "when procurement clears" is a dependency rather than a date - the kind
  * `GroundDependency` already records properly.
  */
 const NOT_A_DATE = [
   'soon', 'shortly', 'asap', 'as soon as', 'in due course', 'at some point', 'eventually',
-  'next sprint', 'this sprint', 'next cycle', 'the next release',
+  'next target list', 'this target list', 'next cycle', 'the next release',
   'when', 'once', 'after the', 'before we', 'depending', 'if ',
   'a few', 'couple of', 'some time', 'sometime',
 ];

@@ -6,7 +6,7 @@ import { OpsCompanyStage, OpsCommercialStage, OpsDeploymentStage } from '@prisma
  * A company had its own stage, set by hand, alongside a deal stage and a
  * deployment stage — three fields describing one journey, kept in step by
  * whoever remembered. Meridian Care sat at LINED_UP while its deployment was in
- * ONBOARDING and its deal was at MEETING, and the sprint board, which counts by
+ * ONBOARDING and its deal was at MEETING, and the target list board, which counts by
  * the company field, reported that nothing had moved.
  *
  * Nobody had done anything wrong. Sahar advanced the deployment, which is the

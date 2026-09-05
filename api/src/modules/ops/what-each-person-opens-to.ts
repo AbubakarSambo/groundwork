@@ -38,10 +38,10 @@ export const BOARDS: BoardDefinition[] = [
   {
     key: 'ceo',
     name: 'Running the company',
-    answers: 'Where is the sprint, what is waiting on me, and what is the money doing?',
+    answers: 'Where is the targetList, what is waiting on me, and what is the money doing?',
     metrics: [
-      'sprint.companies_lined_up',
-      'sprint.companies_onboarded',
+      'targets.companies_lined_up',
+      'targets.companies_onboarded',
       'product.use_cases_supported',
       'approvals.pending',
       'commercial.claims_waiting',
@@ -103,7 +103,7 @@ export const BOARDS: BoardDefinition[] = [
       'product.roadmap_completed',
       'tech.open_client_blockers',
       'deployment.blocked',
-      'sprint.companies_lined_up',
+      'targets.companies_lined_up',
     ],
     personalPanels: ['your-commitments'],
     landsFor: ['product:write'],
@@ -120,7 +120,7 @@ export const BOARDS: BoardDefinition[] = [
     key: 'contributor',
     name: 'What I brought',
     answers: 'Where am I against my six, and what is happening to the companies I introduced?',
-    metrics: ['sprint.companies_lined_up'],
+    metrics: ['targets.companies_lined_up'],
     /**
      * Nearly all of what a contributor comes here for. Their board carries one
      * company-wide number and their own standing, which is the honest shape:

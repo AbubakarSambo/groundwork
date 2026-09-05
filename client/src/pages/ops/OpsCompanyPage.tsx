@@ -39,8 +39,8 @@ export default function OpsCompanyPage() {
     return (
       <main id="main" style={PAGE}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>No company called {key}</h1>
-        <Link to="/ops/sprint" style={{ fontSize: 13.5 }}>
-          Back to the sprint
+        <Link to="/ops/target-companies" style={{ fontSize: 13.5 }}>
+          Back to the target list
         </Link>
       </main>
     )
@@ -52,8 +52,8 @@ export default function OpsCompanyPage() {
   return (
     <main id="main" style={PAGE}>
       <header style={{ marginBottom: 18 }}>
-        <Link to="/ops/sprint" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
-          ← The sprint
+        <Link to="/ops/target-companies" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
+          ← Target companies
         </Link>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '6px 0 2px' }}>
           {d.company.name}

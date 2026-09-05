@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { opsApi, type OpsPerson } from '@/api/ops'
 import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
-import { Adder } from './OpsForm'
+import { Adder, Choose } from './OpsForm'
 
 /**
  * Who is here, and what each of them can actually do.
@@ -112,6 +112,7 @@ function groupCapabilities(capabilities: string[]): Array<[string, string[]]> {
 
 export default function OpsPeoplePage() {
   const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
+  const roles = useQuery({ queryKey: ['ops', 'roles'], queryFn: opsApi.roles, retry: false })
   const capabilities = useQuery({
     queryKey: ['ops', 'capabilities'],
     queryFn: opsApi.capabilities,
@@ -137,13 +138,10 @@ export default function OpsPeoplePage() {
             name: 'functionalRole',
             label: 'What they do',
             required: true,
-            options: [
-              { value: 'CEO', label: 'Runs the company' },
-              { value: 'SALES_MARKETING', label: 'Sales and marketing' },
-              { value: 'PRODUCT_TECH_LEAD', label: 'Product and tech lead' },
-              { value: 'TECH', label: 'Builds' },
-              { value: 'CONTRIBUTOR', label: 'Brings companies in' },
-            ],
+            /* From the API, which reads them off the grants they key on. This
+               was a second copy of the list, which is how a role gets added and
+               never appears in the picker. */
+            options: (roles.data ?? []).map((r) => ({ value: r.role, label: r.label })),
           },
         ]}
         submit={(v) =>
@@ -162,7 +160,18 @@ export default function OpsPeoplePage() {
         <section key={p.id} style={{ ...CARD, marginBottom: 12, opacity: p.active ? 1 : 0.65 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
             <strong style={{ fontSize: 15, color: 'var(--gw-navy)' }}>{p.displayName}</strong>
-            <span style={{ ...LABEL, fontSize: 9.5 }}>{p.functionalRole.replace(/_/g, ' ')}</span>
+            {/* A ROLE SOMEBODY CAN CHANGE. It was fixed at the moment a person
+                was created, so two people swapping jobs meant deleting one of
+                them. It adds the new role's capabilities and removes none —
+                what they no longer need is revoked below, one at a time, so
+                that is a decision rather than a side effect of a dropdown. */}
+            <Choose
+              label={`What ${p.displayName} does`}
+              value={p.functionalRole}
+              options={(roles.data ?? []).map((r) => r.role)}
+              onPick={(next) => opsApi.changeRole(p.key, next)}
+              invalidate={[['ops']]}
+            />
             {!p.hasAnAccount && (
               /*
                * Said, because it is the difference between somebody who is set

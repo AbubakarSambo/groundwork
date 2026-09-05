@@ -3,7 +3,7 @@
  *
  * A company carried its own stage, a deal carried another, and a deployment a
  * third. Meridian Care sat at LINED_UP while its deployment was ONBOARDING and
- * its deal was at MEETING — and the sprint board, which counts by the company
+ * its deal was at MEETING — and the target list board, which counts by the company
  * field, reported that nothing had moved all month.
  *
  * Nobody had done anything wrong. Sahar advanced the deployment, which is the

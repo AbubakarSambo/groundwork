@@ -353,14 +353,14 @@ export const METRICS: MetricDefinition[] = [
     },
   },
   {
-    key: 'sprint.companies_lined_up',
+    key: 'targets.companies_lined_up',
     label: 'Companies lined up',
     shape: 'count',
-    capability: 'sprint:read',
-    counts: 'Companies attached to a sprint, whatever stage they have reached.',
+    capability: 'target-companies:read',
+    counts: 'Companies attached to a targetList, whatever stage they have reached.',
     async compute(prisma) {
       const rows = await prisma.opsCompany.findMany({
-        where: { sprintPeriodId: { not: null } },
+        where: { targetListId: { not: null } },
         orderBy: { name: 'asc' },
       });
       return {
@@ -372,10 +372,10 @@ export const METRICS: MetricDefinition[] = [
     },
   },
   {
-    key: 'sprint.companies_onboarded',
+    key: 'targets.companies_onboarded',
     label: 'Companies onboarded',
     shape: 'count',
-    capability: 'sprint:read',
+    capability: 'target-companies:read',
     counts: 'Companies whose deployment has reached first use or gone live.',
     async compute(prisma) {
       const rows = await prisma.opsDeployment.findMany({

@@ -76,14 +76,14 @@ export interface OpsStanding {
     periodKey: string
     targetCount: number
     dueDate: string
-    isSprintExpectation: boolean
+    isTargetListExpectation: boolean
     countedSoFar: number
   }>
   counted: Array<{ company: string; qualifyingStatus: string; introducedAt: string }>
   notYetCounting: Array<{ company: string; qualifyingStatus: string }>
 }
 
-export interface OpsSprintBoard {
+export interface OpsTargetCompaniesBoard {
   period: { key: string; name: string; startsOn: string; endsOn: string; goal: string | null }
   companies: Array<{
     id: string
@@ -509,27 +509,27 @@ export const opsApi = {
         QUIET,
       )
       .then((r) => r.data),
-  /** Start a sprint over any stretch of time. Sprints only — a quarter is the calendar. */
-  startASprint: (body: { name: string; startsOn: string; endsOn: string; goal?: string }) =>
+  /** Start a list over any stretch of time. Target lists only — a quarter is the calendar. */
+  startATargetList: (body: { name: string; startsOn: string; endsOn: string; goal?: string }) =>
     apiClient.post('/ops/periods', body, QUIET).then((r) => r.data),
   /** Move its dates, rename it, open or close it. The key never moves. */
-  resetASprint: (
+  resetATargetList: (
     key: string,
     body: { name?: string; startsOn?: string; endsOn?: string; goal?: string | null; status?: string },
   ) => apiClient.patch(`/ops/periods/${key}`, body, QUIET).then((r) => r.data),
-  /** Every company, or only the ones on one sprint. */
-  allCompanies: (sprintPeriodKey?: string) =>
+  /** Every company, or only the ones on one target list. */
+  allCompanies: (targetListKey?: string) =>
     apiClient
-      .get<Array<{ key: string; name: string; stage: string; sprintPeriodId: string | null }>>('/ops/companies', {
+      .get<Array<{ key: string; name: string; stage: string; targetListId: string | null }>>('/ops/companies', {
         ...QUIET,
-        params: sprintPeriodKey ? { sprint: sprintPeriodKey } : undefined,
+        params: targetListKey ? { list: targetListKey } : undefined,
       })
       .then((r) => r.data),
-  /** Put a company on a sprint, or pass null to take it off. */
-  setCompanySprint: (key: string, sprintPeriodKey: string | null) =>
-    apiClient.patch(`/ops/companies/${key}/sprint`, { sprintPeriodKey }, QUIET).then((r) => r.data),
-  sprint: (periodKey: string) =>
-    apiClient.get<OpsSprintBoard>(`/ops/sprint/${periodKey}`, QUIET).then((r) => r.data),
+  /** Put a company on a targetList, or pass null to take it off. */
+  setCompanyTargetList: (key: string, targetListKey: string | null) =>
+    apiClient.patch(`/ops/companies/${key}/target-list`, { targetListKey }, QUIET).then((r) => r.data),
+  targetCompanies: (periodKey: string) =>
+    apiClient.get<OpsTargetCompaniesBoard>(`/ops/target-companies/${periodKey}`, QUIET).then((r) => r.data),
   standing: (personKey: string) =>
     apiClient.get<OpsStanding>(`/ops/standing/${personKey}`, QUIET).then((r) => r.data),
   todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`, QUIET).then((r) => r.data),
@@ -727,6 +727,16 @@ export const opsApi = {
   strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
   people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => r.data),
+  /** The roles, from the same list the grants are keyed on. Never a copy here. */
+  roles: () =>
+    apiClient
+      .get<Array<{ role: string; label: string; comesWith: string[] }>>('/ops/roles', QUIET)
+      .then((r) => r.data),
+  /** Change what somebody does. Adds that role's capabilities, removes none. */
+  changeRole: (key: string, functionalRole: string) =>
+    apiClient
+      .patch<{ says: string }>(`/ops/people/${key}/role`, { functionalRole }, QUIET)
+      .then((r) => r.data),
   agreement: (key: string) =>
     apiClient
       .get<{ originatorSharePercent: string | null; originatorShareMonths: number | null; agreementNote: string | null } | null>(
@@ -747,7 +757,7 @@ export const opsApi = {
     apiClient.patch(`/ops/people/${key}/active`, { active }, QUIET).then((r) => r.data),
 
   // --- Writes ---------------------------------------------------------------
-  addCompany: (body: { name: string; sprintPeriodKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string }) =>
+  addCompany: (body: { name: string; targetListKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string }) =>
     apiClient.post('/ops/companies', body, QUIET).then((r) => r.data),
   setCompanyStage: (key: string, stage: string) =>
     apiClient.patch(`/ops/companies/${key}/stage`, { stage }, QUIET).then((r) => r.data),

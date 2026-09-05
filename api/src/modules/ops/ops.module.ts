@@ -4,8 +4,8 @@ import { OpsController } from './ops.controller';
 import { OpsPeopleService } from './ops-people.service';
 import { OpsFoundationService } from './ops-foundation.service';
 import { OpsCapabilityGuard } from './ops-capability.guard';
-import { OpsSprintController } from './ops-sprint.controller';
-import { OpsSprintService } from './ops-sprint.service';
+import { OpsTargetCompaniesController } from './ops-target-companies.controller';
+import { OpsTargetCompaniesService } from './ops-target-companies.service';
 import { OpsCompaniesService } from './ops-companies.service';
 import { OpsSettingsService } from './ops-settings.service';
 import { OpsPipelineController } from './ops-pipeline.controller';
@@ -33,13 +33,13 @@ import { OpsDoorController } from './ops-door.controller';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController],
+  controllers: [OpsController, OpsTargetCompaniesController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController],
   providers: [
     OpsPeopleService,
     OpsFoundationService,
     OpsDoorService,
     OpsCapabilityGuard,
-    OpsSprintService,
+    OpsTargetCompaniesService,
     OpsCompaniesService,
     OpsSettingsService,
     OpsPipelineService,

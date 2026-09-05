@@ -20,7 +20,7 @@ export interface OpsPage {
 
 export const OPS_PAGES: OpsPage[] = [
   { path: '/ops', name: 'My board', capability: null, group: 'Work' },
-  { path: '/ops/sprint', name: 'The sprint', capability: 'sprint:read', group: 'Work' },
+  { path: '/ops/target-companies', name: 'Target companies', capability: 'target-companies:read', group: 'Work' },
   { path: '/ops/commitments', name: 'Commitments', capability: null, group: 'Work' },
   { path: '/ops/spend', name: 'Spend', capability: 'spend:submit', group: 'Work' },
 
@@ -80,7 +80,7 @@ export const GROUPS: OpsPage['group'][] = ['Work', 'Selling', 'Building', 'Compa
  * cannot.
  */
 export const REACHED_BY_CLICKING: Array<{ path: string; from: string }> = [
-  { path: '/ops/companies/:key', from: 'a company name on the sprint or the pipeline' },
+  { path: '/ops/companies/:key', from: 'a company name on the target list or the pipeline' },
   /*
    * The old pipeline's address. Redirected rather than deleted: it is in
    * people's history and a silent 404 on a page somebody used daily reads as an

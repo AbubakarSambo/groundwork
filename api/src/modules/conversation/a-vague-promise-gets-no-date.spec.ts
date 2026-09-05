@@ -56,7 +56,7 @@ describe('words that do not, which is the common case', () => {
   });
 
   it('refuses a cycle this product has no calendar for', () => {
-    for (const said of ['next sprint', 'this sprint', 'end of the quarter', 'the next release']) {
+    for (const said of ['next target list', 'this target list', 'end of the quarter', 'the next release']) {
       expect(whenTheyMeant(said, WED)).toBeNull();
     }
   });

@@ -33,7 +33,7 @@ import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import OpsBoardPage from '@/pages/ops/OpsBoardPage'
-import OpsSprintPage from '@/pages/ops/OpsSprintPage'
+import OpsTargetCompaniesPage from '@/pages/ops/OpsTargetCompaniesPage'
 import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
 import OpsPeoplePage from '@/pages/ops/OpsPeoplePage'
 import OpsMoatPage from '@/pages/ops/OpsMoatPage'
@@ -330,7 +330,7 @@ export default function App() {
               * failing requests.
               */}
             <Route path="/ops" element={<RequireAuth><OpsLayout><OpsBoardPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/sprint" element={<RequireAuth><OpsLayout><OpsSprintPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/target-companies" element={<RequireAuth><OpsLayout><OpsTargetCompaniesPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />

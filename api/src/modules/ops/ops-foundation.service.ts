@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { keyFromName, whyTheseDatesAreWrong } from './a-sprint-is-something-you-set';
+import { keyFromName, whyTheseDatesAreWrong } from './a-target-list-is-something-you-set';
 
 /** Reads of the standing furniture: periods and workstreams. */
 @Injectable()
@@ -23,7 +23,7 @@ export class OpsFoundationService {
     const containsToday = (p: (typeof periods)[number]) => p.startsOn <= today && p.endsOn >= today;
 
     return [
-      // A sprint and a quarter can both contain today; both belong at the top.
+      // A target list and a quarter can both contain today; both belong at the top.
       ...periods.filter(containsToday),
       ...periods.filter((p) => !containsToday(p)),
     ];
@@ -34,14 +34,14 @@ export class OpsFoundationService {
   }
 
   /**
-   * Start a sprint, over whatever stretch of time somebody says.
+   * Start a list, over whatever stretch of time somebody says.
    *
    * Quarters and cycles are not created here on purpose. A quarter is the
    * calendar and a cycle hangs off one — neither is a choice, and both have
-   * containment rules that a free-form form would quietly break. A sprint is
+   * containment rules that a free-form form would quietly break. A target list is
    * the one period the company decides, so it is the one this writes.
    */
-  async startASprint(input: {
+  async startATargetList(input: {
     name: string;
     startsOn: Date;
     endsOn: Date;
@@ -49,7 +49,7 @@ export class OpsFoundationService {
     actorPersonId?: string;
   }) {
     const name = input.name?.trim();
-    if (!name) throw new BadRequestException('A sprint needs a name — it is what every board will call it.');
+    if (!name) throw new BadRequestException('A target list needs a name — it is what every board will call it.');
 
     const wrong = whyTheseDatesAreWrong({ startsOn: input.startsOn, endsOn: input.endsOn });
     if (wrong) throw new BadRequestException(wrong);
@@ -66,7 +66,7 @@ export class OpsFoundationService {
       data: {
         key,
         name,
-        kind: 'SPRINT',
+        kind: 'TARGET_LIST',
         startsOn: input.startsOn,
         endsOn: input.endsOn,
         goal: input.goal?.trim() || null,
@@ -76,23 +76,23 @@ export class OpsFoundationService {
   }
 
   /**
-   * Move a sprint's dates, rename it, or open and close it.
+   * Move a target list's dates, rename it, or open and close it.
    *
    * THE KEY NEVER MOVES. It is made from the name at creation and then left
    * alone: every company, every contributor target and every saved board link
    * points at it, and a rename that re-slugged would silently empty all of
-   * them. So a renamed sprint keeps the key it was born with, which is why the
+   * them. So a renamed list keeps the key it was born with, which is why the
    * key is shown on the form rather than hidden.
    */
-  async resetASprint(
+  async resetATargetList(
     key: string,
     patch: { name?: string; startsOn?: Date; endsOn?: Date; goal?: string | null; status?: 'PLANNED' | 'OPEN' | 'CLOSED' },
   ) {
     const period = await this.prisma.opsPeriod.findUnique({ where: { key } });
     if (!period) throw new NotFoundException(`No period called ${key}`);
-    if (period.kind !== 'SPRINT') {
+    if (period.kind !== 'TARGET_LIST') {
       throw new BadRequestException(
-        `${period.name} is a ${period.kind.toLowerCase()}, not a sprint. Quarters follow the calendar and cycles hang off a quarter — neither is ours to move.`,
+        `${period.name} is a ${period.kind.toLowerCase()}, not a target list. Quarters follow the calendar and cycles hang off a quarter — neither is ours to move.`,
       );
     }
 

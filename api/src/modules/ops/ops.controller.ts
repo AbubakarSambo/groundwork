@@ -33,22 +33,22 @@ export class OpsController {
 
   /** The periods we are working in, so every board can date itself. */
   @Get('periods')
-  @ApiOperation({ summary: 'Sprints, quarters and cycles' })
+  @ApiOperation({ summary: 'TargetLists, quarters and cycles' })
   async periods() {
     return this.foundation.periods();
   }
 
   /**
-   * Start a sprint, over whatever dates somebody chooses.
+   * Start a list, over whatever dates somebody chooses.
    *
-   * Sprints only. A quarter is the calendar and a cycle hangs off one; neither
+   * TargetLists only. A quarter is the calendar and a cycle hangs off one; neither
    * is a decision this form gets to make.
    */
   @Post('periods')
   @NeedsOps('periods:write')
-  @ApiOperation({ summary: 'Start a sprint over any stretch of time' })
-  async startASprint(@Body() body: { name: string; startsOn: string; endsOn: string; goal?: string }) {
-    return this.foundation.startASprint({
+  @ApiOperation({ summary: 'Start a list over any stretch of time' })
+  async startATargetList(@Body() body: { name: string; startsOn: string; endsOn: string; goal?: string }) {
+    return this.foundation.startATargetList({
       name: body.name,
       startsOn: new Date(body.startsOn),
       endsOn: new Date(body.endsOn),
@@ -59,12 +59,12 @@ export class OpsController {
   /** Move its dates, rename it, open it, close it. The key never moves. */
   @Patch('periods/:key')
   @NeedsOps('periods:write')
-  @ApiOperation({ summary: 'Re-date, rename, open or close a sprint' })
-  async resetASprint(
+  @ApiOperation({ summary: 'Re-date, rename, open or close a target list' })
+  async resetATargetList(
     @Param('key') key: string,
     @Body() body: { name?: string; startsOn?: string; endsOn?: string; goal?: string | null; status?: 'PLANNED' | 'OPEN' | 'CLOSED' },
   ) {
-    return this.foundation.resetASprint(key, {
+    return this.foundation.resetATargetList(key, {
       name: body.name,
       startsOn: body.startsOn ? new Date(body.startsOn) : undefined,
       endsOn: body.endsOn ? new Date(body.endsOn) : undefined,
@@ -97,7 +97,7 @@ export class OpsController {
   @Post('integration/push')
   @NeedsOps('integration:manage')
   @ApiOperation({ summary: 'Send this period across to Groundwork' })
-  push(@Query('period') period = 'sept-2026-sprint') {
+  push(@Query('period') period = 'sept-2026-target-list') {
     return this.integration.push(period);
   }
 
@@ -116,6 +116,21 @@ export class OpsController {
   @ApiOperation({ summary: 'The capabilities that exist' })
   capabilities() {
     return OPS_CAPABILITIES;
+  }
+
+  /** The roles somebody can hold, with what each comes with. One source. */
+  @Get('roles')
+  @NeedsOps('people:admin')
+  @ApiOperation({ summary: 'The roles, and the capabilities each comes with' })
+  roles() {
+    return this.people.roles();
+  }
+
+  @Patch('people/:key/role')
+  @NeedsOps('people:admin')
+  @ApiOperation({ summary: 'Change what somebody does. Adds that role’s capabilities, removes none.' })
+  changeRole(@Param('key') key: string, @Body() body: { functionalRole: OpsFunctionalRole }) {
+    return this.people.changeRole(key, body.functionalRole);
   }
 
   @Post('people')

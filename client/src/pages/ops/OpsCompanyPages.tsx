@@ -54,7 +54,7 @@ function TheRowsBehindIt({ rows }: { rows?: Array<Record<string, unknown>> }) {
 
 export function OpsQuarterPage() {
   /* Empty until the periods arrive. A seeded key written into the client opens
-     on a period that will not always exist — the same defect as on the sprint
+     on a period that will not always exist — the same defect as on the target list
      page, in two more places. `periods()` puts the one containing today first. */
   const [period, setPeriod] = useState('')
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
@@ -605,7 +605,7 @@ export function OpsSpendPage() {
               title="Record money in"
               fields={[
                 { name: 'amount', label: 'How much', type: 'number', required: true },
-                { name: 'source', label: 'Where from', required: true, placeholder: 'Afrimash activation' },
+                { name: 'source', label: 'Where from', required: true, placeholder: 'Northwind activation' },
                 { name: 'date', label: 'When', type: 'date', required: true },
                 { name: 'note', label: 'Anything worth remembering', type: 'textarea' },
               ]}
@@ -840,7 +840,7 @@ export function OpsIntegrationPage() {
   const status = useQuery({ queryKey: ['ops', 'integration'], queryFn: opsApi.integration, retry: false })
   const queryClient = useQueryClient()
   const push = useMutation({
-    mutationFn: () => opsApi.pushToGroundwork('sept-2026-sprint'),
+    mutationFn: () => opsApi.pushToGroundwork('sept-2026-target-list'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ops', 'integration'] }),
   })
 

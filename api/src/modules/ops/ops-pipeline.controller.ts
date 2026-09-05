@@ -105,7 +105,7 @@ export class OpsPipelineController {
   /** Every number on one board, each with its rows. Nothing here is stored. */
   @Get('boards/:key')
   @ApiOperation({ summary: 'A whole board, computed' })
-  async board(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-sprint') {
+  async board(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-target-list') {
     const window = await this.metrics.windowForPeriod(period);
     return this.metrics.board(req.opsIdentity, key, window);
   }
@@ -122,7 +122,7 @@ export class OpsPipelineController {
    */
   @Get('metrics/:key')
   @ApiOperation({ summary: 'A number, and what made it' })
-  async metric(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-sprint') {
+  async metric(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-target-list') {
     const window = await this.metrics.windowForPeriod(period);
     return this.metrics.read(req.opsIdentity, key, window);
   }

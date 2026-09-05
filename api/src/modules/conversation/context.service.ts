@@ -16,7 +16,7 @@ import { CheckInStatus, RecordEntryType } from '@prisma/client';
 const FALLBACK_SHARED_TERMS = [
   'api', 'payment', 'integration', 'onboarding', 'pipeline', 'deploy',
   'infrastructure', 'automation', 'latency', 'database', 'roadmap',
-  'sprint', 'release', 'crm', 'proposal',
+  'target list', 'release', 'crm', 'proposal',
 ];
 
 const STOP_WORDS = new Set([

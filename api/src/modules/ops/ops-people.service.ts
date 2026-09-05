@@ -8,7 +8,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OpsCapability, DEFAULT_GRANTS, can, isAKnownCapability, OPS_CAPABILITIES } from './what-somebody-may-do';
+import {
+  OpsCapability,
+  DEFAULT_GRANTS,
+  can,
+  isAKnownCapability,
+  OPS_CAPABILITIES,
+  everyRole,
+} from './what-somebody-may-do';
 import { OpsFunctionalRole } from '@prisma/client';
 import { rollOutNewCapabilities } from './a-new-capability-reaches-the-people-who-should-have-it';
 import {
@@ -287,6 +294,59 @@ export class OpsPeopleService implements OnModuleInit {
       where: { id: person.id },
       data: { active, ...(active ? {} : { userId: null }) },
     });
+  }
+
+  /** The roles somebody can be given, and what each comes with. */
+  roles() {
+    return everyRole();
+  }
+
+  /**
+   * Change what somebody does.
+   *
+   * THE ROLE IS NOT THE ANSWER TO WHAT THEY MAY DO — the grants are, and they
+   * stay rows. So this ADDS the new role's defaults and removes nothing: if
+   * Sahar takes over product, she needs product:write, and whether she keeps
+   * sales:write is a decision somebody should make on purpose rather than one
+   * this call makes for them by silently stripping it.
+   *
+   * The capabilities she no longer needs are revoked one at a time on the same
+   * page, which is the only way that can be a decision rather than a side
+   * effect.
+   */
+  async changeRole(personKey: string, functionalRole: OpsFunctionalRole) {
+    const person = await this.byKey(personKey);
+    if (!DEFAULT_GRANTS[functionalRole]) {
+      throw new BadRequestException(`${functionalRole} is not a role this system knows about`);
+    }
+
+    const updated = await this.prisma.opsPerson.update({
+      where: { id: person.id },
+      data: { functionalRole },
+    });
+
+    const added = await this.prisma.opsGrant.createMany({
+      data: DEFAULT_GRANTS[functionalRole].map((capability) => ({
+        personId: person.id,
+        capability,
+      })),
+      skipDuplicates: true,
+    });
+
+    this.logger.warn(
+      `${person.displayName} is now ${functionalRole} (was ${person.functionalRole}). ${added.count} capabilities added, none removed.`,
+    );
+
+    return {
+      key: updated.key,
+      functionalRole: updated.functionalRole,
+      was: person.functionalRole,
+      capabilitiesAdded: added.count,
+      says:
+        added.count === 0
+          ? 'They already held everything that role comes with. Nothing was taken away.'
+          : `${added.count} added. Nothing was taken away — revoke what they no longer need, one at a time, so it is a decision.`,
+    };
   }
 
   private async byKey(key: string) {

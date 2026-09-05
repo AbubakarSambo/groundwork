@@ -134,7 +134,7 @@ describe('the ops client', () => {
      * Only paths inside an `apiClient` call. The client also writes `/ops/...`
      * as react-router page paths and as hrefs, and those are not requests — an
      * earlier version of this check counted them and demanded the API answer
-     * `/ops/sprint`.
+     * `/ops/target-companies`.
      */
     const routeShapes = new Set(everyRoute().map((r) => shape(r.split(' ')[1])))
     const requested = [...api.matchAll(/apiClient\.\w+[\s\S]{0,500}?[`'"](\/(?:ops|admin\/ops)[^`'"]*)/g)].map(

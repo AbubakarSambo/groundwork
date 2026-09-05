@@ -1,7 +1,7 @@
 /**
  * "Product ready" must not be typeable over the gaps that say it is not.
  *
- * The sprint board's readiness count is the number the CEO looks at to decide
+ * Target companies board's readiness count is the number the CEO looks at to decide
  * whether September worked. Without this rule, somebody moves a use case to
  * PRODUCT_READY while three written-down gaps sit underneath it unchanged: the
  * count goes up, the gaps stay open, and the board is now reporting an opinion.

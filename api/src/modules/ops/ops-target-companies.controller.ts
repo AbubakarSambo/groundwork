@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards } from
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
-import { OpsSprintService } from './ops-sprint.service';
+import { OpsTargetCompaniesService } from './ops-target-companies.service';
 import { OpsCompaniesService } from './ops-companies.service';
 import { OpsSettingsService } from './ops-settings.service';
 import { OpsIdentity } from './ops-people.service';
@@ -16,34 +16,34 @@ interface OpsRequest {
 @ApiBearerAuth()
 @Controller('ops')
 @UseGuards(JwtAuthGuard, OpsCapabilityGuard)
-export class OpsSprintController {
+export class OpsTargetCompaniesController {
   constructor(
-    private readonly sprint: OpsSprintService,
+    private readonly targetList: OpsTargetCompaniesService,
     private readonly companies: OpsCompaniesService,
     private readonly settings: OpsSettingsService,
   ) {}
 
   /**
-   * The whole sprint on one page. Readable by anybody on the team: the point of
-   * a sprint is that the six of us are looking at the same ten companies.
+   * The whole target list on one page. Readable by anybody on the team: the point of
+   * a target list is that the six of us are looking at the same ten companies.
    */
-  @Get('sprint/:periodKey')
-  @NeedsOps('sprint:read')
-  @ApiOperation({ summary: 'Every company in a sprint, how far it has got, and what is next' })
+  @Get('target-companies/:periodKey')
+  @NeedsOps('target-companies:read')
+  @ApiOperation({ summary: 'Every company in a targetList, how far it has got, and what is next' })
   board(@Param('periodKey') periodKey: string) {
-    return this.sprint.board(periodKey);
+    return this.targetList.board(periodKey);
   }
 
   @Get('companies')
   @NeedsOps('sales:read')
-  @ApiOperation({ summary: 'Companies, optionally narrowed to one sprint' })
-  list(@Query('sprint') sprint?: string) {
-    return this.companies.list(sprint);
+  @ApiOperation({ summary: 'Companies, optionally narrowed to one target list' })
+  list(@Query('list') targetList?: string) {
+    return this.companies.list(targetList);
   }
 
   /** Everything about one company, in the order somebody asks. */
   @Get('companies/:key')
-  @NeedsOps('sprint:read')
+  @NeedsOps('target-companies:read')
   @ApiOperation({ summary: 'One company, every angle, and what has happened' })
   detail(@Param('key') key: string) {
     return this.companies.detail(key);
@@ -52,7 +52,7 @@ export class OpsSprintController {
   @Post('companies')
   @NeedsOps('sales:write')
   @ApiOperation({ summary: 'Add a company' })
-  add(@Req() req: OpsRequest, @Body() body: { name: string; sprintPeriodKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string; notes?: string }) {
+  add(@Req() req: OpsRequest, @Body() body: { name: string; targetListKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string; notes?: string }) {
     return this.companies.add(body, req.opsIdentity.personId);
   }
 
@@ -76,20 +76,20 @@ export class OpsSprintController {
   }
 
   /**
-   * Put a company on a sprint, or take it off. `sprintPeriodKey: null` removes it.
+   * Put a company on a targetList, or take it off. `targetListKey: null` removes it.
    *
    * This is the curated list — the companies getting attention between two
    * dates — which is a different list from every company we are selling to.
    */
-  @Patch('companies/:key/sprint')
-  @NeedsOps('sprint:curate')
-  @ApiOperation({ summary: 'Add a company to a sprint, or take it off' })
-  setSprint(
+  @Patch('companies/:key/target-list')
+  @NeedsOps('target-companies:curate')
+  @ApiOperation({ summary: 'Add a company to a targetList, or take it off' })
+  setTargetList(
     @Req() req: OpsRequest,
     @Param('key') key: string,
-    @Body() body: { sprintPeriodKey: string | null },
+    @Body() body: { targetListKey: string | null },
   ) {
-    return this.companies.setSprint(key, body.sprintPeriodKey ?? null, req.opsIdentity.personId);
+    return this.companies.setTargetList(key, body.targetListKey ?? null, req.opsIdentity.personId);
   }
 
   @Patch('companies/:key/blocker')
@@ -137,7 +137,7 @@ export class OpsSprintController {
   @Get('standing/:personKey')
   @ApiOperation({ summary: 'Where somebody stands against their target' })
   standing(@Req() req: OpsRequest, @Param('personKey') personKey: string) {
-    return this.sprint.standingFor(req.opsIdentity, personKey);
+    return this.targetList.standingFor(req.opsIdentity, personKey);
   }
 
   @Get('settings')

@@ -13,6 +13,14 @@ import { MOAT_COMPONENTS, WHAT_GROUNDWORK_IS_BUILDING } from './what-the-moat-is
  * running it on a live database honest.
  */
 
+/**
+ * A STARTING POINT FOR AN EMPTY DATABASE, NOT A LIST OF WHO IS HERE.
+ *
+ * Written once, on the first run, so a fresh install is not an empty room.
+ * After that the team page owns every one of these: add somebody, change what
+ * they do, mark that they have left. Nothing here is re-asserted, so a role
+ * somebody chose is never put back by a deploy.
+ */
 const TEAM: Array<{
   key: string;
   displayName: string;
@@ -148,7 +156,7 @@ const ROADMAP: Array<{
  * What September is for, per person, as objectives with numbers attached.
  *
  * Every one of these is sourced from a metric. None is MANUAL, and that is the
- * test of whether the sprint is actually measurable: a target nobody can
+ * test of whether the target list is actually measurable: a target nobody can
  * compute is a target somebody has to remember to update, which means by
  * November it says whatever it said in September.
  */
@@ -163,12 +171,12 @@ const SEPTEMBER_OBJECTIVES: Array<{
     key: 'sept-ten-lined-up',
     workstream: 'sales',
     owner: 'hafsah',
-    title: 'Ten companies lined up for the sprint',
+    title: 'Ten companies lined up for the target list',
     keyResult: {
-      title: 'Companies attached to the September sprint',
+      title: 'Companies attached to the September target list',
       target: 10,
       unit: 'companies',
-      source: 'sprint.companies_lined_up',
+      source: 'targets.companies_lined_up',
     },
   },
   {
@@ -180,7 +188,7 @@ const SEPTEMBER_OBJECTIVES: Array<{
       title: 'Companies that have reached first use or gone live',
       target: 10,
       unit: 'companies',
-      source: 'sprint.companies_onboarded',
+      source: 'targets.companies_onboarded',
     },
   },
   {
@@ -212,9 +220,19 @@ const SEPTEMBER_OBJECTIVES: Array<{
 export async function seedTheFoundations(prisma: PrismaClient) {
   // --- People, and the grants their role comes with -----------------------
   for (const member of TEAM) {
+    /*
+     * WHO IS ON THE TEAM IS NOT THIS FILE'S DECISION AFTER THE FIRST RUN.
+     *
+     * This used to re-assert `displayName` and `functionalRole` on every run,
+     * so a role changed on the team page — Sahar taking over product, somebody
+     * stepping back to contributor — was silently put back the next time the
+     * seed ran. The names below are a STARTING POINT for an empty database and
+     * nothing else; the team page owns them afterwards. Same lesson as the
+     * target list that stopped being re-dated.
+     */
     const person = await prisma.opsPerson.upsert({
       where: { key: member.key },
-      update: { displayName: member.displayName, functionalRole: member.functionalRole },
+      update: {},
       create: {
         key: member.key,
         displayName: member.displayName,
@@ -247,9 +265,9 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     parentKey: string | null;
   }> = [
     {
-      key: 'sept-2026-sprint',
-      name: 'September sprint',
-      kind: 'SPRINT',
+      key: 'sept-2026-target-list',
+      name: 'September target list',
+      kind: 'TARGET_LIST',
       startsOn: '2026-09-01',
       endsOn: '2026-09-30',
       goal: 'Ten companies lined up, their use cases supported, and onboarded.',
@@ -302,20 +320,20 @@ export async function seedTheFoundations(prisma: PrismaClient) {
       : null;
 
     /*
-     * A SPRINT IS CREATED ONCE AND THEN LEFT ALONE.
+     * A TARGET_LIST IS CREATED ONCE AND THEN LEFT ALONE.
      *
      * Quarters and cycles are the calendar: if this file's idea of Q4 changes,
-     * the stored one should follow, because nobody chose it. A sprint is the
+     * the stored one should follow, because nobody chose it. A target list is the
      * opposite — it is a stretch of time somebody set, and can be re-dated,
-     * renamed and re-scoped from the sprint page. Updating it here would mean
+     * renamed and re-scoped from the target list page. Updating it here would mean
      * re-running the seed silently undid that, and the person who moved the
      * dates would find them moved back with nothing to say why.
      */
-    const isASprint = period.kind === 'SPRINT';
+    const isATargetList = period.kind === 'TARGET_LIST';
 
     await prisma.opsPeriod.upsert({
       where: { key: period.key },
-      update: isASprint
+      update: isATargetList
         ? {}
         : {
             name: period.name,
@@ -375,29 +393,29 @@ export async function seedTheFoundations(prisma: PrismaClient) {
 
   // --- What each person is expected to bring -------------------------------
   const quarter = await prisma.opsPeriod.findUnique({ where: { key: 'q4-2026' } });
-  const sprint = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-sprint' } });
+  const targetCompanies = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-target-list' } });
   let targets = 0;
 
   for (const member of TEAM) {
     const personId = byKey.get(member.key);
-    if (!personId || !quarter || !sprint) continue;
+    if (!personId || !quarter || !targetCompanies) continue;
 
     /**
      * Two rows per person, and they mean different things. The standing target
-     * is the year's number; the sprint expectation is one company this month.
+     * is the year's number; the target list expectation is one company this month.
      * Kept apart so a board never reads "1 of 6" at somebody who did exactly
      * what September asked of them.
      */
     for (const target of [
-      { period: quarter, count: SIX_CLIENTS_BY_YEAR_END, due: '2026-12-31', sprintExpectation: false },
-      { period: sprint, count: 1, due: '2026-09-30', sprintExpectation: true },
+      { period: quarter, count: SIX_CLIENTS_BY_YEAR_END, due: '2026-12-31', targetListExpectation: false },
+      { period: targetCompanies, count: 1, due: '2026-09-30', targetListExpectation: true },
     ]) {
       await prisma.opsContributorTarget.upsert({
         where: {
-          personId_periodId_isSprintExpectation: {
+          personId_periodId_isTargetListExpectation: {
             personId,
             periodId: target.period.id,
-            isSprintExpectation: target.sprintExpectation,
+            isTargetListExpectation: target.targetListExpectation,
           },
         },
         update: { targetCount: target.count, dueDate: asDate(target.due) },
@@ -406,7 +424,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
           periodId: target.period.id,
           targetCount: target.count,
           dueDate: asDate(target.due),
-          isSprintExpectation: target.sprintExpectation,
+          isTargetListExpectation: target.targetListExpectation,
         },
       });
       targets++;
@@ -438,7 +456,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
   }
 
   // --- What September is for ----------------------------------------------
-  const septemberPeriod = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-sprint' } });
+  const septemberPeriod = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-target-list' } });
   let objectives = 0;
 
   for (const objective of SEPTEMBER_OBJECTIVES) {
