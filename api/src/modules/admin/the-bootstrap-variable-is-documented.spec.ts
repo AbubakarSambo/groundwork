@@ -21,8 +21,17 @@ describe('the bootstrap variable is documented', () => {
   });
 
   it('names the variable the service actually reads', () => {
-    /* If the service is renamed and this is not, the example goes stale silently. */
-    const service = readFileSync(join(__dirname, 'admin.service.ts'), 'utf8');
+    /*
+     * If the service is renamed and this is not, the example goes stale silently.
+     *
+     * COMMENTS STRIPPED BEFORE MATCHING. This codebase quotes code verbatim
+     * inside long explanatory comments, so a spec that reads raw source can pass
+     * on a sentence while the thing it names has been deleted. The meta-guard
+     * caught this one, which is what it is for.
+     */
+    const service = readFileSync(join(__dirname, 'admin.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
     expect(service).toContain('platformAdminBootstrapEmail');
     expect(EXAMPLE).toContain('PLATFORM_ADMIN_BOOTSTRAP_EMAIL=');
   });
