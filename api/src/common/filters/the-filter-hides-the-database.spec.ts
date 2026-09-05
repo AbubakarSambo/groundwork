@@ -1,13 +1,17 @@
 /**
+ * Synthetic path and id, never the real ones — see the note on the fixture in
+ * `a-database-error-is-not-a-message.spec.ts`. What is asserted is the shape
+ * being stripped, not the particular values.
+ *
  * The mapping is only worth anything if the filter uses it. Asserted through
  * the filter, on the real message, because the defect was in the wiring between
  * the two — the mapping did not exist and the filter had nothing to call.
  */
 import { GlobalExceptionFilter } from './http-exception.filter';
 
-const THE_REAL_MESSAGE = `Invalid \`this.prisma.opsRoadmapItem.create()\` invocation in
-/Users/hafsahjumare/Documents/GitHub/groundwork/api/src/modules/ops/ops-build.service.ts:39:39
-  proposedById: "74fdfefe-ef7a-4811-957b-c64a583927ee",
+const THE_SHAPE_OF_A_REAL_ONE = `Invalid \`this.prisma.exampleRecord.create()\` invocation in
+/srv/example/api/src/modules/example/example.service.ts:39:39
+  proposedById: "11111111-2222-3333-4444-555555555555",
 Argument \`itemType\` is missing.`;
 
 function throwAtTheFilter(error: Error) {
@@ -29,7 +33,7 @@ function throwAtTheFilter(error: Error) {
 }
 
 describe('a Prisma failure reaching the filter', () => {
-  const prisma = new Error(THE_REAL_MESSAGE);
+  const prisma = new Error(THE_SHAPE_OF_A_REAL_ONE);
   prisma.name = 'PrismaClientValidationError';
   const { status, body } = throwAtTheFilter(prisma);
 
@@ -45,7 +49,7 @@ describe('a Prisma failure reaching the filter', () => {
     const whole = JSON.stringify(body);
     expect(whole).not.toMatch(/\/Users\//);
     expect(whole).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
-    expect(whole).not.toMatch(/opsRoadmapItem/);
+    expect(whole).not.toMatch(/exampleRecord/);
   });
 });
 

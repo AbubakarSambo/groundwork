@@ -2,25 +2,32 @@
  * THE RESPONSE BODY CARRIED A FILE PATH ON OUR SERVER.
  *
  * Posting a roadmap item without `itemType` returned Prisma's own message
- * straight to the caller — the whole invocation, including
- * `/Users/…/api/src/modules/ops/ops-build.service.ts:39:39`, the model, every
- * field with its value, and a person's UUID. As a 500, so it also read as our
- * fault rather than a missing field.
+ * straight to the caller — the whole invocation: a path on our own server with
+ * the line number, the model, every field with its value, and a person's UUID.
+ * As a 500, so it also read as our fault rather than a missing field.
  *
  * Found by driving the ops system to seed sample data, not by reading it.
  */
 import { HttpStatus } from '@nestjs/common';
 import { whatToSayAboutADatabaseError } from './a-database-error-is-not-a-message';
 
-/** A real one, trimmed but with every leak intact. */
-const THE_REAL_MESSAGE = `
-Invalid \`this.prisma.opsRoadmapItem.create()\` invocation in
-/Users/hafsahjumare/Documents/GitHub/groundwork/api/src/modules/ops/ops-build.service.ts:39:39
+/**
+ * THE SHAPE OF A REAL ONE, WITH NOTHING REAL IN IT.
+ *
+ * The first version of this fixture was the actual message, pasted verbatim —
+ * a real home directory, a real internal id, the real model name. In a public
+ * repository, in a file whose whole subject is not publishing those. The test
+ * is exactly as strong against a synthetic path and a synthetic id, because
+ * what it asserts is the SHAPE being stripped, not the particular values.
+ */
+const THE_SHAPE_OF_A_REAL_ONE = `
+Invalid \`this.prisma.exampleRecord.create()\` invocation in
+/srv/example/api/src/modules/example/example.service.ts:39:39
 
-  39 return this.prisma.opsRoadmapItem.create({
+  39 return this.prisma.exampleRecord.create({
        data: {
          title: "Cross-team roll-up",
-         proposedById: "74fdfefe-ef7a-4811-957b-c64a583927ee",
+         proposedById: "11111111-2222-3333-4444-555555555555",
      +   itemType: String
        }
      })
@@ -37,7 +44,7 @@ const prismaError = (name: string, message: string, code?: string) => {
 
 describe('a missing field', () => {
   const answer = whatToSayAboutADatabaseError(
-    prismaError('PrismaClientValidationError', THE_REAL_MESSAGE),
+    prismaError('PrismaClientValidationError', THE_SHAPE_OF_A_REAL_ONE),
   )!;
 
   it('is a 400, because the caller sent the wrong thing', () => {
@@ -58,7 +65,7 @@ describe('a missing field', () => {
   });
 
   it('leaks no table or column beyond the field the caller named', () => {
-    expect(answer.message).not.toMatch(/prisma|opsRoadmapItem|invocation/i);
+    expect(answer.message).not.toMatch(/prisma|exampleRecord|invocation/i);
   });
 
   it('and still says something when the field cannot be picked out', () => {
