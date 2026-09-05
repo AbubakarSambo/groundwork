@@ -156,7 +156,7 @@ export function OpsQuarterPage() {
             {open.isPending ? 'Opening…' : 'Open this period'}
           </button>
           {open.isError && (
-            <p style={{ fontSize: 12.5, color: 'var(--gw-flag, #791F1F)', margin: '8px 0 0' }}>
+            <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
               {(open.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
                 'It could not be opened.'}
             </p>

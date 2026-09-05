@@ -32,7 +32,7 @@ export function OpsWorkplanPage() {
           style={{
             ...CARD,
             marginBottom: 12,
-            borderLeft: p.running ? '3px solid var(--gw-accent, #0C447C)' : '3px solid transparent',
+            borderLeft: p.running ? '3px solid var(--gw-navy)' : '3px solid transparent',
           }}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>
@@ -54,7 +54,7 @@ export function OpsWorkplanPage() {
             <p
               style={{
                 fontSize: 12.5,
-                color: p.checkable ? 'var(--gw-sub)' : 'var(--gw-amber-t, #8A5C1A)',
+                color: p.checkable ? 'var(--gw-sub)' : 'var(--gw-amber-t)',
                 margin: '4px 0 0',
                 lineHeight: 1.55,
               }}

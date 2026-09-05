@@ -24,6 +24,7 @@ import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 import { WhatHappenedWithACustomerService } from './what-happened-with-a-customer.service';
+import { DraftsService } from '../drafts/drafts.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -72,6 +73,7 @@ export class PublicApiController {
     private readonly prisma: PrismaService,
     private readonly groundsByApi: GroundsByApiService,
     private readonly whatHappened: WhatHappenedWithACustomerService,
+    private readonly drafts: DraftsService,
   ) {}
 
   /**
@@ -555,6 +557,150 @@ export class PublicApiController {
    * `graph:write`, the scope for facts the customer's systems assert about their own world - the
    * same one subjects and interactions take. A metric is one more of those.
    */
+  // --- Agreeing an objective before it becomes one -------------------------
+  //
+  // The drafting flow existed, refused to seed while anybody still disagreed,
+  // and was reachable by nothing — no route in this API and no screen. So the
+  // one part of the product that makes an objective something people agreed
+  // rather than something they were given could not be used by a customer.
+
+  /**
+   * Open a draft. It is not an objective and does not appear as one.
+   */
+  @Post('objective-drafts')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Start agreeing an objective. Not an objective until it is seeded.' })
+  async startDraft(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { initiatorExternalId?: string; workingTitle?: string; parentSubjectExternalId?: string },
+  ) {
+    if (!dto?.initiatorExternalId || !dto?.workingTitle) {
+      throw new BadRequestException('initiatorExternalId and workingTitle are both required.');
+    }
+    return this.drafts.start(req.machine.organizationId, dto.initiatorExternalId, {
+      workingTitle: dto.workingTitle,
+      parentSubjectExternalId: dto.parentSubjectExternalId ?? null,
+    });
+  }
+
+  /** Where it has got to, what is still contested, and what it is asking for next. */
+  @Get('objective-drafts/:id')
+  @UseGuards(MachineTokenGuard)
+  /* `findings:read`, the same scope reading subjects takes. Not a new one: a
+     draft is the org's own record of an objective being agreed, and it is
+     already covered by the scope that reads what the system holds about the
+     work. A draft carries people's positions, which is why it is not on a
+     write-only credential. */
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: "A draft's state, its open disagreements, and the next question" })
+  async draft(@Req() req: { machine: MachineCaller }, @Param('id') id: string) {
+    return this.drafts.status(req.machine.organizationId, id);
+  }
+
+  /** Pull somebody in. Their own conversation, not a copy of anybody else's. */
+  @Post('objective-drafts/:id/participants')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Invite somebody onto a draft' })
+  async inviteToDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { byExternalId?: string; personExternalId?: string },
+  ) {
+    if (!dto?.byExternalId || !dto?.personExternalId) {
+      throw new BadRequestException('byExternalId and personExternalId are both required.');
+    }
+    return this.drafts.invite(req.machine.organizationId, id, dto.byExternalId, dto.personExternalId);
+  }
+
+  /**
+   * Answer the next question the draft is asking.
+   *
+   * Separate from a contribution, which is how a second person DISAGREES and
+   * opens a contention. An empty field is not a disagreement.
+   */
+  @Post('objective-drafts/:id/answers')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Answer what the draft is asking for: measure, target, justification, approach' })
+  async answerDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { personExternalId?: string; piece?: string; body?: string },
+  ) {
+    const PIECES = ['measure', 'target', 'justification', 'approach'];
+    if (!dto?.personExternalId || !dto?.piece || !dto?.body) {
+      throw new BadRequestException('personExternalId, piece and body are all required.');
+    }
+    if (!PIECES.includes(dto.piece)) {
+      throw new BadRequestException(`piece must be one of ${PIECES.join(', ')}.`);
+    }
+    return this.drafts.answer(
+      req.machine.organizationId,
+      id,
+      dto.personExternalId,
+      dto.piece as 'measure' | 'target' | 'justification' | 'approach',
+      dto.body,
+    );
+  }
+
+  /** Say what you think it should be. Two different answers open a contention. */
+  @Post('objective-drafts/:id/contributions')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Say what you think the measure, target, title or date should be' })
+  async contributeToDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { personExternalId?: string; field?: string; body?: string },
+  ) {
+    if (!dto?.personExternalId || !dto?.field || !dto?.body) {
+      throw new BadRequestException('personExternalId, field and body are all required.');
+    }
+    return this.drafts.contribute(req.machine.organizationId, id, dto.personExternalId, dto.field, dto.body);
+  }
+
+  /** Settle a disagreement. A decision somebody makes, not a state that decays. */
+  @Post('objective-drafts/:id/contentions/:contentionId/resolve')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Settle one disagreement on a draft' })
+  async resolveDraftContention(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Param('contentionId') contentionId: string,
+    @Body() dto: { resolution?: string },
+  ) {
+    if (!dto?.resolution) throw new BadRequestException('resolution is required — say what it is, not only that it is settled.');
+    return this.drafts.resolveContention(req.machine.organizationId, id, contentionId, dto.resolution);
+  }
+
+  /**
+   * Turn it into an objective. Refused while anybody still disagrees, and
+   * refused while nobody has said why the number matters or how it moves.
+   */
+  @Post('objective-drafts/:id/seed')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Make the agreed draft into an objective' })
+  async seedDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { externalId?: string; sourceSystem?: string },
+  ) {
+    if (!dto?.externalId || !dto?.sourceSystem) {
+      throw new BadRequestException('externalId and sourceSystem are both required — the objective needs an id in your own system.');
+    }
+    return this.drafts.seed(req.machine.organizationId, id, dto.externalId, dto.sourceSystem);
+  }
+
   @Put('metrics')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('graph:write')

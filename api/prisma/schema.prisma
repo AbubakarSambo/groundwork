@@ -1814,6 +1814,15 @@ model ObjectiveDraft {
   proposedOwnerExternalId String?   @map("proposed_owner_external_id")
   proposedDueDate         DateTime? @map("proposed_due_date")
 
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// The draft agreed a measure and a target and neither says either. The seed
+  /// gate checked that people AGREED, which is a different thing from the
+  /// objective being any good: six people can agree on a number none of them
+  /// can explain.
+  proposedJustification String? @map("proposed_justification") @db.Text
+  proposedApproach      String? @map("proposed_approach") @db.Text
+
   /// The prior-cycle evidence this was built from. A draft carries its own reasons.
   groundedOnFindingIds String[] @map("grounded_on_finding_ids")
 
@@ -2595,6 +2604,19 @@ model Subject {
   title   String  @db.Text
   measure String? @db.Text
   target  String? @db.Text
+
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// Carried on the objective rather than left behind in the draft that agreed
+  /// it: the reason a target exists is the first thing to go missing, and it is
+  /// needed most in the check-in where the target is being missed.
+  ///
+  /// Nullable, because an objective imported from a customer's own system
+  /// arrives with whatever that system holds — and refusing an import for a
+  /// missing sentence would mean refusing their data. Drafts agreed in here are
+  /// refused without both.
+  justification String? @db.Text
+  approach      String? @db.Text
 
   /// Held as the customer's own identifiers rather than resolved to rows, because the person may
   /// not have been pushed yet and a subject must not fail to import for naming somebody unknown.

@@ -120,7 +120,13 @@ describe('work that makes the company operable', () => {
 });
 
 describe('the seeded workplan', () => {
-  const seed = require('fs').readFileSync(require('path').join(__dirname, 'seed-the-foundations.ts'), 'utf8');
+  /* Comments stripped before matching. Without it the note explaining the
+     boundary could satisfy the check that enforces it, which is the whole
+     failure `a-guard-that-a-comment-satisfies-is-not-a-guard` exists to catch. */
+  const seed = require('fs')
+    .readFileSync(require('path').join(__dirname, 'seed-the-foundations.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
 
   it('permits operability in exactly one phase', () => {
     /* A category available in every phase is not bounded, and a boundary that

@@ -39,7 +39,7 @@ function Checks({ checks }: { checks: OpsResourceCheck[] }) {
         <li key={i} style={{ marginBottom: 6 }}>
           <span
             style={{
-              color: c.verdict === 'SAYS_WHAT_WE_ARE_NOT' ? 'var(--gw-flag, #791F1F)' : 'inherit',
+              color: c.verdict === 'SAYS_WHAT_WE_ARE_NOT' ? 'var(--gw-red-t)' : 'inherit',
             }}
           >
             {c.kind === 'IS_NOT' ? 'We are not: ' : 'We are: '}
@@ -70,7 +70,7 @@ function Row({ resource }: { resource: OpsResource }) {
       style={{
         ...CARD,
         marginBottom: 12,
-        borderLeft: flagged ? '3px solid var(--gw-flag, #791F1F)' : undefined,
+        borderLeft: flagged ? '3px solid var(--gw-red-t)' : undefined,
       }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>
@@ -99,7 +99,7 @@ function Row({ resource }: { resource: OpsResource }) {
         <p
           style={{
             fontSize: 12.5,
-            color: 'var(--gw-amber-t, #8A5C1A)',
+            color: 'var(--gw-amber-t)',
             margin: '8px 0 0',
             lineHeight: 1.55,
           }}
