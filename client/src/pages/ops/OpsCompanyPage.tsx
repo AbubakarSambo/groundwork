@@ -34,6 +34,20 @@ export default function OpsCompanyPage() {
     queryFn: () => opsApi.company(key),
     retry: false,
   })
+  const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  const sources = useQuery({
+    queryKey: ['ops', 'attribution-sources'],
+    queryFn: opsApi.attributionSources,
+    retry: false,
+  })
+  /* Only fetched by somebody who may name another person; for everybody else the
+     picker is not shown and the list would be a refused request on every load. */
+  const people = useQuery({
+    queryKey: ['ops', 'people'],
+    queryFn: opsApi.people,
+    retry: false,
+    enabled: me.data?.capabilities.includes('contributor:read-all') ?? false,
+  })
 
   if (detail.isError) {
     return (
@@ -144,13 +158,40 @@ export default function OpsCompanyPage() {
 
       <Section title="Who brought them">
         <Adder
-          title="I brought them"
+          title="Record who brought them"
           fields={[
-            { name: 'sourceType', label: 'How you know them', required: true, placeholder: 'Former colleague' },
-            { name: 'sourceDetail', label: 'Anything worth knowing', type: 'textarea' },
+            {
+              name: 'sourceType',
+              label: 'How they reached us',
+              required: true,
+              /* From the API, one list, so "this network produced four" is a
+                 count rather than three spellings of a text box. */
+              options: (sources.data ?? []).map((o) => ({ value: o.key, label: o.label })),
+            },
+            /* NAMING SOMEBODY ELSE, WHICH THE API ALWAYS ALLOWED AND NO SCREEN
+               OFFERED. Only shown to somebody who may see everybody's record —
+               the same permission as counting for them. Without it every
+               introduction was recorded as whoever was signed in, which is the
+               one thing the whole attribution design refuses. */
+            ...(me.data?.capabilities.includes('contributor:read-all')
+              ? [
+                  {
+                    name: 'contributorKey',
+                    label: 'Who brought them',
+                    required: true,
+                    options: (people.data ?? []).map((p) => ({ value: p.key, label: p.displayName })),
+                  },
+                ]
+              : []),
+            { name: 'sourceDetail', label: 'Which one, or anything worth knowing', type: 'textarea' },
           ]}
           submit={(v) =>
-            opsApi.attribute({ companyKey: key, sourceType: v.sourceType, sourceDetail: v.sourceDetail || undefined })
+            opsApi.attribute({
+              companyKey: key,
+              sourceType: v.sourceType,
+              contributorKey: v.contributorKey || undefined,
+              sourceDetail: v.sourceDetail || undefined,
+            })
           }
           invalidate={[['ops']]}
           submitLabel="Record it"

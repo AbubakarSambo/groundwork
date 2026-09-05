@@ -149,8 +149,21 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
             </div>
           )
         })}
+        <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {isPlatformAdmin && (
+            <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
+              ← Platform console
+            </Link>
+          )}
+          <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
+            ← Groundwork
+          </Link>
+        </div>
       </nav>
 
+      {/* THE WAY BACK, WHICH THERE WAS NOT.
+          Three surfaces — the app, the platform console, this — and from here
+          the only route to either was typing a URL. */}
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
 
       {/* ON EVERY BACK-OFFICE PAGE, THE WAY A CUSTOMER'S WOULD BE. It is not a

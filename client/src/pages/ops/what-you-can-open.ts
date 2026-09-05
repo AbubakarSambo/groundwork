@@ -15,7 +15,7 @@ export interface OpsPage {
   /** Held to see it at all. Null means everybody on the team. */
   capability: string | null
   /** Grouped in the nav, in this order. */
-  group: 'Work' | 'Selling' | 'Building' | 'Company'
+  group: 'Work' | 'Sales & marketing' | 'Building' | 'Company'
 }
 
 export const OPS_PAGES: OpsPage[] = [
@@ -29,13 +29,13 @@ export const OPS_PAGES: OpsPage[] = [
    * same stages, no record of who created anything - and two pipelines is how a
    * company ends up with two answers to "how much are we selling".
    */
-  { path: '/ops/overview', name: 'Overview', capability: 'sales:read', group: 'Selling' },
-  { path: '/ops/pipeline', name: 'Pipeline', capability: 'sales:read', group: 'Selling' },
-  { path: '/ops/contribution', name: 'Contribution', capability: 'sales:read', group: 'Selling' },
-  { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Selling' },
-  { path: '/ops/attribution', name: 'Attribution review', capability: 'commercial:approve', group: 'Selling' },
-  { path: '/ops/marketing', name: 'Marketing', capability: 'marketing:read', group: 'Selling' },
-  { path: '/ops/deployment', name: 'Deployment', capability: 'deployment:read', group: 'Selling' },
+  { path: '/ops/overview', name: 'Overview', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/pipeline', name: 'Pipeline', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/contribution', name: 'Contribution', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/attribution', name: 'Attribution review', capability: 'commercial:approve', group: 'Sales & marketing' },
+  { path: '/ops/marketing', name: 'Marketing', capability: 'marketing:read', group: 'Sales & marketing' },
+  { path: '/ops/deployment', name: 'Deployment', capability: 'deployment:read', group: 'Sales & marketing' },
 
   { path: '/ops/roadmap', name: 'Roadmap', capability: 'product:read', group: 'Building' },
   { path: '/ops/moat', name: 'The moat', capability: 'product:read', group: 'Building' },
@@ -68,7 +68,7 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/integration', name: 'Groundwork', capability: 'integration:read', group: 'Company' },
 ]
 
-export const GROUPS: OpsPage['group'][] = ['Work', 'Selling', 'Building', 'Company']
+export const GROUPS: OpsPage['group'][] = ['Work', 'Sales & marketing', 'Building', 'Company']
 
 /**
  * Routes that exist and are deliberately NOT in the menu.

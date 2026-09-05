@@ -600,6 +600,12 @@ export const opsApi = {
    * the product twice; the ops system had never been checked for it.
    */
 
+  /** The ways a company reaches us. One list, so a network can be counted. */
+  attributionSources: () =>
+    apiClient
+      .get<Array<{ key: string; label: string }>>('/ops/attribution-sources', QUIET)
+      .then((r) => r.data),
+
   /** The standing areas of the company. Needed to say which one an objective belongs to. */
   workstreams: () =>
     apiClient
@@ -779,7 +785,7 @@ export const opsApi = {
     apiClient.patch(`/ops/companies/${key}/next-action`, { nextAction, dueAt }, QUIET).then((r) => r.data),
   setCompanyBlocker: (key: string, summary: string | null) =>
     apiClient.patch(`/ops/companies/${key}/blocker`, { summary }, QUIET).then((r) => r.data),
-  attribute: (body: { companyKey: string; sourceType: string; sourceDetail?: string }) =>
+  attribute: (body: { companyKey: string; sourceType: string; contributorKey?: string; sourceDetail?: string }) =>
     apiClient.post('/ops/attributions', body, QUIET).then((r) => r.data),
 
 

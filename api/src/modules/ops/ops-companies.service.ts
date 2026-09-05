@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCompanyStage, OpsQualifyingStatus } from '@prisma/client';
+import { isAKnownSource, whyThisSourceIsNotEnough } from './where-a-company-came-from';
 
 /**
  * Companies, and who brought them.
@@ -114,6 +115,18 @@ export class OpsCompaniesService {
     sourceDetail?: string;
     introducedAt?: Date;
   }) {
+    /*
+     * FROM THE LIST, SO A NETWORK CAN BE COUNTED. Free text made "Google for
+     * Startups", "google for startups network" and "GFS" three sources, and the
+     * question worth asking — did that network produce anything — needs them to
+     * be one.
+     */
+    if (!isAKnownSource(input.sourceType)) {
+      throw new BadRequestException(`${input.sourceType} is not one of the ways a company reaches us.`);
+    }
+    const thin = whyThisSourceIsNotEnough(input.sourceType, input.sourceDetail);
+    if (thin) throw new BadRequestException(thin);
+
     const company = await this.byKey(input.companyKey);
     const contributor = await this.prisma.opsPerson.findUnique({ where: { key: input.contributorKey } });
     if (!contributor) throw new NotFoundException(`No one here called ${input.contributorKey}`);

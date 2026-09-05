@@ -5,6 +5,7 @@ import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsTargetCompaniesService } from './ops-target-companies.service';
 import { OpsCompaniesService } from './ops-companies.service';
 import { OpsSettingsService } from './ops-settings.service';
+import { WHERE_COMPANIES_COME_FROM } from './where-a-company-came-from';
 import { OpsIdentity } from './ops-people.service';
 import { OpsCompanyStage, OpsQualifyingStatus } from '@prisma/client';
 
@@ -103,6 +104,14 @@ export class OpsTargetCompaniesController {
    * A contributor records the company they brought. They hold
    * `contributor:self` and nothing else, and this is the one write they have.
    */
+  /** The ways a company reaches us. One list, so a network can be counted. */
+  @Get('attribution-sources')
+  @NeedsOps('target-companies:read')
+  @ApiOperation({ summary: 'How a company can have reached us' })
+  attributionSources() {
+    return WHERE_COMPANIES_COME_FROM;
+  }
+
   @Post('attributions')
   @NeedsOps('contributor:self')
   @ApiOperation({ summary: 'Record that somebody brought a company' })
