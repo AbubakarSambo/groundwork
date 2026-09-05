@@ -2,6 +2,8 @@
 
 **Two live vulnerabilities, found 1 September 2026. Neither is closed. Both need you.**
 
+*Last checked 5 September 2026. Both still open.*
+
 Nothing here is a code change waiting for review. These are credentials and configuration, and
 only you can act on them.
 
@@ -17,6 +19,10 @@ continuously for exactly this filename.
 
 **The signing secret is still the one in use.** The value in that file is byte-identical to the one
 the API runs on today. It is present in 82 branches.
+
+> **Re-checked 5 September 2026.** Still true, and worse: byte-identical again on that date, and
+> now reachable from **141 branches**, not 82. Four days, fifty-nine more branches. Nothing about
+> this ages out on its own — every branch cut from any of those carries it forward.
 
 Anyone holding it can mint a token the API accepts — **as any user, in any organisation, including
 an admin** — with no password, no failed login, and nothing in the logs to separate it from a real
