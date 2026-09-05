@@ -178,6 +178,10 @@ export interface OpsObjective {
     says: string
     problem?: string
     dueDate: string
+    /* The rows behind the figure. Always sent, and until now dropped on the
+       floor by the page — so "3 of 10 qualified" could not be checked against
+       the three. */
+    rows: Array<Record<string, unknown>>
   }>
 }
 
@@ -287,6 +291,9 @@ export interface OpsCompanyDetail {
   }
   broughtBy: Array<{
     contributor: string
+    /* Sent all along and unused: the display name cannot address the route that
+       moves an introduction along, and the key can. */
+    contributorKey: string
     sourceType: string
     sourceDetail: string | null
     introducedAt: string
@@ -530,7 +537,7 @@ export const opsApi = {
     apiClient.patch(`/ops/todos/${id}/status`, { status }, QUIET).then((r) => r.data),
   approvals: () =>
     apiClient
-      .get<Array<{ id: string; approvalType: string; requestSummary: string; createdAt: string }>>('/ops/approvals')
+      .get<Array<{ id: string; approvalType: string; requestSummary: string; createdAt: string; relatedRecordType: string | null; relatedRecordId: string | null }>>('/ops/approvals')
       .then((r) => r.data),
   decide: (id: string, status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED', decisionNote?: string) =>
     apiClient.patch(`/ops/approvals/${id}`, { status, decisionNote }, QUIET).then((r) => r.data),
@@ -583,6 +590,139 @@ export const opsApi = {
     apiClient.get<OpsCommitment[]>(`/ops/commitments/${personKey}/${periodKey}`, QUIET).then((r) => r.data),
   spend: () => apiClient.get<OpsExpense[]>('/ops/spend', QUIET).then((r) => r.data),
   balance: () => apiClient.get<OpsBalance>('/ops/balance', QUIET).then((r) => r.data),
+  /*
+   * THE ENDPOINTS THAT EXISTED AND NOTHING CALLED.
+   *
+   * Twenty-three route paths were built on the server and reachable from no
+   * screen — including creating an objective, asking for something you cannot
+   * deliver without, recording money in, and changing any of the decisions the
+   * whole system runs on. `wired-endpoints.spec.ts` has caught this shape in
+   * the product twice; the ops system had never been checked for it.
+   */
+
+  /** The standing areas of the company. Needed to say which one an objective belongs to. */
+  workstreams: () =>
+    apiClient
+      .get<Array<{ key: string; name: string; ownerPersonId: string; areas: string[] }>>('/ops/workstreams', QUIET)
+      .then((r) => r.data),
+
+  createObjective: (body: { periodKey: string; workstreamKey: string; title: string; description?: string; priority?: number }) =>
+    apiClient.post('/ops/objectives', body, QUIET).then((r) => r.data),
+  addKeyResult: (
+    objectiveId: string,
+    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; dueDate: string },
+  ) => apiClient.post(`/ops/objectives/${objectiveId}/key-results`, body, QUIET).then((r) => r.data),
+  setObjectiveStatus: (id: string, status: string) =>
+    apiClient.patch(`/ops/objectives/${id}/status`, { status }, QUIET).then((r) => r.data),
+
+  /** Every number this system can compute, so a key result can name its source. */
+  metricKeys: () =>
+    apiClient
+      .get<Array<{ key: string; label: string; counts: string }>>('/ops/metrics', QUIET)
+      .then((r) => r.data),
+  /*
+   * `GET /ops/metrics/:key` HAS NO CLIENT FUNCTION, DELIBERATELY.
+   *
+   * Every number in this system already ships with the rows that made it —
+   * boards do, and so does a key result. Adding a second way to fetch the same
+   * evidence would give two answers to one question and eventually two
+   * different answers. The route stays for anything reading this system from
+   * outside; nothing in here needs it.
+   */
+
+  askForSomething: (body: { supportNeeded: string; reason: string; urgency: string; requestedByDate?: string }) =>
+    apiClient.post('/ops/resourcing', body, QUIET).then((r) => r.data),
+  requests: () =>
+    apiClient
+      .get<Array<{ id: string; requesterId: string; supportNeeded: string; reason: string; urgency: string; status: string; requestedByDate: string | null; createdAt: string }>>(
+        '/ops/resourcing',
+        QUIET,
+      )
+      .then((r) => r.data),
+  closeRequest: (id: string) =>
+    apiClient.patch(`/ops/resourcing/${id}/closed`, {}, QUIET).then((r) => r.data),
+
+  recordEarnings: (body: { date: string; amount: number; source: string; note?: string }) =>
+    apiClient.post('/ops/earnings', body, QUIET).then((r) => r.data),
+
+  /** The decisions this system runs on. Data, not constants. */
+  settings: () =>
+    apiClient
+      .get<Array<{ key: string; value: string; note: string | null; updatedAt: string; updatedBy: string | null }>>(
+        '/ops/settings',
+        QUIET,
+      )
+      .then((r) => r.data),
+  changeSetting: (key: string, value: string) =>
+    apiClient.patch(`/ops/settings/${key}`, { value }, QUIET).then((r) => r.data),
+
+  markCommitmentBlocked: (id: string, blocked: boolean, blockerReason?: string) =>
+    apiClient.patch(`/ops/commitments/${id}/blocked`, { blocked, blockerReason }, QUIET).then((r) => r.data),
+  linkCommitment: (id: string, body: { recordType: string; recordId: string }) =>
+    apiClient.post(`/ops/commitments/${id}/links`, body, QUIET).then((r) => r.data),
+
+  /** Omit ownerKey and it is yours. Naming somebody else needs todos:assign. */
+  addTodo: (body: { title: string; ownerKey?: string; dueDate?: string; notes?: string }) =>
+    apiClient.post('/ops/todos', body, QUIET).then((r) => r.data),
+
+  moveIntroductionAlong: (companyKey: string, contributorKey: string, status: string) =>
+    apiClient.patch(`/ops/attributions/${companyKey}/${contributorKey}`, { status }, QUIET).then((r) => r.data),
+
+  recordFundraiseFollowUp: (id: string, nextFollowUpAt: string) =>
+    apiClient.patch(`/ops/fundraise/${id}/follow-up`, { nextFollowUpAt }, QUIET).then((r) => r.data),
+  recordConversion: (id: string, body: { convertedToType: string; convertedToId?: string }) =>
+    apiClient.patch(`/ops/strategy/${id}/converted`, body, QUIET).then((r) => r.data),
+
+  setCommercialNextAction: (id: string, body: { nextAction: string; nextActionDueAt?: string }) =>
+    apiClient.patch(`/ops/commercial/pipeline/${id}/next-action`, body, QUIET).then((r) => r.data),
+  /** How the sales function itself is doing, separately from what it produced. */
+  functionHealth: () =>
+    apiClient
+      .get<{
+        livePipeline: number
+        pipelineValue: number
+        overdueFollowUps: number
+        withNothingPlanned: number
+        attributionUnresolved: number
+        says: string
+      }>('/ops/commercial/function-health', QUIET)
+      .then((r) => r.data),
+  /** The company's commercial performance over a window. */
+  commercialPerformance: (from?: string, to?: string) =>
+    apiClient
+      .get<{
+        totalPipeline: number
+        qualifiedPipeline: number
+        newCustomers: number
+        newMrr: number
+        newArr: number
+        contractValue: number
+        cashCollected: number
+        retained3Month: number
+        retained6Month: number
+        retained12Month: number
+      }>('/ops/commercial/performance', { ...QUIET, params: { from, to } })
+      .then((r) => r.data),
+  /** Every decision ever made about one record. */
+  decisionsAbout: (recordType: string, recordId: string) =>
+    apiClient
+      .get<Array<{ id: string; status: string; decisionNote: string | null; createdAt: string; decidedAt: string | null; requestSummary: string }>>(
+        `/ops/approvals/${recordType}/${recordId}`,
+        QUIET,
+      )
+      .then((r) => r.data),
+  /** Point a use case at the item holding it up. */
+  linkUseCase: (id: string, body: { targetType: string; targetId: string }) =>
+    apiClient.post(`/ops/use-cases/${id}/links`, body, QUIET).then((r) => r.data),
+
+  attributionHistory: (id: string) =>
+    apiClient
+      .get<Array<{ id: string; kind: string; occurredAt: string; note: string | null; actor: string | null }>>(
+        `/ops/commercial/pipeline/${id}/attribution-history`,
+        QUIET,
+      )
+      .then((r) => r.data),
+
   fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise', QUIET).then((r) => r.data),
   strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
@@ -666,9 +806,6 @@ export const opsApi = {
     apiClient.post('/ops/strategy', body, QUIET).then((r) => r.data),
   setStrategicStatus: (id: string, status: string) =>
     apiClient.patch(`/ops/strategy/${id}/status`, { status }, QUIET).then((r) => r.data),
-
-  metricKeys: () =>
-    apiClient.get<Array<{ key: string; label: string }>>('/ops/metrics', QUIET).then((r) => r.data),
 
   pushToGroundwork: (period: string) =>
     apiClient.post('/ops/integration/push', null, { ...QUIET, params: { period } }).then((r) => r.data),

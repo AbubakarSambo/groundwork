@@ -44,6 +44,15 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/ux', name: 'UX', capability: 'ux:read', group: 'Building' },
 
   { path: '/ops/quarter', name: 'Objectives', capability: null, group: 'Company' },
+  /* Anybody may ask for something, so no capability gates the page. Only
+     somebody holding resourcing:approve sees the queue; the page says so
+     rather than showing an empty table. */
+  { path: '/ops/requests', name: 'Requests', capability: null, group: 'Company' },
+  /* Gated on ceo:board, which is who may change them. The GET is open to
+     anybody in the system, so this is a menu decision rather than a gate — but
+     a page whose only control always fails is the locked item wearing a
+     friendlier face, which is exactly what this list exists to avoid. */
+  { path: '/ops/decisions', name: 'Decisions', capability: 'ceo:board', group: 'Company' },
   /*
    * Gated on being able to DECIDE, not on being able to ask.
    *

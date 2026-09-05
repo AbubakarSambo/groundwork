@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { opsApi, type OpsCommitment, type OpsExpense, type OpsStrategic } from '@/api/ops'
 import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
@@ -13,14 +13,76 @@ const STRATEGIC_STATUSES = ['IDENTIFIED', 'OUTREACH', 'ENGAGED', 'OPPORTUNITY_CR
 const money = (v: number | string | null | undefined) =>
   v === null || v === undefined ? '—' : `$${Number(v).toLocaleString()}`
 
+/**
+ * The rows a figure was made of, on request.
+ *
+ * Nothing to open when there is nothing behind it: an invitation that opens an
+ * empty list teaches somebody to stop pressing it, which is the same lesson
+ * the boards learned when nine cards out of eleven offered "open the 0 rows".
+ */
+function TheRowsBehindIt({ rows }: { rows?: Array<Record<string, unknown>> }) {
+  const [open, setOpen] = useState(false)
+  if (!rows || rows.length === 0) return null
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{ all: 'unset', cursor: 'pointer', ...LABEL, fontSize: 10 }}
+      >
+        {open ? 'Hide what it is made of' : `What the ${rows.length} are`}
+      </button>
+      {open && (
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+          {rows.map((row, i) => (
+            <li key={i} style={{ marginBottom: 3 }}>
+              {/* Empty fields left out. "owner: null" is not evidence, it is a
+                  column that happened to be empty, and it crowds out the ones
+                  that are the answer. */}
+              {Object.entries(row)
+                .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                .map(([k, v]) => `${k.replace(/([A-Z])/g, ' $1').toLowerCase()}: ${String(v)}`)
+                .join(' · ')}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function OpsQuarterPage() {
-  const [period, setPeriod] = useState('sept-2026-sprint')
+  /* Empty until the periods arrive. A seeded key written into the client opens
+     on a period that will not always exist — the same defect as on the sprint
+     page, in two more places. `periods()` puts the one containing today first. */
+  const [period, setPeriod] = useState('')
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
+  const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  const workstreams = useQuery({ queryKey: ['ops', 'workstreams'], queryFn: opsApi.workstreams, retry: false })
+  const metrics = useQuery({ queryKey: ['ops', 'metric-keys'], queryFn: opsApi.metricKeys, retry: false })
+
+  useEffect(() => {
+    const first = periods.data?.[0]?.key
+    if (!period && first) setPeriod(first)
+  }, [period, periods.data])
+
   const objectives = useQuery({
     queryKey: ['ops', 'objectives', period],
     queryFn: () => opsApi.objectives(period),
     retry: false,
+    enabled: period !== '',
   })
+
+  const maySet = me.data?.capabilities.includes('objectives:write') ?? false
+
+  /* MANUAL is always allowed: somebody's word is a legitimate source, and the
+     board says which numbers were typed. Every other option is a metric this
+     system can compute, so a key result cannot name a source that does not exist. */
+  const sources = [
+    { value: 'MANUAL', label: 'Somebody keeps it up to date' },
+    ...(metrics.data ?? []).map((m) => ({ value: m.key, label: m.label })),
+  ]
 
   return (
     <main id="main" style={PAGE}>
@@ -38,12 +100,86 @@ export function OpsQuarterPage() {
         ))}
       </select>
 
+      {/* SETTING ONE WAS BUILT AND UNREACHABLE. The endpoints for creating an
+          objective and adding a key result had no caller anywhere, so this page
+          could show targets and never take one. */}
+      {maySet && period && (
+        <div style={{ marginBottom: 16 }}>
+          <Adder
+            title="Set an objective"
+            fields={[
+              { name: 'title', label: 'What we are trying to achieve', required: true },
+              {
+                name: 'workstreamKey',
+                label: 'Whose area',
+                required: true,
+                options: (workstreams.data ?? []).map((w) => ({ value: w.key, label: w.name })),
+              },
+              { name: 'description', label: 'Why it matters', type: 'textarea' },
+            ]}
+            submit={(v) =>
+              opsApi.createObjective({
+                periodKey: period,
+                workstreamKey: v.workstreamKey,
+                title: v.title,
+                description: v.description || undefined,
+              })
+            }
+            invalidate={[['ops']]}
+            submitLabel="Set it"
+          />
+        </div>
+      )}
+
       {(objectives.data ?? []).map((o) => (
         <section key={o.id} style={{ ...CARD, marginBottom: 12 }}>
           <p style={LABEL}>{o.workstream ?? 'No workstream'}</p>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 10px' }}>
             {o.title}
           </h2>
+          {maySet && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+              {/* A KEY RESULT IS THE NUMBER THAT SAYS WHETHER IT HAPPENED. An
+                  objective without one is a sentence. */}
+              <Adder
+                title="Add the number"
+                fields={[
+                  { name: 'title', label: 'What gets measured', required: true },
+                  { name: 'targetValue', label: 'The number to reach', type: 'number', required: true },
+                  { name: 'unit', label: 'Of what', required: true, placeholder: 'companies' },
+                  { name: 'startValue', label: 'Where it stands now', type: 'number' },
+                  {
+                    name: 'measurementSource',
+                    label: 'Where the number comes from',
+                    required: true,
+                    options: sources,
+                  },
+                  { name: 'dueDate', label: 'By when', type: 'date', required: true },
+                ]}
+                submit={(v) =>
+                  opsApi.addKeyResult(o.id, {
+                    title: v.title,
+                    metricType: 'COUNT',
+                    targetValue: Number(v.targetValue),
+                    startValue: v.startValue ? Number(v.startValue) : undefined,
+                    unit: v.unit,
+                    measurementSource: v.measurementSource,
+                    dueDate: v.dueDate,
+                  })
+                }
+                invalidate={[['ops']]}
+                submitLabel="Add it"
+              />
+              <Choose
+                label="Where it stands"
+                value={o.status}
+                options={['DRAFT', 'ACTIVE', 'ACHIEVED', 'MISSED', 'ARCHIVED']}
+                onPick={(status) => opsApi.setObjectiveStatus(o.id, status)}
+                invalidate={[['ops']]}
+              />
+            </div>
+          )}
+
           {o.keyResults.map((kr) => (
             <div key={kr.id} style={{ borderTop: '1px solid var(--gw-border)', padding: '9px 0 0', marginTop: 9 }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -92,22 +228,33 @@ export function OpsQuarterPage() {
                   {kr.problem}
                 </p>
               )}
+              {/* A NUMBER YOU CAN OPEN, WHERE IT MATTERS MOST. The rows were
+                  in the payload all along and this page threw them away, so
+                  "3 of 10 qualified" could not be checked against the three. */}
+              <TheRowsBehindIt rows={kr.rows} />
             </div>
           ))}
         </section>
       ))}
 
       {objectives.data?.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Nothing set for this period.</p>
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+          Nothing set for this period.{maySet ? ' Set one above.' : ''}
+        </p>
       )}
     </main>
   )
 }
 
 export function OpsCommitmentsPage() {
-  const [period, setPeriod] = useState('sept-2026-sprint')
+  /* Empty until the periods arrive — see the note on the objectives page. */
+  const [period, setPeriod] = useState('')
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
+  useEffect(() => {
+    const first = periods.data?.[0]?.key
+    if (!period && first) setPeriod(first)
+  }, [period, periods.data])
   const metrics = useQuery({ queryKey: ['ops', 'metric-keys'], queryFn: opsApi.metricKeys, retry: false })
   const commitments = useQuery({
     queryKey: ['ops', 'commitments', me.data?.key, period],
@@ -134,9 +281,60 @@ export function OpsCommitmentsPage() {
       head: 'Blocked',
       // Orthogonal to status on purpose: blocked work is still in progress, and
       // collapsing the two loses the fact that somebody needs help.
-      cell: (c) => (c.blocked ? c.blockerReason ?? 'yes' : '—'),
+      //
+      // SAYING SO HAD NO CONTROL. `PATCH /ops/commitments/:id/blocked` was built
+      // and called by nothing, so the column could report a blocker and no
+      // screen could ever record one.
+      cell: (c) =>
+        c.blocked ? (
+          <>
+            {c.blockerReason ?? 'yes'}
+            <Choose
+              label="unblocked now"
+              value="blocked"
+              options={['unblocked']}
+              onPick={() => opsApi.markCommitmentBlocked(c.id, false)}
+              invalidate={[['ops']]}
+            />
+          </>
+        ) : (
+          <Adder
+            title="I am blocked"
+            fields={[{ name: 'blockerReason', label: 'What is in the way', type: 'textarea', required: true }]}
+            submit={(v) => opsApi.markCommitmentBlocked(c.id, true, v.blockerReason)}
+            invalidate={[['ops']]}
+            submitLabel="Say so"
+          />
+        ),
     },
     { head: 'Due', cell: (c) => <DueDate value={c.dueDate} /> },
+    {
+      head: 'What it serves',
+      /* A commitment tied to nothing is a personal to-do. Tied to a key result
+         it is a piece of the quarter, and the quarter can show who is carrying
+         which part of it. `POST /:id/links` was built and never called. */
+      cell: (c) => (
+        <Adder
+          title="tie it to something"
+          fields={[
+            {
+              name: 'recordType',
+              label: 'What kind',
+              required: true,
+              options: [
+                { value: 'OpsKeyResult', label: 'A key result' },
+                { value: 'OpsCompany', label: 'A company' },
+                { value: 'OpsRoadmapItem', label: 'A roadmap item' },
+              ],
+            },
+            { name: 'recordId', label: 'Its id', required: true },
+          ]}
+          submit={(v) => opsApi.linkCommitment(c.id, { recordType: v.recordType, recordId: v.recordId })}
+          invalidate={[['ops']]}
+          submitLabel="Tie it"
+        />
+      ),
+    },
     {
       head: 'Close it',
       /*
@@ -228,6 +426,54 @@ export function OpsCommitmentsPage() {
   )
 }
 
+/** Every earlier decision about the same record, on request. */
+function WhatWasDecidedBefore({
+  recordType,
+  recordId,
+  exceptThisOne,
+}: {
+  recordType: string
+  recordId: string
+  exceptThisOne: string
+}) {
+  const [open, setOpen] = useState(false)
+  const history = useQuery({
+    queryKey: ['ops', 'decisions-about', recordType, recordId],
+    queryFn: () => opsApi.decisionsAbout(recordType, recordId),
+    enabled: open,
+    retry: false,
+  })
+  const earlier = (history.data ?? []).filter((d) => d.id !== exceptThisOne)
+
+  return (
+    <div style={{ marginBottom: 9 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{ all: 'unset', cursor: 'pointer', ...LABEL, fontSize: 10 }}
+      >
+        {open ? 'Hide what came before' : 'What was decided about this before'}
+      </button>
+      {open &&
+        (earlier.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+            {history.isLoading ? 'Looking…' : 'Nothing. This is the first time it has been asked.'}
+          </p>
+        ) : (
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+            {earlier.map((d) => (
+              <li key={d.id} style={{ marginBottom: 3 }}>
+                {readEnum(d.status)} on {readDate(d.decidedAt ?? d.createdAt)}
+                {d.decisionNote ? ` — ${d.decisionNote}` : ''}
+              </li>
+            ))}
+          </ul>
+        ))}
+    </div>
+  )
+}
+
 export function OpsApprovalsPage() {
   const approvals = useQuery({ queryKey: ['ops', 'approvals'], queryFn: opsApi.approvals, retry: false })
   const queryClient = useQueryClient()
@@ -251,6 +497,17 @@ export function OpsApprovalsPage() {
             </span>
           </div>
           <p style={{ fontSize: 14, margin: '7px 0 9px' }}>{a.requestSummary}</p>
+          {/* HAS THIS BEEN HERE BEFORE? `GET /ops/approvals/:type/:id` returned
+              every decision ever made about a record and was called by nothing,
+              so a request sent back for changes and returned unchanged looked
+              exactly like a request arriving for the first time. */}
+          {a.relatedRecordType && a.relatedRecordId && (
+            <WhatWasDecidedBefore
+              recordType={a.relatedRecordType}
+              recordId={a.relatedRecordId}
+              exceptThisOne={a.id}
+            />
+          )}
           <div style={{ display: 'flex', gap: 6 }}>
             {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
               <button
@@ -340,6 +597,31 @@ export function OpsSpendPage() {
             {money(balance.data.approvedNotPaid)} owed · {money(balance.data.awaitingDecision)} awaiting
             a decision
           </p>
+          {/* MONEY IN HAD NO WAY IN. `POST /ops/earnings` was built and called by
+              nothing, so the balance was made entirely of spend and read
+              "$-420 left" — a number that looks like a fact and is an absence. */}
+          <div style={{ marginTop: 10 }}>
+            <Adder
+              title="Record money in"
+              fields={[
+                { name: 'amount', label: 'How much', type: 'number', required: true },
+                { name: 'source', label: 'Where from', required: true, placeholder: 'Afrimash activation' },
+                { name: 'date', label: 'When', type: 'date', required: true },
+                { name: 'note', label: 'Anything worth remembering', type: 'textarea' },
+              ]}
+              submit={(v) =>
+                opsApi.recordEarnings({
+                  amount: Number(v.amount),
+                  source: v.source,
+                  date: v.date,
+                  note: v.note || undefined,
+                })
+              }
+              invalidate={[['ops']]}
+              submitLabel="Record it"
+            />
+          </div>
+
           {balance.data.nobodyCanApprove.map((e) => (
             <p key={e.id} style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
               {e.description} ({money(e.amount)}) — {e.why}
@@ -441,7 +723,24 @@ export function OpsFundraisePage() {
           { head: 'Committed', cell: (f) => money(f.committedAmount), numeric: true },
           { head: 'In', cell: (f) => money(f.closedAmount), numeric: true },
           { head: 'Next', cell: (f) => f.nextAction ?? '—' },
-          { head: 'Due', cell: (f) => <DueDate value={f.nextActionDueAt} /> },
+          {
+            head: 'Due',
+            /* "Overdue" is one of the five numbers at the top of this page, and
+               nothing on it could move a date. `PATCH /:id/follow-up` existed
+               with no caller, so a chased funder stayed overdue for ever. */
+            cell: (f) => (
+              <>
+                <DueDate value={f.nextActionDueAt} />
+                <Adder
+                  title="chased"
+                  fields={[{ name: 'nextFollowUpAt', label: 'Come back to them on', type: 'date', required: true }]}
+                  submit={(v) => opsApi.recordFundraiseFollowUp(f.id, v.nextFollowUpAt)}
+                  invalidate={[['ops']]}
+                  submitLabel="Set it"
+                />
+              </>
+            ),
+          },
         ]}
         keyOf={(f) => f.id}
         empty="No funding conversations."
@@ -473,7 +772,40 @@ export function OpsStrategyPage() {
       head: 'Became',
       // A pointer, not a claim. Without it, "this network produced three
       // opportunities" is a sentence with nothing behind it.
-      cell: (s) => (s.convertedToType ? readEnum(s.convertedToType) : '—'),
+      //
+      // And it could never be pointed. `PATCH /:id/converted` had no caller, so
+      // this column read "—" for every row for ever, which is the same sentence
+      // with nothing behind it wearing a table.
+      cell: (s) =>
+        s.convertedToType ? (
+          readEnum(s.convertedToType)
+        ) : (
+          <Adder
+            title="it became something"
+            fields={[
+              {
+                name: 'convertedToType',
+                label: 'What it became',
+                required: true,
+                options: [
+                  { value: 'COMPANY', label: 'A company we are selling to' },
+                  { value: 'FUNDING', label: 'A funding conversation' },
+                  { value: 'PARTNERSHIP', label: 'A partnership' },
+                  { value: 'HIRE', label: 'Somebody who joined' },
+                ],
+              },
+              { name: 'convertedToId', label: 'Its key or id, if there is one' },
+            ]}
+            submit={(v) =>
+              opsApi.recordConversion(s.id, {
+                convertedToType: v.convertedToType,
+                convertedToId: v.convertedToId || undefined,
+              })
+            }
+            invalidate={[['ops']]}
+            submitLabel="Record it"
+          />
+        ),
     },
     { head: 'Next', cell: (s) => s.nextStep ?? '—' },
     { head: 'Due', cell: (s) => <DueDate value={s.nextStepDueAt} /> },
@@ -557,6 +889,171 @@ export function OpsIntegrationPage() {
         >
           {JSON.stringify(push.data, null, 1)}
         </pre>
+      )}
+    </main>
+  )
+}
+
+/**
+ * WHAT PEOPLE SAY THEY CANNOT DELIVER WITHOUT.
+ *
+ * `POST /ops/resourcing`, `GET /ops/resourcing` and `PATCH /:id/closed` were all
+ * built and reachable from nothing — so the one place a person could say "I am
+ * blocked and this is what would unblock me" existed only in the API docs.
+ *
+ * Anybody may ask. Only somebody holding `resourcing:approve` sees the list,
+ * which is why the asking form is above the list rather than inside it: a
+ * contributor opens this page to ask, and sees no list at all.
+ */
+export function OpsRequestsPage() {
+  const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  const requests = useQuery({ queryKey: ['ops', 'requests'], queryFn: opsApi.requests, retry: false })
+  const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
+
+  const mayDecide = me.data?.capabilities.includes('resourcing:approve') ?? false
+  const nameFor = (id: string) =>
+    (people.data ?? []).find((p) => p.id === id)?.displayName ?? 'somebody no longer here'
+
+  const columns: Column<{
+    id: string
+    requesterId: string
+    supportNeeded: string
+    reason: string
+    urgency: string
+    status: string
+    requestedByDate: string | null
+  }>[] = [
+    { head: 'What they need', cell: (r) => <strong>{r.supportNeeded}</strong> },
+    /* Named. A queue of anonymous asks is one nobody can act on. */
+    { head: 'Who', cell: (r) => nameFor(r.requesterId) },
+    { head: 'Why', cell: (r) => <span style={{ color: 'var(--gw-sub)' }}>{r.reason}</span> },
+    { head: 'How urgent', cell: (r) => readEnum(r.urgency) },
+    { head: 'By', cell: (r) => (r.requestedByDate ? readDate(r.requestedByDate) : '—') },
+    {
+      head: 'Where it stands',
+      cell: (r) => (
+        <>
+          {readEnum(r.status)}
+          {r.status === 'OPEN' && (
+            <Choose
+              label="close it"
+              value={r.status}
+              options={['CLOSED']}
+              onPick={() => opsApi.closeRequest(r.id)}
+              invalidate={[['ops']]}
+            />
+          )}
+        </>
+      ),
+    },
+  ]
+
+  return (
+    <main id="main" style={PAGE}>
+      <OpsHeader name="Requests" answers="What is somebody blocked on, and what would unblock them?" />
+
+      <div style={{ marginBottom: 16 }}>
+        <Adder
+          title="Ask for something"
+          fields={[
+            { name: 'supportNeeded', label: 'What you need', required: true },
+            { name: 'reason', label: 'What it unblocks', type: 'textarea', required: true },
+            {
+              name: 'urgency',
+              label: 'How urgent',
+              required: true,
+              options: [
+                { value: 'BLOCKING', label: 'Blocking me now' },
+                { value: 'SOON', label: 'Soon' },
+                { value: 'WHENEVER', label: 'Whenever' },
+              ],
+            },
+            { name: 'requestedByDate', label: 'Needed by', type: 'date' },
+          ]}
+          submit={(v) =>
+            opsApi.askForSomething({
+              supportNeeded: v.supportNeeded,
+              reason: v.reason,
+              urgency: v.urgency,
+              requestedByDate: v.requestedByDate || undefined,
+            })
+          }
+          invalidate={[['ops']]}
+          submitLabel="Ask"
+        />
+      </div>
+
+      {mayDecide ? (
+        <OpsTable rows={requests.data ?? []} columns={columns} keyOf={(r) => r.id} empty="Nobody is asking for anything." />
+      ) : (
+        /* Not a refusal — a description. Everybody may ask; only one person
+           reads the queue, and saying so is better than an empty table. */
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>
+          What you ask for goes to whoever decides resourcing. You will hear back from them, not
+          from this page.
+        </p>
+      )}
+    </main>
+  )
+}
+
+/**
+ * THE DECISIONS THIS SYSTEM RUNS ON.
+ *
+ * `GET /ops/settings` and `PATCH /ops/settings/:key` had no caller, so every one
+ * of these was editable by API and by nothing else. One of them — where a
+ * contributor's introduction starts counting — moves every contributor's number,
+ * and its own note says it is awaiting a decision. A decision nobody can make
+ * from the product is not awaiting anything.
+ */
+export function OpsDecisionsPage() {
+  const settings = useQuery({ queryKey: ['ops', 'settings'], queryFn: opsApi.settings, retry: false })
+
+  return (
+    <main id="main" style={PAGE}>
+      <OpsHeader name="Decisions" answers="What has this system been told to assume?" />
+
+      <p style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16, maxWidth: 620, lineHeight: 1.6 }}>
+        Each of these is something a person chose and could choose differently. Nothing here is
+        stored twice — changing one recomputes every number that depends on it, which is why the
+        note says what choosing differently would change.
+      </p>
+
+      {(settings.data ?? []).map((setting) => (
+        <section key={setting.key} style={{ ...CARD, marginBottom: 12 }}>
+          <p style={LABEL}>{setting.key}</p>
+          <p
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--gw-navy)',
+              margin: '4px 0 6px',
+              wordBreak: 'break-word',
+            }}
+          >
+            {setting.value}
+          </p>
+          {setting.note && (
+            <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 10px', lineHeight: 1.6 }}>
+              {setting.note}
+            </p>
+          )}
+          <Adder
+            title="Change it"
+            fields={[{ name: 'value', label: 'The new value', required: true, placeholder: setting.value }]}
+            submit={(v) => opsApi.changeSetting(setting.key, v.value)}
+            invalidate={[['ops']]}
+            submitLabel="Change it"
+          />
+          <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+            Last changed {readDate(setting.updatedAt)}
+            {setting.updatedBy ? ` by ${setting.updatedBy}` : ''}
+          </p>
+        </section>
+      ))}
+
+      {settings.data?.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Nothing has been decided yet.</p>
       )}
     </main>
   )

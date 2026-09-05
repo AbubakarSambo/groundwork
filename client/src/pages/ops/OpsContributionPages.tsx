@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi, type OpsPositioningRecord, type OpsClaim } from '@/api/ops'
 import { OpsHeader, PAGE, CARD, LABEL } from './OpsLayout'
-import { OpsTable, readDate, type Column } from './OpsTable'
+import { OpsTable, readDate, readEnum, type Column } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
 
 /**
@@ -389,6 +389,43 @@ const COMMERCIAL_STAGES = [
  * kept in step. A row with nobody recorded says so plainly - "nobody has said"
  * is the honest state, and it is not the same as the sales owner's name.
  */
+/** Every attribution decision ever made about one opportunity, on request. */
+function HowAttributionGotHere({ opportunityId }: { opportunityId: string }) {
+  const [open, setOpen] = useState(false)
+  const history = useQuery({
+    queryKey: ['ops', 'attribution-history', opportunityId],
+    queryFn: () => opsApi.attributionHistory(opportunityId),
+    enabled: open,
+    retry: false,
+  })
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{ all: 'unset', cursor: 'pointer', ...LABEL, fontSize: 10 }}
+      >
+        {open ? 'Hide' : 'How'}
+      </button>
+      {open && (
+        <ul style={{ margin: '5px 0 0', paddingLeft: 16, fontSize: 12, color: 'var(--gw-sub)' }}>
+          {(history.data ?? []).map((h) => (
+            <li key={h.id} style={{ marginBottom: 3 }}>
+              {readEnum(h.kind)} · {readDate(h.occurredAt)}
+              {h.actor ? ` · ${h.actor}` : ''}
+              {h.note ? ` — ${h.note}` : ''}
+            </li>
+          ))}
+          {history.data?.length === 0 && <li>Nothing recorded. Nobody has claimed it.</li>}
+          {history.isLoading && <li>Looking…</li>}
+        </ul>
+      )}
+    </>
+  )
+}
+
 export function OpsCommercialPipelinePage() {
   const pipeline = useQuery({
     queryKey: ['ops', 'commercial-pipeline'],
@@ -469,6 +506,41 @@ export function OpsCommercialPipelinePage() {
             submitLabel="Claim it"
           />
         ),
+    },
+    {
+      head: 'Next',
+      /* THE ONE PIPELINE COLUMN THAT COULD NOT BE FILLED. Every other board in
+         this system asks what happens next; `PATCH /ops/commercial/pipeline/:id/next-action`
+         was built and called by nothing, so an opportunity could sit at a stage
+         with nobody able to record what would move it. */
+      cell: (o) => (
+        <>
+          {o.nextAction ?? '—'}
+          <Adder
+            title={o.nextAction ? 'change it' : 'say what is next'}
+            fields={[
+              { name: 'nextAction', label: 'What happens next', required: true },
+              { name: 'nextActionDueAt', label: 'By when', type: 'date' },
+            ]}
+            submit={(v) =>
+              opsApi.setCommercialNextAction(o.id, {
+                nextAction: v.nextAction,
+                nextActionDueAt: v.nextActionDueAt || undefined,
+              })
+            }
+            invalidate={[['ops']]}
+            submitLabel="Set it"
+          />
+        </>
+      ),
+    },
+    {
+      head: 'How it was decided',
+      /* Attribution is the most contested thing on this page and its history was
+         written and unreadable — `GET /:id/attribution-history` had no caller.
+         A claim approved and later reversed looked identical to one nobody had
+         ever questioned. */
+      cell: (o) => <HowAttributionGotHere opportunityId={o.id} />,
     },
     /* Projected and actual side by side, and never added together. */
     { head: 'Projected', cell: (o) => money(o.estimatedContractValue), numeric: true },

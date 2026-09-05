@@ -173,6 +173,37 @@ export function OpsReadinessPage() {
       },
     },
     { head: 'Next', cell: (u) => u.nextAction ?? '—' },
+    {
+      head: 'What would fix it',
+      /*
+       * A GAP THAT POINTS AT NOTHING IS A COMPLAINT. `POST /ops/use-cases/:id/links`
+       * was built and called by nothing, so this page could say a company is
+       * blocked and never connect that to the roadmap or tech item that would
+       * unblock them — which is the one thing that turns "what is missing" into
+       * work somebody is doing.
+       */
+      cell: (u) => (
+        <Adder
+          title="point it at the work"
+          fields={[
+            {
+              name: 'targetType',
+              label: 'What kind of work',
+              required: true,
+              options: [
+                { value: 'OpsRoadmapItem', label: 'A roadmap item' },
+                { value: 'OpsTechItem', label: 'A tech item' },
+                { value: 'OpsUXItem', label: 'A UX item' },
+              ],
+            },
+            { name: 'targetId', label: 'Its id', required: true },
+          ]}
+          submit={(v) => opsApi.linkUseCase(u.id, { targetType: v.targetType, targetId: v.targetId })}
+          invalidate={[['ops']]}
+          submitLabel="Point it"
+        />
+      ),
+    },
   ]
 
   return (
