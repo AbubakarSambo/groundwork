@@ -29,7 +29,7 @@ export class OpsTargetCompaniesController {
    */
   @Get('target-companies/:periodKey')
   @NeedsOps('target-companies:read')
-  @ApiOperation({ summary: 'Every company in a targetList, how far it has got, and what is next' })
+  @ApiOperation({ summary: 'Every company in a target list, how far it has got, and what is next' })
   board(@Param('periodKey') periodKey: string) {
     return this.targetList.board(periodKey);
   }
@@ -76,14 +76,14 @@ export class OpsTargetCompaniesController {
   }
 
   /**
-   * Put a company on a targetList, or take it off. `targetListKey: null` removes it.
+   * Put a company on a target list, or take it off. `targetListKey: null` removes it.
    *
    * This is the curated list — the companies getting attention between two
    * dates — which is a different list from every company we are selling to.
    */
   @Patch('companies/:key/target-list')
   @NeedsOps('target-companies:curate')
-  @ApiOperation({ summary: 'Add a company to a targetList, or take it off' })
+  @ApiOperation({ summary: 'Add a company to a target list, or take it off' })
   setTargetList(
     @Req() req: OpsRequest,
     @Param('key') key: string,

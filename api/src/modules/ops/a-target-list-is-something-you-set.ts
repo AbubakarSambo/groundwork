@@ -4,7 +4,7 @@
  * Every period in this system arrived from the seed, which meant the September
  * list existed because a file said so and could not be moved, renamed, or
  * followed by another one without a deploy. That is fine for a quarter — the
- * calendar is not ours to argue with — and wrong for a targetList, which is a
+ * calendar is not ours to argue with — and wrong for a target list, which is a
  * stretch of time the company chooses and changes.
  *
  * The rules below are the whole of what a target list may not be. They are here

@@ -161,6 +161,17 @@ export class OpsPeopleService implements OnModuleInit {
           firstName: account.firstName,
           lastName: account.lastName,
         }),
+        /*
+         * THE ADDRESS, BECAUSE WITHOUT IT THEY DO NOT EXIST TO GROUNDWORK.
+         *
+         * This was left null, and the consequence was invisible until somebody
+         * opened the assistant: `peopleFrom` skips anybody with no email, so an
+         * auto-admitted person is never pushed, no Person is created in the
+         * organisation, and the panel answers `visible: false` about somebody
+         * who is plainly on the team. Found by driving the panel, not by
+         * reading this.
+         */
+        email: account.email ?? null,
         userId: account.id,
         functionalRole: ROLE_FOR_A_PLATFORM_ADMIN,
         grants: { create: GRANTS_FOR_A_PLATFORM_ADMIN.map((capability) => ({ capability })) },

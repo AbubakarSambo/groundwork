@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { opsApi } from '@/api/ops'
 import { pagesFor, GROUPS } from './what-you-can-open'
 import { useAuthStore } from '@/stores/auth'
+import { TheAssistantAsACustomerSeesIt } from './TheAssistantAsACustomerSeesIt'
 
 /**
  * The frame every back-office page sits in.
@@ -151,6 +152,11 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+
+      {/* ON EVERY BACK-OFFICE PAGE, THE WAY A CUSTOMER'S WOULD BE. It is not a
+          feature of one screen; it is the proof that the API we sell works from
+          outside, and it belongs wherever somebody is working. */}
+      <TheAssistantAsACustomerSeesIt />
     </div>
   )
 }

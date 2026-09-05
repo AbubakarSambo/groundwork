@@ -47,6 +47,21 @@ describe('the ops system does not reach into the Groundwork product', () => {
     const crossings: string[] = [];
 
     for (const file of opsFiles) {
+      /*
+       * A SPEC MAY REACH ACROSS. THE SYSTEM MAY NOT.
+       *
+       * The boundary is about what SHIPS depending on what. A test asserting
+       * that the two halves actually agree is the opposite of a dependency —
+       * `a-token-a-customer-would-mint.spec.ts` verifies our token against the
+       * product's own verifier, the one a customer's token meets, because a
+       * mint checked only against itself proves the two halves agree with
+       * themselves and nothing else.
+       *
+       * The narrowness matters: the minting code has its own guard saying it
+       * imports `crypto` and nothing else, so the crossing cannot migrate out
+       * of the spec and into the thing that runs.
+       */
+      if (file.endsWith('.spec.ts')) continue;
       const source = withoutComments(readFileSync(file, 'utf8'));
       const imports = [...source.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
 
@@ -60,6 +75,16 @@ describe('the ops system does not reach into the Groundwork product', () => {
     }
 
     expect(crossings).toEqual([]);
+  });
+
+  it('and the exemption is only for specs, not for anything that runs', () => {
+    /* If the crossing ever moves out of a spec and into the code, the guard
+       above must fail. Asserted here so the exemption cannot quietly widen. */
+    const minting = withoutComments(
+      readFileSync(join(OPS_DIR, 'a-token-a-customer-would-mint.ts'), 'utf8'),
+    );
+    const imports = [...minting.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
+    expect(imports).toEqual(['crypto']);
   });
 
   it('is imported by no product module', () => {

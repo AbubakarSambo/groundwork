@@ -357,7 +357,7 @@ export const METRICS: MetricDefinition[] = [
     label: 'Companies lined up',
     shape: 'count',
     capability: 'target-companies:read',
-    counts: 'Companies attached to a targetList, whatever stage they have reached.',
+    counts: 'Companies attached to a target list, whatever stage they have reached.',
     async compute(prisma) {
       const rows = await prisma.opsCompany.findMany({
         where: { targetListId: { not: null } },

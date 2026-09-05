@@ -525,7 +525,7 @@ export const opsApi = {
         params: targetListKey ? { list: targetListKey } : undefined,
       })
       .then((r) => r.data),
-  /** Put a company on a targetList, or pass null to take it off. */
+  /** Put a company on a target list, or pass null to take it off. */
   setCompanyTargetList: (key: string, targetListKey: string | null) =>
     apiClient.patch(`/ops/companies/${key}/target-list`, { targetListKey }, QUIET).then((r) => r.data),
   targetCompanies: (periodKey: string) =>
@@ -726,6 +726,20 @@ export const opsApi = {
   fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise', QUIET).then((r) => r.data),
   strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
+  /**
+   * A short-lived identity token for the assistant panel, and where to take it.
+   *
+   * Our own server mints it, the way a customer's server does. The shared
+   * signing key never reaches the browser — a browser holding it could mint a
+   * token for anybody.
+   */
+  assistantPanel: () =>
+    apiClient
+      .get<{ ready: true; baseUrl: string; token: string } | { ready: false; why: string }>(
+        '/ops/assistant/panel',
+        QUIET,
+      )
+      .then((r) => r.data),
   people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => r.data),
   /** The roles, from the same list the grants are keyed on. Never a copy here. */
   roles: () =>

@@ -248,7 +248,7 @@ export default function OpsTargetCompaniesPage() {
                       options: data.companies.map((c) => ({ value: c.key, label: c.name })),
                     },
                   ]}
-                  /* Off the targetList, not deleted. They are still a company. */
+                  /* Off the target list, not deleted. They are still a company. */
                   submit={(v) => opsApi.setCompanyTargetList(v.key, null)}
                   invalidate={[['ops']]}
                   submitLabel="Take them off"

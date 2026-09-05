@@ -74,6 +74,19 @@ export class OpsController {
   }
 
   /**
+   * A token for the assistant panel, and where to take it.
+   *
+   * No capability: it is scoped to the caller by construction — the token names
+   * them and nobody else, and the person asking is already on this team or the
+   * guard would not have let them in.
+   */
+  @Get('assistant/panel')
+  @ApiOperation({ summary: 'A short-lived token for the Groundwork assistant panel. Never the shared key.' })
+  assistantPanel(@Req() req: { opsIdentity: { key: string } }) {
+    return this.integration.panelFor(req.opsIdentity.key);
+  }
+
+  /**
    * Whether Groundwork is connected, and what the last push did. Never the secret.
    */
   @Get('integration')
@@ -88,7 +101,7 @@ export class OpsController {
   @ApiOperation({ summary: 'Point it at a Groundwork, or switch it off' })
   configure(
     @Req() req: { opsIdentity: { key: string } },
-    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string },
+    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string; organizationId?: string; embedSecret?: string },
   ) {
     return this.integration.configure(body, req.opsIdentity.key);
   }

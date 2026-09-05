@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsIntentService } from './ops-intent.service';
 import { GroundworkApiClient } from './the-groundwork-api-as-a-customer';
+import { mintEmbedToken, whyThePanelCannotOpen } from './a-token-a-customer-would-mint';
 import {
   subjectsFrom,
   objectivesFrom,
@@ -69,6 +70,9 @@ export class OpsIntegrationService {
       lastSyncAt: row.lastSyncAt,
       lastSyncOk: row.lastSyncOk,
       checkInId: row.checkInId,
+      organizationId: row.organizationId,
+      /** Present or absent, never the value. Same rule as the client secret. */
+      embedSecretSet: Boolean(row.embedSecret),
       lastSyncSummary: row.lastSyncSummary,
       lastSyncDetail: row.lastSyncDetail,
       says: !row.checkInId && row.enabled
@@ -82,7 +86,7 @@ export class OpsIntegrationService {
   }
 
   async configure(
-    input: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string },
+    input: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string; organizationId?: string; embedSecret?: string },
     updatedBy: string,
   ) {
     await this.prisma.opsIntegration.upsert({
@@ -245,5 +249,38 @@ export class OpsIntegrationService {
       where: { id: THE_ONE_ROW },
       data: { lastSyncAt: new Date(), lastSyncOk: ok, lastSyncSummary: summary, lastSyncDetail: detail },
     });
+  }
+
+  /**
+   * WHAT THE PANEL NEEDS, AND NOTHING MORE.
+   *
+   * A short-lived assertion about the person looking at the page, and the
+   * address to take it to. Never the shared secret: a browser that holds the key
+   * can mint a token for anybody, which is the whole reason the customer's
+   * server signs and the browser does not.
+   *
+   * Refuses in words rather than returning an empty panel, because the states
+   * this can be in — not connected, no organisation, no key — are all things
+   * somebody can fix, and a launcher that appears and does nothing teaches
+   * people to stop pressing it.
+   */
+  async panelFor(personKey: string) {
+    const row = await this.prisma.opsIntegration.findUnique({ where: { id: THE_ONE_ROW } });
+    const why = whyThePanelCannotOpen(row ?? {});
+    if (why || !row) return { ready: false as const, why: why ?? 'Groundwork is not connected.' };
+
+    return {
+      ready: true as const,
+      /*
+       * The PUBLIC base url, handed to the browser so it calls Groundwork
+       * directly. Proxying it through here would work and would prove nothing:
+       * the request a customer's browser makes is the thing under test.
+       */
+      baseUrl: row.baseUrl as string,
+      token: mintEmbedToken(
+        { sub: personKey, org: row.organizationId as string },
+        row.embedSecret as string,
+      ),
+    };
   }
 }

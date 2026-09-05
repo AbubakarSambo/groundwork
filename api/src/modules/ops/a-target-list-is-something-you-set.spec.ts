@@ -88,7 +88,7 @@ describe('starting a target list', () => {
     });
   });
 
-  it('refuses a nameless targetList, because a board has to call it something', async () => {
+  it('refuses a nameless target list, because a board has to call it something', async () => {
     const { service } = serviceWith([]);
     await expect(service.startATargetList({ ...good, name: '  ' })).rejects.toThrow(BadRequestException);
   });

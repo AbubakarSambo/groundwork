@@ -4876,6 +4876,24 @@ model OpsIntegration {
   /// that on anybody's behalf.
   checkInId String? @map("check_in_id")
 
+  /// THE TWO THINGS THE PANEL NEEDS, AND NOTHING ELSE DOES.
+  ///
+  /// A machine credential opens the data routes. The assistant panel is a
+  /// different act: a browser on OUR page asking Groundwork about the person
+  /// looking at it, and a machine secret in a browser is a machine secret in
+  /// developer tools. So the panel goes the way a customer's does - our server
+  /// signs a short assertion about who is signed in, with a secret shared with
+  /// Groundwork, and the browser carries only that.
+  /// IT MUST BE THE ORGANISATION THE CREDENTIAL ABOVE WRITES INTO.
+  ///
+  /// The token names a person by their externalId inside an organisation, and
+  /// SCIM puts that person into whichever organisation the machine credential
+  /// belongs to. Point this at a different one and the handshake answers
+  /// `visible: false` about somebody plainly on the team, with nothing to say
+  /// why. Cost two rounds to find while integrating our own back office.
+  organizationId String? @map("organization_id")
+  embedSecret    String? @map("embed_secret")
+
   /// What the last push did, in the API's own words.
   lastSyncAt      DateTime? @map("last_sync_at")
   lastSyncOk      Boolean?  @map("last_sync_ok")

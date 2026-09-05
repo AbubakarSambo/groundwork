@@ -38,7 +38,7 @@ export const BOARDS: BoardDefinition[] = [
   {
     key: 'ceo',
     name: 'Running the company',
-    answers: 'Where is the targetList, what is waiting on me, and what is the money doing?',
+    answers: 'Where is the target list, what is waiting on me, and what is the money doing?',
     metrics: [
       'targets.companies_lined_up',
       'targets.companies_onboarded',

@@ -161,7 +161,7 @@ export class OpsCompaniesService {
   }
 
   /**
-   * Put a company on a targetList, or take it off.
+   * Put a company on a target list, or take it off.
    *
    * A TARGET LIST IS NOT THE PIPELINE. Every company we are selling to lives in
    * `list()`; a target list is the much shorter list somebody has decided deserves
@@ -182,7 +182,7 @@ export class OpsCompaniesService {
       if (!period) throw new NotFoundException(`No period called ${targetListKey}`);
       if (period.kind !== 'TARGET_LIST') {
         throw new BadRequestException(
-          `${period.name} is a ${period.kind.toLowerCase()}. A company goes on a targetList, not on the calendar.`,
+          `${period.name} is a ${period.kind.toLowerCase()}. A company goes on a target list, not on the calendar.`,
         );
       }
       targetListId = period.id;

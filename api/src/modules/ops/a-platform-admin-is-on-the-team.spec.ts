@@ -93,6 +93,18 @@ describe('a platform admin who is not on the team', () => {
     expect(identity!.displayName).toBe('Hafsah Jumare');
   });
 
+  it('carries the address, because without it they do not exist to Groundwork', async () => {
+    /*
+     * Left null at first, and invisible until somebody opened the assistant:
+     * `peopleFrom` skips anybody with no email, so the person is never pushed,
+     * no Person is created in the organisation, and the panel answers
+     * `visible: false` about somebody plainly on the team.
+     */
+    const { service, created } = serviceOver([]);
+    await service.identify(admin);
+    expect(created[0]).toMatchObject({ email: 'hafsah.ops@myground.work' });
+  });
+
   it('gets a real record, because half this system points at a person', async () => {
     /* An identity with no row behind it would break every attribution,
        commitment and approval the moment it did anything. */
