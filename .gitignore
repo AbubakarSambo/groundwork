@@ -56,4 +56,3 @@ api/journey/org-sim/out-verify/
 # It was tracked, so every typecheck showed up as a file change in every diff.
 *.tsbuildinfo
 .vercel
-.env*
