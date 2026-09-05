@@ -133,3 +133,30 @@ export function howMuchIsAimedAtScale(objectives: Array<{ serves: OpsServes | nu
           (saidNothing > 0 ? ` ${saidNothing} said nothing.` : ''),
   };
 }
+
+/**
+ * WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+ *
+ * A key result carried a target and a source — what to reach, and where the
+ * figure comes from. Neither says whether the target is the right one, or
+ * whether anybody has thought about how to hit it.
+ *
+ * Two fields rather than one because they fail differently. A good reason with
+ * no plan is a hope with a deadline on it. A good plan aimed at the wrong
+ * number is worse than either, because it produces work and evidence and moves
+ * nothing that matters.
+ */
+export interface WhatIsBeingMeasured {
+  justification?: string | null;
+  approach?: string | null;
+}
+
+export function whyThisKeyResultIsNotSetYet(input: WhatIsBeingMeasured): string | null {
+  if ((input.justification?.trim().length ?? 0) < SHORTEST_USEFUL_JUSTIFICATION) {
+    return 'Say why this number is the one that matters. A target nobody justified is one nobody can argue with when it is missed.';
+  }
+  if ((input.approach?.trim().length ?? 0) < SHORTEST_USEFUL_JUSTIFICATION) {
+    return 'Say how it will be moved. A number with no approach behind it is a wish with a deadline.';
+  }
+  return null;
+}

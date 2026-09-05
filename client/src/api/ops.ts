@@ -177,6 +177,8 @@ export interface OpsObjective {
     current: number
     progress: number | null
     typedByHand: boolean
+    justification: string | null
+    approach: string | null
     says: string
     problem?: string
     dueDate: string
@@ -735,7 +737,7 @@ export const opsApi = {
       .then((r) => r.data),
   addKeyResult: (
     objectiveId: string,
-    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; dueDate: string },
+    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; justification: string; approach: string; dueDate: string },
   ) => apiClient.post(`/ops/objectives/${objectiveId}/key-results`, body, QUIET).then((r) => r.data),
   setObjectiveStatus: (id: string, status: string) =>
     apiClient.patch(`/ops/objectives/${id}/status`, { status }, QUIET).then((r) => r.data),

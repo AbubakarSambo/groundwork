@@ -64,7 +64,7 @@ export class OpsIntentController {
   addKeyResult(
     @Req() req: OpsRequest,
     @Param('id') id: string,
-    @Body() body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; dueDate: string },
+    @Body() body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; justification: string; approach: string; dueDate: string },
   ) {
     return this.intent.addKeyResult({
       ...body,

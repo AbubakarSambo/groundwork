@@ -12,6 +12,7 @@ import {
   whatItClaims,
   doesThePipelineAgree,
   howMuchIsAimedAtScale,
+  whyThisKeyResultIsNotSetYet,
 } from './an-objective-is-not-a-note';
 import {
   OpsObjectiveStatus,
@@ -101,8 +102,13 @@ export class OpsIntentService {
      * of something they do not own. The field existed and was never asked for.
      */
     ownerKey: string;
+    justification: string;
+    approach: string;
     dueDate: Date;
   }) {
+    const notYet = whyThisKeyResultIsNotSetYet(input);
+    if (notYet) throw new BadRequestException(notYet);
+
     const owner = await this.prisma.opsPerson.findUnique({ where: { key: input.ownerKey } });
     if (!owner) throw new NotFoundException(`No one here called ${input.ownerKey}`);
     if (input.measurementSource !== MANUAL && !METRICS_BY_KEY.has(input.measurementSource)) {
@@ -164,6 +170,8 @@ export class OpsIntentService {
               dueDate: kr.dueDate,
               current: number.value,
               typedByHand: number.typedByHand,
+              justification: kr.justification,
+              approach: kr.approach,
               says: number.says,
               problem: number.problem,
               rows: number.rows,

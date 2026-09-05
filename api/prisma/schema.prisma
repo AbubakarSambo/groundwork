@@ -4618,6 +4618,20 @@ model OpsKeyResult {
 
   measurementSource String @map("measurement_source")
 
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// A key result was a target and a source: what to reach and where the number
+  /// comes from. Neither says whether the target is the right one or whether
+  /// anybody has thought about how to hit it — and a number with no approach
+  /// behind it is a wish with a deadline.
+  ///
+  /// Kept apart on purpose. The justification is why this number is the one
+  /// that matters; the approach is what somebody is actually going to do. They
+  /// fail differently: a good reason with no plan is a hope, and a good plan
+  /// for the wrong number is worse.
+  justification String? @db.Text
+  approach      String? @db.Text
+
   ownerId String   @map("owner_id")
   dueDate DateTime @map("due_date") @db.Date
 

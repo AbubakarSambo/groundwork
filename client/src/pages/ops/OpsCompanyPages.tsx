@@ -223,6 +223,12 @@ export function OpsQuarterPage() {
                     required: true,
                     options: (people.data ?? []).map((p) => ({ value: p.key, label: p.displayName })),
                   },
+                  /* WHY THIS NUMBER, AND HOW IT WILL BE MOVED. A target and a
+                     source say what to reach and where the figure comes from,
+                     and neither says whether the target is the right one or
+                     whether anybody has thought about hitting it. */
+                  { name: 'justification', label: 'Why this number', type: 'textarea', required: true },
+                  { name: 'approach', label: 'How it will be moved', type: 'textarea', required: true },
                   { name: 'dueDate', label: 'By when', type: 'date', required: true },
                 ]}
                 submit={(v) =>
@@ -234,6 +240,8 @@ export function OpsQuarterPage() {
                     unit: v.unit,
                     measurementSource: v.measurementSource,
                     ownerKey: v.ownerKey,
+                    justification: v.justification,
+                    approach: v.approach,
                     dueDate: v.dueDate,
                   })
                 }
@@ -301,6 +309,14 @@ export function OpsQuarterPage() {
               {/* A NUMBER YOU CAN OPEN, WHERE IT MATTERS MOST. The rows were
                   in the payload all along and this page threw them away, so
                   "3 of 10 qualified" could not be checked against the three. */}
+              {/* The reasoning behind the number, beside it. Filed on another
+                  screen it would be written once and read never. */}
+              {(kr.justification || kr.approach) && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.6 }}>
+                  {kr.justification && <div>{kr.justification}</div>}
+                  {kr.approach && <div style={{ marginTop: 2 }}>How: {kr.approach}</div>}
+                </div>
+              )}
               <TheRowsBehindIt rows={kr.rows} />
             </div>
           ))}

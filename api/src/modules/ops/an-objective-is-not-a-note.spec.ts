@@ -16,6 +16,7 @@ import {
   howMuchIsAimedAtScale,
   whatItClaims,
   whyThisIsNotAnObjective,
+  whyThisKeyResultIsNotSetYet,
 } from './an-objective-is-not-a-note';
 
 const COMPLETE = {
@@ -123,5 +124,31 @@ describe('how much of a quarter is aimed at scale', () => {
 
   it('says so plainly when nothing is set', () => {
     expect(howMuchIsAimedAtScale([]).says).toMatch(/Nothing is set/);
+  });
+});
+
+describe('a key result', () => {
+  const said = {
+    justification: 'Ten paying is the exit condition for phase three and nothing else proves it.',
+    approach: 'Sahar works the fifteen target companies, two conversations a week each.',
+  };
+
+  it('needs both, because they fail differently', () => {
+    /* A good reason with no plan is a hope with a deadline. A good plan aimed
+       at the wrong number is worse — it produces work and evidence and moves
+       nothing that matters. */
+    expect(whyThisKeyResultIsNotSetYet(said)).toBeNull();
+  });
+
+  it('refuses a number nobody justified', () => {
+    expect(whyThisKeyResultIsNotSetYet({ ...said, justification: 'Revenue' })).toMatch(
+      /argue with when it is missed/,
+    );
+  });
+
+  it('refuses a number with no approach behind it', () => {
+    expect(whyThisKeyResultIsNotSetYet({ ...said, approach: 'Sell more' })).toMatch(
+      /wish with a deadline/,
+    );
   });
 });
