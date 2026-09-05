@@ -30,31 +30,72 @@ export const LABEL: React.CSSProperties = {
 export function OpsLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isPlatformAdmin = useAuthStore(state => state.user?.isPlatformAdmin)
+  /* Which account this actually is. See the refusal below for why that is the
+     one fact this page could not do without. */
+  const signedInAs = useAuthStore(state => state.user?.email)
+  const logout = useAuthStore(state => state.logout)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
 
   if (me.isError) {
     return (
       <main id="main" style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
-          You are signed in, but you are not set up in the Groundwork team's operating system. That
-          is a separate list from your Groundwork account.
-        </p>
         {/*
-          * A DEAD END IS NOT AN ANSWER WHEN THE READER CAN FIX IT.
+          * IT DID NOT SAY WHICH ACCOUNT IT MEANT.
           *
-          * A platform admin is exactly the person who can connect an account here — and this page
-          * used to tell them nothing but no. It was the whole of "I clicked platform ops but I
-          * can't get to my own view": the door exists, and the page that refuses you does not
-          * mention it.
+          * "You are signed in, but you are not set up" — and the reader is the platform admin who
+          * knows perfectly well she IS set up, because she connected the account herself. Reported
+          * exactly that way: "I am super admin so not sure why I see this."
+          *
+          * The answer was that she was signed in on a second account, and the one fact that would
+          * have said so was the address. A refusal that will not name who it is refusing leaves the
+          * reader arguing with it instead of fixing it.
           */}
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
+          You are signed in{signedInAs ? ` as ${signedInAs}` : ''}, and that account is not on the
+          Groundwork team's operating system. It is a separate list from your Groundwork account —
+          being a platform admin does not put you on it.
+        </p>
+
         {isPlatformAdmin && (
+          /*
+           * A DEAD END IS NOT AN ANSWER WHEN THE READER CAN FIX IT. A platform admin is exactly
+           * the person who can connect an account, and this page used to tell them nothing but no.
+           */
           <p style={{ fontSize: 14, marginTop: 14 }}>
             <Link to="/admin/dashboard" style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>
-              Connect your account to somebody on the team →
+              Connect {signedInAs ? 'this account' : 'your account'} to somebody on the team →
             </Link>
           </p>
         )}
+
+        {/*
+          * AND A WAY OUT, WHICH THERE WAS NOT.
+          *
+          * The page had one link and no navigation, so somebody who landed here with the wrong
+          * account was stuck on it — "I can't get out of it". Signing out is the fix in the common
+          * case, and going back to the app is the fix in every other one.
+          */}
+        <p style={{ fontSize: 14, marginTop: 18, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <Link to="/grounds" style={{ color: 'var(--gw-sub)' }}>
+            ← Back to Groundwork
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              logout()
+              window.location.href = '/auth'
+            }}
+            style={{
+              all: 'unset',
+              cursor: 'pointer',
+              color: 'var(--gw-sub)',
+              textDecoration: 'underline',
+            }}
+          >
+            Sign in as somebody else
+          </button>
+        </p>
       </main>
     )
   }
