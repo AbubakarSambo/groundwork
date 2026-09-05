@@ -22,6 +22,7 @@ import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { whatItTakesToStart } from './what-it-takes-to-start';
+import { WhatIsTrueService } from './what-is-true.service';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
@@ -79,6 +80,12 @@ export class AssistantService {
      * objective-setting path here is what keeps that refusal in one place.
      */
     private readonly drafts: DraftsService,
+    /*
+     * WHAT IS TRUE FOR THIS PERSON, ASSEMBLED ONCE. Lanes ask it rather than
+     * querying, so what the assistant knows stops depending on which question
+     * was asked. See `what-is-true-for-this-person.ts`.
+     */
+    private readonly truth: WhatIsTrueService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -635,47 +642,26 @@ export class AssistantService {
    * is linked to an account only when somebody accepts. Without that, a person with a session
    * sitting in front of them is told there is nothing.
    */
-  private async startACheckIn(organizationId: string, personId: string, who: string | null): Promise<Reply> {
-    const me = await this.prisma.person.findFirst({
-      where: { id: personId, organizationId },
-      select: { email: true, linkedUserId: true },
-    });
-    if (!me) {
+  private async startACheckIn(organizationId: string, personId: string, _who: string | null): Promise<Reply> {
+    /* THE ONE READ. This lane used to query the grounds and the check-ins
+       itself, which is how the same logic came to exist three times and drift.
+       See `what-is-true.service.ts`. */
+    const truth = await this.truth.forPerson(organizationId, personId);
+    if (!truth) {
       return rules('start_a_check_in', text('I cannot see you in your organisation records, so I cannot tell what is waiting for you.'));
     }
 
-    const [toStart, sessions] = await Promise.all([
-      me.linkedUserId
-        ? this.prisma.ground.findMany({
-            where: { organizationId, initiatorId: me.linkedUserId, status: 'AWAITING_LEAD' },
-            select: { id: true, label: true },
-          })
-        : Promise.resolve([]),
-      this.prisma.checkIn.findMany({
-        where: {
-          participant: {
-            ground: { organizationId },
-            OR: [
-              ...(me.linkedUserId ? [{ userId: me.linkedUserId }] : []),
-              ...(me.email ? [{ userId: null, email: me.email }] : []),
-            ],
-          },
-          status: { in: ['NOT_STARTED', 'IN_PROGRESS'] },
-        },
-        include: { participant: { include: { ground: { select: { label: true } } } } },
-        orderBy: { availableFrom: 'asc' },
-      }),
-    ]);
-
-    const now = new Date();
+    const sessions = truth.sessions.value;
     const said = whatItTakesToStart({
-      toStart: toStart.map((g) => ({ groundId: g.id, label: g.label })),
+      toStart: sessions
+        .filter((x) => x.standing === 'waiting on you to start')
+        .map((x) => ({ groundId: x.groundId, label: x.label })),
       open: sessions
-        .filter((c) => c.participant.userId !== null && (!c.availableFrom || c.availableFrom <= now))
-        .map((c) => ({ checkInId: c.id, label: c.participant.ground.label })),
+        .filter((x) => x.standing === 'open to you')
+        .map((x) => ({ checkInId: x.checkInId as string, label: x.label })),
       notAccepted: sessions
-        .filter((c) => c.participant.userId === null)
-        .map((c) => ({ label: c.participant.ground.label })),
+        .filter((x) => x.standing === 'invitation not accepted')
+        .map((x) => ({ label: x.label })),
     });
 
     return said.act

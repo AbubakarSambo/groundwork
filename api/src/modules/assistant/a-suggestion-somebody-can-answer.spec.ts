@@ -39,6 +39,7 @@ function svc(opts: { pending?: any[]; parked?: any; decideThrows?: boolean } = {
     { statusFor: async () => ({ roleName: null, gates: [], left: [] }) } as any,
     scenarios,
     { start: async () => { throw new Error('no drafting in these tests'); } } as any,
+    { forPerson: async () => { throw new Error('no assembly in these tests'); } } as any,
   );
   return { service, writes, decided, scenarios };
 }

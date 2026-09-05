@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsIntentService } from './ops-intent.service';
 import { GroundworkApiClient } from './the-groundwork-api-as-a-customer';
+import { fingerprint } from './what-we-send-to-groundwork';
 import {
   whatThisCompanyDecided,
   whatServingMeans,
@@ -165,8 +166,29 @@ export class OpsIntegrationService {
         results.push({ what: `person ${person.externalId}`, ...(await client.pushPerson(person)) });
       }
 
-      for (const subject of subjectsFrom(objectives)) {
-        const result = await client.pushSubject(subject, `${OUR_SOURCE_SYSTEM}:${subject.externalId}`);
+      /* Our id for a person, to the key we push them under. Built from the team
+         we already loaded, so an objective arrives owned by somebody rather than
+         by nobody — see `subjectsFrom`. */
+      const keyFor = new Map(team.map((p) => [p.id, p.key]));
+      for (const subject of subjectsFrom(objectives, (ownerId) => (ownerId ? keyFor.get(ownerId) ?? null : null))) {
+        /*
+         * THE KEY IDENTIFIES THIS CONTENT, NOT THIS SUBJECT FOREVER.
+         *
+         * It was the subject's id alone. So the first push of an objective set
+         * the key, and every later push of the SAME objective with anything
+         * changed was refused 409 — "already used with a different request
+         * body". Found the day owners started being sent: five objectives
+         * unchanged, one now owned, and that one refused.
+         *
+         * Which is the API being right. An idempotency key promises "this exact
+         * write, once"; reusing it for a different write is the caller's error.
+         * So the key carries a fingerprint of what is being sent: the same
+         * content twice is still one write, and changed content is a new one.
+         */
+        const result = await client.pushSubject(
+          subject,
+          `${OUR_SOURCE_SYSTEM}:${subject.externalId}:${fingerprint(subject)}`,
+        );
         results.push({ what: `subject ${subject.externalId}`, ...result });
       }
 

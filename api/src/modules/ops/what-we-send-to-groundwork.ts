@@ -19,6 +19,8 @@ export interface SubjectPayload {
   title: string;
   measure?: string;
   target?: string;
+  /** Whose it is, in the keys we push people under. Absent rather than guessed. */
+  ownerExternalId?: string;
   /* Collected on our own key results and, until this, dropped at the seam —
      so the objective that reached Groundwork had a number and no reason, in
      the one system whose whole argument is that a number opens onto why. */
@@ -45,6 +47,25 @@ export interface InteractionPayload {
 
 /** The one name our records travel under, so nothing else can claim to be us. */
 export const OUR_SOURCE_SYSTEM = 'groundwork-ops';
+
+/**
+ * A SHORT, STABLE FINGERPRINT OF WHAT IS BEING SENT.
+ *
+ * For the idempotency key, which promises "this exact write, once". Keyed on the
+ * record's id alone, the first push wins forever and every later change is
+ * refused with a 409 — which is the API being right and the caller being wrong.
+ *
+ * Sorted keys, because two objects with the same fields in a different order are
+ * the same write, and JSON.stringify does not think so.
+ */
+export function fingerprint(payload: object): string {
+  const stable = JSON.stringify(payload, Object.keys(payload as Record<string, unknown>).sort());
+  let hash = 0;
+  for (let i = 0; i < stable.length; i += 1) {
+    hash = (hash * 31 + stable.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash).toString(36);
+}
 
 export interface PersonPayload {
   externalId: string
@@ -76,6 +97,8 @@ export function peopleFrom(people: PersonShape[]): PersonPayload[] {
 export interface ObjectiveShape {
   id: string;
   title: string;
+  /** Whose objective it is, as OUR id for that person. Mapped to their key below. */
+  ownerId?: string | null;
   keyResults: Array<{
     id: string;
     title: string;
@@ -89,10 +112,31 @@ export interface ObjectiveShape {
   }>;
 }
 
-export function subjectsFrom(objectives: ObjectiveShape[]): SubjectPayload[] {
+/**
+ * WE PUSHED OBJECTIVES THAT BELONGED TO NOBODY.
+ *
+ * `ownerExternalId` was never sent, so every objective in Groundwork had no
+ * owner — and the one question a person is most likely to ask the assistant,
+ * "what am I on", answered "nothing your organisation has sent us lists you as
+ * an owner or contributor on" to everybody, correctly, for months.
+ *
+ * It reads as a person having no work. It was every objective having no person.
+ * Found by assembling what is true for somebody and seeing a zero that should
+ * not have been one.
+ *
+ * `whoOwnsIt` maps our id for a person to the key we push them under, and an
+ * objective whose owner we cannot resolve is sent WITHOUT an owner rather than
+ * with a guessed one: an objective attributed to the wrong person is worse than
+ * one attributed to nobody, because it is believed.
+ */
+export function subjectsFrom(
+  objectives: ObjectiveShape[],
+  whoOwnsIt: (ownerId: string | null | undefined) => string | null = () => null,
+): SubjectPayload[] {
   return objectives.flatMap((objective) =>
     objective.keyResults.map((kr) => ({
       externalId: kr.id,
+      ownerExternalId: whoOwnsIt(objective.ownerId) ?? undefined,
       sourceSystem: OUR_SOURCE_SYSTEM,
       type: 'objective',
       title: `${objective.title} — ${kr.title}`,

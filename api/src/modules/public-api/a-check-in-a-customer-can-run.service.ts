@@ -3,6 +3,7 @@ import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundsService } from '../grounds/grounds.service';
+import { WhatIsTrueService } from '../assistant/what-is-true.service';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
 
 /**
@@ -27,6 +28,7 @@ export class ACheckInACustomerCanRunService {
     private readonly prisma: PrismaService,
     private readonly conversation: ConversationService,
     private readonly grounds: GroundsService,
+    private readonly truth: WhatIsTrueService,
   ) {}
 
   /**
@@ -68,81 +70,42 @@ export class ACheckInACustomerCanRunService {
    * WHAT IS WAITING FOR THEM, which is the route without which none of the
    * others can be called: a customer's page has a person, not a check-in id.
    */
+  /**
+   * WHAT IS WAITING FOR THEM, from the one assembly.
+   *
+   * This used to query for itself, and was the copy that got it wrong: it
+   * matched on the account alone and told somebody with a session in front of
+   * them that nothing was waiting, because a participant is linked to an
+   * account only when they accept. Three copies of one question, and the one
+   * furthest from the chat was the one that drifted.
+   */
   async whatIsWaitingFor(organizationId: string, personId: string) {
-    const userId = await this.actingAs(organizationId, personId);
+    /* Still called: it is what LINKS the account, and the assembly reads that
+       link rather than making it. Its refusal is also the useful one — a person
+       we cannot match to an account gets a sentence, not an empty list. */
+    await this.actingAs(organizationId, personId);
 
-    const person = await this.prisma.person.findFirst({
-      where: { id: personId, organizationId },
-      select: { email: true },
-    });
+    const truth = await this.truth.forPerson(organizationId, personId);
+    if (!truth) throw new NotFoundException('We cannot see that person in your organisation.');
 
-    /*
-     * MATCHED BY ACCOUNT **OR** BY THE ADDRESS THE INVITATION WENT TO.
-     *
-     * A participant is linked to an account only when somebody ACCEPTS their
-     * invitation. Until then the row carries their email and no `userId` — so a
-     * query on the account alone told a person with a session sitting there that
-     * nothing was waiting. Found on our own organisation: a check-in available
-     * now, and the panel would have shown an empty list.
-     *
-     * The unaccepted ones are returned SEPARATELY and are not openable. Linking
-     * them here would be the system accepting an invitation on somebody's
-     * behalf, and accepting is the act by which a person agrees to take part —
-     * it is not a formality to route around because it is in the way.
-     */
-    const checkIns = await this.prisma.checkIn.findMany({
-      where: {
-        participant: {
-          ground: { organizationId },
-          OR: [
-            { userId },
-            ...(person?.email ? [{ userId: null, email: person.email }] : []),
-          ],
-        },
-        status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
-      },
-      include: { participant: { include: { ground: { select: { id: true, label: true, scenario: true } } } } },
-      orderBy: { availableFrom: 'asc' },
-    });
-
-    const notAcceptedYet = checkIns.filter((c) => c.participant.userId === null);
-    const theirs = checkIns.filter((c) => c.participant.userId !== null);
+    const of = (standing: string) => truth.sessions.value.filter((s) => s.standing === standing);
 
     return {
-      /* Said rather than hidden. A person on the roster with a session sitting
-         there, shown an empty list, concludes the product has nothing for them —
-         which is the opposite of true and the harder mistake to recover from. */
-      invitationNotAccepted: notAcceptedYet.map((c) => ({
-        ground: { id: c.participant.ground.id, label: c.participant.ground.label },
+      invitationNotAccepted: of('invitation not accepted').map((s) => ({
+        ground: { id: s.groundId, label: s.label },
         says: 'There is a check-in for you here, and the invitation has not been accepted yet. Accepting is how somebody agrees to take part, so it is not something this can do for them.',
       })),
-      waiting: theirs
-        .filter((c) => !c.availableFrom || c.availableFrom <= new Date())
-        .map((c) => ({
-          checkInId: c.id,
-          sessionNumber: c.sessionNumber,
-          status: c.status,
-          ground: {
-            id: c.participant.ground.id,
-            label: c.participant.ground.label,
-            scenario: c.participant.ground.scenario,
-          },
-        })),
-      /* Said separately. A session that has not opened yet is not the same fact
-         as having nothing to do, and a panel showing one as the other teaches
-         somebody to stop looking. */
-      notYet: theirs
-        .filter((c) => c.availableFrom && c.availableFrom > new Date())
-        .map((c) => ({
-          checkInId: c.id,
-          sessionNumber: c.sessionNumber,
-          opensAt: c.availableFrom,
-          ground: {
-            id: c.participant.ground.id,
-            label: c.participant.ground.label,
-            scenario: c.participant.ground.scenario,
-          },
-        })),
+      waiting: of('open to you').map((s) => ({
+        checkInId: s.checkInId,
+        ground: { id: s.groundId, label: s.label },
+      })),
+      /* Named for what it is now the assembly holds it: a ground set up for them
+         that nobody has begun. The old `notYet` meant a session dated in the
+         future, which the assembly leaves out because it is not true yet. */
+      waitingOnYouToStart: of('waiting on you to start').map((s) => ({
+        groundId: s.groundId,
+        label: s.label,
+      })),
     };
   }
 
