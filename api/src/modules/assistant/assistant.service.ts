@@ -26,7 +26,7 @@ import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
-  Suggestible, fromRow, suggestionLine, askAbout, acceptedLine, declinedLine, NOTHING_PENDING,
+  Suggestible, fromRow, suggestionLine, askAbout, acceptedLine, acceptedNextStep, declinedLine, NOTHING_PENDING,
 } from './a-suggestion-you-can-answer';
 import { Prisma } from '@prisma/client';
 
@@ -848,9 +848,18 @@ export class AssistantService {
        * chat window is the product blaming them for its own timing.
        */
       const decided = fromRow(await this.scenarios.decide(organizationId, payload.candidateId, who, decision === 'accept'));
+
+      if (decision !== 'accept') {
+        return rules('what_should_we_talk_about', text(declinedLine(COOLING_DAYS)));
+      }
+
+      /* The words say what happened; the block says where setting it up lives. Kept apart so the
+         panel can route it into the customer's own application instead of sending somebody out of
+         their own system - see `acceptedNextStep`. */
       return rules(
         'what_should_we_talk_about',
-        text(decision === 'accept' ? acceptedLine(decided) : declinedLine(COOLING_DAYS)),
+        text(acceptedLine(decided)),
+        { type: 'next_step', ...acceptedNextStep(decided) },
       );
     } catch {
       return rules('what_should_we_talk_about', text('That suggestion is no longer open, so there was nothing for me to record. Ask me what is waiting on you and I will tell you what still stands.'));

@@ -58,7 +58,25 @@ function readBlocks(payload: unknown): string {
   if (Array.isArray(blocks)) {
     /* `body` is what the typed blocks carry; `text` is checked too rather than
        assumed, because a block the panel cannot read must not render as JSON. */
-    const said = blocks.map((b) => b.body ?? b.text).filter(Boolean)
+    const said = blocks
+      .map((b) => {
+        /*
+         * A `next_step` HAS NEITHER, and dropping it silently loses the only
+         * actionable part of the reply. It is deliberately not a link: the href
+         * is a path inside the Groundwork product, and this panel is what a
+         * customer embeds in their own page — following it there would take
+         * somebody out of their own system, which is the thing the block shape
+         * exists to let them avoid. A real customer routes `kind` into their own
+         * setup screen; we say where ours is.
+         */
+        if (b.type === 'next_step') {
+          const label = typeof b.label === 'string' ? b.label : 'Something to set up'
+          const href = typeof b.href === 'string' ? b.href : null
+          return href ? `${label} — in Groundwork, at ${href}` : label
+        }
+        return b.body ?? b.text
+      })
+      .filter(Boolean)
     if (said.length) return said.join('\n\n')
   }
 

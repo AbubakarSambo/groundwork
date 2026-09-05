@@ -130,8 +130,36 @@ export function setupLink(scenario: string): string {
   return `/grounds/new?scenario=${encodeURIComponent(scenario)}`;
 }
 
-export function acceptedLine(s: Suggestible): string {
-  return `Right. I have recorded that you want this one, and it will not be raised at you again. Open ${setupLink(s.scenario)} to set it up - the type is filled in already, and the rest is yours to decide.`;
+/**
+ * WHAT A YES SAYS, WITH THE PATH TAKEN OUT OF IT.
+ *
+ * It used to read "Open /grounds/new?scenario=... to set it up". In the product that path works. In
+ * the embedded panel the same sentence is read on the customer's own page, where a relative path
+ * resolves against THEIR origin - so the one instruction the reply gave was broken exactly where the
+ * API story lives, and reading fine everywhere it was tested.
+ *
+ * The words no longer contain a link at all. Where to go is a `next_step` block beside them, and the
+ * panel decides what to do with it: a customer whose own application has a place to set a check-in
+ * up points at that, and one who has not gets our page. Neither is decided here, because this code
+ * cannot know which application it is being read inside.
+ */
+export function acceptedLine(_s: Suggestible): string {
+  return 'Right. I have recorded that you want this one, and it will not be raised at you again. Setting it up is the next step - the type is filled in already, and the rest is yours to decide.';
+}
+
+/** Where setting it up lives, as something a panel can route rather than a path in prose. */
+export function acceptedNextStep(s: Suggestible): {
+  label: string;
+  href: string;
+  kind: 'set_up_a_check_in';
+  context: Record<string, string>;
+} {
+  return {
+    label: 'Set up this check-in',
+    href: setupLink(s.scenario),
+    kind: 'set_up_a_check_in',
+    context: { scenario: s.scenario },
+  };
 }
 
 /**

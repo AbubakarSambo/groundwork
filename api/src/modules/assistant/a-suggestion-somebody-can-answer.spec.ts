@@ -104,9 +104,29 @@ describe('a suggestion somebody can answer', () => {
     const body = text(await service.respond('org-a', 'p1', 'yes'));
 
     expect(decided).toEqual([{ id: 'cand-1', who: 'u-1', accept: true }]);
+
+    /**
+     * THE WORDS NO LONGER CARRY THE PATH, AND THAT IS THE FIX.
+     *
+     * The reply used to read "Open /grounds/new?scenario=PIP to set it up". In the product that
+     * works. In the embedded panel the same sentence is read on the customer's own page, where a
+     * relative path resolves against THEIR origin - so the one instruction it gave was broken
+     * exactly where the API story lives, and read fine everywhere it was tested.
+     */
+    expect(body).not.toContain('/grounds/new');
+
+    const reply = await svc({
+      parked: { id: 'pr1', kind: 'scenario', payload: { candidateId: 'cand-1', scenario: 'DRIFT' } },
+    }).service.respond('org-a', 'p1', 'yes');
+    const step = reply.blocks.find((b: { type: string }) => b.type === 'next_step') as {
+      href: string; kind: string; context: Record<string, string>;
+    };
+    expect(step).toBeDefined();
+    expect(step.kind).toBe('set_up_a_check_in');
     /* The stored value, not the picker label - the label map lives in the client and copying it
        here is how the two would drift apart. */
-    expect(body).toContain('/grounds/new?scenario=PIP');
+    expect(step.href).toBe('/grounds/new?scenario=PIP');
+    expect(step.context.scenario).toBe('PIP');
   });
 
   it('turns a no into a decline, which is the only thing that starts the cooling period', async () => {
