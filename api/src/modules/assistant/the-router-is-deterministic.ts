@@ -24,6 +24,7 @@ export type Lane =
   | 'what_should_we_talk_about'
   | 'what_came_of_it'
   | 'set_an_objective'
+  | 'start_a_check_in'
   | 'unplaced';
 
 export interface Routed {
@@ -47,6 +48,27 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('start_a_check_in', [
+    /*
+     * ABOVE `set_an_objective`, because "set up a check-in about our objectives" is a request to
+     * start a session and reads to that lane as a request to write an objective. The more specific
+     * thing somebody named is the thing they asked for.
+     *
+     * Narrow, like the objective lane and for the same reason: it starts something. It owns the
+     * shapes that name a CHECK-IN or a session, and nothing that merely mentions one.
+     */
+    /*
+     * ASKING FOR IT IS NOT ASKING ABOUT IT, and one word separates them. "How do I run a check-in"
+     * is a question about how this product works and belongs to `how_we_work`; this lane would have
+     * taken it and started one instead. Caught by the guard that pins those two next to each other,
+     * which is what that guard is for.
+     */
+    /^(?!.*\bhow\s+(?:do|does|did|to|can|should)\b).*\b(?:start|begin|open|set\s+up|kick\s+off|run)\s+(?:my|our|the|a|this)?\s*(?:check[\s-]?in|session|ground|round)\b/i,
+    /^(?!.*\bhow\s+(?:do|does|did|to|can|should)\b).*\b(?:check[\s-]?in|session)\s+(?:set\s+up\s+)?for\s+me\b/i,
+    /\bready\s+to\s+(?:start|begin)\s+(?:my|our|the)?\s*check[\s-]?in\b/i,
+    /\bcan\s+i\s+(?:start|do|take)\s+(?:my|our|the)?\s*check[\s-]?in\b/i,
+  ]),
+
   rule('set_an_objective', [
     /*
      * FIRST, AND NARROW.

@@ -70,13 +70,19 @@ describe('the assistant panel', () => {
   it('offers a waiting check-in rather than opening one', () => {
     /* Ten minutes of somebody's attention is not the product's to spend because
        they opened a chat window. */
-    /* Named precisely rather than by proximity: the first version of this
-       asserted that no `useEffect` sat within 200 characters of `openCheckIn`,
-       which failed on the unrelated scroll effect that happens to be next to
-       it. A guard that fires on adjacency is a guard that gets deleted. */
-    const calls = [...CODE.matchAll(/openCheckIn\(/g)];
-    expect(calls.length).toBe(2) // its own definition, and one caller
+    /*
+     * SAYS WHAT IT MEANS, after two versions that did not.
+     *
+     * The first asserted that no `useEffect` sat within 200 characters of
+     * `openCheckIn` — it fired on the unrelated scroll effect. The second
+     * counted call sites and demanded exactly two, so adding a legitimate
+     * second caller broke it. Both were proxies for one rule: nothing opens a
+     * check-in without somebody pressing something.
+     */
     expect(CODE).toMatch(/onClick=\{\(\) => openCheckIn\(c\.checkInId\)\}/)
+
+    const handshake = CODE.slice(CODE.indexOf('useEffect'), CODE.indexOf('}, [readyToken])'))
+    expect(handshake).not.toMatch(/openCheckIn\(|startIt\(/)
   })
 
   it('does not cancel its own handshake', () => {
@@ -93,6 +99,18 @@ describe('the assistant panel', () => {
      */
     expect(CODE).toMatch(/\}, \[readyToken\]\)/)
     expect(CODE).not.toMatch(/\}, \[ready, session\]\)/)
+  })
+
+  it('does what the assistant offered, rather than describing it', () => {
+    /**
+     * Asking to start a check-in must start one. Rendering the offer as prose
+     * ("in Groundwork, at /grounds") answers a request to do something with
+     * directions to somewhere else — which is the same failure as the path in
+     * prose, one turn later.
+     */
+    expect(CODE).toMatch(/confirm_a_check_in/)
+    expect(CODE).toMatch(/startIt\(act\.id\)/)
+    expect(CODE).toMatch(/openCheckIn\(act\.id\)/)
   })
 
   it('never reaches into the product', () => {

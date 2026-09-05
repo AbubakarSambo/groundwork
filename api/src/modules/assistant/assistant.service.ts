@@ -21,6 +21,7 @@ import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
+import { whatItTakesToStart } from './what-it-takes-to-start';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
@@ -149,6 +150,8 @@ export class AssistantService {
         return this.whatCameOfIt(organizationId, personId);
       case 'set_an_objective':
         return this.setAnObjective(organizationId, who, message);
+      case 'start_a_check_in':
+        return this.startACheckIn(organizationId, personId, who);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -616,6 +619,72 @@ export class AssistantService {
         { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
       ],
     };
+  }
+
+  /**
+   * STARTING A CHECK-IN BY SAYING SO.
+   *
+   * The last thing about a check-in that was a button and not a sentence.
+   *
+   * IT DOES NOT START ANYTHING ITSELF. It works out which of four situations somebody is in and
+   * offers the one act that moves them, as a `next_step` the panel performs — same reason the accept
+   * line stopped carrying a path: this code cannot know which application it is being read inside,
+   * and a customer whose own system has a place for this should be able to use it.
+   *
+   * Matched by the ADDRESS the invitation went to as well as by the account, because a participant
+   * is linked to an account only when somebody accepts. Without that, a person with a session
+   * sitting in front of them is told there is nothing.
+   */
+  private async startACheckIn(organizationId: string, personId: string, who: string | null): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { email: true, linkedUserId: true },
+    });
+    if (!me) {
+      return rules('start_a_check_in', text('I cannot see you in your organisation records, so I cannot tell what is waiting for you.'));
+    }
+
+    const [toStart, sessions] = await Promise.all([
+      me.linkedUserId
+        ? this.prisma.ground.findMany({
+            where: { organizationId, initiatorId: me.linkedUserId, status: 'AWAITING_LEAD' },
+            select: { id: true, label: true },
+          })
+        : Promise.resolve([]),
+      this.prisma.checkIn.findMany({
+        where: {
+          participant: {
+            ground: { organizationId },
+            OR: [
+              ...(me.linkedUserId ? [{ userId: me.linkedUserId }] : []),
+              ...(me.email ? [{ userId: null, email: me.email }] : []),
+            ],
+          },
+          status: { in: ['NOT_STARTED', 'IN_PROGRESS'] },
+        },
+        include: { participant: { include: { ground: { select: { label: true } } } } },
+        orderBy: { availableFrom: 'asc' },
+      }),
+    ]);
+
+    const now = new Date();
+    const said = whatItTakesToStart({
+      toStart: toStart.map((g) => ({ groundId: g.id, label: g.label })),
+      open: sessions
+        .filter((c) => c.participant.userId !== null && (!c.availableFrom || c.availableFrom <= now))
+        .map((c) => ({ checkInId: c.id, label: c.participant.ground.label })),
+      notAccepted: sessions
+        .filter((c) => c.participant.userId === null)
+        .map((c) => ({ label: c.participant.ground.label })),
+    });
+
+    return said.act
+      ? rules(
+          'start_a_check_in',
+          text(said.line),
+          { type: 'next_step', label: said.act.label, href: '/grounds', kind: said.act.kind, id: said.act.id },
+        )
+      : rules('start_a_check_in', text(said.line));
   }
 
   /**

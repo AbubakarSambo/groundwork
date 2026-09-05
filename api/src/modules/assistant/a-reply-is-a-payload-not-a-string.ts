@@ -68,8 +68,17 @@ export interface NextStepBlock {
   label: string;
   /** Where this lives in the Groundwork product. Relative on purpose. */
   href: string;
-  /** The kind of thing, so a customer's own page can route it. */
-  kind: 'set_up_a_check_in';
+  /**
+   * The kind of thing, so a customer's own page can route it.
+   *
+   * `set_up_a_check_in` is a page to open. The other two are ACTS on a record
+   * that already exists, named separately because a customer routing these is
+   * doing something different with each: one opens their own setup screen, the
+   * other two call a route.
+   */
+  kind: 'set_up_a_check_in' | 'confirm_a_check_in' | 'open_a_check_in';
+  /** The record it acts on, for the two kinds that act on one. */
+  id?: string;
   /** Carried so a customer's setup screen can prefill what we already know. */
   context?: Record<string, string>;
 }

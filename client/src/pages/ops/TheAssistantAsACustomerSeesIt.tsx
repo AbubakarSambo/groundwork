@@ -71,12 +71,15 @@ function readBlocks(payload: unknown): string {
          */
         if (b.type === 'next_step') {
           const label = typeof b.label === 'string' ? b.label : 'Something to set up'
+          /* The two kinds that ACT are handled as buttons below rather than as
+             a sentence. Only the page-to-open kind is described in words. */
+          if (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in') return null
           const href = typeof b.href === 'string' ? b.href : null
           return href ? `${label} — in Groundwork, at ${href}` : label
         }
         return b.body ?? b.text
       })
-      .filter(Boolean)
+      .filter((t): t is string => Boolean(t))
     if (said.length) return said.join('\n\n')
   }
 
@@ -100,6 +103,22 @@ function readCheckIn(payload: unknown): string {
   return body.sessionComplete
     ? `${body.reply}\n\nThat is your check-in done. What you said is released with everybody else's, not before.`
     : body.reply
+}
+
+/**
+ * AN ACT THE ASSISTANT OFFERED, PULLED OUT OF THE REPLY.
+ *
+ * A `next_step` of these two kinds is not a sentence to read — it is the thing
+ * somebody just asked for, and rendering it as prose ("in Groundwork, at
+ * /grounds") would answer a request to start a check-in with directions.
+ */
+function actIn(payload: unknown): { kind: string; id: string; label: string } | null {
+  const blocks = (payload as { blocks?: { type?: string; kind?: string; id?: string; label?: string }[] })?.blocks
+  if (!Array.isArray(blocks)) return null
+  const step = blocks.find(
+    (b) => b.type === 'next_step' && (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in'),
+  )
+  return step?.id && step.kind ? { kind: step.kind, id: step.id, label: step.label ?? 'Do it' } : null
 }
 
 type Said = { from: 'us' | 'them'; text: string }
@@ -144,6 +163,9 @@ export function TheAssistantAsACustomerSeesIt() {
      happens on it — no session opens and nobody is asked anything. */
   const [toStart, setToStart] = useState<{ groundId: string; label: string; brief: string | null; says: string }[]>([])
   const [inCheckIn, setInCheckIn] = useState<string | null>(null)
+  /* What the assistant just offered to do, if anything. One at a time — it
+     offers one act, so there is one button. */
+  const [offered, setOffered] = useState<{ kind: string; id: string; label: string } | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
   const ready = panel.data?.ready ? panel.data : null
@@ -349,6 +371,8 @@ export function TheAssistantAsACustomerSeesIt() {
           : readBlocks(body?.data ?? body)
         : body?.message ?? `Groundwork answered ${res.status}.`
       setSaid((s) => [...s, { from: 'them', text: drawn }])
+      /* Cleared first, so an old offer cannot sit under a new answer. */
+      setOffered(res.ok && !inCheckIn ? actIn(body?.data ?? body) : null)
     } catch (e) {
       setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
     } finally {
@@ -445,6 +469,34 @@ export function TheAssistantAsACustomerSeesIt() {
             somebody into a check-in because they opened a chat window — a
             session is ten minutes of their attention and starting one for them
             is the product deciding how they spend it. */}
+        {/* WHAT THE ASSISTANT JUST OFFERED TO DO. Said in words above; this is
+            the doing of it, so asking to start a check-in starts one rather
+            than returning directions to a page. */}
+        {offered && (
+          <button
+            type="button"
+            onClick={() => {
+              const act = offered
+              setOffered(null)
+              if (act.kind === 'confirm_a_check_in') startIt(act.id)
+              else openCheckIn(act.id)
+            }}
+            disabled={busy}
+            style={{
+              alignSelf: 'flex-start',
+              fontSize: 12.5,
+              padding: '5px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--gw-border)',
+              background: 'var(--gw-card)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {offered.label}
+          </button>
+        )}
+
         {/* SET UP FOR THEM AND NOT STARTED. The brief is somebody else's words
             about their work, and it is the thing being agreed to — so it is
             shown, not summarised. */}
