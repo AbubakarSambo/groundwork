@@ -439,26 +439,26 @@ model User {
 //
 // See GW-001 in journey/run18/ISSUES-LOG.md.
 model PendingSignup {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  token      String   @unique
-  firstName  String   @map("first_name")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  token        String   @unique
+  firstName    String   @map("first_name")
   /// Only the entry flow leaves this empty; the two named signup paths carry it.
-  lastName   String?  @map("last_name")
-  orgName    String?  @map("org_name")
+  lastName     String?  @map("last_name")
+  orgName      String?  @map("org_name")
   /// Set when somebody signed up with a password. Held here rather than on a
   /// User, because a User is what must not exist before the address is proved.
-  passwordHash String? @map("password_hash")
+  passwordHash String?  @map("password_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
-  payload    Json?
-  history    Json?
+  payload      Json?
+  history      Json?
   // The draft token the entry page keeps, so post-email edits (the org name
   // arrives this way) can still reach this record before there is a user.
-  draftToken String?  @unique @map("draft_token")
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  draftToken   String?  @unique @map("draft_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("pending_signups")
 }
@@ -4055,7 +4055,7 @@ model OpsCompany {
   /// The contributor who brought them, when one did.
   originatingContributorId String? @map("originating_contributor_id")
   /// The target list they are on, when they are on one.
-  targetListId           String? @map("target_list_id")
+  targetListId             String? @map("target_list_id")
 
   stage         OpsCompanyStage @default(LINED_UP)
   ownerPersonId String?         @map("owner_person_id")
@@ -4319,7 +4319,20 @@ model OpsMarketingActivity {
 
   activityType String  @map("activity_type")
   channel      String?
-  objective    String? @db.Text
+
+  /// WHAT THIS CAMPAIGN IS BEING RUN FOR, AS A ROW.
+  ///
+  /// `objective` was a sentence, which is a note about intent and not a
+  /// connection: nothing could ask what is running for a given objective, and a
+  /// campaign could not be checked against the quarter it was actually in.
+  ///
+  /// The sentence stays alongside it, because the link says WHICH objective and
+  /// only the sentence says WHY this campaign serves it.
+  ///
+  /// Nullable for the campaigns that came before the rule. New ones are refused
+  /// without it, in the service, where a refusal can be a sentence.
+  objectiveId String? @map("objective_id")
+  objective   String? @db.Text
 
   ownerId   String    @map("owner_id")
   startDate DateTime  @map("start_date")
@@ -4334,9 +4347,11 @@ model OpsMarketingActivity {
   notes     String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
-  opportunities OpsCommercialOpportunity[]
+  opportunities   OpsCommercialOpportunity[]
+  linkedObjective OpsObjective?              @relation("OpsMarketingObjective", fields: [objectiveId], references: [id], onDelete: SetNull)
 
   @@index([status, startDate])
+  @@index([objectiveId])
   @@map("ops_marketing_activities")
 }
 
@@ -4398,7 +4413,7 @@ model OpsRoadmapItem {
   /// `what-solid-means.ts`. Typing "done" against "every bug fixed" would be
   /// the one place on this board where a claim outranks a count.
   standing Boolean @default(false)
-  priority    Int     @default(3)
+  priority Int     @default(3)
 
   ownerId      String? @map("owner_id")
   proposedById String  @map("proposed_by_id")
@@ -4592,6 +4607,7 @@ model OpsObjective {
   createdAt DateTime @default(now()) @map("created_at")
 
   keyResults OpsKeyResult[]
+  campaigns  OpsMarketingActivity[] @relation("OpsMarketingObjective")
 
   @@index([periodId, status])
   @@map("ops_objectives")
@@ -4980,10 +4996,10 @@ model OpsFreeze {
 
   /// Why, in words. Required both ways: turning it ON and turning it OFF are
   /// both decisions somebody has to account for later.
-  because String @db.Text
+  because String    @db.Text
   /// When it should lift. Advisory rather than automatic — a freeze that
   /// expires on its own ends without anybody deciding it should.
-  until DateTime? @db.Date
+  until   DateTime? @db.Date
 
   decidedById String   @map("decided_by_id")
   decidedAt   DateTime @default(now()) @map("decided_at")
@@ -5010,11 +5026,11 @@ model OpsWhatItServes {
   recordType String @map("record_type")
   recordId   String @map("record_id")
 
-  serves OpsServes
+  serves         OpsServes
   /// The use case or moat component it points at, when it points at one.
-  servesRecordId String? @map("serves_record_id")
+  servesRecordId String?   @map("serves_record_id")
   /// Why this, and why now. The sentence somebody has to write down.
-  justification String @db.Text
+  justification  String    @db.Text
 
   /// WHAT THIS MAKES US DEPEND ON, AND WHO OWNS IT.
   ///
@@ -5059,7 +5075,7 @@ model OpsProductStatement {
   version Int    @unique
 
   /// The line that says what this is, in the words the company actually uses.
-  headline String @db.Text
+  headline    String @db.Text
   /// The line to say out loud in the room.
   saidOutLoud String @map("said_out_loud") @db.Text
 
@@ -5070,7 +5086,7 @@ model OpsProductStatement {
   writtenAt DateTime @default(now()) @map("written_at")
   writtenBy String?  @map("written_by")
   /// Why it changed, so a version nobody can account for is visible as one.
-  because String? @db.Text
+  because   String?  @db.Text
 
   @@index([version])
   @@map("ops_product_statements")

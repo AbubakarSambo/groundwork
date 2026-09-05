@@ -81,10 +81,20 @@ export class OpsPipelineController {
 
   @Post('campaigns')
   @NeedsOps('marketing:write')
-  @ApiOperation({ summary: 'Plan a campaign' })
+  @ApiOperation({ summary: 'Plan a campaign against the objective it is run for' })
   createCampaign(
     @Req() req: OpsRequest,
-    @Body() body: { title: string; activityType: string; channel?: string; objective?: string; startDate: string; endDate?: string; campaignSource?: string },
+    @Body()
+    body: {
+      title: string;
+      activityType: string;
+      channel?: string;
+      objectiveId?: string;
+      objective?: string;
+      startDate: string;
+      endDate?: string;
+      campaignSource?: string;
+    },
   ) {
     return this.pipeline.createCampaign({
       ...body,

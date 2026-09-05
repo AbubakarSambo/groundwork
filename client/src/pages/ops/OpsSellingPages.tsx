@@ -128,12 +128,38 @@ export function OpsDeploymentPage() {
 export function OpsMarketingPage() {
   const campaigns = useQuery({ queryKey: ['ops', 'campaigns'], queryFn: opsApi.campaigns, retry: false })
 
+  /* The objectives a campaign may be run for. Read from the period containing
+     today: a campaign planned now belongs to the quarter running now, and
+     offering every objective we have ever had would make the picker a list. */
+  const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
+  const objectives = useQuery({
+    queryKey: ['ops', 'objectives', periods.data?.[0]?.key],
+    queryFn: () => opsApi.objectives(periods.data![0].key),
+    enabled: (periods.data?.length ?? 0) > 0,
+    retry: false,
+  })
+
   const columns: Column<OpsCampaign>[] = [
     { head: 'Campaign', cell: (c) => <strong>{c.title}</strong> },
     { head: 'Kind', cell: (c) => c.activityType },
     { head: 'Channel', cell: (c) => c.channel ?? '—' },
     { head: 'Status', cell: (c) => readEnum(c.status) },
     { head: 'Started', cell: (c) => readDate(c.startDate) },
+    {
+      head: 'Run for',
+      /* THE OBJECTIVE, NOT THE SENTENCE. A campaign that predates the rule
+         says so, which is the finding rather than a blank cell. */
+      cell: (c) => (
+        <>
+          {c.linkedObjective ? c.linkedObjective.title : <em>no objective named</em>}
+          {c.alignment && (
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>
+              {c.alignment}
+            </div>
+          )}
+        </>
+      ),
+    },
     {
       head: 'Led to',
       /*
@@ -157,6 +183,23 @@ export function OpsMarketingPage() {
           { name: 'activityType', label: 'Kind', required: true, placeholder: 'Outbound sequence' },
           { name: 'channel', label: 'Channel', placeholder: 'Email' },
           { name: 'startDate', label: 'Starts', type: 'date', required: true },
+          /* THE OBJECTIVE IS PART OF PLANNING IT, not something added after.
+             Marketing is the easiest work in the company to start on
+             enthusiasm and the hardest to argue with once it has produced
+             something, so the link belongs at the point where stopping is
+             still cheap. */
+          {
+            name: 'objectiveId',
+            label: 'Run for which objective',
+            required: true,
+            options: (objectives.data ?? []).map((o) => ({ value: o.id, label: o.title })),
+          },
+          {
+            name: 'objective',
+            label: 'Why this moves that objective',
+            required: true,
+            placeholder: 'The objective needs ten qualified companies and this is where they come from.',
+          },
         ]}
         submit={(v) =>
           opsApi.addCampaign({
@@ -164,6 +207,8 @@ export function OpsMarketingPage() {
             activityType: v.activityType,
             channel: v.channel || undefined,
             startDate: v.startDate,
+            objectiveId: v.objectiveId,
+            objective: v.objective,
           })
         }
         invalidate={[['ops']]}

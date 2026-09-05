@@ -262,6 +262,11 @@ export interface OpsCampaign {
   status: string
   startDate: string
   opportunities: Array<{ company: { name: string }; stage: string }>
+  objectiveId: string | null
+  objective: string | null
+  linkedObjective: { id: string; title: string; serves: string | null } | null
+  /** What this campaign is serving, said rather than scored. Null when nothing needs saying. */
+  alignment: string | null
 }
 
 export interface OpsIntegrationStatus {
@@ -956,7 +961,15 @@ export const opsApi = {
   setDeploymentBlocker: (id: string, type: string | null, summary: string | null) =>
     apiClient.patch(`/ops/deployments/${id}/blocker`, { type, summary }, QUIET).then((r) => r.data),
 
-  addCampaign: (body: { title: string; activityType: string; channel?: string; startDate: string }) =>
+  /** A campaign names the objective it is run for, and why it moves it. Refused without both. */
+  addCampaign: (body: {
+    title: string
+    activityType: string
+    channel?: string
+    startDate: string
+    objectiveId: string
+    objective: string
+  }) =>
     apiClient.post('/ops/campaigns', body, QUIET).then((r) => r.data),
 
   propose: (body: { title: string; description?: string; itemType: string; priority?: number; approvalRequired?: boolean }) =>
