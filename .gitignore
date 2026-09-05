@@ -55,3 +55,5 @@ api/journey/org-sim/out-verify/
 # TypeScript incremental build cache - a local artifact, not source.
 # It was tracked, so every typecheck showed up as a file change in every diff.
 *.tsbuildinfo
+.vercel
+.env*
