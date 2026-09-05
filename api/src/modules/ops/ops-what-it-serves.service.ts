@@ -2,6 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { OpsServes } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { whyThisIsNotSaidYet, needsSomebodyToAgree } from './what-a-piece-of-work-serves';
+import {
+  whatIsRunningOn,
+  whyThisIsNotOperabilityWork,
+} from './the-phases-overlap-so-a-phase-is-not-a-period';
 import { OpsFreezeService } from './ops-freeze.service';
 
 /**
@@ -32,6 +36,27 @@ export class OpsWhatItServesService {
   ) {
     const notYet = whyThisIsNotSaidYet(input);
     if (notYet) throw new BadRequestException(notYet);
+
+    /*
+     * THE FIFTH CATEGORY IS BOUNDED BY THE PHASE THAT MAKES IT LEGITIMATE.
+     *
+     * Read on the day it is claimed rather than stored with the record: a
+     * declaration made in November is about November, and re-reading an old one
+     * against today's phases would retroactively invalidate work that was
+     * legitimate when it was done.
+     */
+    if (input.serves === 'MAKES_THE_COMPANY_OPERABLE') {
+      const today = new Date();
+      const phases = await this.prisma.opsPhase.findMany();
+      const outside = whyThisIsNotOperabilityWork({
+        runningPhases: whatIsRunningOn(
+          phases.map((p) => ({ ...p, exitTarget: p.exitTarget === null ? null : Number(p.exitTarget) })),
+          today,
+        ),
+        on: today,
+      });
+      if (outside) throw new BadRequestException(outside);
+    }
 
     const data = {
       serves: input.serves,

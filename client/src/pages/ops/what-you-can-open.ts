@@ -51,6 +51,8 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/tech', name: 'Tech', capability: 'tech:read', group: 'Building' },
   { path: '/ops/ux', name: 'UX', capability: 'ux:read', group: 'Building' },
 
+  /* The plan everybody is getting behind, so everybody may read it. */
+  { path: '/ops/workplan', name: 'The workplan', capability: null, group: 'Company' },
   { path: '/ops/quarter', name: 'Objectives', capability: null, group: 'Company' },
   /* The one board. Gated on reading somebody else's contribution, because that
      is what it is — six named people's quarters on one page. A contributor

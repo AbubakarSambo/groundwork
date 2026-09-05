@@ -87,6 +87,9 @@ describe('what each person is offered', () => {
       'Commitments',
       'Spend',
       'What we are',
+      /* The plan everybody is getting behind. A contributor who cannot see the
+         phases is being asked to get behind something they have not read. */
+      'The workplan',
       'Objectives',
       'Requests',
     ])

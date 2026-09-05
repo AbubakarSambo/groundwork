@@ -2,6 +2,12 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { PrismaService } from '../prisma/prisma.service';
 import { keyFromName, whyTheseDatesAreWrong } from './a-target-list-is-something-you-set';
 import {
+  whatIsRunningOn,
+  whereTheCompanyIs,
+  canWeTellWhenThisIsDone,
+  type APhase,
+} from './the-phases-overlap-so-a-phase-is-not-a-period';
+import {
   whyThisPeriodCannotOpenYet,
   whatStandsBetweenUsAndOpening as whatIsOutstanding,
 } from './a-period-does-not-open-with-somebody-unset';
@@ -98,6 +104,43 @@ export class OpsFoundationService {
     return {
       active: active.map((p) => ({ personId: p.id, displayName: p.displayName })),
       ownerIds: new Set(objectives.map((o) => o.ownerId)),
+    };
+  }
+
+  /**
+   * THE WORKPLAN: five phases, overlapping, with what has to be true to leave
+   * each one.
+   *
+   * No percentage complete anywhere. A phase ends when its exit condition is
+   * true, and being three weeks from its end date says nothing about whether it
+   * will be — so a progress bar here would be a confident answer to a question
+   * nobody asked.
+   */
+  async theWorkplan() {
+    const rows = await this.prisma.opsPhase.findMany({ orderBy: { ordinal: 'asc' } });
+    const phases: APhase[] = rows.map((p) => ({
+      ...p,
+      exitTarget: p.exitTarget === null ? null : Number(p.exitTarget),
+    }));
+
+    const today = new Date();
+    const running = new Set(whatIsRunningOn(phases, today).map((p) => p.key));
+
+    return {
+      today: whereTheCompanyIs(phases, today),
+      phases: phases.map((p) => ({
+        key: p.key,
+        name: p.name,
+        intent: p.intent,
+        startsOn: p.startsOn,
+        endsOn: p.endsOn,
+        running: running.has(p.key),
+        exitCondition: p.exitCondition,
+        exitMetric: p.exitMetric,
+        exitTarget: p.exitTarget,
+        permitsOperability: p.permitsOperability,
+        ...canWeTellWhenThisIsDone(p),
+      })),
     };
   }
 

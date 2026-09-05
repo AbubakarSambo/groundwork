@@ -39,6 +39,31 @@ export const WHAT_WORK_CAN_SERVE: Array<{ serves: OpsServes; label: string; poin
     points: null,
     needsApproval: true,
   },
+  {
+    /*
+     * THE FIFTH CATEGORY, AND THE ONLY ONE WITH A TIME LIMIT.
+     *
+     * A company of six has real work that unblocks no customer and adds no moat
+     * entry — hiring, onboarding somebody, writing down how the company
+     * operates. Counting it as zero contribution teaches people to stop doing
+     * it, which is the same failure `KEEPING_IT_UP` exists to prevent for
+     * technical work.
+     *
+     * The difference is the boundary. Keeping it up is permanent, because
+     * something always needs fixing. This is bounded by the phase the company
+     * agreed it for: outside that window the work is still worth doing and is
+     * not claimed under this heading, because a category with no boundary is
+     * the drawer every measure eventually grows.
+     *
+     * The window is checked in the service — see
+     * `whyThisIsNotOperabilityWork`. It cannot be checked here, because a rule
+     * about today needs to know what day it is.
+     */
+    serves: 'MAKES_THE_COMPANY_OPERABLE',
+    label: 'It makes the company able to operate',
+    points: null,
+    needsApproval: true,
+  },
 ];
 
 export function pointsAt(serves: OpsServes): 'use case' | 'moat component' | null {

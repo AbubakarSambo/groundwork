@@ -85,6 +85,16 @@ export class OpsController {
   }
 
   /**
+   * The workplan: five overlapping phases, and what has to be true to leave
+   * each. Everybody sees it — it is the plan everybody is getting behind.
+   */
+  @Get('workplan')
+  @ApiOperation({ summary: 'The five phases, which overlap, and their exit conditions' })
+  async workplan() {
+    return this.foundation.theWorkplan();
+  }
+
+  /**
    * What is standing between us and opening this period.
    *
    * Readable by anybody on the team, and deliberately so: the answer is a list

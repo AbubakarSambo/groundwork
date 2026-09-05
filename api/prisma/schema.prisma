@@ -5053,6 +5053,50 @@ model OpsWhatItServes {
 }
 
 /// WHAT A PIECE OF WORK CAN SERVE, AND NOTHING ELSE.
+/// A STRETCH OF THE COMPANY'S PLAN. NOT A PERIOD.
+///
+/// The five phases of the workplan — prove it, build the team, sell it, scale
+/// it, raise on it. They OVERLAP: proving runs through October while the team
+/// phase runs to November and selling starts in October. That overlap is the
+/// whole reason this is its own table rather than a kind of OpsPeriod. A period
+/// contains objectives, has one set of dates, and only one is current; two
+/// phases are routinely running at once, and a quarter can sit inside two.
+///
+/// `exitCondition` is what has to be true to be done with it, and `exitMetric`
+/// is the key it is read from — so "are we out of this phase" is answered by
+/// the same registry every other number comes from, rather than by an opinion
+/// in a meeting. Nullable, because one of the five has an exit nobody has
+/// turned into a number yet, and recording that honestly is better than
+/// inventing one.
+model OpsPhase {
+  id      String @id @default(uuid())
+  key     String @unique
+  ordinal Int
+
+  name String
+  /// What this phase is for, in the words it was agreed in.
+  intent String @db.Text
+
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+
+  exitCondition String  @map("exit_condition") @db.Text
+  /// A key in the metric registry, or null while the exit is not yet a number.
+  exitMetric    String? @map("exit_metric")
+  exitTarget    Decimal? @map("exit_target") @db.Decimal(14, 2)
+
+  /// WHETHER WORK MAY BE JUSTIFIED AS MAKING THE COMPANY OPERABLE WHILE THIS
+  /// PHASE IS RUNNING.
+  ///
+  /// True for exactly one phase. The fifth thing a piece of work can serve is
+  /// bounded by the phase that makes it legitimate; outside that window it is
+  /// the loophole every measure eventually grows.
+  permitsOperability Boolean @default(false) @map("permits_operability")
+
+  @@index([ordinal])
+  @@map("ops_phases")
+}
+
 enum OpsServes {
   /// It unblocks a customer use case.
   SALES
@@ -5063,6 +5107,10 @@ enum OpsServes {
   /// Security, a migration, a broken build. Necessary, invisible, and counted —
   /// with an approval, so it is not the drawer everything gets filed in.
   KEEPING_IT_UP
+  /// Hiring, onboarding, the operating manual, the things that make a company
+  /// of six work. Real contribution and not product work, so it is bounded by
+  /// the phase that makes it legitimate rather than available forever.
+  MAKES_THE_COMPANY_OPERABLE
 }
 
 /// WHAT WE SAY THIS PRODUCT IS, AND WHAT IT IS NOT.

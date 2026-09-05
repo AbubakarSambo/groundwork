@@ -269,6 +269,25 @@ export interface OpsCampaign {
   alignment: string | null
 }
 
+export interface OpsWorkplan {
+  today: { running: string[]; next: string | null; says: string }
+  phases: Array<{
+    key: string
+    name: string
+    intent: string
+    startsOn: string
+    endsOn: string
+    running: boolean
+    exitCondition: string
+    exitMetric: string | null
+    exitTarget: number | null
+    permitsOperability: boolean
+    /** False when the exit is a sentence rather than a number, which is recorded, not hidden. */
+    checkable: boolean
+    says: string
+  }>
+}
+
 export interface OpsResourceCheck {
   claim: string
   kind: 'IS' | 'IS_NOT'
@@ -984,6 +1003,8 @@ export const opsApi = {
     apiClient.patch(`/ops/deployments/${id}/stage`, { stage }, QUIET).then((r) => r.data),
   setDeploymentBlocker: (id: string, type: string | null, summary: string | null) =>
     apiClient.patch(`/ops/deployments/${id}/blocker`, { type, summary }, QUIET).then((r) => r.data),
+
+  workplan: () => apiClient.get<OpsWorkplan>('/ops/workplan', QUIET).then((r) => r.data),
 
   resources: () =>
     apiClient

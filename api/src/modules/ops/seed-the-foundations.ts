@@ -529,6 +529,27 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     objectives++;
   }
 
+  // --- The workplan, as five overlapping phases ---------------------------
+  //
+  // Seeded rather than written in code, so the dates can move without a deploy.
+  // The intent and exit condition are refreshed on every run: they are the plan,
+  // and this file is where the plan is edited.
+  for (const phase of THE_PHASES) {
+    await prisma.opsPhase.upsert({
+      where: { key: phase.key },
+      update: {
+        name: phase.name,
+        intent: phase.intent,
+        exitCondition: phase.exitCondition,
+        exitMetric: phase.exitMetric,
+        exitTarget: phase.exitTarget,
+        permitsOperability: phase.permitsOperability,
+        ordinal: phase.ordinal,
+      },
+      create: phase,
+    });
+  }
+
   // --- What the defensible advantage is made of ---------------------------
   for (const component of MOAT_COMPONENTS) {
     await prisma.opsMoatComponent.upsert({
@@ -542,6 +563,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
 
   return {
     people: TEAM.length,
+    phases: THE_PHASES.length,
     periods: periods.length,
     workstreams: WORKSTREAMS.length,
     settings: Object.keys(SETTING_DEFAULTS).length,
@@ -551,3 +573,86 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     moat: MOAT_COMPONENTS.length,
   };
 }
+
+/**
+ * THE FIVE PHASES, IN HER WORDS.
+ *
+ * The dates overlap because the plan does: the company does not stop proving in
+ * order to start selling. See `the-phases-overlap-so-a-phase-is-not-a-period.ts`.
+ *
+ * `exitMetric` names a key in the metric registry so "are we out of this phase"
+ * is read rather than argued. `exitTarget` is only set where the number is
+ * already the company's own — inventing the rest would produce figures that get
+ * checked, believed and are about nothing.
+ *
+ * The team phase has no exit metric, and that is recorded rather than papered
+ * over: it is the one exit condition nobody has turned into a number.
+ */
+const THE_PHASES = [
+  {
+    key: 'prove',
+    ordinal: 1,
+    name: 'Prove',
+    intent: 'The product works, for real use cases, in front of real companies.',
+    startsOn: new Date('2026-09-01'),
+    endsOn: new Date('2026-10-31'),
+    exitCondition: 'Ten companies onboarded and using it.',
+    exitMetric: 'targets.companies_onboarded',
+    exitTarget: 10,
+    permitsOperability: false,
+  },
+  {
+    key: 'team',
+    ordinal: 2,
+    name: 'Team',
+    intent: 'A company of six that runs without everything going through one person.',
+    startsOn: new Date('2026-09-01'),
+    endsOn: new Date('2026-11-30'),
+    /* THE ONE EXIT NOBODY HAS TURNED INTO A NUMBER. Left as a sentence on
+       purpose: a metric invented to fill this column would be checked and
+       believed, and it would be about something else. */
+    exitCondition: 'The team can run the company without everything going through the CEO.',
+    exitMetric: null,
+    exitTarget: null,
+    /* THE ONE PHASE THAT MAKES OPERABILITY WORK A CONTRIBUTION. Hiring,
+       onboarding and the operating manual are the work of this phase; outside
+       it they are still worth doing and are not claimed under this heading. */
+    permitsOperability: true,
+  },
+  {
+    key: 'sell',
+    ordinal: 3,
+    name: 'Sell',
+    intent: 'Companies paying for it, bought rather than given.',
+    startsOn: new Date('2026-10-01'),
+    endsOn: new Date('2026-12-31'),
+    exitCondition: 'Customers paying, and paying again.',
+    exitMetric: 'commercial.new_customers',
+    exitTarget: null,
+    permitsOperability: false,
+  },
+  {
+    key: 'scale',
+    ordinal: 4,
+    name: 'Scale',
+    intent: 'Selling more without the cost of selling rising with it.',
+    startsOn: new Date('2027-01-01'),
+    endsOn: new Date('2027-02-28'),
+    exitCondition: 'Cash collected, at a rate that carries the company.',
+    exitMetric: 'commercial.cash_collected',
+    exitTarget: null,
+    permitsOperability: false,
+  },
+  {
+    key: 'capital',
+    ordinal: 5,
+    name: 'Capital',
+    intent: 'Raising on what the first four phases proved, rather than on a plan.',
+    startsOn: new Date('2027-02-01'),
+    endsOn: new Date('2027-03-31'),
+    exitCondition: 'A round closed.',
+    exitMetric: 'fundraise.closed',
+    exitTarget: null,
+    permitsOperability: false,
+  },
+];
