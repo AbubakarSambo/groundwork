@@ -87,8 +87,8 @@ export class OpsMetricsService {
    * Which boards this person may open, and which one they land on.
    *
    * A board is offered when it is YOURS, or when you can see all of it. Offered
-   * on partial visibility, a contributor holding sprint:read was shown "Running
-   * the company" because two of its eleven numbers happened to be sprint
+   * on partial visibility, a contributor holding target-companies:read was shown "Running
+   * the company" because two of its eleven numbers happened to be target-list
    * counts — a board that tells somebody they are looking at the company's
    * command centre while showing them a ninth of it. Better to not offer it and
    * let them open the two numbers directly, which they may.

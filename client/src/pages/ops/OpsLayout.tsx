@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { opsApi } from '@/api/ops'
 import { pagesFor, GROUPS } from './what-you-can-open'
 import { useAuthStore } from '@/stores/auth'
+import { TheAssistantAsACustomerSeesIt } from './TheAssistantAsACustomerSeesIt'
 
 /**
  * The frame every back-office page sits in.
@@ -30,31 +31,72 @@ export const LABEL: React.CSSProperties = {
 export function OpsLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isPlatformAdmin = useAuthStore(state => state.user?.isPlatformAdmin)
+  /* Which account this actually is. See the refusal below for why that is the
+     one fact this page could not do without. */
+  const signedInAs = useAuthStore(state => state.user?.email)
+  const logout = useAuthStore(state => state.logout)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
 
   if (me.isError) {
     return (
       <main id="main" style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
-          You are signed in, but you are not set up in the Groundwork team's operating system. That
-          is a separate list from your Groundwork account.
-        </p>
         {/*
-          * A DEAD END IS NOT AN ANSWER WHEN THE READER CAN FIX IT.
+          * IT DID NOT SAY WHICH ACCOUNT IT MEANT.
           *
-          * A platform admin is exactly the person who can connect an account here — and this page
-          * used to tell them nothing but no. It was the whole of "I clicked platform ops but I
-          * can't get to my own view": the door exists, and the page that refuses you does not
-          * mention it.
+          * "You are signed in, but you are not set up" — and the reader is the platform admin who
+          * knows perfectly well she IS set up, because she connected the account herself. Reported
+          * exactly that way: "I am super admin so not sure why I see this."
+          *
+          * The answer was that she was signed in on a second account, and the one fact that would
+          * have said so was the address. A refusal that will not name who it is refusing leaves the
+          * reader arguing with it instead of fixing it.
           */}
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
+          You are signed in{signedInAs ? ` as ${signedInAs}` : ''}, and that account is not on the
+          Groundwork team's operating system. Everybody on the platform-admin list is; so is
+          anybody connected to somebody on the team.
+        </p>
+
         {isPlatformAdmin && (
+          /*
+           * A DEAD END IS NOT AN ANSWER WHEN THE READER CAN FIX IT. A platform admin is exactly
+           * the person who can connect an account, and this page used to tell them nothing but no.
+           */
           <p style={{ fontSize: 14, marginTop: 14 }}>
             <Link to="/admin/dashboard" style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>
-              Connect your account to somebody on the team →
+              Connect {signedInAs ? 'this account' : 'your account'} to somebody on the team →
             </Link>
           </p>
         )}
+
+        {/*
+          * AND A WAY OUT, WHICH THERE WAS NOT.
+          *
+          * The page had one link and no navigation, so somebody who landed here with the wrong
+          * account was stuck on it — "I can't get out of it". Signing out is the fix in the common
+          * case, and going back to the app is the fix in every other one.
+          */}
+        <p style={{ fontSize: 14, marginTop: 18, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <Link to="/grounds" style={{ color: 'var(--gw-sub)' }}>
+            ← Back to Groundwork
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              logout()
+              window.location.href = '/auth'
+            }}
+            style={{
+              all: 'unset',
+              cursor: 'pointer',
+              color: 'var(--gw-sub)',
+              textDecoration: 'underline',
+            }}
+          >
+            Sign in as somebody else
+          </button>
+        </p>
       </main>
     )
   }
@@ -107,9 +149,27 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
             </div>
           )
         })}
+        <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {isPlatformAdmin && (
+            <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
+              ← Platform console
+            </Link>
+          )}
+          <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
+            ← Groundwork
+          </Link>
+        </div>
       </nav>
 
+      {/* THE WAY BACK, WHICH THERE WAS NOT.
+          Three surfaces — the app, the platform console, this — and from here
+          the only route to either was typing a URL. */}
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+
+      {/* ON EVERY BACK-OFFICE PAGE, THE WAY A CUSTOMER'S WOULD BE. It is not a
+          feature of one screen; it is the proof that the API we sell works from
+          outside, and it belongs wherever somebody is working. */}
+      <TheAssistantAsACustomerSeesIt />
     </div>
   )
 }

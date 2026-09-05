@@ -13,6 +13,14 @@ import { MOAT_COMPONENTS, WHAT_GROUNDWORK_IS_BUILDING } from './what-the-moat-is
  * running it on a live database honest.
  */
 
+/**
+ * A STARTING POINT FOR AN EMPTY DATABASE, NOT A LIST OF WHO IS HERE.
+ *
+ * Written once, on the first run, so a fresh install is not an empty room.
+ * After that the team page owns every one of these: add somebody, change what
+ * they do, mark that they have left. Nothing here is re-asserted, so a role
+ * somebody chose is never put back by a deploy.
+ */
 const TEAM: Array<{
   key: string;
   displayName: string;
@@ -98,21 +106,35 @@ const ROADMAP: Array<{
   itemType: string;
   priority: number;
   note?: string;
+  /** A standing item is not a proposal. See the note on the schema field. */
+  standing?: boolean;
 }> = [
   {
     key: 'solidify-the-core-product',
-    title: 'Solidify the core product',
+    title: 'The product works, and works well',
     description:
-      'Deploy with the first ten and validate the priority use cases end to end. Fix the stability, UX, reliability and deployment problems that real usage turns up. Strengthen it against what people actually do. Get a meaningful share to repeat or paid usage.',
+      'Every bug fixed, every use case working well, no bottlenecks. Not a proposal: it is the frame the rest of this roadmap sits in, and while the freeze is on it is the only thing being worked on. Usability, security and bugs. Nothing added.',
     itemType: 'stability',
     priority: 1,
+    standing: true,
+    note: 'It read as a proposal like any other, with a status somebody could move to "done". "The product is solid" is exactly the kind of thing everybody agrees with in a meeting and nobody has measured, so it now carries a count instead of a status: bugs open, use cases that do not work, companies blocked. All three at zero or it is not done.',
+  },
+  {
+    key: 'usability-and-the-marketing-site',
+    title: 'Usability, and the marketing site',
+    description:
+      'The two surfaces somebody meets before they meet the product: the screens, and the pages that say what we are. Both are governed by nothing today - the site is the first claim a customer reads and is checked by nobody, and the screens are where "works well" is either true or a slogan.',
+    itemType: 'usability',
+    priority: 2,
+    standing: true,
+    note: 'Given its own line so the work is sayable out loud rather than smuggled in beside a feature. Permitted under the freeze: it changes nothing about what the product does.',
   },
   {
     key: 'solidify-the-moat',
     title: 'Solidify the moat',
     description: WHAT_GROUNDWORK_IS_BUILDING,
     itemType: 'moat',
-    priority: 2,
+    priority: 3,
     note: 'Was the only one of the five nothing could report on - "strengthen the moat" is not countable the way companies live or issues closed are, and an objective that cannot be counted is the one that quietly stops being worked on. It now has five named components and a record of what gets built on each, so the number is entries built in a window and it opens onto them.',
   },
   {
@@ -121,7 +143,7 @@ const ROADMAP: Array<{
     description:
       'GitHub organisation and access, Stripe and billing, domains, hosting, databases, cloud, storage, email, AI and API credentials, analytics, monitoring, deployment tooling. Groundwork owning its own code, data, credentials and billing relationships, with team access controls.',
     itemType: 'infrastructure',
-    priority: 3,
+    priority: 4,
     note: 'Lands on the API adapter. Separating infrastructure moves the credential that adapter uses, the Stripe account behind billing, and the AI credentials the Assistant runs on - so the adapter credential has to be created in whatever organisation and secret store this settles on, or it gets created twice.',
   },
   {
@@ -130,7 +152,7 @@ const ROADMAP: Array<{
     description:
       'Partner with coaches outside the company. A customer using Groundwork can opt in to having a coach support them through the work and the reports. Recruit and onboard the coaches, give them the access and the workflow they need, and take a share of what they earn. Test with real customers before scaling.',
     itemType: 'feature',
-    priority: 4,
+    priority: 5,
     note: 'Named coach network because the product already has two things called coaching: the in-chat coaching step, and a lead form for people asking for one. This is a third thing - an outside person a customer opts into, who works alongside them and whose earnings we take a cut of. The access shape already exists: a coach is guest-shaped, so what this really adds is the commercial model and the coach\'s own workflow, not a new permission concept.',
   },
   {
@@ -139,7 +161,7 @@ const ROADMAP: Array<{
     description:
       'Review with the team against what the first ten taught us. Prioritise on demand, revenue and moat. Do not expand before the core is proven.',
     itemType: 'improvement',
-    priority: 5,
+    priority: 6,
   },
 ];
 
@@ -148,7 +170,7 @@ const ROADMAP: Array<{
  * What September is for, per person, as objectives with numbers attached.
  *
  * Every one of these is sourced from a metric. None is MANUAL, and that is the
- * test of whether the sprint is actually measurable: a target nobody can
+ * test of whether the target list is actually measurable: a target nobody can
  * compute is a target somebody has to remember to update, which means by
  * November it says whatever it said in September.
  */
@@ -163,12 +185,12 @@ const SEPTEMBER_OBJECTIVES: Array<{
     key: 'sept-ten-lined-up',
     workstream: 'sales',
     owner: 'hafsah',
-    title: 'Ten companies lined up for the sprint',
+    title: 'Ten companies lined up for the target list',
     keyResult: {
-      title: 'Companies attached to the September sprint',
+      title: 'Companies attached to the September target list',
       target: 10,
       unit: 'companies',
-      source: 'sprint.companies_lined_up',
+      source: 'targets.companies_lined_up',
     },
   },
   {
@@ -180,7 +202,7 @@ const SEPTEMBER_OBJECTIVES: Array<{
       title: 'Companies that have reached first use or gone live',
       target: 10,
       unit: 'companies',
-      source: 'sprint.companies_onboarded',
+      source: 'targets.companies_onboarded',
     },
   },
   {
@@ -212,9 +234,19 @@ const SEPTEMBER_OBJECTIVES: Array<{
 export async function seedTheFoundations(prisma: PrismaClient) {
   // --- People, and the grants their role comes with -----------------------
   for (const member of TEAM) {
+    /*
+     * WHO IS ON THE TEAM IS NOT THIS FILE'S DECISION AFTER THE FIRST RUN.
+     *
+     * This used to re-assert `displayName` and `functionalRole` on every run,
+     * so a role changed on the team page — Sahar taking over product, somebody
+     * stepping back to contributor — was silently put back the next time the
+     * seed ran. The names below are a STARTING POINT for an empty database and
+     * nothing else; the team page owns them afterwards. Same lesson as the
+     * target list that stopped being re-dated.
+     */
     const person = await prisma.opsPerson.upsert({
       where: { key: member.key },
-      update: { displayName: member.displayName, functionalRole: member.functionalRole },
+      update: {},
       create: {
         key: member.key,
         displayName: member.displayName,
@@ -247,9 +279,9 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     parentKey: string | null;
   }> = [
     {
-      key: 'sept-2026-sprint',
-      name: 'September sprint',
-      kind: 'SPRINT',
+      key: 'sept-2026-target-list',
+      name: 'September target list',
+      kind: 'TARGET_LIST',
       startsOn: '2026-09-01',
       endsOn: '2026-09-30',
       goal: 'Ten companies lined up, their use cases supported, and onboarded.',
@@ -302,20 +334,20 @@ export async function seedTheFoundations(prisma: PrismaClient) {
       : null;
 
     /*
-     * A SPRINT IS CREATED ONCE AND THEN LEFT ALONE.
+     * A TARGET_LIST IS CREATED ONCE AND THEN LEFT ALONE.
      *
      * Quarters and cycles are the calendar: if this file's idea of Q4 changes,
-     * the stored one should follow, because nobody chose it. A sprint is the
+     * the stored one should follow, because nobody chose it. A target list is the
      * opposite — it is a stretch of time somebody set, and can be re-dated,
-     * renamed and re-scoped from the sprint page. Updating it here would mean
+     * renamed and re-scoped from the target list page. Updating it here would mean
      * re-running the seed silently undid that, and the person who moved the
      * dates would find them moved back with nothing to say why.
      */
-    const isASprint = period.kind === 'SPRINT';
+    const isATargetList = period.kind === 'TARGET_LIST';
 
     await prisma.opsPeriod.upsert({
       where: { key: period.key },
-      update: isASprint
+      update: isATargetList
         ? {}
         : {
             name: period.name,
@@ -375,29 +407,29 @@ export async function seedTheFoundations(prisma: PrismaClient) {
 
   // --- What each person is expected to bring -------------------------------
   const quarter = await prisma.opsPeriod.findUnique({ where: { key: 'q4-2026' } });
-  const sprint = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-sprint' } });
+  const targetCompanies = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-target-list' } });
   let targets = 0;
 
   for (const member of TEAM) {
     const personId = byKey.get(member.key);
-    if (!personId || !quarter || !sprint) continue;
+    if (!personId || !quarter || !targetCompanies) continue;
 
     /**
      * Two rows per person, and they mean different things. The standing target
-     * is the year's number; the sprint expectation is one company this month.
+     * is the year's number; the target list expectation is one company this month.
      * Kept apart so a board never reads "1 of 6" at somebody who did exactly
      * what September asked of them.
      */
     for (const target of [
-      { period: quarter, count: SIX_CLIENTS_BY_YEAR_END, due: '2026-12-31', sprintExpectation: false },
-      { period: sprint, count: 1, due: '2026-09-30', sprintExpectation: true },
+      { period: quarter, count: SIX_CLIENTS_BY_YEAR_END, due: '2026-12-31', targetListExpectation: false },
+      { period: targetCompanies, count: 1, due: '2026-09-30', targetListExpectation: true },
     ]) {
       await prisma.opsContributorTarget.upsert({
         where: {
-          personId_periodId_isSprintExpectation: {
+          personId_periodId_isTargetListExpectation: {
             personId,
             periodId: target.period.id,
-            isSprintExpectation: target.sprintExpectation,
+            isTargetListExpectation: target.targetListExpectation,
           },
         },
         update: { targetCount: target.count, dueDate: asDate(target.due) },
@@ -406,7 +438,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
           periodId: target.period.id,
           targetCount: target.count,
           dueDate: asDate(target.due),
-          isSprintExpectation: target.sprintExpectation,
+          isTargetListExpectation: target.targetListExpectation,
         },
       });
       targets++;
@@ -419,7 +451,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     if (!james) break;
     await prisma.opsRoadmapItem.upsert({
       where: { key: item.key },
-      update: { title: item.title, description: item.description, priority: item.priority },
+      update: { title: item.title, description: item.description, priority: item.priority, standing: item.standing ?? false },
       create: {
         key: item.key,
         title: item.title,
@@ -428,17 +460,25 @@ export async function seedTheFoundations(prisma: PrismaClient) {
         priority: item.priority,
         proposedById: james,
         ownerId: james,
-        // Every one of these is a material commitment of the team's time, so
-        // every one waits for a decision. Seeding one as approved would be this
-        // system's first lie about itself.
-        approvalRequired: true,
+        standing: item.standing ?? false,
+        /*
+         * Every PROPOSAL is a material commitment of the team's time, so every
+         * one waits for a decision. Seeding one as approved would be this
+         * system's first lie about itself.
+         *
+         * A standing item is not a proposal and has nothing to approve — it is
+         * the frame the proposals sit in. Leaving it waiting for a decision
+         * would put a permanent "waiting" against the one thing nobody is
+         * deciding.
+         */
+        approvalRequired: !(item.standing ?? false),
         rationale: item.note,
       },
     });
   }
 
   // --- What September is for ----------------------------------------------
-  const septemberPeriod = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-sprint' } });
+  const septemberPeriod = await prisma.opsPeriod.findUnique({ where: { key: 'sept-2026-target-list' } });
   let objectives = 0;
 
   for (const objective of SEPTEMBER_OBJECTIVES) {
@@ -489,6 +529,27 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     objectives++;
   }
 
+  // --- The workplan, as five overlapping phases ---------------------------
+  //
+  // Seeded rather than written in code, so the dates can move without a deploy.
+  // The intent and exit condition are refreshed on every run: they are the plan,
+  // and this file is where the plan is edited.
+  for (const phase of THE_PHASES) {
+    await prisma.opsPhase.upsert({
+      where: { key: phase.key },
+      update: {
+        name: phase.name,
+        intent: phase.intent,
+        exitCondition: phase.exitCondition,
+        exitMetric: phase.exitMetric,
+        exitTarget: phase.exitTarget,
+        permitsOperability: phase.permitsOperability,
+        ordinal: phase.ordinal,
+      },
+      create: phase,
+    });
+  }
+
   // --- What the defensible advantage is made of ---------------------------
   for (const component of MOAT_COMPONENTS) {
     await prisma.opsMoatComponent.upsert({
@@ -502,6 +563,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
 
   return {
     people: TEAM.length,
+    phases: THE_PHASES.length,
     periods: periods.length,
     workstreams: WORKSTREAMS.length,
     settings: Object.keys(SETTING_DEFAULTS).length,
@@ -511,3 +573,86 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     moat: MOAT_COMPONENTS.length,
   };
 }
+
+/**
+ * THE FIVE PHASES, IN HER WORDS.
+ *
+ * The dates overlap because the plan does: the company does not stop proving in
+ * order to start selling. See `the-phases-overlap-so-a-phase-is-not-a-period.ts`.
+ *
+ * `exitMetric` names a key in the metric registry so "are we out of this phase"
+ * is read rather than argued. `exitTarget` is only set where the number is
+ * already the company's own — inventing the rest would produce figures that get
+ * checked, believed and are about nothing.
+ *
+ * The team phase has no exit metric, and that is recorded rather than papered
+ * over: it is the one exit condition nobody has turned into a number.
+ */
+const THE_PHASES = [
+  {
+    key: 'prove',
+    ordinal: 1,
+    name: 'Prove',
+    intent: 'The product works, for real use cases, in front of real companies.',
+    startsOn: new Date('2026-09-01'),
+    endsOn: new Date('2026-10-31'),
+    exitCondition: 'Ten companies onboarded and using it.',
+    exitMetric: 'targets.companies_onboarded',
+    exitTarget: 10,
+    permitsOperability: false,
+  },
+  {
+    key: 'team',
+    ordinal: 2,
+    name: 'Team',
+    intent: 'A company of six that runs without everything going through one person.',
+    startsOn: new Date('2026-09-01'),
+    endsOn: new Date('2026-11-30'),
+    /* THE ONE EXIT NOBODY HAS TURNED INTO A NUMBER. Left as a sentence on
+       purpose: a metric invented to fill this column would be checked and
+       believed, and it would be about something else. */
+    exitCondition: 'The team can run the company without everything going through the CEO.',
+    exitMetric: null,
+    exitTarget: null,
+    /* THE ONE PHASE THAT MAKES OPERABILITY WORK A CONTRIBUTION. Hiring,
+       onboarding and the operating manual are the work of this phase; outside
+       it they are still worth doing and are not claimed under this heading. */
+    permitsOperability: true,
+  },
+  {
+    key: 'sell',
+    ordinal: 3,
+    name: 'Sell',
+    intent: 'Companies paying for it, bought rather than given.',
+    startsOn: new Date('2026-10-01'),
+    endsOn: new Date('2026-12-31'),
+    exitCondition: 'Customers paying, and paying again.',
+    exitMetric: 'commercial.new_customers',
+    exitTarget: null,
+    permitsOperability: false,
+  },
+  {
+    key: 'scale',
+    ordinal: 4,
+    name: 'Scale',
+    intent: 'Selling more without the cost of selling rising with it.',
+    startsOn: new Date('2027-01-01'),
+    endsOn: new Date('2027-02-28'),
+    exitCondition: 'Cash collected, at a rate that carries the company.',
+    exitMetric: 'commercial.cash_collected',
+    exitTarget: null,
+    permitsOperability: false,
+  },
+  {
+    key: 'capital',
+    ordinal: 5,
+    name: 'Capital',
+    intent: 'Raising on what the first four phases proved, rather than on a plan.',
+    startsOn: new Date('2027-02-01'),
+    endsOn: new Date('2027-03-31'),
+    exitCondition: 'A round closed.',
+    exitMetric: 'fundraise.closed',
+    exitTarget: null,
+    permitsOperability: false,
+  },
+];

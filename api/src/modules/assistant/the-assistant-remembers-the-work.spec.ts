@@ -26,6 +26,7 @@ function svc(opts: { participations?: any[] } = {}) {
     { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) } as any,
     { statusFor: async () => ({ roleName: null, gates: [], left: [] }) } as any,
     { pendingFor: async () => [], decide: async () => { throw new Error('n/a'); } } as any,
+    { start: async () => { throw new Error('no drafting in these tests'); } } as any,
   );
   return { service, queries };
 }

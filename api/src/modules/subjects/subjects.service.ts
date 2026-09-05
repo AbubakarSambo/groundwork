@@ -10,6 +10,19 @@ export interface SubjectPush {
   title: string;
   measure?: string | null;
   target?: string | null;
+  /**
+   * WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+   *
+   * Optional, and it stays optional: an objective imported from a customer's
+   * own planning tool arrives with whatever that tool holds, and refusing the
+   * import for a missing sentence would mean refusing their data.
+   *
+   * Sent, it reaches the check-in where the target is being missed — which is
+   * the moment the reason for the target is worth the most and is least likely
+   * to still be in anybody's head.
+   */
+  justification?: string | null;
+  approach?: string | null;
   ownerExternalId?: string | null;
   contributorExternalIds?: string[] | null;
   parentExternalId?: string | null;
@@ -74,6 +87,8 @@ export class SubjectsService {
       title: dto.title.trim(),
       measure: dto.measure?.trim() || null,
       target: dto.target?.trim() || null,
+      justification: dto.justification?.trim() || null,
+      approach: dto.approach?.trim() || null,
       ownerExternalId: dto.ownerExternalId?.trim() || null,
       contributorExternalIds: (dto.contributorExternalIds ?? null) as Prisma.InputJsonValue | null,
       parentExternalId: dto.parentExternalId?.trim() || null,

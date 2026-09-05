@@ -66,6 +66,18 @@ const PANEL_AUTHENTICATED = [
   "@Post('chat')",
   "@Get('embed/opening')",
   /*
+   * A CHECK-IN IS ONE PERSON'S CONVERSATION, so it is a panel route for exactly the reason `/chat`
+   * is - and more strongly. A machine credential naming an organisation and nobody in particular
+   * must never open, answer in, finish or read a session: what is said in one is private until the
+   * round is released, and a scope granting an integration "check-ins" would be a scope granting it
+   * everybody's, which is the one thing this product promises it does not do.
+   */
+  "@Get('check-ins/mine')",
+  "@Post('check-ins/:id/open')",
+  "@Post('check-ins/:id/messages')",
+  "@Post('check-ins/:id/complete')",
+  "@Get('check-ins/:id/transcript')",
+  /*
    * Deciding a suggested conversation is the one thing in this product that a machine must NOT be
    * able to do. "Detection is a proposal, never a launch" is only true while the acceptance needs a
    * person, and a machine token carries an organisation and nobody in particular - so a server-to-

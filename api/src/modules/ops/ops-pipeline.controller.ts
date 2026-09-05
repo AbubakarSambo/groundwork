@@ -5,7 +5,8 @@ import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsPipelineService } from './ops-pipeline.service';
 import { OpsMetricsService } from './ops-metrics.service';
 import { OpsIdentity } from './ops-people.service';
-import { OpsDeploymentStage } from '@prisma/client';
+import { OpsDeploymentStage, OpsResourceCategory } from '@prisma/client';
+import { OpsResourcesService } from './ops-resources.service';
 
 interface OpsRequest {
   opsIdentity: OpsIdentity;
@@ -19,6 +20,7 @@ export class OpsPipelineController {
   constructor(
     private readonly pipeline: OpsPipelineService,
     private readonly metrics: OpsMetricsService,
+    private readonly resources_: OpsResourcesService,
   ) {}
 
   /*
@@ -79,12 +81,63 @@ export class OpsPipelineController {
     return this.pipeline.campaigns();
   }
 
+  // --- The resource register ----------------------------------------------
+
+  /**
+   * What we put in front of people, and how each piece stands against what we
+   * say we are. Readable by anybody holding marketing:read — the register is
+   * only useful if the people writing the next deck can see what the last one
+   * was told.
+   */
+  @Get('resources')
+  @NeedsOps('marketing:read')
+  @ApiOperation({ summary: 'The register of decks, campaigns and copy, checked against the product statement' })
+  resources() {
+    return this.resources_.all();
+  }
+
+  @Post('resources')
+  @NeedsOps('marketing:write')
+  @ApiOperation({ summary: 'Enter a resource. It is checked as it is entered.' })
+  addResource(
+    @Req() req: OpsRequest,
+    @Body()
+    body: {
+      title: string;
+      category: OpsResourceCategory;
+      categoryDetail?: string;
+      url?: string;
+      content: string;
+      risks: string[];
+    },
+  ) {
+    return this.resources_.register({ ...body, addedById: req.opsIdentity.personId });
+  }
+
+  /** Check it again — against the statement as it is now, not as it was. */
+  @Post('resources/:id/check')
+  @NeedsOps('marketing:write')
+  @ApiOperation({ summary: 'Re-check a resource against the current product statement' })
+  recheck(@Param('id') id: string) {
+    return this.resources_.check(id);
+  }
+
   @Post('campaigns')
   @NeedsOps('marketing:write')
-  @ApiOperation({ summary: 'Plan a campaign' })
+  @ApiOperation({ summary: 'Plan a campaign against the objective it is run for' })
   createCampaign(
     @Req() req: OpsRequest,
-    @Body() body: { title: string; activityType: string; channel?: string; objective?: string; startDate: string; endDate?: string; campaignSource?: string },
+    @Body()
+    body: {
+      title: string;
+      activityType: string;
+      channel?: string;
+      objectiveId?: string;
+      objective?: string;
+      startDate: string;
+      endDate?: string;
+      campaignSource?: string;
+    },
   ) {
     return this.pipeline.createCampaign({
       ...body,
@@ -105,7 +158,7 @@ export class OpsPipelineController {
   /** Every number on one board, each with its rows. Nothing here is stored. */
   @Get('boards/:key')
   @ApiOperation({ summary: 'A whole board, computed' })
-  async board(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-sprint') {
+  async board(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-target-list') {
     const window = await this.metrics.windowForPeriod(period);
     return this.metrics.board(req.opsIdentity, key, window);
   }
@@ -122,7 +175,7 @@ export class OpsPipelineController {
    */
   @Get('metrics/:key')
   @ApiOperation({ summary: 'A number, and what made it' })
-  async metric(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-sprint') {
+  async metric(@Req() req: OpsRequest, @Param('key') key: string, @Query('period') period = 'sept-2026-target-list') {
     const window = await this.metrics.windowForPeriod(period);
     return this.metrics.read(req.opsIdentity, key, window);
   }

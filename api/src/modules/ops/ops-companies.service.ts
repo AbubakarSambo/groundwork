@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCompanyStage, OpsQualifyingStatus } from '@prisma/client';
+import { isAKnownSource, whyThisSourceIsNotEnough } from './where-a-company-came-from';
 
 /**
  * Companies, and who brought them.
@@ -22,7 +23,7 @@ export class OpsCompaniesService {
 
   async add(input: {
     name: string;
-    sprintPeriodKey?: string;
+    targetListKey?: string;
     source?: string;
     ownerPersonId?: string;
     primaryContactName?: string;
@@ -37,8 +38,8 @@ export class OpsCompaniesService {
       );
     }
 
-    const sprintPeriodId = input.sprintPeriodKey
-      ? (await this.prisma.opsPeriod.findUnique({ where: { key: input.sprintPeriodKey } }))?.id ?? null
+    const targetListId = input.targetListKey
+      ? (await this.prisma.opsPeriod.findUnique({ where: { key: input.targetListKey } }))?.id ?? null
       : null;
 
     const company = await this.prisma.opsCompany.create({
@@ -50,7 +51,7 @@ export class OpsCompaniesService {
         primaryContactName: input.primaryContactName,
         primaryContactEmail: input.primaryContactEmail,
         notes: input.notes,
-        sprintPeriodId,
+        targetListId,
       },
     });
 
@@ -114,6 +115,18 @@ export class OpsCompaniesService {
     sourceDetail?: string;
     introducedAt?: Date;
   }) {
+    /*
+     * FROM THE LIST, SO A NETWORK CAN BE COUNTED. Free text made "Google for
+     * Startups", "google for startups network" and "GFS" three sources, and the
+     * question worth asking — did that network produce anything — needs them to
+     * be one.
+     */
+    if (!isAKnownSource(input.sourceType)) {
+      throw new BadRequestException(`${input.sourceType} is not one of the ways a company reaches us.`);
+    }
+    const thin = whyThisSourceIsNotEnough(input.sourceType, input.sourceDetail);
+    if (thin) throw new BadRequestException(thin);
+
     const company = await this.byKey(input.companyKey);
     const contributor = await this.prisma.opsPerson.findUnique({ where: { key: input.contributorKey } });
     if (!contributor) throw new NotFoundException(`No one here called ${input.contributorKey}`);
@@ -161,41 +174,41 @@ export class OpsCompaniesService {
   }
 
   /**
-   * Put a company on a sprint, or take it off.
+   * Put a company on a target list, or take it off.
    *
-   * A SPRINT LIST IS NOT THE PIPELINE. Every company we are selling to lives in
-   * `list()`; a sprint is the much shorter list somebody has decided deserves
+   * A TARGET LIST IS NOT THE PIPELINE. Every company we are selling to lives in
+   * `list()`; a target list is the much shorter list somebody has decided deserves
    * attention between two dates. The two were being conflated — the only way a
-   * company joined a sprint was the sprint it happened to be created in, so the
+   * company joined a target list was the target list it happened to be created in, so the
    * list could never be revised without recreating the record.
    *
    * Passing null takes it off without deleting anything: a company dropped from
-   * a sprint is still a company, and losing its history because attention moved
+   * a target list is still a company, and losing its history because attention moved
    * elsewhere would be the software punishing a change of mind.
    */
-  async setSprint(companyKey: string, sprintPeriodKey: string | null, actorPersonId: string) {
+  async setTargetList(companyKey: string, targetListKey: string | null, actorPersonId: string) {
     const company = await this.byKey(companyKey);
 
-    let sprintPeriodId: string | null = null;
-    if (sprintPeriodKey) {
-      const period = await this.prisma.opsPeriod.findUnique({ where: { key: sprintPeriodKey } });
-      if (!period) throw new NotFoundException(`No period called ${sprintPeriodKey}`);
-      if (period.kind !== 'SPRINT') {
+    let targetListId: string | null = null;
+    if (targetListKey) {
+      const period = await this.prisma.opsPeriod.findUnique({ where: { key: targetListKey } });
+      if (!period) throw new NotFoundException(`No period called ${targetListKey}`);
+      if (period.kind !== 'TARGET_LIST') {
         throw new BadRequestException(
-          `${period.name} is a ${period.kind.toLowerCase()}. A company goes on a sprint, not on the calendar.`,
+          `${period.name} is a ${period.kind.toLowerCase()}. A company goes on a target list, not on the calendar.`,
         );
       }
-      sprintPeriodId = period.id;
+      targetListId = period.id;
     }
 
     const updated = await this.prisma.opsCompany.update({
       where: { id: company.id },
-      data: { sprintPeriodId },
+      data: { targetListId },
     });
 
     await this.log(
       'SALES',
-      sprintPeriodId ? 'company_added_to_sprint' : 'company_removed_from_sprint',
+      targetListId ? 'company_added_to_target_list' : 'company_removed_from_target_list',
       actorPersonId,
       company.id,
       company.id,
@@ -203,13 +216,13 @@ export class OpsCompaniesService {
     return updated;
   }
 
-  async list(sprintPeriodKey?: string) {
-    const sprintPeriodId = sprintPeriodKey
-      ? (await this.prisma.opsPeriod.findUnique({ where: { key: sprintPeriodKey } }))?.id ?? null
+  async list(targetListKey?: string) {
+    const targetListId = targetListKey
+      ? (await this.prisma.opsPeriod.findUnique({ where: { key: targetListKey } }))?.id ?? null
       : undefined;
 
     return this.prisma.opsCompany.findMany({
-      where: sprintPeriodId === undefined ? undefined : { sprintPeriodId },
+      where: targetListId === undefined ? undefined : { targetListId },
       orderBy: { name: 'asc' },
     });
   }

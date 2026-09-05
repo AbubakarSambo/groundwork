@@ -3,6 +3,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsBuildService } from './ops-build.service';
+import { OpsWhatItServesService } from './ops-what-it-serves.service';
+import { OpsFreezeService } from './ops-freeze.service';
+import { WHAT_WORK_CAN_SERVE } from './what-a-piece-of-work-serves';
+import { OpsServes } from '@prisma/client';
 import { OpsMoatService } from './ops-moat.service';
 import { OpsIdentity } from './ops-people.service';
 import {
@@ -24,6 +28,8 @@ interface OpsRequest {
 export class OpsBuildController {
   constructor(
     private readonly build: OpsBuildService,
+    private readonly serves: OpsWhatItServesService,
+    private readonly freeze: OpsFreezeService,
     private readonly moatService: OpsMoatService,
   ) {}
 
@@ -185,6 +191,105 @@ export class OpsBuildController {
     @Body() body: { approvalType: OpsApprovalType; approverId: string; relatedRecordType: string; relatedRecordId: string; requestSummary: string },
   ) {
     return this.build.requestApproval({ ...body, requesterId: req.opsIdentity.personId });
+  }
+
+  /**
+   * Whether the product is solid, counted rather than claimed.
+   *
+   * "Every bug fixed and use case is working well. No bottlenecks." The
+   * standing roadmap item reads this instead of carrying a status.
+   */
+  @Get('solidity')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'Whether the product is solid: bugs, use cases, bottlenecks' })
+  howSolid() {
+    return this.build.howSolid();
+  }
+
+  // --- The freeze ---------------------------------------------------------
+
+  /**
+   * Whether the product is frozen, and why.
+   *
+   * Readable by anybody: everybody proposing work needs to know, and a rule
+   * only the person who set it can see is a rule people discover by being
+   * refused.
+   */
+  @Get('freeze')
+  @ApiOperation({ summary: 'Whether the product is frozen, and why' })
+  freezeNow() {
+    return this.freeze.current();
+  }
+
+  @Get('freeze/history')
+  @ApiOperation({ summary: 'Every decision anybody has made about the freeze' })
+  freezeHistory() {
+    return this.freeze.history();
+  }
+
+  /** Turn it on or off. Both are decisions, both need a reason and a name. */
+  @Post('freeze')
+  @NeedsOps('ceo:board')
+  @ApiOperation({ summary: 'Freeze the product, or lift the freeze' })
+  decideTheFreeze(
+    @Req() req: OpsRequest,
+    @Body() body: { isOn: boolean; because: string; until?: string },
+  ) {
+    return this.freeze.decide(
+      { isOn: body.isOn, because: body.because, until: body.until ? new Date(body.until) : undefined },
+      req.opsIdentity.key,
+    );
+  }
+
+  // --- What a piece of work serves ----------------------------------------
+
+  /** The four things work can serve, and what each one has to point at. */
+  @Get('what-work-can-serve')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'The four things a piece of work can serve' })
+  whatWorkCanServe() {
+    return WHAT_WORK_CAN_SERVE;
+  }
+
+  /**
+   * Say what a piece of work serves.
+   *
+   * `product:write` rather than the item's own capability, because this is a
+   * claim about the product's direction rather than about the item.
+   */
+  @Post('what-it-serves')
+  @NeedsOps('product:write')
+  @ApiOperation({ summary: 'Say what a piece of work serves, and what it makes us depend on' })
+  sayWhatItServes(
+    @Req() req: OpsRequest,
+    @Body()
+    body: {
+      recordType: string;
+      recordId: string;
+      serves: OpsServes;
+      servesRecordId?: string;
+      justification: string;
+      dependsOn?: string;
+      dependsOnOwnedBy?: string;
+    },
+  ) {
+    return this.serves.say(body, req.opsIdentity.personId);
+  }
+
+  /** Open work that has not said what it serves. The first threat, as a query. */
+  @Get('what-serves-nothing')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'Open work that has not said what it serves' })
+  whatServesNothing() {
+    return this.serves.namedNothing();
+  }
+
+  /** Every dependency anybody declared, and who owns it. */
+  @Get('what-we-depend-on')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'Every dependency declared against a piece of work, and who owns it' })
+  whatWeDependOn() {
+    return this.serves.dependencies();
   }
 
   @Get('approvals')

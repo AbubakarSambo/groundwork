@@ -76,14 +76,14 @@ export interface OpsStanding {
     periodKey: string
     targetCount: number
     dueDate: string
-    isSprintExpectation: boolean
+    isTargetListExpectation: boolean
     countedSoFar: number
   }>
   counted: Array<{ company: string; qualifyingStatus: string; introducedAt: string }>
   notYetCounting: Array<{ company: string; qualifyingStatus: string }>
 }
 
-export interface OpsSprintBoard {
+export interface OpsTargetCompaniesBoard {
   period: { key: string; name: string; startsOn: string; endsOn: string; goal: string | null }
   companies: Array<{
     id: string
@@ -130,6 +130,8 @@ export interface OpsDeployment {
 }
 
 export interface OpsRoadmapItem {
+  /** A standing item is not a proposal — it is the frame the proposals sit in. */
+  standing: boolean
   id: string
   title: string
   itemType: string
@@ -175,6 +177,8 @@ export interface OpsObjective {
     current: number
     progress: number | null
     typedByHand: boolean
+    justification: string | null
+    approach: string | null
     says: string
     problem?: string
     dueDate: string
@@ -258,6 +262,54 @@ export interface OpsCampaign {
   status: string
   startDate: string
   opportunities: Array<{ company: { name: string }; stage: string }>
+  objectiveId: string | null
+  objective: string | null
+  linkedObjective: { id: string; title: string; serves: string | null } | null
+  /** What this campaign is serving, said rather than scored. Null when nothing needs saying. */
+  alignment: string | null
+}
+
+export interface OpsWorkplan {
+  today: { running: string[]; next: string | null; says: string }
+  phases: Array<{
+    key: string
+    name: string
+    intent: string
+    startsOn: string
+    endsOn: string
+    running: boolean
+    exitCondition: string
+    exitMetric: string | null
+    exitTarget: number | null
+    permitsOperability: boolean
+    /** False when the exit is a sentence rather than a number, which is recorded, not hidden. */
+    checkable: boolean
+    says: string
+  }>
+}
+
+export interface OpsResourceCheck {
+  claim: string
+  kind: 'IS' | 'IS_NOT'
+  verdict: 'CLEAR' | 'SAYS_WHAT_WE_ARE_NOT' | 'NEEDS_A_LOOK'
+  says: string
+}
+
+export interface OpsResource {
+  id: string
+  title: string
+  category: string
+  categoryDetail: string | null
+  url: string | null
+  risks: string[]
+  addedAt: string
+  checks: OpsResourceCheck[] | null
+  checkSays: string | null
+  checkedAt: string | null
+  /** A count out of a count, never a percentage, and every claim opens. */
+  standing: { clear: number; checked: number; flagged: string[]; says: string }
+  /** Set when the words it was checked against have since changed. */
+  stale: string | null
 }
 
 export interface OpsIntegrationStatus {
@@ -432,6 +484,31 @@ export interface OpsCommercialOpportunity {
   payments: Array<{ amount: string; paidAt: string }>
 }
 
+/** One person's row on the one board. Every count on it is their own. */
+export interface OpsEverybodyRow {
+  personId: string
+  key: string
+  displayName: string
+  functionalRole: string
+  objectives: {
+    id: string
+    title: string
+    serves: string | null
+    status: string
+    unjustifiedKeyResults: number
+  }[]
+  commitments: { total: number; closed: number; missed: number; blocked: number; overdue: number }
+  sales: { originated: number; positioned: number; newRevenueCents: number }
+  product: { total: number; byServes: Record<string, number> }
+  says: string[]
+}
+
+export interface OpsEverybody {
+  period: { key: string; name: string; from: string; to: string }
+  quarter: { people: number; withoutAnObjective: string[]; ready: boolean; says: string }
+  people: OpsEverybodyRow[]
+}
+
 export interface OpsClaim {
   id: string
   claimant: string
@@ -509,27 +586,27 @@ export const opsApi = {
         QUIET,
       )
       .then((r) => r.data),
-  /** Start a sprint over any stretch of time. Sprints only — a quarter is the calendar. */
-  startASprint: (body: { name: string; startsOn: string; endsOn: string; goal?: string }) =>
+  /** Start a list over any stretch of time. Target lists only — a quarter is the calendar. */
+  startATargetList: (body: { name: string; startsOn: string; endsOn: string; goal?: string }) =>
     apiClient.post('/ops/periods', body, QUIET).then((r) => r.data),
   /** Move its dates, rename it, open or close it. The key never moves. */
-  resetASprint: (
+  resetATargetList: (
     key: string,
     body: { name?: string; startsOn?: string; endsOn?: string; goal?: string | null; status?: string },
   ) => apiClient.patch(`/ops/periods/${key}`, body, QUIET).then((r) => r.data),
-  /** Every company, or only the ones on one sprint. */
-  allCompanies: (sprintPeriodKey?: string) =>
+  /** Every company, or only the ones on one target list. */
+  allCompanies: (targetListKey?: string) =>
     apiClient
-      .get<Array<{ key: string; name: string; stage: string; sprintPeriodId: string | null }>>('/ops/companies', {
+      .get<Array<{ key: string; name: string; stage: string; targetListId: string | null }>>('/ops/companies', {
         ...QUIET,
-        params: sprintPeriodKey ? { sprint: sprintPeriodKey } : undefined,
+        params: targetListKey ? { list: targetListKey } : undefined,
       })
       .then((r) => r.data),
-  /** Put a company on a sprint, or pass null to take it off. */
-  setCompanySprint: (key: string, sprintPeriodKey: string | null) =>
-    apiClient.patch(`/ops/companies/${key}/sprint`, { sprintPeriodKey }, QUIET).then((r) => r.data),
-  sprint: (periodKey: string) =>
-    apiClient.get<OpsSprintBoard>(`/ops/sprint/${periodKey}`, QUIET).then((r) => r.data),
+  /** Put a company on a target list, or pass null to take it off. */
+  setCompanyTargetList: (key: string, targetListKey: string | null) =>
+    apiClient.patch(`/ops/companies/${key}/target-list`, { targetListKey }, QUIET).then((r) => r.data),
+  targetCompanies: (periodKey: string) =>
+    apiClient.get<OpsTargetCompaniesBoard>(`/ops/target-companies/${periodKey}`, QUIET).then((r) => r.data),
   standing: (personKey: string) =>
     apiClient.get<OpsStanding>(`/ops/standing/${personKey}`, QUIET).then((r) => r.data),
   todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`, QUIET).then((r) => r.data),
@@ -584,6 +661,20 @@ export const opsApi = {
   useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => r.data),
   tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => r.data),
   ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux', QUIET).then((r) => r.data),
+  /** Whether a period can open yet, and who it is waiting on. */
+  canOpenPeriod: (key: string) =>
+    apiClient
+      .get<{ ready: boolean; says: string; waitingOn: string[] }>(`/ops/periods/${key}/can-open`, QUIET)
+      .then((r) => r.data),
+
+  /** Open a period. Refused while somebody active has no objective in it. */
+  openPeriod: (key: string) =>
+    apiClient.post(`/ops/periods/${key}/open`, {}, QUIET).then((r) => r.data),
+
+  /** The one board: everybody's quarter side by side. Never summed, never sorted by contribution. */
+  everybody: (periodKey: string) =>
+    apiClient.get<OpsEverybody>(`/ops/everybody/${periodKey}`, QUIET).then((r) => r.data),
+
   objectives: (periodKey: string) =>
     apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`, QUIET).then((r) => r.data),
   commitments: (personKey: string, periodKey: string) =>
@@ -600,17 +691,140 @@ export const opsApi = {
    * the product twice; the ops system had never been checked for it.
    */
 
+  /** Whether the product is solid, counted rather than claimed. */
+  howSolid: () =>
+    apiClient
+      .get<{
+        bugsOpen: number
+        useCasesNotWorking: number
+        bottlenecks: number
+        solid: boolean
+        says: string
+        bugs: Array<{ title: string; severity: string }>
+        useCases: Array<{ company: string; title: string; readiness: string }>
+        blocked: Array<{ name: string; why: string }>
+      }>('/ops/solidity', QUIET)
+      .then((r) => r.data),
+
+  /** Whether the product is frozen, and why. Everybody proposing work needs to know. */
+  freezeNow: () =>
+    apiClient
+      .get<{ isOn: boolean; because: string | null; until: string | null; overdue: boolean; says: string }>(
+        '/ops/freeze',
+        QUIET,
+      )
+      .then((r) => r.data),
+  decideTheFreeze: (body: { isOn: boolean; because: string; until?: string }) =>
+    apiClient.post('/ops/freeze', body, QUIET).then((r) => r.data),
+  freezeHistory: () =>
+    apiClient
+      .get<Array<{ id: string; isOn: boolean; because: string; until: string | null; decidedAt: string; decidedById: string }>>(
+        '/ops/freeze/history',
+        QUIET,
+      )
+      .then((r) => r.data),
+
+  /** The four things a piece of work can serve, and what each has to point at. */
+  whatWorkCanServe: () =>
+    apiClient
+      .get<Array<{ serves: string; label: string; points: string | null; needsApproval: boolean }>>(
+        '/ops/what-work-can-serve',
+        QUIET,
+      )
+      .then((r) => r.data),
+  sayWhatItServes: (body: {
+    recordType: string
+    recordId: string
+    serves: string
+    servesRecordId?: string
+    justification: string
+    dependsOn?: string
+    dependsOnOwnedBy?: string
+  }) =>
+    apiClient
+      .post<{ says: string; needsAnException: string | null }>('/ops/what-it-serves', body, QUIET)
+      .then((r) => r.data),
+  /** Open work that has named nothing. The first threat, as a query. */
+  whatServesNothing: () =>
+    apiClient
+      .get<{ value: number; says: string; rows: Array<{ recordType: string; id: string; title: string }> }>(
+        '/ops/what-serves-nothing',
+        QUIET,
+      )
+      .then((r) => r.data),
+  /** Every dependency declared against a piece of work, and who owns it. */
+  whatWeDependOn: () =>
+    apiClient
+      .get<Array<{ id: string; recordType: string; recordId: string; dependsOn: string | null; dependsOnOwnedBy: string | null; justification: string }>>(
+        '/ops/what-we-depend-on',
+        QUIET,
+      )
+      .then((r) => r.data),
+
+  /** What we say this product is. The document every deck and campaign is measured against. */
+  whatWeAre: () =>
+    apiClient
+      .get<{
+        version: number
+        headline: string
+        saidOutLoud: string
+        isIt: string[]
+        isNotIt: string[]
+        writtenAt: string | null
+        writtenBy: string | null
+        because: string | null
+        seeded: boolean
+      }>('/ops/what-we-are', QUIET)
+      .then((r) => r.data),
+  whatWeUsedToSay: () =>
+    apiClient
+      .get<Array<{ version: number; headline: string; because: string | null; writtenAt: string; writtenBy: string | null }>>(
+        '/ops/what-we-are/history',
+        QUIET,
+      )
+      .then((r) => r.data),
+  sayItDifferently: (body: { headline: string; saidOutLoud: string; isIt: string[]; isNotIt: string[]; because?: string }) =>
+    apiClient.post('/ops/what-we-are', body, QUIET).then((r) => r.data),
+
+  /** The ways a company reaches us. One list, so a network can be counted. */
+  attributionSources: () =>
+    apiClient
+      .get<Array<{ key: string; label: string }>>('/ops/attribution-sources', QUIET)
+      .then((r) => r.data),
+
   /** The standing areas of the company. Needed to say which one an objective belongs to. */
   workstreams: () =>
     apiClient
       .get<Array<{ key: string; name: string; ownerPersonId: string; areas: string[] }>>('/ops/workstreams', QUIET)
       .then((r) => r.data),
 
-  createObjective: (body: { periodKey: string; workstreamKey: string; title: string; description?: string; priority?: number }) =>
-    apiClient.post('/ops/objectives', body, QUIET).then((r) => r.data),
+  createObjective: (body: {
+    periodKey: string
+    workstreamKey: string
+    title: string
+    ownerKey: string
+    serves: string
+    justification: string
+    instead: string
+    description?: string
+    companiesExpected?: number
+    valuePerCompanyCents?: number
+  }) => apiClient.post('/ops/objectives', body, QUIET).then((r) => r.data),
+  /** How much of a period is aimed at scale, and where a claim outruns the pipeline. */
+  howTheQuarterIsAimed: (periodKey: string) =>
+    apiClient
+      .get<{
+        atScale: number
+        somethingElse: number
+        saidNothing: number
+        of: number
+        says: string
+        disagreements: Array<{ objective: string; says: string }>
+      }>(`/ops/objectives/${periodKey}/aim`, QUIET)
+      .then((r) => r.data),
   addKeyResult: (
     objectiveId: string,
-    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; dueDate: string },
+    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; justification: string; approach: string; dueDate: string },
   ) => apiClient.post(`/ops/objectives/${objectiveId}/key-results`, body, QUIET).then((r) => r.data),
   setObjectiveStatus: (id: string, status: string) =>
     apiClient.patch(`/ops/objectives/${id}/status`, { status }, QUIET).then((r) => r.data),
@@ -726,7 +940,31 @@ export const opsApi = {
   fundraise: () => apiClient.get<OpsFundraise>('/ops/fundraise', QUIET).then((r) => r.data),
   strategy: () => apiClient.get<OpsStrategic[]>('/ops/strategy', QUIET).then((r) => r.data),
   integration: () => apiClient.get<OpsIntegrationStatus>('/ops/integration', QUIET).then((r) => r.data),
+  /**
+   * A short-lived identity token for the assistant panel, and where to take it.
+   *
+   * Our own server mints it, the way a customer's server does. The shared
+   * signing key never reaches the browser — a browser holding it could mint a
+   * token for anybody.
+   */
+  assistantPanel: () =>
+    apiClient
+      .get<{ ready: true; baseUrl: string; token: string } | { ready: false; why: string }>(
+        '/ops/assistant/panel',
+        QUIET,
+      )
+      .then((r) => r.data),
   people: () => apiClient.get<OpsPerson[]>('/ops/people', QUIET).then((r) => r.data),
+  /** The roles, from the same list the grants are keyed on. Never a copy here. */
+  roles: () =>
+    apiClient
+      .get<Array<{ role: string; label: string; comesWith: string[] }>>('/ops/roles', QUIET)
+      .then((r) => r.data),
+  /** Change what somebody does. Adds that role's capabilities, removes none. */
+  changeRole: (key: string, functionalRole: string) =>
+    apiClient
+      .patch<{ says: string }>(`/ops/people/${key}/role`, { functionalRole }, QUIET)
+      .then((r) => r.data),
   agreement: (key: string) =>
     apiClient
       .get<{ originatorSharePercent: string | null; originatorShareMonths: number | null; agreementNote: string | null } | null>(
@@ -747,7 +985,7 @@ export const opsApi = {
     apiClient.patch(`/ops/people/${key}/active`, { active }, QUIET).then((r) => r.data),
 
   // --- Writes ---------------------------------------------------------------
-  addCompany: (body: { name: string; sprintPeriodKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string }) =>
+  addCompany: (body: { name: string; targetListKey?: string; source?: string; primaryContactName?: string; primaryContactEmail?: string }) =>
     apiClient.post('/ops/companies', body, QUIET).then((r) => r.data),
   setCompanyStage: (key: string, stage: string) =>
     apiClient.patch(`/ops/companies/${key}/stage`, { stage }, QUIET).then((r) => r.data),
@@ -755,7 +993,7 @@ export const opsApi = {
     apiClient.patch(`/ops/companies/${key}/next-action`, { nextAction, dueAt }, QUIET).then((r) => r.data),
   setCompanyBlocker: (key: string, summary: string | null) =>
     apiClient.patch(`/ops/companies/${key}/blocker`, { summary }, QUIET).then((r) => r.data),
-  attribute: (body: { companyKey: string; sourceType: string; sourceDetail?: string }) =>
+  attribute: (body: { companyKey: string; sourceType: string; contributorKey?: string; sourceDetail?: string }) =>
     apiClient.post('/ops/attributions', body, QUIET).then((r) => r.data),
 
 
@@ -766,7 +1004,37 @@ export const opsApi = {
   setDeploymentBlocker: (id: string, type: string | null, summary: string | null) =>
     apiClient.patch(`/ops/deployments/${id}/blocker`, { type, summary }, QUIET).then((r) => r.data),
 
-  addCampaign: (body: { title: string; activityType: string; channel?: string; startDate: string }) =>
+  workplan: () => apiClient.get<OpsWorkplan>('/ops/workplan', QUIET).then((r) => r.data),
+
+  resources: () =>
+    apiClient
+      .get<{ checkedAgainst: { version: number; headline: string }; resources: OpsResource[] }>(
+        '/ops/resources',
+        QUIET,
+      )
+      .then((r) => r.data),
+
+  addResource: (body: {
+    title: string
+    category: string
+    categoryDetail?: string
+    url?: string
+    content: string
+    risks: string[]
+  }) => apiClient.post('/ops/resources', body, QUIET).then((r) => r.data),
+
+  recheckResource: (id: string) =>
+    apiClient.post(`/ops/resources/${id}/check`, {}, QUIET).then((r) => r.data),
+
+  /** A campaign names the objective it is run for, and why it moves it. Refused without both. */
+  addCampaign: (body: {
+    title: string
+    activityType: string
+    channel?: string
+    startDate: string
+    objectiveId: string
+    objective: string
+  }) =>
     apiClient.post('/ops/campaigns', body, QUIET).then((r) => r.data),
 
   propose: (body: { title: string; description?: string; itemType: string; priority?: number; approvalRequired?: boolean }) =>

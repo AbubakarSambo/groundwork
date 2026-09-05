@@ -5,7 +5,7 @@ import { opsApi } from '@/api/ops'
 import { Adder } from './OpsForm'
 
 /**
- * The sprint: every company, how far it has got, and what is in the way.
+ * Target companies: every company, how far it has got, and what is in the way.
  *
  * The counts at the top are the ones the whole month is judged on, so each is
  * shown with what it is made of rather than on its own. "Seven of ten are
@@ -29,61 +29,61 @@ const LABEL: React.CSSProperties = {
 
 const STAGES = ['LINED_UP', 'USE_CASE_CONFIRMED', 'PRODUCT_READY', 'ONBOARDED', 'LIVE']
 const readStage = (s: string) => s.replace(/_/g, ' ').toLowerCase()
-/* Dates come back as plain days. Read as UTC so a sprint starting on the 1st
+/* Dates come back as plain days. Read as UTC so a target list starting on the 1st
    does not render as the 31st for anybody west of the clock the boards use. */
 const readDay = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
-export default function OpsSprintPage() {
+export default function OpsTargetCompaniesPage() {
   /*
-   * Empty until the periods arrive, rather than a hard-coded 'sept-2026-sprint'.
+   * Empty until the periods arrive, rather than a hard-coded 'sept-2026-target-list'.
    * That default was a seeded key written into the client, so the page opened on
-   * a sprint that will not always exist and could never open on one somebody
+   * a target list that will not always exist and could never open on one somebody
    * started themselves. `periods()` already returns the period containing today
-   * first, so the first sprint in that list is the right one to land on.
+   * first, so the first target list is the right one to land on.
    */
   const [periodKey, setPeriodKey] = useState('')
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
-  const sprints = (periods.data ?? []).filter((p) => p.kind === 'SPRINT')
-  const selected = sprints.find((p) => p.key === periodKey)
+  const targetLists = (periods.data ?? []).filter((p) => p.kind === 'TARGET_LIST')
+  const selected = targetLists.find((p) => p.key === periodKey)
 
   useEffect(() => {
-    if (!periodKey && sprints.length > 0) setPeriodKey(sprints[0].key)
-  }, [periodKey, sprints])
+    if (!periodKey && targetLists.length > 0) setPeriodKey(targetLists[0].key)
+  }, [periodKey, targetLists])
 
-  /* Everything we know, so the picker can offer what is not on the sprint yet
+  /* Everything we know, so the picker can offer what is not on the target list yet
      rather than the whole pipeline with the current list mixed into it. */
   const everyCompany = useQuery({
     queryKey: ['ops', 'companies', 'all'],
     queryFn: () => opsApi.allCompanies(),
     retry: false,
   })
-  const sprint = useQuery({
-    queryKey: ['ops', 'sprint', periodKey],
-    queryFn: () => opsApi.sprint(periodKey),
+  const targetCompanies = useQuery({
+    queryKey: ['ops', 'target-companies', periodKey],
+    queryFn: () => opsApi.targetCompanies(periodKey),
     retry: false,
     enabled: periodKey !== '',
   })
 
-  if (sprint.isError) {
+  if (targetCompanies.isError) {
     return (
       <main id="main" style={{ padding: 40, maxWidth: 640 }}>
-        <h1 style={{ fontSize: 20, marginBottom: 8 }}>We could not load the sprint</h1>
-        <button type="button" onClick={() => sprint.refetch()} style={{ ...CARD, cursor: 'pointer' }}>
+        <h1 style={{ fontSize: 20, marginBottom: 8 }}>We could not load the list</h1>
+        <button type="button" onClick={() => targetCompanies.refetch()} style={{ ...CARD, cursor: 'pointer' }}>
           Try again
         </button>
       </main>
     )
   }
 
-  const data = sprint.data
+  const data = targetCompanies.data
 
   return (
     <main id="main" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         {/* The back-link went with the board switcher: the navigation is on
             every page now, and a second way home is clutter rather than help. */}
-        <p style={LABEL}>The sprint</p>
+        <p style={LABEL}>Target companies</p>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
           {data?.period.name ?? 'Loading'}
         </h1>
@@ -95,14 +95,14 @@ export default function OpsSprintPage() {
           onChange={(e) => setPeriodKey(e.target.value)}
           style={{ marginTop: 8, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
         >
-          {sprints.map((p) => (
+          {targetLists.map((p) => (
             <option key={p.key} value={p.key}>
               {p.name}
             </option>
           ))}
         </select>
 
-        {/* WHEN IT RUNS, ON THE PAGE. A sprint is a stretch of time somebody
+        {/* WHEN IT RUNS, ON THE PAGE. A target list is a stretch of time somebody
             chose, and a board headed by a name alone leaves "is this the one we
             are in?" to be worked out from the companies on it. */}
         {selected && (
@@ -113,7 +113,7 @@ export default function OpsSprintPage() {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <Adder
-            title="Start a sprint"
+            title="Start a list"
             fields={[
               { name: 'name', label: 'What to call it', required: true, placeholder: 'September onboarding' },
               { name: 'startsOn', label: 'First day', type: 'date', required: true },
@@ -121,7 +121,7 @@ export default function OpsSprintPage() {
               { name: 'goal', label: 'What it is for', type: 'textarea' },
             ]}
             submit={(v) =>
-              opsApi.startASprint({
+              opsApi.startATargetList({
                 name: v.name,
                 startsOn: v.startsOn,
                 endsOn: v.endsOn,
@@ -151,7 +151,7 @@ export default function OpsSprintPage() {
                 },
               ]}
               submit={(v) =>
-                opsApi.resetASprint(selected.key, {
+                opsApi.resetATargetList(selected.key, {
                   name: v.name || undefined,
                   startsOn: v.startsOn || undefined,
                   endsOn: v.endsOn || undefined,
@@ -165,9 +165,9 @@ export default function OpsSprintPage() {
           )}
         </div>
 
-        {sprints.length === 0 && !periods.isLoading && (
+        {targetLists.length === 0 && !periods.isLoading && (
           <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '10px 0 0' }}>
-            No sprints yet. Start one above, then add the companies it is about.
+            No targetLists yet. Start one above, then add the companies it is about.
           </p>
         )}
       </header>
@@ -214,12 +214,12 @@ export default function OpsSprintPage() {
             </section>
           )}
 
-          {/* THE LIST IS SOMETHING YOU CURATE. A sprint is the short list of
+          {/* THE LIST IS SOMETHING YOU CURATE. A target list is the short list of
               companies getting attention between two dates — not everything in
               the pipeline. Both directions are here, because a list you can only
               add to is one that grows until it means nothing. */}
           <section style={{ ...CARD, marginBottom: 16 }}>
-            <p style={LABEL}>Who is on this sprint</p>
+            <p style={LABEL}>Who is on this list</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <Adder
                 title="Add one we already know"
@@ -229,11 +229,11 @@ export default function OpsSprintPage() {
                     label: 'Which company',
                     required: true,
                     options: (everyCompany.data ?? [])
-                      .filter((c) => !data.companies.some((onSprint) => onSprint.key === c.key))
+                      .filter((c) => !data.companies.some((onTheList) => onTheList.key === c.key))
                       .map((c) => ({ value: c.key, label: c.name })),
                   },
                 ]}
-                submit={(v) => opsApi.setCompanySprint(v.key, periodKey)}
+                submit={(v) => opsApi.setCompanyTargetList(v.key, periodKey)}
                 invalidate={[['ops']]}
                 submitLabel="Put them on it"
               />
@@ -248,8 +248,8 @@ export default function OpsSprintPage() {
                       options: data.companies.map((c) => ({ value: c.key, label: c.name })),
                     },
                   ]}
-                  /* Off the sprint, not deleted. They are still a company. */
-                  submit={(v) => opsApi.setCompanySprint(v.key, null)}
+                  /* Off the target list, not deleted. They are still a company. */
+                  submit={(v) => opsApi.setCompanyTargetList(v.key, null)}
                   invalidate={[['ops']]}
                   submitLabel="Take them off"
                 />
@@ -268,7 +268,7 @@ export default function OpsSprintPage() {
             submit={(v) =>
               opsApi.addCompany({
                 name: v.name,
-                sprintPeriodKey: periodKey,
+                targetListKey: periodKey,
                 source: v.source || undefined,
                 primaryContactName: v.primaryContactName || undefined,
                 primaryContactEmail: v.primaryContactEmail || undefined,
@@ -326,7 +326,7 @@ export default function OpsSprintPage() {
                 {data.companies.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ padding: '14px 12px', color: 'var(--gw-sub)' }}>
-                      No companies in this sprint yet.
+                      No companies on this list yet.
                     </td>
                   </tr>
                 )}

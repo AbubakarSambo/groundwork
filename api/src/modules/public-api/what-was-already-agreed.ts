@@ -30,6 +30,14 @@ export type SeedInput = {
   effectiveFrom?: string;
   seenBySubject?: boolean;
   trackedUrl?: string;
+  /**
+   * WHY THIS NUMBER, AS THE CUSTOMER'S SYSTEM RECORDS IT.
+   *
+   * Optional and staying optional: an agreement seeded from a planning tool
+   * that never asked for a reason has none, and refusing the seed over it would
+   * mean refusing their data.
+   */
+  whyThisNumber?: string;
 };
 
 const enumOr = <T extends object>(e: T, v: string | undefined, fallback: T[keyof T]): T[keyof T] =>

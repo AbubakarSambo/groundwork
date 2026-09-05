@@ -19,6 +19,9 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
+import { DraftsService } from '../drafts/drafts.service';
+import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
+import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
@@ -67,6 +70,13 @@ export class AssistantService {
      * would be a second, weaker copy of it.
      */
     private readonly scenarios: ScenariosService,
+    /*
+     * The drafting flow already existed — it opens a draft, pulls people in,
+     * refuses to seed while anybody still disagrees, and writes the objective.
+     * It was reachable by nothing. Injecting it rather than writing a second
+     * objective-setting path here is what keeps that refusal in one place.
+     */
+    private readonly drafts: DraftsService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -136,6 +146,8 @@ export class AssistantService {
         return this.whatShouldWeTalkAbout(organizationId, who);
       case 'what_came_of_it':
         return this.whatCameOfIt(organizationId, personId);
+      case 'set_an_objective':
+        return this.setAnObjective(organizationId, who, message);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -603,6 +615,75 @@ export class AssistantService {
         { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
       ],
     };
+  }
+
+  /**
+   * SETTING AN OBJECTIVE, WHICH IS THE ONE LANE THAT STARTS SOMETHING.
+   *
+   * Every other lane answers a question about records that already exist. This one opens a draft
+   * and then asks for the four things a draft needs, one at a time, refusing an answer that is a
+   * way of getting past the question rather than answering it.
+   *
+   * IT DOES NOT WRITE THE OBJECTIVE. The draft has to be agreed by the people on it, and seeding is
+   * a separate act with its own refusals — one of which is that nobody has said why the number is
+   * the one that matters. An assistant that could turn a two-minute conversation into an official
+   * target would be the fastest way to fill this system with objectives nobody agreed.
+   *
+   * THE QUESTIONS ARE THE DRAFT'S, NOT THIS LANE'S. `askNext` comes back from the drafting service,
+   * so the screen and the conversation ask the same thing in the same words — and adding a fifth
+   * question later does not mean remembering to add it here too.
+   */
+  private async setAnObjective(organizationId: string, who: string | null, message: string): Promise<Reply> {
+    if (!who) {
+      return rules(
+        'set_an_objective',
+        text('I cannot see you in your organisation records, so I cannot open a draft in your name.'),
+      );
+    }
+
+    /*
+     * AN OPEN DRAFT IS CONTINUED, NEVER DUPLICATED. Somebody saying "let's set an objective" twice
+     * in one conversation means they are still on the first one — and a second draft would split
+     * the answers across two records, each looking half-finished.
+     */
+    const open = await this.prisma.objectiveDraft.findFirst({
+      where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (open) {
+      const next = whatToAskForNext(open);
+      if (!next) {
+        return rules(
+          'set_an_objective',
+          text(
+            `"${open.workingTitle}" has everything it needs from you. It is not an objective yet — the people on it have to agree, and then somebody seeds it.`,
+          ),
+        );
+      }
+      return rules('set_an_objective', text(`Still on "${open.workingTitle}". ${next.asks}`));
+    }
+
+    /*
+     * The working title is the person's own words, minus the asking. Not the model's paraphrase:
+     * this becomes the objective's title if the draft survives, and a title nobody typed is one
+     * nobody recognises in the list a fortnight later.
+     */
+    const workingTitle = whatTheyWantToCallIt(message);
+    if (!workingTitle) {
+      return rules(
+        'set_an_objective',
+        text('What is it about? A few words is enough to start — the title can change.'),
+      );
+    }
+
+    const draft = await this.drafts.start(organizationId, who, { workingTitle });
+    const next = whatToAskForNext(draft);
+
+    return rules(
+      'set_an_objective',
+      text(`Started a draft: "${draft.workingTitle}". ${next ? next.asks : ''}`.trim()),
+    );
   }
 
   /**

@@ -38,6 +38,7 @@ function svc(opts: { pending?: any[]; parked?: any; decideThrows?: boolean } = {
     { waitingAcrossTheOrg: async () => ({ waiting: [], waitedOn: [] }) } as any,
     { statusFor: async () => ({ roleName: null, gates: [], left: [] }) } as any,
     scenarios,
+    { start: async () => { throw new Error('no drafting in these tests'); } } as any,
   );
   return { service, writes, decided, scenarios };
 }

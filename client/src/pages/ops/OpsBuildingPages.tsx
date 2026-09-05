@@ -5,6 +5,7 @@ import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '
 import { OpsHeader, PAGE } from './OpsLayout'
 import { OpsTable, Filters, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
+import { TheFrame, TheFreeze, WhatThisServes, WorkThatSaysNothing } from './WhatThisServes'
 
 const ROADMAP_STATUSES = ['PROPOSED', 'READY', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'] as const
 const WORK_STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'RESOLVED'] as const
@@ -14,6 +15,15 @@ const READINESS = ['UNKNOWN', 'REVIEWING', 'GAP_IDENTIFIED', 'IN_PROGRESS', 'PRO
 
 export function OpsRoadmapPage() {
   const roadmap = useQuery({ queryKey: ['ops', 'roadmap'], queryFn: opsApi.roadmap, retry: false })
+  const declared = useQuery({
+    queryKey: ['ops', 'what-serves-nothing'],
+    queryFn: opsApi.whatServesNothing,
+    retry: false,
+  })
+  /* An item is "said nothing" exactly when it is on that list. Read from the
+     one query rather than fetched a second way, so the badge on a row and the
+     count at the top can never disagree. */
+  const saidNothing = new Set((declared.data?.rows ?? []).map((r) => r.id))
   const [filter, setFilter] = useState<string | null>(null)
 
   const filters: Filter<OpsRoadmapItem>[] = [
@@ -25,6 +35,12 @@ export function OpsRoadmapPage() {
 
   const all = roadmap.data
   const shown = all && (filter ? all.filter(filters.find((f) => f.label === filter)!.keep) : all)
+
+  /* The frame and the proposals are two different things and the board should
+     not show them as one list with the same controls — that is what made "the
+     product works" look like an opinion somebody could disagree with. */
+  const standing = (all ?? []).filter((r) => r.standing)
+  const proposals = (shown ?? []).filter((r) => !r.standing)
 
   const columns: Column<OpsRoadmapItem>[] = [
     { head: '#', cell: (r) => r.priority, numeric: true },
@@ -42,6 +58,16 @@ export function OpsRoadmapPage() {
               {r.rationale}
             </div>
           )}
+          {/* WHAT IT SERVES, ON THE ITEM. The rule at the top of the plan as a
+              field, asked where the work is and at the moment the answer is
+              cheap. */}
+          <div style={{ maxWidth: 480 }}>
+            <WhatThisServes
+              recordType="OpsRoadmapItem"
+              recordId={r.id}
+              said={saidNothing.has(r.id) ? null : undefined}
+            />
+          </div>
         </>
       ),
     },
@@ -75,6 +101,22 @@ export function OpsRoadmapPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Roadmap" answers="What are we building, and in what order?" />
+
+      {/* Both at the top, where somebody adding work will see them. The freeze
+          decides what may be added; the list says what has not accounted for
+          itself. */}
+      <TheFreeze />
+
+      {/* THE FRAME, ABOVE THE PROPOSALS AND LOOKING DIFFERENT FROM THEM.
+          No status to move, no decision waiting. One of them carries a count
+          instead of a status, because "the product is solid" is the claim on
+          this board most likely to outrun the evidence. */}
+      {standing.map((r) => (
+        <TheFrame key={r.id} item={r} />
+      ))}
+
+      <WorkThatSaysNothing />
+
       <Adder
         title="Propose something"
         fields={[
@@ -111,10 +153,10 @@ export function OpsRoadmapPage() {
         total={all?.length ?? 0}
       />
       <OpsTable
-        rows={shown}
+        rows={proposals}
         columns={columns}
         keyOf={(r) => r.id}
-        filteredOutOf={all?.length}
+        filteredOutOf={all?.filter((r) => !r.standing).length}
         empty="Nothing proposed yet."
       />
     </main>

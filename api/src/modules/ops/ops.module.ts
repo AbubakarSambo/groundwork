@@ -4,8 +4,8 @@ import { OpsController } from './ops.controller';
 import { OpsPeopleService } from './ops-people.service';
 import { OpsFoundationService } from './ops-foundation.service';
 import { OpsCapabilityGuard } from './ops-capability.guard';
-import { OpsSprintController } from './ops-sprint.controller';
-import { OpsSprintService } from './ops-sprint.service';
+import { OpsTargetCompaniesController } from './ops-target-companies.controller';
+import { OpsTargetCompaniesService } from './ops-target-companies.service';
 import { OpsCompaniesService } from './ops-companies.service';
 import { OpsSettingsService } from './ops-settings.service';
 import { OpsPipelineController } from './ops-pipeline.controller';
@@ -23,7 +23,12 @@ import { OpsCeoController } from './ops-ceo.controller';
 import { OpsCeoService } from './ops-ceo.service';
 import { OpsIntegrationService } from './ops-integration.service';
 import { OpsDoorService } from './the-door-into-the-ops-system';
+import { OpsProductStatementService } from './ops-product-statement.service';
+import { OpsWhatItServesService } from './ops-what-it-serves.service';
+import { OpsFreezeService } from './ops-freeze.service';
 import { OpsDoorController } from './ops-door.controller';
+import { OpsResourcesService } from './ops-resources.service';
+import { WhatAReadingOfItSaysService } from './what-a-reading-of-it-says';
 
 /**
  * The back office the Groundwork team runs on.
@@ -33,13 +38,16 @@ import { OpsDoorController } from './ops-door.controller';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController],
+  controllers: [OpsController, OpsTargetCompaniesController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController],
   providers: [
     OpsPeopleService,
     OpsFoundationService,
     OpsDoorService,
+    OpsProductStatementService,
+    OpsWhatItServesService,
+    OpsFreezeService,
     OpsCapabilityGuard,
-    OpsSprintService,
+    OpsTargetCompaniesService,
     OpsCompaniesService,
     OpsSettingsService,
     OpsPipelineService,
@@ -51,6 +59,8 @@ import { OpsDoorController } from './ops-door.controller';
     OpsIntentService,
     OpsCeoService,
     OpsIntegrationService,
+    OpsResourcesService,
+    WhatAReadingOfItSaysService,
   ],
   exports: [OpsPeopleService, OpsDoorService],
 })

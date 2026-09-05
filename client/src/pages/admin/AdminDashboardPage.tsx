@@ -671,8 +671,9 @@ function OpsAccessSection() {
       <div style={SL}>The team's operating system</div>
       <div style={C}>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-          Targets, the pipeline, commitments, spend, the moat. A separate list from this one — being
-          a platform admin does not put you on the team, it lets you say who is.
+          Targets, the pipeline, commitments, spend, the moat. Everybody on the platform-admin list
+          above is on this team — your account is admitted the first time you open it. Connect the
+          rest of the team below.
         </div>
 
         {state?.isSetUp && (
@@ -703,8 +704,12 @@ function OpsAccessSection() {
         {/* The state this whole section exists for: it is set up and nobody's
             account opens it, so /ops turns everybody away including its owner. */}
         {state?.nobodyCanOpenIt && state.isSetUp && (
-          <div style={{ fontSize: 13, color: 'var(--gw-red-t)', marginBottom: 12 }}>
-            Nobody's account opens it. Connect yours below.
+          /* Not an alarm any more: yours opens it whether or not it is listed
+             here, because you are on the platform-admin list. It still says so,
+             because a team where nobody but the admins can get in is worth
+             seeing. */
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
+            None of the seeded team has an account connected yet. Yours opens it regardless.
           </div>
         )}
 
@@ -886,6 +891,14 @@ export function AdminDashboardPage() {
               style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Our own system →
+            </button>
+            {/* Access to the API is granted here rather than bought. Our own
+                organisation appears on that list like anybody else's. */}
+            <button
+              onClick={() => navigate('/admin/api-access')}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              API access →
             </button>
             <button
               onClick={() => navigate('/grounds')}

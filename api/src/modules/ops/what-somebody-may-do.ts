@@ -11,22 +11,22 @@ export const OPS_CAPABILITIES = [
   // Running the company
   'ceo:board',
   /**
-   * The sprint board. Held by everybody, including contributors — the point of
-   * a sprint is that the whole team is looking at the same companies, and a
+   * Target companies board. Held by everybody, including contributors — the point of
+   * a target list is that the whole team is looking at the same companies, and a
    * board half the team cannot open is a status report.
    */
-  'sprint:read',
+  'target-companies:read',
   'periods:write',
   /**
-   * Who is on a sprint.
+   * Who is on a target list.
    *
    * Its own grant, not `sales:write`. Deciding which companies get attention
    * between two dates is a different act from editing the pipeline, and the CEO
    * holds the first and has deliberately given away the second — so routing the
-   * sprint list through sales:write meant the person who sets the sprint could
+   * target list through sales:write meant the person who sets the target list could
    * not say who it was about. Found by clicking it.
    */
-  'sprint:curate',
+  'target-companies:curate',
   'people:admin',
   'todos:assign',
 
@@ -115,18 +115,18 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   // point of having given them away.
   CEO: [
     'ceo:board',
-    'sprint:read',
+    'target-companies:read',
     'periods:write',
   /**
-   * Who is on a sprint.
+   * Who is on a target list.
    *
    * Its own grant, not `sales:write`. Deciding which companies get attention
    * between two dates is a different act from editing the pipeline, and the CEO
    * holds the first and has deliberately given away the second — so routing the
-   * sprint list through sales:write meant the person who sets the sprint could
+   * target list through sales:write meant the person who sets the target list could
    * not say who it was about. Found by clicking it.
    */
-  'sprint:curate',
+  'target-companies:curate',
     'people:admin',
     'todos:assign',
     'sales:read',
@@ -158,8 +158,8 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   ],
 
   SALES_MARKETING: [
-    'sprint:read',
-    'sprint:curate',
+    'target-companies:read',
+    'target-companies:curate',
     'sales:read',
     'sales:write',
     'marketing:read',
@@ -173,7 +173,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   ],
 
   PRODUCT_TECH_LEAD: [
-    'sprint:read',
+    'target-companies:read',
     'product:read',
     'product:write',
     'ux:read',
@@ -188,7 +188,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   ],
 
   TECH: [
-    'sprint:read',
+    'target-companies:read',
     'tech:read',
     'tech:write',
     'product:read',
@@ -202,8 +202,38 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
 
   // A contributor brings companies in and claims their own expenses. They do
   // not see the pipeline, the fundraise, or anybody else's attributions.
-  CONTRIBUTOR: ['sprint:read', 'contributor:self', 'spend:submit'],
+  CONTRIBUTOR: ['target-companies:read', 'contributor:self', 'spend:submit'],
 };
+
+/**
+ * WHAT EACH ROLE IS CALLED, IN WORDS SOMEBODY WOULD USE.
+ *
+ * Written here, beside the grants, and read by the API — so the team page picks
+ * roles from the same list the grants are keyed on. The client used to carry
+ * its own copy, which is how a role gets added to the enum and never appears in
+ * the picker.
+ *
+ * A ROLE IS NOT A PERSON. These say what somebody does, never who does it: who
+ * is on the team, and which role each of them holds, is rows in `ops_people`
+ * that anybody with `people:admin` can change. Nothing in this file names a
+ * human, and nothing should.
+ */
+export const WHAT_A_ROLE_IS_CALLED: Record<OpsFunctionalRole, string> = {
+  CEO: 'Runs the company',
+  SALES_MARKETING: 'Sales and marketing',
+  PRODUCT_TECH_LEAD: 'Product and tech lead',
+  TECH: 'Builds',
+  CONTRIBUTOR: 'Brings companies in',
+};
+
+/** The roles, with what each comes with. For the picker, and for reading. */
+export function everyRole() {
+  return (Object.keys(DEFAULT_GRANTS) as OpsFunctionalRole[]).map((role) => ({
+    role,
+    label: WHAT_A_ROLE_IS_CALLED[role],
+    comesWith: DEFAULT_GRANTS[role],
+  }));
+}
 
 /** Everything a person may do, given the grants they actually hold. */
 export function can(heldCapabilities: readonly string[], wanted: OpsCapability): boolean {

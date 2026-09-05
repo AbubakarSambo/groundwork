@@ -40,7 +40,26 @@ export interface InboundMessage {
   readAt: string | null
 }
 
+export interface ApiAccessRequest {
+  id: string
+  organization: { id: string; name: string }
+  whatFor: string
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'WITHDRAWN'
+  requestedAt: string
+  requestedBy: string
+  decidedBy: string | null
+  decidedAt: string | null
+  note: string | null
+}
+
 export const adminApi = {
+  /** Every organisation that has asked for the API — ours among them. */
+  getApiAccessRequests: () =>
+    apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => r.data),
+
+  decideApiAccess: (id: string, status: ApiAccessRequest['status'], note?: string) =>
+    apiClient.patch(`/admin/api-access/${id}`, { status, note }).then(r => r.data),
+
   getWhatsAppStatus: () =>
     apiClient.get<WhatsAppToggleState>('/admin/whatsapp').then(r => r.data),
 

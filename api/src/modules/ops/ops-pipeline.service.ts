@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsDeploymentStage, OpsActivityDomain } from '@prisma/client';
+import {
+  whyThisCampaignCannotRunYet,
+  whatThisCampaignIsActuallyServing,
+} from './a-campaign-is-run-for-an-objective';
 
 @Injectable()
 export class OpsPipelineService {
@@ -118,17 +122,35 @@ export class OpsPipelineService {
 
   // --- Marketing ----------------------------------------------------------
 
-  createCampaign(input: {
+  /**
+   * A campaign is created against an objective, or not at all.
+   *
+   * The objective is looked up rather than trusted: a foreign key that only
+   * exists in the request body is a link to whatever the client happened to
+   * send, and the whole point of making this a row was that it can be followed.
+   */
+  async createCampaign(input: {
     title: string;
     activityType: string;
     channel?: string;
+    objectiveId?: string;
     objective?: string;
     ownerId: string;
     startDate: Date;
     endDate?: Date;
     campaignSource?: string;
   }) {
-    return this.prisma.opsMarketingActivity.create({ data: input });
+    const wrong = whyThisCampaignCannotRunYet(input);
+    if (wrong) throw new BadRequestException(wrong);
+
+    const objective = await this.prisma.opsObjective.findUnique({
+      where: { id: input.objectiveId! },
+    });
+    if (!objective) {
+      throw new NotFoundException('That objective does not exist. Pick one this campaign is being run for.');
+    }
+
+    return this.prisma.opsMarketingActivity.create({ data: { ...input, objectiveId: objective.id } });
   }
 
   /**
@@ -137,11 +159,23 @@ export class OpsPipelineService {
    * Named rather than counted: "two leads" says a campaign was busy, and the two
    * companies with what they have paid says whether it was worth running again.
    */
-  campaigns() {
-    return this.prisma.opsMarketingActivity.findMany({
-      include: { opportunities: { include: { company: true, payments: true } } },
+  async campaigns() {
+    const activities = await this.prisma.opsMarketingActivity.findMany({
+      include: {
+        opportunities: { include: { company: true, payments: true } },
+        linkedObjective: true,
+      },
       orderBy: { startDate: 'desc' },
     });
+
+    return activities.map((a) => ({
+      ...a,
+      /* Said on every campaign, including the ones that predate the rule — a
+         campaign with no objective is the finding, not a blank column. */
+      alignment: a.linkedObjective
+        ? whatThisCampaignIsActuallyServing(a.linkedObjective.serves)
+        : 'This campaign names no objective. It was created before a campaign had to.',
+    }));
   }
 
   // --- Shared -------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
   OpsApprovalType,
   OpsApprovalStatus,
 } from '@prisma/client';
+import { isSolid, whatIsLeftToSay } from './what-solid-means';
 import { mayMoveOutOfProposed } from './nothing-executes-until-it-is-approved';
 import { OpsIdentity } from './ops-people.service';
 import { decidesSomething } from './who-decides-anything';
@@ -109,7 +110,7 @@ export class OpsBuildService {
    * Sets readiness, and refuses PRODUCT_READY while a gap is still recorded.
    *
    * Without this, "product ready" is an opinion typed over the top of three
-   * written-down reasons it is not — and the readiness number on the sprint
+   * written-down reasons it is not — and the readiness number on the target list
    * board goes up while the gaps sit underneath it, unchanged.
    */
   async setReadiness(
@@ -304,6 +305,63 @@ export class OpsBuildService {
       where: { relatedRecordType: recordType, relatedRecordId: recordId },
       orderBy: { createdAt: 'asc' },
     });
+  }
+
+  /**
+   * WHETHER THE PRODUCT IS SOLID, COUNTED RATHER THAN CLAIMED.
+   *
+   * "Every bug fixed and use case is working well. No bottlenecks." Three
+   * counts, all of them already here. The standing roadmap item reads this
+   * instead of carrying a status somebody moves.
+   *
+   * Every number opens onto its rows, like every other number on these boards —
+   * "three use cases do not work" is only useful if you can see which three.
+   */
+  async howSolid() {
+    const [bugs, useCases, blockedDeployments, blockedCompanies] = await Promise.all([
+      this.prisma.opsTechItem.findMany({
+        where: { status: { not: 'RESOLVED' }, itemType: { in: ['BUG', 'bug'] } },
+        select: { id: true, title: true, severity: true },
+      }),
+      this.prisma.opsClientUseCase.findMany({
+        where: { productReadiness: { not: 'PRODUCT_READY' } },
+        include: { company: { select: { name: true } } },
+      }),
+      this.prisma.opsDeployment.findMany({
+        where: { blockerType: { not: null }, stage: { not: 'LIVE' } },
+        include: { company: { select: { name: true } } },
+      }),
+      this.prisma.opsCompany.findMany({
+        where: { blockerSummary: { not: null } },
+        select: { id: true, name: true, blockerSummary: true },
+      }),
+    ]);
+
+    /* A company blocked in its deployment and blocked on the board is one
+       bottleneck, not two. Counting it twice would make the number move when
+       somebody wrote the same fact down in a second place. */
+    const blocked = new Map<string, { name: string; why: string }>();
+    for (const d of blockedDeployments) {
+      blocked.set(d.companyId, { name: d.company.name, why: d.blockerSummary ?? d.blockerType ?? 'blocked' });
+    }
+    for (const c of blockedCompanies) {
+      if (!blocked.has(c.id)) blocked.set(c.id, { name: c.name, why: c.blockerSummary as string });
+    }
+
+    const left = {
+      bugsOpen: bugs.length,
+      useCasesNotWorking: useCases.length,
+      bottlenecks: blocked.size,
+    };
+
+    return {
+      ...left,
+      solid: isSolid(left),
+      says: whatIsLeftToSay(left),
+      bugs: bugs.map((b) => ({ title: b.title, severity: b.severity })),
+      useCases: useCases.map((u) => ({ company: u.company.name, title: u.title, readiness: u.productReadiness })),
+      blocked: [...blocked.values()],
+    };
   }
 
   private log(

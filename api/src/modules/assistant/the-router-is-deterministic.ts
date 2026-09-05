@@ -23,6 +23,7 @@ export type Lane =
   | 'where_am_i_up_to'
   | 'what_should_we_talk_about'
   | 'what_came_of_it'
+  | 'set_an_objective'
   | 'unplaced';
 
 export interface Routed {
@@ -46,6 +47,24 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('set_an_objective', [
+    /*
+     * FIRST, AND NARROW.
+     *
+     * First because it is the only lane that starts a piece of work rather than
+     * answering a question about one, and "I want to set an objective for the
+     * quarter" reads to three lanes below as a question about the quarter. The
+     * person is not asking what exists; they are asking to make something.
+     *
+     * Narrow because the cost of a false positive is high: it opens a draft and
+     * starts asking questions, which is intrusive in a way that a wrong answer
+     * is not. It owns the shapes that explicitly ask to SET one, and nothing
+     * that merely mentions objectives.
+     */
+    /\b(?:set|write|create|start|draft|agree)\s+(?:up\s+)?(?:an?|our|my|the|some)?\s*(?:new\s+)?(?:objectives?|okrs?|goals?|targets?)\b/i,
+    /\bhelp\s+(?:me|us)\s+(?:to\s+)?(?:set|write|agree|work\s+out)\b.*\b(?:objectives?|okrs?|goals?|targets?)\b/i,
+    /\b(?:objective|okr|goal)\s+setting\b/i,
+  ]),
   rule('where_am_i_up_to', [
     /*
      * Above the handoff and coaching lanes. "What am I meant to be doing" from somebody in their

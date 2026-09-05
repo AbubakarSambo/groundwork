@@ -68,7 +68,7 @@ export class OpsDoorService {
    * Put the standing furniture in place: the periods, the workstreams, the team.
    *
    * Safe to run twice. Every write in the seed is an upsert or skips duplicates,
-   * and since a sprint is something a person sets, the seed no longer re-dates
+   * and since a target list is something a person sets, the seed no longer re-dates
    * one that already exists.
    */
   async setUp() {

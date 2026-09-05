@@ -130,7 +130,7 @@ describe('rolling one out', () => {
     const { prisma, grants } = prismaWith(null);
     await rollOutNewCapabilities(prisma);
     const theirs = grants.filter((g) => g.personId === 'outside').map((g) => g.capability);
-    expect(theirs.sort()).toEqual(['contributor:self', 'spend:submit', 'sprint:read']);
+    expect(theirs.sort()).toEqual(['contributor:self', 'spend:submit', 'target-companies:read']);
   });
 });
 

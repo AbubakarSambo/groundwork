@@ -5,6 +5,7 @@ import { OpsCapabilityGuard } from './ops-capability.guard';
 import { OpsPeopleService } from './ops-people.service';
 import { OpsFoundationService } from './ops-foundation.service';
 import { OpsIntegrationService } from './ops-integration.service';
+import { OpsProductStatementService } from './ops-product-statement.service';
 import { NeedsOps } from './ops-capability.guard';
 import { Post, Patch, Delete, Body, Query } from '@nestjs/common';
 import { OPS_CAPABILITIES } from './what-somebody-may-do';
@@ -19,7 +20,34 @@ export class OpsController {
     private readonly people: OpsPeopleService,
     private readonly foundation: OpsFoundationService,
     private readonly integration: OpsIntegrationService,
+    private readonly statement: OpsProductStatementService,
   ) {}
+
+  /**
+   * WHAT WE SAY THIS PRODUCT IS. The document every deck, campaign and page is
+   * measured against, so everybody may read it and only the CEO may change it.
+   */
+  @Get('what-we-are')
+  @ApiOperation({ summary: 'What this product is, and what it is not' })
+  whatWeAre() {
+    return this.statement.current();
+  }
+
+  @Get('what-we-are/history')
+  @ApiOperation({ summary: 'Every version there has been, newest first' })
+  whatWeUsedToSay() {
+    return this.statement.history();
+  }
+
+  @Post('what-we-are')
+  @NeedsOps('ceo:board')
+  @ApiOperation({ summary: 'Say it differently. A new version, never an edit.' })
+  sayItDifferently(
+    @Req() req: { opsIdentity: { key: string } },
+    @Body() body: { headline: string; saidOutLoud: string; isIt: string[]; isNotIt: string[]; because?: string },
+  ) {
+    return this.statement.say(body, req.opsIdentity.key);
+  }
 
   /**
    * Who the caller is here and what they may do. The front end asks this once
@@ -33,22 +61,22 @@ export class OpsController {
 
   /** The periods we are working in, so every board can date itself. */
   @Get('periods')
-  @ApiOperation({ summary: 'Sprints, quarters and cycles' })
+  @ApiOperation({ summary: 'TargetLists, quarters and cycles' })
   async periods() {
     return this.foundation.periods();
   }
 
   /**
-   * Start a sprint, over whatever dates somebody chooses.
+   * Start a list, over whatever dates somebody chooses.
    *
-   * Sprints only. A quarter is the calendar and a cycle hangs off one; neither
+   * TargetLists only. A quarter is the calendar and a cycle hangs off one; neither
    * is a decision this form gets to make.
    */
   @Post('periods')
   @NeedsOps('periods:write')
-  @ApiOperation({ summary: 'Start a sprint over any stretch of time' })
-  async startASprint(@Body() body: { name: string; startsOn: string; endsOn: string; goal?: string }) {
-    return this.foundation.startASprint({
+  @ApiOperation({ summary: 'Start a list over any stretch of time' })
+  async startATargetList(@Body() body: { name: string; startsOn: string; endsOn: string; goal?: string }) {
+    return this.foundation.startATargetList({
       name: body.name,
       startsOn: new Date(body.startsOn),
       endsOn: new Date(body.endsOn),
@@ -56,21 +84,69 @@ export class OpsController {
     });
   }
 
+  /**
+   * The workplan: five overlapping phases, and what has to be true to leave
+   * each. Everybody sees it — it is the plan everybody is getting behind.
+   */
+  @Get('workplan')
+  @ApiOperation({ summary: 'The five phases, which overlap, and their exit conditions' })
+  async workplan() {
+    return this.foundation.theWorkplan();
+  }
+
+  /**
+   * What is standing between us and opening this period.
+   *
+   * Readable by anybody on the team, and deliberately so: the answer is a list
+   * of names, and the people on it are the ones who can shorten it.
+   */
+  @Get('periods/:key/can-open')
+  @ApiOperation({ summary: 'Whether a period can open yet, and who it is waiting on' })
+  async canOpen(@Param('key') key: string) {
+    return this.foundation.whatStandsBetweenUsAndOpening(key);
+  }
+
+  /**
+   * Open a period. Refused while somebody active has no objective in it.
+   *
+   * The only way a quarter opens — a target list can also be opened by patching
+   * its status, and that door runs the same gate.
+   */
+  @Post('periods/:key/open')
+  @NeedsOps('periods:write')
+  @ApiOperation({ summary: 'Open a period, once everybody active has an objective in it' })
+  async openThePeriod(@Param('key') key: string) {
+    return this.foundation.openThePeriod(key);
+  }
+
   /** Move its dates, rename it, open it, close it. The key never moves. */
   @Patch('periods/:key')
   @NeedsOps('periods:write')
-  @ApiOperation({ summary: 'Re-date, rename, open or close a sprint' })
-  async resetASprint(
+  @ApiOperation({ summary: 'Re-date, rename, open or close a target list' })
+  async resetATargetList(
     @Param('key') key: string,
     @Body() body: { name?: string; startsOn?: string; endsOn?: string; goal?: string | null; status?: 'PLANNED' | 'OPEN' | 'CLOSED' },
   ) {
-    return this.foundation.resetASprint(key, {
+    return this.foundation.resetATargetList(key, {
       name: body.name,
       startsOn: body.startsOn ? new Date(body.startsOn) : undefined,
       endsOn: body.endsOn ? new Date(body.endsOn) : undefined,
       goal: body.goal,
       status: body.status,
     });
+  }
+
+  /**
+   * A token for the assistant panel, and where to take it.
+   *
+   * No capability: it is scoped to the caller by construction — the token names
+   * them and nobody else, and the person asking is already on this team or the
+   * guard would not have let them in.
+   */
+  @Get('assistant/panel')
+  @ApiOperation({ summary: 'A short-lived token for the Groundwork assistant panel. Never the shared key.' })
+  assistantPanel(@Req() req: { opsIdentity: { key: string } }) {
+    return this.integration.panelFor(req.opsIdentity.key);
   }
 
   /**
@@ -88,7 +164,7 @@ export class OpsController {
   @ApiOperation({ summary: 'Point it at a Groundwork, or switch it off' })
   configure(
     @Req() req: { opsIdentity: { key: string } },
-    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string },
+    @Body() body: { baseUrl?: string; clientId?: string; clientSecret?: string; enabled?: boolean; checkInId?: string; organizationId?: string; embedSecret?: string },
   ) {
     return this.integration.configure(body, req.opsIdentity.key);
   }
@@ -97,7 +173,7 @@ export class OpsController {
   @Post('integration/push')
   @NeedsOps('integration:manage')
   @ApiOperation({ summary: 'Send this period across to Groundwork' })
-  push(@Query('period') period = 'sept-2026-sprint') {
+  push(@Query('period') period = 'sept-2026-target-list') {
     return this.integration.push(period);
   }
 
@@ -116,6 +192,21 @@ export class OpsController {
   @ApiOperation({ summary: 'The capabilities that exist' })
   capabilities() {
     return OPS_CAPABILITIES;
+  }
+
+  /** The roles somebody can hold, with what each comes with. One source. */
+  @Get('roles')
+  @NeedsOps('people:admin')
+  @ApiOperation({ summary: 'The roles, and the capabilities each comes with' })
+  roles() {
+    return this.people.roles();
+  }
+
+  @Patch('people/:key/role')
+  @NeedsOps('people:admin')
+  @ApiOperation({ summary: 'Change what somebody does. Adds that role’s capabilities, removes none.' })
+  changeRole(@Param('key') key: string, @Body() body: { functionalRole: OpsFunctionalRole }) {
+    return this.people.changeRole(key, body.functionalRole);
   }
 
   @Post('people')

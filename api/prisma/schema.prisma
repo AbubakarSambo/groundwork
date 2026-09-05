@@ -262,7 +262,60 @@ model PricingPlan {
 // Identity & tenancy
 // ---------------------------------------------------------------------------
 
+/// ASKING FOR THE API, WHICH IS HOW ACCESS TO IT IS GRANTED.
+///
+/// It used to be sold: an organisation with a live subscription could hold a
+/// machine token and everybody else was refused. That gate had two problems and
+/// only one of them was about money. It made every integration test wait on a
+/// billing state, and it meant we could not use our own API in our own back
+/// office without paying ourselves — which is the acceptance test for the whole
+/// thing, so failing it silently was the worst possible outcome.
+///
+/// So access is ASKED FOR and GRANTED. Somebody says what they intend to build,
+/// somebody here reads it and decides, and that decision is a row with a name
+/// and a date against it. A refusal can say which of those has not happened yet,
+/// which "you have not paid" never could.
+///
+/// It is not the same thing as being free. What it is, is separable from
+/// billing: what a customer pays for and what a customer may connect to are two
+/// decisions, and tying them together meant neither could move without the
+/// other.
+model ApiAccessRequest {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Who asked, and what they said they intend to build. Read by whoever
+  /// decides, so an empty one is refused at the point of asking.
+  requestedByUserId String   @map("requested_by_user_id")
+  whatFor           String   @map("what_for") @db.Text
+  requestedAt       DateTime @default(now()) @map("requested_at")
+
+  status ApiAccessStatus @default(PENDING)
+
+  /// Who decided, when, and why — for a refusal or a withdrawal especially.
+  /// A decision nobody can account for later is one nobody can argue with.
+  decidedByUserId String?   @map("decided_by_user_id")
+  decidedAt       DateTime? @map("decided_at")
+  note            String?   @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, requestedAt])
+  @@map("api_access_requests")
+}
+
+enum ApiAccessStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  /// Granted and then taken back. Kept apart from DECLINED because they are
+  /// different facts: one was never trusted, the other was and no longer is,
+  /// and only the second needs somebody told.
+  WITHDRAWN
+}
+
 model Organization {
+  apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
   acceptanceCriteria AcceptanceCriterion[]
   productMetrics     ProductMetric[]
@@ -439,26 +492,26 @@ model User {
 //
 // See GW-001 in journey/run18/ISSUES-LOG.md.
 model PendingSignup {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  token      String   @unique
-  firstName  String   @map("first_name")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  token        String   @unique
+  firstName    String   @map("first_name")
   /// Only the entry flow leaves this empty; the two named signup paths carry it.
-  lastName   String?  @map("last_name")
-  orgName    String?  @map("org_name")
+  lastName     String?  @map("last_name")
+  orgName      String?  @map("org_name")
   /// Set when somebody signed up with a password. Held here rather than on a
   /// User, because a User is what must not exist before the address is proved.
-  passwordHash String? @map("password_hash")
+  passwordHash String?  @map("password_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
-  payload    Json?
-  history    Json?
+  payload      Json?
+  history      Json?
   // The draft token the entry page keeps, so post-email edits (the org name
   // arrives this way) can still reach this record before there is a user.
-  draftToken String?  @unique @map("draft_token")
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  draftToken   String?  @unique @map("draft_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("pending_signups")
 }
@@ -1106,6 +1159,7 @@ model GroundObjective {
   groundId       String   @map("ground_id")
   name           String
   target         Int? // null = a qualitative objective, tracked but not counted
+
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
   prevCount      Int      @default(0) @map("prev_count")
@@ -1813,6 +1867,15 @@ model ObjectiveDraft {
   proposedTarget          String?   @map("proposed_target")
   proposedOwnerExternalId String?   @map("proposed_owner_external_id")
   proposedDueDate         DateTime? @map("proposed_due_date")
+
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// The draft agreed a measure and a target and neither says either. The seed
+  /// gate checked that people AGREED, which is a different thing from the
+  /// objective being any good: six people can agree on a number none of them
+  /// can explain.
+  proposedJustification String? @map("proposed_justification") @db.Text
+  proposedApproach      String? @map("proposed_approach") @db.Text
 
   /// The prior-cycle evidence this was built from. A draft carries its own reasons.
   groundedOnFindingIds String[] @map("grounded_on_finding_ids")
@@ -2596,6 +2659,19 @@ model Subject {
   measure String? @db.Text
   target  String? @db.Text
 
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// Carried on the objective rather than left behind in the draft that agreed
+  /// it: the reason a target exists is the first thing to go missing, and it is
+  /// needed most in the check-in where the target is being missed.
+  ///
+  /// Nullable, because an objective imported from a customer's own system
+  /// arrives with whatever that system holds — and refusing an import for a
+  /// missing sentence would mean refusing their data. Drafts agreed in here are
+  /// refused without both.
+  justification String? @db.Text
+  approach      String? @db.Text
+
   /// Held as the customer's own identifiers rather than resolved to rows, because the person may
   /// not have been pushed yet and a subject must not fail to import for naming somebody unknown.
   ownerExternalId        String? @map("owner_external_id")
@@ -2831,6 +2907,18 @@ model PersonObjective {
   target  String? @map("target")
   /// What is being counted, in their words: "qualified pipeline", "proposals", "days".
   measure String? @map("measure")
+
+  /// WHY THIS NUMBER, AS IT WAS STATED WHEN THE TARGET WAS SET.
+  ///
+  /// The session where the target is being missed is the one where the reason
+  /// matters most and is least likely to still be in anybody's head. Without it
+  /// that session can only ask about the gap, which invites an excuse; with it
+  /// it can ask whether the reason still holds, which is a question about the
+  /// target rather than about the person.
+  ///
+  /// Carried under the same rule as the objective it belongs to: it is what was
+  /// stated when the target was set, NOT something this person agreed to.
+  whyThisNumber String? @map("why_this_number") @db.Text
 
   /// WHERE THIS HAS GOT TO. OPEN until somebody says otherwise.
   ///
@@ -3899,7 +3987,10 @@ enum OpsFunctionalRole {
 }
 
 enum OpsPeriodKind {
-  SPRINT
+  /// A named, dated list of the companies we are trying to land. Was called a
+  /// SPRINT, which is engineering vocabulary for something that is not
+  /// engineering — and read as a two-week iteration to everybody who met it.
+  TARGET_LIST
   QUARTER
   /// A biweekly operating cycle. Hangs off a quarter.
   CYCLE
@@ -4051,8 +4142,8 @@ model OpsCompany {
   source                   String?
   /// The contributor who brought them, when one did.
   originatingContributorId String? @map("originating_contributor_id")
-  /// The sprint they belong to, when they are part of one.
-  sprintPeriodId           String? @map("sprint_period_id")
+  /// The target list they are on, when they are on one.
+  targetListId             String? @map("target_list_id")
 
   stage         OpsCompanyStage @default(LINED_UP)
   ownerPersonId String?         @map("owner_person_id")
@@ -4072,7 +4163,7 @@ model OpsCompany {
   commercialOpportunities OpsCommercialOpportunity[]
 
   @@index([stage])
-  @@index([sprintPeriodId])
+  @@index([targetListId])
   @@map("ops_companies")
 }
 
@@ -4202,12 +4293,12 @@ model OpsContributorTarget {
 
   /// A standing target, or an expectation of one sprint. Kept apart so a
   /// sprint's "bring one ready company" never reads as the year's number.
-  isSprintExpectation Boolean @default(false) @map("is_sprint_expectation")
+  isTargetListExpectation Boolean @default(false) @map("is_sprint_expectation")
 
   person OpsPerson @relation("OpsContributorTargetHolder", fields: [personId], references: [id], onDelete: Cascade)
   period OpsPeriod @relation("OpsContributorTargetPeriod", fields: [periodId], references: [id], onDelete: Restrict)
 
-  @@unique([personId, periodId, isSprintExpectation])
+  @@unique([personId, periodId, isTargetListExpectation])
   @@map("ops_contributor_targets")
 }
 
@@ -4316,7 +4407,20 @@ model OpsMarketingActivity {
 
   activityType String  @map("activity_type")
   channel      String?
-  objective    String? @db.Text
+
+  /// WHAT THIS CAMPAIGN IS BEING RUN FOR, AS A ROW.
+  ///
+  /// `objective` was a sentence, which is a note about intent and not a
+  /// connection: nothing could ask what is running for a given objective, and a
+  /// campaign could not be checked against the quarter it was actually in.
+  ///
+  /// The sentence stays alongside it, because the link says WHICH objective and
+  /// only the sentence says WHY this campaign serves it.
+  ///
+  /// Nullable for the campaigns that came before the rule. New ones are refused
+  /// without it, in the service, where a refusal can be a sentence.
+  objectiveId String? @map("objective_id")
+  objective   String? @db.Text
 
   ownerId   String    @map("owner_id")
   startDate DateTime  @map("start_date")
@@ -4331,9 +4435,11 @@ model OpsMarketingActivity {
   notes     String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
-  opportunities OpsCommercialOpportunity[]
+  opportunities   OpsCommercialOpportunity[]
+  linkedObjective OpsObjective?              @relation("OpsMarketingObjective", fields: [objectiveId], references: [id], onDelete: SetNull)
 
   @@index([status, startDate])
+  @@index([objectiveId])
   @@map("ops_marketing_activities")
 }
 
@@ -4360,6 +4466,10 @@ enum OpsApprovalType {
   COMMERCIAL
   SPEND
   RESOURCING
+  /// A deck, a campaign, a page of site copy. Signed off against the version of
+  /// the product statement it was checked against, so changing what we say we
+  /// are reopens everything signed against the old words.
+  RESOURCE
 }
 
 enum OpsApprovalStatus {
@@ -4382,7 +4492,20 @@ model OpsRoadmapItem {
 
   productArea String? @map("product_area")
   itemType    String  @map("item_type")
-  priority    Int     @default(3)
+
+  /// A STANDING ITEM IS NOT A PROPOSAL.
+  ///
+  /// Everything else on this roadmap can be argued with, reprioritised or
+  /// dropped. One or two cannot: they are the frame the others sit in, and
+  /// showing them in the same list with the same controls makes them look like
+  /// opinions somebody could disagree with.
+  ///
+  /// A standing item has no approval and no status somebody moves. It has a
+  /// definition of done, and the definition is COMPUTED - see
+  /// `what-solid-means.ts`. Typing "done" against "every bug fixed" would be
+  /// the one place on this board where a claim outranks a count.
+  standing Boolean @default(false)
+  priority Int     @default(3)
 
   ownerId      String? @map("owner_id")
   proposedById String  @map("proposed_by_id")
@@ -4547,12 +4670,36 @@ model OpsObjective {
   description String? @db.Text
   ownerId     String  @map("owner_id")
 
+  /// WHAT SETTING THIS BUYS, AND WHY THIS RATHER THAN SOMETHING ELSE.
+  ///
+  /// The form asked for a title, an area and a sentence, which is a note rather
+  /// than an objective. These four fields are the difference.
+  ///
+  /// `serves` is the same four values a piece of work can serve, so an
+  /// objective and the work under it are answering one question in one
+  /// vocabulary. `instead` is the conveyor belt: "why is this the best use of
+  /// time" is unanswerable in the abstract and only answerable against the
+  /// alternative, and nobody writes it down unless the form makes them.
+  serves        OpsServes?
+  justification String?    @db.Text
+  instead       String?    @db.Text
+
+  /// THE SALES ARITHMETIC, KEPT AS ITS TWO PARTS.
+  ///
+  /// "Eight companies at fifteen thousand" is a claim about the pipeline, and
+  /// the pipeline is in this system. Stored as the two numbers rather than the
+  /// product of them, so the claim can be checked against what is actually
+  /// there rather than only admired.
+  companiesExpected    Int? @map("companies_expected")
+  valuePerCompanyCents Int? @map("value_per_company_cents")
+
   status   OpsObjectiveStatus @default(DRAFT)
   priority Int                @default(3)
 
   createdAt DateTime @default(now()) @map("created_at")
 
   keyResults OpsKeyResult[]
+  campaigns  OpsMarketingActivity[] @relation("OpsMarketingObjective")
 
   @@index([periodId, status])
   @@map("ops_objectives")
@@ -4578,6 +4725,20 @@ model OpsKeyResult {
   currentValue Decimal  @default(0) @map("current_value") @db.Decimal(14, 2)
 
   measurementSource String @map("measurement_source")
+
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// A key result was a target and a source: what to reach and where the number
+  /// comes from. Neither says whether the target is the right one or whether
+  /// anybody has thought about how to hit it — and a number with no approach
+  /// behind it is a wish with a deadline.
+  ///
+  /// Kept apart on purpose. The justification is why this number is the one
+  /// that matters; the approach is what somebody is actually going to do. They
+  /// fail differently: a good reason with no plan is a hope, and a good plan
+  /// for the wrong number is worse.
+  justification String? @db.Text
+  approach      String? @db.Text
 
   ownerId String   @map("owner_id")
   dueDate DateTime @map("due_date") @db.Date
@@ -4873,6 +5034,24 @@ model OpsIntegration {
   /// that on anybody's behalf.
   checkInId String? @map("check_in_id")
 
+  /// THE TWO THINGS THE PANEL NEEDS, AND NOTHING ELSE DOES.
+  ///
+  /// A machine credential opens the data routes. The assistant panel is a
+  /// different act: a browser on OUR page asking Groundwork about the person
+  /// looking at it, and a machine secret in a browser is a machine secret in
+  /// developer tools. So the panel goes the way a customer's does - our server
+  /// signs a short assertion about who is signed in, with a secret shared with
+  /// Groundwork, and the browser carries only that.
+  /// IT MUST BE THE ORGANISATION THE CREDENTIAL ABOVE WRITES INTO.
+  ///
+  /// The token names a person by their externalId inside an organisation, and
+  /// SCIM puts that person into whichever organisation the machine credential
+  /// belongs to. Point this at a different one and the handshake answers
+  /// `visible: false` about somebody plainly on the team, with nothing to say
+  /// why. Cost two rounds to find while integrating our own back office.
+  organizationId String? @map("organization_id")
+  embedSecret    String? @map("embed_secret")
+
   /// What the last push did, in the API's own words.
   lastSyncAt      DateTime? @map("last_sync_at")
   lastSyncOk      Boolean?  @map("last_sync_ok")
@@ -4892,6 +5071,232 @@ model OpsIntegration {
 /// Seeded and stable: these are the components of the moat as the company
 /// defines them, and they change when the strategy changes rather than when
 /// somebody has an idea.
+/// THE FREEZE: A STABLE PRODUCT, AND NOTHING ADDED TO IT.
+///
+/// Phase one's objective, made enforceable. "No more additions or
+/// modifications. Purely make what exists work for the use cases."
+///
+/// APPEND-ONLY, because turning it off is a decision with a name against it.
+/// Each row is that decision; the newest is the state. A freeze that could be
+/// switched off silently is a rule that lasts until the first person in a hurry.
+///
+/// It carries an end date because a freeze nobody remembers to lift becomes the
+/// reason nothing ships in March.
+model OpsFreeze {
+  id   String  @id @default(uuid())
+  isOn Boolean @map("is_on")
+
+  /// Why, in words. Required both ways: turning it ON and turning it OFF are
+  /// both decisions somebody has to account for later.
+  because String    @db.Text
+  /// When it should lift. Advisory rather than automatic — a freeze that
+  /// expires on its own ends without anybody deciding it should.
+  until   DateTime? @db.Date
+
+  decidedById String   @map("decided_by_id")
+  decidedAt   DateTime @default(now()) @map("decided_at")
+
+  @@index([decidedAt])
+  @@map("ops_freezes")
+}
+
+/// WHAT A PIECE OF WORK SERVES, DECLARED WHEN IT IS PROPOSED.
+///
+/// One table for every kind of item — roadmap, tech, UX — rather than four
+/// columns on each of three models. Two reasons beyond tidiness: the rule and
+/// its wording live in one place, and "work that named nothing" becomes a join
+/// rather than three queries that have to agree with each other.
+///
+/// Nothing here blocks. An item naming nothing is LISTED, at the moment it is
+/// proposed and the answer is cheapest.
+model OpsWhatItServes {
+  id String @id @default(uuid())
+
+  /// 'OpsRoadmapItem' | 'OpsTechItem' | 'OpsUXItem'. A plain string, because
+  /// this table must not need a foreign key into every kind of work there will
+  /// ever be.
+  recordType String @map("record_type")
+  recordId   String @map("record_id")
+
+  serves         OpsServes
+  /// The use case or moat component it points at, when it points at one.
+  servesRecordId String?   @map("serves_record_id")
+  /// Why this, and why now. The sentence somebody has to write down.
+  justification  String    @db.Text
+
+  /// WHAT THIS MAKES US DEPEND ON, AND WHO OWNS IT.
+  ///
+  /// The second threat, and the only one that cannot be detected — a tool or an
+  /// asset belonging to the person adding it. Declared here; the lockfile is the
+  /// witness that does not have to be trusted.
+  dependsOn        String? @map("depends_on") @db.Text
+  dependsOnOwnedBy String? @map("depends_on_owned_by")
+
+  declaredById String   @map("declared_by_id")
+  declaredAt   DateTime @default(now()) @map("declared_at")
+
+  @@unique([recordType, recordId])
+  @@index([serves])
+  @@map("ops_what_it_serves")
+}
+
+/// WHAT A PIECE OF WORK CAN SERVE, AND NOTHING ELSE.
+/// A STRETCH OF THE COMPANY'S PLAN. NOT A PERIOD.
+///
+/// The five phases of the workplan — prove it, build the team, sell it, scale
+/// it, raise on it. They OVERLAP: proving runs through October while the team
+/// phase runs to November and selling starts in October. That overlap is the
+/// whole reason this is its own table rather than a kind of OpsPeriod. A period
+/// contains objectives, has one set of dates, and only one is current; two
+/// phases are routinely running at once, and a quarter can sit inside two.
+///
+/// `exitCondition` is what has to be true to be done with it, and `exitMetric`
+/// is the key it is read from — so "are we out of this phase" is answered by
+/// the same registry every other number comes from, rather than by an opinion
+/// in a meeting. Nullable, because one of the five has an exit nobody has
+/// turned into a number yet, and recording that honestly is better than
+/// inventing one.
+model OpsPhase {
+  id      String @id @default(uuid())
+  key     String @unique
+  ordinal Int
+
+  name String
+  /// What this phase is for, in the words it was agreed in.
+  intent String @db.Text
+
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+
+  exitCondition String  @map("exit_condition") @db.Text
+  /// A key in the metric registry, or null while the exit is not yet a number.
+  exitMetric    String? @map("exit_metric")
+  exitTarget    Decimal? @map("exit_target") @db.Decimal(14, 2)
+
+  /// WHETHER WORK MAY BE JUSTIFIED AS MAKING THE COMPANY OPERABLE WHILE THIS
+  /// PHASE IS RUNNING.
+  ///
+  /// True for exactly one phase. The fifth thing a piece of work can serve is
+  /// bounded by the phase that makes it legitimate; outside that window it is
+  /// the loophole every measure eventually grows.
+  permitsOperability Boolean @default(false) @map("permits_operability")
+
+  @@index([ordinal])
+  @@map("ops_phases")
+}
+
+enum OpsServes {
+  /// It unblocks a customer use case.
+  SALES
+  /// It adds to one of the five moat components.
+  MOAT
+  /// It unlocks a customer we could not have taken before.
+  UNLOCKS_A_CUSTOMER
+  /// Security, a migration, a broken build. Necessary, invisible, and counted —
+  /// with an approval, so it is not the drawer everything gets filed in.
+  KEEPING_IT_UP
+  /// Hiring, onboarding, the operating manual, the things that make a company
+  /// of six work. Real contribution and not product work, so it is bounded by
+  /// the phase that makes it legitimate rather than available forever.
+  MAKES_THE_COMPANY_OPERABLE
+}
+
+/// WHAT WE SAY THIS PRODUCT IS, AND WHAT IT IS NOT.
+///
+/// The statement every piece of marketing is held up against. It lived in slide
+/// three of the sales deck — inside one of the documents it is meant to govern.
+///
+/// APPEND-ONLY. A sign-off records which version it was checked against, so
+/// changing the statement reopens everything signed against the old one — and
+/// that is only computable while the old one still exists. Newest version is the
+/// current one; nothing is ever edited in place.
+model OpsProductStatement {
+  id      String @id @default(uuid())
+  version Int    @unique
+
+  /// The line that says what this is, in the words the company actually uses.
+  headline    String @db.Text
+  /// The line to say out loud in the room.
+  saidOutLoud String @map("said_out_loud") @db.Text
+
+  isIt    String[] @map("is_it")
+  /// The half that does the work: what a piece of marketing actually violates.
+  isNotIt String[] @map("is_not_it")
+
+  writtenAt DateTime @default(now()) @map("written_at")
+  writtenBy String?  @map("written_by")
+  /// Why it changed, so a version nobody can account for is visible as one.
+  because   String?  @db.Text
+
+  @@index([version])
+  @@map("ops_product_statements")
+}
+
+/// WHAT WE PUT IN FRONT OF PEOPLE, AND WHETHER IT MATCHES WHAT WE SELL.
+///
+/// Decks, campaign content, site copy, newsletters. The register exists because
+/// the fastest way to break a product's positioning is a piece of marketing
+/// nobody checked — calling it a coaching tool, promising a use case it does not
+/// support — and marketing is written under time pressure by whoever is closest
+/// to the deadline.
+///
+/// `checkedAgainstVersion` is the whole point. A sign-off is only meaningful
+/// against a fixed set of words, so it records WHICH version of the product
+/// statement it passed, and changing the statement leaves every older sign-off
+/// visibly stale rather than silently wrong.
+model OpsResource {
+  id String @id @default(uuid())
+
+  title          String
+  category       OpsResourceCategory
+  /// Required when the category is OTHER: an unnamed 'other' is a drawer.
+  categoryDetail String?             @map("category_detail")
+
+  /// Where the thing itself lives. It is not stored here — this is a register,
+  /// not a document store, and a copy kept here would go stale against the one
+  /// people actually send.
+  url String?
+
+  /// The words being checked. Pasted, because a link cannot be read by a check.
+  content String @db.Text
+
+  addedById String   @map("added_by_id")
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  /// WHAT THE CHECK FOUND, AND WHICH WORDS IT USED.
+  ///
+  /// `checks` holds one entry per claim in the product statement, each with a
+  /// verdict and the sentence it is about. Kept as rows in JSON rather than a
+  /// count, because "3 of 5" is only meaningful if the 3 can be opened.
+  checks                Json?
+  checkedAgainstVersion Int?      @map("checked_against_version")
+  checkedAt             DateTime? @map("checked_at")
+  /// Said by the model, kept verbatim, and never the verdict on its own.
+  checkSays             String?   @map("check_says") @db.Text
+
+  /// The three things most likely to go wrong with this piece. Written by a
+  /// person, not the model: a risk somebody typed is a risk somebody owns.
+  risks String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([category])
+  @@map("ops_resources")
+}
+
+/// The kinds of thing the register holds. OTHER exists so the list does not
+/// have to be complete on day one, and carries a required detail so it cannot
+/// become the drawer everything is filed in.
+enum OpsResourceCategory {
+  PITCH_DECK
+  SALES_DECK
+  CAMPAIGN_STRATEGY
+  CAMPAIGN_CONTENT
+  MARKETING_SITE_COPY
+  NEWSLETTER
+  OTHER
+}
+
 model OpsMoatComponent {
   id        String @id @default(uuid())
   key       String @unique

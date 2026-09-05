@@ -71,12 +71,28 @@ describe('what each person is offered', () => {
    * him.
    */
   it('gives a contributor a small, whole interface', () => {
-    const theirs = pagesFor(['sprint:read', 'contributor:self', 'spend:submit']).map((p) => p.name)
-    /* Requests joined the list deliberately: anybody may ask for something they
+    const theirs = pagesFor(['target-companies:read', 'contributor:self', 'spend:submit']).map((p) => p.name)
+    /* "What we are" joined it for the strongest reason on the list: a contributor
+       is the person describing this product to a company that has never heard of
+       it, so the statement of what it is and is not matters to them more than to
+       anybody. A rule nobody can see is not a rule.
+
+       Requests joined the list deliberately: anybody may ask for something they
        cannot deliver without, and a contributor who is blocked is exactly who
        needs to say so. It is not empty for them either — the asking form is the
        page; only the queue is behind resourcing:approve, and the page says so. */
-    expect(theirs).toEqual(['My board', 'The sprint', 'Commitments', 'Spend', 'Objectives', 'Requests'])
+    expect(theirs).toEqual([
+      'My board',
+      'Target companies',
+      'Commitments',
+      'Spend',
+      'What we are',
+      /* The plan everybody is getting behind. A contributor who cannot see the
+         phases is being asked to get behind something they have not read. */
+      'The workplan',
+      'Objectives',
+      'Requests',
+    ])
   })
 
   it('and is offered no page that would always be empty for them', () => {
@@ -86,19 +102,19 @@ describe('what each person is offered', () => {
      * as a locked one wearing a friendlier face - it teaches somebody that
      * parts of their own interface are not worth opening.
      */
-    const theirs = pagesFor(['sprint:read', 'contributor:self', 'spend:submit']).map((p) => p.path)
+    const theirs = pagesFor(['target-companies:read', 'contributor:self', 'spend:submit']).map((p) => p.path)
     expect(theirs).not.toContain('/ops/approvals')
   })
 
   it('never offers a contributor the fundraise or the strategy', () => {
-    const theirs = pagesFor(['sprint:read', 'contributor:self', 'spend:submit']).map((p) => p.path)
+    const theirs = pagesFor(['target-companies:read', 'contributor:self', 'spend:submit']).map((p) => p.path)
     expect(theirs).not.toContain('/ops/fundraise')
     expect(theirs).not.toContain('/ops/strategy')
   })
 
   it('gives sales the selling pages and none of the building ones', () => {
     const theirs = pagesFor([
-      'sprint:read', 'sales:read', 'sales:write', 'marketing:read', 'deployment:read', 'product:read', 'contributor:self', 'spend:submit',
+      'target-companies:read', 'sales:read', 'sales:write', 'marketing:read', 'deployment:read', 'product:read', 'contributor:self', 'spend:submit',
     ]).map((p) => p.path)
     expect(theirs).toContain('/ops/pipeline')
     expect(theirs).toContain('/ops/deployment')

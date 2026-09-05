@@ -18,12 +18,14 @@ import { AssistantService } from '../assistant/assistant.service';
 import { HandoverService } from '../grounds/handover.service';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { ScenariosService } from '../detectors/scenarios.service';
-import { mayUseTheApi, NOT_PAID } from './the-api-is-a-paid-thing';
+import { mayUseTheApi, whyTheApiIsRefused } from './access-is-asked-for-not-bought';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 import { WhatHappenedWithACustomerService } from './what-happened-with-a-customer.service';
+import { DraftsService } from '../drafts/drafts.service';
+import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -72,6 +74,8 @@ export class PublicApiController {
     private readonly prisma: PrismaService,
     private readonly groundsByApi: GroundsByApiService,
     private readonly whatHappened: WhatHappenedWithACustomerService,
+    private readonly drafts: DraftsService,
+    private readonly checkIns: ACheckInACustomerCanRunService,
   ) {}
 
   /**
@@ -95,15 +99,18 @@ export class PublicApiController {
     }
 
     /*
-     * PAID ONLY, checked here rather than at credential issue - a subscription that lapses has to
-     * stop working, and a short-lived token means that happens within one token lifetime instead of
-     * waiting for somebody to remember to revoke.
+     * APPROVED ONLY, checked here rather than at credential issue - access withdrawn after a
+     * credential was issued has to stop working, and a short-lived token means that happens within
+     * one token lifetime instead of waiting for somebody to remember to revoke.
+     *
+     * It used to read the subscription. See `access-is-asked-for-not-bought.ts` for why it no
+     * longer does: what a customer pays for and what a customer may connect to are two decisions.
      */
-    const org = await this.prisma.organization.findUnique({
-      where: { id: cred.organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true },
+    const access = await this.prisma.apiAccessRequest.findUnique({
+      where: { organizationId: cred.organizationId },
+      select: { status: true },
     });
-    if (!mayUseTheApi(org)) throw new ForbiddenException(NOT_PAID);
+    if (!mayUseTheApi(access)) throw new ForbiddenException(whyTheApiIsRefused(access));
 
     await this.credentials.stampUse(cred.id);
 
@@ -555,6 +562,214 @@ export class PublicApiController {
    * `graph:write`, the scope for facts the customer's systems assert about their own world - the
    * same one subjects and interactions take. A metric is one more of those.
    */
+  // --- Running a check-in from inside somebody else's application ----------
+  //
+  // The one thing this product IS, and the one thing this API could not do: a
+  // customer could push every objective and read every report without ever
+  // holding a session. These add no rules — every refusal belongs to the
+  // conversation service and stays there.
+  //
+  // Guarded by the PANEL's session rather than a machine credential, for the
+  // same reason `/chat` is: a check-in belongs to one person, and a machine
+  // token carries an organisation and nobody in particular.
+
+  /**
+   * What is waiting for the person this panel is open for.
+   *
+   * The route without which none of the others can be called — a customer's
+   * page has a person, not a check-in id.
+   */
+  @Get('check-ins/mine')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "The check-ins waiting for this panel's person, and the ones not open yet" })
+  async myCheckIns(@Req() req: { panel: PanelCaller }) {
+    return this.checkIns.whatIsWaitingFor(req.panel.organizationId, req.panel.personId);
+  }
+
+  /** Open one. Returns the opening question. */
+  @Post('check-ins/:id/open')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Open a check-in and get its first question' })
+  async openCheckIn(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.open(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /** Say something in it. */
+  @Post('check-ins/:id/messages')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Answer in a check-in' })
+  async sayInCheckIn(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @Body() dto: { content?: string },
+  ) {
+    if (!dto?.content?.trim()) throw new BadRequestException('content is required.');
+    return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.content);
+  }
+
+  /** Finish it. What was said is released with everybody else's, not before. */
+  @Post('check-ins/:id/complete')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Finish a check-in' })
+  async completeCheckIn(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.complete(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /** Their own transcript, and never anybody else's. */
+  @Get('check-ins/:id/transcript')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "One person's own check-in transcript" })
+  async checkInTranscript(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.transcript(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  // --- Agreeing an objective before it becomes one -------------------------
+  //
+  // The drafting flow existed, refused to seed while anybody still disagreed,
+  // and was reachable by nothing — no route in this API and no screen. So the
+  // one part of the product that makes an objective something people agreed
+  // rather than something they were given could not be used by a customer.
+
+  /**
+   * Open a draft. It is not an objective and does not appear as one.
+   */
+  @Post('objective-drafts')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Start agreeing an objective. Not an objective until it is seeded.' })
+  async startDraft(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { initiatorExternalId?: string; workingTitle?: string; parentSubjectExternalId?: string },
+  ) {
+    if (!dto?.initiatorExternalId || !dto?.workingTitle) {
+      throw new BadRequestException('initiatorExternalId and workingTitle are both required.');
+    }
+    return this.drafts.start(req.machine.organizationId, dto.initiatorExternalId, {
+      workingTitle: dto.workingTitle,
+      parentSubjectExternalId: dto.parentSubjectExternalId ?? null,
+    });
+  }
+
+  /** Where it has got to, what is still contested, and what it is asking for next. */
+  @Get('objective-drafts/:id')
+  @UseGuards(MachineTokenGuard)
+  /* `findings:read`, the same scope reading subjects takes. Not a new one: a
+     draft is the org's own record of an objective being agreed, and it is
+     already covered by the scope that reads what the system holds about the
+     work. A draft carries people's positions, which is why it is not on a
+     write-only credential. */
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: "A draft's state, its open disagreements, and the next question" })
+  async draft(@Req() req: { machine: MachineCaller }, @Param('id') id: string) {
+    return this.drafts.status(req.machine.organizationId, id);
+  }
+
+  /** Pull somebody in. Their own conversation, not a copy of anybody else's. */
+  @Post('objective-drafts/:id/participants')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Invite somebody onto a draft' })
+  async inviteToDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { byExternalId?: string; personExternalId?: string },
+  ) {
+    if (!dto?.byExternalId || !dto?.personExternalId) {
+      throw new BadRequestException('byExternalId and personExternalId are both required.');
+    }
+    return this.drafts.invite(req.machine.organizationId, id, dto.byExternalId, dto.personExternalId);
+  }
+
+  /**
+   * Answer the next question the draft is asking.
+   *
+   * Separate from a contribution, which is how a second person DISAGREES and
+   * opens a contention. An empty field is not a disagreement.
+   */
+  @Post('objective-drafts/:id/answers')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Answer what the draft is asking for: measure, target, justification, approach' })
+  async answerDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { personExternalId?: string; piece?: string; body?: string },
+  ) {
+    const PIECES = ['measure', 'target', 'justification', 'approach'];
+    if (!dto?.personExternalId || !dto?.piece || !dto?.body) {
+      throw new BadRequestException('personExternalId, piece and body are all required.');
+    }
+    if (!PIECES.includes(dto.piece)) {
+      throw new BadRequestException(`piece must be one of ${PIECES.join(', ')}.`);
+    }
+    return this.drafts.answer(
+      req.machine.organizationId,
+      id,
+      dto.personExternalId,
+      dto.piece as 'measure' | 'target' | 'justification' | 'approach',
+      dto.body,
+    );
+  }
+
+  /** Say what you think it should be. Two different answers open a contention. */
+  @Post('objective-drafts/:id/contributions')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Say what you think the measure, target, title or date should be' })
+  async contributeToDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { personExternalId?: string; field?: string; body?: string },
+  ) {
+    if (!dto?.personExternalId || !dto?.field || !dto?.body) {
+      throw new BadRequestException('personExternalId, field and body are all required.');
+    }
+    return this.drafts.contribute(req.machine.organizationId, id, dto.personExternalId, dto.field, dto.body);
+  }
+
+  /** Settle a disagreement. A decision somebody makes, not a state that decays. */
+  @Post('objective-drafts/:id/contentions/:contentionId/resolve')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Settle one disagreement on a draft' })
+  async resolveDraftContention(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Param('contentionId') contentionId: string,
+    @Body() dto: { resolution?: string },
+  ) {
+    if (!dto?.resolution) throw new BadRequestException('resolution is required — say what it is, not only that it is settled.');
+    return this.drafts.resolveContention(req.machine.organizationId, id, contentionId, dto.resolution);
+  }
+
+  /**
+   * Turn it into an objective. Refused while anybody still disagrees, and
+   * refused while nobody has said why the number matters or how it moves.
+   */
+  @Post('objective-drafts/:id/seed')
+  @HttpCode(201)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Make the agreed draft into an objective' })
+  async seedDraft(
+    @Req() req: { machine: MachineCaller },
+    @Param('id') id: string,
+    @Body() dto: { externalId?: string; sourceSystem?: string },
+  ) {
+    if (!dto?.externalId || !dto?.sourceSystem) {
+      throw new BadRequestException('externalId and sourceSystem are both required — the objective needs an id in your own system.');
+    }
+    return this.drafts.seed(req.machine.organizationId, id, dto.externalId, dto.sourceSystem);
+  }
+
   @Put('metrics')
   @UseGuards(MachineTokenGuard)
   @RequiresScope('graph:write')

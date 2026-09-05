@@ -8,9 +8,31 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OpsCapability, DEFAULT_GRANTS, can, isAKnownCapability, OPS_CAPABILITIES } from './what-somebody-may-do';
+import {
+  OpsCapability,
+  DEFAULT_GRANTS,
+  can,
+  isAKnownCapability,
+  OPS_CAPABILITIES,
+  everyRole,
+} from './what-somebody-may-do';
 import { OpsFunctionalRole } from '@prisma/client';
 import { rollOutNewCapabilities } from './a-new-capability-reaches-the-people-who-should-have-it';
+import {
+  GRANTS_FOR_A_PLATFORM_ADMIN,
+  ROLE_FOR_A_PLATFORM_ADMIN,
+  keyForAccount,
+  nameForAccount,
+} from './a-platform-admin-is-on-the-team';
+
+/** What the product's auth layer knows about the caller. Nothing more is read. */
+export interface SignedInAccount {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  isPlatformAdmin?: boolean | null;
+}
 
 export interface OpsIdentity {
   personId: string;
@@ -60,15 +82,132 @@ export class OpsPeopleService implements OnModuleInit {
     }
   }
 
-  /** The ops identity behind a signed-in account, or null if there isn't one. */
-  async identify(userId: string | undefined): Promise<OpsIdentity | null> {
-    if (!userId) return null;
+  /**
+   * The ops identity behind a signed-in account, or null if there isn't one.
+   *
+   * The account is passed whole rather than as an id, so the ops system never
+   * has to read the product's user table to answer a question about its own
+   * membership. `OpsPerson.userId` remains the single link, and it is still a
+   * plain column with no foreign key.
+   */
+  async identify(account: SignedInAccount | undefined): Promise<OpsIdentity | null> {
+    if (!account?.id) return null;
 
     const person = await this.prisma.opsPerson.findUnique({
-      where: { userId },
+      where: { userId: account.id },
       include: { grants: true },
     });
-    if (!person || !person.active) return null;
+
+    if (!person) {
+      /* A platform admin is on this team by definition. See the note in
+         `a-platform-admin-is-on-the-team.ts` for why that is not an escalation. */
+      if (!account.isPlatformAdmin) return null;
+      return this.admitThePlatformAdmin(account);
+    }
+
+    if (!person.active) return null;
+
+    return {
+      personId: person.id,
+      key: person.key,
+      displayName: person.displayName,
+      functionalRole: person.functionalRole,
+      capabilities: person.grants.map((g) => g.capability),
+    };
+  }
+
+  /**
+   * Makes the record, once, on first arrival.
+   *
+   * A real OpsPerson rather than a borrowed identity: half this system points at
+   * a person — attributions, commitments, targets, who approved what — and an
+   * identity with no row behind it would break every one of those the moment it
+   * did anything.
+   *
+   * Deactivated later, this does not resurrect them: `active: false` clears
+   * `userId`, so the next arrival has no link and lands here again — which is
+   * why the key is checked as well. Somebody taken off the team on purpose stays
+   * off, and gets the ordinary refusal.
+   */
+  private async admitThePlatformAdmin(account: SignedInAccount): Promise<OpsIdentity | null> {
+    const key = keyForAccount(account.email ?? '');
+
+    /*
+     * MATCHED ON THE ADDRESS FIRST, THEN ON THE KEY.
+     *
+     * The key is made from the local part of the address, so one human with two
+     * addresses gets two keys and — before this — two people. Found by the one
+     * board, which listed Hafsah and Hafsah Jumare as separate rows of the same
+     * team: the seeded person carried one address and she signed in with
+     * another, so nothing matched and a twin was created.
+     *
+     * The email is a real identity and a unique column, so matching on it is a
+     * fact rather than a guess. What is NOT attempted is matching on the name:
+     * two people called Hafsah would be merged by it, and merging the wrong two
+     * people silently reassigns somebody's contribution — the one mistake this
+     * system exists to make impossible. A human the address cannot connect stays
+     * a second row, visibly, on a board that shows the whole team at once.
+     */
+    const already =
+      (account.email
+        ? await this.prisma.opsPerson.findUnique({
+            where: { email: account.email.toLowerCase() },
+            include: { grants: true },
+          })
+        : null) ??
+      (await this.prisma.opsPerson.findUnique({
+        where: { key },
+        include: { grants: true },
+      }));
+    if (already) {
+      if (!already.active) return null;
+      /* The record exists and was not linked to this account — link it rather
+         than making a second person for the same human. */
+      await this.prisma.opsPerson.update({
+        where: { id: already.id },
+        data: { userId: account.id },
+      });
+      this.logger.warn(
+        `${already.displayName} signed in as ${account.email} and was linked to the existing record rather than given a second one.`,
+      );
+      return {
+        personId: already.id,
+        key: already.key,
+        displayName: already.displayName,
+        functionalRole: already.functionalRole,
+        capabilities: already.grants.map((g) => g.capability),
+      };
+    }
+
+    const person = await this.prisma.opsPerson.create({
+      data: {
+        key,
+        displayName: nameForAccount({
+          email: account.email ?? key,
+          firstName: account.firstName,
+          lastName: account.lastName,
+        }),
+        /*
+         * THE ADDRESS, BECAUSE WITHOUT IT THEY DO NOT EXIST TO GROUNDWORK.
+         *
+         * This was left null, and the consequence was invisible until somebody
+         * opened the assistant: `peopleFrom` skips anybody with no email, so an
+         * auto-admitted person is never pushed, no Person is created in the
+         * organisation, and the panel answers `visible: false` about somebody
+         * who is plainly on the team. Found by driving the panel, not by
+         * reading this.
+         */
+        email: account.email ?? null,
+        userId: account.id,
+        functionalRole: ROLE_FOR_A_PLATFORM_ADMIN,
+        grants: { create: GRANTS_FOR_A_PLATFORM_ADMIN.map((capability) => ({ capability })) },
+      },
+      include: { grants: true },
+    });
+
+    this.logger.warn(
+      `${account.email} is a platform admin and was not on the team. Admitted as ${person.displayName} (${person.key}).`,
+    );
 
     return {
       personId: person.id,
@@ -192,6 +331,59 @@ export class OpsPeopleService implements OnModuleInit {
       where: { id: person.id },
       data: { active, ...(active ? {} : { userId: null }) },
     });
+  }
+
+  /** The roles somebody can be given, and what each comes with. */
+  roles() {
+    return everyRole();
+  }
+
+  /**
+   * Change what somebody does.
+   *
+   * THE ROLE IS NOT THE ANSWER TO WHAT THEY MAY DO — the grants are, and they
+   * stay rows. So this ADDS the new role's defaults and removes nothing: if
+   * Sahar takes over product, she needs product:write, and whether she keeps
+   * sales:write is a decision somebody should make on purpose rather than one
+   * this call makes for them by silently stripping it.
+   *
+   * The capabilities she no longer needs are revoked one at a time on the same
+   * page, which is the only way that can be a decision rather than a side
+   * effect.
+   */
+  async changeRole(personKey: string, functionalRole: OpsFunctionalRole) {
+    const person = await this.byKey(personKey);
+    if (!DEFAULT_GRANTS[functionalRole]) {
+      throw new BadRequestException(`${functionalRole} is not a role this system knows about`);
+    }
+
+    const updated = await this.prisma.opsPerson.update({
+      where: { id: person.id },
+      data: { functionalRole },
+    });
+
+    const added = await this.prisma.opsGrant.createMany({
+      data: DEFAULT_GRANTS[functionalRole].map((capability) => ({
+        personId: person.id,
+        capability,
+      })),
+      skipDuplicates: true,
+    });
+
+    this.logger.warn(
+      `${person.displayName} is now ${functionalRole} (was ${person.functionalRole}). ${added.count} capabilities added, none removed.`,
+    );
+
+    return {
+      key: updated.key,
+      functionalRole: updated.functionalRole,
+      was: person.functionalRole,
+      capabilitiesAdded: added.count,
+      says:
+        added.count === 0
+          ? 'They already held everything that role comes with. Nothing was taken away.'
+          : `${added.count} added. Nothing was taken away — revoke what they no longer need, one at a time, so it is a decision.`,
+    };
   }
 
   private async byKey(key: string) {

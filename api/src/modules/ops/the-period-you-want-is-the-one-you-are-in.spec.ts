@@ -14,7 +14,7 @@ import { OpsFoundationService } from './ops-foundation.service';
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
 const PERIODS = [
-  { key: 'sept-2026-sprint', startsOn: day('2026-09-01'), endsOn: day('2026-09-30') },
+  { key: 'sept-2026-target-list', startsOn: day('2026-09-01'), endsOn: day('2026-09-30') },
   { key: 'q4-2026', startsOn: day('2026-10-01'), endsOn: day('2026-12-31') },
   { key: 'q4-cycle-1', startsOn: day('2026-10-01'), endsOn: day('2026-10-14') },
   { key: 'q4-cycle-7', startsOn: day('2026-12-24'), endsOn: day('2026-12-31') },
@@ -36,10 +36,10 @@ describe('the period list', () => {
   it('opens on the period we are in, not the one that starts last', async () => {
     pretendItIs('2026-09-04');
     const periods = await serviceAt(PERIODS).periods();
-    expect(periods[0].key).toBe('sept-2026-sprint');
+    expect(periods[0].key).toBe('sept-2026-target-list');
   });
 
-  it('puts every period containing today at the top, because a sprint and a quarter can overlap', async () => {
+  it('puts every period containing today at the top, because a target list and a quarter can overlap', async () => {
     pretendItIs('2026-10-05');
     const periods = await serviceAt(PERIODS).periods();
     expect(periods.slice(0, 2).map((p) => p.key).sort()).toEqual(['q4-2026', 'q4-cycle-1']);

@@ -10,12 +10,12 @@
  * This asserts the partition rather than either number, so it holds however the
  * readiness rules change.
  */
-import { OpsSprintService } from './ops-sprint.service';
+import { OpsTargetCompaniesService } from './ops-target-companies.service';
 
 const period = {
   id: 'per1',
-  key: 'sept-2026-sprint',
-  name: 'September sprint',
+  key: 'sept-2026-target-list',
+  name: 'September target list',
   startsOn: new Date('2026-09-01'),
   endsOn: new Date('2026-09-30'),
   goal: null,
@@ -26,7 +26,7 @@ function serviceOver(companies: unknown[]) {
     opsPeriod: { findUnique: async () => period },
     opsCompany: { findMany: async () => companies },
   } as never;
-  return new OpsSprintService(prisma, { get: async () => 'READY' } as never);
+  return new OpsTargetCompaniesService(prisma, { get: async () => 'READY' } as never);
 }
 
 const company = (name: string, useCases: Array<{ productReadiness: string }>) => ({

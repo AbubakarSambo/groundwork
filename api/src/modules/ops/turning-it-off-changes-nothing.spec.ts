@@ -80,7 +80,7 @@ describe('what we send is our own work, in the shapes the API takes', () => {
       keyResults: [
         {
           id: 'kr1',
-          title: 'Companies attached to the sprint',
+          title: 'Companies attached to the target list',
           target: 10,
           unit: 'companies',
           current: 3,
@@ -323,13 +323,13 @@ describe('a 200 is not the same as something happening', () => {
 
   it('does not report success when every piece of evidence matched nothing', async () => {
     const { service } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: false }] });
-    const result = await service.push('sept-2026-sprint');
+    const result = await service.push('sept-2026-target-list');
     expect(result.ok).toBe(false);
   });
 
   it('and says what to do about it, rather than just failing', async () => {
     const { service } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: false }] });
-    const result = await service.push('sept-2026-sprint');
+    const result = await service.push('sept-2026-target-list');
     expect(result.advice).toMatch(/objectives may not have seeded/);
   });
 
@@ -341,20 +341,20 @@ describe('a 200 is not the same as something happening', () => {
      * useless to somebody with nowhere for them to seed onto.
      */
     const { service } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: false }] }, null);
-    const result = await service.push('sept-2026-sprint');
+    const result = await service.push('sept-2026-target-list');
     expect(result.advice).toMatch(/no check-in for these numbers to land on/);
     expect(result.advice).toMatch(/will not open one for you/);
   });
 
   it('and the connection screen says it too, so it is not only in one response', async () => {
     const { service, recorded } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: false }] });
-    await service.push('sept-2026-sprint');
+    await service.push('sept-2026-target-list');
     expect(recorded.some((r) => String(r.lastSyncSummary).includes('matched no objective'))).toBe(true);
   });
 
   it('but is happy when the evidence lands', async () => {
     const { service } = serviceWith({ received: [{ objectiveExternalId: 'kr1', matched: true }] });
-    const result = await service.push('sept-2026-sprint');
+    const result = await service.push('sept-2026-target-list');
     expect(result.ok).toBe(true);
     expect(result.advice).toBeUndefined();
   });
@@ -366,7 +366,7 @@ describe('a 200 is not the same as something happening', () => {
         { objectiveExternalId: 'kr2', matched: false },
       ],
     });
-    const result = await service.push('sept-2026-sprint');
+    const result = await service.push('sept-2026-target-list');
     expect(result.ok).toBe(true);
   });
 });

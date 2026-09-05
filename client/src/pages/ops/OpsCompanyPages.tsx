@@ -54,13 +54,25 @@ function TheRowsBehindIt({ rows }: { rows?: Array<Record<string, unknown>> }) {
 
 export function OpsQuarterPage() {
   /* Empty until the periods arrive. A seeded key written into the client opens
-     on a period that will not always exist — the same defect as on the sprint
+     on a period that will not always exist — the same defect as on the target list
      page, in two more places. `periods()` puts the one containing today first. */
   const [period, setPeriod] = useState('')
   const periods = useQuery({ queryKey: ['ops', 'periods'], queryFn: opsApi.periods, retry: false })
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   const workstreams = useQuery({ queryKey: ['ops', 'workstreams'], queryFn: opsApi.workstreams, retry: false })
   const metrics = useQuery({ queryKey: ['ops', 'metric-keys'], queryFn: opsApi.metricKeys, retry: false })
+  const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
+  const whatItCanServe = useQuery({
+    queryKey: ['ops', 'what-work-can-serve'],
+    queryFn: opsApi.whatWorkCanServe,
+    retry: false,
+  })
+  const aim = useQuery({
+    queryKey: ['ops', 'quarter-aim', period],
+    queryFn: () => opsApi.howTheQuarterIsAimed(period),
+    retry: false,
+    enabled: period !== '',
+  })
 
   useEffect(() => {
     const first = periods.data?.[0]?.key
@@ -74,7 +86,27 @@ export function OpsQuarterPage() {
     enabled: period !== '',
   })
 
+  const qc = useQueryClient()
   const maySet = me.data?.capabilities.includes('objectives:write') ?? false
+  const mayOpen = me.data?.capabilities.includes('periods:write') ?? false
+
+  /* THE GATE ON OPENING THE PERIOD, asked as a question rather than discovered
+     by pressing the button. Everybody sees it: the answer is a list of names,
+     and the people on it are the ones who can shorten it. */
+  const canOpen = useQuery({
+    queryKey: ['ops', 'can-open', period],
+    queryFn: () => opsApi.canOpenPeriod(period),
+    retry: false,
+    enabled: period !== '',
+  })
+
+  const open = useMutation({
+    mutationFn: () => opsApi.openPeriod(period),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ops', 'can-open', period] })
+      qc.invalidateQueries({ queryKey: ['ops', 'periods'] })
+    },
+  })
 
   /* MANUAL is always allowed: somebody's word is a legitimate source, and the
      board says which numbers were typed. Every other option is a metric this
@@ -100,6 +132,56 @@ export function OpsQuarterPage() {
         ))}
       </select>
 
+      {/* WHO THE PERIOD IS WAITING ON. Shown before it opens and gone after,
+          because a green "everybody is set" banner on every visit for three
+          months is furniture. */}
+      {canOpen.data && !canOpen.data.ready && (
+        <section
+          style={{ ...CARD, marginBottom: 14, borderLeft: '3px solid var(--gw-amber-t)' }}
+        >
+          <p style={LABEL}>Before this period opens</p>
+          <p style={{ fontSize: 14, margin: '5px 0 0', lineHeight: 1.6 }}>{canOpen.data.says}</p>
+        </section>
+      )}
+
+      {canOpen.data?.ready && mayOpen && (periods.data ?? []).find((p) => p.key === period)?.status !== 'OPEN' && (
+        <section style={{ ...CARD, marginBottom: 14 }}>
+          <p style={{ fontSize: 14, margin: 0 }}>{canOpen.data.says}</p>
+          <button
+            type="button"
+            onClick={() => open.mutate()}
+            disabled={open.isPending}
+            style={{ marginTop: 10, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer' }}
+          >
+            {open.isPending ? 'Opening…' : 'Open this period'}
+          </button>
+          {open.isError && (
+            <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
+              {(open.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                'It could not be opened.'}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* HOW MUCH OF THE PERIOD IS AIMED AT SCALE. A split, never a score: a
+          quarter that is mostly something else may be exactly right, and the
+          point is that it was decided rather than that it happened. */}
+      {aim.data && aim.data.of > 0 && (
+        <section style={{ ...CARD, marginBottom: 14 }}>
+          <p style={LABEL}>What this period is aimed at</p>
+          <p style={{ fontSize: 14, margin: '5px 0 0' }}>{aim.data.says}</p>
+          {aim.data.disagreements.map((d) => (
+            /* Said, never refused. Eight companies against three in the
+               pipeline may be the target rather than a mistake — which it is
+               belongs to whoever set it. */
+            <p key={d.objective} style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '8px 0 0', lineHeight: 1.6 }}>
+              <strong>{d.objective}</strong> — {d.says}
+            </p>
+          ))}
+        </section>
+      )}
+
       {/* SETTING ONE WAS BUILT AND UNREACHABLE. The endpoints for creating an
           objective and adding a key result had no caller anywhere, so this page
           could show targets and never take one. */}
@@ -109,19 +191,50 @@ export function OpsQuarterPage() {
             title="Set an objective"
             fields={[
               { name: 'title', label: 'What we are trying to achieve', required: true },
+              /* CHOSEN, NOT INHERITED. The field existed and was never asked
+                 for, so an objective took whoever opened the form — which meant
+                 it was owned by nobody. */
+              {
+                name: 'ownerKey',
+                label: 'Who owns it',
+                required: true,
+                options: (people.data ?? []).map((p) => ({ value: p.key, label: p.displayName })),
+              },
               {
                 name: 'workstreamKey',
                 label: 'Whose area',
                 required: true,
                 options: (workstreams.data ?? []).map((w) => ({ value: w.key, label: w.name })),
               },
-              { name: 'description', label: 'Why it matters', type: 'textarea' },
+              {
+                name: 'serves',
+                label: 'What it buys',
+                required: true,
+                /* The same four values a piece of work can serve, so an
+                   objective and the work under it answer one question in one
+                   vocabulary. */
+                options: (whatItCanServe.data ?? []).map((o) => ({ value: o.serves, label: o.label })),
+              },
+              { name: 'justification', label: 'Why this', type: 'textarea', required: true },
+              /* THE CONVEYOR BELT. "Why is this the best use of time" is
+                 unanswerable in the abstract and only answerable against the
+                 alternative — and nobody writes it unless the form asks. */
+              { name: 'instead', label: 'What it is instead of', required: true, placeholder: 'the partner channel' },
+              { name: 'companiesExpected', label: 'How many companies, if it is a revenue objective', type: 'number' },
+              { name: 'valuePerCompany', label: 'What each is worth ($)', type: 'number' },
+              { name: 'description', label: 'Anything else worth recording', type: 'textarea' },
             ]}
             submit={(v) =>
               opsApi.createObjective({
                 periodKey: period,
                 workstreamKey: v.workstreamKey,
+                ownerKey: v.ownerKey,
                 title: v.title,
+                serves: v.serves,
+                justification: v.justification,
+                instead: v.instead,
+                companiesExpected: v.companiesExpected ? Number(v.companiesExpected) : undefined,
+                valuePerCompanyCents: v.valuePerCompany ? Math.round(Number(v.valuePerCompany) * 100) : undefined,
                 description: v.description || undefined,
               })
             }
@@ -154,6 +267,20 @@ export function OpsQuarterPage() {
                     required: true,
                     options: sources,
                   },
+                  /* Owned separately from the objective, which is how somebody
+                     owns a piece of something they do not own. */
+                  {
+                    name: 'ownerKey',
+                    label: 'Who owns this number',
+                    required: true,
+                    options: (people.data ?? []).map((p) => ({ value: p.key, label: p.displayName })),
+                  },
+                  /* WHY THIS NUMBER, AND HOW IT WILL BE MOVED. A target and a
+                     source say what to reach and where the figure comes from,
+                     and neither says whether the target is the right one or
+                     whether anybody has thought about hitting it. */
+                  { name: 'justification', label: 'Why this number', type: 'textarea', required: true },
+                  { name: 'approach', label: 'How it will be moved', type: 'textarea', required: true },
                   { name: 'dueDate', label: 'By when', type: 'date', required: true },
                 ]}
                 submit={(v) =>
@@ -164,6 +291,9 @@ export function OpsQuarterPage() {
                     startValue: v.startValue ? Number(v.startValue) : undefined,
                     unit: v.unit,
                     measurementSource: v.measurementSource,
+                    ownerKey: v.ownerKey,
+                    justification: v.justification,
+                    approach: v.approach,
                     dueDate: v.dueDate,
                   })
                 }
@@ -231,6 +361,14 @@ export function OpsQuarterPage() {
               {/* A NUMBER YOU CAN OPEN, WHERE IT MATTERS MOST. The rows were
                   in the payload all along and this page threw them away, so
                   "3 of 10 qualified" could not be checked against the three. */}
+              {/* The reasoning behind the number, beside it. Filed on another
+                  screen it would be written once and read never. */}
+              {(kr.justification || kr.approach) && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.6 }}>
+                  {kr.justification && <div>{kr.justification}</div>}
+                  {kr.approach && <div style={{ marginTop: 2 }}>How: {kr.approach}</div>}
+                </div>
+              )}
               <TheRowsBehindIt rows={kr.rows} />
             </div>
           ))}
@@ -605,7 +743,7 @@ export function OpsSpendPage() {
               title="Record money in"
               fields={[
                 { name: 'amount', label: 'How much', type: 'number', required: true },
-                { name: 'source', label: 'Where from', required: true, placeholder: 'Afrimash activation' },
+                { name: 'source', label: 'Where from', required: true, placeholder: 'Northwind activation' },
                 { name: 'date', label: 'When', type: 'date', required: true },
                 { name: 'note', label: 'Anything worth remembering', type: 'textarea' },
               ]}
@@ -840,7 +978,7 @@ export function OpsIntegrationPage() {
   const status = useQuery({ queryKey: ['ops', 'integration'], queryFn: opsApi.integration, retry: false })
   const queryClient = useQueryClient()
   const push = useMutation({
-    mutationFn: () => opsApi.pushToGroundwork('sept-2026-sprint'),
+    mutationFn: () => opsApi.pushToGroundwork('sept-2026-target-list'),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ops', 'integration'] }),
   })
 

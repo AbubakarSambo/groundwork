@@ -2979,6 +2979,8 @@ export interface PromptContext {
     dueSaid?: string | null;
     /** Their words read as a date, where they carried one. Null is common and fine. */
     dueDate?: Date | string | null;
+    /** Why the number is that number, as stated when the target was set. Never something they agreed to. */
+    whyThisNumber?: string | null;
     /** The name of whoever is waiting on it, for a commitment. */
     owedToName?: string | null;
     status?: string | null;
@@ -3296,6 +3298,27 @@ function describeObjective(o: NonNullable<PromptContext['personObjective']>): st
   }
 
   if (o.status && o.status !== 'OPEN') parts.push(`recorded as ${o.status.toLowerCase()}`);
+
+  /*
+   * WHY THE NUMBER IS THAT NUMBER, WHICH IS THE QUESTION A MISSED TARGET NEEDS.
+   *
+   * Without it the session facing a shortfall can only ask about the gap, and asking somebody about
+   * a gap invites an account of themselves. With it, the session can ask whether the reason still
+   * holds - which is a question about the target, is answerable, and is the thing anybody reading
+   * the record afterwards actually needs.
+   *
+   * CARRIED UNDER THE SAME RULE AS THE OBJECTIVE. It is what was stated when the target was set,
+   * never something this person agreed to, so `howToUseIt` still decides whether they may be read
+   * against any of it. Stating a reason does not turn an unseen target into an accepted one.
+   */
+  if (o.whyThisNumber) {
+    parts.push(
+      `the reason given for the number was "${o.whyThisNumber}" - if it is being missed, ask whether `
+      + 'that reason still holds rather than asking why they are behind. Do not present the reason as '
+      + 'something they agreed to',
+    );
+  }
+
   parts.push(howToUseIt);
 
   return `${o.text} (${parts.join('; ')})`;

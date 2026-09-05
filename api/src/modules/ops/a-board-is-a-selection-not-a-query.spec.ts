@@ -109,20 +109,20 @@ describe('a board computed for one person', () => {
   });
 
   it('is offered when it is yours, or when you can see all of it', () => {
-    const offered = service.boardsFor(person(['contributor:self', 'sprint:read'])).boards.map((b) => b.key);
+    const offered = service.boardsFor(person(['contributor:self', 'target-companies:read'])).boards.map((b) => b.key);
     expect(offered).toContain('contributor');
     expect(offered).not.toContain('ceo');
   });
 
   it('and half a board is never offered as a whole one', () => {
     /**
-     * A contributor holding sprint:read was being shown "Running the company",
-     * because two of its eleven numbers happened to be sprint counts. A board
+     * A contributor holding target-companies:read was being shown "Running the company",
+     * because two of its eleven numbers happened to be target-list counts. A board
      * that presents itself as the company's command centre while showing a
      * ninth of it is worse than not offering it: they may still open those two
      * numbers directly, which they can.
      */
-    const partial = service.boardsFor(person(['sprint:read']));
+    const partial = service.boardsFor(person(['target-companies:read']));
     expect(partial.boards.map((b) => b.key)).not.toContain('ceo');
   });
 
@@ -130,7 +130,7 @@ describe('a board computed for one person', () => {
     /**
      * Written after this test failed for real. With only contributor:self they
      * saw ZERO boards, because their board's one company-wide number needs
-     * sprint:read — and the thing they actually come for, their standing
+     * target-companies:read — and the thing they actually come for, their standing
      * against their six, is not a metric at all. A person whose home page is
      * empty concludes the system is not for them, which for the people bringing
      * us companies is the worst possible conclusion.

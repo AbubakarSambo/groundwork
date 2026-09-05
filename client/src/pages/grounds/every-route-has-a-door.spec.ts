@@ -87,7 +87,7 @@ const REACHED_FROM_OUTSIDE = [
    * system, even one that would 403.
    *
    * Declared here rather than left to satisfy the scan by accident. /ops and
-   * /ops/sprint link to EACH OTHER, which is enough for the check below and
+   * /ops/target-companies link to EACH OTHER, which is enough for the check below and
    * proves nothing about either having a door - a circle is not an entrance.
    */
   '/ops',

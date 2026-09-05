@@ -81,8 +81,6 @@ export function IntegrationsPage() {
   const { user } = useAuthStore()
   const qc = useQueryClient()
   const isAdmin = user?.role === 'ADMIN'
-  /* Null for anybody who has never paid, which is what "on the free plan" means. */
-  const plan = user?.organization?.subscriptionPlan ?? null
 
   const [credName, setCredName] = useState('')
   const [credScopes, setCredScopes] = useState<string[]>(['subjects:write', 'findings:read'])
@@ -94,6 +92,15 @@ export function IntegrationsPage() {
   const [freshHookSecret, setFreshHookSecret] = useState<string | null>(null)
 
   const creds = useQuery({ queryKey: ['integrations', 'credentials'], queryFn: integrationsApi.listCredentials, enabled: isAdmin })
+  const access = useQuery({ queryKey: ['integrations', 'access'], queryFn: integrationsApi.myApiAccess, enabled: isAdmin, retry: false })
+  const [whatFor, setWhatFor] = useState('')
+  const askForAccess = useMutation({
+    mutationFn: () => integrationsApi.askForApiAccess(whatFor),
+    onSuccess: () => {
+      setWhatFor('')
+      qc.invalidateQueries({ queryKey: ['integrations', 'access'] })
+    },
+  })
   /*
    * The example below uses a real client id when there is one, so it is a command that runs rather
    * than a template to adapt. Revoked keys are skipped - pasting a dead id would be worse than a
@@ -283,18 +290,53 @@ export function IntegrationsPage() {
         )}
       </div>
 
-      {!plan && (
+      {/*
+        * SENDING DATA IN NEEDS TO BE ASKED FOR, and it used to need a plan.
+        *
+        * The banner is shown on the ACCESS REQUEST rather than on the
+        * subscription, because that is what the API now checks. Getting this
+        * wrong in the safe-looking direction — leaving the old plan warning up —
+        * would tell somebody to go and pay for something that is free, which is
+        * the worst version of a stale message.
+        */}
+      {access.data && !access.data.approved && (
         <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>
-            Sending data in needs a paid plan
+            Sending data in needs to be asked for
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            {access.data.says}{' '}
             You can set all of this up now. Issue a key, register where to be told, and it will be
-            waiting - the key starts working the moment you subscribe. Until then the token request
-            answers 403, and nothing else on this page is affected: we can already tell your systems
-            when something happens here.{' '}
-            <a href="/billing" style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>See the plans →</a>
+            waiting - the key starts working the moment access is approved. Nothing else on this
+            page is affected: we can already tell your systems when something happens here.
           </div>
+
+          {access.data.status !== 'PENDING' && (
+            <div style={{ marginTop: 12 }}>
+              <textarea
+                value={whatFor}
+                onChange={(e) => setWhatFor(e.target.value)}
+                placeholder="What do you want to build with it? Somebody reads this."
+                aria-label="What do you want to build with it?"
+                rows={3}
+                style={{ width: '100%', padding: 8, fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+              />
+              <button
+                type="button"
+                onClick={() => askForAccess.mutate()}
+                disabled={askForAccess.isPending}
+                style={{ marginTop: 8, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {askForAccess.isPending ? 'Asking…' : 'Ask for access'}
+              </button>
+              {askForAccess.isError && (
+                <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>
+                  {(askForAccess.error as { response?: { data?: { message?: string } } })?.response?.data?.message
+                    ?? 'That could not be recorded.'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

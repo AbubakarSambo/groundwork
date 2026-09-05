@@ -33,7 +33,7 @@ import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
 import OpsBoardPage from '@/pages/ops/OpsBoardPage'
-import OpsSprintPage from '@/pages/ops/OpsSprintPage'
+import OpsTargetCompaniesPage from '@/pages/ops/OpsTargetCompaniesPage'
 import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
 import OpsPeoplePage from '@/pages/ops/OpsPeoplePage'
 import OpsMoatPage from '@/pages/ops/OpsMoatPage'
@@ -45,6 +45,11 @@ import {
   OpsCommercialPipelinePage,
 } from '@/pages/ops/OpsContributionPages'
 import { OpsLayout } from '@/pages/ops/OpsLayout'
+import { OpsWhatWeArePage } from '@/pages/ops/OpsWhatWeArePage'
+import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
+import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
+import { OpsWorkplanPage } from '@/pages/ops/OpsWorkplanPage'
+import { ApiAccessPage } from '@/pages/admin/ApiAccessPage'
 import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
@@ -330,7 +335,7 @@ export default function App() {
               * failing requests.
               */}
             <Route path="/ops" element={<RequireAuth><OpsLayout><OpsBoardPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/sprint" element={<RequireAuth><OpsLayout><OpsSprintPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/target-companies" element={<RequireAuth><OpsLayout><OpsTargetCompaniesPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
@@ -349,7 +354,11 @@ export default function App() {
             <Route path="/ops/readiness" element={<RequireAuth><OpsLayout><OpsReadinessPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/workplan" element={<RequireAuth><OpsLayout><OpsWorkplanPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/resources" element={<RequireAuth><OpsLayout><OpsResourcesPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/everybody" element={<RequireAuth><OpsLayout><OpsEverybodyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/quarter" element={<RequireAuth><OpsLayout><OpsQuarterPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/what-we-are" element={<RequireAuth><OpsLayout><OpsWhatWeArePage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/requests" element={<RequireAuth><OpsLayout><OpsRequestsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/decisions" element={<RequireAuth><OpsLayout><OpsDecisionsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/approvals" element={<RequireAuth><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireAuth>} />
@@ -375,6 +384,7 @@ export default function App() {
                 every endpoint behind it is admin-gated on the server. */}
             <Route path="/org/integrations" element={<RequireOrgSetup><IntegrationsPage /></RequireOrgSetup>} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
             {/* Any unmatched path renders a real not-found page rather than

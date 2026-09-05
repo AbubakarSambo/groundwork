@@ -165,12 +165,12 @@ function YourStanding({ personKey }: { personKey: string }) {
     <section style={{ ...CARD, marginBottom: 12 }}>
       <p style={LABEL}>What you brought</p>
       {targets.map((t) => (
-        <div key={t.periodKey + String(t.isSprintExpectation)} style={{ marginTop: 8 }}>
+        <div key={t.periodKey + String(t.isTargetListExpectation)} style={{ marginTop: 8 }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gw-navy)' }}>
             {t.countedSoFar} of {t.targetCount}
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
-            {t.isSprintExpectation ? 'this sprint' : t.period} · by{' '}
+            {t.isTargetListExpectation ? 'this list' : t.period} · by{' '}
             {new Date(t.dueDate).toLocaleDateString()}
           </div>
         </div>
@@ -313,7 +313,7 @@ function WaitingOnYou() {
 }
 
 export default function OpsBoardPage() {
-  const [period, setPeriod] = useState('sept-2026-sprint')
+  const [period, setPeriod] = useState('sept-2026-target-list')
   const [chosen, setChosen] = useState<string | null>(null)
 
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
