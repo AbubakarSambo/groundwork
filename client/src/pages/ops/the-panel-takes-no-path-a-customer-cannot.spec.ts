@@ -79,6 +79,22 @@ describe('the assistant panel', () => {
     expect(CODE).toMatch(/onClick=\{\(\) => openCheckIn\(c\.checkInId\)\}/)
   })
 
+  it('does not cancel its own handshake', () => {
+    /**
+     * IT DID, AND THE GREETING HAD NEVER ONCE BEEN DRAWN.
+     *
+     * The effect depended on `session` and SET `session` halfway through. Storing
+     * the token re-ran the effect, React ran the previous run's cleanup, the
+     * cleanup set `cancelled`, and the run still in flight returned at its next
+     * check — which sits between fetching the opening and rendering it.
+     *
+     * Every request before that point succeeded, so the network tab looked
+     * perfect and the box stayed empty. Only opening it found it.
+     */
+    expect(CODE).toMatch(/\}, \[readyToken\]\)/)
+    expect(CODE).not.toMatch(/\}, \[ready, session\]\)/)
+  })
+
   it('never reaches into the product', () => {
     /* An import from modules/embed, or from anywhere in the API, is the panel
        marking its own homework. */

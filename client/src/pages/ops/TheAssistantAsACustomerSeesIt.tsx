@@ -147,15 +147,38 @@ export function TheAssistantAsACustomerSeesIt() {
   const bottom = useRef<HTMLDivElement>(null)
 
   const ready = panel.data?.ready ? panel.data : null
+  /* A STABLE THING TO DEPEND ON. `ready` is rebuilt on every render, so an
+     effect keyed on it re-runs on every render and cancels its own work. */
+  const readyToken = ready?.token ?? null
+  const started = useRef(false)
 
-  /* The handshake, exactly as a customer's widget makes it on every load. */
+  /**
+   * The handshake, exactly as a customer's widget makes it on every load.
+   *
+   * THE EFFECT USED TO CANCEL ITSELF HALFWAY THROUGH, and the panel's greeting
+   * has never once been drawn because of it.
+   *
+   * It depended on `session`, and it SETS `session` in the middle: storing the
+   * token re-runs the effect, React runs the previous run's cleanup, the cleanup
+   * sets `cancelled`, and the run still in flight returns at its next check —
+   * which sits between fetching the opening and rendering it. Every request
+   * before that point succeeded, so the network tab looked perfect and the box
+   * stayed empty.
+   *
+   * Keyed on the token and guarded by a ref instead: the handshake runs once per
+   * token, and setting state during it cannot interrupt it.
+   */
   useEffect(() => {
-    if (!ready || session) return
+    if (!readyToken || !ready || started.current) return
+    started.current = true
+    /* Captured, so the whole handshake uses the values it started with rather
+       than whatever a later render happens to be holding. */
+    const base = ready.baseUrl
     let cancelled = false
     ;(async () => {
       setProblem('')
       try {
-        const res = await fetch(`${ready.baseUrl}/api/org/v1/embed/session`, {
+        const res = await fetch(`${base}/api/org/v1/embed/session`, {
           method: 'POST',
           credentials: 'omit',
           headers: { 'Content-Type': 'application/json' },
@@ -197,7 +220,7 @@ export function TheAssistantAsACustomerSeesIt() {
         }
         setSession(token)
 
-        const opening = await fetch(`${ready.baseUrl}/api/org/v1/embed/opening`, {
+        const opening = await fetch(`${base}/api/org/v1/embed/opening`, {
           credentials: 'omit',
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -211,7 +234,7 @@ export function TheAssistantAsACustomerSeesIt() {
         /* What is waiting for this person, on the same session. A customer's
            page has a person, not a check-in id, so this is the route without
            which none of the others can be reached. */
-        const mine = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/mine`, {
+        const mine = await fetch(`${base}/api/org/v1/check-ins/mine`, {
           credentials: 'omit',
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -223,7 +246,7 @@ export function TheAssistantAsACustomerSeesIt() {
           setUnaccepted(mineBody?.invitationNotAccepted ?? [])
         }
 
-        const awaiting = await fetch(`${ready.baseUrl}/api/org/v1/grounds/awaiting-me`, {
+        const awaiting = await fetch(`${base}/api/org/v1/grounds/awaiting-me`, {
           credentials: 'omit',
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -237,7 +260,7 @@ export function TheAssistantAsACustomerSeesIt() {
     return () => {
       cancelled = true
     }
-  }, [ready, session])
+  }, [readyToken])
 
   useEffect(() => {
     /* The app's own scroll, not the raw call: smooth is not guaranteed, and a
