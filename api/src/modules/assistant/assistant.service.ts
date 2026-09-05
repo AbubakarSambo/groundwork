@@ -22,6 +22,7 @@ import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
+import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
@@ -1037,7 +1038,11 @@ export class AssistantService {
 
     const all = await this.prisma.subject.findMany({
       where: { organizationId, sourceDeletedAt: null },
-      select: { title: true, target: true, measure: true, ownerExternalId: true, contributorExternalIds: true, dueDate: true },
+      /* `justification` and `approach` are the reason the number is the number and what anybody
+         meant to do about it. They were collected, carried across the API and rendered into the
+         check-in prompt, and were invisible here - so the one place somebody ASKS about their work
+         was the one place that could not say what it was for. */
+      select: { title: true, target: true, measure: true, ownerExternalId: true, contributorExternalIds: true, dueDate: true, justification: true, approach: true },
       orderBy: { dueDate: 'asc' },
     });
 
@@ -1054,12 +1059,13 @@ export class AssistantService {
       return rules('what_am_i_on', text('Nothing your organisation has sent us lists you as an owner or a contributor. That may mean the work is tracked somewhere that is not connected yet.'));
     }
 
-    const line = (s: typeof all[number]) =>
-      `- ${s.title}${s.target ? ` (target: ${s.target})` : ''}${s.dueDate ? `, due ${s.dueDate.toDateString()}` : ''}`;
-
     const parts: string[] = [];
-    if (owned.length) parts.push(`You own ${owned.length}:`, ...owned.map(line));
-    if (contributing.length) parts.push(`${parts.length ? '\n' : ''}You are a contributor on ${contributing.length}:`, ...contributing.map(line));
+    if (owned.length) parts.push(`You own ${owned.length}:`, ...owned.map(asALine));
+    if (contributing.length) parts.push(`${parts.length ? '\n' : ''}You are a contributor on ${contributing.length}:`, ...contributing.map(asALine));
+
+    const missing = whatIsMissingAcrossThem([...owned, ...contributing]);
+    if (missing) parts.push(`\n${missing}`);
+
     parts.push('\nThat is what your systems say. Whether it matches what you are actually spending your time on is the more interesting question, and one for your check-in.');
 
     return rules('what_am_i_on', text(parts.join('\n')));
