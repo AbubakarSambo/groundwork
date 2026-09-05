@@ -41,6 +41,13 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Debug token/account (temporary)
+        run: |
+          echo "Token belongs to:"
+          vercel whoami --token=${{ secrets.VERCEL_TOKEN }}
+          echo "Projects visible to this token under the org:"
+          vercel project ls --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }}
+
       - name: Pull Vercel project settings
         run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
         env:
