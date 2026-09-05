@@ -2,6 +2,11 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsIntentService } from './ops-intent.service';
 import { GroundworkApiClient } from './the-groundwork-api-as-a-customer';
+import {
+  whatThisCompanyDecided,
+  whatServingMeans,
+  type WhatWeHold,
+} from './what-this-company-decided';
 import { mintEmbedToken, whyThePanelCannotOpen } from './a-token-a-customer-would-mint';
 import {
   subjectsFrom,
@@ -178,6 +183,17 @@ export class OpsIntegrationService {
         });
       }
 
+      /*
+       * WHAT THIS COMPANY DECIDED, WHICH HAD NEVER BEEN SENT.
+       *
+       * Before the objectives on purpose: an assistant asked "why are we doing
+       * this" needs what we agreed, and an objective arriving before the reason
+       * for it is the same ordering mistake the check-in prompt had.
+       */
+      for (const decided of whatThisCompanyDecided(await this.whatWeHold())) {
+        results.push({ what: `decided: ${decided.key}`, ...(await client.pushCard(decided)) });
+      }
+
       const evidence = evidenceFrom(objectives);
       if (evidence.length) {
         const sent = await client.pushEvidence(evidence);
@@ -241,6 +257,53 @@ export class OpsIntegrationService {
           : undefined,
       /** Verbatim, including the refusals. */
       results,
+    };
+  }
+
+  /**
+   * The decisions this company has made, read from our own tables.
+   *
+   * Assembled here rather than in `what-this-company-decided.ts` so that file
+   * stays a pure shaping of records into cards — testable without a database,
+   * like everything else that decides what leaves this system.
+   */
+  private async whatWeHold(): Promise<WhatWeHold> {
+    const [statement, moat, phases, freeze, resources] = await Promise.all([
+      this.prisma.opsProductStatement.findFirst({ orderBy: { version: 'desc' } }),
+      this.prisma.opsMoatComponent.findMany({ orderBy: { ordinal: 'asc' } }),
+      this.prisma.opsPhase.findMany({ orderBy: { ordinal: 'asc' } }),
+      /* The LATEST record, which is what the freeze is — the table is append-only
+         and the newest row is the current state. Whether it is on is read below;
+         a lapsed freeze sent as current is worse than sending nothing. */
+      this.prisma.opsFreeze.findFirst({ orderBy: { decidedAt: 'desc' } }),
+      this.prisma.opsResource.findMany({ orderBy: { addedAt: 'desc' }, take: 20 }),
+    ]);
+
+    return {
+      statement: statement
+        ? {
+            version: statement.version,
+            headline: statement.headline,
+            saidOutLoud: statement.saidOutLoud,
+            isIt: statement.isIt,
+            isNotIt: statement.isNotIt,
+          }
+        : null,
+      moat: moat.map((m) => ({ name: m.name, statement: m.statement })),
+      phases: phases.map((p) => ({
+        name: p.name,
+        intent: p.intent,
+        startsOn: p.startsOn,
+        endsOn: p.endsOn,
+        exitCondition: p.exitCondition,
+        exitMetric: p.exitMetric,
+      })),
+      freeze:
+        freeze && freeze.isOn && (freeze.until === null || freeze.until >= new Date())
+          ? { because: freeze.because, until: freeze.until }
+          : null,
+      resources: resources.map((r) => ({ title: r.title, category: r.category, risks: r.risks })),
+      serves: whatServingMeans(),
     };
   }
 
