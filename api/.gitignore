@@ -1,1 +1,11 @@
 credentials/
+
+# THE TEMPLATE, RE-INCLUDED HERE AND NOT ONLY AT THE ROOT.
+#
+# The root file excludes `**/.env.*` and re-includes `!**/.env.example`. That is
+# correct and it depends on how a particular git reads `**` inside a negation —
+# a CI runner disagreed with a laptop about it, and reported this file as
+# ignored. A deeper .gitignore takes precedence over a shallower one on every
+# version, so saying it again here settles the question rather than relying on
+# the two agreeing.
+!.env.example
