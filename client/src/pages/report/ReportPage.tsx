@@ -684,7 +684,7 @@ function HiddenContributorsSection({
       {contributors.map((c, i) => {
         const key = `${i}-${c.label}`
         return (
-          <div key={key} style={{ padding: '9px 0', borderTop: i > 0 ? '0.5px solid var(--gw-blue-bg)' : undefined }}>
+          <div key={key} style={{ padding: '9px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45, marginBottom: 6 }}>{c.evidence}</div>
             {done.has(key) ? (

@@ -61,7 +61,7 @@ export class PageCrash extends Component<{ children: ReactNode }, { message: str
 
         <div
           style={{
-            marginTop: 22, paddingTop: 14, borderTop: '0.5px solid var(--gw-border)',
+            marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)',
             fontSize: 11, color: 'var(--gw-muted)', fontFamily: 'ui-monospace, monospace',
             wordBreak: 'break-word', textAlign: 'left',
           }}

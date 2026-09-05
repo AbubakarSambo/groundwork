@@ -2811,7 +2811,7 @@ export function EntryChatPage() {
                       {sessionReport.suggestedParties.map((p, i) => {
                         const key = `sug-${i}-${p.role}`
                         return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-blue-bg)' : undefined }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <CardTitle>{p.role}</CardTitle>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
@@ -2860,7 +2860,7 @@ export function EntryChatPage() {
                       {sessionReport.mentionedPeople.map((p, i) => {
                         const key = `men-${i}-${p.name}`
                         return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-border)' : undefined }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <CardTitle>{p.name}</CardTitle>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
@@ -2911,7 +2911,7 @@ export function EntryChatPage() {
                         </div>
                       )}
                       {sessionReport.alsoCameUp.map((p, i) => (
-                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-border)' : undefined }}>
+                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                           <CardTitle>{p.name}</CardTitle>
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
                         </div>
@@ -3344,10 +3344,10 @@ export function EntryChatPage() {
                     Paste multiple emails
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {window.location.origin}/invite?token={inviteToken}
                     </div>
-                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
                       {copiedLink ? 'Copied!' : 'Copy link'}
                     </button>
                   </div>

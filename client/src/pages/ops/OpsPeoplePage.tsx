@@ -69,7 +69,7 @@ function Capability({
         aria-pressed={held}
         title={held ? `Take ${capability} away from ${person.displayName}` : `Give ${person.displayName} ${capability}`}
         style={{
-          border: '0.5px solid var(--gw-border)',
+          border: '1px solid var(--gw-border)',
           borderRadius: 20,
           padding: '2px 9px',
           margin: '0 4px 4px 0',

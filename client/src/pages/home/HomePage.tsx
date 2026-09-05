@@ -79,7 +79,7 @@ export function HomePage() {
         </div>
         <button
           onClick={() => navigate('/auth')}
-          style={{ fontSize: 12, color: 'rgba(255,255,255,.7)', background: 'rgba(255,255,255,.12)', border: '0.5px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 12, color: 'rgba(255,255,255,.7)', background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           Sign in
         </button>
@@ -171,7 +171,7 @@ export function HomePage() {
           </div>
 
           {faqAnswer && (
-            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: 1.65, color: 'var(--gw-text)' }}>
               {faqAnswer}
             </div>
           )}
@@ -220,7 +220,7 @@ export function HomePage() {
                 <div
                   key={c.param}
                   onClick={() => navigate(`/grounds/new?scenario=${encodeURIComponent(c.param)}`)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
@@ -232,7 +232,7 @@ export function HomePage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '0.5px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
               No account needed to start. Your words stay private until you save them.
             </div>

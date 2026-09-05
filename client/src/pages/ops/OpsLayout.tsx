@@ -13,7 +13,7 @@ import { pagesFor, GROUPS } from './what-you-can-open'
 
 export const CARD: React.CSSProperties = {
   background: 'white',
-  border: '0.5px solid var(--gw-border)',
+  border: '1px solid var(--gw-border)',
   borderRadius: 8,
   padding: '12px 14px',
 }
@@ -51,7 +51,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
         style={{
           width: 186,
           flex: 'none',
-          borderRight: '0.5px solid var(--gw-border)',
+          borderRight: '1px solid var(--gw-border)',
           padding: '24px 14px',
           background: 'white',
         }}

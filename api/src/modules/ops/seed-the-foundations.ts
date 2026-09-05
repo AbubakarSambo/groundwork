@@ -301,15 +301,29 @@ export async function seedTheFoundations(prisma: PrismaClient) {
       ? (await prisma.opsPeriod.findUnique({ where: { key: period.parentKey } }))?.id ?? null
       : null;
 
+    /*
+     * A SPRINT IS CREATED ONCE AND THEN LEFT ALONE.
+     *
+     * Quarters and cycles are the calendar: if this file's idea of Q4 changes,
+     * the stored one should follow, because nobody chose it. A sprint is the
+     * opposite — it is a stretch of time somebody set, and can be re-dated,
+     * renamed and re-scoped from the sprint page. Updating it here would mean
+     * re-running the seed silently undid that, and the person who moved the
+     * dates would find them moved back with nothing to say why.
+     */
+    const isASprint = period.kind === 'SPRINT';
+
     await prisma.opsPeriod.upsert({
       where: { key: period.key },
-      update: {
-        name: period.name,
-        startsOn: asDate(period.startsOn),
-        endsOn: asDate(period.endsOn),
-        goal: period.goal,
-        parentPeriodId,
-      },
+      update: isASprint
+        ? {}
+        : {
+            name: period.name,
+            startsOn: asDate(period.startsOn),
+            endsOn: asDate(period.endsOn),
+            goal: period.goal,
+            parentPeriodId,
+          },
       create: {
         key: period.key,
         name: period.name,

@@ -549,7 +549,7 @@ body {
 /* ── GROUND CARDS ────────────────────────────────────────── */
 .gw-ground-card {
   background: white;
-  border: 0.5px solid var(--gw-border);
+  border: 1px solid var(--gw-border);
   border-radius: 10px;
   padding: 14px 16px;
   cursor: pointer;
@@ -578,8 +578,14 @@ body {
   transition: all 0.15s;
   background: white;
 }
-.cg-sit-card:hover { border-color: var(--gw-blue-b); background: var(--gw-blue-bg); }
-.cg-sit-card.selected { border-color: var(--gw-navy); background: var(--gw-blue-bg); }
+/* SELECTION IS NOT A SCALE VALUE.
+   Green, amber and red are a scale in this product - aligned, needs realignment, escalate -
+   and blue sits beside them on notices meaning 'read this'. Painting a card blue because a
+   pointer is over it, or because somebody picked it, teaches the scale a fourth meaning that
+   is about the mouse. Selection uses --gw-slate, a neutral surface the system already has, so
+   no colour is invented and no colour does two jobs. The navy border still carries 'this one'. */
+.cg-sit-card:hover { border-color: var(--gw-navy); background: var(--gw-slate); }
+.cg-sit-card.selected { border-color: var(--gw-navy); background: var(--gw-slate); }
 .cg-sit-check {
   width: 18px; height: 18px; border-radius: 50%;
   border: 1.5px solid var(--gw-border); flex-shrink: 0;
@@ -627,7 +633,7 @@ body {
   color: var(--gw-sub); background: white; border: 1px solid var(--gw-border);
   padding: 5px 11px; border-radius: 100px; white-space: nowrap; transition: all .15s;
 }
-.cg-jump a:hover, .cg-jump a:focus-visible { color: var(--gw-navy); border-color: var(--gw-navy); background: var(--gw-blue-bg); }
+.cg-jump a:hover, .cg-jump a:focus-visible { color: var(--gw-navy); border-color: var(--gw-navy); background: var(--gw-slate); }
 .cg-jump a b { color: var(--gw-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Clear both the header and the jump bar when a jump link lands, or the heading
@@ -693,8 +699,8 @@ body {
   border: 1px solid var(--gw-border); border-radius: 8px;
   padding: 12px 14px; cursor: pointer; transition: all 0.15s; background: white;
 }
-.cg-res-card:hover { border-color: var(--gw-blue-b); background: var(--gw-blue-bg); }
-.cg-res-card.selected { border-color: var(--gw-navy); background: var(--gw-blue-bg); }
+.cg-res-card:hover { border-color: var(--gw-navy); background: var(--gw-slate); }
+.cg-res-card.selected { border-color: var(--gw-navy); background: var(--gw-slate); }
 .cg-res-check {
   width: 18px; height: 18px; border-radius: 50%;
   border: 1.5px solid var(--gw-border); flex-shrink: 0; margin-top: 2px;
@@ -715,18 +721,18 @@ body {
 .land-sit-card:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); }
 
 /* ── REPORT SECTION ACCORDION ────────────────────────────── */
-.gw-report-section { background: white; border: 0.5px solid var(--gw-border); border-radius: 8px; overflow: hidden; }
+.gw-report-section { background: white; border: 1px solid var(--gw-border); border-radius: 8px; overflow: hidden; }
 .gw-report-section-hdr {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; cursor: pointer; font-size: 13px; font-weight: 600;
 }
-.gw-report-section-body { display: none; padding: 0 14px 14px; border-top: 0.5px solid var(--gw-border); font-size: 13px; line-height: 1.65; color: var(--gw-sub); }
+.gw-report-section-body { display: none; padding: 0 14px 14px; border-top: 1px solid var(--gw-border); font-size: 13px; line-height: 1.65; color: var(--gw-sub); }
 .gw-report-section.open .gw-report-section-body { display: block; }
 
 /* ── PARTICIPANT ROW (ground admin) ──────────────────────── */
 .ga-participant-row {
   display: flex; align-items: center; justify-content: space-between;
-  background: white; border: 0.5px solid var(--gw-border); border-radius: 8px; padding: 11px 14px;
+  background: white; border: 1px solid var(--gw-border); border-radius: 8px; padding: 11px 14px;
 }
 .ga-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
@@ -783,7 +789,7 @@ body.gw-sb-collapsed .gw-main { margin-left: 0; }
   transform: translateY(-50%);
   z-index: 60;
   background: white;
-  border: 0.5px solid var(--gw-border);
+  border: 1px solid var(--gw-border);
   border-left: none;
   border-radius: 0 6px 6px 0;
   width: 22px;
@@ -817,7 +823,7 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   position: fixed;
   bottom: 0; left: 0; right: 0;
   background: white;
-  border-top: 0.5px solid #E2E0DB;
+  border-top: 1px solid #E2E0DB;
   z-index: 100;
   padding: 0 8px;
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -860,13 +866,13 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
 }
 .gw-panel-left {
   flex: 0 0 270px;
-  border-right: 0.5px solid var(--gw-border);
+  border-right: 1px solid var(--gw-border);
   background: var(--gw-bg);
 }
 .gw-panel-center {
   flex: 1;
   min-width: 0;
-  border-right: 0.5px solid var(--gw-border);
+  border-right: 1px solid var(--gw-border);
   padding: 14px 16px;
   overflow-y: auto;
 }

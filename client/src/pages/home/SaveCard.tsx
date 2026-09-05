@@ -68,9 +68,9 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
 
   if (variant === 'participant') {
     return (
-      <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
         {/* What happens next */}
-        <div style={{ padding: '14px 16px', background: 'var(--gw-green-bg)', borderBottom: '0.5px solid var(--gw-green-b)' }}>
+        <div style={{ padding: '14px 16px', background: 'var(--gw-green-bg)', borderBottom: '1px solid var(--gw-green-b)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 8 }}>
             Session 1 is on record.
           </div>
@@ -90,7 +90,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           </div>
         </div>
         {/* Save account */}
-        <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '0.5px solid var(--gw-blue-b)' }}>
+        <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
             Save your account to receive the report.
           </div>
@@ -171,12 +171,12 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
     <div
       style={{
         background: 'white',
-        border: '0.5px solid var(--gw-border)',
+        border: '1px solid var(--gw-border)',
         borderRadius: 12,
         overflow: 'hidden',
       }}
     >
-      <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '0.5px solid var(--gw-blue-b)' }}>
+      <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
           Your first session is on record.
         </div>
@@ -186,7 +186,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       </div>
 
       {/* Section 1: email */}
-      <div style={{ padding: '16px', borderBottom: '0.5px solid var(--gw-border)' }}>
+      <div style={{ padding: '16px', borderBottom: '1px solid var(--gw-border)' }}>
         <form onSubmit={save}>
           <div className="gw-fld">
             <label className="gw-label">Your email</label>
@@ -215,7 +215,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       </div>
 
       {/* Section 2: invite link */}
-      <div style={{ padding: '14px 16px', borderBottom: '0.5px solid var(--gw-border)' }}>
+      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
           Share your invite link
         </div>
@@ -224,7 +224,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           <input
             readOnly
             value={inviteUrl}
-            style={{ flex: 1, fontSize: 11, padding: '7px 9px', border: '0.5px solid var(--gw-border)', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', fontFamily: 'inherit', minWidth: 0 }}
+            style={{ flex: 1, fontSize: 11, padding: '7px 9px', border: '1px solid var(--gw-border)', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', fontFamily: 'inherit', minWidth: 0 }}
             onClick={e => (e.target as HTMLInputElement).select()}
           />
           <button

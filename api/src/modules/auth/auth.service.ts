@@ -98,56 +98,50 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
     if (existingUser) throw new ConflictException('Email already registered');
 
-    const emailDomain = dto.email.split('@')[1]?.split('.')[0] ?? 'workspace';
-    const orgName = dto.organizationName?.trim() || emailDomain.charAt(0).toUpperCase() + emailDomain.slice(1);
-    const slug = await this.generateUniqueSlug(orgName);
+    /**
+     * NOTHING IS CREATED UNTIL THE ADDRESS IS PROVED. GW-001, closed here too.
+     *
+     * This path used to do all of it on the spot: an Organization named and slugged from the EMAIL
+     * DOMAIN, and a User with role ADMIN, both with `isEmailVerified: false`. So signing up as
+     * `sahar@meridianhealth.test` took the `meridianhealth` slug platform-wide before anybody opened
+     * the mail, and the real company arrived later to find itself at `meridianhealth-2`.
+     *
+     * `entrySave` was fixed first because it is the path the client actually walks. This endpoint
+     * and `registerMagicLink` are not reached by any client form, but they are registered routes,
+     * so the door was still open — and a fix that only covers the path people happen to use is a
+     * fix that waits for somebody to find the other one.
+     *
+     * All three now park the whole signup in `pendingSignup` against the verification token, and
+     * `verifyEmail` builds the organisation and the admin in one transaction when the link opens.
+     * The password hash rides along on that record rather than on a User, because the User is
+     * precisely the thing that must not exist yet.
+     */
     const passwordHash = await bcrypt.hash(dto.password, 12);
+    const token = crypto.randomBytes(32).toString('hex');
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      /*
-       * THE CONTACT EMAIL IS THE ADMIN'S, UNTIL THEY SAY OTHERWISE.
-       *
-       * `isOrgSetupComplete` on the client is `!!organization.email` - so an organisation created
-       * without one sends its admin to "Set up your organization" on EVERY sign-in, forever, asking
-       * for a name it already has and an address it could have worked out. Signing up with Google
-       * landed exactly there: the org was created with a name and a slug and nothing else.
-       *
-       * Defaulting it is not a guess. The person creating an organisation is its first admin and
-       * their address is the one we already write to; Settings changes it in one field, and the
-       * setup screen says as much. Asking again for something already known is the defect.
-       */
-      const organization = await tx.organization.create({
-        data: { name: orgName, slug, email: dto.email.toLowerCase() },
-      });
-
-      const user = await tx.user.create({
-        data: {
-          organizationId: organization.id,
-          email: dto.email.toLowerCase(),
-          passwordHash,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          role: 'ADMIN', // the person who opens the workspace is its admin
-          isEmailVerified: false,
-        },
-      });
-      /* The first admin of a new organisation holds it. One function, five doors. */
-      await theFirstAdminHoldsIt(tx, organization.id, user.id);
-
-      const token = crypto.randomBytes(32).toString('hex');
-      await tx.emailVerificationToken.create({
-        data: {
-          userId: user.id,
-          token,
-          type: TokenType.EMAIL_VERIFICATION,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-      });
-
-      return { user, token };
+    await this.prisma.pendingSignup.upsert({
+      where: { email: dto.email.toLowerCase() },
+      create: {
+        email: dto.email.toLowerCase(),
+        token,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        /* The person's own name, never their employer's domain, when none was typed. */
+        orgName: dto.organizationName?.trim() || null,
+        passwordHash,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+      update: {
+        token,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        orgName: dto.organizationName?.trim() || null,
+        passwordHash,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
     });
 
-    await this.emailService.sendVerificationEmail(dto.email.toLowerCase(), dto.firstName, result.token);
+    await this.emailService.sendVerificationEmail(dto.email.toLowerCase(), dto.firstName, token);
     return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
   }
 
@@ -160,48 +154,32 @@ export class AuthService {
     if (existingUser) throw new ConflictException('Email already registered');
 
     const emailLocal = dto.email.toLowerCase().split('@')[0];
-    const emailDomain = dto.email.toLowerCase().split('@')[1]?.split('.')[0] ?? 'org';
     const firstName = dto.firstName?.trim() || emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
     const lastName = dto.lastName?.trim() || '';
+
     /**
-     * Same land-grab as in entrySave, in the other signup path: when no org name
-     * was given, this named the organisation after the EMAIL DOMAIN, so
-     * `sahar@meridianhealth.test` created an org literally called "Meridianhealth"
-     * and took that slug - before the address was verified. Falling back to the
-     * person's own name keeps an unverified stranger from claiming a company's
-     * identity. See GW-001.
+     * Same as `register`: nothing exists until the link is opened. GW-001.
+     *
+     * The land-grab half was fixed here first — the organisation stopped being named after the email
+     * domain and fell back to the person's own name. What stayed was an Organization and an ADMIN
+     * User created against an unverified address. Both now wait on the pending record, and the
+     * name fallback moves to `verifyEmail`, which already does exactly this for the entry flow.
      */
-    const organizationName = dto.organizationName?.trim() || `${firstName}'s workspace`;
-    void emailDomain;
-
-    const slug = await this.generateUniqueSlug(organizationName);
-
-    const result = await this.prisma.$transaction(async (tx) => {
-      /* The contact email is the admin's until they say otherwise - see the note on register. */
-      const organization = await tx.organization.create({ data: { name: organizationName, slug, email: dto.email.toLowerCase() } });
-      const user = await tx.user.create({
-        data: {
-          organizationId: organization.id,
-          email: dto.email.toLowerCase(),
-          passwordHash: null,
-          firstName,
-          lastName,
-          role: 'ADMIN',
-          isEmailVerified: false,
-        },
-      });
-      /* The first admin of a new organisation holds it. One function, five doors. */
-      await theFirstAdminHoldsIt(tx, organization.id, user.id);
-
-      const token = crypto.randomBytes(32).toString('hex');
-      await tx.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-      });
-
-      return { user, token };
+    const token = crypto.randomBytes(32).toString('hex');
+    const pendingData = {
+      token,
+      firstName,
+      lastName,
+      orgName: dto.organizationName?.trim() || null,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    };
+    await this.prisma.pendingSignup.upsert({
+      where: { email: dto.email.toLowerCase() },
+      create: { email: dto.email.toLowerCase(), ...pendingData },
+      update: pendingData,
     });
 
-    await this.emailService.sendMagicLinkEmail(dto.email.toLowerCase(), firstName, result.token);
+    await this.emailService.sendMagicLinkEmail(dto.email.toLowerCase(), firstName, token);
     return { message: 'Account created. Please check your email to activate your account.', email: dto.email.toLowerCase() };
   }
 
@@ -283,7 +261,9 @@ export class AuthService {
             organizationId: org.id,
             email: pending.email,
             firstName: pending.firstName,
-            lastName: '',
+            lastName: pending.lastName ?? '',
+            /* Only the password signup path carries one. The others set a password later. */
+            passwordHash: pending.passwordHash,
             role: 'ADMIN',
             // Verified by construction: this only runs because the link opened.
             isEmailVerified: true,

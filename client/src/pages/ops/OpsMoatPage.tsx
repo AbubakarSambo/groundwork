@@ -108,7 +108,7 @@ export default function OpsMoatPage() {
                   {c.entries.map((e) => (
                     <li
                       key={e.id}
-                      style={{ borderTop: '0.5px solid var(--gw-border)', padding: '8px 0 0', marginTop: 8 }}
+                      style={{ borderTop: '1px solid var(--gw-border)', padding: '8px 0 0', marginTop: 8 }}
                     >
                       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                         <strong style={{ fontSize: 13.5 }}>{e.title}</strong>

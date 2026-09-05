@@ -204,6 +204,9 @@ export interface OpsExpense {
   amount: string
   status: string
   rejectedReason: string | null
+  /** Whose claim it is. Everybody sees everybody's, so every row needs a name. */
+  requesterName: string
+  requesterKey: string | null
 }
 
 export interface OpsBalance {
@@ -492,7 +495,32 @@ export const opsApi = {
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
   board: (key: string, period: string) =>
     apiClient.get<OpsBoard>(`/ops/boards/${key}`, { ...QUIET, params: { period } }).then((r) => r.data),
-  periods: () => apiClient.get<Array<{ key: string; name: string; kind: string }>>('/ops/periods', QUIET).then((r) => r.data),
+  periods: () =>
+    apiClient
+      .get<Array<{ key: string; name: string; kind: string; startsOn: string; endsOn: string; goal: string | null; status: string }>>(
+        '/ops/periods',
+        QUIET,
+      )
+      .then((r) => r.data),
+  /** Start a sprint over any stretch of time. Sprints only — a quarter is the calendar. */
+  startASprint: (body: { name: string; startsOn: string; endsOn: string; goal?: string }) =>
+    apiClient.post('/ops/periods', body, QUIET).then((r) => r.data),
+  /** Move its dates, rename it, open or close it. The key never moves. */
+  resetASprint: (
+    key: string,
+    body: { name?: string; startsOn?: string; endsOn?: string; goal?: string | null; status?: string },
+  ) => apiClient.patch(`/ops/periods/${key}`, body, QUIET).then((r) => r.data),
+  /** Every company, or only the ones on one sprint. */
+  allCompanies: (sprintPeriodKey?: string) =>
+    apiClient
+      .get<Array<{ key: string; name: string; stage: string; sprintPeriodId: string | null }>>('/ops/companies', {
+        ...QUIET,
+        params: sprintPeriodKey ? { sprint: sprintPeriodKey } : undefined,
+      })
+      .then((r) => r.data),
+  /** Put a company on a sprint, or pass null to take it off. */
+  setCompanySprint: (key: string, sprintPeriodKey: string | null) =>
+    apiClient.patch(`/ops/companies/${key}/sprint`, { sprintPeriodKey }, QUIET).then((r) => r.data),
   sprint: (periodKey: string) =>
     apiClient.get<OpsSprintBoard>(`/ops/sprint/${periodKey}`, QUIET).then((r) => r.data),
   standing: (personKey: string) =>

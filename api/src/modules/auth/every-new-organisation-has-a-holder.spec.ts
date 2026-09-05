@@ -22,8 +22,13 @@ describe('a new organisation is never left unheld', () => {
   const claims = SRC.match(/theFirstAdminHoldsIt\(/g) ?? [];
 
   it('has the doors this file is known to have', () => {
-    /* Sign-up, magic link, entry chat, the invite fallback, and Google. */
-    expect(doors).toHaveLength(5);
+    /* The entry chat's verified path, the invite fallback, and Google.
+       WAS FIVE. `register` and `registerMagicLink` no longer create anything:
+       both park the signup in `pendingSignup` and the organisation is built in
+       `verifyEmail` when the link is opened, so nothing exists before the
+       address is proved. GW-001. Fewer doors is the fix, not a regression -
+       what this guard is for is a SIXTH being added without the claim line. */
+    expect(doors).toHaveLength(3);
   });
 
   it('claims the organisation at every one of them', () => {

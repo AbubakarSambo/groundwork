@@ -80,7 +80,7 @@ export default function OpsOverviewPage() {
             onClick={() => setWindow(w)}
             aria-pressed={w.key === window.key}
             style={{
-              border: '0.5px solid var(--gw-border)',
+              border: '1px solid var(--gw-border)',
               borderRadius: 20,
               padding: '3px 11px',
               fontSize: 12,
@@ -169,7 +169,7 @@ export default function OpsOverviewPage() {
                     gap: 12,
                     alignItems: 'baseline',
                     padding: '6px 0',
-                    borderTop: '0.5px solid var(--gw-border)',
+                    borderTop: '1px solid var(--gw-border)',
                     flexWrap: 'wrap',
                   }}
                 >

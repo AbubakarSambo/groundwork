@@ -443,7 +443,12 @@ model PendingSignup {
   email      String   @unique
   token      String   @unique
   firstName  String   @map("first_name")
+  /// Only the entry flow leaves this empty; the two named signup paths carry it.
+  lastName   String?  @map("last_name")
   orgName    String?  @map("org_name")
+  /// Set when somebody signed up with a password. Held here rather than on a
+  /// User, because a User is what must not exist before the address is proved.
+  passwordHash String? @map("password_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
   payload    Json?

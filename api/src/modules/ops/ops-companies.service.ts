@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCompanyStage, OpsQualifyingStatus } from '@prisma/client';
 
@@ -157,6 +157,49 @@ export class OpsCompaniesService {
     });
 
     await this.log('SALES', `qualifying_${status.toLowerCase()}`, actorPersonId, updated.id, company.id);
+    return updated;
+  }
+
+  /**
+   * Put a company on a sprint, or take it off.
+   *
+   * A SPRINT LIST IS NOT THE PIPELINE. Every company we are selling to lives in
+   * `list()`; a sprint is the much shorter list somebody has decided deserves
+   * attention between two dates. The two were being conflated — the only way a
+   * company joined a sprint was the sprint it happened to be created in, so the
+   * list could never be revised without recreating the record.
+   *
+   * Passing null takes it off without deleting anything: a company dropped from
+   * a sprint is still a company, and losing its history because attention moved
+   * elsewhere would be the software punishing a change of mind.
+   */
+  async setSprint(companyKey: string, sprintPeriodKey: string | null, actorPersonId: string) {
+    const company = await this.byKey(companyKey);
+
+    let sprintPeriodId: string | null = null;
+    if (sprintPeriodKey) {
+      const period = await this.prisma.opsPeriod.findUnique({ where: { key: sprintPeriodKey } });
+      if (!period) throw new NotFoundException(`No period called ${sprintPeriodKey}`);
+      if (period.kind !== 'SPRINT') {
+        throw new BadRequestException(
+          `${period.name} is a ${period.kind.toLowerCase()}. A company goes on a sprint, not on the calendar.`,
+        );
+      }
+      sprintPeriodId = period.id;
+    }
+
+    const updated = await this.prisma.opsCompany.update({
+      where: { id: company.id },
+      data: { sprintPeriodId },
+    });
+
+    await this.log(
+      'SALES',
+      sprintPeriodId ? 'company_added_to_sprint' : 'company_removed_from_sprint',
+      actorPersonId,
+      company.id,
+      company.id,
+    );
     return updated;
   }
 

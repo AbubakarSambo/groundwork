@@ -17,6 +17,16 @@ export const OPS_CAPABILITIES = [
    */
   'sprint:read',
   'periods:write',
+  /**
+   * Who is on a sprint.
+   *
+   * Its own grant, not `sales:write`. Deciding which companies get attention
+   * between two dates is a different act from editing the pipeline, and the CEO
+   * holds the first and has deliberately given away the second — so routing the
+   * sprint list through sales:write meant the person who sets the sprint could
+   * not say who it was about. Found by clicking it.
+   */
+  'sprint:curate',
   'people:admin',
   'todos:assign',
 
@@ -61,6 +71,16 @@ export const OPS_CAPABILITIES = [
   'commercial:read-all',
   'commercial:approve',
   'spend:submit',
+  /**
+   * Seeing what the company spent, including what the CEO spent.
+   *
+   * Deliberately NOT the same capability as approving it. Reading and deciding
+   * were one grant, which meant the only way to see the CEO's own spend was to
+   * hold the power to approve spend — so nobody could, and the person with the
+   * most discretion was the one person nobody was watching. Decided 2026-09-05:
+   * her spend is visible to the team. Approval stays where it was.
+   */
+  'spend:read-all',
   'spend:approve',
   'resourcing:approve',
 
@@ -97,6 +117,16 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'ceo:board',
     'sprint:read',
     'periods:write',
+  /**
+   * Who is on a sprint.
+   *
+   * Its own grant, not `sales:write`. Deciding which companies get attention
+   * between two dates is a different act from editing the pipeline, and the CEO
+   * holds the first and has deliberately given away the second — so routing the
+   * sprint list through sales:write meant the person who sets the sprint could
+   * not say who it was about. Found by clicking it.
+   */
+  'sprint:curate',
     'people:admin',
     'todos:assign',
     'sales:read',
@@ -122,12 +152,14 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
   'commercial:approve',
     'spend:approve',
     'spend:submit',
+    'spend:read-all',
     'resourcing:approve',
     'integration:read',
   ],
 
   SALES_MARKETING: [
     'sprint:read',
+    'sprint:curate',
     'sales:read',
     'sales:write',
     'marketing:read',
@@ -137,6 +169,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'product:read',
     'contributor:self',
     'spend:submit',
+    'spend:read-all',
   ],
 
   PRODUCT_TECH_LEAD: [
@@ -151,6 +184,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'todos:assign',
     'contributor:self',
     'spend:submit',
+    'spend:read-all',
   ],
 
   TECH: [
@@ -161,6 +195,7 @@ export const DEFAULT_GRANTS: Record<OpsFunctionalRole, OpsCapability[]> = {
     'deployment:read',
     'contributor:self',
     'spend:submit',
+    'spend:read-all',
     'integration:read',
     'integration:manage',
   ],

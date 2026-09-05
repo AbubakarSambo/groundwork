@@ -40,7 +40,7 @@ describe('the sequence', () => {
   it('and warns about the 200 that writes nothing', () => {
     const evidence = THE_SEQUENCE.find((s) => s.call.includes('/evidence'))!;
     expect(evidence.watchOutFor).toMatch(/matched.*false/);
-    expect(evidence.watchOutFor).toMatch(/Read the body, not the status/);
+    expect(evidence.watchOutFor).toMatch(/check `matched`, not the status code/);
   });
 
   it('and about the address that has to be an address', () => {

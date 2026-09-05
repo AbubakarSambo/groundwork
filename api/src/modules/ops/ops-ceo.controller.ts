@@ -133,7 +133,7 @@ export class OpsCeoController {
   // --- Spend --------------------------------------------------------------
 
   @Get('spend')
-  @ApiOperation({ summary: 'Your spend, or everybody’s if you approve it' })
+  @ApiOperation({ summary: 'Your spend, or everybody’s — the CEO’s included — with spend:read-all' })
   expenses(@Req() req: OpsRequest, @Query('person') person?: string) {
     return this.ceo.expensesFor(req.opsIdentity, person);
   }
@@ -178,7 +178,7 @@ export class OpsCeoController {
   }
 
   @Get('balance')
-  @NeedsOps('spend:approve')
+  @NeedsOps('spend:read-all')
   @ApiOperation({ summary: 'What is left, and what it is made of' })
   balance() {
     return this.ceo.balance();

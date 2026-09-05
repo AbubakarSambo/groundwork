@@ -26,7 +26,7 @@ function timeAgo(date: string | Date): string {
 
 // ── shared tokens ─────────────────────────────────────────────────────────────
 
-const C: React.CSSProperties = { background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
+const C: React.CSSProperties = { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
 const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }
 
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
@@ -178,7 +178,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
                 placeholder="unlimited"
                 onChange={e => setCapValue(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submitCap(); if (e.key === 'Escape') setEditingCap(false) }}
-                style={{ width: 74, padding: '3px 6px', borderRadius: 6, border: '0.5px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }}
+                style={{ width: 74, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 11, fontFamily: 'inherit' }}
               />
               <span>people</span>
               <button onClick={submitCap} disabled={saveCap.isPending} style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, border: 'none', cursor: saveCap.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>Save</button>
@@ -189,7 +189,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
               <span>{row.memberCap === null ? 'Unlimited people' : `Up to ${row.memberCap.toLocaleString('en-US')} people`}</span>
               <button
                 onClick={() => { setCapValue(row.memberCap === null ? '' : String(row.memberCap)); setEditingCap(true) }}
-                style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '2px 7px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 11, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Edit cap
               </button>
@@ -205,7 +205,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
             value={value}
             onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
-            style={{ width: 70, padding: '5px 7px', borderRadius: 6, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ width: 70, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>/mo</span>
           <button
@@ -230,7 +230,7 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
           <button
             hidden={row.amountCents === null}
             onClick={() => { setValue(centsForEditing(row.amountCents ?? 0)); setEditing(true) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
           </button>
@@ -297,7 +297,7 @@ function FreeMemberLimitRow() {
             value={value}
             onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') save.mutate(); if (e.key === 'Escape') { setEditing(false); setErr(null) } }}
-            style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ width: 64, padding: '5px 7px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
           />
           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>people</span>
           <button
@@ -319,7 +319,7 @@ function FreeMemberLimitRow() {
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gw-navy)' }}>{data.freeMemberLimit}</span>
           <button
             onClick={() => { setValue(String(data.freeMemberLimit)); setEditing(true) }}
-            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '5px 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Edit
           </button>
@@ -568,8 +568,8 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
               <tbody>
                 {data.avgSessionMinutes.map(row => (
                   <tr key={row.session}>
-                    <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '0.5px solid var(--gw-border)' }}>S{row.session}</td>
-                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '0.5px solid var(--gw-border)' }}>{row.avgMinutes.toFixed(1)}</td>
+                    <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>S{row.session}</td>
+                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes.toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -626,7 +626,7 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Search orgs…"
-        style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 14, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 14, boxSizing: 'border-box' }}
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {filtered.map(org => (
@@ -643,7 +643,7 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
                 fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
                 background: org.billingActive ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
                 color: org.billingActive ? 'var(--gw-green-t)' : 'var(--gw-muted)',
-                border: '0.5px solid var(--gw-border)',
+                border: '1px solid var(--gw-border)',
               }}>
                 {org.billingActive ? 'Billing active' : 'Free'}
               </span>

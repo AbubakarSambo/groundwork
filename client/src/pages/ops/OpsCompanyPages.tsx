@@ -29,7 +29,7 @@ export function OpsQuarterPage() {
       <select
         value={period}
         onChange={(e) => setPeriod(e.target.value)}
-        style={{ marginBottom: 16, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '0.5px solid var(--gw-border)' }}
+        style={{ marginBottom: 16, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
       >
         {(periods.data ?? []).map((p) => (
           <option key={p.key} value={p.key}>
@@ -45,7 +45,7 @@ export function OpsQuarterPage() {
             {o.title}
           </h2>
           {o.keyResults.map((kr) => (
-            <div key={kr.id} style={{ borderTop: '0.5px solid var(--gw-border)', padding: '9px 0 0', marginTop: 9 }}>
+            <div key={kr.id} style={{ borderTop: '1px solid var(--gw-border)', padding: '9px 0 0', marginTop: 9 }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--gw-navy)', fontVariantNumeric: 'tabular-nums' }}>
                   {/*
@@ -176,7 +176,7 @@ export function OpsCommitmentsPage() {
       <select
         value={period}
         onChange={(e) => setPeriod(e.target.value)}
-        style={{ marginBottom: 16, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '0.5px solid var(--gw-border)' }}
+        style={{ marginBottom: 16, fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
       >
         {(periods.data ?? []).map((p) => (
           <option key={p.key} value={p.key}>
@@ -278,6 +278,9 @@ export function OpsSpendPage() {
 
   const columns: Column<OpsExpense>[] = [
     { head: 'What', cell: (e) => <strong>{e.description}</strong> },
+    /* Everybody's spend is visible to everybody, the CEO's included, so whose
+       claim it is belongs on the row rather than being inferred from context. */
+    { head: 'Whose', cell: (e) => e.requesterName },
     { head: 'Category', cell: (e) => e.category },
     { head: 'Amount', cell: (e) => money(e.amount), numeric: true },
     { head: 'When', cell: (e) => readDate(e.date) },
@@ -324,7 +327,7 @@ export function OpsSpendPage() {
 
   return (
     <main id="main" style={PAGE}>
-      <OpsHeader name="Spend" answers="What have I claimed, and what is left?" />
+      <OpsHeader name="Spend" answers="What has the company claimed, and what is left?" />
 
       {balance.data && (
         <section style={{ ...CARD, marginBottom: 14 }}>

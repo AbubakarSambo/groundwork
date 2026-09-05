@@ -813,7 +813,7 @@ export function ChatPage() {
                 alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start',
                 background: m.role === 'PERSON' ? 'var(--gw-navy)' : 'white',
                 color: m.role === 'PERSON' ? 'white' : 'var(--gw-text)',
-                border: m.role === 'AI' ? '0.5px solid var(--gw-border)' : 'none',
+                border: m.role === 'AI' ? '1px solid var(--gw-border)' : 'none',
                 borderRadius: m.role === 'PERSON' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                 padding: '10px 14px',
                 fontSize: 14,
@@ -1019,13 +1019,13 @@ export function ChatPage() {
 
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-          <div style={{ padding: '4px 14px', borderBottom: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
+          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
             {privacyLabel}
           </div>
           <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <label htmlFor="doc-upload"
               title="Accepted: PDF, DOC, DOCX, TXT, CSV, XLSX, PNG, JPG, MD"
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: groundId ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId ? 1 : 0.4 }}
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: groundId ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId ? 1 : 0.4 }}
             >
               📎 <span style={{ fontSize: 11 }}>Upload doc</span>
             </label>
@@ -1033,7 +1033,7 @@ export function ChatPage() {
               onClick={() => { if (groundId) setPasteMode(true) }}
               disabled={!groundId || done}
               title="Paste an email, Slack message, meeting notes, or any text"
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '0.5px solid var(--gw-border)', cursor: groundId && !done ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId && !done ? 1 : 0.4, fontFamily: 'inherit' }}
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: groundId && !done ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId && !done ? 1 : 0.4, fontFamily: 'inherit' }}
             >
               📋 <span style={{ fontSize: 11 }}>Paste text</span>
             </button>
