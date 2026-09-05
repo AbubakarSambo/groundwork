@@ -84,6 +84,31 @@ export class OpsController {
     });
   }
 
+  /**
+   * What is standing between us and opening this period.
+   *
+   * Readable by anybody on the team, and deliberately so: the answer is a list
+   * of names, and the people on it are the ones who can shorten it.
+   */
+  @Get('periods/:key/can-open')
+  @ApiOperation({ summary: 'Whether a period can open yet, and who it is waiting on' })
+  async canOpen(@Param('key') key: string) {
+    return this.foundation.whatStandsBetweenUsAndOpening(key);
+  }
+
+  /**
+   * Open a period. Refused while somebody active has no objective in it.
+   *
+   * The only way a quarter opens — a target list can also be opened by patching
+   * its status, and that door runs the same gate.
+   */
+  @Post('periods/:key/open')
+  @NeedsOps('periods:write')
+  @ApiOperation({ summary: 'Open a period, once everybody active has an objective in it' })
+  async openThePeriod(@Param('key') key: string) {
+    return this.foundation.openThePeriod(key);
+  }
+
   /** Move its dates, rename it, open it, close it. The key never moves. */
   @Patch('periods/:key')
   @NeedsOps('periods:write')

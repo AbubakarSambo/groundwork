@@ -195,3 +195,32 @@ describe('somebody taken off the team on purpose', () => {
     expect(await service.identify(admin)).toBeNull();
   });
 });
+
+/**
+ * ONE HUMAN, ONE ROW — as far as an address can prove it.
+ *
+ * Found by the one board rather than by a test: the team list showed "Hafsah"
+ * and "Hafsah Jumare" as two active people, because the seeded record carried
+ * one address and she signed in with another. The key is made from the local
+ * part, so two addresses made two keys and the key check matched neither.
+ */
+describe('admitting somebody who already has a record', () => {
+  const source = require('fs')
+    .readFileSync(require('path').join(__dirname, 'ops-people.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+
+  it('looks for their address before falling back to a key made from it', () => {
+    const byEmail = source.indexOf('where: { email:');
+    const byKey = source.indexOf('where: { key },');
+    expect(byEmail).toBeGreaterThan(-1);
+    expect(byEmail).toBeLessThan(byKey);
+  });
+
+  it('and never matches on the name, which would merge two different people', () => {
+    /* Merging the wrong two people silently reassigns somebody's contribution,
+       which is the one mistake this system exists to make impossible. */
+    expect(source).not.toMatch(/where: \{ displayName:/);
+    expect(source).not.toMatch(/displayName: \{ (contains|startsWith|equals|mode)/);
+  });
+});

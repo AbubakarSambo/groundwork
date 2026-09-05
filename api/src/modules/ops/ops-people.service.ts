@@ -132,10 +132,33 @@ export class OpsPeopleService implements OnModuleInit {
   private async admitThePlatformAdmin(account: SignedInAccount): Promise<OpsIdentity | null> {
     const key = keyForAccount(account.email ?? '');
 
-    const already = await this.prisma.opsPerson.findUnique({
-      where: { key },
-      include: { grants: true },
-    });
+    /*
+     * MATCHED ON THE ADDRESS FIRST, THEN ON THE KEY.
+     *
+     * The key is made from the local part of the address, so one human with two
+     * addresses gets two keys and — before this — two people. Found by the one
+     * board, which listed Hafsah and Hafsah Jumare as separate rows of the same
+     * team: the seeded person carried one address and she signed in with
+     * another, so nothing matched and a twin was created.
+     *
+     * The email is a real identity and a unique column, so matching on it is a
+     * fact rather than a guess. What is NOT attempted is matching on the name:
+     * two people called Hafsah would be merged by it, and merging the wrong two
+     * people silently reassigns somebody's contribution — the one mistake this
+     * system exists to make impossible. A human the address cannot connect stays
+     * a second row, visibly, on a board that shows the whole team at once.
+     */
+    const already =
+      (account.email
+        ? await this.prisma.opsPerson.findUnique({
+            where: { email: account.email.toLowerCase() },
+            include: { grants: true },
+          })
+        : null) ??
+      (await this.prisma.opsPerson.findUnique({
+        where: { key },
+        include: { grants: true },
+      }));
     if (already) {
       if (!already.active) return null;
       /* The record exists and was not linked to this account — link it rather
@@ -144,6 +167,9 @@ export class OpsPeopleService implements OnModuleInit {
         where: { id: already.id },
         data: { userId: account.id },
       });
+      this.logger.warn(
+        `${already.displayName} signed in as ${account.email} and was linked to the existing record rather than given a second one.`,
+      );
       return {
         personId: already.id,
         key: already.key,

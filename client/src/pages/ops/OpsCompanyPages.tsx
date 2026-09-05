@@ -86,7 +86,27 @@ export function OpsQuarterPage() {
     enabled: period !== '',
   })
 
+  const qc = useQueryClient()
   const maySet = me.data?.capabilities.includes('objectives:write') ?? false
+  const mayOpen = me.data?.capabilities.includes('periods:write') ?? false
+
+  /* THE GATE ON OPENING THE PERIOD, asked as a question rather than discovered
+     by pressing the button. Everybody sees it: the answer is a list of names,
+     and the people on it are the ones who can shorten it. */
+  const canOpen = useQuery({
+    queryKey: ['ops', 'can-open', period],
+    queryFn: () => opsApi.canOpenPeriod(period),
+    retry: false,
+    enabled: period !== '',
+  })
+
+  const open = useMutation({
+    mutationFn: () => opsApi.openPeriod(period),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ops', 'can-open', period] })
+      qc.invalidateQueries({ queryKey: ['ops', 'periods'] })
+    },
+  })
 
   /* MANUAL is always allowed: somebody's word is a legitimate source, and the
      board says which numbers were typed. Every other option is a metric this
@@ -111,6 +131,38 @@ export function OpsQuarterPage() {
           </option>
         ))}
       </select>
+
+      {/* WHO THE PERIOD IS WAITING ON. Shown before it opens and gone after,
+          because a green "everybody is set" banner on every visit for three
+          months is furniture. */}
+      {canOpen.data && !canOpen.data.ready && (
+        <section
+          style={{ ...CARD, marginBottom: 14, borderLeft: '3px solid var(--gw-amber-t)' }}
+        >
+          <p style={LABEL}>Before this period opens</p>
+          <p style={{ fontSize: 14, margin: '5px 0 0', lineHeight: 1.6 }}>{canOpen.data.says}</p>
+        </section>
+      )}
+
+      {canOpen.data?.ready && mayOpen && (periods.data ?? []).find((p) => p.key === period)?.status !== 'OPEN' && (
+        <section style={{ ...CARD, marginBottom: 14 }}>
+          <p style={{ fontSize: 14, margin: 0 }}>{canOpen.data.says}</p>
+          <button
+            type="button"
+            onClick={() => open.mutate()}
+            disabled={open.isPending}
+            style={{ marginTop: 10, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer' }}
+          >
+            {open.isPending ? 'Opening…' : 'Open this period'}
+          </button>
+          {open.isError && (
+            <p style={{ fontSize: 12.5, color: 'var(--gw-flag, #791F1F)', margin: '8px 0 0' }}>
+              {(open.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                'It could not be opened.'}
+            </p>
+          )}
+        </section>
+      )}
 
       {/* HOW MUCH OF THE PERIOD IS AIMED AT SCALE. A split, never a score: a
           quarter that is mostly something else may be exactly right, and the

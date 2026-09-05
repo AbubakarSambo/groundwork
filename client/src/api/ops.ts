@@ -613,6 +613,16 @@ export const opsApi = {
   useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => r.data),
   tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => r.data),
   ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux', QUIET).then((r) => r.data),
+  /** Whether a period can open yet, and who it is waiting on. */
+  canOpenPeriod: (key: string) =>
+    apiClient
+      .get<{ ready: boolean; says: string; waitingOn: string[] }>(`/ops/periods/${key}/can-open`, QUIET)
+      .then((r) => r.data),
+
+  /** Open a period. Refused while somebody active has no objective in it. */
+  openPeriod: (key: string) =>
+    apiClient.post(`/ops/periods/${key}/open`, {}, QUIET).then((r) => r.data),
+
   /** The one board: everybody's quarter side by side. Never summed, never sorted by contribution. */
   everybody: (periodKey: string) =>
     apiClient.get<OpsEverybody>(`/ops/everybody/${periodKey}`, QUIET).then((r) => r.data),

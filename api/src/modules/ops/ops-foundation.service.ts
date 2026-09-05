@@ -1,6 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { keyFromName, whyTheseDatesAreWrong } from './a-target-list-is-something-you-set';
+import {
+  whyThisPeriodCannotOpenYet,
+  whatStandsBetweenUsAndOpening as whatIsOutstanding,
+} from './a-period-does-not-open-with-somebody-unset';
 
 /** Reads of the standing furniture: periods and workstreams. */
 @Injectable()
@@ -76,6 +80,67 @@ export class OpsFoundationService {
   }
 
   /**
+   * Who is active, and who owns an objective in this period.
+   *
+   * One place, called by both the gate and the question it answers, so the page
+   * that says "waiting on Adam" and the refusal that names Adam cannot come to
+   * different conclusions.
+   */
+  private async whoIsSetIn(periodId: string) {
+    const [active, objectives] = await Promise.all([
+      this.prisma.opsPerson.findMany({
+        where: { active: true },
+        select: { id: true, displayName: true },
+      }),
+      this.prisma.opsObjective.findMany({ where: { periodId }, select: { ownerId: true } }),
+    ]);
+
+    return {
+      active: active.map((p) => ({ personId: p.id, displayName: p.displayName })),
+      ownerIds: new Set(objectives.map((o) => o.ownerId)),
+    };
+  }
+
+  /** What the gate would say, without opening anything. */
+  async whatStandsBetweenUsAndOpening(key: string) {
+    const period = await this.prisma.opsPeriod.findUnique({ where: { key } });
+    if (!period) throw new NotFoundException(`No period called ${key}`);
+    if (period.status === 'OPEN') {
+      return { ready: true, says: `${period.name} is already open.`, waitingOn: [] };
+    }
+    return whatIsOutstanding({ periodName: period.name, ...(await this.whoIsSetIn(period.id)) });
+  }
+
+  /**
+   * OPEN A PERIOD.
+   *
+   * The only way a quarter opens — there was none before this, which is why a
+   * quarter could start with nobody set: nothing was ever asked.
+   *
+   * A target list can also be opened through `resetATargetList`, and that door
+   * runs the same gate. Two doors and one gate; two doors and one of them
+   * gateless is the same as no gate.
+   */
+  async openThePeriod(key: string) {
+    const period = await this.prisma.opsPeriod.findUnique({ where: { key } });
+    if (!period) throw new NotFoundException(`No period called ${key}`);
+    if (period.status === 'OPEN') return period;
+    if (period.status === 'CLOSED') {
+      throw new BadRequestException(
+        `${period.name} is closed. Reopening a period would change what was already reported against it.`,
+      );
+    }
+
+    const refusal = whyThisPeriodCannotOpenYet({
+      periodName: period.name,
+      ...(await this.whoIsSetIn(period.id)),
+    });
+    if (refusal) throw new BadRequestException(refusal);
+
+    return this.prisma.opsPeriod.update({ where: { key }, data: { status: 'OPEN' } });
+  }
+
+  /**
    * Move a target list's dates, rename it, or open and close it.
    *
    * THE KEY NEVER MOVES. It is made from the name at creation and then left
@@ -104,6 +169,17 @@ export class OpsFoundationService {
       endsOn: patch.endsOn ?? period.endsOn,
     });
     if (wrong) throw new BadRequestException(wrong);
+
+    /* THE SECOND DOOR. Opening through a patch runs the same gate as opening
+       through `openThePeriod` — this is the door that already existed, so
+       leaving it ungated would have made the gate decorative. */
+    if (patch.status === 'OPEN' && period.status !== 'OPEN') {
+      const refusal = whyThisPeriodCannotOpenYet({
+        periodName: period.name,
+        ...(await this.whoIsSetIn(period.id)),
+      });
+      if (refusal) throw new BadRequestException(refusal);
+    }
 
     return this.prisma.opsPeriod.update({
       where: { key },
