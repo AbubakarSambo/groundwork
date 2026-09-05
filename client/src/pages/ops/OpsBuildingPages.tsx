@@ -5,7 +5,7 @@ import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '
 import { OpsHeader, PAGE } from './OpsLayout'
 import { OpsTable, Filters, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
-import { TheFreeze, WhatThisServes, WorkThatSaysNothing } from './WhatThisServes'
+import { TheFrame, TheFreeze, WhatThisServes, WorkThatSaysNothing } from './WhatThisServes'
 
 const ROADMAP_STATUSES = ['PROPOSED', 'READY', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'] as const
 const WORK_STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'RESOLVED'] as const
@@ -35,6 +35,12 @@ export function OpsRoadmapPage() {
 
   const all = roadmap.data
   const shown = all && (filter ? all.filter(filters.find((f) => f.label === filter)!.keep) : all)
+
+  /* The frame and the proposals are two different things and the board should
+     not show them as one list with the same controls — that is what made "the
+     product works" look like an opinion somebody could disagree with. */
+  const standing = (all ?? []).filter((r) => r.standing)
+  const proposals = (shown ?? []).filter((r) => !r.standing)
 
   const columns: Column<OpsRoadmapItem>[] = [
     { head: '#', cell: (r) => r.priority, numeric: true },
@@ -100,6 +106,15 @@ export function OpsRoadmapPage() {
           decides what may be added; the list says what has not accounted for
           itself. */}
       <TheFreeze />
+
+      {/* THE FRAME, ABOVE THE PROPOSALS AND LOOKING DIFFERENT FROM THEM.
+          No status to move, no decision waiting. One of them carries a count
+          instead of a status, because "the product is solid" is the claim on
+          this board most likely to outrun the evidence. */}
+      {standing.map((r) => (
+        <TheFrame key={r.id} item={r} />
+      ))}
+
       <WorkThatSaysNothing />
 
       <Adder
@@ -138,10 +153,10 @@ export function OpsRoadmapPage() {
         total={all?.length ?? 0}
       />
       <OpsTable
-        rows={shown}
+        rows={proposals}
         columns={columns}
         keyOf={(r) => r.id}
-        filteredOutOf={all?.length}
+        filteredOutOf={all?.filter((r) => !r.standing).length}
         empty="Nothing proposed yet."
       />
     </main>

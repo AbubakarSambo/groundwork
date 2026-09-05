@@ -106,21 +106,35 @@ const ROADMAP: Array<{
   itemType: string;
   priority: number;
   note?: string;
+  /** A standing item is not a proposal. See the note on the schema field. */
+  standing?: boolean;
 }> = [
   {
     key: 'solidify-the-core-product',
-    title: 'Solidify the core product',
+    title: 'The product works, and works well',
     description:
-      'Deploy with the first ten and validate the priority use cases end to end. Fix the stability, UX, reliability and deployment problems that real usage turns up. Strengthen it against what people actually do. Get a meaningful share to repeat or paid usage.',
+      'Every bug fixed, every use case working well, no bottlenecks. Not a proposal: it is the frame the rest of this roadmap sits in, and while the freeze is on it is the only thing being worked on. Usability, security and bugs. Nothing added.',
     itemType: 'stability',
     priority: 1,
+    standing: true,
+    note: 'It read as a proposal like any other, with a status somebody could move to "done". "The product is solid" is exactly the kind of thing everybody agrees with in a meeting and nobody has measured, so it now carries a count instead of a status: bugs open, use cases that do not work, companies blocked. All three at zero or it is not done.',
+  },
+  {
+    key: 'usability-and-the-marketing-site',
+    title: 'Usability, and the marketing site',
+    description:
+      'The two surfaces somebody meets before they meet the product: the screens, and the pages that say what we are. Both are governed by nothing today - the site is the first claim a customer reads and is checked by nobody, and the screens are where "works well" is either true or a slogan.',
+    itemType: 'usability',
+    priority: 2,
+    standing: true,
+    note: 'Given its own line so the work is sayable out loud rather than smuggled in beside a feature. Permitted under the freeze: it changes nothing about what the product does.',
   },
   {
     key: 'solidify-the-moat',
     title: 'Solidify the moat',
     description: WHAT_GROUNDWORK_IS_BUILDING,
     itemType: 'moat',
-    priority: 2,
+    priority: 3,
     note: 'Was the only one of the five nothing could report on - "strengthen the moat" is not countable the way companies live or issues closed are, and an objective that cannot be counted is the one that quietly stops being worked on. It now has five named components and a record of what gets built on each, so the number is entries built in a window and it opens onto them.',
   },
   {
@@ -129,7 +143,7 @@ const ROADMAP: Array<{
     description:
       'GitHub organisation and access, Stripe and billing, domains, hosting, databases, cloud, storage, email, AI and API credentials, analytics, monitoring, deployment tooling. Groundwork owning its own code, data, credentials and billing relationships, with team access controls.',
     itemType: 'infrastructure',
-    priority: 3,
+    priority: 4,
     note: 'Lands on the API adapter. Separating infrastructure moves the credential that adapter uses, the Stripe account behind billing, and the AI credentials the Assistant runs on - so the adapter credential has to be created in whatever organisation and secret store this settles on, or it gets created twice.',
   },
   {
@@ -138,7 +152,7 @@ const ROADMAP: Array<{
     description:
       'Partner with coaches outside the company. A customer using Groundwork can opt in to having a coach support them through the work and the reports. Recruit and onboard the coaches, give them the access and the workflow they need, and take a share of what they earn. Test with real customers before scaling.',
     itemType: 'feature',
-    priority: 4,
+    priority: 5,
     note: 'Named coach network because the product already has two things called coaching: the in-chat coaching step, and a lead form for people asking for one. This is a third thing - an outside person a customer opts into, who works alongside them and whose earnings we take a cut of. The access shape already exists: a coach is guest-shaped, so what this really adds is the commercial model and the coach\'s own workflow, not a new permission concept.',
   },
   {
@@ -147,7 +161,7 @@ const ROADMAP: Array<{
     description:
       'Review with the team against what the first ten taught us. Prioritise on demand, revenue and moat. Do not expand before the core is proven.',
     itemType: 'improvement',
-    priority: 5,
+    priority: 6,
   },
 ];
 
@@ -437,7 +451,7 @@ export async function seedTheFoundations(prisma: PrismaClient) {
     if (!james) break;
     await prisma.opsRoadmapItem.upsert({
       where: { key: item.key },
-      update: { title: item.title, description: item.description, priority: item.priority },
+      update: { title: item.title, description: item.description, priority: item.priority, standing: item.standing ?? false },
       create: {
         key: item.key,
         title: item.title,
@@ -446,10 +460,18 @@ export async function seedTheFoundations(prisma: PrismaClient) {
         priority: item.priority,
         proposedById: james,
         ownerId: james,
-        // Every one of these is a material commitment of the team's time, so
-        // every one waits for a decision. Seeding one as approved would be this
-        // system's first lie about itself.
-        approvalRequired: true,
+        standing: item.standing ?? false,
+        /*
+         * Every PROPOSAL is a material commitment of the team's time, so every
+         * one waits for a decision. Seeding one as approved would be this
+         * system's first lie about itself.
+         *
+         * A standing item is not a proposal and has nothing to approve — it is
+         * the frame the proposals sit in. Leaving it waiting for a decision
+         * would put a permanent "waiting" against the one thing nobody is
+         * deciding.
+         */
+        approvalRequired: !(item.standing ?? false),
         rationale: item.note,
       },
     });

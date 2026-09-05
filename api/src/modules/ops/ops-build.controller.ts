@@ -193,6 +193,19 @@ export class OpsBuildController {
     return this.build.requestApproval({ ...body, requesterId: req.opsIdentity.personId });
   }
 
+  /**
+   * Whether the product is solid, counted rather than claimed.
+   *
+   * "Every bug fixed and use case is working well. No bottlenecks." The
+   * standing roadmap item reads this instead of carrying a status.
+   */
+  @Get('solidity')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'Whether the product is solid: bugs, use cases, bottlenecks' })
+  howSolid() {
+    return this.build.howSolid();
+  }
+
   // --- The freeze ---------------------------------------------------------
 
   /**

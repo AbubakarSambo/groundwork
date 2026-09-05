@@ -4385,6 +4385,19 @@ model OpsRoadmapItem {
 
   productArea String? @map("product_area")
   itemType    String  @map("item_type")
+
+  /// A STANDING ITEM IS NOT A PROPOSAL.
+  ///
+  /// Everything else on this roadmap can be argued with, reprioritised or
+  /// dropped. One or two cannot: they are the frame the others sit in, and
+  /// showing them in the same list with the same controls makes them look like
+  /// opinions somebody could disagree with.
+  ///
+  /// A standing item has no approval and no status somebody moves. It has a
+  /// definition of done, and the definition is COMPUTED - see
+  /// `what-solid-means.ts`. Typing "done" against "every bug fixed" would be
+  /// the one place on this board where a claim outranks a count.
+  standing Boolean @default(false)
   priority    Int     @default(3)
 
   ownerId      String? @map("owner_id")

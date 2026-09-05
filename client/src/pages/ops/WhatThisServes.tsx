@@ -225,6 +225,97 @@ function WhatWasDecidedAboutTheFreeze() {
   )
 }
 
+/**
+ * A STANDING ITEM: THE FRAME, NOT A PROPOSAL.
+ *
+ * Everything else on the roadmap can be argued with, reprioritised or dropped.
+ * These cannot, and showing them in the same table with the same status picker
+ * made them look like opinions somebody could disagree with.
+ *
+ * The first of them carries a COUNT rather than a status. "The product is
+ * solid" is the claim on this board most likely to outrun its evidence —
+ * everybody agrees with it in a meeting and nobody has measured it — so it
+ * reads three numbers and says which part is not done.
+ */
+export function TheFrame({ item }: { item: { id: string; title: string; description?: string | null; itemType: string } }) {
+  const solidity = useQuery({
+    queryKey: ['ops', 'solidity'],
+    queryFn: opsApi.howSolid,
+    retry: false,
+    /* Only the stability item is defined by these counts. Fetching them beside
+       the marketing-site item would attach a number to something it does not
+       measure. */
+    enabled: item.itemType === 'stability',
+  })
+  const [open, setOpen] = useState(false)
+  const s = item.itemType === 'stability' ? solidity.data : null
+
+  return (
+    <section
+      style={{
+        background: 'white',
+        border: '1px solid var(--gw-border)',
+        borderLeft: `3px solid ${s?.solid ? 'var(--gw-green)' : 'var(--gw-navy)'}`,
+        borderRadius: 8,
+        padding: '12px 14px',
+        marginBottom: 10,
+      }}
+    >
+      <p style={LABEL}>Not a proposal</p>
+      <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-navy)', margin: '4px 0 6px' }}>{item.title}</h2>
+      {item.description && (
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: 0, maxWidth: '68ch', lineHeight: 1.6 }}>
+          {item.description}
+        </p>
+      )}
+
+      {s && (
+        <>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              margin: '10px 0 0',
+              color: s.solid ? 'var(--gw-green-t)' : 'var(--gw-text)',
+            }}
+          >
+            {s.says}
+          </p>
+          {!s.solid && (
+            <>
+              <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                aria-expanded={open}
+                style={{ all: 'unset', cursor: 'pointer', ...LABEL, fontSize: 10, marginTop: 6 }}
+              >
+                {open ? 'Hide what is left' : 'What is left'}
+              </button>
+              {open && (
+                /* Named, because "three use cases do not work" is only useful
+                   if you can see which three and for whom. */
+                <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+                  {s.bugs.map((b) => (
+                    <li key={b.title}>Bug · {b.title}</li>
+                  ))}
+                  {s.useCases.map((u) => (
+                    <li key={`${u.company}-${u.title}`}>
+                      {u.company} · {u.title} — {u.readiness.replace(/_/g, ' ').toLowerCase()}
+                    </li>
+                  ))}
+                  {s.blocked.map((b) => (
+                    <li key={b.name}>Blocked · {b.name} — {b.why}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 export function WorkThatSaysNothing() {
   const nothing = useQuery({
     queryKey: ['ops', 'what-serves-nothing'],

@@ -130,6 +130,8 @@ export interface OpsDeployment {
 }
 
 export interface OpsRoadmapItem {
+  /** A standing item is not a proposal — it is the frame the proposals sit in. */
+  standing: boolean
   id: string
   title: string
   itemType: string
@@ -599,6 +601,21 @@ export const opsApi = {
    * whole system runs on. `wired-endpoints.spec.ts` has caught this shape in
    * the product twice; the ops system had never been checked for it.
    */
+
+  /** Whether the product is solid, counted rather than claimed. */
+  howSolid: () =>
+    apiClient
+      .get<{
+        bugsOpen: number
+        useCasesNotWorking: number
+        bottlenecks: number
+        solid: boolean
+        says: string
+        bugs: Array<{ title: string; severity: string }>
+        useCases: Array<{ company: string; title: string; readiness: string }>
+        blocked: Array<{ name: string; why: string }>
+      }>('/ops/solidity', QUIET)
+      .then((r) => r.data),
 
   /** Whether the product is frozen, and why. Everybody proposing work needs to know. */
   freezeNow: () =>
