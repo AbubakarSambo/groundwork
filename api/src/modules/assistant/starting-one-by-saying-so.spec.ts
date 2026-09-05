@@ -87,3 +87,29 @@ describe('what it takes to start', () => {
     expect(said.line).not.toMatch(/cannot|sorry|unable/i);
   });
 });
+
+describe('asking how something in this company works', () => {
+  /**
+   * FOUND THE DAY THE COMPANY'S OWN DECISIONS WERE FIRST PUSHED IN.
+   *
+   * Four cards landed, retrieval found them, and two of the three questions
+   * anybody would actually ask went to the default lane — because `how_we_work`
+   * owned "how do we" and "how do I" and neither shape covers a question about a
+   * THING rather than about doing something.
+   */
+  it.each([
+    'how does the freeze work',
+    'how do the phases work',
+    'how does our pricing work',
+    'how do the objectives work',
+  ])('routes "%s" to what the organisation has written down', (m) => {
+    expect(route(m).lane).toBe('how_we_work');
+  });
+
+  it('but not a bare "how", which belongs to somebody\'s own standing', () => {
+    /* "How am I doing" is a question about them, with a lane of its own. A bare
+       `how` in this rule would have taken it. */
+    expect(route('how am I doing').lane).toBe('how_am_i_doing');
+    expect(route('how are things going for me').lane).not.toBe('how_we_work');
+  });
+});

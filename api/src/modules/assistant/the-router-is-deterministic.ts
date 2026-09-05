@@ -229,6 +229,18 @@ const RULES = [
   rule('how_we_work', [
     /\bhow\s+do\s+(?:we|i)\s+(.{3,})/i,
     /*
+     * "HOW DOES THE FREEZE WORK" WENT NOWHERE.
+     *
+     * The lane owned `how do we` and `how do I` and neither shape covers a question about a THING
+     * rather than about doing something. Found the day the company's own decisions were first pushed
+     * in: four cards landed, retrieval found them, and two of the three questions anybody would
+     * actually ask were routed to the default.
+     *
+     * Deliberately not a bare `how` — that would take "how am I doing", which is somebody's own
+     * standing and a different question with a lane of its own sitting below this one.
+     */
+    /\bhow\s+(?:does|do)\s+(?:the|our|a|an|this)\s+(.{3,})/i,
+    /*
      * "What do I do if I am locked out" reached no lane at all, and the handbook had a section
      * headed exactly that. Found by uploading a real handbook and asking it the questions the
      * handbook answers, which is a different exercise from reading the patterns.
