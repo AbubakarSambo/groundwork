@@ -16,5 +16,5 @@ ALTER TABLE "ops_marketing_activities" ADD COLUMN "objective_id" TEXT;
 CREATE INDEX "ops_marketing_activities_objective_id_idx" ON "ops_marketing_activities"("objective_id");
 
 ALTER TABLE "ops_marketing_activities"
-  ADD CONSTRAINT "ops_marketing_activities_objective_fkey"
+  ADD CONSTRAINT "ops_marketing_activities_objective_id_fkey"
   FOREIGN KEY ("objective_id") REFERENCES "ops_objectives"("id") ON DELETE SET NULL ON UPDATE CASCADE;

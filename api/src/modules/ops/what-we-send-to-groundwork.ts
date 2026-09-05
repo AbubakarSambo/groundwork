@@ -19,6 +19,11 @@ export interface SubjectPayload {
   title: string;
   measure?: string;
   target?: string;
+  /* Collected on our own key results and, until this, dropped at the seam —
+     so the objective that reached Groundwork had a number and no reason, in
+     the one system whose whole argument is that a number opens onto why. */
+  justification?: string;
+  approach?: string;
   dueDate?: string;
   status?: string;
 }
@@ -79,6 +84,8 @@ export interface ObjectiveShape {
     current: number;
     dueDate: Date;
     typedByHand: boolean;
+    justification?: string | null;
+    approach?: string | null;
   }>;
 }
 
@@ -91,6 +98,8 @@ export function subjectsFrom(objectives: ObjectiveShape[]): SubjectPayload[] {
       title: `${objective.title} — ${kr.title}`,
       measure: kr.unit,
       target: String(kr.target),
+      justification: kr.justification ?? undefined,
+      approach: kr.approach ?? undefined,
       dueDate: kr.dueDate.toISOString().slice(0, 10),
     })),
   );
