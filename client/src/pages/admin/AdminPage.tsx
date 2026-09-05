@@ -88,6 +88,38 @@ function WhatsAppToggle() {
 }
 
 /**
+ * WHETHER THIS DEPLOYMENT CAN TAKE MONEY.
+ *
+ * The Pricing section right below this one lets somebody set what we charge,
+ * which reads as a promise that charging works. With no STRIPE_SECRET_KEY it
+ * does not — and the only way to find that out was for a customer to press Pay
+ * and get a 500. Sits with the WhatsApp card because it is the same kind of
+ * fact: a thing that is built and waiting on a credential.
+ */
+function StripeStatus() {
+  const { data } = useQuery({ queryKey: ['admin-stripe'], queryFn: adminApi.getStripeStatus })
+  if (!data) return null
+  return (
+    <div style={{ ...C, padding: '14px 16px' }}>
+      <div style={{ fontSize: 13, fontWeight: 700 }}>Taking payment</div>
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2, lineHeight: 1.5 }}>
+        {data.says}
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          marginTop: 8,
+          fontWeight: 700,
+          color: data.isConfigured ? 'var(--gw-green-t)' : 'var(--gw-muted)',
+        }}
+      >
+        {data.isConfigured ? 'Live' : 'No key set'}
+      </div>
+    </div>
+  )
+}
+
+/**
  * FOR THE EDIT FIELD ONLY - NEVER FOR DISPLAY. W-UX-7.
  *
  * "$1650/mo" on this page while every other surface said "$1,650/mo". `formatMonthlyPrice` in
@@ -441,7 +473,10 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
 
       <section>
         <div style={SL}>Integrations</div>
-        <WhatsAppToggle />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <WhatsAppToggle />
+          <StripeStatus />
+        </div>
       </section>
 
       <section>

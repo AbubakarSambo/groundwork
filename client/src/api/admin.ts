@@ -47,6 +47,10 @@ export const adminApi = {
   setWhatsAppEnabled: (enabled: boolean) =>
     apiClient.patch<WhatsAppToggleState>('/admin/whatsapp', { enabled }).then(r => r.data),
 
+  /** Whether this deployment can take money. Never the key itself. */
+  getStripeStatus: () =>
+    apiClient.get<{ isConfigured: boolean; says: string }>('/admin/stripe').then(r => r.data),
+
   getPricing: () =>
     apiClient.get<PricingPlanRow[]>('/admin/pricing').then(r => r.data),
 

@@ -59,6 +59,7 @@ const CALLS: string[] = [
   'POST /admin/add-admin',
   'GET /admin/admins',
   'POST /admin/admins/:userId/remove',
+  'GET /admin/stripe',
   'GET /admin/ops',
   'POST /admin/ops/setup',
   'POST /admin/ops/:personKey/account',
