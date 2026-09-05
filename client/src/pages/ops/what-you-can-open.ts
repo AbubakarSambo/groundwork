@@ -48,6 +48,10 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/ux', name: 'UX', capability: 'ux:read', group: 'Building' },
 
   { path: '/ops/quarter', name: 'Objectives', capability: null, group: 'Company' },
+  /* The one board. Gated on reading somebody else's contribution, because that
+     is what it is — six named people's quarters on one page. A contributor
+     sees their own standing on `/ops`, which is a different question. */
+  { path: '/ops/everybody', name: 'Everybody', capability: 'contributor:read-all', group: 'Company' },
   /* Anybody may ask for something, so no capability gates the page. Only
      somebody holding resourcing:approve sees the queue; the page says so
      rather than showing an empty table. */

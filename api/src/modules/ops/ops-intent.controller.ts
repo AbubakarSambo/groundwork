@@ -33,6 +33,21 @@ export class OpsIntentController {
     return this.intent.howTheQuarterIsAimed(periodKey);
   }
 
+  /**
+   * THE ONE BOARD. Everybody's quarter side by side.
+   *
+   * `contributor:read-all` rather than `objectives:read`, because the board's
+   * subject is people and not objectives — it says what each named person
+   * agreed to and produced, which is exactly the capability that exists to
+   * gate reading somebody else's contribution.
+   */
+  @Get('everybody/:periodKey')
+  @NeedsOps('contributor:read-all')
+  @ApiOperation({ summary: "Everybody's objectives, commitments and contribution, side by side" })
+  everybody(@Param('periodKey') periodKey: string) {
+    return this.intent.everybodySideBySide(periodKey);
+  }
+
   @Post('objectives')
   @NeedsOps('objectives:write')
   @ApiOperation({ summary: 'Set an objective for a workstream' })

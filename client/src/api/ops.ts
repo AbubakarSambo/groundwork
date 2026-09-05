@@ -436,6 +436,31 @@ export interface OpsCommercialOpportunity {
   payments: Array<{ amount: string; paidAt: string }>
 }
 
+/** One person's row on the one board. Every count on it is their own. */
+export interface OpsEverybodyRow {
+  personId: string
+  key: string
+  displayName: string
+  functionalRole: string
+  objectives: {
+    id: string
+    title: string
+    serves: string | null
+    status: string
+    unjustifiedKeyResults: number
+  }[]
+  commitments: { total: number; closed: number; missed: number; blocked: number; overdue: number }
+  sales: { originated: number; positioned: number; newRevenueCents: number }
+  product: { total: number; byServes: Record<string, number> }
+  says: string[]
+}
+
+export interface OpsEverybody {
+  period: { key: string; name: string; from: string; to: string }
+  quarter: { people: number; withoutAnObjective: string[]; ready: boolean; says: string }
+  people: OpsEverybodyRow[]
+}
+
 export interface OpsClaim {
   id: string
   claimant: string
@@ -588,6 +613,10 @@ export const opsApi = {
   useCases: () => apiClient.get<OpsUseCase[]>('/ops/use-cases', QUIET).then((r) => r.data),
   tech: () => apiClient.get<OpsWorkItem[]>('/ops/tech', QUIET).then((r) => r.data),
   ux: () => apiClient.get<OpsWorkItem[]>('/ops/ux', QUIET).then((r) => r.data),
+  /** The one board: everybody's quarter side by side. Never summed, never sorted by contribution. */
+  everybody: (periodKey: string) =>
+    apiClient.get<OpsEverybody>(`/ops/everybody/${periodKey}`, QUIET).then((r) => r.data),
+
   objectives: (periodKey: string) =>
     apiClient.get<OpsObjective[]>(`/ops/objectives/${periodKey}`, QUIET).then((r) => r.data),
   commitments: (personKey: string, periodKey: string) =>

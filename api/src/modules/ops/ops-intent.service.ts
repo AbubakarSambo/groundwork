@@ -19,6 +19,17 @@ import {
   OpsCommitmentStatus,
   OpsTodoStatus,
 } from '@prisma/client';
+import {
+  countsAsOriginationFor,
+  countsAsPositioningFor,
+  PAYING_ONWARD,
+} from './only-the-originator-gets-origination';
+import {
+  OneRow,
+  inTheOrderTheBoardIsRead,
+  whatThisRowShows,
+  whatIsTrueOfTheQuarter,
+} from './everybody-in-one-place';
 
 /**
  * What we said we would do: objectives and their key results for the quarter,
@@ -220,6 +231,107 @@ export class OpsIntentService {
           }),
         }))
         .filter((d) => d.says !== null),
+    };
+  }
+
+  /**
+   * THE ONE BOARD: everybody's quarter side by side.
+   *
+   * Assembled from records that already exist rather than from anything stored
+   * for this page - objectives, commitments, originations and declared work are
+   * each somebody's own record, and this only puts them next to each other.
+   *
+   * Read the rules in `everybody-in-one-place.ts` before adding a column. The
+   * two things this board must never do are the two things it would be most
+   * natural to add to it.
+   */
+  async everybodySideBySide(periodKey: string) {
+    const period = await this.prisma.opsPeriod.findUnique({ where: { key: periodKey } });
+    if (!period) throw new NotFoundException(`No period called ${periodKey}`);
+
+    const people = await this.prisma.opsPerson.findMany({ where: { active: true } });
+
+    const [objectives, commitments, opportunities, declared] = await Promise.all([
+      this.prisma.opsObjective.findMany({
+        where: { periodId: period.id },
+        include: { keyResults: true },
+      }),
+      this.prisma.opsCommitment.findMany({ where: { operatingPeriodId: period.id } }),
+      this.prisma.opsCommercialOpportunity.findMany({ include: { payments: true } }),
+      this.prisma.opsWhatItServes.findMany(),
+    ]);
+
+    const today = new Date();
+    const from = period.startsOn;
+    const to = period.endsOn;
+
+    const rows: OneRow[] = people.map((person) => {
+      const theirs = objectives.filter((o) => o.ownerId === person.id);
+      const theirCommitments = commitments.filter((c) => c.ownerId === person.id);
+
+      /* Origination and positioning are read through the same helpers the
+         contribution ledger uses, so a company cannot count here and not there. */
+      const originated = opportunities.filter((o) => countsAsOriginationFor(o, person.id));
+      const positioned = opportunities.filter((o) => countsAsPositioningFor(o, person.id));
+
+      const newRevenueCents = originated
+        .filter((o) => PAYING_ONWARD.includes(o.stage))
+        .reduce(
+          (sum, o) =>
+            sum +
+            o.payments
+              .filter((p) => p.paidAt !== null && p.paidAt >= from && p.paidAt <= to)
+              .reduce((s, p) => s + Math.round(Number(p.amount) * 100), 0),
+          0,
+        );
+
+      const theirWork = declared.filter((d) => d.declaredById === person.id);
+      const byServes: Record<string, number> = {};
+      for (const d of theirWork) byServes[d.serves] = (byServes[d.serves] ?? 0) + 1;
+
+      return {
+        personId: person.id,
+        key: person.key,
+        displayName: person.displayName,
+        functionalRole: person.functionalRole,
+        objectives: theirs.map((o) => ({
+          id: o.id,
+          title: o.title,
+          serves: o.serves,
+          status: o.status,
+          unjustifiedKeyResults: o.keyResults.filter(
+            (kr) => whyThisKeyResultIsNotSetYet({ justification: kr.justification, approach: kr.approach }) !== null,
+          ).length,
+        })),
+        commitments: {
+          total: theirCommitments.length,
+          closed: theirCommitments.filter((c) => c.status === OpsCommitmentStatus.COMPLETED).length,
+          missed: theirCommitments.filter((c) => c.status === OpsCommitmentStatus.MISSED).length,
+          blocked: theirCommitments.filter((c) => c.blocked).length,
+          /* Still open and past its date. A MISSED one is already counted as
+             missed; counting it here as well would report one failure twice. */
+          overdue: theirCommitments.filter(
+            (c) =>
+              (c.status === OpsCommitmentStatus.NOT_STARTED ||
+                c.status === OpsCommitmentStatus.IN_PROGRESS) &&
+              c.dueDate < today,
+          ).length,
+        },
+        sales: {
+          originated: originated.length,
+          positioned: positioned.length,
+          newRevenueCents,
+        },
+        product: { total: theirWork.length, byServes },
+      };
+    });
+
+    const ordered = inTheOrderTheBoardIsRead(rows);
+
+    return {
+      period: { key: period.key, name: period.name, from, to },
+      quarter: whatIsTrueOfTheQuarter(ordered),
+      people: ordered.map((row) => ({ ...row, says: whatThisRowShows(row) })),
     };
   }
 
