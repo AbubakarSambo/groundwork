@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
 import { PAGE, CARD, LABEL } from './OpsLayout'
 import { readEnum, readDate, DueDate } from './OpsTable'
-import { Adder } from './OpsForm'
+import { Adder, Choose } from './OpsForm'
 
 /**
  * One company, every angle.
@@ -159,14 +159,28 @@ export default function OpsCompanyPage() {
           <p style={NOTHING}>Nobody. They came to us.</p>
         ) : (
           d.broughtBy.map((b) => (
-            <p key={b.contributor} style={{ fontSize: 14, margin: '0 0 6px' }}>
+            <div key={b.contributor} style={{ fontSize: 14, margin: '0 0 8px' }}>
               <strong>{b.contributor}</strong> · {b.sourceType} · {readEnum(b.qualifyingStatus)}
+              {/*
+                AN INTRODUCTION COULD NEVER MOVE. `PATCH /ops/attributions/:company/:contributor`
+                was built and called by nothing, so every introduction stayed at
+                INTRODUCED for ever — and the qualifying line, the setting that
+                decides what counts toward a contributor's target, was measuring
+                a status no screen could change.
+              */}
+              <Choose
+                label={`Where ${b.contributor}'s introduction stands`}
+                value={b.qualifyingStatus}
+                options={['INTRODUCED', 'READY', 'QUALIFIED', 'DISQUALIFIED']}
+                onPick={(next) => opsApi.moveIntroductionAlong(key, b.contributorKey, next)}
+                invalidate={[['ops']]}
+              />
               {b.sourceDetail && (
                 <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)' }}>
                   {b.sourceDetail}
                 </span>
               )}
-            </p>
+            </div>
           ))
         )}
       </Section>

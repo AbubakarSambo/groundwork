@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { opsApi, type OpsNumber } from '@/api/ops'
+import { Adder } from './OpsForm'
 
 /**
  * The back office board.
@@ -215,11 +216,40 @@ function YourTodos({ personKey }: { personKey: string }) {
   })
 
   const open = (todos.data ?? []).filter((t) => t.status === 'OPEN')
-  if (open.length === 0) return null
 
+  /*
+   * SHOWN EVEN WHEN EMPTY, NOW THAT THERE IS SOMETHING TO DO HERE.
+   *
+   * It returned null on an empty list, which was right when the panel could
+   * only ever list. `POST /ops/todos` was built and called by nothing, so the
+   * one place a person keeps their own next actions could read them and never
+   * take one — and hiding the panel hid the only place to add one.
+   */
   return (
     <section style={{ ...CARD, marginBottom: 12 }}>
       <p style={LABEL}>Your to-dos</p>
+      <div style={{ marginTop: 8 }}>
+        <Adder
+          title="Add one"
+          fields={[
+            { name: 'title', label: 'What needs doing', required: true },
+            { name: 'dueDate', label: 'By when', type: 'date' },
+            { name: 'notes', label: 'Anything worth remembering', type: 'textarea' },
+          ]}
+          submit={(v) =>
+            opsApi.addTodo({
+              title: v.title,
+              dueDate: v.dueDate || undefined,
+              notes: v.notes || undefined,
+            })
+          }
+          invalidate={[['ops', 'todos', personKey]]}
+          submitLabel="Add it"
+        />
+      </div>
+      {open.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '8px 0 0' }}>Nothing outstanding.</p>
+      )}
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
         {open.map((t) => (
           <li key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '4px 0' }}>

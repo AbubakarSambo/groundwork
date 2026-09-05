@@ -49,6 +49,8 @@ import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
   OpsQuarterPage,
+  OpsRequestsPage,
+  OpsDecisionsPage,
   OpsCommitmentsPage,
   OpsApprovalsPage,
   OpsSpendPage,
@@ -348,6 +350,8 @@ export default function App() {
             <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/quarter" element={<RequireAuth><OpsLayout><OpsQuarterPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/requests" element={<RequireAuth><OpsLayout><OpsRequestsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/decisions" element={<RequireAuth><OpsLayout><OpsDecisionsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/approvals" element={<RequireAuth><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/fundraise" element={<RequireAuth><OpsLayout><OpsFundraisePage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/strategy" element={<RequireAuth><OpsLayout><OpsStrategyPage /></OpsLayout></RequireAuth>} />

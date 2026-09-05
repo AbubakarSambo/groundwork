@@ -53,6 +53,26 @@ export default function OpsOverviewPage() {
     queryFn: () => opsApi.commercialOverview(window.from, window.to),
     retry: false,
   })
+  /*
+   * TWO READS THAT WERE BUILT AND SHOWN NOWHERE.
+   *
+   * `function-health` and `performance` had no caller in the client at all. They
+   * answer the two questions this page's own comment says it exists for and did
+   * not carry: how the function itself is doing, and how much of what it sold
+   * actually stayed. Retention is the one that matters most — a customer who
+   * paid once and left is not the same as one who has paid for a year, and every
+   * figure above treats them identically.
+   */
+  const health = useQuery({
+    queryKey: ['ops', 'function-health'],
+    queryFn: opsApi.functionHealth,
+    retry: false,
+  })
+  const performance = useQuery({
+    queryKey: ['ops', 'commercial-performance', window.key],
+    queryFn: () => opsApi.commercialPerformance(window.from, window.to),
+    retry: false,
+  })
 
   const d = overview.data
   const ask = (n: number) => d?.questions.find((q) => q.n === n)?.question ?? ''
@@ -190,6 +210,34 @@ export default function OpsOverviewPage() {
               )}
             </section>
           </Band>
+
+          {performance.data && (
+            <Band n={14} question="How much of what we sold stayed sold?">
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {/* Three windows, never summed. Money retained at twelve months
+                    is a subset of money retained at three, and adding them
+                    would count the same customer three times. */}
+                <Figure value={money(performance.data.retained3Month)} label="still paying at 3 months" />
+                <Figure value={money(performance.data.retained6Month)} label="at 6 months" />
+                <Figure value={money(performance.data.retained12Month)} label="at 12 months" />
+                <Figure value={money(performance.data.qualifiedPipeline)} label="qualified pipeline" quiet />
+              </div>
+            </Band>
+          )}
+
+          {health.data && (
+            <Band n={15} question="And how is the function itself doing?">
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {/* Separate from what it produced, on purpose: a good quarter
+                    can sit on top of a pipeline nobody is working. */}
+                <Figure value={health.data.livePipeline} label="live opportunities" />
+                <Figure value={health.data.withNothingPlanned} label="with nothing planned next" />
+                <Figure value={health.data.overdueFollowUps} label="follow-ups overdue" />
+                <Figure value={health.data.attributionUnresolved} label="nobody credited yet" />
+              </div>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0' }}>{health.data.says}</p>
+            </Band>
+          )}
 
           {d.claimsWaiting !== null && d.claimsWaiting > 0 && (
             <Band n={13} question={ask(13)}>

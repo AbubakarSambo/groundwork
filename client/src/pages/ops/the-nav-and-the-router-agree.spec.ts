@@ -72,7 +72,11 @@ describe('what each person is offered', () => {
    */
   it('gives a contributor a small, whole interface', () => {
     const theirs = pagesFor(['sprint:read', 'contributor:self', 'spend:submit']).map((p) => p.name)
-    expect(theirs).toEqual(['My board', 'The sprint', 'Commitments', 'Spend', 'Objectives'])
+    /* Requests joined the list deliberately: anybody may ask for something they
+       cannot deliver without, and a contributor who is blocked is exactly who
+       needs to say so. It is not empty for them either — the asking form is the
+       page; only the queue is behind resourcing:approve, and the page says so. */
+    expect(theirs).toEqual(['My board', 'The sprint', 'Commitments', 'Spend', 'Objectives', 'Requests'])
   })
 
   it('and is offered no page that would always be empty for them', () => {

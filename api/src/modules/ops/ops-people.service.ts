@@ -194,12 +194,6 @@ export class OpsPeopleService implements OnModuleInit {
     });
   }
 
-  /** Connects somebody's ops record to the account they sign in with. */
-  async linkAccount(personKey: string, userId: string | null) {
-    const person = await this.byKey(personKey);
-    return this.prisma.opsPerson.update({ where: { id: person.id }, data: { userId } });
-  }
-
   private async byKey(key: string) {
     const person = await this.prisma.opsPerson.findUnique({ where: { key } });
     if (!person) throw new NotFoundException(`No one here called ${key}`);

@@ -168,12 +168,22 @@ export class OpsController {
     return this.people.setActive(key, body.active);
   }
 
-  @Patch('people/:key/account')
-  @NeedsOps('people:admin')
-  @ApiOperation({ summary: 'Connect them to the account they sign in with' })
-  linkAccount(@Param('key') key: string, @Body() body: { userId: string | null }) {
-    return this.people.linkAccount(key, body.userId);
-  }
+  /*
+   * `PATCH people/:key/account` WAS HERE AND IS GONE.
+   *
+   * It took a raw `userId`, which nothing in the ops system can look up — there
+   * is no read of the product's user table from in here, deliberately. So the
+   * only way to use it was to fetch a UUID out of the database by hand, and no
+   * screen ever called it.
+   *
+   * Connecting an account now happens at `POST /admin/ops/:personKey/account`,
+   * which takes an address, is guarded by the platform-admin list, and is
+   * reachable by the first person — which this route was not, because it needed
+   * `people:admin`, which needs the link it was supposed to create.
+   *
+   * Two doors to one room where one of them cannot be opened from outside is
+   * worse than one door.
+   */
 
   @Get('workstreams')
   @ApiOperation({ summary: 'The standing areas of the company and who owns each' })
