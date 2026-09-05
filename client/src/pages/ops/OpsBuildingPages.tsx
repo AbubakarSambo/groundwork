@@ -5,6 +5,7 @@ import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '
 import { OpsHeader, PAGE } from './OpsLayout'
 import { OpsTable, Filters, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
+import { WhatThisServes, WorkThatSaysNothing } from './WhatThisServes'
 
 const ROADMAP_STATUSES = ['PROPOSED', 'READY', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'] as const
 const WORK_STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'RESOLVED'] as const
@@ -14,6 +15,15 @@ const READINESS = ['UNKNOWN', 'REVIEWING', 'GAP_IDENTIFIED', 'IN_PROGRESS', 'PRO
 
 export function OpsRoadmapPage() {
   const roadmap = useQuery({ queryKey: ['ops', 'roadmap'], queryFn: opsApi.roadmap, retry: false })
+  const declared = useQuery({
+    queryKey: ['ops', 'what-serves-nothing'],
+    queryFn: opsApi.whatServesNothing,
+    retry: false,
+  })
+  /* An item is "said nothing" exactly when it is on that list. Read from the
+     one query rather than fetched a second way, so the badge on a row and the
+     count at the top can never disagree. */
+  const saidNothing = new Set((declared.data?.rows ?? []).map((r) => r.id))
   const [filter, setFilter] = useState<string | null>(null)
 
   const filters: Filter<OpsRoadmapItem>[] = [
@@ -42,6 +52,16 @@ export function OpsRoadmapPage() {
               {r.rationale}
             </div>
           )}
+          {/* WHAT IT SERVES, ON THE ITEM. The rule at the top of the plan as a
+              field, asked where the work is and at the moment the answer is
+              cheap. */}
+          <div style={{ maxWidth: 480 }}>
+            <WhatThisServes
+              recordType="OpsRoadmapItem"
+              recordId={r.id}
+              said={saidNothing.has(r.id) ? null : undefined}
+            />
+          </div>
         </>
       ),
     },
@@ -75,6 +95,11 @@ export function OpsRoadmapPage() {
   return (
     <main id="main" style={PAGE}>
       <OpsHeader name="Roadmap" answers="What are we building, and in what order?" />
+
+      {/* At the top, where somebody adding work will see it, and gone entirely
+          when it is empty — a permanent zero teaches people to stop reading. */}
+      <WorkThatSaysNothing />
+
       <Adder
         title="Propose something"
         fields={[

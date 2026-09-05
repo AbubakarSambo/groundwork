@@ -4913,6 +4913,59 @@ model OpsIntegration {
 /// Seeded and stable: these are the components of the moat as the company
 /// defines them, and they change when the strategy changes rather than when
 /// somebody has an idea.
+/// WHAT A PIECE OF WORK SERVES, DECLARED WHEN IT IS PROPOSED.
+///
+/// One table for every kind of item — roadmap, tech, UX — rather than four
+/// columns on each of three models. Two reasons beyond tidiness: the rule and
+/// its wording live in one place, and "work that named nothing" becomes a join
+/// rather than three queries that have to agree with each other.
+///
+/// Nothing here blocks. An item naming nothing is LISTED, at the moment it is
+/// proposed and the answer is cheapest.
+model OpsWhatItServes {
+  id String @id @default(uuid())
+
+  /// 'OpsRoadmapItem' | 'OpsTechItem' | 'OpsUXItem'. A plain string, because
+  /// this table must not need a foreign key into every kind of work there will
+  /// ever be.
+  recordType String @map("record_type")
+  recordId   String @map("record_id")
+
+  serves OpsServes
+  /// The use case or moat component it points at, when it points at one.
+  servesRecordId String? @map("serves_record_id")
+  /// Why this, and why now. The sentence somebody has to write down.
+  justification String @db.Text
+
+  /// WHAT THIS MAKES US DEPEND ON, AND WHO OWNS IT.
+  ///
+  /// The second threat, and the only one that cannot be detected — a tool or an
+  /// asset belonging to the person adding it. Declared here; the lockfile is the
+  /// witness that does not have to be trusted.
+  dependsOn        String? @map("depends_on") @db.Text
+  dependsOnOwnedBy String? @map("depends_on_owned_by")
+
+  declaredById String   @map("declared_by_id")
+  declaredAt   DateTime @default(now()) @map("declared_at")
+
+  @@unique([recordType, recordId])
+  @@index([serves])
+  @@map("ops_what_it_serves")
+}
+
+/// WHAT A PIECE OF WORK CAN SERVE, AND NOTHING ELSE.
+enum OpsServes {
+  /// It unblocks a customer use case.
+  SALES
+  /// It adds to one of the five moat components.
+  MOAT
+  /// It unlocks a customer we could not have taken before.
+  UNLOCKS_A_CUSTOMER
+  /// Security, a migration, a broken build. Necessary, invisible, and counted —
+  /// with an approval, so it is not the drawer everything gets filed in.
+  KEEPING_IT_UP
+}
+
 /// WHAT WE SAY THIS PRODUCT IS, AND WHAT IT IS NOT.
 ///
 /// The statement every piece of marketing is held up against. It lived in slide

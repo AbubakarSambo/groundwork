@@ -600,6 +600,40 @@ export const opsApi = {
    * the product twice; the ops system had never been checked for it.
    */
 
+  /** The four things a piece of work can serve, and what each has to point at. */
+  whatWorkCanServe: () =>
+    apiClient
+      .get<Array<{ serves: string; label: string; points: string | null; needsApproval: boolean }>>(
+        '/ops/what-work-can-serve',
+        QUIET,
+      )
+      .then((r) => r.data),
+  sayWhatItServes: (body: {
+    recordType: string
+    recordId: string
+    serves: string
+    servesRecordId?: string
+    justification: string
+    dependsOn?: string
+    dependsOnOwnedBy?: string
+  }) => apiClient.post<{ says: string }>('/ops/what-it-serves', body, QUIET).then((r) => r.data),
+  /** Open work that has named nothing. The first threat, as a query. */
+  whatServesNothing: () =>
+    apiClient
+      .get<{ value: number; says: string; rows: Array<{ recordType: string; id: string; title: string }> }>(
+        '/ops/what-serves-nothing',
+        QUIET,
+      )
+      .then((r) => r.data),
+  /** Every dependency declared against a piece of work, and who owns it. */
+  whatWeDependOn: () =>
+    apiClient
+      .get<Array<{ id: string; recordType: string; recordId: string; dependsOn: string | null; dependsOnOwnedBy: string | null; justification: string }>>(
+        '/ops/what-we-depend-on',
+        QUIET,
+      )
+      .then((r) => r.data),
+
   /** What we say this product is. The document every deck and campaign is measured against. */
   whatWeAre: () =>
     apiClient

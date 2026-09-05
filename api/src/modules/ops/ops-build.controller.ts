@@ -3,6 +3,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsBuildService } from './ops-build.service';
+import { OpsWhatItServesService } from './ops-what-it-serves.service';
+import { WHAT_WORK_CAN_SERVE } from './what-a-piece-of-work-serves';
+import { OpsServes } from '@prisma/client';
 import { OpsMoatService } from './ops-moat.service';
 import { OpsIdentity } from './ops-people.service';
 import {
@@ -24,6 +27,7 @@ interface OpsRequest {
 export class OpsBuildController {
   constructor(
     private readonly build: OpsBuildService,
+    private readonly serves: OpsWhatItServesService,
     private readonly moatService: OpsMoatService,
   ) {}
 
@@ -185,6 +189,57 @@ export class OpsBuildController {
     @Body() body: { approvalType: OpsApprovalType; approverId: string; relatedRecordType: string; relatedRecordId: string; requestSummary: string },
   ) {
     return this.build.requestApproval({ ...body, requesterId: req.opsIdentity.personId });
+  }
+
+  // --- What a piece of work serves ----------------------------------------
+
+  /** The four things work can serve, and what each one has to point at. */
+  @Get('what-work-can-serve')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'The four things a piece of work can serve' })
+  whatWorkCanServe() {
+    return WHAT_WORK_CAN_SERVE;
+  }
+
+  /**
+   * Say what a piece of work serves.
+   *
+   * `product:write` rather than the item's own capability, because this is a
+   * claim about the product's direction rather than about the item.
+   */
+  @Post('what-it-serves')
+  @NeedsOps('product:write')
+  @ApiOperation({ summary: 'Say what a piece of work serves, and what it makes us depend on' })
+  sayWhatItServes(
+    @Req() req: OpsRequest,
+    @Body()
+    body: {
+      recordType: string;
+      recordId: string;
+      serves: OpsServes;
+      servesRecordId?: string;
+      justification: string;
+      dependsOn?: string;
+      dependsOnOwnedBy?: string;
+    },
+  ) {
+    return this.serves.say(body, req.opsIdentity.personId);
+  }
+
+  /** Open work that has not said what it serves. The first threat, as a query. */
+  @Get('what-serves-nothing')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'Open work that has not said what it serves' })
+  whatServesNothing() {
+    return this.serves.namedNothing();
+  }
+
+  /** Every dependency anybody declared, and who owns it. */
+  @Get('what-we-depend-on')
+  @NeedsOps('product:read')
+  @ApiOperation({ summary: 'Every dependency declared against a piece of work, and who owns it' })
+  whatWeDependOn() {
+    return this.serves.dependencies();
   }
 
   @Get('approvals')

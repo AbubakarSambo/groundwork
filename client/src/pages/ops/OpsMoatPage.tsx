@@ -13,6 +13,43 @@ import { readDate } from './OpsTable'
  * counted — and every clause of these names an asset that can be deliberately
  * built, which is the whole reason they were written that way.
  */
+/**
+ * Every dependency anybody declared against a piece of work, and who owns it.
+ *
+ * Hidden when there are none — an empty section here would read as "we depend
+ * on nothing", which is a claim, and this list only ever knows what somebody
+ * wrote down. The lockfile is the witness that does not have to be trusted, and
+ * reading it is separate work.
+ */
+function WhatWeDependOn() {
+  const declared = useQuery({
+    queryKey: ['ops', 'what-we-depend-on'],
+    queryFn: opsApi.whatWeDependOn,
+    retry: false,
+  })
+  const rows = declared.data ?? []
+  if (rows.length === 0) return null
+
+  return (
+    <section style={{ ...CARD, marginTop: 20 }}>
+      <p style={LABEL}>What we have taken on a dependency for</p>
+      <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0 10px', maxWidth: '62ch', lineHeight: 1.6 }}>
+        Declared against the work that added it. Only what somebody wrote down — the lockfile is the
+        witness that does not have to be trusted.
+      </p>
+      {rows.map((r) => (
+        <div key={r.id} style={{ borderTop: '1px solid var(--gw-border)', padding: '9px 0 0', marginTop: 9 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.dependsOn}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+            {/* Whose it is, which is the whole question. */}
+            Owned by {r.dependsOnOwnedBy ?? 'nobody said'} · {r.justification}
+          </div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 export default function OpsMoatPage() {
   const moat = useQuery({ queryKey: ['ops', 'moat'], queryFn: opsApi.moat, retry: false })
   const d = moat.data
@@ -138,6 +175,15 @@ export default function OpsMoatPage() {
               )}
             </section>
           ))}
+
+          {/*
+            WHAT WE DEPEND ON, ON THE MOAT PAGE, BECAUSE THAT IS WHAT IT COSTS.
+            The second threat is a dependency that weakens the moat — most of
+            all one belonging to the person who added it. Nothing in the
+            database can detect that, so it is declared against the work; this
+            is where the declarations are read, beside the thing they cost.
+          */}
+          <WhatWeDependOn />
 
           <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', maxWidth: '62ch', marginTop: 20 }}>
             <strong style={{ color: 'var(--gw-navy)' }}>What an acquirer is buying: </strong>
