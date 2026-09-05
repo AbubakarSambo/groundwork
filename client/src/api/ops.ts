@@ -269,6 +269,30 @@ export interface OpsCampaign {
   alignment: string | null
 }
 
+export interface OpsResourceCheck {
+  claim: string
+  kind: 'IS' | 'IS_NOT'
+  verdict: 'CLEAR' | 'SAYS_WHAT_WE_ARE_NOT' | 'NEEDS_A_LOOK'
+  says: string
+}
+
+export interface OpsResource {
+  id: string
+  title: string
+  category: string
+  categoryDetail: string | null
+  url: string | null
+  risks: string[]
+  addedAt: string
+  checks: OpsResourceCheck[] | null
+  checkSays: string | null
+  checkedAt: string | null
+  /** A count out of a count, never a percentage, and every claim opens. */
+  standing: { clear: number; checked: number; flagged: string[]; says: string }
+  /** Set when the words it was checked against have since changed. */
+  stale: string | null
+}
+
 export interface OpsIntegrationStatus {
   configured: boolean
   enabled: boolean
@@ -960,6 +984,26 @@ export const opsApi = {
     apiClient.patch(`/ops/deployments/${id}/stage`, { stage }, QUIET).then((r) => r.data),
   setDeploymentBlocker: (id: string, type: string | null, summary: string | null) =>
     apiClient.patch(`/ops/deployments/${id}/blocker`, { type, summary }, QUIET).then((r) => r.data),
+
+  resources: () =>
+    apiClient
+      .get<{ checkedAgainst: { version: number; headline: string }; resources: OpsResource[] }>(
+        '/ops/resources',
+        QUIET,
+      )
+      .then((r) => r.data),
+
+  addResource: (body: {
+    title: string
+    category: string
+    categoryDetail?: string
+    url?: string
+    content: string
+    risks: string[]
+  }) => apiClient.post('/ops/resources', body, QUIET).then((r) => r.data),
+
+  recheckResource: (id: string) =>
+    apiClient.post(`/ops/resources/${id}/check`, {}, QUIET).then((r) => r.data),
 
   /** A campaign names the objective it is run for, and why it moves it. Refused without both. */
   addCampaign: (body: {

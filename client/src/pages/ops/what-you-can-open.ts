@@ -35,6 +35,10 @@ export const OPS_PAGES: OpsPage[] = [
   { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Sales & marketing' },
   { path: '/ops/attribution', name: 'Attribution review', capability: 'commercial:approve', group: 'Sales & marketing' },
   { path: '/ops/marketing', name: 'Marketing', capability: 'marketing:read', group: 'Sales & marketing' },
+  /* The register of what we put in front of people. Read by anybody holding
+     marketing:read — it is only useful if whoever writes the next deck can see
+     what the last one was told. */
+  { path: '/ops/resources', name: 'Resources', capability: 'marketing:read', group: 'Sales & marketing' },
   { path: '/ops/deployment', name: 'Deployment', capability: 'deployment:read', group: 'Sales & marketing' },
 
   { path: '/ops/roadmap', name: 'Roadmap', capability: 'product:read', group: 'Building' },

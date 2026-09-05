@@ -27,6 +27,8 @@ import { OpsProductStatementService } from './ops-product-statement.service';
 import { OpsWhatItServesService } from './ops-what-it-serves.service';
 import { OpsFreezeService } from './ops-freeze.service';
 import { OpsDoorController } from './ops-door.controller';
+import { OpsResourcesService } from './ops-resources.service';
+import { WhatAReadingOfItSaysService } from './what-a-reading-of-it-says';
 
 /**
  * The back office the Groundwork team runs on.
@@ -57,6 +59,8 @@ import { OpsDoorController } from './ops-door.controller';
     OpsIntentService,
     OpsCeoService,
     OpsIntegrationService,
+    OpsResourcesService,
+    WhatAReadingOfItSaysService,
   ],
   exports: [OpsPeopleService, OpsDoorService],
 })

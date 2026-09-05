@@ -47,6 +47,7 @@ import {
 import { OpsLayout } from '@/pages/ops/OpsLayout'
 import { OpsWhatWeArePage } from '@/pages/ops/OpsWhatWeArePage'
 import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
+import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
 import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
@@ -351,6 +352,7 @@ export default function App() {
             <Route path="/ops/readiness" element={<RequireAuth><OpsLayout><OpsReadinessPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/resources" element={<RequireAuth><OpsLayout><OpsResourcesPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/everybody" element={<RequireAuth><OpsLayout><OpsEverybodyPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/quarter" element={<RequireAuth><OpsLayout><OpsQuarterPage /></OpsLayout></RequireAuth>} />
             <Route path="/ops/what-we-are" element={<RequireAuth><OpsLayout><OpsWhatWeArePage /></OpsLayout></RequireAuth>} />

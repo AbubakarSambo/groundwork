@@ -4378,6 +4378,10 @@ enum OpsApprovalType {
   COMMERCIAL
   SPEND
   RESOURCING
+  /// A deck, a campaign, a page of site copy. Signed off against the version of
+  /// the product statement it was checked against, so changing what we say we
+  /// are reopens everything signed against the old words.
+  RESOURCE
 }
 
 enum OpsApprovalStatus {
@@ -5090,6 +5094,71 @@ model OpsProductStatement {
 
   @@index([version])
   @@map("ops_product_statements")
+}
+
+/// WHAT WE PUT IN FRONT OF PEOPLE, AND WHETHER IT MATCHES WHAT WE SELL.
+///
+/// Decks, campaign content, site copy, newsletters. The register exists because
+/// the fastest way to break a product's positioning is a piece of marketing
+/// nobody checked — calling it a coaching tool, promising a use case it does not
+/// support — and marketing is written under time pressure by whoever is closest
+/// to the deadline.
+///
+/// `checkedAgainstVersion` is the whole point. A sign-off is only meaningful
+/// against a fixed set of words, so it records WHICH version of the product
+/// statement it passed, and changing the statement leaves every older sign-off
+/// visibly stale rather than silently wrong.
+model OpsResource {
+  id String @id @default(uuid())
+
+  title          String
+  category       OpsResourceCategory
+  /// Required when the category is OTHER: an unnamed 'other' is a drawer.
+  categoryDetail String?             @map("category_detail")
+
+  /// Where the thing itself lives. It is not stored here — this is a register,
+  /// not a document store, and a copy kept here would go stale against the one
+  /// people actually send.
+  url String?
+
+  /// The words being checked. Pasted, because a link cannot be read by a check.
+  content String @db.Text
+
+  addedById String   @map("added_by_id")
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  /// WHAT THE CHECK FOUND, AND WHICH WORDS IT USED.
+  ///
+  /// `checks` holds one entry per claim in the product statement, each with a
+  /// verdict and the sentence it is about. Kept as rows in JSON rather than a
+  /// count, because "3 of 5" is only meaningful if the 3 can be opened.
+  checks                Json?
+  checkedAgainstVersion Int?      @map("checked_against_version")
+  checkedAt             DateTime? @map("checked_at")
+  /// Said by the model, kept verbatim, and never the verdict on its own.
+  checkSays             String?   @map("check_says") @db.Text
+
+  /// The three things most likely to go wrong with this piece. Written by a
+  /// person, not the model: a risk somebody typed is a risk somebody owns.
+  risks String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([category])
+  @@map("ops_resources")
+}
+
+/// The kinds of thing the register holds. OTHER exists so the list does not
+/// have to be complete on day one, and carries a required detail so it cannot
+/// become the drawer everything is filed in.
+enum OpsResourceCategory {
+  PITCH_DECK
+  SALES_DECK
+  CAMPAIGN_STRATEGY
+  CAMPAIGN_CONTENT
+  MARKETING_SITE_COPY
+  NEWSLETTER
+  OTHER
 }
 
 model OpsMoatComponent {
