@@ -546,6 +546,12 @@ model AdminProfile {
   id        String   @id @default(uuid())
   userId    String   @unique @map("user_id")
   signals   Json     @default("[]") // string[] of observed preference signals
+  /// The one-time code for a destructive admin action: { hash, expiresAt, used }.
+  /// The service has always written here. The column did not exist, so every
+  /// OTP request threw a 500 and every action behind one - disabling a code,
+  /// adding a platform admin - had never worked. Two `@ts-ignore`s kept the
+  /// compiler quiet about it.
+  adminOtp  Json?    @map("admin_otp")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

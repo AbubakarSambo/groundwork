@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
 import { opsApi } from '@/api/ops'
 import { pagesFor, GROUPS } from './what-you-can-open'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * The frame every back-office page sits in.
@@ -28,6 +29,7 @@ export const LABEL: React.CSSProperties = {
 
 export function OpsLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
+  const isPlatformAdmin = useAuthStore(state => state.user?.isPlatformAdmin)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
 
   if (me.isError) {
@@ -38,6 +40,21 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           You are signed in, but you are not set up in the Groundwork team's operating system. That
           is a separate list from your Groundwork account.
         </p>
+        {/*
+          * A DEAD END IS NOT AN ANSWER WHEN THE READER CAN FIX IT.
+          *
+          * A platform admin is exactly the person who can connect an account here — and this page
+          * used to tell them nothing but no. It was the whole of "I clicked platform ops but I
+          * can't get to my own view": the door exists, and the page that refuses you does not
+          * mention it.
+          */}
+        {isPlatformAdmin && (
+          <p style={{ fontSize: 14, marginTop: 14 }}>
+            <Link to="/admin/dashboard" style={{ color: 'var(--gw-navy)', fontWeight: 700 }}>
+              Connect your account to somebody on the team →
+            </Link>
+          </p>
+        )}
       </main>
     )
   }

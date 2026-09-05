@@ -176,6 +176,12 @@ export class AdminController {
 
   // ── Read-only ─────────────────────────────────────────────────────────────
 
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Everything /admin/dashboard draws: overview, codes, free-reason split, feedback, per-user usage' })
+  getDashboard() {
+    return this.adminService.getDashboard();
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Platform-wide stats: orgs, grounds, codes, redemptions, freeReason breakdown' })
   getPlatformStats() {
@@ -264,4 +270,27 @@ export class AdminController {
     if (!body?.email) throw new BadRequestException('email is required');
     return this.adminService.addPlatformAdmin(body.email);
   }
+
+  /**
+   * Who can reach this console.
+   *
+   * Readable without an OTP on purpose: seeing the list is how somebody checks
+   * that it holds only the people they added, and putting a code in front of
+   * that would make the check rare enough not to happen.
+   */
+  @Get('admins')
+  @ApiOperation({ summary: 'Every platform admin. Two ways onto this list and no more.' })
+  listPlatformAdmins() {
+    return this.adminService.listPlatformAdmins();
+  }
+
+  @Post('admins/:userId/remove')
+  @UseGuards(OtpGuard)
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Take somebody off the platform-admin list. Never the last one.' })
+  @ApiHeader({ name: 'X-Admin-OTP', description: 'Valid 6-digit OTP obtained from POST /admin/otp/request', required: true })
+  removePlatformAdmin(@Param('userId') userId: string, @CurrentUser('id') callerId: string) {
+    return this.adminService.removePlatformAdmin(userId, callerId);
+  }
+
 }

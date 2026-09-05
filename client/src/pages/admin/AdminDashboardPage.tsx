@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { patternAccuracyApi } from '@/api/prompts'
+import { apiClient } from '@/api/client'
 
 // ── Design tokens (mirrors AdminPage) ────────────────────────────────────────
 
@@ -73,6 +74,26 @@ interface UserUsage {
   lastActive: string | null
 }
 
+interface PlatformAdmin {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  createdAt: string
+}
+
+interface OpsDoorState {
+  isSetUp: boolean
+  nobodyCanOpenIt: boolean
+  people: Array<{
+    key: string
+    displayName: string
+    functionalRole: string
+    active: boolean
+    linkedAccount: string | null
+  }>
+}
+
 interface AdminDashboardData {
   overview: AdminOverview
   codes: AdminCode[]
@@ -83,37 +104,47 @@ interface AdminDashboardData {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const token = useAuthStore.getState().token
-  const res = await fetch(`/api${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opts?.headers ?? {}),
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body?.message ?? `HTTP ${res.status}`)
-  }
-  return res.json()
-}
-
+/**
+ * THIS PAGE HAD ITS OWN FETCH, AND IT POINTED AT THE WRONG PLACE.
+ *
+ * It called `fetch('/api' + path)` — one segment short of the `/api/v1` that
+ * `apiClient` uses, and relative, so on staging the request went to the site
+ * rather than the API and came back as this page's own HTML:
+ *
+ *   Unexpected token '<', "<!doctype "... is not valid JSON
+ *
+ * Underneath that, three of its four routes did not exist at all: there was no
+ * `GET /admin/dashboard`, disabling a code is a PATCH not a POST, and adding an
+ * admin is `add-admin` not `admins`. The wrong prefix hid all of it behind one
+ * parse error. Everything now goes through the shared client, which carries the
+ * base URL, the token and the error handling that every other page relies on.
+ */
 const adminApi = {
-  dashboard: (): Promise<AdminDashboardData> => apiFetch('/admin/dashboard'),
-  requestOtp: (): Promise<void> => apiFetch('/admin/otp/request', { method: 'POST' }),
+  dashboard: (): Promise<AdminDashboardData> =>
+    apiClient.get<AdminDashboardData>('/admin/dashboard').then(r => r.data),
+  requestOtp: (): Promise<void> => apiClient.post('/admin/otp/request').then(() => undefined),
   disableCode: (codeId: string, otp: string): Promise<void> =>
-    apiFetch(`/admin/codes/${codeId}/disable`, {
-      method: 'POST',
-      headers: { 'X-Admin-OTP': otp },
-    }),
+    apiClient
+      .patch(`/admin/codes/${codeId}/disable`, {}, { headers: { 'X-Admin-OTP': otp } })
+      .then(() => undefined),
   addAdmin: (email: string, otp: string): Promise<void> =>
-    apiFetch('/admin/admins', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-      headers: { 'X-Admin-OTP': otp },
-    }),
+    apiClient.post('/admin/add-admin', { email }, { headers: { 'X-Admin-OTP': otp } }).then(() => undefined),
+
+  /** Who can reach this console. Readable without a code, because a list nobody checks is not a control. */
+  admins: (): Promise<PlatformAdmin[]> =>
+    apiClient.get<PlatformAdmin[]>('/admin/admins').then(r => r.data),
+  removeAdmin: (userId: string, otp: string): Promise<void> =>
+    apiClient
+      .post(`/admin/admins/${userId}/remove`, {}, { headers: { 'X-Admin-OTP': otp } })
+      .then(() => undefined),
+
+  /** The door into the team's own operating system. */
+  opsDoor: (): Promise<OpsDoorState> => apiClient.get<OpsDoorState>('/admin/ops').then(r => r.data),
+  setUpOps: (): Promise<OpsDoorState> => apiClient.post<OpsDoorState>('/admin/ops/setup').then(r => r.data),
+  linkOpsAccount: (personKey: string, email: string): Promise<OpsDoorState> =>
+    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account`, { email }).then(r => r.data),
+  unlinkOpsAccount: (personKey: string): Promise<OpsDoorState> =>
+    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account/remove`).then(r => r.data),
 }
 
 // ── OTP Challenge Modal ───────────────────────────────────────────────────────
@@ -487,9 +518,27 @@ function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
 
 // ── Admin Management section ──────────────────────────────────────────────────
 
-function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string) => Promise<void> }) {
+/**
+ * WHO CAN REACH THIS CONSOLE.
+ *
+ * There was a way to add somebody and no way to see the list, so "platform ops
+ * is only the people I added" was a belief rather than something anybody could
+ * check. There are two ways onto this list and no more: the one-time bootstrap
+ * variable, which only fires while no admin exists at all, and the form below —
+ * platform admin plus an emailed code. Nothing else in the codebase writes the
+ * flag.
+ */
+function AdminManagementSection({
+  onAdd,
+  onRemove,
+}: {
+  onAdd: (email: string, otp: string) => Promise<void>
+  onRemove: (userId: string, otp: string) => Promise<void>
+}) {
   const [email, setEmail] = useState('')
   const [showOtp, setShowOtp] = useState(false)
+  const [removing, setRemoving] = useState<PlatformAdmin | null>(null)
+  const admins = useQuery({ queryKey: ['platform-admins'], queryFn: adminApi.admins })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -499,17 +548,51 @@ function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string)
 
   return (
     <section>
-      <div style={SL}>Admin Management</div>
+      <div style={SL}>Who can reach this console</div>
       <div style={C}>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14 }}>
-          Add another platform admin by email. An OTP challenge is required.
+          Two ways onto this list and no more: the one-time bootstrap on a brand new install, and
+          this form. Everyone on it sees every organisation, every usage figure and the pricing.
         </div>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
+        {admins.isError && (
+          <div style={{ fontSize: 13, color: 'var(--gw-red-t)', marginBottom: 12 }}>
+            Could not load the list.
+          </div>
+        )}
+
+        {(admins.data ?? []).map(a => (
+          <div
+            key={a.id}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid var(--gw-border)' }}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{a.email}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                {[a.firstName, a.lastName].filter(Boolean).join(' ') || 'no name on the account'}
+              </div>
+            </div>
+            <button
+              onClick={() => setRemoving(a)}
+              style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Take off
+            </button>
+          </div>
+        ))}
+
+        {admins.data?.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', padding: '8px 0' }}>
+            Nobody — which should be impossible, since you are reading this.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14 }}>
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="admin@example.com"
+            placeholder="them@example.com"
             required
             style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
@@ -519,18 +602,169 @@ function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string)
             type="submit"
             style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
-            Add admin
+            Add them
           </button>
         </form>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+          They have to have a Groundwork account already — this promotes one, it does not create one.
+        </div>
       </div>
+
       {showOtp && (
         <OtpModal
           title="Add platform admin"
-          description={`Grant platform admin access to ${email}. This cannot be undone from the UI.`}
+          description={`${email} will see every organisation, every usage figure and the pricing. You can take them off again here.`}
           onConfirm={otp => onAdd(email, otp)}
-          onClose={() => { setShowOtp(false); setEmail('') }}
+          onClose={() => { setShowOtp(false); setEmail(''); admins.refetch() }}
         />
       )}
+
+      {removing && (
+        <OtpModal
+          title="Take them off the list"
+          description={`${removing.email} will lose the platform console. Their Groundwork account and their own organisation are untouched.`}
+          onConfirm={otp => onRemove(removing.id, otp)}
+          onClose={() => { setRemoving(null); admins.refetch() }}
+        />
+      )}
+    </section>
+  )
+}
+
+/**
+ * THE DOOR INTO THE TEAM'S OWN OPERATING SYSTEM.
+ *
+ * Every route under `/ops` needs an OpsPerson behind the signed-in account, and
+ * the only place to create or link one is itself inside `/ops`. So the first
+ * person could never get in, and the back office answered "This is not your
+ * system" to the person who owns it.
+ *
+ * This is the way in, and it is the only place it can be: a surface guarded by
+ * the platform-admin list, which is a stronger gate than the one it opens.
+ */
+function OpsAccessSection() {
+  const door = useQuery({ queryKey: ['ops-door'], queryFn: adminApi.opsDoor })
+  const [linking, setLinking] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState('')
+
+  async function run(work: () => Promise<unknown>) {
+    setBusy(true)
+    setProblem('')
+    try {
+      await work()
+      await door.refetch()
+      setLinking(null)
+      setEmail('')
+    } catch (e: any) {
+      setProblem(e?.response?.data?.message ?? e?.message ?? 'That did not work.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const state = door.data
+
+  return (
+    <section>
+      <div style={SL}>The team's operating system</div>
+      <div style={C}>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
+          Targets, the pipeline, commitments, spend, the moat. A separate list from this one — being
+          a platform admin does not put you on the team, it lets you say who is.
+        </div>
+
+        {state?.isSetUp && (
+          <a
+            href="/ops"
+            style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'none', marginBottom: 14 }}
+          >
+            Open the operating system →
+          </a>
+        )}
+
+        {state && !state.isSetUp && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>
+              It has not been set up here yet. This writes the periods, the workstreams and the six
+              people, and is safe to run twice.
+            </div>
+            <button
+              onClick={() => run(adminApi.setUpOps)}
+              disabled={busy}
+              style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+            >
+              Set it up
+            </button>
+          </div>
+        )}
+
+        {/* The state this whole section exists for: it is set up and nobody's
+            account opens it, so /ops turns everybody away including its owner. */}
+        {state?.nobodyCanOpenIt && state.isSetUp && (
+          <div style={{ fontSize: 13, color: 'var(--gw-red-t)', marginBottom: 12 }}>
+            Nobody's account opens it. Connect yours below.
+          </div>
+        )}
+
+        {(state?.people ?? []).map(p => (
+          <div key={p.key} style={{ padding: '9px 0', borderTop: '1px solid var(--gw-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {p.displayName}
+                  {!p.active && <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> · not active</span>}
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                  {p.functionalRole.replace(/_/g, ' ').toLowerCase()} ·{' '}
+                  {p.linkedAccount ?? 'no account connected'}
+                </div>
+              </div>
+              <button
+                onClick={() =>
+                  p.linkedAccount ? run(() => adminApi.unlinkOpsAccount(p.key)) : setLinking(p.key)
+                }
+                disabled={busy}
+                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {p.linkedAccount ? 'Disconnect' : 'Connect an account'}
+              </button>
+            </div>
+
+            {linking === p.key && (
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  run(() => adminApi.linkOpsAccount(p.key, email))
+                }}
+                style={{ display: 'flex', gap: 8, marginTop: 8 }}
+              >
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="the Groundwork account they sign in with"
+                  required
+                  autoFocus
+                  style={{ flex: 1, padding: '8px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+                />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Connect
+                </button>
+              </form>
+            )}
+          </div>
+        ))}
+
+        {problem && (
+          <div style={{ fontSize: 13, color: 'var(--gw-red-t)', marginTop: 12 }}>{problem}</div>
+        )}
+      </div>
     </section>
   )
 }
@@ -626,6 +860,10 @@ export function AdminDashboardPage() {
     await adminApi.addAdmin(email, otp)
   }
 
+  async function handleRemoveAdmin(userId: string, otp: string) {
+    await adminApi.removeAdmin(userId, otp)
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
 
@@ -642,6 +880,12 @@ export function AdminDashboardPage() {
               style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Ops →
+            </button>
+            <button
+              onClick={() => navigate('/ops')}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Our own system →
             </button>
             <button
               onClick={() => navigate('/grounds')}
@@ -680,7 +924,9 @@ export function AdminDashboardPage() {
 
             <DetectionAccuracySection />
 
-            <AdminManagementSection onAdd={handleAddAdmin} />
+            <OpsAccessSection />
+
+            <AdminManagementSection onAdd={handleAddAdmin} onRemove={handleRemoveAdmin} />
 
             <UserUsageSection users={data.userUsage} />
           </>
