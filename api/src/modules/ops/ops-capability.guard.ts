@@ -26,7 +26,10 @@ export class OpsCapabilityGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const identity = await this.people.identify(request.user?.id);
+    /* The whole account, not just the id: membership now depends on whether the
+       caller is a platform admin, and the ops system must not have to read the
+       product's user table to find that out. */
+    const identity = await this.people.identify(request.user);
 
     // Attached whether or not a capability is required, so a route that only
     // needs to know WHO is asking does not have to look it up a second time.

@@ -53,8 +53,8 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           */}
         <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
           You are signed in{signedInAs ? ` as ${signedInAs}` : ''}, and that account is not on the
-          Groundwork team's operating system. It is a separate list from your Groundwork account —
-          being a platform admin does not put you on it.
+          Groundwork team's operating system. Everybody on the platform-admin list is; so is
+          anybody connected to somebody on the team.
         </p>
 
         {isPlatformAdmin && (

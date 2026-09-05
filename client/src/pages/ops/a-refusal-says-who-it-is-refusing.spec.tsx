@@ -50,9 +50,9 @@ describe('being refused the ops system', () => {
     expect(await screen.findByText(/hafsah\.ops@groundwork\.test/)).toBeInTheDocument()
   })
 
-  it('says plainly that platform admin is not the same list', async () => {
+  it('says what would put them on it, rather than only that they are not', async () => {
     renderRefused()
-    expect(await screen.findByText(/being a platform admin does not put you on it/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Everybody on the platform-admin list is/i)).toBeInTheDocument()
   })
 
   it('offers the door to somebody who can open it', async () => {

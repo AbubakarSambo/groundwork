@@ -11,6 +11,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OpsCapability, DEFAULT_GRANTS, can, isAKnownCapability, OPS_CAPABILITIES } from './what-somebody-may-do';
 import { OpsFunctionalRole } from '@prisma/client';
 import { rollOutNewCapabilities } from './a-new-capability-reaches-the-people-who-should-have-it';
+import {
+  GRANTS_FOR_A_PLATFORM_ADMIN,
+  ROLE_FOR_A_PLATFORM_ADMIN,
+  keyForAccount,
+  nameForAccount,
+} from './a-platform-admin-is-on-the-team';
+
+/** What the product's auth layer knows about the caller. Nothing more is read. */
+export interface SignedInAccount {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  isPlatformAdmin?: boolean | null;
+}
 
 export interface OpsIdentity {
   personId: string;
@@ -60,15 +75,95 @@ export class OpsPeopleService implements OnModuleInit {
     }
   }
 
-  /** The ops identity behind a signed-in account, or null if there isn't one. */
-  async identify(userId: string | undefined): Promise<OpsIdentity | null> {
-    if (!userId) return null;
+  /**
+   * The ops identity behind a signed-in account, or null if there isn't one.
+   *
+   * The account is passed whole rather than as an id, so the ops system never
+   * has to read the product's user table to answer a question about its own
+   * membership. `OpsPerson.userId` remains the single link, and it is still a
+   * plain column with no foreign key.
+   */
+  async identify(account: SignedInAccount | undefined): Promise<OpsIdentity | null> {
+    if (!account?.id) return null;
 
     const person = await this.prisma.opsPerson.findUnique({
-      where: { userId },
+      where: { userId: account.id },
       include: { grants: true },
     });
-    if (!person || !person.active) return null;
+
+    if (!person) {
+      /* A platform admin is on this team by definition. See the note in
+         `a-platform-admin-is-on-the-team.ts` for why that is not an escalation. */
+      if (!account.isPlatformAdmin) return null;
+      return this.admitThePlatformAdmin(account);
+    }
+
+    if (!person.active) return null;
+
+    return {
+      personId: person.id,
+      key: person.key,
+      displayName: person.displayName,
+      functionalRole: person.functionalRole,
+      capabilities: person.grants.map((g) => g.capability),
+    };
+  }
+
+  /**
+   * Makes the record, once, on first arrival.
+   *
+   * A real OpsPerson rather than a borrowed identity: half this system points at
+   * a person — attributions, commitments, targets, who approved what — and an
+   * identity with no row behind it would break every one of those the moment it
+   * did anything.
+   *
+   * Deactivated later, this does not resurrect them: `active: false` clears
+   * `userId`, so the next arrival has no link and lands here again — which is
+   * why the key is checked as well. Somebody taken off the team on purpose stays
+   * off, and gets the ordinary refusal.
+   */
+  private async admitThePlatformAdmin(account: SignedInAccount): Promise<OpsIdentity | null> {
+    const key = keyForAccount(account.email ?? '');
+
+    const already = await this.prisma.opsPerson.findUnique({
+      where: { key },
+      include: { grants: true },
+    });
+    if (already) {
+      if (!already.active) return null;
+      /* The record exists and was not linked to this account — link it rather
+         than making a second person for the same human. */
+      await this.prisma.opsPerson.update({
+        where: { id: already.id },
+        data: { userId: account.id },
+      });
+      return {
+        personId: already.id,
+        key: already.key,
+        displayName: already.displayName,
+        functionalRole: already.functionalRole,
+        capabilities: already.grants.map((g) => g.capability),
+      };
+    }
+
+    const person = await this.prisma.opsPerson.create({
+      data: {
+        key,
+        displayName: nameForAccount({
+          email: account.email ?? key,
+          firstName: account.firstName,
+          lastName: account.lastName,
+        }),
+        userId: account.id,
+        functionalRole: ROLE_FOR_A_PLATFORM_ADMIN,
+        grants: { create: GRANTS_FOR_A_PLATFORM_ADMIN.map((capability) => ({ capability })) },
+      },
+      include: { grants: true },
+    });
+
+    this.logger.warn(
+      `${account.email} is a platform admin and was not on the team. Admitted as ${person.displayName} (${person.key}).`,
+    );
 
     return {
       personId: person.id,
