@@ -1106,6 +1106,7 @@ model GroundObjective {
   groundId       String   @map("ground_id")
   name           String
   target         Int? // null = a qualitative objective, tracked but not counted
+
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
   prevCount      Int      @default(0) @map("prev_count")
@@ -2853,6 +2854,18 @@ model PersonObjective {
   target  String? @map("target")
   /// What is being counted, in their words: "qualified pipeline", "proposals", "days".
   measure String? @map("measure")
+
+  /// WHY THIS NUMBER, AS IT WAS STATED WHEN THE TARGET WAS SET.
+  ///
+  /// The session where the target is being missed is the one where the reason
+  /// matters most and is least likely to still be in anybody's head. Without it
+  /// that session can only ask about the gap, which invites an excuse; with it
+  /// it can ask whether the reason still holds, which is a question about the
+  /// target rather than about the person.
+  ///
+  /// Carried under the same rule as the objective it belongs to: it is what was
+  /// stated when the target was set, NOT something this person agreed to.
+  whyThisNumber String? @map("why_this_number") @db.Text
 
   /// WHERE THIS HAS GOT TO. OPEN until somebody says otherwise.
   ///

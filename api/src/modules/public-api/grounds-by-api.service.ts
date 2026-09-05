@@ -376,6 +376,7 @@ export class GroundsByApiService {
           text: item.text.trim(),
           ...shape,
           dueSaid: item.dueSaid ?? null,
+          whyThisNumber: item.whyThisNumber?.trim() || null,
           owedToParticipantId: owedTo?.id ?? null,
           /*
            * Not the acting user's id. `authoredBy` answers "who set this", and for a seeded
@@ -394,6 +395,7 @@ export class GroundsByApiService {
           text: item.text.trim(),
           ...shape,
           dueSaid: item.dueSaid ?? null,
+          whyThisNumber: item.whyThisNumber?.trim() || null,
           owedToParticipantId: owedTo?.id ?? null,
           approvedByExternalId: item.approvedByExternalId ?? null,
           effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,

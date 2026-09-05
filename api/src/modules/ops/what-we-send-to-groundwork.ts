@@ -120,6 +120,9 @@ export function objectivesFrom(objectives: ObjectiveShape[]) {
       text: `${objective.title} — ${kr.title}`,
       measure: kr.unit,
       target: String(kr.target),
+      /* The reason travels to the session, not only to the graph. A check-in
+         facing a shortfall can then ask whether the reason still holds. */
+      whyThisNumber: kr.justification ?? undefined,
     })),
   )
 }
