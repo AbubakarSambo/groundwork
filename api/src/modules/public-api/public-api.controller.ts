@@ -25,6 +25,7 @@ import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 import { WhatHappenedWithACustomerService } from './what-happened-with-a-customer.service';
 import { DraftsService } from '../drafts/drafts.service';
+import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -74,6 +75,7 @@ export class PublicApiController {
     private readonly groundsByApi: GroundsByApiService,
     private readonly whatHappened: WhatHappenedWithACustomerService,
     private readonly drafts: DraftsService,
+    private readonly checkIns: ACheckInACustomerCanRunService,
   ) {}
 
   /**
@@ -557,6 +559,70 @@ export class PublicApiController {
    * `graph:write`, the scope for facts the customer's systems assert about their own world - the
    * same one subjects and interactions take. A metric is one more of those.
    */
+  // --- Running a check-in from inside somebody else's application ----------
+  //
+  // The one thing this product IS, and the one thing this API could not do: a
+  // customer could push every objective and read every report without ever
+  // holding a session. These add no rules — every refusal belongs to the
+  // conversation service and stays there.
+  //
+  // Guarded by the PANEL's session rather than a machine credential, for the
+  // same reason `/chat` is: a check-in belongs to one person, and a machine
+  // token carries an organisation and nobody in particular.
+
+  /**
+   * What is waiting for the person this panel is open for.
+   *
+   * The route without which none of the others can be called — a customer's
+   * page has a person, not a check-in id.
+   */
+  @Get('check-ins/mine')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "The check-ins waiting for this panel's person, and the ones not open yet" })
+  async myCheckIns(@Req() req: { panel: PanelCaller }) {
+    return this.checkIns.whatIsWaitingFor(req.panel.organizationId, req.panel.personId);
+  }
+
+  /** Open one. Returns the opening question. */
+  @Post('check-ins/:id/open')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Open a check-in and get its first question' })
+  async openCheckIn(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.open(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /** Say something in it. */
+  @Post('check-ins/:id/messages')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Answer in a check-in' })
+  async sayInCheckIn(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @Body() dto: { content?: string },
+  ) {
+    if (!dto?.content?.trim()) throw new BadRequestException('content is required.');
+    return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.content);
+  }
+
+  /** Finish it. What was said is released with everybody else's, not before. */
+  @Post('check-ins/:id/complete')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Finish a check-in' })
+  async completeCheckIn(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.complete(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /** Their own transcript, and never anybody else's. */
+  @Get('check-ins/:id/transcript')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "One person's own check-in transcript" })
+  async checkInTranscript(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.transcript(req.panel.organizationId, req.panel.personId, id);
+  }
+
   // --- Agreeing an objective before it becomes one -------------------------
   //
   // The drafting flow existed, refused to seed while anybody still disagreed,
