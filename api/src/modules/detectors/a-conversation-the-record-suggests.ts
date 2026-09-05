@@ -127,7 +127,18 @@ export function newProject(subjects: SubjectRow[], now: Date, withHistory: Set<s
       proposeTo: s.ownerExternalId!,
       evidence: { title: s.title, contributors: s.contributorExternalIds.length },
       confidence: 0.7,
-      says: `${s.contributorExternalIds.length} people are on it and nobody has checked in about it yet.`,
+      /*
+       * THE OWNER IS ON IT TOO, AND THE SENTENCE WAS LEAVING THEM OUT.
+       *
+       * It counted contributors and said "people", so it read "2 people are on it" about a piece of
+       * work three people are on — every time, because this detector only ever looks at subjects
+       * that HAVE an owner. Somebody deciding whether to open a conversation was being told a number
+       * smaller than the truth.
+       *
+       * The THRESHOLD above is untouched: which subjects produce a suggestion is a product rule that
+       * predates this, and quietly widening it here would change what every customer is offered.
+       */
+      says: `${s.contributorExternalIds.length + 1} people are on it and nobody has checked in about it yet.`,
     }));
 }
 
