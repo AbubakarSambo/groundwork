@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsBuildService } from './ops-build.service';
 import { OpsWhatItServesService } from './ops-what-it-serves.service';
+import { OpsFreezeService } from './ops-freeze.service';
 import { WHAT_WORK_CAN_SERVE } from './what-a-piece-of-work-serves';
 import { OpsServes } from '@prisma/client';
 import { OpsMoatService } from './ops-moat.service';
@@ -28,6 +29,7 @@ export class OpsBuildController {
   constructor(
     private readonly build: OpsBuildService,
     private readonly serves: OpsWhatItServesService,
+    private readonly freeze: OpsFreezeService,
     private readonly moatService: OpsMoatService,
   ) {}
 
@@ -189,6 +191,41 @@ export class OpsBuildController {
     @Body() body: { approvalType: OpsApprovalType; approverId: string; relatedRecordType: string; relatedRecordId: string; requestSummary: string },
   ) {
     return this.build.requestApproval({ ...body, requesterId: req.opsIdentity.personId });
+  }
+
+  // --- The freeze ---------------------------------------------------------
+
+  /**
+   * Whether the product is frozen, and why.
+   *
+   * Readable by anybody: everybody proposing work needs to know, and a rule
+   * only the person who set it can see is a rule people discover by being
+   * refused.
+   */
+  @Get('freeze')
+  @ApiOperation({ summary: 'Whether the product is frozen, and why' })
+  freezeNow() {
+    return this.freeze.current();
+  }
+
+  @Get('freeze/history')
+  @ApiOperation({ summary: 'Every decision anybody has made about the freeze' })
+  freezeHistory() {
+    return this.freeze.history();
+  }
+
+  /** Turn it on or off. Both are decisions, both need a reason and a name. */
+  @Post('freeze')
+  @NeedsOps('ceo:board')
+  @ApiOperation({ summary: 'Freeze the product, or lift the freeze' })
+  decideTheFreeze(
+    @Req() req: OpsRequest,
+    @Body() body: { isOn: boolean; because: string; until?: string },
+  ) {
+    return this.freeze.decide(
+      { isOn: body.isOn, because: body.because, until: body.until ? new Date(body.until) : undefined },
+      req.opsIdentity.key,
+    );
   }
 
   // --- What a piece of work serves ----------------------------------------

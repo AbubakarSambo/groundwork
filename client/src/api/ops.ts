@@ -600,6 +600,24 @@ export const opsApi = {
    * the product twice; the ops system had never been checked for it.
    */
 
+  /** Whether the product is frozen, and why. Everybody proposing work needs to know. */
+  freezeNow: () =>
+    apiClient
+      .get<{ isOn: boolean; because: string | null; until: string | null; overdue: boolean; says: string }>(
+        '/ops/freeze',
+        QUIET,
+      )
+      .then((r) => r.data),
+  decideTheFreeze: (body: { isOn: boolean; because: string; until?: string }) =>
+    apiClient.post('/ops/freeze', body, QUIET).then((r) => r.data),
+  freezeHistory: () =>
+    apiClient
+      .get<Array<{ id: string; isOn: boolean; because: string; until: string | null; decidedAt: string; decidedById: string }>>(
+        '/ops/freeze/history',
+        QUIET,
+      )
+      .then((r) => r.data),
+
   /** The four things a piece of work can serve, and what each has to point at. */
   whatWorkCanServe: () =>
     apiClient
@@ -616,7 +634,10 @@ export const opsApi = {
     justification: string
     dependsOn?: string
     dependsOnOwnedBy?: string
-  }) => apiClient.post<{ says: string }>('/ops/what-it-serves', body, QUIET).then((r) => r.data),
+  }) =>
+    apiClient
+      .post<{ says: string; needsAnException: string | null }>('/ops/what-it-serves', body, QUIET)
+      .then((r) => r.data),
   /** Open work that has named nothing. The first threat, as a query. */
   whatServesNothing: () =>
     apiClient

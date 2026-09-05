@@ -25,6 +25,7 @@ import { OpsIntegrationService } from './ops-integration.service';
 import { OpsDoorService } from './the-door-into-the-ops-system';
 import { OpsProductStatementService } from './ops-product-statement.service';
 import { OpsWhatItServesService } from './ops-what-it-serves.service';
+import { OpsFreezeService } from './ops-freeze.service';
 import { OpsDoorController } from './ops-door.controller';
 
 /**
@@ -42,6 +43,7 @@ import { OpsDoorController } from './ops-door.controller';
     OpsDoorService,
     OpsProductStatementService,
     OpsWhatItServesService,
+    OpsFreezeService,
     OpsCapabilityGuard,
     OpsTargetCompaniesService,
     OpsCompaniesService,

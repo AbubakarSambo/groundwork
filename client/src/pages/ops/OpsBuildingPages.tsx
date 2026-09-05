@@ -5,7 +5,7 @@ import { opsApi, type OpsRoadmapItem, type OpsUseCase, type OpsWorkItem } from '
 import { OpsHeader, PAGE } from './OpsLayout'
 import { OpsTable, Filters, DueDate, type Column, type Filter } from './OpsTable'
 import { Adder, Choose } from './OpsForm'
-import { WhatThisServes, WorkThatSaysNothing } from './WhatThisServes'
+import { TheFreeze, WhatThisServes, WorkThatSaysNothing } from './WhatThisServes'
 
 const ROADMAP_STATUSES = ['PROPOSED', 'READY', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'] as const
 const WORK_STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'RESOLVED'] as const
@@ -96,8 +96,10 @@ export function OpsRoadmapPage() {
     <main id="main" style={PAGE}>
       <OpsHeader name="Roadmap" answers="What are we building, and in what order?" />
 
-      {/* At the top, where somebody adding work will see it, and gone entirely
-          when it is empty — a permanent zero teaches people to stop reading. */}
+      {/* Both at the top, where somebody adding work will see them. The freeze
+          decides what may be added; the list says what has not accounted for
+          itself. */}
+      <TheFreeze />
       <WorkThatSaysNothing />
 
       <Adder

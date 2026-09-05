@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
 import { LABEL } from './OpsLayout'
 import { Adder } from './OpsForm'
+import { readDate } from './OpsTable'
 
 /**
  * WHAT A PIECE OF WORK SERVES, ASKED WHERE THE WORK IS.
@@ -117,6 +119,112 @@ export function WhatThisServes({
  * adding work will see it, and hidden entirely when it is empty — a permanent
  * zero teaches people to stop reading the line.
  */
+/**
+ * THE FREEZE, WHERE WORK IS PROPOSED.
+ *
+ * Not on a settings page somebody visits once. It sits at the top of the
+ * roadmap, because the person who needs to read it is the person about to add
+ * something, and they are looking here.
+ */
+export function TheFreeze() {
+  const freeze = useQuery({ queryKey: ['ops', 'freeze'], queryFn: opsApi.freezeNow, retry: false })
+  const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  const mayDecide = me.data?.capabilities.includes('ceo:board') ?? false
+  const f = freeze.data
+  if (!f) return null
+
+  return (
+    <section
+      style={{
+        background: f.isOn ? 'var(--gw-blue-bg)' : 'var(--gw-slate)',
+        border: `1px solid ${f.isOn ? 'var(--gw-blue-b)' : 'var(--gw-border)'}`,
+        borderRadius: 8,
+        padding: '12px 14px',
+        marginBottom: 14,
+      }}
+    >
+      <p style={{ ...LABEL, color: f.isOn ? 'var(--gw-blue-t)' : 'var(--gw-muted)' }}>
+        {f.isOn ? 'The product is frozen' : 'Nothing is frozen'}
+      </p>
+      <p style={{ fontSize: 13.5, margin: '5px 0 0', maxWidth: '62ch', lineHeight: 1.6 }}>{f.says}</p>
+      {f.isOn && (
+        <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '6px 0 0', maxWidth: '62ch', lineHeight: 1.6 }}>
+          Making an unsupported use case work, and keeping what exists running, go through as normal.
+          Anything else — including the moat — needs somebody to agree it cannot wait.
+        </p>
+      )}
+      {f.overdue && (
+        /* Said, never done. A freeze that lifts itself ends without anybody
+           deciding it should. */
+        <p style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '6px 0 0' }}>
+          It is past the date it was meant to lift. Somebody has to decide whether it stays.
+        </p>
+      )}
+      {/* WHAT WAS DECIDED BEFORE, AND BY WHOM.
+          The whole reason this is append-only: lifting a freeze is the moment
+          the company stops doing what it agreed to do, and it is the one done
+          in a hurry. A record only the person who lifted it can see is not a
+          record. */}
+      <WhatWasDecidedAboutTheFreeze />
+
+      {mayDecide && (
+        <div style={{ marginTop: 10 }}>
+          <Adder
+            title={f.isOn ? 'Lift it' : 'Freeze the product'}
+            fields={[
+              {
+                name: 'because',
+                label: f.isOn ? 'Why it is lifting' : 'What the freeze is for',
+                type: 'textarea',
+                required: true,
+              },
+              ...(f.isOn ? [] : [{ name: 'until', label: 'Until when', type: 'date' as const }]),
+            ]}
+            submit={(v) =>
+              opsApi.decideTheFreeze({ isOn: !f.isOn, because: v.because, until: v.until || undefined })
+            }
+            invalidate={[['ops']]}
+            submitLabel={f.isOn ? 'Lift it' : 'Freeze it'}
+          />
+        </div>
+      )}
+    </section>
+  )
+}
+
+function WhatWasDecidedAboutTheFreeze() {
+  const [open, setOpen] = useState(false)
+  const past = useQuery({
+    queryKey: ['ops', 'freeze-history'],
+    queryFn: opsApi.freezeHistory,
+    retry: false,
+    enabled: open,
+  })
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{ all: 'unset', cursor: 'pointer', ...LABEL, fontSize: 10 }}
+      >
+        {open ? 'Hide what was decided before' : 'What was decided before'}
+      </button>
+      {open && (
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          {(past.data ?? []).map((d) => (
+            <li key={d.id}>
+              <strong>{d.isOn ? 'Frozen' : 'Lifted'}</strong> {readDate(d.decidedAt)} by {d.decidedById} — {d.because}
+            </li>
+          ))}
+          {past.data?.length === 0 && <li>Nobody has decided anything about it yet.</li>}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function WorkThatSaysNothing() {
   const nothing = useQuery({
     queryKey: ['ops', 'what-serves-nothing'],

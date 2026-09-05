@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { OpsServes } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { whyThisIsNotSaidYet, needsSomebodyToAgree } from './what-a-piece-of-work-serves';
+import { OpsFreezeService } from './ops-freeze.service';
 
 /**
  * What each piece of work serves, and the work that has not said.
@@ -11,7 +12,10 @@ import { whyThisIsNotSaidYet, needsSomebodyToAgree } from './what-a-piece-of-wor
  */
 @Injectable()
 export class OpsWhatItServesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly freeze: OpsFreezeService,
+  ) {}
 
   /** Said once per item and changeable: work is re-aimed, and pretending otherwise makes the field a lie people work around. */
   async say(
@@ -44,15 +48,41 @@ export class OpsWhatItServesService {
       create: { recordType: input.recordType, recordId: input.recordId, ...data },
     });
 
+    /*
+     * THE FREEZE, CHECKED HERE BECAUSE THIS IS WHERE THE ANSWER EXISTS.
+     *
+     * It cannot be checked when the item is created: nothing is known about it
+     * yet. It is known the moment somebody says what it serves, which is also
+     * the moment the answer is cheapest to argue with.
+     *
+     * Sales work only counts as "making what exists work" when the use case it
+     * points at does not currently work. Pointing at one we already support is
+     * an improvement to something fine — an addition wearing a permitted label.
+     */
+    const theUseCase = input.servesRecordId
+      ? await this.prisma.opsClientUseCase.findUnique({ where: { id: input.servesRecordId } })
+      : null;
+
+    const needsAnException = await this.freeze.whyThisNeedsAnException({
+      serves: input.serves,
+      /* PRODUCT_READY is the only state that means it works. Everything else —
+         unknown, reviewing, a gap found, in progress — is a use case somebody
+         cannot run today, which is exactly what September is for. */
+      theUseCaseIsUnsupported: theUseCase ? theUseCase.productReadiness !== 'PRODUCT_READY' : undefined,
+    });
+
     return {
+      needsAnException,
       ...written,
       /* Said rather than enforced here: the approval is a separate act with its
          own queue, and swallowing it into this write would make "somebody agreed
          it was necessary" a thing this endpoint claimed on its own. */
       needsSomebodyToAgree: needsSomebodyToAgree(input.serves),
-      says: needsSomebodyToAgree(input.serves)
-        ? 'Recorded. Keeping-it-up work needs somebody to agree it was necessary, or the category becomes the drawer everything is filed in.'
-        : 'Recorded.',
+      says: needsAnException
+        ? needsAnException
+        : needsSomebodyToAgree(input.serves)
+          ? 'Recorded. Keeping-it-up work needs somebody to agree it was necessary, or the category becomes the drawer everything is filed in.'
+          : 'Recorded.',
     };
   }
 

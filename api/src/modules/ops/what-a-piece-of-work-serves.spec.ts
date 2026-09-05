@@ -85,6 +85,7 @@ describe('a declaration that says nothing', () => {
 
 const serviceOver = (declared: Array<{ recordType: string; recordId: string }>, work: Record<string, Array<{ id: string; title: string }>>) => {
   const written: Record<string, unknown>[] = [];
+  const neverFrozen = { whyThisNeedsAnException: async () => null } as never;
   const service = new OpsWhatItServesService({
     opsWhatItServes: {
       findMany: async () => declared,
@@ -97,7 +98,8 @@ const serviceOver = (declared: Array<{ recordType: string; recordId: string }>, 
     opsRoadmapItem: { findMany: async () => work.roadmap ?? [] },
     opsTechItem: { findMany: async () => work.tech ?? [] },
     opsUXItem: { findMany: async () => work.ux ?? [] },
-  } as never);
+    opsClientUseCase: { findUnique: async () => null },
+  } as never, neverFrozen);
   return { service, written };
 };
 
