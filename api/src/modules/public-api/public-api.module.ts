@@ -30,6 +30,7 @@ import { DetectorsController } from '../detectors/detectors.controller';
 import { CheckinsController } from '../detectors/checkins.controller';
 import { DraftsController } from '../drafts/drafts.controller';
 import { DraftsService } from '../drafts/drafts.service';
+import { ApiAccessService } from './api-access.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { ConversationModule } from '../conversation/conversation.module';
 import { RolesService } from '../detectors/roles-and-their-action.service';
@@ -56,7 +57,7 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

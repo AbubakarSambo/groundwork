@@ -262,7 +262,60 @@ model PricingPlan {
 // Identity & tenancy
 // ---------------------------------------------------------------------------
 
+/// ASKING FOR THE API, WHICH IS HOW ACCESS TO IT IS GRANTED.
+///
+/// It used to be sold: an organisation with a live subscription could hold a
+/// machine token and everybody else was refused. That gate had two problems and
+/// only one of them was about money. It made every integration test wait on a
+/// billing state, and it meant we could not use our own API in our own back
+/// office without paying ourselves — which is the acceptance test for the whole
+/// thing, so failing it silently was the worst possible outcome.
+///
+/// So access is ASKED FOR and GRANTED. Somebody says what they intend to build,
+/// somebody here reads it and decides, and that decision is a row with a name
+/// and a date against it. A refusal can say which of those has not happened yet,
+/// which "you have not paid" never could.
+///
+/// It is not the same thing as being free. What it is, is separable from
+/// billing: what a customer pays for and what a customer may connect to are two
+/// decisions, and tying them together meant neither could move without the
+/// other.
+model ApiAccessRequest {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Who asked, and what they said they intend to build. Read by whoever
+  /// decides, so an empty one is refused at the point of asking.
+  requestedByUserId String   @map("requested_by_user_id")
+  whatFor           String   @map("what_for") @db.Text
+  requestedAt       DateTime @default(now()) @map("requested_at")
+
+  status ApiAccessStatus @default(PENDING)
+
+  /// Who decided, when, and why — for a refusal or a withdrawal especially.
+  /// A decision nobody can account for later is one nobody can argue with.
+  decidedByUserId String?   @map("decided_by_user_id")
+  decidedAt       DateTime? @map("decided_at")
+  note            String?   @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, requestedAt])
+  @@map("api_access_requests")
+}
+
+enum ApiAccessStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  /// Granted and then taken back. Kept apart from DECLINED because they are
+  /// different facts: one was never trusted, the other was and no longer is,
+  /// and only the second needs somebody told.
+  WITHDRAWN
+}
+
 model Organization {
+  apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
   acceptanceCriteria AcceptanceCriterion[]
   productMetrics     ProductMetric[]

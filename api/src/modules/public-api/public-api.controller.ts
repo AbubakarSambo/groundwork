@@ -18,7 +18,7 @@ import { AssistantService } from '../assistant/assistant.service';
 import { HandoverService } from '../grounds/handover.service';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { ScenariosService } from '../detectors/scenarios.service';
-import { mayUseTheApi, NOT_PAID } from './the-api-is-a-paid-thing';
+import { mayUseTheApi, whyTheApiIsRefused } from './access-is-asked-for-not-bought';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
@@ -99,15 +99,18 @@ export class PublicApiController {
     }
 
     /*
-     * PAID ONLY, checked here rather than at credential issue - a subscription that lapses has to
-     * stop working, and a short-lived token means that happens within one token lifetime instead of
-     * waiting for somebody to remember to revoke.
+     * APPROVED ONLY, checked here rather than at credential issue - access withdrawn after a
+     * credential was issued has to stop working, and a short-lived token means that happens within
+     * one token lifetime instead of waiting for somebody to remember to revoke.
+     *
+     * It used to read the subscription. See `access-is-asked-for-not-bought.ts` for why it no
+     * longer does: what a customer pays for and what a customer may connect to are two decisions.
      */
-    const org = await this.prisma.organization.findUnique({
-      where: { id: cred.organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true },
+    const access = await this.prisma.apiAccessRequest.findUnique({
+      where: { organizationId: cred.organizationId },
+      select: { status: true },
     });
-    if (!mayUseTheApi(org)) throw new ForbiddenException(NOT_PAID);
+    if (!mayUseTheApi(access)) throw new ForbiddenException(whyTheApiIsRefused(access));
 
     await this.credentials.stampUse(cred.id);
 

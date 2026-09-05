@@ -49,6 +49,7 @@ import { OpsWhatWeArePage } from '@/pages/ops/OpsWhatWeArePage'
 import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
 import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
 import { OpsWorkplanPage } from '@/pages/ops/OpsWorkplanPage'
+import { ApiAccessPage } from '@/pages/admin/ApiAccessPage'
 import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
 import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
 import {
@@ -383,6 +384,7 @@ export default function App() {
                 every endpoint behind it is admin-gated on the server. */}
             <Route path="/org/integrations" element={<RequireOrgSetup><IntegrationsPage /></RequireOrgSetup>} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
             {/* Any unmatched path renders a real not-found page rather than

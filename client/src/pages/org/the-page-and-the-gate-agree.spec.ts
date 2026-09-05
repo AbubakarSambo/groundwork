@@ -3,20 +3,25 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 /**
- * WHAT THE PLAN GATES, SAID IN ONE PLACE AND ENFORCED IN ANOTHER.
+ * WHAT GATES SENDING DATA IN, SAID IN ONE PLACE AND ENFORCED IN ANOTHER.
  *
- * On the free plan you can read the whole Connect page, issue a key, copy the secret and register a
- * webhook. The first thing that fails is the token exchange, in your engineer's terminal, with a
- * 403 - so everything up to that point behaves as though it worked, and the person finds out last.
+ * You can read the whole Connect page, issue a key, copy the secret and register a webhook without
+ * having been let in. The first thing that fails is the token exchange, in your engineer's terminal,
+ * with a 403 - so everything up to that point behaves as though it worked, and the person finds out
+ * last.
  *
  * The gate is one line in the API: `mayUseTheApi` on the `oauth/token` route, and nothing else. The
  * page has to say the same thing, and the risk is not that it says nothing - it is that it says
- * something simpler and wrong, like "the API needs a plan", which would be untrue of the webhooks
- * that work either way.
+ * something simpler and wrong.
+ *
+ * IT SAID THE WRONG THING FOR REAL. The banner read "Sending data in needs a paid plan" for as long
+ * as a subscription was the gate, and stayed true only until the gate changed. A stale version of it
+ * would have sent somebody to buy something that is now free, which is the worst direction for this
+ * particular message to be wrong in. That is what this spec is for.
  */
 const PAGE = readFileSync(join(__dirname, 'IntegrationsPage.tsx'), 'utf8')
 const GATE = readFileSync(
-  join(__dirname, '../../../../api/src/modules/public-api/the-api-is-a-paid-thing.ts'),
+  join(__dirname, '../../../../api/src/modules/public-api/access-is-asked-for-not-bought.ts'),
   'utf8',
 )
 const API_CONTROLLER = readFileSync(
@@ -25,18 +30,23 @@ const API_CONTROLLER = readFileSync(
 )
 
 describe('the page and the gate agree', () => {
-  it('the page tells somebody on the free plan before they do the work', () => {
-    expect(PAGE).toContain('Sending data in needs a paid plan')
-    /* Shown on the absence of a plan, which is what the API checks too. */
-    expect(PAGE).toMatch(/\{!plan && \(/)
+  it('the page tells somebody who has not been let in, before they do the work', () => {
+    expect(PAGE).toContain('Sending data in needs to be asked for')
+    /* Shown on the access request, which is what the API checks too. */
+    expect(PAGE).toMatch(/access\.data && !access\.data\.approved/)
   })
 
-  it('and points at where to fix it rather than stopping at the bad news', () => {
-    const banner = PAGE.slice(PAGE.indexOf('Sending data in needs a paid plan'))
-    expect(banner.slice(0, 900)).toContain('/billing')
+  it('and says nothing about paying, because paying is no longer what this gates', () => {
+    const banner = PAGE.slice(PAGE.indexOf('Sending data in needs to be asked for'))
+    expect(banner.slice(0, 1400)).not.toMatch(/paid plan|subscribe|\/billing|See the plans/)
   })
 
-  it('is right about which half the plan gates', () => {
+  it('and lets them ask right there rather than stopping at the bad news', () => {
+    const banner = PAGE.slice(PAGE.indexOf('Sending data in needs to be asked for'))
+    expect(banner.slice(0, 2600)).toContain('Ask for access')
+  })
+
+  it('is right about which half is gated', () => {
     /*
      * The gate is applied to the token route and nowhere else. If somebody ever puts it in front of
      * webhook delivery or credential issuing, this page's promise that "nothing else is affected"
@@ -48,10 +58,17 @@ describe('the page and the gate agree', () => {
     expect(API_CONTROLLER).toMatch(/oauth\/token[\s\S]{0,2500}mayUseTheApi/)
   })
 
-  it('does not disable anything, because setting up before subscribing is reasonable', () => {
-    /* Somebody evaluating this should be able to wire it all up and subscribe when ready. */
-    const banner = PAGE.slice(PAGE.indexOf('Sending data in needs a paid plan'), PAGE.indexOf('Sending data in needs a paid plan') + 900)
-    expect(banner).toContain('starts working the moment you subscribe')
-    expect(GATE).toContain('isSubscribed')
+  it('does not disable anything, because setting up before being approved is reasonable', () => {
+    const banner = PAGE.slice(
+      PAGE.indexOf('Sending data in needs to be asked for'),
+      PAGE.indexOf('Sending data in needs to be asked for') + 1400,
+    )
+    expect(banner).toContain('the moment access is approved')
+  })
+
+  it('and the gate itself decides on the request, not on a subscription', () => {
+    const gate = GATE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(gate).toMatch(/ApiAccessStatus\.APPROVED/)
+    expect(gate).not.toMatch(/isSubscribed|subscriptionPlan/)
   })
 })

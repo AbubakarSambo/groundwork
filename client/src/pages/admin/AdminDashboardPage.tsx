@@ -892,6 +892,14 @@ export function AdminDashboardPage() {
             >
               Our own system →
             </button>
+            {/* Access to the API is granted here rather than bought. Our own
+                organisation appears on that list like anybody else's. */}
+            <button
+              onClick={() => navigate('/admin/api-access')}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              API access →
+            </button>
             <button
               onClick={() => navigate('/grounds')}
               style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}

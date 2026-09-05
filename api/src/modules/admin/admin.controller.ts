@@ -6,6 +6,7 @@ import { CurrentUser } from '../../common';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PricingService } from '../billing/pricing.service';
 import { StripeService } from '../billing/stripe.service';
+import { ApiAccessService } from '../public-api/api-access.service';
 /**
  * Stripe's own USD floor is 50 cents; the ceiling is a typo guard rather than a policy, set well
  * above any plan we would plausibly sell.
@@ -14,7 +15,7 @@ const MIN_PLAN_AMOUNT_CENTS = 50;
 const MAX_PLAN_AMOUNT_CENTS = 500000;
 /** A seat cap larger than this is a typo, not a plan. Enterprise expresses unlimited with null. */
 const MAX_PLAN_MEMBER_CAP = 100000;
-import { SubscriptionPlan } from '@prisma/client';
+import { SubscriptionPlan, ApiAccessStatus } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
@@ -65,6 +66,7 @@ export class AdminController {
     private readonly whatsapp: WhatsAppService,
     private readonly pricing: PricingService,
     private readonly stripe: StripeService,
+    private readonly apiAccess: ApiAccessService,
   ) {}
 
   // ── Pricing (System -> Pricing) ──────────────────────────────────────────
@@ -196,6 +198,30 @@ export class AdminController {
   }
 
   // ── Read-only ─────────────────────────────────────────────────────────────
+
+  /**
+   * WHO HAS ASKED FOR THE API, AND WHAT WE DECIDED.
+   *
+   * Access stopped being something an organisation buys and became something
+   * somebody here reads and grants. This is where it is read and granted, and
+   * it is also the list our own organisation appears on — a rule we are exempt
+   * from is a rule we would stop noticing was broken.
+   */
+  @Get('api-access')
+  @ApiOperation({ summary: 'Every organisation that has asked for API access' })
+  apiAccessRequests() {
+    return this.apiAccess.everyRequest();
+  }
+
+  @Patch('api-access/:id')
+  @ApiOperation({ summary: 'Approve, decline or withdraw one organisation\'s API access' })
+  decideApiAccess(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { status: ApiAccessStatus; note?: string },
+  ) {
+    return this.apiAccess.decide(id, dto.status, userId, dto.note);
+  }
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Everything /admin/dashboard draws: overview, codes, free-reason split, feedback, per-user usage' })
