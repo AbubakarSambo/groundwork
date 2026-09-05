@@ -4563,6 +4563,29 @@ model OpsObjective {
   description String? @db.Text
   ownerId     String  @map("owner_id")
 
+  /// WHAT SETTING THIS BUYS, AND WHY THIS RATHER THAN SOMETHING ELSE.
+  ///
+  /// The form asked for a title, an area and a sentence, which is a note rather
+  /// than an objective. These four fields are the difference.
+  ///
+  /// `serves` is the same four values a piece of work can serve, so an
+  /// objective and the work under it are answering one question in one
+  /// vocabulary. `instead` is the conveyor belt: "why is this the best use of
+  /// time" is unanswerable in the abstract and only answerable against the
+  /// alternative, and nobody writes it down unless the form makes them.
+  serves        OpsServes?
+  justification String?    @db.Text
+  instead       String?    @db.Text
+
+  /// THE SALES ARITHMETIC, KEPT AS ITS TWO PARTS.
+  ///
+  /// "Eight companies at fifteen thousand" is a claim about the pipeline, and
+  /// the pipeline is in this system. Stored as the two numbers rather than the
+  /// product of them, so the claim can be checked against what is actually
+  /// there rather than only admired.
+  companiesExpected    Int? @map("companies_expected")
+  valuePerCompanyCents Int? @map("value_per_company_cents")
+
   status   OpsObjectiveStatus @default(DRAFT)
   priority Int                @default(3)
 

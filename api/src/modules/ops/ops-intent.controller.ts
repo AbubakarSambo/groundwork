@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard, NeedsOps } from './ops-capability.guard';
 import { OpsIntentService } from './ops-intent.service';
 import { OpsIdentity } from './ops-people.service';
-import { OpsObjectiveStatus, OpsCommitmentStatus, OpsTodoStatus } from '@prisma/client';
+import { OpsServes, OpsObjectiveStatus, OpsCommitmentStatus, OpsTodoStatus } from '@prisma/client';
 
 interface OpsRequest {
   opsIdentity: OpsIdentity;
@@ -26,14 +26,36 @@ export class OpsIntentController {
     return this.intent.objectives(periodKey);
   }
 
+  /** How much of a period is aimed at scale, and where a sales claim outruns the pipeline. */
+  @Get('objectives/:periodKey/aim')
+  @ApiOperation({ summary: 'How much of a period is aimed at revenue or the moat' })
+  howTheQuarterIsAimed(@Param('periodKey') periodKey: string) {
+    return this.intent.howTheQuarterIsAimed(periodKey);
+  }
+
   @Post('objectives')
   @NeedsOps('objectives:write')
   @ApiOperation({ summary: 'Set an objective for a workstream' })
   createObjective(
     @Req() req: OpsRequest,
-    @Body() body: { periodKey: string; workstreamKey: string; title: string; description?: string; priority?: number },
+    @Body()
+    body: {
+      periodKey: string;
+      workstreamKey: string;
+      title: string;
+      description?: string;
+      ownerKey: string;
+      serves: OpsServes;
+      justification: string;
+      instead: string;
+      companiesExpected?: number;
+      valuePerCompanyCents?: number;
+      priority?: number;
+    },
   ) {
-    return this.intent.createObjective({ ...body, ownerId: req.opsIdentity.personId });
+    /* The owner is chosen, not inherited from whoever is signed in. That was
+       the defect: an objective owned by the person who opened the form. */
+    return this.intent.createObjective(body);
   }
 
   @Post('objectives/:id/key-results')
@@ -42,12 +64,11 @@ export class OpsIntentController {
   addKeyResult(
     @Req() req: OpsRequest,
     @Param('id') id: string,
-    @Body() body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; dueDate: string },
+    @Body() body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; dueDate: string },
   ) {
     return this.intent.addKeyResult({
       ...body,
       objectiveId: id,
-      ownerId: req.opsIdentity.personId,
       dueDate: new Date(body.dueDate),
     });
   }

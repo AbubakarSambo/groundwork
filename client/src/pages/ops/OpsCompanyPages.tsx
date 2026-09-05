@@ -61,6 +61,18 @@ export function OpsQuarterPage() {
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   const workstreams = useQuery({ queryKey: ['ops', 'workstreams'], queryFn: opsApi.workstreams, retry: false })
   const metrics = useQuery({ queryKey: ['ops', 'metric-keys'], queryFn: opsApi.metricKeys, retry: false })
+  const people = useQuery({ queryKey: ['ops', 'people'], queryFn: opsApi.people, retry: false })
+  const whatItCanServe = useQuery({
+    queryKey: ['ops', 'what-work-can-serve'],
+    queryFn: opsApi.whatWorkCanServe,
+    retry: false,
+  })
+  const aim = useQuery({
+    queryKey: ['ops', 'quarter-aim', period],
+    queryFn: () => opsApi.howTheQuarterIsAimed(period),
+    retry: false,
+    enabled: period !== '',
+  })
 
   useEffect(() => {
     const first = periods.data?.[0]?.key
@@ -100,6 +112,24 @@ export function OpsQuarterPage() {
         ))}
       </select>
 
+      {/* HOW MUCH OF THE PERIOD IS AIMED AT SCALE. A split, never a score: a
+          quarter that is mostly something else may be exactly right, and the
+          point is that it was decided rather than that it happened. */}
+      {aim.data && aim.data.of > 0 && (
+        <section style={{ ...CARD, marginBottom: 14 }}>
+          <p style={LABEL}>What this period is aimed at</p>
+          <p style={{ fontSize: 14, margin: '5px 0 0' }}>{aim.data.says}</p>
+          {aim.data.disagreements.map((d) => (
+            /* Said, never refused. Eight companies against three in the
+               pipeline may be the target rather than a mistake — which it is
+               belongs to whoever set it. */
+            <p key={d.objective} style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', margin: '8px 0 0', lineHeight: 1.6 }}>
+              <strong>{d.objective}</strong> — {d.says}
+            </p>
+          ))}
+        </section>
+      )}
+
       {/* SETTING ONE WAS BUILT AND UNREACHABLE. The endpoints for creating an
           objective and adding a key result had no caller anywhere, so this page
           could show targets and never take one. */}
@@ -109,19 +139,50 @@ export function OpsQuarterPage() {
             title="Set an objective"
             fields={[
               { name: 'title', label: 'What we are trying to achieve', required: true },
+              /* CHOSEN, NOT INHERITED. The field existed and was never asked
+                 for, so an objective took whoever opened the form — which meant
+                 it was owned by nobody. */
+              {
+                name: 'ownerKey',
+                label: 'Who owns it',
+                required: true,
+                options: (people.data ?? []).map((p) => ({ value: p.key, label: p.displayName })),
+              },
               {
                 name: 'workstreamKey',
                 label: 'Whose area',
                 required: true,
                 options: (workstreams.data ?? []).map((w) => ({ value: w.key, label: w.name })),
               },
-              { name: 'description', label: 'Why it matters', type: 'textarea' },
+              {
+                name: 'serves',
+                label: 'What it buys',
+                required: true,
+                /* The same four values a piece of work can serve, so an
+                   objective and the work under it answer one question in one
+                   vocabulary. */
+                options: (whatItCanServe.data ?? []).map((o) => ({ value: o.serves, label: o.label })),
+              },
+              { name: 'justification', label: 'Why this', type: 'textarea', required: true },
+              /* THE CONVEYOR BELT. "Why is this the best use of time" is
+                 unanswerable in the abstract and only answerable against the
+                 alternative — and nobody writes it unless the form asks. */
+              { name: 'instead', label: 'What it is instead of', required: true, placeholder: 'the partner channel' },
+              { name: 'companiesExpected', label: 'How many companies, if it is a revenue objective', type: 'number' },
+              { name: 'valuePerCompany', label: 'What each is worth ($)', type: 'number' },
+              { name: 'description', label: 'Anything else worth recording', type: 'textarea' },
             ]}
             submit={(v) =>
               opsApi.createObjective({
                 periodKey: period,
                 workstreamKey: v.workstreamKey,
+                ownerKey: v.ownerKey,
                 title: v.title,
+                serves: v.serves,
+                justification: v.justification,
+                instead: v.instead,
+                companiesExpected: v.companiesExpected ? Number(v.companiesExpected) : undefined,
+                valuePerCompanyCents: v.valuePerCompany ? Math.round(Number(v.valuePerCompany) * 100) : undefined,
                 description: v.description || undefined,
               })
             }
@@ -154,6 +215,14 @@ export function OpsQuarterPage() {
                     required: true,
                     options: sources,
                   },
+                  /* Owned separately from the objective, which is how somebody
+                     owns a piece of something they do not own. */
+                  {
+                    name: 'ownerKey',
+                    label: 'Who owns this number',
+                    required: true,
+                    options: (people.data ?? []).map((p) => ({ value: p.key, label: p.displayName })),
+                  },
                   { name: 'dueDate', label: 'By when', type: 'date', required: true },
                 ]}
                 submit={(v) =>
@@ -164,6 +233,7 @@ export function OpsQuarterPage() {
                     startValue: v.startValue ? Number(v.startValue) : undefined,
                     unit: v.unit,
                     measurementSource: v.measurementSource,
+                    ownerKey: v.ownerKey,
                     dueDate: v.dueDate,
                   })
                 }

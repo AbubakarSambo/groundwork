@@ -6,6 +6,13 @@ import { METRICS_BY_KEY } from './a-number-you-can-open';
 import { OpsIdentity } from './ops-people.service';
 import { can } from './what-somebody-may-do';
 import { mayPutAToDoOn } from './whose-list-you-may-write-on';
+import { OpsServes } from '@prisma/client';
+import {
+  whyThisIsNotAnObjective,
+  whatItClaims,
+  doesThePipelineAgree,
+  howMuchIsAimedAtScale,
+} from './an-objective-is-not-a-note';
 import {
   OpsObjectiveStatus,
   OpsCommitmentStatus,
@@ -37,9 +44,20 @@ export class OpsIntentService {
     workstreamKey: string;
     title: string;
     description?: string;
-    ownerId: string;
+    /** The person who owns it, chosen. Never the person who opened the form. */
+    ownerKey: string;
+    serves: OpsServes;
+    justification: string;
+    instead: string;
+    companiesExpected?: number;
+    valuePerCompanyCents?: number;
     priority?: number;
   }) {
+    const notYet = whyThisIsNotAnObjective(input);
+    if (notYet) throw new BadRequestException(notYet);
+
+    const owner = await this.prisma.opsPerson.findUnique({ where: { key: input.ownerKey } });
+    if (!owner) throw new NotFoundException(`No one here called ${input.ownerKey}`);
     const period = await this.prisma.opsPeriod.findUnique({ where: { key: input.periodKey } });
     if (!period) throw new NotFoundException(`No period called ${input.periodKey}`);
     const workstream = await this.prisma.opsWorkstream.findUnique({ where: { key: input.workstreamKey } });
@@ -51,7 +69,12 @@ export class OpsIntentService {
         workstreamId: workstream.id,
         title: input.title,
         description: input.description,
-        ownerId: input.ownerId,
+        ownerId: owner.id,
+        serves: input.serves,
+        justification: input.justification.trim(),
+        instead: input.instead.trim(),
+        companiesExpected: input.companiesExpected ?? null,
+        valuePerCompanyCents: input.valuePerCompanyCents ?? null,
         priority: input.priority ?? 3,
       },
     });
@@ -73,9 +96,15 @@ export class OpsIntentService {
     unit: string;
     startValue?: number;
     measurementSource: string;
-    ownerId: string;
+    /*
+     * OWNED SEPARATELY FROM THE OBJECTIVE, which is how somebody owns a piece
+     * of something they do not own. The field existed and was never asked for.
+     */
+    ownerKey: string;
     dueDate: Date;
   }) {
+    const owner = await this.prisma.opsPerson.findUnique({ where: { key: input.ownerKey } });
+    if (!owner) throw new NotFoundException(`No one here called ${input.ownerKey}`);
     if (input.measurementSource !== MANUAL && !METRICS_BY_KEY.has(input.measurementSource)) {
       throw new BadRequestException(
         `${input.measurementSource} is not a metric. Use one of the metric keys, or MANUAL if somebody is going to keep this up to date themselves.`,
@@ -85,7 +114,10 @@ export class OpsIntentService {
     const objective = await this.prisma.opsObjective.findUnique({ where: { id: input.objectiveId } });
     if (!objective) throw new NotFoundException('No such objective');
 
-    return this.prisma.opsKeyResult.create({ data: input });
+    /* `ownerKey` is a name; the row wants an id. Spread-and-replace so a field
+       added later cannot be silently dropped by a hand-written list. */
+    const { ownerKey: _named, ...rest } = input;
+    return this.prisma.opsKeyResult.create({ data: { ...rest, ownerId: owner.id } });
   }
 
   /**
@@ -141,6 +173,46 @@ export class OpsIntentService {
         ),
       })),
     );
+  }
+
+  /**
+   * WHETHER A QUARTER IS AIMED AT SCALE, AND WHETHER SALES CLAIMS MATCH THE PIPELINE.
+   *
+   * Both are read here rather than stored, like every other number on these
+   * boards. The split is a fact about the quarter and not about a person; the
+   * pipeline check is said rather than refused, because eight companies named
+   * against three in the pipeline may be the target rather than a mistake.
+   */
+  async howTheQuarterIsAimed(periodKey: string) {
+    const period = await this.prisma.opsPeriod.findUnique({ where: { key: periodKey } });
+    if (!period) throw new NotFoundException(`No period called ${periodKey}`);
+
+    const objectives = await this.prisma.opsObjective.findMany({ where: { periodId: period.id } });
+
+    /* What the pipeline actually holds: qualified opportunities not yet lost,
+       counted and valued the same way the commercial board counts them. */
+    const live = await this.prisma.opsCommercialOpportunity.findMany({
+      where: { stage: { notIn: ['LOST'] } },
+      select: { id: true, estimatedContractValue: true },
+    });
+    const pipelineCents = Math.round(
+      live.reduce((sum, o) => sum + Number(o.estimatedContractValue ?? 0), 0) * 100,
+    );
+
+    return {
+      ...howMuchIsAimedAtScale(objectives),
+      disagreements: objectives
+        .map((o) => ({
+          objective: o.title,
+          says: doesThePipelineAgree({
+            claimedCents: whatItClaims(o),
+            claimedCompanies: o.companiesExpected,
+            pipelineCents,
+            pipelineCompanies: live.length,
+          }),
+        }))
+        .filter((d) => d.says !== null),
+    };
   }
 
   setObjectiveStatus(id: string, status: OpsObjectiveStatus) {

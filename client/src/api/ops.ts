@@ -709,11 +709,33 @@ export const opsApi = {
       .get<Array<{ key: string; name: string; ownerPersonId: string; areas: string[] }>>('/ops/workstreams', QUIET)
       .then((r) => r.data),
 
-  createObjective: (body: { periodKey: string; workstreamKey: string; title: string; description?: string; priority?: number }) =>
-    apiClient.post('/ops/objectives', body, QUIET).then((r) => r.data),
+  createObjective: (body: {
+    periodKey: string
+    workstreamKey: string
+    title: string
+    ownerKey: string
+    serves: string
+    justification: string
+    instead: string
+    description?: string
+    companiesExpected?: number
+    valuePerCompanyCents?: number
+  }) => apiClient.post('/ops/objectives', body, QUIET).then((r) => r.data),
+  /** How much of a period is aimed at scale, and where a claim outruns the pipeline. */
+  howTheQuarterIsAimed: (periodKey: string) =>
+    apiClient
+      .get<{
+        atScale: number
+        somethingElse: number
+        saidNothing: number
+        of: number
+        says: string
+        disagreements: Array<{ objective: string; says: string }>
+      }>(`/ops/objectives/${periodKey}/aim`, QUIET)
+      .then((r) => r.data),
   addKeyResult: (
     objectiveId: string,
-    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; dueDate: string },
+    body: { title: string; metricType: string; targetValue: number; unit: string; startValue?: number; measurementSource: string; ownerKey: string; dueDate: string },
   ) => apiClient.post(`/ops/objectives/${objectiveId}/key-results`, body, QUIET).then((r) => r.data),
   setObjectiveStatus: (id: string, status: string) =>
     apiClient.patch(`/ops/objectives/${id}/status`, { status }, QUIET).then((r) => r.data),
