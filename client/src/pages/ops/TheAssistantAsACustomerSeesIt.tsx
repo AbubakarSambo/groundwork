@@ -84,6 +84,24 @@ function readBlocks(payload: unknown): string {
   return reply?.reply ?? reply?.message ?? 'Groundwork answered in a shape this panel does not know how to draw.'
 }
 
+/**
+ * A CHECK-IN ANSWERS IN A DIFFERENT SHAPE FROM THE ASSISTANT, AND THAT IS FINE.
+ *
+ * The assistant returns typed blocks; the conversation returns `{ reply }`. Two
+ * shapes rather than one is a fact about the contract, and a customer writing
+ * this meets both — so the panel reads both rather than pretending they are the
+ * same. `sessionComplete` rides along on the reply that finishes a session, and
+ * it is worth saying out loud: somebody who has finished should not be left
+ * looking at a box wondering whether it took.
+ */
+function readCheckIn(payload: unknown): string {
+  const body = payload as { reply?: string; sessionComplete?: boolean } | null
+  if (!body?.reply) return 'Groundwork answered in a shape this panel does not know how to draw.'
+  return body.sessionComplete
+    ? `${body.reply}\n\nThat is your check-in done. What you said is released with everybody else's, not before.`
+    : body.reply
+}
+
 type Said = { from: 'us' | 'them'; text: string }
 
 export function TheAssistantAsACustomerSeesIt() {
@@ -104,6 +122,22 @@ export function TheAssistantAsACustomerSeesIt() {
   const [typing, setTyping] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
+
+  /**
+   * A CHECK-IN WAITING, AND WHETHER WE ARE IN ONE.
+   *
+   * The panel proved the assistant and stopped there, which left the acceptance
+   * test half done: the assistant is the help, and the CHECK-IN is the product.
+   * A customer who can only chat has not been sold what we sell.
+   *
+   * `inCheckIn` also decides where typing goes, and that is not cosmetic. A
+   * check-in answer routed to the assistant is lost from the record it was meant
+   * for, and an assistant question routed into a check-in becomes part of
+   * somebody's account of their quarter. The two must never share a box without
+   * the box knowing which it is.
+   */
+  const [waiting, setWaiting] = useState<{ checkInId: string; ground: { label: string } }[]>([])
+  const [inCheckIn, setInCheckIn] = useState<string | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
   const ready = panel.data?.ready ? panel.data : null
@@ -167,6 +201,17 @@ export function TheAssistantAsACustomerSeesIt() {
           const text = readBlocks(drawn.data ?? drawn)
           if (text) setSaid([{ from: 'them', text }])
         }
+
+        /* What is waiting for this person, on the same session. A customer's
+           page has a person, not a check-in id, so this is the route without
+           which none of the others can be reached. */
+        const mine = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/mine`, {
+          credentials: 'omit',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const list = await mine.json().catch(() => null)
+        if (cancelled) return
+        if (mine.ok) setWaiting((list?.data ?? list)?.waiting ?? [])
       } catch (e) {
         if (!cancelled) setProblem((e as Error).message)
       }
@@ -182,6 +227,32 @@ export function TheAssistantAsACustomerSeesIt() {
     if (bottom.current) scrollTo(bottom.current)
   }, [said])
 
+  /** Open the one waiting, and draw its first question. */
+  async function openCheckIn(checkInId: string) {
+    if (!ready || !session) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${checkInId}/open`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        setSaid((s) => [...s, { from: 'them', text: body?.message ?? `Groundwork answered ${res.status}.` }])
+        return
+      }
+      setInCheckIn(checkInId)
+      setWaiting((w) => w.filter((c) => c.checkInId !== checkInId))
+      const asked = readCheckIn(body?.data ?? body)
+      if (asked) setSaid((s) => [...s, { from: 'them', text: asked }])
+    } catch (e) {
+      setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function send() {
     const message = typing.trim()
     if (!message || !ready || !session) return
@@ -189,17 +260,29 @@ export function TheAssistantAsACustomerSeesIt() {
     setSaid((s) => [...s, { from: 'us', text: message }])
     setBusy(true)
     try {
-      const res = await fetch(`${ready.baseUrl}/api/org/v1/chat`, {
+      /* WHERE THIS GOES IS DECIDED BY WHICH THING WE ARE IN, never by what was
+         typed. A check-in answer sent to the assistant is lost from the record
+         it was meant for. */
+      const res = inCheckIn
+        ? await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${inCheckIn}/messages`, {
+            method: 'POST',
+            credentials: 'omit',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+            body: JSON.stringify({ content: message }),
+          })
+        : await fetch(`${ready.baseUrl}/api/org/v1/chat`, {
         method: 'POST',
         credentials: 'omit',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
         body: JSON.stringify({ message }),
       })
       const body = await res.json().catch(() => null)
-      setSaid((s) => [
-        ...s,
-        { from: 'them', text: res.ok ? readBlocks(body?.data ?? body) : body?.message ?? `Groundwork answered ${res.status}.` },
-      ])
+      const drawn = res.ok
+        ? inCheckIn
+          ? readCheckIn(body?.data ?? body)
+          : readBlocks(body?.data ?? body)
+        : body?.message ?? `Groundwork answered ${res.status}.`
+      setSaid((s) => [...s, { from: 'them', text: drawn }])
     } catch (e) {
       setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
     } finally {
@@ -291,6 +374,42 @@ export function TheAssistantAsACustomerSeesIt() {
         )}
 
         {problem && <p style={{ fontSize: 13, color: 'var(--gw-red-t)', lineHeight: 1.6 }}>{problem}</p>}
+
+        {/* WHAT IS WAITING, OFFERED RATHER THAN OPENED. The panel does not put
+            somebody into a check-in because they opened a chat window — a
+            session is ten minutes of their attention and starting one for them
+            is the product deciding how they spend it. */}
+        {waiting.map((c) => (
+          <div
+            key={c.checkInId}
+            style={{
+              border: '1px solid var(--gw-border)',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            You have a check-in waiting on {c.ground?.label ?? 'a piece of work'}.
+            <button
+              type="button"
+              onClick={() => openCheckIn(c.checkInId)}
+              disabled={busy}
+              style={{
+                marginLeft: 8,
+                fontSize: 12.5,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--gw-border)',
+                background: 'var(--gw-card)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Open it
+            </button>
+          </div>
+        ))}
 
         {said.map((s, i) => (
           <div

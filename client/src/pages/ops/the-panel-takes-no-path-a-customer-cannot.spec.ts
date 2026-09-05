@@ -36,6 +36,49 @@ describe('the assistant panel', () => {
     expect(chat).toBeGreaterThan(opening)
   })
 
+  it('runs a check-in, not only a chat', () => {
+    /**
+     * THE HALF THAT WAS MISSING, AND THE HALF THAT IS THE PRODUCT.
+     *
+     * The assistant is the help; the CHECK-IN is what we sell. A panel that can
+     * only chat proves the easier half of the claim and leaves the acceptance
+     * test looking finished — which is worse than leaving it obviously undone.
+     *
+     * Same rule as everything else here: through the published routes, on the
+     * panel session, exactly as a stranger would.
+     */
+    expect(CODE).toContain('/api/org/v1/check-ins/mine')
+    expect(CODE).toMatch(/check-ins\/\$\{[a-zA-Z.]+\}\/open/)
+    expect(CODE).toMatch(/check-ins\/\$\{[a-zA-Z]+\}\/messages/)
+  })
+
+  it('and never sends a check-in answer to the assistant', () => {
+    /*
+     * WHERE TYPING GOES IS DECIDED BY WHICH THING WE ARE IN, never by what was
+     * typed. An answer routed to the assistant is lost from the record it was
+     * meant for, and a question routed into a check-in becomes part of
+     * somebody's account of their quarter. Both are silent.
+     */
+    /* Tied to the ROUTE, not just to the name. The first version asserted that
+       `inCheckIn ?` appeared somewhere, which stayed true after replacing the
+       whole condition with `false` — the name is used in three other places. */
+    expect(CODE).toMatch(
+      /inCheckIn[\s\S]{0,40}\?[\s\S]{0,200}check-ins\/\$\{inCheckIn\}\/messages/,
+    )
+  })
+
+  it('offers a waiting check-in rather than opening one', () => {
+    /* Ten minutes of somebody's attention is not the product's to spend because
+       they opened a chat window. */
+    /* Named precisely rather than by proximity: the first version of this
+       asserted that no `useEffect` sat within 200 characters of `openCheckIn`,
+       which failed on the unrelated scroll effect that happens to be next to
+       it. A guard that fires on adjacency is a guard that gets deleted. */
+    const calls = [...CODE.matchAll(/openCheckIn\(/g)];
+    expect(calls.length).toBe(2) // its own definition, and one caller
+    expect(CODE).toMatch(/onClick=\{\(\) => openCheckIn\(c\.checkInId\)\}/)
+  })
+
   it('never reaches into the product', () => {
     /* An import from modules/embed, or from anywhere in the API, is the panel
        marking its own homework. */
