@@ -23,6 +23,7 @@ import { OpsCeoController } from './ops-ceo.controller';
 import { OpsCeoService } from './ops-ceo.service';
 import { OpsIntegrationService } from './ops-integration.service';
 import { OpsDoorService } from './the-door-into-the-ops-system';
+import { OpsProductStatementService } from './ops-product-statement.service';
 import { OpsDoorController } from './ops-door.controller';
 
 /**
@@ -38,6 +39,7 @@ import { OpsDoorController } from './ops-door.controller';
     OpsPeopleService,
     OpsFoundationService,
     OpsDoorService,
+    OpsProductStatementService,
     OpsCapabilityGuard,
     OpsTargetCompaniesService,
     OpsCompaniesService,

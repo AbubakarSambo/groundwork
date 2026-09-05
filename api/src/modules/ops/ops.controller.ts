@@ -5,6 +5,7 @@ import { OpsCapabilityGuard } from './ops-capability.guard';
 import { OpsPeopleService } from './ops-people.service';
 import { OpsFoundationService } from './ops-foundation.service';
 import { OpsIntegrationService } from './ops-integration.service';
+import { OpsProductStatementService } from './ops-product-statement.service';
 import { NeedsOps } from './ops-capability.guard';
 import { Post, Patch, Delete, Body, Query } from '@nestjs/common';
 import { OPS_CAPABILITIES } from './what-somebody-may-do';
@@ -19,7 +20,34 @@ export class OpsController {
     private readonly people: OpsPeopleService,
     private readonly foundation: OpsFoundationService,
     private readonly integration: OpsIntegrationService,
+    private readonly statement: OpsProductStatementService,
   ) {}
+
+  /**
+   * WHAT WE SAY THIS PRODUCT IS. The document every deck, campaign and page is
+   * measured against, so everybody may read it and only the CEO may change it.
+   */
+  @Get('what-we-are')
+  @ApiOperation({ summary: 'What this product is, and what it is not' })
+  whatWeAre() {
+    return this.statement.current();
+  }
+
+  @Get('what-we-are/history')
+  @ApiOperation({ summary: 'Every version there has been, newest first' })
+  whatWeUsedToSay() {
+    return this.statement.history();
+  }
+
+  @Post('what-we-are')
+  @NeedsOps('ceo:board')
+  @ApiOperation({ summary: 'Say it differently. A new version, never an edit.' })
+  sayItDifferently(
+    @Req() req: { opsIdentity: { key: string } },
+    @Body() body: { headline: string; saidOutLoud: string; isIt: string[]; isNotIt: string[]; because?: string },
+  ) {
+    return this.statement.say(body, req.opsIdentity.key);
+  }
 
   /**
    * Who the caller is here and what they may do. The front end asks this once

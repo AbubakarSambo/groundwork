@@ -39,6 +39,10 @@ export const OPS_PAGES: OpsPage[] = [
 
   { path: '/ops/roadmap', name: 'Roadmap', capability: 'product:read', group: 'Building' },
   { path: '/ops/moat', name: 'The moat', capability: 'product:read', group: 'Building' },
+  /* Everybody may read it: it is the document every deck, campaign and page is
+     measured against, and a rule nobody can see is not a rule. Changing it is
+     ceo:board, on the page. */
+  { path: '/ops/what-we-are', name: 'What we are', capability: null, group: 'Building' },
   { path: '/ops/readiness', name: 'Readiness', capability: 'product:read', group: 'Building' },
   { path: '/ops/tech', name: 'Tech', capability: 'tech:read', group: 'Building' },
   { path: '/ops/ux', name: 'UX', capability: 'ux:read', group: 'Building' },

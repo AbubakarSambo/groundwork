@@ -600,6 +600,31 @@ export const opsApi = {
    * the product twice; the ops system had never been checked for it.
    */
 
+  /** What we say this product is. The document every deck and campaign is measured against. */
+  whatWeAre: () =>
+    apiClient
+      .get<{
+        version: number
+        headline: string
+        saidOutLoud: string
+        isIt: string[]
+        isNotIt: string[]
+        writtenAt: string | null
+        writtenBy: string | null
+        because: string | null
+        seeded: boolean
+      }>('/ops/what-we-are', QUIET)
+      .then((r) => r.data),
+  whatWeUsedToSay: () =>
+    apiClient
+      .get<Array<{ version: number; headline: string; because: string | null; writtenAt: string; writtenBy: string | null }>>(
+        '/ops/what-we-are/history',
+        QUIET,
+      )
+      .then((r) => r.data),
+  sayItDifferently: (body: { headline: string; saidOutLoud: string; isIt: string[]; isNotIt: string[]; because?: string }) =>
+    apiClient.post('/ops/what-we-are', body, QUIET).then((r) => r.data),
+
   /** The ways a company reaches us. One list, so a network can be counted. */
   attributionSources: () =>
     apiClient

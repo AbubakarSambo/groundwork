@@ -4913,6 +4913,37 @@ model OpsIntegration {
 /// Seeded and stable: these are the components of the moat as the company
 /// defines them, and they change when the strategy changes rather than when
 /// somebody has an idea.
+/// WHAT WE SAY THIS PRODUCT IS, AND WHAT IT IS NOT.
+///
+/// The statement every piece of marketing is held up against. It lived in slide
+/// three of the sales deck — inside one of the documents it is meant to govern.
+///
+/// APPEND-ONLY. A sign-off records which version it was checked against, so
+/// changing the statement reopens everything signed against the old one — and
+/// that is only computable while the old one still exists. Newest version is the
+/// current one; nothing is ever edited in place.
+model OpsProductStatement {
+  id      String @id @default(uuid())
+  version Int    @unique
+
+  /// The line that says what this is, in the words the company actually uses.
+  headline String @db.Text
+  /// The line to say out loud in the room.
+  saidOutLoud String @map("said_out_loud") @db.Text
+
+  isIt    String[] @map("is_it")
+  /// The half that does the work: what a piece of marketing actually violates.
+  isNotIt String[] @map("is_not_it")
+
+  writtenAt DateTime @default(now()) @map("written_at")
+  writtenBy String?  @map("written_by")
+  /// Why it changed, so a version nobody can account for is visible as one.
+  because String? @db.Text
+
+  @@index([version])
+  @@map("ops_product_statements")
+}
+
 model OpsMoatComponent {
   id        String @id @default(uuid())
   key       String @unique
