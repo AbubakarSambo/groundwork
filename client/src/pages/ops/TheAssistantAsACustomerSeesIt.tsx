@@ -137,6 +137,9 @@ export function TheAssistantAsACustomerSeesIt() {
    * the box knowing which it is.
    */
   const [waiting, setWaiting] = useState<{ checkInId: string; ground: { label: string } }[]>([])
+  /* A session that exists and cannot be opened yet. Kept apart from `waiting`
+     because showing them together produces a button that refuses. */
+  const [unaccepted, setUnaccepted] = useState<{ ground: { label: string }; says: string }[]>([])
   const [inCheckIn, setInCheckIn] = useState<string | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
@@ -211,7 +214,11 @@ export function TheAssistantAsACustomerSeesIt() {
         })
         const list = await mine.json().catch(() => null)
         if (cancelled) return
-        if (mine.ok) setWaiting((list?.data ?? list)?.waiting ?? [])
+        if (mine.ok) {
+          const mineBody = list?.data ?? list
+          setWaiting(mineBody?.waiting ?? [])
+          setUnaccepted(mineBody?.invitationNotAccepted ?? [])
+        }
       } catch (e) {
         if (!cancelled) setProblem((e as Error).message)
       }
@@ -379,6 +386,28 @@ export function TheAssistantAsACustomerSeesIt() {
             somebody into a check-in because they opened a chat window — a
             session is ten minutes of their attention and starting one for them
             is the product deciding how they spend it. */}
+        {/* A SESSION THAT EXISTS AND IS NOT THEIRS TO OPEN YET. Drawn, because a
+            person shown an empty list concludes the product has nothing for
+            them — the opposite of true, and the harder mistake to recover
+            from. No button: accepting an invitation is how somebody agrees to
+            take part, and it is not this panel's to do for them. */}
+        {unaccepted.map((c, i) => (
+          <div
+            key={i}
+            style={{
+              border: '1px solid var(--gw-border)',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+              color: 'var(--gw-sub)',
+            }}
+          >
+            <strong style={{ color: 'var(--gw-text)' }}>{c.ground?.label ?? 'A piece of work'}</strong>
+            <div>{c.says}</div>
+          </div>
+        ))}
+
         {waiting.map((c) => (
           <div
             key={c.checkInId}
