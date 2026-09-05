@@ -79,8 +79,8 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
         color: 'white',
         textAlign: 'center',
         padding: '12px 0',
-        borderTop: '0.5px solid rgba(255,255,255,.1)',
-        borderBottom: '0.5px solid rgba(255,255,255,.1)',
+        borderTop: '1px solid rgba(255,255,255,.1)',
+        borderBottom: '1px solid rgba(255,255,255,.1)',
       }}>
         {code}
       </div>
@@ -138,7 +138,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
             borderRadius: 8,
             background: shareCopied ? 'rgba(93,202,165,.2)' : 'rgba(255,255,255,.06)',
             color: shareCopied ? 'var(--gw-green-b)' : 'rgba(255,255,255,.8)',
-            border: '0.5px solid rgba(255,255,255,.15)',
+            border: '1px solid rgba(255,255,255,.15)',
             fontSize: 13,
             fontWeight: 700,
             cursor: 'pointer',

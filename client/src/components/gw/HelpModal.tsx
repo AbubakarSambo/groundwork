@@ -59,7 +59,7 @@ function Tab1({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '0.5px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
+        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
         <button onClick={onNext} style={{ padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Use cases</button>
       </div>
     </div>
@@ -88,7 +88,7 @@ function Tab2({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '0.5px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
+        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
         <button onClick={onNext} style={{ padding: '10px 20px', background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Reports</button>
       </div>
     </div>
@@ -118,7 +118,7 @@ function Tab3({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
           </div>
         ))}
       </div>
-      <div style={{ background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
+      <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: 14, marginBottom: 20 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8 }}>Resolution states available</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {RES_PILLS.map((p) => (
@@ -127,7 +127,7 @@ function Tab3({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '0.5px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
+        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
         <button onClick={onClose} style={{ padding: '10px 24px', background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Got it</button>
       </div>
     </div>
@@ -175,7 +175,7 @@ export function HelpModal() {
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', borderBottom: '0.5px solid var(--gw-border)' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)' }}>
           {TABS.map((label, i) => (
             <button
               key={label}

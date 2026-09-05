@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Logger,
+  OnModuleInit,
   ForbiddenException,
   ConflictException,
   NotFoundException,
@@ -8,6 +10,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCapability, DEFAULT_GRANTS, can, isAKnownCapability, OPS_CAPABILITIES } from './what-somebody-may-do';
 import { OpsFunctionalRole } from '@prisma/client';
+import { rollOutNewCapabilities } from './a-new-capability-reaches-the-people-who-should-have-it';
 
 export interface OpsIdentity {
   personId: string;
@@ -26,8 +29,36 @@ export interface OpsIdentity {
  * account and no ops person record is simply not on this team.
  */
 @Injectable()
-export class OpsPeopleService {
+export class OpsPeopleService implements OnModuleInit {
+  private readonly logger = new Logger(OpsPeopleService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * A capability added to the code reaches the people whose role names it.
+   *
+   * Exactly once, and never again — see the file it calls for why a blanket
+   * re-apply of the defaults would quietly hand back everything anybody had
+   * revoked. Failure is logged rather than thrown: a grant that did not roll
+   * out is a feature nobody can reach, and an API that will not boot is every
+   * feature nobody can reach.
+   */
+  async onModuleInit() {
+    try {
+      const { granted, capabilities } = await rollOutNewCapabilities(this.prisma);
+      if (capabilities.length === 0) return;
+      /*
+       * Logged even at zero. A roll-out that records a capability as handed out
+       * and hands it to nobody is the exact failure this whole file exists to
+       * end, and it must not be the quiet case.
+       */
+      this.logger.log(
+        `Rolled out ${capabilities.length} capability/capabilities (${capabilities.join(', ')}): ${granted} grant rows written.`,
+      );
+    } catch (error) {
+      this.logger.error(`Could not roll out new capabilities: ${(error as Error).message}`);
+    }
+  }
 
   /** The ops identity behind a signed-in account, or null if there isn't one. */
   async identify(userId: string | undefined): Promise<OpsIdentity | null> {

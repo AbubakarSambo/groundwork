@@ -6,7 +6,7 @@ import { patternAccuracyApi } from '@/api/prompts'
 
 // ── Design tokens (mirrors AdminPage) ────────────────────────────────────────
 
-const C: React.CSSProperties = { background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
+const C: React.CSSProperties = { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
 const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }
 
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
@@ -182,7 +182,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
               </button>
               <button
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -215,7 +215,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
               </button>
               <button
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -273,7 +273,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by code or creator…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -289,19 +289,19 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
               const dl = daysLeft(c.expiresAt)
               const expired = dl === 'Expired'
               return (
-                <tr key={c.id} style={{ borderBottom: '0.5px solid var(--gw-border)', background: !c.active ? 'rgba(0,0,0,0.02)' : 'white' }}>
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--gw-border)', background: !c.active ? 'rgba(0,0,0,0.02)' : 'white' }}>
                   <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', fontFamily: 'monospace', fontSize: 13 }}>{c.code}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.active ? 'Active' : 'Disabled'}
                     </span>
                   </td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.allowCodeCreation ? 'Yes' : 'No'}
                     </span>
                   </td>
@@ -310,7 +310,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                     {c.active && (
                       <button
                         onClick={() => onDisable(c.id)}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '0.5px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '1px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         Disable
                       </button>
@@ -358,7 +358,7 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
             </div>
           )
         })}
-        <div style={{ borderTop: '0.5px solid var(--gw-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Total sessions</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{total}</span>
         </div>
@@ -511,7 +511,7 @@ function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string)
             onChange={e => setEmail(e.target.value)}
             placeholder="admin@example.com"
             required
-            style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+            style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
@@ -559,7 +559,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by email…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -572,7 +572,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
           </thead>
           <tbody>
             {sorted.map(u => (
-              <tr key={u.userId} style={{ borderBottom: '0.5px solid var(--gw-border)' }}>
+              <tr key={u.userId} style={{ borderBottom: '1px solid var(--gw-border)' }}>
                 <td style={{ padding: '8px 10px', color: 'var(--gw-text)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
                 <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.groundCount}</td>
                 <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.codeCount}</td>
@@ -639,7 +639,7 @@ export function AdminDashboardPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => navigate('/admin')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '0.5px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Ops →
             </button>

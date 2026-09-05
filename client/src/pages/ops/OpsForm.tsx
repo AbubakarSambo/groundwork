@@ -200,7 +200,7 @@ export function Choose<T>({
           fontSize: 12.5,
           padding: '3px 6px',
           borderRadius: 6,
-          border: '0.5px solid var(--gw-border)',
+          border: '1px solid var(--gw-border)',
           background: 'white',
           maxWidth: 170,
         }}
@@ -224,7 +224,7 @@ const INPUT: React.CSSProperties = {
   fontSize: 13,
   fontFamily: 'inherit',
   color: 'var(--gw-navy)',
-  border: '0.5px solid var(--gw-border)',
+  border: '1px solid var(--gw-border)',
   borderRadius: 6,
   background: 'white',
 }

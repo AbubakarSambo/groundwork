@@ -150,3 +150,68 @@ describe('a claim nobody is allowed to approve', () => {
     expect(result.nobodyCanApprove).toEqual([]);
   });
 });
+
+describe('reading everybody’s spend', () => {
+  /**
+   * Reading and deciding were one grant. The consequence nobody chose: the only
+   * people who could see the CEO's own spend were the people who could approve
+   * spend — which is her. Her claims are RECORDED rather than approved, because
+   * nobody may approve their own, so the one record with no second person on it
+   * was also the one record nobody else could open.
+   *
+   * Decided 2026-09-05: the team reads everybody's, hers included. Who may
+   * approve did not move, so this is not a loosening of the approval rule.
+   */
+  const people = [
+    { id: 'hafsah-id', key: 'hafsah', displayName: 'Hafsah' },
+    { id: 'adam-id', key: 'adam', displayName: 'Adam' },
+  ];
+  const rows = [
+    { id: 'e1', requesterId: 'hafsah-id', description: 'Flight', status: 'RECORDED' },
+    { id: 'e2', requesterId: 'adam-id', description: 'Coffee', status: 'REQUESTED' },
+  ];
+
+  const service = () =>
+    new OpsCeoService({
+      opsExpense: {
+        findMany: async ({ where }: never) =>
+          (where as { requesterId?: string } | undefined)?.requesterId
+            ? rows.filter((r) => r.requesterId === (where as { requesterId: string }).requesterId)
+            : rows,
+      },
+      opsPerson: {
+        findMany: async () => people,
+        findUnique: async ({ where }: never) =>
+          people.find((p) => p.key === (where as { key: string }).key) ?? null,
+      },
+    } as never);
+
+  const identity = (key: string, capabilities: string[]) => ({
+    personId: `${key}-id`,
+    key,
+    displayName: key,
+    functionalRole: 'TECH' as const,
+    capabilities,
+  });
+
+  it('shows the CEO’s own claim to somebody who cannot approve anything', async () => {
+    const seen = await service().expensesFor(identity('adam', ['spend:read-all', 'spend:submit']));
+    expect(seen.map((e) => e.description)).toEqual(['Flight', 'Coffee']);
+  });
+
+  it('names whose claim each one is, because a list of ids is not a list', async () => {
+    const seen = await service().expensesFor(identity('adam', ['spend:read-all']));
+    expect(seen[0]).toMatchObject({ requesterName: 'Hafsah', requesterKey: 'hafsah' });
+  });
+
+  it('still gives somebody without the grant only their own', async () => {
+    const seen = await service().expensesFor(identity('adam', ['spend:submit']));
+    expect(seen.map((e) => e.description)).toEqual(['Coffee']);
+  });
+
+  it('and refuses them somebody else’s by name', async () => {
+    await expect(
+      service().expensesFor(identity('adam', ['spend:submit']), 'hafsah'),
+    ).rejects.toThrow(/spend:read-all/);
+  });
+});

@@ -264,7 +264,7 @@ export default function OpsCompanyPage() {
                   display: 'flex',
                   gap: 12,
                   padding: '6px 0',
-                  borderTop: '0.5px solid var(--gw-border)',
+                  borderTop: '1px solid var(--gw-border)',
                   fontSize: 13,
                 }}
               >

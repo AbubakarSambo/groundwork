@@ -40,8 +40,8 @@ export const SETTING_DEFAULTS: Record<string, { value: string; note: string }> =
     note: 'Groundwork is a US company and earns in dollars.',
   },
   [OPS_SETTINGS.displayTimezone]: {
-    value: 'America/New_York',
-    note: 'The clock the boards date themselves by. Awaiting a decision.',
+    value: 'Africa/Lagos',
+    note: 'The clock the boards date themselves by: where the company is run from. Decided 2026-09-05. A board dated in a timezone nobody is in makes "today" a different day for the person reading it.',
   },
   [OPS_SETTINGS.clientValueBands]: {
     value: JSON.stringify([
@@ -72,8 +72,17 @@ export class OpsSettingsService {
     return fallback.value;
   }
 
-  all() {
-    return this.prisma.opsSetting.findMany({ orderBy: { key: 'asc' } });
+  /**
+   * The settings a person chose, and could choose differently.
+   *
+   * Anything not in SETTING_DEFAULTS is left out: `set` already refuses to write
+   * a key it does not know, so those rows are records this system keeps for
+   * itself — the rolled-out capability list is one — and a settings page that
+   * lists them offers a control that cannot do anything.
+   */
+  async all() {
+    const rows = await this.prisma.opsSetting.findMany({ orderBy: { key: 'asc' } });
+    return rows.filter((row) => SETTING_DEFAULTS[row.key] !== undefined);
   }
 
   async set(key: string, value: string, updatedBy?: string) {

@@ -869,7 +869,7 @@ export function GroundAdminPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Sticky header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '0.5px solid var(--gw-border)' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         {/*
           ON A PHONE THIS HEADER BROKE INTO SEVEN LINES. W-UX-A.
           
@@ -1648,7 +1648,7 @@ export function GroundAdminPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {sigs.map(sig => (
-                      <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
+                      <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
                           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
@@ -1863,7 +1863,7 @@ export function GroundAdminPage() {
 
             {/* Session switcher */}
             {report?.releasedAt && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 4 }}>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 4 }}>
                 {(['s1', 's2', 'closing'] as ReportSession[]).map(s => (
                   <button
                     key={s}
@@ -1877,7 +1877,7 @@ export function GroundAdminPage() {
             )}
 
             {report?.releasedAt && activationStatus && (
-              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
                   {/*
                       "BOTH" ON A GROUND WITH THREE PEOPLE IN IT.
@@ -1981,7 +1981,7 @@ export function GroundAdminPage() {
                   */}
                 <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
                 {/* Fix 17: Post-report offboarding */}
-                <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
                   {/*
                     THINGS TO PRESS, NOT THINGS TO READ.
                     
@@ -2030,7 +2030,7 @@ export function GroundAdminPage() {
               </div>
             ) : report?.createdAt ? (
               <div>
-                <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                   {/*
                     "EVERYBODY HAS COMPLETED THEIR SESSIONS" WAS SAID WHETHER OR NOT THEY HAD.
 
@@ -2106,7 +2106,7 @@ export function GroundAdminPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Waiting for sessions</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The report generates once everybody has completed their sessions.</div>
                 <button onClick={() => setTab('checkins')} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
@@ -2342,7 +2342,7 @@ export function GroundAdminPage() {
                   onClick={() => groundsApi.update(id!, { timelineDays: timelineDaysDraft, cadence: cadenceDraft })
                     .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
                     .catch(() => toast.error('The length did not change — try again.'))}
-                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
                 >
                   Save timeframe
                 </button>
@@ -2354,7 +2354,7 @@ export function GroundAdminPage() {
               <button
                 disabled={!groundLabel.trim() || groundLabel === ground.label}
                 onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label) groundsApi.update(id!, { label: groundLabel.trim() }).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The name did not change — try again.')) }}
-                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
+                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
               >
                 Save name
               </button>
@@ -2384,7 +2384,7 @@ export function GroundAdminPage() {
               <button
                 disabled={!groundScenario || groundScenario === ground.scenario}
                 onClick={() => { if (groundScenario && groundScenario !== ground.scenario) groundsApi.update(id!, { scenario: groundScenario } as any).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The situation did not change — try again.')) }}
-                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
+                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
               >
                 Save scenario
               </button>
@@ -2403,7 +2403,7 @@ export function GroundAdminPage() {
             */}
             <div className="gw-fld">
               <label className="gw-label">Can the people here see each other?</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '0.5px solid var(--gw-blue-b)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
                     Show who else is in this check-in
@@ -2434,7 +2434,7 @@ export function GroundAdminPage() {
 
             <div className="gw-fld">
               <label className="gw-label">Participant contact details</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '0.5px solid var(--gw-blue-b)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
@@ -2467,7 +2467,7 @@ export function GroundAdminPage() {
             >
               <span>Share code</span><span style={{ color: 'var(--gw-sub)' }}>↗</span>
             </button>
-            <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '0.5px solid var(--gw-red-b)', borderRadius: 8 }}>
+            <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 Closing a check-in permanently archives it. All parties keep their records. This action cannot be undone.

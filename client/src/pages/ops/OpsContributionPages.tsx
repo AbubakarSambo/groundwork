@@ -61,7 +61,7 @@ export function OpsContributionPage() {
             onClick={() => setWindow(w)}
             aria-pressed={w.key === window.key}
             style={{
-              border: '0.5px solid var(--gw-border)',
+              border: '1px solid var(--gw-border)',
               borderRadius: 20,
               padding: '3px 11px',
               fontSize: 12,
@@ -179,7 +179,7 @@ export function OpsContributionPage() {
               fontSize: 12.5,
               margin: '10px 0 0',
               paddingTop: 8,
-              borderTop: '0.5px solid var(--gw-border)',
+              borderTop: '1px solid var(--gw-border)',
               color: l.entitlement.percent === null ? 'var(--gw-sub)' : 'var(--gw-navy)',
             }}
           >

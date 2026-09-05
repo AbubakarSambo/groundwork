@@ -14,7 +14,7 @@ import { opsApi, type OpsNumber } from '@/api/ops'
 
 const CARD: React.CSSProperties = {
   background: 'white',
-  border: '0.5px solid var(--gw-border)',
+  border: '1px solid var(--gw-border)',
   borderRadius: 8,
   padding: '12px 14px',
 }
@@ -69,7 +69,7 @@ function Rows({ rows }: { rows: Array<Record<string, unknown>> }) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} style={{ borderTop: '0.5px solid var(--gw-border)' }}>
+            <tr key={i} style={{ borderTop: '1px solid var(--gw-border)' }}>
               {columns.map((c) => (
                 <td key={c} style={{ padding: '7px 10px 7px 0', verticalAlign: 'top' }}>
                   {show(row[c])}
@@ -132,7 +132,7 @@ function Number({ number }: { number: OpsNumber }) {
       )}
 
       {open && (
-        <div style={{ borderTop: '0.5px solid var(--gw-border)', marginTop: 10, paddingTop: 8 }}>
+        <div style={{ borderTop: '1px solid var(--gw-border)', marginTop: 10, paddingTop: 8 }}>
           <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: 0 }}>{number.counts}</p>
           <Rows rows={number.rows} />
         </div>
@@ -261,7 +261,7 @@ function WaitingOnYou() {
       <p style={LABEL}>Waiting on you</p>
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
         {waiting.map((a) => (
-          <li key={a.id} style={{ padding: '8px 0', borderTop: '0.5px solid var(--gw-border)' }}>
+          <li key={a.id} style={{ padding: '8px 0', borderTop: '1px solid var(--gw-border)' }}>
             <div style={{ fontSize: 13 }}>{a.requestSummary}</div>
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               {(['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'] as const).map((status) => (
@@ -352,7 +352,7 @@ export default function OpsBoardPage() {
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            style={{ fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '0.5px solid var(--gw-border)' }}
+            style={{ fontSize: 12.5, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--gw-border)' }}
           >
             {(periods.data ?? []).map((p) => (
               <option key={p.key} value={p.key}>

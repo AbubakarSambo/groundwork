@@ -214,30 +214,62 @@ export class OpsCeoService {
   }
 
   /**
-   * Somebody's own spend, or everybody's with `spend:approve`.
+   * Somebody's own spend, or everybody's with `spend:read-all`.
    *
    * Their own is the default rather than the exception: an expense is a personal
    * record, and a list showing everybody's by default is one nobody wants their
    * name on.
+   *
+   * Reading is a separate grant from deciding. It was `spend:approve` for both,
+   * which had one consequence nobody chose: the CEO's own spend — recorded, not
+   * approved, because nobody may approve their own — could be read by exactly
+   * the people who could approve spend, which is her. The person with the most
+   * discretion was the one person unobserved. Decided 2026-09-05: the team may
+   * read everybody's, hers included. Who may approve did not change.
    */
   async expensesFor(identity: OpsIdentity, personKey?: string) {
-    const seeingEverybody = !personKey && can(identity.capabilities, 'spend:approve');
-    if (seeingEverybody) {
-      return this.prisma.opsExpense.findMany({ orderBy: { submittedAt: 'desc' } });
+    const mayReadEverybody = can(identity.capabilities, 'spend:read-all');
+    if (!personKey && mayReadEverybody) {
+      return this.withClaimantNames(
+        await this.prisma.opsExpense.findMany({ orderBy: { submittedAt: 'desc' } }),
+      );
     }
 
     const key = personKey ?? identity.key;
-    if (key !== identity.key && !can(identity.capabilities, 'spend:approve')) {
-      throw new ForbiddenException(`${key}'s spend is theirs. This needs spend:approve.`);
+    if (key !== identity.key && !mayReadEverybody) {
+      throw new ForbiddenException(`${key}'s spend is theirs. This needs spend:read-all.`);
     }
 
     const person = await this.prisma.opsPerson.findUnique({ where: { key } });
     if (!person) throw new NotFoundException(`No one here called ${key}`);
 
-    return this.prisma.opsExpense.findMany({
-      where: { requesterId: person.id },
-      orderBy: { submittedAt: 'desc' },
+    return this.withClaimantNames(
+      await this.prisma.opsExpense.findMany({
+        where: { requesterId: person.id },
+        orderBy: { submittedAt: 'desc' },
+      }),
+    );
+  }
+
+  /**
+   * Whose claim it is, in words.
+   *
+   * A list of everybody's spend where every row says only `requesterId` is a
+   * list of UUIDs. There is no relation from an expense to a person on purpose
+   * — no Ops table holds a foreign key it does not need — so the name is looked
+   * up here rather than joined.
+   */
+  private async withClaimantNames<T extends { requesterId: string }>(expenses: T[]) {
+    if (expenses.length === 0) return [];
+    const people = await this.prisma.opsPerson.findMany({
+      where: { id: { in: [...new Set(expenses.map((e) => e.requesterId))] } },
     });
+    const byId = new Map(people.map((p) => [p.id, p]));
+    return expenses.map((e) => ({
+      ...e,
+      requesterName: byId.get(e.requesterId)?.displayName ?? 'Somebody no longer here',
+      requesterKey: byId.get(e.requesterId)?.key ?? null,
+    }));
   }
 
   async decideExpense(

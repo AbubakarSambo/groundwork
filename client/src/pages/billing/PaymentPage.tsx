@@ -88,7 +88,7 @@ export function PaymentPage() {
         )}
 
         {/* Access code */}
-        <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 10, padding: 18, marginBottom: 16 }}>
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 18, marginBottom: 16 }}>
           {!showCode ? (
             <button
               onClick={() => setShowCode(true)}

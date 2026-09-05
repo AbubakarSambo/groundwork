@@ -78,7 +78,7 @@ export function Filters<T>({
             onClick={() => onPick(f.label === 'All' ? null : f.label)}
             aria-pressed={on}
             style={{
-              border: '0.5px solid var(--gw-border)',
+              border: '1px solid var(--gw-border)',
               borderRadius: 20,
               padding: '3px 11px',
               fontSize: 12,
@@ -148,7 +148,7 @@ export function OpsTable<T>({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={keyOf(row)} style={{ borderTop: '0.5px solid var(--gw-border)' }}>
+            <tr key={keyOf(row)} style={{ borderTop: '1px solid var(--gw-border)' }}>
               {columns.map((c) => (
                 <td
                   key={c.head}

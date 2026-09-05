@@ -53,7 +53,7 @@ export function GroundTabRow<K extends string>({ tabs, active, onPick }: {
       <div
         ref={row}
         className="gw-tabs-scroll"
-        style={{ display: 'flex', borderTop: '0.5px solid var(--gw-border)', overflowX: 'auto' }}
+        style={{ display: 'flex', borderTop: '1px solid var(--gw-border)', overflowX: 'auto' }}
       >
         {tabs.map(t => {
           const isActive = t.key === (active as string)

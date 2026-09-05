@@ -75,6 +75,23 @@ export class OpsSprintController {
     );
   }
 
+  /**
+   * Put a company on a sprint, or take it off. `sprintPeriodKey: null` removes it.
+   *
+   * This is the curated list — the companies getting attention between two
+   * dates — which is a different list from every company we are selling to.
+   */
+  @Patch('companies/:key/sprint')
+  @NeedsOps('sprint:curate')
+  @ApiOperation({ summary: 'Add a company to a sprint, or take it off' })
+  setSprint(
+    @Req() req: OpsRequest,
+    @Param('key') key: string,
+    @Body() body: { sprintPeriodKey: string | null },
+  ) {
+    return this.companies.setSprint(key, body.sprintPeriodKey ?? null, req.opsIdentity.personId);
+  }
+
   @Patch('companies/:key/blocker')
   @NeedsOps('sales:write')
   @ApiOperation({ summary: 'Record or clear what is holding a company up' })

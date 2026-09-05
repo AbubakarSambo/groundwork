@@ -39,6 +39,41 @@ export class OpsController {
   }
 
   /**
+   * Start a sprint, over whatever dates somebody chooses.
+   *
+   * Sprints only. A quarter is the calendar and a cycle hangs off one; neither
+   * is a decision this form gets to make.
+   */
+  @Post('periods')
+  @NeedsOps('periods:write')
+  @ApiOperation({ summary: 'Start a sprint over any stretch of time' })
+  async startASprint(@Body() body: { name: string; startsOn: string; endsOn: string; goal?: string }) {
+    return this.foundation.startASprint({
+      name: body.name,
+      startsOn: new Date(body.startsOn),
+      endsOn: new Date(body.endsOn),
+      goal: body.goal,
+    });
+  }
+
+  /** Move its dates, rename it, open it, close it. The key never moves. */
+  @Patch('periods/:key')
+  @NeedsOps('periods:write')
+  @ApiOperation({ summary: 'Re-date, rename, open or close a sprint' })
+  async resetASprint(
+    @Param('key') key: string,
+    @Body() body: { name?: string; startsOn?: string; endsOn?: string; goal?: string | null; status?: 'PLANNED' | 'OPEN' | 'CLOSED' },
+  ) {
+    return this.foundation.resetASprint(key, {
+      name: body.name,
+      startsOn: body.startsOn ? new Date(body.startsOn) : undefined,
+      endsOn: body.endsOn ? new Date(body.endsOn) : undefined,
+      goal: body.goal,
+      status: body.status,
+    });
+  }
+
+  /**
    * Whether Groundwork is connected, and what the last push did. Never the secret.
    */
   @Get('integration')

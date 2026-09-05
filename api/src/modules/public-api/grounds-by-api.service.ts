@@ -483,9 +483,33 @@ export class GroundsByApiService {
       out.push({ objectiveExternalId: item.objectiveExternalId, matched: true });
     }
 
-    const matched = out.filter((o) => o.matched).length;
-    this.logger.log(`Evidence: ${matched}/${out.length} matched an objective on a check-in.`);
-    return { received: out };
+    /*
+     * A 200 IS NOT A CONFIRMATION THAT ANYTHING LANDED.
+     *
+     * Every item is reported individually above, and every item can be `matched: false` — so this
+     * call answers 200 having written nothing at all, and a caller that checks only the status code
+     * believes its numbers are in. Our own back-office adapter reported "5 sent, 0 refused" on
+     * exactly such a response, and it was reading the body.
+     *
+     * The endpoint stays 200: a nightly push covering a whole org will legitimately name objectives
+     * that are not on any check-in, and failing the batch for that would make the tolerant case
+     * impossible. What changes is that the summary is impossible to miss, and that nothing matching
+     * at all is logged as a warning rather than counted quietly alongside the successes.
+     */
+    const matchedItems = out.filter((o) => o.matched);
+    const unmatched = out.filter((o) => !o.matched).map((o) => o.objectiveExternalId);
+    const says =
+      matchedItems.length === 0
+        ? `Nothing was written. None of these ${out.length} objectiveExternalIds is on a check-in in this organisation — check the ids you sent, or that the objectives were created with sourceSystem "api".`
+        : unmatched.length === 0
+          ? `${matchedItems.length} updated.`
+          : `${matchedItems.length} updated. ${unmatched.length} matched no objective and were not written.`;
+
+    const line = `Evidence: ${matchedItems.length}/${out.length} matched an objective on a check-in.`;
+    if (matchedItems.length === 0) this.logger.warn(`${line} Nothing was written.`);
+    else this.logger.log(line);
+
+    return { received: out, matched: matchedItems.length, unmatched, says };
   }
 
 

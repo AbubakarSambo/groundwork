@@ -122,12 +122,12 @@ export function EntryChat() {
           style={{ maxWidth: 680, width: '100%', margin: '0 auto', alignSelf: 'center', boxSizing: 'border-box' }}
         >
           {resumed && (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: firstMessage.current ? 4 : 8, borderBottom: firstMessage.current ? 'none' : '0.5px solid var(--gw-border)', marginBottom: firstMessage.current ? 0 : 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: firstMessage.current ? 4 : 8, borderBottom: firstMessage.current ? 'none' : '1px solid var(--gw-border)', marginBottom: firstMessage.current ? 0 : 4 }}>
               You were here. Continue when you are ready.
             </div>
           )}
           {firstMessage.current && (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: 8, borderBottom: '0.5px solid var(--gw-border)', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', paddingBottom: 8, borderBottom: '1px solid var(--gw-border)', marginBottom: 4 }}>
               {MODE_LABEL[mode]} · {firstMessage.current}
             </div>
           )}
@@ -147,7 +147,7 @@ export function EntryChat() {
 
         {!done && (
           <>
-            <div style={{ padding: '4px 14px', borderTop: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
+            <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
               Your words are private. Nothing is saved until you choose to save it.
             </div>
             <div className="gw-chat-bar">
@@ -175,7 +175,7 @@ export function EntryChat() {
       </div>
 
       {done && !loading && (
-        <div style={{ borderTop: '0.5px solid var(--gw-border)', background: 'white', overflowY: 'auto', maxHeight: '65vh', animation: 'gw-slideup 0.35s ease', flexShrink: 0 }}>
+        <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', overflowY: 'auto', maxHeight: '65vh', animation: 'gw-slideup 0.35s ease', flexShrink: 0 }}>
           <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', padding: '16px' }}>
             <SaveCard mode={mode} onClear={() => { entryStorage.clear(); navigate('/') }} />
           </div>

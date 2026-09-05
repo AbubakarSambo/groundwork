@@ -74,7 +74,7 @@ export const THE_SEQUENCE: IntegrationStep[] = [
     call: 'PUT /evidence',
     why: 'Push your current numbers against those objectives.',
     watchOutFor:
-      'Evidence attaches to an objective ON A CHECK-IN, not to a subject. Push it against a subject id and you get a 200 with `"matched": false` on every row and nothing written. Read the body, not the status.',
+      'Evidence attaches to an objective ON A CHECK-IN, not to a subject. Push it against a subject id and you get a 200 with `"matched": false` on every row and nothing written. The response carries `matched`, `unmatched` and a `says` line for exactly this: check `matched`, not the status code.',
   },
 ];
 
