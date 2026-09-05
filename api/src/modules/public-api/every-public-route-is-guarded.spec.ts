@@ -72,6 +72,13 @@ const PANEL_AUTHENTICATED = [
    * round is released, and a scope granting an integration "check-ins" would be a scope granting it
    * everybody's, which is the one thing this product promises it does not do.
    */
+  /*
+   * STARTING A CHECK-IN SOMEBODY SET UP FOR YOU is a personal act, and the whole point of the step:
+   * the named lead reads the context and says yes. A machine credential doing it would be a
+   * customer's server deciding on somebody's behalf that they have read something and agree with it.
+   */
+  "@Get('grounds/awaiting-me')",
+  "@Post('grounds/:id/confirm-lead')",
   "@Get('check-ins/mine')",
   "@Post('check-ins/:id/open')",
   "@Post('check-ins/:id/messages')",

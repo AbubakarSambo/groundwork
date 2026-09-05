@@ -586,6 +586,40 @@ export class PublicApiController {
     return this.checkIns.whatIsWaitingFor(req.panel.organizationId, req.panel.personId);
   }
 
+  /**
+   * WHAT IS WAITING ON THIS PERSON TO START, as the named lead.
+   *
+   * A ground created through this API sits at AWAITING_LEAD until the person it
+   * was set up for has read the context and said yes. There was no way to do
+   * that here, so a customer could create a ground from their own system and the
+   * lead had to log into ours to start it.
+   */
+  @Get('grounds/awaiting-me')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Check-ins set up for this person that have not started yet' })
+  async awaitingMe(@Req() req: { panel: PanelCaller }) {
+    return this.checkIns.whatIsWaitingOnYouToStart(req.panel.organizationId, req.panel.personId);
+  }
+
+  /**
+   * The named lead confirms it, and only then does it begin.
+   *
+   * Panel-authenticated. A machine credential doing this would be a customer's
+   * server deciding on somebody's behalf that they have read the context and
+   * agree with it, which is the one thing this step exists to prevent.
+   */
+  @Post('grounds/:id/confirm-lead')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'The named lead reads what was set up for them and starts it' })
+  async confirmLead(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @Body() dto: { brief?: string; managingOnly?: boolean; remit?: string },
+  ) {
+    return this.checkIns.confirmAsLead(req.panel.organizationId, req.panel.personId, id, dto ?? {});
+  }
+
   /** Open one. Returns the opening question. */
   @Post('check-ins/:id/open')
   @HttpCode(200)

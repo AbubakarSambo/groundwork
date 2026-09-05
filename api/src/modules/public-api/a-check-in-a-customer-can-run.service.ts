@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConversationService } from '../conversation/conversation.service';
+import { GroundsService } from '../grounds/grounds.service';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
 
 /**
@@ -25,6 +26,7 @@ export class ACheckInACustomerCanRunService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly conversation: ConversationService,
+    private readonly grounds: GroundsService,
   ) {}
 
   /**
@@ -142,6 +144,68 @@ export class ACheckInACustomerCanRunService {
           },
         })),
     };
+  }
+
+  /**
+   * GROUNDS THIS PERSON IS THE NAMED LEAD OF, WAITING ON THEM TO CONFIRM.
+   *
+   * A ground created through this API is created FOR a lead, and it sits at
+   * AWAITING_LEAD until that person has read the context somebody set up for
+   * them and said yes. Nothing happens before that — no session opens, nobody
+   * is asked anything.
+   *
+   * There was no way to do it here, so a customer could create a ground from
+   * their own system and the named lead had to log into OUR application to
+   * start it. Found on our own organisation: one ground, stuck at
+   * AWAITING_LEAD, which is why nobody in this company has ever run a check-in
+   * in the product this company sells.
+   */
+  async whatIsWaitingOnYouToStart(organizationId: string, personId: string) {
+    const userId = await this.actingAs(organizationId, personId);
+
+    const grounds = await this.prisma.ground.findMany({
+      where: { organizationId, initiatorId: userId, status: 'AWAITING_LEAD' },
+      select: { id: true, label: true, scenario: true, brief: true, timelineDays: true },
+    });
+
+    return grounds.map((g) => ({
+      groundId: g.id,
+      label: g.label,
+      scenario: g.scenario,
+      /* What somebody else wrote for them to read. It is the thing being
+         confirmed, so it is returned rather than summarised. */
+      brief: g.brief,
+      timelineDays: g.timelineDays,
+      says: 'This was set up for you and has not started. Read what it says, change it if it is wrong, and confirm it — nothing is asked of anybody until you do.',
+    }));
+  }
+
+  /**
+   * The named lead confirms it, and only then does it begin.
+   *
+   * PANEL-AUTHENTICATED. A machine credential confirming this would be a
+   * customer's server deciding on somebody's behalf that they have read the
+   * context and agree with it — which is the one thing this step exists to
+   * prevent, and it names an organisation and nobody in particular.
+   */
+  async confirmAsLead(
+    organizationId: string,
+    personId: string,
+    groundId: string,
+    edits?: { brief?: string; managingOnly?: boolean; remit?: string },
+  ) {
+    const userId = await this.actingAs(organizationId, personId);
+
+    /* Scoped here as well as inside `confirmLead`, which checks the initiator.
+       This one checks the ORGANISATION, which that call has no reason to know
+       about and which a machine-facing surface must never leave to the caller. */
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true },
+    });
+    if (!ground) throw new NotFoundException('No such check-in in your organisation.');
+
+    return this.grounds.confirmLead(groundId, userId, edits);
   }
 
   async open(organizationId: string, personId: string, checkInId: string) {

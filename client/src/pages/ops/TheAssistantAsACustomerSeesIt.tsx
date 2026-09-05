@@ -140,6 +140,9 @@ export function TheAssistantAsACustomerSeesIt() {
   /* A session that exists and cannot be opened yet. Kept apart from `waiting`
      because showing them together produces a button that refuses. */
   const [unaccepted, setUnaccepted] = useState<{ ground: { label: string }; says: string }[]>([])
+  /* Set up for this person and not started. Until it is confirmed nothing
+     happens on it — no session opens and nobody is asked anything. */
+  const [toStart, setToStart] = useState<{ groundId: string; label: string; brief: string | null; says: string }[]>([])
   const [inCheckIn, setInCheckIn] = useState<string | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
@@ -219,6 +222,14 @@ export function TheAssistantAsACustomerSeesIt() {
           setWaiting(mineBody?.waiting ?? [])
           setUnaccepted(mineBody?.invitationNotAccepted ?? [])
         }
+
+        const awaiting = await fetch(`${ready.baseUrl}/api/org/v1/grounds/awaiting-me`, {
+          credentials: 'omit',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const pending = await awaiting.json().catch(() => null)
+        if (cancelled) return
+        if (awaiting.ok) setToStart((pending?.data ?? pending) ?? [])
       } catch (e) {
         if (!cancelled) setProblem((e as Error).message)
       }
@@ -233,6 +244,31 @@ export function TheAssistantAsACustomerSeesIt() {
        chat that does not follow its own last message looks broken. */
     if (bottom.current) scrollTo(bottom.current)
   }, [said])
+
+  /** The named lead reads what was set up for them and starts it. */
+  async function startIt(groundId: string) {
+    if (!ready || !session) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/grounds/${groundId}/confirm-lead`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify({}),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        setSaid((s) => [...s, { from: 'them', text: body?.message ?? `Groundwork answered ${res.status}.` }])
+        return
+      }
+      setToStart((t) => t.filter((g) => g.groundId !== groundId))
+      setSaid((s) => [...s, { from: 'them', text: 'Started. Everybody on it will be asked separately, and what they say is released together.' }])
+    } catch (e) {
+      setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
+    } finally {
+      setBusy(false)
+    }
+  }
 
   /** Open the one waiting, and draw its first question. */
   async function openCheckIn(checkInId: string) {
@@ -386,6 +422,45 @@ export function TheAssistantAsACustomerSeesIt() {
             somebody into a check-in because they opened a chat window — a
             session is ten minutes of their attention and starting one for them
             is the product deciding how they spend it. */}
+        {/* SET UP FOR THEM AND NOT STARTED. The brief is somebody else's words
+            about their work, and it is the thing being agreed to — so it is
+            shown, not summarised. */}
+        {toStart.map((g) => (
+          <div
+            key={g.groundId}
+            style={{
+              border: '1px solid var(--gw-border)',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            <strong>{g.label}</strong>
+            <div style={{ color: 'var(--gw-sub)' }}>{g.says}</div>
+            {g.brief && (
+              <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{g.brief}</div>
+            )}
+            <button
+              type="button"
+              onClick={() => startIt(g.groundId)}
+              disabled={busy}
+              style={{
+                marginTop: 8,
+                fontSize: 12.5,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--gw-border)',
+                background: 'var(--gw-card)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Start it
+            </button>
+          </div>
+        ))}
+
         {/* A SESSION THAT EXISTS AND IS NOT THEIRS TO OPEN YET. Drawn, because a
             person shown an empty list concludes the product has nothing for
             them — the opposite of true, and the harder mistake to recover
