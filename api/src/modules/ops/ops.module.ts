@@ -22,6 +22,8 @@ import { OpsIntentService } from './ops-intent.service';
 import { OpsCeoController } from './ops-ceo.controller';
 import { OpsCeoService } from './ops-ceo.service';
 import { OpsIntegrationService } from './ops-integration.service';
+import { OpsDoorService } from './the-door-into-the-ops-system';
+import { OpsDoorController } from './ops-door.controller';
 
 /**
  * The back office the Groundwork team runs on.
@@ -31,10 +33,11 @@ import { OpsIntegrationService } from './ops-integration.service';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController],
+  controllers: [OpsController, OpsSprintController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController],
   providers: [
     OpsPeopleService,
     OpsFoundationService,
+    OpsDoorService,
     OpsCapabilityGuard,
     OpsSprintService,
     OpsCompaniesService,
@@ -49,6 +52,6 @@ import { OpsIntegrationService } from './ops-integration.service';
     OpsCeoService,
     OpsIntegrationService,
   ],
-  exports: [OpsPeopleService],
+  exports: [OpsPeopleService, OpsDoorService],
 })
 export class OpsModule {}

@@ -1250,6 +1250,16 @@ export function AdminPage() {
               * a super admin was to ask somebody to run a database write.
               */}
             <button onClick={() => navigate('/admin/dashboard')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Admins and codes →</button>
+            {/*
+              * THE THIRD SURFACE, WHICH ALSO NOTHING LINKED TO.
+              *
+              * "Groundwork ops" here is the PLATFORM console — prompts, orgs, usage, pricing. The
+              * team's own operating system — targets, the pipeline, commitments, spend, the moat —
+              * lives at /ops and had no link from anywhere, which is half of why it read as missing.
+              * The other half was that nobody's account could open it; that is fixed on the
+              * dashboard.
+              */}
+            <button onClick={() => navigate('/ops')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Our own system →</button>
             <button onClick={() => navigate('/grounds')} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>← App</button>
           </div>
         </div>
