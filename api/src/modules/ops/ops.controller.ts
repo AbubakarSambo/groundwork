@@ -2,6 +2,7 @@ import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OpsCapabilityGuard } from './ops-capability.guard';
+import { OpsGroundworkEventsService } from './ops-groundwork-events.service';
 import { OpsPeopleService } from './ops-people.service';
 import { OpsFoundationService } from './ops-foundation.service';
 import { OpsIntegrationService } from './ops-integration.service';
@@ -21,6 +22,7 @@ export class OpsController {
     private readonly foundation: OpsFoundationService,
     private readonly integration: OpsIntegrationService,
     private readonly statement: OpsProductStatementService,
+    private readonly events: OpsGroundworkEventsService,
   ) {}
 
   /**
@@ -82,6 +84,14 @@ export class OpsController {
       endsOn: new Date(body.endsOn),
       goal: body.goal,
     });
+  }
+
+  /** What has arrived, newest first, with the ones that did not verify marked as such. */
+  @Get('groundwork/events')
+  @NeedsOps('integration:read')
+  @ApiOperation({ summary: 'What Groundwork has told us' })
+  async groundworkEvents() {
+    return this.events.whatHasArrived();
   }
 
   /**

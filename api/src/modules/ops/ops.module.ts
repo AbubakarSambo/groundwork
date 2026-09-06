@@ -28,6 +28,8 @@ import { OpsWhatItServesService } from './ops-what-it-serves.service';
 import { OpsFreezeService } from './ops-freeze.service';
 import { OpsDoorController } from './ops-door.controller';
 import { OpsResourcesService } from './ops-resources.service';
+import { OpsGroundworkEventsService } from './ops-groundwork-events.service';
+import { OpsInboundController } from './ops-inbound.controller';
 import { WhatAReadingOfItSaysService } from './what-a-reading-of-it-says';
 
 /**
@@ -38,7 +40,7 @@ import { WhatAReadingOfItSaysService } from './what-a-reading-of-it-says';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [OpsController, OpsTargetCompaniesController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController],
+  controllers: [OpsController, OpsTargetCompaniesController, OpsPipelineController, OpsBuildController, OpsIntentController, OpsCeoController, OpsCommercialController, OpsDoorController, OpsInboundController],
   providers: [
     OpsPeopleService,
     OpsFoundationService,
@@ -60,6 +62,7 @@ import { WhatAReadingOfItSaysService } from './what-a-reading-of-it-says';
     OpsCeoService,
     OpsIntegrationService,
     OpsResourcesService,
+    OpsGroundworkEventsService,
     WhatAReadingOfItSaysService,
   ],
   exports: [OpsPeopleService, OpsDoorService],

@@ -5065,6 +5065,11 @@ model OpsIntegration {
   clientId     String? @map("client_id")
   clientSecret String? @map("client_secret")
 
+  /// The secret Groundwork signs its webhooks with, handed over when we
+  /// registered where to send them. Ours to check against, and it never leaves
+  /// this side — see `what-groundwork-tells-us.ts`.
+  webhookSecret String? @map("webhook_secret")
+
   /// The check-in our objectives are attached to, in the Groundwork we push to.
   ///
   /// Evidence attaches to an objective that exists ON a check-in, so without
@@ -5336,6 +5341,46 @@ enum OpsResourceCategory {
   MARKETING_SITE_COPY
   NEWSLETTER
   OTHER
+}
+
+/// WHAT GROUNDWORK TOLD US, RECEIVED THE WAY A CUSTOMER RECEIVES IT.
+///
+/// Our back office has only ever SENT. It pushes people, objectives, evidence
+/// and what this company decided, and it subscribed to nothing — so a commitment
+/// somebody made in a check-in never reached the board they are measured on, and
+/// a released report had to be gone and found.
+///
+/// Half of being a customer is receiving, and it is the half that flatters us
+/// less. This is the record of it: every event, whether it verified, and what we
+/// did about it.
+///
+/// A webhook from this product carries a fact and a pointer and never what
+/// anybody said, so nothing here needs redacting — which is a property of that
+/// design rather than of this table, and worth not relying on silently.
+model OpsGroundworkEvent {
+  id String @id @default(uuid())
+
+  /// Their id for the delivery, so the same event arriving twice is one row.
+  /// Retries are normal and a duplicate must not become a second fact.
+  eventId String @unique @map("event_id")
+  kind    String
+
+  /// The body exactly as it arrived. Kept whole: a payload we reshaped on the
+  /// way in is one we cannot re-read when we later work out what we should have
+  /// done with it.
+  payload Json
+
+  /// Whether the signature checked out. A failure is RECORDED rather than
+  /// dropped — somebody sending us badly signed events is a thing to know about,
+  /// and a silent 401 tells nobody here.
+  verified Boolean
+
+  receivedAt DateTime @default(now()) @map("received_at")
+  /// What we did, in a sentence, or null where we did nothing yet.
+  actedOn    String?  @map("acted_on")
+
+  @@index([kind, receivedAt])
+  @@map("ops_groundwork_events")
 }
 
 model OpsMoatComponent {

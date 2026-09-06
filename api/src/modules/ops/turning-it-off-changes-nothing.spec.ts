@@ -23,6 +23,22 @@ const ADAPTER_FILES = [
   'the-groundwork-api-as-a-customer.ts',
   'what-we-send-to-groundwork.ts',
   'ops-integration.service.ts',
+  /*
+   * RECEIVING IS THE OTHER HALF OF THE ADAPTER, and it belongs here rather than
+   * on an exemption list. We pushed for months and subscribed to nothing; these
+   * two are the half that was missing.
+   *
+   * The property this file protects still holds: nothing arrives when Groundwork
+   * is down, so every board reads exactly the same. What would break it is an ops
+   * board reading an EVENT to produce a figure — and the guard below still fails
+   * on that, because these files are the adapter and boards may not mention them.
+   */
+  'ops-groundwork-events.service.ts',
+  'what-groundwork-tells-us.ts',
+  /* The door those events arrive at. Its own controller because its caller is a
+     server holding no login of ours, and the ordinary ops guards ask questions
+     that mean nothing about one. */
+  'ops-inbound.controller.ts',
 ];
 
 const withoutComments = (t: string) =>
