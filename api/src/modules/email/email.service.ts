@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 
@@ -20,6 +22,7 @@ export class EmailService {
   constructor(
     private configService: ConfigService,
     private delivery: DeliveryService,
+    private prisma: PrismaService,
   ) {
     this.resend = new Resend(this.configService.get<string>('resend.apiKey'));
     this.fromEmail = this.configService.get<string>('resend.fromEmail') || 'Groundwork <noreply@myground.work>';
@@ -52,7 +55,68 @@ export class EmailService {
     return !apiKey || apiKey.startsWith('re_...') || apiKey === 're_test';
   }
 
-  private async sendEmail(options: { to: string; subject: string; html: string }, context?: DeliveryContext): Promise<string | undefined> {
+  /**
+   * WHETHER THIS PERSON WANTS THIS KIND OF MAIL.
+   *
+   * Looked up here, once, rather than at each sender — the opt-out was honoured in three of nine
+   * senders and every one of those files looked right on its own. See
+   * `nothing-goes-out-that-was-turned-off.ts` for the two kinds and the line between them.
+   */
+  private async wouldTheyRatherNot(to: string, sender: string): Promise<string | null> {
+    const kind = whatThisMailIs(sender);
+    if (kind === 'the way back in') return null;
+
+    const address = to.trim().toLowerCase();
+    const [user, preference] = await Promise.all([
+      this.prisma.user.findUnique({ where: { email: address }, select: { emailNotifications: true } }),
+      /* Preferences are keyed by (organisation, externalId) and hold no address, so the roster is
+         the way in. ANY unsubscribed row for this address stops the mail: somebody who used the
+         link said "stop hearing from us", not "stop hearing from one of your tenants" — and
+         answering per-organisation would also tell them which ones they are in. */
+      this.prisma.person
+        .findMany({
+          where: { email: { equals: address, mode: 'insensitive' } },
+          select: { organizationId: true, externalId: true },
+        })
+        .then((people) =>
+          people.length === 0
+            ? null
+            : this.prisma.emailPreference.findFirst({
+                where: {
+                  OR: people.map((p) => ({ organizationId: p.organizationId, personExternalId: p.externalId })),
+                  unsubscribedAt: { not: null },
+                },
+                select: { unsubscribedAt: true },
+              }),
+        )
+        .catch(() => null),
+    ]);
+
+    /* Nobody to ask: a participant invited by address has no account and no preference, and
+       refusing to write to them would mean nobody could ever be invited. */
+    if (!user && !preference) return null;
+
+    const answer = whetherToSend(kind, {
+      emailNotifications: user?.emailNotifications,
+      unsubscribedAt: preference?.unsubscribedAt ?? null,
+    });
+    return answer.send ? null : answer.because;
+  }
+
+  private async sendEmail(
+    options: { to: string; subject: string; html: string },
+    context?: DeliveryContext,
+    /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
+    sender?: string,
+  ): Promise<string | undefined> {
+    const rather = sender ? await this.wouldTheyRatherNot(options.to, sender) : null;
+    if (rather) {
+      /* Logged rather than silent: an email that did not go out for a good reason is still a thing
+         somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
+      this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
+      return undefined;
+    }
+
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -115,7 +179,7 @@ export class EmailService {
         <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
         <p>Groundwork</p>
       `,
-    });
+    }, undefined, 'sendCoachRequestReceived');
   }
 
   async sendVerificationEmail(email: string, firstName: string, token: string): Promise<void> {
@@ -124,7 +188,7 @@ export class EmailService {
       to: email,
       subject: 'Verify your email to get started on Groundwork',
       html: this.layout(`<p>Hi ${firstName},</p><p>Confirm your email to get started.</p><p><a href="${url}">Verify email</a></p>`),
-    });
+    }, undefined, 'sendVerificationEmail');
   }
 
   async sendMagicLinkEmail(email: string, firstName: string, token: string): Promise<void> {
@@ -133,7 +197,7 @@ export class EmailService {
       to: email,
       subject: 'Activate your Groundwork account',
       html: this.layout(`<p>Hi ${firstName},</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
-    }, { kind: 'MAGIC_LINK' });
+    }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
   async sendSignInLinkEmail(email: string, firstName: string, token: string): Promise<{ devUrl?: string }> {
@@ -142,7 +206,7 @@ export class EmailService {
       to: email,
       subject: 'Your Groundwork sign-in link',
       html: this.layout(`<p>Hi ${firstName},</p><p>Click the link below to sign in to Groundwork. No password needed.</p><p><a href="${url}">Sign in</a></p><p>This link expires in 24 hours and can only be used once.</p>`),
-    });
+    }, undefined, 'sendSignInLinkEmail');
     return { devUrl };
   }
 
@@ -152,7 +216,7 @@ export class EmailService {
       to: email,
       subject: 'Set a password for Groundwork',
       html: this.layout(`<p>Hi ${firstName},</p><p>Set a password to sign in without Google.</p><p><a href="${url}">Set password</a></p>`),
-    });
+    }, undefined, 'sendAddPasswordEmail');
   }
 
   async sendPasswordResetEmail(email: string, firstName: string, token: string): Promise<{ devUrl?: string }> {
@@ -161,7 +225,7 @@ export class EmailService {
       to: email,
       subject: 'Reset your Groundwork password',
       html: this.layout(`<p>Hi ${firstName},</p><p>Reset your password (link expires in 1 hour).</p><p><a href="${url}">Reset password</a></p>`),
-    });
+    }, undefined, 'sendPasswordResetEmail');
     return { devUrl };
   }
 
@@ -176,7 +240,7 @@ export class EmailService {
          <p>Any questions, reply to this email.</p>
          <p style="color:#9B9590;font-size:12px;">The Groundwork team</p>`,
       ),
-    });
+    }, undefined, 'sendContributorCode');
   }
 
   // --- Team invites ---
@@ -187,7 +251,7 @@ export class EmailService {
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
       html: this.layout(`<p>Hi ${firstName},</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
-    });
+    }, undefined, 'sendUserInvite');
   }
 
   // --- Ground / conversation lifecycle (see comms library, Part 3) ---
@@ -208,7 +272,7 @@ export class EmailService {
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
          <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>`,
       ),
-    }, context ?? { kind: 'PARTICIPANT_INVITE' });
+    }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendParticipantInvite');
     return { devUrl };
   }
 
@@ -233,7 +297,7 @@ export class EmailService {
          <p>An admin in your organisation has approved <strong>${groundLabel}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
-    });
+    }, undefined, 'sendGroundApproved');
   }
 
   /**
@@ -250,7 +314,7 @@ export class EmailService {
          ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${reason}</p>` : ''}
          <p>Nothing you wrote has been shared with anybody. If this was a misunderstanding, the fastest way through it is a conversation with whoever administers Groundwork for your organisation.</p>`,
       ),
-    });
+    }, undefined, 'sendGroundDeclined');
   }
 
   async sendLeadInvite(email: string, adminName: string, groundLabel: string, url: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
@@ -269,7 +333,7 @@ export class EmailService {
          <p>The Context tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
       ),
-    }, context ?? { kind: 'LEAD_INVITE' });
+    }, context ?? { kind: 'LEAD_INVITE' }, 'sendLeadInvite');
     return { devUrl };
   }
 
@@ -279,7 +343,7 @@ export class EmailService {
       to: email,
       subject: `Your shared record is ready: ${groundLabel}`,
       html: this.layout(`<p>Both sides have checked in. The shared record is now available to both of you at the same time. It shows where you agree, where you differ, and the one question worth answering together.</p><p><a href="${reportUrl}">View the report</a></p>`),
-    });
+    }, undefined, 'sendReportReady');
   }
 
   /** Ground activated. Sent to the participant so they know to return. */
@@ -293,7 +357,7 @@ export class EmailService {
          <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
       ),
-    });
+    }, undefined, 'sendGroundActivated');
   }
 
   /** Nudge. Scenario-aware subject, names the specific ground that is still open. */
@@ -319,7 +383,7 @@ export class EmailService {
       to: email,
       subject,
       html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>`),
-    });
+    }, undefined, 'sendNudge');
   }
 
   /**
@@ -336,7 +400,7 @@ export class EmailService {
       to: email,
       subject: `Your next check-in is open: ${groundLabel}`,
       html: this.layout(`<p>A new check-in is ready for <strong>${groundLabel}</strong>.</p>${contextNote}<p><a href="${checkInUrl}">Check in</a></p>`),
-    });
+    }, undefined, 'sendSessionReady');
   }
 
   /**
@@ -356,7 +420,7 @@ export class EmailService {
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the report →</a></p>`,
       ),
-    });
+    }, undefined, 'sendLateCorrectionNotice');
   }
 
   /** Reminder to the admin that a generated report is waiting to be activated. */
@@ -370,7 +434,7 @@ export class EmailService {
          <p>Open the check-in to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
       ),
-    });
+    }, undefined, 'sendActivationReminder');
   }
 
   /**
@@ -389,7 +453,7 @@ export class EmailService {
          <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
-    });
+    }, undefined, 'sendActivationRevealReminder');
   }
 
   /** Participant checked in. Admin notified so they know to come back. */
@@ -405,7 +469,7 @@ export class EmailService {
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>`,
       ),
-    });
+    }, undefined, 'sendParticipantCheckedIn');
   }
 
   /** Ground stalled. Timeline elapsed without resolution. Both parties notified. (GW-06) */
@@ -425,7 +489,7 @@ export class EmailService {
       to: email,
       subject,
       html: this.layout(escaped.split('\n').map((l) => `<p>${l || '&nbsp;'}</p>`).join('')),
-    });
+    }, undefined, 'sendWhoHasNotStarted');
   }
 
   /**
@@ -446,7 +510,7 @@ export class EmailService {
          <p><a href="${url}">Start my check-in</a></p>
          <p style="color:#6B6560;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
       ),
-    });
+    }, undefined, 'sendJoinConfirmation');
   }
 
   async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
@@ -458,7 +522,7 @@ export class EmailService {
          <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the check-in page.</p>
          <p><a href="${groundUrl}">View check-in</a></p>`,
       ),
-    });
+    }, undefined, 'sendStalledNotification');
   }
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
@@ -472,7 +536,7 @@ export class EmailService {
          <p>The check-in closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
          <p><a href="${groundUrl}">View and confirm</a></p>`,
       ),
-    });
+    }, undefined, 'sendResolutionProposal');
   }
 
   /** Ground closed. All parties confirmed the same end state. (GW-50) */
@@ -486,7 +550,7 @@ export class EmailService {
          <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
-    });
+    }, undefined, 'sendGroundClosed');
   }
 
   /** Post-resolution feedback request. Sent ~24h after close. (GW-50) */
@@ -499,7 +563,7 @@ export class EmailService {
          <p>Your answer takes 20 seconds and helps us make every future check-in better.</p>
          <p><a href="${feedbackUrl}">Share your view</a></p>`,
       ),
-    });
+    }, undefined, 'sendFeedbackRequest');
   }
 
   // --- Billing ---
@@ -518,7 +582,7 @@ export class EmailService {
          <p>Every check-in on the free tier runs unlimited sessions and reports. Subscribe to open more check-ins, or to add more people - the record you have already built is safe and waiting either way.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
-    });
+    }, undefined, 'sendPaymentRequestEmail');
   }
 
   /** Nudge to the check-in lead when a participant is blocked by billing. */
@@ -531,7 +595,7 @@ export class EmailService {
          <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
          <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
-    });
+    }, undefined, 'sendParticipantBlockedNudge');
   }
 
   /** Payment failed notice sent to the org admin. */
@@ -543,7 +607,7 @@ export class EmailService {
         `<p>We were unable to charge the card on file. Please update your payment method within 7 days to keep your account active. Your records are safe regardless of payment status.</p>
          <p><a href="${this.frontendUrl}/billing">Update payment method</a></p>`,
       ),
-    });
+    }, undefined, 'sendPaymentFailed');
   }
 
   /** Billing change notification. Sent when the plan changes. */
@@ -557,7 +621,7 @@ export class EmailService {
          <p>Your records are unaffected by billing changes. If you have questions about your plan, visit the billing page in your workspace settings.</p>
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
       ),
-    });
+    }, undefined, 'sendBillingChangeNotification');
   }
 
   /** Record-portability notice sent when an org account is cancelled. Sent to the individual user. */
@@ -569,7 +633,7 @@ export class EmailService {
         `<p>Hi ${firstName}. Your organisation's Groundwork account has been cancelled.</p>
          <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a>. This link is valid for 30 days.</p>`,
       ),
-    });
+    }, undefined, 'sendRecordPortabilityNotice');
   }
 
   /** Sent when an org successfully subscribes to a plan. */
@@ -586,7 +650,7 @@ export class EmailService {
          <p>Your payment helps us continue building a product that helps teams align, make better decisions, and solve problems together.</p>
          <p><a href="${this.frontendUrl}/billing">View your subscription</a></p>`,
       ),
-    });
+    }, undefined, 'sendSubscriptionConfirmed');
   }
 
   /** Sent when an org cancels their subscription. */
@@ -601,7 +665,7 @@ export class EmailService {
          <p>If you want to continue as a team, you can resubscribe or buy sessions at any time.</p>
          <p><a href="${this.frontendUrl}/billing">Go to billing</a></p>`,
       ),
-    });
+    }, undefined, 'sendSubscriptionCancelled');
   }
 
   /** Sent when a subscription payment fails. */
@@ -616,7 +680,7 @@ export class EmailService {
          <p>Your records are safe regardless of payment status.</p>
          <p><a href="${portalUrl}">Update payment method</a></p>`,
       ),
-    });
+    }, undefined, 'sendSubscriptionPaymentFailed');
   }
 
   /** Sent when a subscription renews successfully. */
@@ -634,7 +698,7 @@ export class EmailService {
          <p>Your next renewal is ${next}. You can pause or cancel at any time from your billing page.</p>
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
       ),
-    });
+    }, undefined, 'sendSubscriptionRenewal');
   }
 
   /** Sent when the free session extension is claimed. */
@@ -647,7 +711,7 @@ export class EmailService {
          <p>Check-ins on the free tier run unlimited sessions. Subscribe when your team needs more check-ins, or more people.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
-    });
+    }, undefined, 'sendFreeExtensionClaimed');
   }
 
   /** Sent when a check-in's session balance reaches 1. */
@@ -660,7 +724,7 @@ export class EmailService {
          <p>Subscribe before your team's next check-in to keep this check-in running.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
-    });
+    }, undefined, 'sendApproachingSessionLimit');
   }
 
   /** Sent when an org hits its plan member cap on invite. */
@@ -674,7 +738,7 @@ export class EmailService {
          <p>To add more members, upgrade your organization plan.</p>
          <p><a href="${this.frontendUrl}/billing">Upgrade your organization</a></p>`,
       ),
-    });
+    }, undefined, 'sendMemberCapWarning');
   }
 
   /** Absence reminder. Sent when a participant has consecutively missed multiple check-ins. */
@@ -702,7 +766,7 @@ export class EmailService {
          <p>Your record is incomplete. The shared picture for this check-in cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
          <p><a href="${checkInUrl}">Add your version</a></p>`,
       ),
-    });
+    }, undefined, 'sendAbsenceReminder');
   }
 
   private endStateLabel(value: string): string {
@@ -767,7 +831,7 @@ export class EmailService {
          <p>Once it expires, the code can no longer be redeemed. Any check-ins already created with it are unaffected - their records remain intact.</p>
          <p><a href="${this.frontendUrl}/billing">View your codes</a></p>`;
 
-    await this.sendEmail({ to: email, subject, html: this.layout(bodyHtml) });
+    await this.sendEmail({ to: email, subject, html: this.layout(bodyHtml) }, undefined, 'sendCodeExpiryReminder');
   }
 
   /** Care fee confirmation. Sent when an org activates a Groundwork subscription. */
@@ -781,7 +845,7 @@ export class EmailService {
          <p>Ten check-ins are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
-    });
+    }, undefined, 'sendCareFeeConfirmation');
   }
 
   /**
@@ -797,7 +861,7 @@ export class EmailService {
       .split('\n')
       .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : ''))
       .join('');
-    await this.sendEmail({ to: email, subject, html });
+    await this.sendEmail({ to: email, subject, html }, undefined, 'sendRoundDigest');
   }
 
 }
