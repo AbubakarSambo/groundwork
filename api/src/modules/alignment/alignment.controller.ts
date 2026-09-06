@@ -1,9 +1,11 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AlignmentService } from './alignment.service';
 import { CandidateKey } from './an-explanation-is-a-candidate';
+import { AgreementsService } from './agreements.service';
+import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
 
 /**
  * Session-authenticated, and scoped to a check-in. Every route names the ground,
@@ -14,7 +16,10 @@ import { CandidateKey } from './an-explanation-is-a-candidate';
 @Controller('grounds/:groundId/alignment')
 @UseGuards(JwtAuthGuard)
 export class AlignmentController {
-  constructor(private readonly alignment: AlignmentService) {}
+  constructor(
+    private readonly alignment: AlignmentService,
+    private readonly agreements: AgreementsService,
+  ) {}
 
   @Get('figures')
   @ApiOperation({ summary: 'The figures on this check-in, each with where it came from and whether a person has checked it' })
@@ -54,6 +59,86 @@ export class AlignmentController {
     @Body() dto: { statedFigureId: string; countedFigureIds: string[] },
   ) {
     return this.alignment.compare(organizationId, groundId, dto?.statedFigureId, dto?.countedFigureIds ?? []);
+  }
+
+  @Post('agreements')
+  @ApiOperation({ summary: 'Start an agreement on this check-in, with its first version' })
+  startAgreement(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
+    @Body() dto: { says: string; inForceFrom: string },
+  ) {
+    return this.agreements.start(organizationId, groundId, dto?.says, new Date(dto?.inForceFrom));
+  }
+
+  @Post('agreements/:agreementId/amend')
+  @ApiOperation({ summary: 'An amendment is a new version. The one it replaces is closed the day before, never edited.' })
+  amend(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('agreementId') agreementId: string,
+    @Body() dto: { inForceFrom: string },
+  ) {
+    return this.agreements.amend(organizationId, agreementId, new Date(dto?.inForceFrom));
+  }
+
+  @Get('agreements/:agreementId/in-force')
+  @ApiOperation({ summary: 'What governed a given day, or why nothing did' })
+  inForce(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('agreementId') agreementId: string,
+    @Query('on') on?: string,
+  ) {
+    return this.agreements.inForceOn(organizationId, agreementId, on ? new Date(on) : new Date());
+  }
+
+  @Post('versions/:versionId/agreed')
+  @ApiOperation({ summary: 'A side says this version is what they signed. Two sides, and it is in force.' })
+  agreedVersion(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('versionId') versionId: string,
+    @Body() dto: { who: string },
+  ) {
+    return this.agreements.agreed(organizationId, versionId, dto?.who);
+  }
+
+  @Post('versions/:versionId/terms')
+  @ApiOperation({ summary: 'A term read out of the document. Arrives as a reading and nothing may be judged against it.' })
+  readTerm(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('versionId') versionId: string,
+    @Body() dto: { says: string; reads: string; clause?: string },
+  ) {
+    return this.agreements.readTerm(organizationId, versionId, dto);
+  }
+
+  @Post('terms/:termId/checked')
+  @ApiOperation({ summary: 'Somebody who would know says the reading is right' })
+  checked(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('termId') termId: string,
+    @Body() dto: { who: string },
+  ) {
+    return this.agreements.checked(organizationId, termId, dto?.who);
+  }
+
+  @Post('terms/:termId/read-differently')
+  @ApiOperation({ summary: 'Somebody reads the same clause differently. Both readings are kept, in both their words.' })
+  differently(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('termId') termId: string,
+    @Body() dto: { who: string; reads: string },
+  ) {
+    return this.agreements.readsItDifferently(organizationId, termId, dto?.who, dto?.reads);
+  }
+
+  @Get('terms/:termId/may-be-used-to')
+  @ApiOperation({ summary: 'Whether a term may be shown, used to ask, or used to judge — and why not, where not' })
+  mayBeUsed(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('termId') termId: string,
+    @Query('what') what: WhatFor,
+  ) {
+    return this.agreements.mayThisBeUsedTo(organizationId, termId, what);
   }
 
   @Get('differences')

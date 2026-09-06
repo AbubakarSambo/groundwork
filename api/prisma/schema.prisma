@@ -840,6 +840,7 @@ model Ground {
   documentsElsewhere DocumentElsewhere[]
   reportedFigures ReportedFigure[]
   differences     Difference[]
+  agreements      Agreement[]
   @@map("grounds")
 }
 
@@ -3210,6 +3211,99 @@ model DocumentElsewhere {
 
   @@index([groundId, participantId])
   @@map("documents_elsewhere")
+}
+
+/// AN AGREEMENT BETWEEN TWO SIDES, AND WHAT IS IN FORCE WHEN.
+///
+/// Not contract management: no clause library, no redlining, no signatures. Enough to answer what
+/// is in force, since when, and who checked it — which a relationship that cannot answer has no
+/// ground to stand an argument on. See `alignment/an-agreement-is-versioned-never-edited.ts`.
+model Agreement {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What the two sides call it.
+  says String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground   Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  versions AgreementVersion[]
+
+  @@index([groundId])
+  @@map("agreements")
+}
+
+/// A VERSION IS NEVER EDITED, AND THAT IS THE WHOLE DESIGN.
+///
+/// The moment one can be edited, "what did the agreement say in July" stops having an answer — and
+/// July is when the thing being argued about happened. An amendment is a new version with its own
+/// start date; the old one keeps standing over the period it covered. In a disagreement between two
+/// companies, the side that can quietly change the record is the side nobody should believe.
+model AgreementVersion {
+  id          String @id @default(uuid())
+  agreementId String @map("agreement_id")
+
+  /// 1, 2, 3. An amendment is the next number, never a change to the last one.
+  number Int
+
+  /// 'being put together' | 'in force' | 'replaced'
+  state String @default("being put together")
+
+  inForceFrom DateTime  @map("in_force_from") @db.Date
+  inForceTo   DateTime? @map("in_force_to")   @db.Date
+
+  /// Who said this is what was signed, by name. Both sides, or it is not in force.
+  agreedBy String[] @map("agreed_by")
+
+  /// The document it came from, where there is one.
+  documentId String? @map("document_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agreement Agreement       @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  terms     AgreementTerm[]
+
+  @@unique([agreementId, number])
+  @@index([agreementId, inForceFrom])
+  @@map("agreement_versions")
+}
+
+/// A READING IS A PROPOSAL UNTIL A PERSON SAYS OTHERWISE.
+///
+/// The most dangerous object in this programme: a model reads a contract, produces "revenue share
+/// 20%", and a company is held to a sentence nobody signed. What a term in each state may be used
+/// for is decided in `alignment/a-term-is-not-true-because-a-model-read-it.ts`, as arithmetic
+/// rather than as a note in a prompt.
+model AgreementTerm {
+  id        String @id @default(uuid())
+  versionId String @map("version_id")
+
+  /// What it is about, in the words people use: "revenue share", "payment terms".
+  says String
+  /// The reading itself, as plain words. Never a formula this product then executes.
+  reads String @db.Text
+
+  /// 'read from the document' | 'checked by one side' | 'agreed by both' | 'read differently by each side'
+  state String @default("read from the document")
+
+  /// Which clause, so anybody can go and look.
+  clause String?
+
+  /// Who has said the reading is right, by name. Never a count.
+  checkedBy String[] @map("checked_by")
+
+  /// Where the two sides read it differently: [{ by, reads }]. The most useful thing this can find.
+  readDifferently Json? @map("read_differently")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  version AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@map("agreement_terms")
 }
 
 /// A FIGURE, HELD AS A VALUE RATHER THAN AS A SENTENCE IN A DOCUMENT.
