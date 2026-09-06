@@ -28,6 +28,7 @@ function svc(opts: { participations?: any[] } = {}) {
     { pendingFor: async () => [], decide: async () => { throw new Error('n/a'); } } as any,
     { start: async () => { throw new Error('no drafting in these tests'); } } as any,
     { forPerson: async () => { throw new Error('no assembly in these tests'); } } as any,
+    { sendRoundDigest: async () => { throw new Error('no mail in these tests'); } } as any,
   );
   return { service, queries };
 }

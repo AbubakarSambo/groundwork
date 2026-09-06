@@ -25,6 +25,7 @@ export type Lane =
   | 'what_came_of_it'
   | 'set_an_objective'
   | 'start_a_check_in'
+  | 'send_me_that'
   | 'unplaced';
 
 export interface Routed {
@@ -48,6 +49,20 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('send_me_that', [
+    /*
+     * FIRST, AND ONLY ON SHAPES THAT NAME SENDING.
+     *
+     * First because "email me what I am on" reads to `what_am_i_on` as a question about their work,
+     * and answering it in the box is answering half of what was asked. Narrow because the cost of
+     * being wrong is a confirmation somebody did not want, which is small, in exchange for never
+     * missing the request, which is the point.
+     */
+    /\b(?:email|send|mail)\s+(?:that|this|it|me)\b/i,
+    /\b(?:can|could)\s+you\s+(?:email|send|mail)\b/i,
+    /\bin\s+my\s+inbox\b/i,
+  ]),
+
   rule('start_a_check_in', [
     /*
      * ABOVE `set_an_objective`, because "set up a check-in about our objectives" is a request to

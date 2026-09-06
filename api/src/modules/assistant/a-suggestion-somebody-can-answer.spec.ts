@@ -40,6 +40,7 @@ function svc(opts: { pending?: any[]; parked?: any; decideThrows?: boolean } = {
     scenarios,
     { start: async () => { throw new Error('no drafting in these tests'); } } as any,
     { forPerson: async () => { throw new Error('no assembly in these tests'); } } as any,
+    { sendRoundDigest: async () => { throw new Error('no mail in these tests'); } } as any,
   );
   return { service, writes, decided, scenarios };
 }

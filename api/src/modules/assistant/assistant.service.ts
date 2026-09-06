@@ -24,6 +24,12 @@ import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { whatItTakesToStart } from './what-it-takes-to-start';
 import { WhatIsTrueService } from './what-is-true.service';
 import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
+import { EmailService } from '../email/email.service';
+import {
+  whyThisCannotBeSent,
+  askBeforeSending,
+  theMail,
+} from './anything-it-can-say-it-can-send';
 import { whatIStillCannotDo } from './what-is-not-offered-in-chat';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
@@ -88,6 +94,7 @@ export class AssistantService {
      * was asked. See `what-is-true-for-this-person.ts`.
      */
     private readonly truth: WhatIsTrueService,
+    private readonly email: EmailService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -161,6 +168,8 @@ export class AssistantService {
         return this.setAnObjective(organizationId, who, message);
       case 'start_a_check_in':
         return this.startACheckIn(organizationId, personId, who);
+      case 'send_me_that':
+        return this.sendMeThat(organizationId, personId, who);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -644,6 +653,67 @@ export class AssistantService {
    * is linked to an account only when somebody accepts. Without that, a person with a session
    * sitting in front of them is told there is nothing.
    */
+  /**
+   * EMAIL ME THAT.
+   *
+   * The first capability that could not have been a lane in the old sense: it does not answer a
+   * question about the records, it acts on what was already said. Which is also why it is the proof
+   * the registry was worth building — it declares that it writes and how that is agreed, and the
+   * guard holds it to that without anybody remembering to.
+   *
+   * IT PROPOSES. Mail leaves the building and cannot be recalled, so it is never sent on a sentence
+   * that merely sounded like a request — "can you send me that" is a question in some rooms.
+   */
+  private async sendMeThat(organizationId: string, personId: string, who: string | null): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true, displayName: true, email: true },
+    });
+    if (!me || !who) {
+      return rules('send_me_that', text('I cannot see you in your organisation records, so I do not know where to send it.'));
+    }
+
+    /*
+     * WHAT WAS ACTUALLY SAID, from their own turns and nobody else's. The last thing the assistant
+     * said, and the question it answered — sending a summary would mean the mail and the
+     * conversation disagree, and only one of them is in front of them.
+     */
+    const recent = await this.prisma.assistantTurn.findMany({
+      where: { organizationId, personExternalId: who },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { role: true, content: true, lane: true },
+    });
+    const lastReply = recent.find((t) => t.role === 'assistant' && t.lane !== 'send_me_that');
+    const theQuestion = recent.find((t) => t.role === 'person');
+
+    const latest = lastReply
+      ? { body: lastReply.content, about: theQuestion?.content ?? 'your work', lane: lastReply.lane ?? 'unplaced' }
+      : null;
+
+    const cannot = whyThisCannotBeSent(latest, me);
+    if (cannot) return rules('send_me_that', text(cannot));
+
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'delivery',
+        summary: askBeforeSending(latest!, me),
+        payload: latest as never,
+      },
+    });
+
+    return {
+      lane: 'send_me_that',
+      composedBy: 'rules',
+      blocks: [
+        text(proposal.summary),
+        { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
+      ],
+    };
+  }
+
   private async startACheckIn(organizationId: string, personId: string, _who: string | null): Promise<Reply> {
     /* THE ONE READ. This lane used to query the grounds and the check-ins
        itself, which is how the same logic came to exist three times and drift.
@@ -782,6 +852,10 @@ export class AssistantService {
       return this.resolveParkedScenario(organizationId, who, parked, decision);
     }
 
+    if (parked.kind === 'delivery') {
+      return this.resolveParkedDelivery(organizationId, who, parked, decision);
+    }
+
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({
         where: { id: parked.id },
@@ -889,6 +963,44 @@ export class AssistantService {
    * message fires a write. What differs is only what a yes means, so this branches on `kind` and
    * nowhere else.
    */
+  /**
+   * SENDING IT, OR NOT.
+   *
+   * RE-READ AT EXECUTION, like every other confirmed act here: between the offer and the yes their
+   * address may have changed or been removed, and a parked action carries the address it was offered
+   * under. Mail to a stale address is the one mistake that cannot be taken back.
+   */
+  private async resolveParkedDelivery(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
+    });
+
+    if (decision === 'decline') return rules('send_me_that', text('Left it in here, then.'));
+
+    const me = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who, active: true },
+      select: { displayName: true, email: true },
+    });
+    if (!me?.email) {
+      return rules('send_me_that', text('I could not send it: there is no longer an email address for you in your organisation records.'));
+    }
+
+    const latest = parked.payload as { body: string; about: string; lane: string };
+    const mail = theMail(latest, me);
+
+    try {
+      await this.email.sendRoundDigest(me.email, mail.subject, mail.text);
+    } catch (error) {
+      /* Said plainly rather than swallowed. Somebody who asked for an email and got a cheerful
+         "sent" that never arrived stops trusting everything else this says. */
+      this.logger.warn(`Could not send to ${who}: ${(error as Error).message}`);
+      return rules('send_me_that', text('I could not send it just now, so treat it as not sent. It is still here.'));
+    }
+
+    return rules('send_me_that', text(`Sent to ${me.email}. Nobody else was copied.`));
+  }
+
   private async resolveParkedScenario(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     const payload = parked.payload as { candidateId: string; scenario: string };
 

@@ -54,6 +54,15 @@ export interface Capability {
  */
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
+    key: 'send_me_that',
+    does: 'Email you what I just told you, to you and nobody else',
+    writes: 'after you confirm it',
+    ordered:
+      'First. "Email me what I am on" reads to the objectives lane as a question about their work, and answering it in the box answers half of what was asked.',
+    owns: ['email me that', 'can you send me this', 'send it to me'],
+    refuses: ['what am I on', 'what did I commit to'],
+  },
+  {
     key: 'start_a_check_in',
     does: 'Start a check-in that is waiting, or one somebody set up for you',
     writes: 'after you confirm it',
