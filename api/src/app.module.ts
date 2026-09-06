@@ -24,6 +24,7 @@ import { IntelligenceModule } from './modules/intelligence';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { EntryModule } from './modules/entry/entry.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AlignmentModule } from './modules/alignment/alignment.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { OpsModule } from './modules/ops/ops.module';
 /**
@@ -73,6 +74,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     AdminModule,
     OpsModule,
     WorkspaceModule,
+    AlignmentModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

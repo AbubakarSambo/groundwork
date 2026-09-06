@@ -838,6 +838,8 @@ model Ground {
   /// because an index Prisma does not know about is one the next generated migration drops.
   @@index([organizationId, subjectExternalId])
   documentsElsewhere DocumentElsewhere[]
+  reportedFigures ReportedFigure[]
+  differences     Difference[]
   @@map("grounds")
 }
 
@@ -3208,6 +3210,96 @@ model DocumentElsewhere {
 
   @@index([groundId, participantId])
   @@map("documents_elsewhere")
+}
+
+/// A FIGURE, HELD AS A VALUE RATHER THAN AS A SENTENCE IN A DOCUMENT.
+///
+/// The object that makes arithmetic possible at all. Money is minor units and an integer, because
+/// a reconciliation out by a cent is one nobody trusts again. See
+/// `alignment/a-figure-is-a-value-with-a-source.ts` for what it refuses to do.
+model ReportedFigure {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What it is a figure OF, in the words the person used: "revenue", "VAT declared".
+  says String
+  /// Minor units. Integer, always.
+  minorUnits Int    @map("minor_units")
+  currency   String
+
+  /// Inclusive calendar dates. A period is not a timestamp.
+  periodFrom DateTime @map("period_from") @db.Date
+  periodTo   DateTime @map("period_to")   @db.Date
+
+  /// Where it came from, and who is attached to it. A figure nobody is attached to cannot be
+  /// asked about, and asking is the whole method.
+  source   String
+  statedBy String @map("stated_by")
+  from     String
+
+  /// The document it was read out of, where it was. Null for one somebody typed or said.
+  documentId String? @map("document_id")
+
+  /// A MODEL'S READING IS NOT THE FIGURE UNTIL A PERSON SAYS SO.
+  ///
+  /// The most dangerous failure in this whole area is an extracted number becoming fact. A figure
+  /// read out of a document by a model is held here unconfirmed, and nothing compares it to
+  /// anything until somebody who would know has said it is right.
+  confirmedAt     DateTime? @map("confirmed_at")
+  confirmedByUser String?   @map("confirmed_by_user")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, periodFrom])
+  @@map("reported_figures")
+}
+
+/// A DIFFERENCE THAT SURVIVES THE CONVERSATION.
+///
+/// Without a row, a mismatch noticed in a meeting is gone by next month and the pattern across
+/// months — the thing that actually matters — never forms. States are in
+/// `alignment/what-does-not-add-up.ts`; note that none of them is "breach".
+model Difference {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What was compared, in the words a person reads.
+  between    String
+  minorUnits Int    @map("minor_units")
+  currency   String
+  periodFrom DateTime @map("period_from") @db.Date
+  periodTo   DateTime @map("period_to")   @db.Date
+
+  /// 'not explained yet' | 'explained' | 'explained before, not now' | 'no longer there'
+  state String @default("not explained yet")
+
+  /// The figures it was computed from, so the arithmetic can always be shown.
+  statedFigureId  String   @map("stated_figure_id")
+  countedFigureIds String[] @map("counted_figure_ids")
+
+  /// Which candidate explanations a person has ruled out, in their own answers.
+  ruledOut String[] @map("ruled_out")
+
+  /// What somebody said accounted for it, in their words. Never summarised into a verdict.
+  accountedForBy String?   @map("accounted_for_by") @db.Text
+  accountedAt    DateTime? @map("accounted_at")
+
+  /// The last question asked about it, so the same one is not asked twice in a row.
+  lastAsked   String?   @map("last_asked") @db.Text
+  lastAskedAt DateTime? @map("last_asked_at")
+
+  /// It was raised in this session, and carries into later ones until it is no longer there.
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, state])
+  @@map("differences")
 }
 
 model GroundDocument {
