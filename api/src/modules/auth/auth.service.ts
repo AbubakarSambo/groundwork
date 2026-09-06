@@ -60,6 +60,8 @@ type UserWithOrg = {
   };
 };
 
+import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-on-somebodys-roster';
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -246,6 +248,62 @@ export class AuthService {
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
         return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg), already.id);
+      }
+
+      /*
+       * ARE THEY ALREADY EXPECTED SOMEWHERE?
+       *
+       * HR pushes a roster and one of those people signs up — and used to land in
+       * a brand new empty organisation of their own, admin of nothing, one row
+       * away from their objectives and their colleagues. See
+       * `they-are-already-on-somebodys-roster.ts` for the four rules that decide
+       * this, and for why an exact address is the only thing ever matched.
+       *
+       * Narrowed to the address HERE, so that file cannot widen it to a domain.
+       */
+      const listedAs = await this.prisma.person.findMany({
+        where: { email: { equals: pending.email, mode: 'insensitive' } },
+        select: { id: true, organizationId: true, email: true, active: true, linkedUserId: true },
+      });
+      const belongs = whereTheyBelong(
+        listedAs.map((r) => ({
+          personId: r.id,
+          organizationId: r.organizationId,
+          email: r.email,
+          active: r.active,
+          linkedUserId: r.linkedUserId,
+        })),
+      );
+
+      if (belongs.join) {
+        const joined = await this.prisma.$transaction(async (tx) => {
+          const u = await tx.user.create({
+            data: {
+              organizationId: belongs.organizationId,
+              email: pending.email,
+              firstName: pending.firstName,
+              lastName: pending.lastName ?? '',
+              passwordHash: pending.passwordHash,
+              /* Never an admin. Being listed is not authority over the company. */
+              role: ROLE_FOR_SOMEBODY_EXPECTED as any,
+              isEmailVerified: true,
+            },
+            include: { organization: true },
+          });
+          /* The roster row and the account meet, so the panel and every check-in
+             read as this person from the first minute rather than the second
+             time they sign in. */
+          await tx.person.update({ where: { id: belongs.personId }, data: { linkedUserId: u.id } });
+          await tx.groundParticipant.updateMany({
+            where: { email: pending.email, userId: null },
+            data: { userId: u.id },
+          });
+          await tx.pendingSignup.delete({ where: { id: pending.id } });
+          return u;
+        });
+
+        this.logger.log(`${pending.email} joined the organisation that already listed them`);
+        return this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg), joined.id);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
