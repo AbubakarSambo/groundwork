@@ -843,6 +843,7 @@ model Ground {
   agreements      Agreement[]
   assertions      Assertion[]
   parties         GroundParty[]
+  obligations     Obligation[]
   @@map("grounds")
 }
 
@@ -3215,6 +3216,41 @@ model DocumentElsewhere {
   @@map("documents_elsewhere")
 }
 
+/// SOMETHING SOMEBODY HAS TO DO, FROM A TERM BOTH SIDES AGREED THE READING OF.
+///
+/// There is no state here that means breached and no path to one. The strongest thing this holds is
+/// the responsible side saying, in their own words, that it was not done. Missing evidence is
+/// "nothing has been shown either way" and is not a claim about anybody. See
+/// `alignment/an-obligation-is-not-evidence-of-itself.ts`.
+model Obligation {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// The term it comes from. An obligation with no term is a duty nobody agreed to.
+  termId String @map("term_id")
+
+  says  String @db.Text
+  whose String
+
+  /// Where it has one. Some obligations are continuous.
+  dueOn DateTime? @map("due_on") @db.Date
+
+  /// One of the seven in ObligationState. None of them is "breached".
+  state String @default("not due yet")
+
+  /// What anybody said about it, in their words: [{ by, said }].
+  accounts Json @default("[]")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, state])
+  @@map("obligations")
+}
+
 /// A PARTY THAT IS AN ORGANISATION, RATHER THAN A LIST OF PEOPLE SOMEBODY INVITED.
 ///
 /// Both sides are named, and each says which of their own people take part. This grants standing on
@@ -3327,6 +3363,16 @@ model AgreementVersion {
 
   /// Who said this is what was signed, by name. Both sides, or it is not in force.
   agreedBy String[] @map("agreed_by")
+
+  /// WHEN IT WAS EXECUTED, AND WHO SAYS SO.
+  ///
+  /// Kept apart from `agreedBy` because agreeing and signing are different moments and people
+  /// collapse them constantly: both sides saying they want a change is not the change. And signed
+  /// is still not in force — an amendment signed in October that starts in January governs nothing
+  /// in November. Where a version stands is worked out from these facts rather than stored, so a
+  /// row cannot sit in a standing its own dates contradict.
+  signedAt   DateTime? @map("signed_at")
+  signedSaid String?   @map("signed_said")
 
   /// The document it came from, where there is one.
   documentId String? @map("document_id")

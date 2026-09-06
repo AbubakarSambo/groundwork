@@ -14,6 +14,12 @@ import {
   mayBe,
   whyItCannotBeUsedYet,
 } from './a-term-is-not-true-because-a-model-read-it';
+import {
+  whereItStands,
+  howItStands,
+  mayBeJudgedAgainst,
+  whyThisCannotGovern,
+} from './an-amendment-is-not-a-conversation';
 
 /**
  * AN AGREEMENT, ITS VERSIONS, AND THE TERMS READ OUT OF THEM.
@@ -80,7 +86,13 @@ export class AgreementsService {
     });
   }
 
-  /** A side says this version is what they signed. Two sides, and it is in force. */
+  /**
+   * A side says this is what they want. NOT the same as signed.
+   *
+   * People collapse these two constantly, and the difference is the whole argument
+   * six months later: both sides agreeing to a change is not the change. See
+   * `an-amendment-is-not-a-conversation.ts`.
+   */
   async agreed(organizationId: string, versionId: string, who: string) {
     const version = await this.prisma.agreementVersion.findFirst({
       where: { id: versionId, agreement: { organizationId } },
@@ -92,11 +104,61 @@ export class AgreementsService {
       where: { id: versionId },
       data: {
         agreedBy,
-        /* Both sides, or it is not in force. One side saying so is one side's case. */
-        state: agreedBy.length >= 2 ? 'in force' : version.state,
+        /* Both sides, and it is agreed — not in force. Signing is its own moment
+           and its own method. */
+        state: agreedBy.length >= 2 && version.signedAt ? 'in force' : version.state,
       },
-      select: { id: true, number: true, state: true, agreedBy: true },
+      select: { id: true, number: true, state: true, agreedBy: true, signedAt: true },
     });
+  }
+
+  /**
+   * IT WAS SIGNED. A different moment from agreeing, and from governing anything.
+   *
+   * Signed is not in force: an amendment signed in October that starts in January
+   * governs nothing in November. Where a version stands is worked out from its own
+   * facts by `whereItStands`, so a row cannot sit in a standing its dates
+   * contradict.
+   */
+  async signed(organizationId: string, versionId: string, said: string, on?: Date) {
+    const version = await this.prisma.agreementVersion.findFirst({
+      where: { id: versionId, agreement: { organizationId } },
+    });
+    if (!version) throw new NotFoundException('No such version.');
+    if (version.agreedBy.length < 2) {
+      throw new BadRequestException(
+        'Both sides have to say this is what they want before it can be recorded as signed.',
+      );
+    }
+
+    const saved = await this.prisma.agreementVersion.update({
+      where: { id: versionId },
+      data: { signedAt: on ?? new Date(), signedSaid: said, state: 'in force' },
+    });
+
+    const standing = whereItStands(saved);
+    return {
+      id: saved.id,
+      number: saved.number,
+      standing,
+      says: howItStands(standing, saved.inForceFrom),
+    };
+  }
+
+  /** Where a version stands today, worked out rather than read off a column. */
+  async standing(organizationId: string, versionId: string, on?: Date) {
+    const version = await this.prisma.agreementVersion.findFirst({
+      where: { id: versionId, agreement: { organizationId } },
+    });
+    if (!version) throw new NotFoundException('No such version.');
+
+    const standing = whereItStands(version, on);
+    return {
+      standing,
+      says: howItStands(standing, version.inForceFrom),
+      mayBeJudgedAgainst: mayBeJudgedAgainst(standing),
+      andWhyNot: whyThisCannotGovern(standing),
+    };
   }
 
   /** What governed a given day, or why nothing did. */

@@ -7,6 +7,7 @@ import { CandidateKey } from './an-explanation-is-a-candidate';
 import { AgreementsService } from './agreements.service';
 import { AssertionsService } from './assertions.service';
 import { PartiesService } from './parties.service';
+import { ObligationsService } from './obligations.service';
 import { Side } from './a-party-is-an-organisation';
 import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
 
@@ -24,6 +25,7 @@ export class AlignmentController {
     private readonly agreements: AgreementsService,
     private readonly assertions: AssertionsService,
     private readonly parties: PartiesService,
+    private readonly obligations: ObligationsService,
   ) {}
 
   @Get('figures')
@@ -144,6 +146,75 @@ export class AlignmentController {
     @Query('what') what: WhatFor,
   ) {
     return this.agreements.mayThisBeUsedTo(organizationId, termId, what);
+  }
+
+  @Post('versions/:versionId/signed')
+  @ApiOperation({ summary: 'It was executed. A different moment from agreeing, and from governing anything.' })
+  signed(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('versionId') versionId: string,
+    @Body() dto: { said: string; on?: string },
+  ) {
+    return this.agreements.signed(organizationId, versionId, dto?.said, dto?.on ? new Date(dto.on) : undefined);
+  }
+
+  @Get('versions/:versionId/standing')
+  @ApiOperation({ summary: 'Where a version stands today — discussed, agreed, signed, in force — and whether anything may be settled against it' })
+  standing(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('versionId') versionId: string,
+    @Query('on') on?: string,
+  ) {
+    return this.agreements.standing(organizationId, versionId, on ? new Date(on) : undefined);
+  }
+
+  @Get('obligations')
+  @ApiOperation({ summary: 'Every obligation on this check-in, each carrying what it is evidence of' })
+  obligationsHere(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
+    return this.obligations.whereEverythingStands(organizationId, groundId);
+  }
+
+  @Post('terms/:termId/obligations')
+  @ApiOperation({ summary: 'An obligation from a term. Refused unless both sides agreed the reading of it.' })
+  obligationFrom(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
+    @Param('termId') termId: string,
+    @Body() dto: { says: string; whose: string; dueOn?: string },
+  ) {
+    return this.obligations.from(organizationId, groundId, termId, {
+      says: dto?.says,
+      whose: dto?.whose,
+      dueOn: dto?.dueOn ? new Date(dto.dueOn) : undefined,
+    });
+  }
+
+  @Post('obligations/:obligationId/asked')
+  @ApiOperation({ summary: 'Somebody was asked about it in their own check-in' })
+  obligationAsked(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('obligationId') obligationId: string,
+  ) {
+    return this.obligations.asked(organizationId, obligationId);
+  }
+
+  @Post('obligations/:obligationId/account')
+  @ApiOperation({ summary: 'What somebody said about it, in their words. Whether it was done is theirs to say.' })
+  obligationAccount(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('obligationId') obligationId: string,
+    @Body() dto: { by: string; said: string; theyDid: boolean | null },
+  ) {
+    return this.obligations.accountOf(organizationId, obligationId, dto);
+  }
+
+  @Post('obligations/:obligationId/nothing-shown')
+  @ApiOperation({ summary: 'Nothing was shown either way. Not a claim about anybody.' })
+  obligationNothing(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('obligationId') obligationId: string,
+  ) {
+    return this.obligations.nothingShown(organizationId, obligationId);
   }
 
   @Get('parties')

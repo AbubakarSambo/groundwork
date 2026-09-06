@@ -169,7 +169,7 @@ describe('a version is never edited', () => {
     /* Only two updates exist: closing one on amendment, and recording who agreed.
        Neither touches the dates it applied from or the terms it carries. */
     const updates = service.match(/agreementVersion\.update\(/g) ?? [];
-    expect(updates.length).toBe(2);
+    expect(updates.length).toBe(3);
     expect(service).not.toMatch(/agreementVersion\.update[\s\S]{0,200}inForceFrom:/);
   });
 
@@ -180,8 +180,24 @@ describe('a version is never edited', () => {
   });
 
   it('and both sides are needed before a version is in force', () => {
-    const agreed = service.slice(service.indexOf('async agreed('), service.indexOf('async inForceOn('));
+    const agreed = service.slice(service.indexOf('async agreed('), service.indexOf('async signed('));
     expect(agreed).toContain('agreedBy.length >= 2');
+  });
+
+  it('agreeing is not signing, and neither method does the other', () => {
+    /* People collapse these two constantly, and the difference is the whole
+       argument six months later. */
+    const agreed = service.slice(service.indexOf('async agreed('), service.indexOf('async signed('));
+    /* It READS signedAt to decide whether both facts are in; it never writes one. */
+    expect(agreed).not.toMatch(/signedAt:\s*(new Date|on)/);
+    const signed = service.slice(service.indexOf('async signed('), service.indexOf('async standing('));
+    expect(signed).toContain('agreedBy.length < 2');
+    expect(signed).toContain('BadRequestException');
+  });
+
+  it('nothing is in force on agreement alone', () => {
+    const agreed = service.slice(service.indexOf('async agreed('), service.indexOf('async signed('));
+    expect(agreed).toContain('version.signedAt');
   });
 
   it('a term read by a model arrives checked by nobody', () => {
