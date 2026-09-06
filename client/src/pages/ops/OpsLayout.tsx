@@ -250,9 +250,9 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           <div
             role="status"
             style={{
-              border: '1px solid #E5C07B',
-              background: '#FDF6E7',
-              color: '#7E5411',
+              border: '1px solid var(--gw-amber-b)',
+              background: 'var(--gw-amber-bg)',
+              color: 'var(--gw-amber-t)',
               borderRadius: 6,
               padding: '10px 14px',
               margin: '16px 32px 0',

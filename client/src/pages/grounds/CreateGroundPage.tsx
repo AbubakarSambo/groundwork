@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-survives-a-reload'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
@@ -48,6 +49,9 @@ interface ScenarioCard {
 // descriptions, and recognizer sub-examples. DISPLAY ONLY - every card still
 // submits its untouched GroundScenario enum key; packs, classifier keys, and
 // the report schema are unchanged.
+/** One device, one browser, and cleared the moment the check-in exists. */
+const DRAFT_KEY = 'gw-new-ground-draft'
+
 export const SCENARIOS: ScenarioCard[] = [
   { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: SCENARIO_LABELS.NEW_HIRE, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: "Agree what the role is and what doing it well looks like in the first 90 days, and make sure they have actually seen it. Each check-in then tests what they are doing against that, so a mismatch surfaces in week two instead of at a review.",
@@ -645,6 +649,51 @@ export function CreateGroundPage() {
   const [leadRemit, setLeadRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
+  /**
+   * WHAT WAS TYPED, KEPT ON THIS DEVICE UNTIL IT LANDS.
+   *
+   * This form kept exactly one thing — the situation card — and held everything else in component
+   * state: the brief somebody wrote carefully, the people they listed, the dates, the lead, the
+   * remits. A reload, an accidental back, a session timing out or a phone reclaiming a
+   * backgrounded tab lost the lot, at the end of eight steps.
+   *
+   * Cleared the moment the check-in exists. A draft that outlives the thing it was drafting is
+   * worse than losing it: it reappears, somebody finishes it a second time, and everybody is
+   * invited twice.
+   */
+  const [restored, setRestored] = useState<Date | null>(null)
+
+  useEffect(() => {
+    const kept = whatWasKept<Record<string, unknown>>(DRAFT_KEY)
+    if (!kept.value) return
+    const d = kept.value as any
+    if (typeof d.groundName === 'string') setGroundName(d.groundName)
+    if (typeof d.brief === 'string') setBrief(d.brief)
+    if (typeof d.ownDescription === 'string') setOwnDescription(d.ownDescription)
+    if (typeof d.myRemit === 'string') setMyRemit(d.myRemit)
+    if (typeof d.leadEmail === 'string') setLeadEmail(d.leadEmail)
+    if (typeof d.leadName === 'string') setLeadName(d.leadName)
+    if (typeof d.leadRemit === 'string') setLeadRemit(d.leadRemit)
+    if (typeof d.startsOn === 'string') setStartsOn(d.startsOn)
+    if (typeof d.bulkText === 'string') setBulkText(d.bulkText)
+    if (typeof d.timelineDays === 'number') setTimelineDays(d.timelineDays)
+    if (Array.isArray(d.participants)) setParticipants(d.participants)
+    setRestored(kept.at)
+    /* Once, on arrival. Restoring on every render would fight the person as they type. */
+  }, [])
+
+  useEffect(() => {
+    /* Nothing typed yet is nothing worth keeping — an empty draft would offer to restore a blank
+       form, which reads as the product having lost something. */
+    const anything = brief.trim() || ownDescription.trim() || groundName.trim()
+      || participants.length > 0 || bulkText.trim() || leadEmail.trim()
+    if (!anything) return
+    keep(DRAFT_KEY, {
+      groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit,
+      startsOn, bulkText, timelineDays, participants,
+    })
+  }, [groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
+
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
@@ -807,6 +856,8 @@ export function CreateGroundPage() {
     },
     onSuccess: ({ ground, failed }) => {
       toast.success('Check-in opened')
+      /* It exists now, so the draft must not. See the note on DRAFT_KEY. */
+      forget(DRAFT_KEY)
       /*
        * THE RAIL DOES NOT KNOW IT EXISTS UNTIL SOMEBODY TELLS IT.
        *
@@ -981,6 +1032,42 @@ export function CreateGroundPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      {/*
+        * SAID, RATHER THAN QUIETLY DONE.
+        *
+        * A form that fills itself in without saying so is a form somebody does not trust: they
+        * cannot tell what is theirs and what the product invented. And there has to be a way to
+        * say no — coming back to start a different check-in and finding the last one's brief in
+        * the box is worse than an empty form.
+        */}
+      {restored && (
+        <div
+          role="status"
+          style={{
+            background: 'var(--gw-blue-bg)',
+            borderBottom: '1px solid var(--gw-border)',
+            padding: '9px 20px',
+            fontSize: 13,
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <span>Picked up where you left off {howLongAgo(restored)} — on this device.</span>
+          <button
+            type="button"
+            className="gw-btn-ghost"
+            style={{ margin: 0 }}
+            onClick={() => {
+              forget(DRAFT_KEY)
+              window.location.reload()
+            }}
+          >
+            Start fresh
+          </button>
+        </div>
+      )}
       <div className="gw-hdr">
         {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
