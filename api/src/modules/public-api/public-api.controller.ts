@@ -29,6 +29,7 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DraftsService } from '../drafts/drafts.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
+import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -79,6 +80,7 @@ export class PublicApiController {
     private readonly whatHappened: WhatHappenedWithACustomerService,
     private readonly drafts: DraftsService,
     private readonly checkIns: ACheckInACustomerCanRunService,
+    private readonly myPeople: ReportsForMyPeopleService,
   ) {}
 
   /**
@@ -680,6 +682,25 @@ export class PublicApiController {
       file,
       body?.uploaderNote,
     );
+  }
+
+  /**
+   * WHAT IS HAPPENING WITH THE PEOPLE WHO REPORT TO THEM.
+   *
+   * Links to released reports, never the reports themselves — a manager opens each one through the
+   * route that already decides what a report shows. Assembling content here would be a second place
+   * a report is rendered, and the second place is where the redaction is eventually forgotten.
+   *
+   * Panel-authenticated: it is a question about somebody's own people, answered for the person
+   * asking. A machine credential naming an organisation and nobody in particular has no reporting
+   * line to read.
+   */
+  @Get('reports/my-people')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "Released reports about the people who report to this person" })
+  async reportsForMyPeople(@Req() req: { panel: PanelCaller }) {
+    const who = await this.myPeople.whoTheyAre(req.panel.organizationId, req.panel.personId);
+    return this.myPeople.forTheirPeople(req.panel.organizationId, who);
   }
 
   /** Their own transcript, and never anybody else's. */

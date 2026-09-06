@@ -90,6 +90,9 @@ const PANEL_AUTHENTICATED = [
    * somebody's name to a session that is theirs.
    */
   "@Post('grounds/:groundId/documents')",
+  /* A question about somebody's OWN people, answered for the person asking. A machine credential
+     names an organisation and nobody in particular, so it has no reporting line to read. */
+  "@Get('reports/my-people')",
   /*
    * Deciding a suggested conversation is the one thing in this product that a machine must NOT be
    * able to do. "Detection is a proposal, never a launch" is only true while the acceptance needs a
