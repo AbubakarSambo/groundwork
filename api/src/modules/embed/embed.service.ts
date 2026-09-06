@@ -6,6 +6,11 @@ import { verifyEmbedToken, frameAncestors, readOrgClaim } from './their-login-is
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { theOneToRaise, alreadyNudgedToday, slippedOpening } from '../assistant/what-somebody-said-they-would-do';
+import {
+  whatIsWorthSayingWhenYouArrive,
+  mayBeSaidEveryTime,
+} from '../assistant/what-is-worth-saying-when-you-arrive';
+import { WhatIsTrueService } from '../assistant/what-is-true.service';
 
 /** Short, and refreshed silently by the widget. A panel open all day re-handshakes, it does not expire on somebody. */
 const SESSION_TTL_SECONDS = 900;
@@ -17,6 +22,7 @@ export class EmbedService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly truth: WhatIsTrueService,
   ) {}
 
   async setup(organizationId: string, dto: { allowedDomains?: string[]; placement?: string; outOfScopeDepartments?: string[] }) {
@@ -189,8 +195,36 @@ export class EmbedService {
         suggestions: ['What would you connect?'],
       };
     }
+    /*
+     * WHAT IS ACTUALLY WAITING FOR THEM, from the one assembly.
+     *
+     * The greeting under this offered to answer a question they had not asked, from a thing that
+     * already knew what was waiting. Somebody who has to think of the question is somebody who
+     * closes the panel.
+     *
+     * Below the slipped-promise opening rather than above it: that one is the thing they already
+     * know about and have not said, and it is rate limited by the calendar because the cost is in
+     * being asked. This is not — stating what is waiting is not chasing.
+     */
+    const firstName = (person.displayName ?? person.userName).split(' ')[0];
+    const truth = await this.truth.forPerson(organizationId, person.id);
+    if (truth) {
+      const worth = whatIsWorthSayingWhenYouArrive(truth, firstName);
+
+      /* The one that IS a nudge takes the daily limit, and marks the day whether or not they
+         answer — the same rule the slipped promise runs on, for the same reason. */
+      if (!mayBeSaidEveryTime(worth.source)) {
+        if (alreadyNudgedToday(person.lastNudgedOn, now)) {
+          return { line: `Hello ${firstName}. Ask me about your objectives or what you owe this period.`, source: 'orientation' };
+        }
+        await this.prisma.person.update({ where: { id: person.id }, data: { lastNudgedOn: now } });
+      }
+
+      return worth;
+    }
+
     return {
-      line: `Hello ${(person.displayName ?? person.userName).split(' ')[0]}. Ask me about your objectives or what you owe this period.`,
+      line: `Hello ${firstName}. Ask me about your objectives or what you owe this period.`,
       source: 'orientation',
       suggestions: ['What am I on?', 'What is due?'],
     };
