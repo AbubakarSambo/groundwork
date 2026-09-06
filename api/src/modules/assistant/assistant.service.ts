@@ -22,9 +22,17 @@ import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { whatItTakesToStart } from './what-it-takes-to-start';
+import {
+  whichSituation,
+  askWhichSituation,
+  whoWouldBeAsked,
+  askBeforeOpeningIt,
+  saidAsAList,
+} from './what-a-new-check-in-would-be';
 import { WhatIsTrueService } from './what-is-true.service';
 import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
 import { EmailService } from '../email/email.service';
+import { GroundsService } from '../grounds/grounds.service';
 import {
   whyThereIsNowhereToPutIt,
   whoTheyMeant,
@@ -101,6 +109,7 @@ export class AssistantService {
      */
     private readonly truth: WhatIsTrueService,
     private readonly email: EmailService,
+    private readonly grounds: GroundsService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -173,7 +182,7 @@ export class AssistantService {
       case 'set_an_objective':
         return this.setAnObjective(organizationId, who, message);
       case 'start_a_check_in':
-        return this.startACheckIn(organizationId, personId, who);
+        return this.startACheckIn(organizationId, personId, who, message);
       case 'send_me_that':
         return this.sendMeThat(organizationId, personId, who);
       case 'add_a_document':
@@ -766,7 +775,7 @@ export class AssistantService {
     };
   }
 
-  private async startACheckIn(organizationId: string, personId: string, _who: string | null): Promise<Reply> {
+  private async startACheckIn(organizationId: string, personId: string, _who: string | null, message: string): Promise<Reply> {
     /* THE ONE READ. This lane used to query the grounds and the check-ins
        itself, which is how the same logic came to exist three times and drift.
        See `what-is-true.service.ts`. */
@@ -788,13 +797,88 @@ export class AssistantService {
         .map((x) => ({ label: x.label })),
     });
 
-    return said.act
-      ? rules(
-          'start_a_check_in',
-          text(said.line),
-          { type: 'next_step', label: said.act.label, href: '/grounds', kind: said.act.kind, id: said.act.id },
-        )
-      : rules('start_a_check_in', text(said.line));
+    if (said.act) {
+      return rules(
+        'start_a_check_in',
+        text(said.line),
+        { type: 'next_step', label: said.act.label, href: '/grounds', kind: said.act.kind, id: said.act.id },
+      );
+    }
+
+    /*
+     * NOTHING WAITING, SO OFFER TO OPEN ONE.
+     *
+     * The same lane rather than a second one, and the registry is why: "set up a check-in" belongs
+     * to this capability, and a lane that also claimed it would be the fifth collision of the week.
+     * It is better for the person too — nobody should have to know whether the thing they want
+     * already exists.
+     */
+    if (truth.sessions.value.length === 0) {
+      return this.offerToOpenOne(organizationId, personId, truth.person.externalId, message);
+    }
+
+    return rules('start_a_check_in', text(said.line));
+  }
+
+  /**
+   * OPENING ONE THAT DOES NOT EXIST YET.
+   *
+   * The first capability that emails people, which changes what care means. Everything else here is
+   * recoverable in the next sentence; an invitation is in somebody's inbox, and what it invites them
+   * to is accounting for themselves.
+   *
+   * So it proposes, and the proposal NAMES EVERYBODY. Never a count.
+   */
+  private async offerToOpenOne(
+    organizationId: string,
+    personId: string,
+    who: string,
+    message: string,
+  ): Promise<Reply> {
+    const read = whichSituation(message);
+
+    if (read === null) return rules('start_a_check_in', text(askWhichSituation()));
+    if ('ambiguous' in read) return rules('start_a_check_in', text(askWhichSituation(read.ambiguous)));
+
+    const roster = await this.prisma.person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, displayName: true, managerExternalId: true, active: true },
+    });
+    const people = whoWouldBeAsked(roster, who);
+    const label = whatTheyWantToCallIt(message) ?? read.says;
+
+    const asks = askBeforeOpeningIt({ says: read.says, label, people });
+
+    /*
+     * NOTHING IS PARKED WHEN THERE IS NOBODY TO ASK, and the first version got this wrong in a way
+     * only running it showed. It parked a proposal with an empty list, so a "yes" resolved it and
+     * answered "none of those people can be reached now" — about people who had never been named.
+     * A parked action nobody can sensibly say yes to should not exist.
+     */
+    if (people.length === 0) return rules('start_a_check_in', text(asks));
+
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'open_a_check_in',
+        summary: asks,
+        payload: {
+          scenario: read.scenario,
+          label,
+          people: people.map((p) => p.externalId),
+        } as never,
+      },
+    });
+
+    return {
+          lane: 'start_a_check_in',
+          composedBy: 'rules',
+          blocks: [
+            text(proposal.summary),
+            { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
+          ],
+        };
   }
 
   /**
@@ -918,6 +1002,10 @@ export class AssistantService {
       return this.resolveParkedDelivery(organizationId, who, parked, decision);
     }
 
+    if (parked.kind === 'open_a_check_in') {
+      return this.resolveParkedOpening(organizationId, personId, who, parked, decision);
+    }
+
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({
         where: { id: parked.id },
@@ -1025,6 +1113,80 @@ export class AssistantService {
    * message fires a write. What differs is only what a yes means, so this branches on `kind` and
    * nowhere else.
    */
+  /**
+   * OPENING THE CHECK-IN, OR NOT.
+   *
+   * RE-READ AT EXECUTION, and here it matters more than anywhere else in this file. Between the
+   * offer and the yes somebody may have left, been deactivated, or had their address removed — and
+   * this is the one act that puts a message in another person's inbox. A parked action carries the
+   * roster it was offered under, which is exactly what must not be trusted.
+   *
+   * Anybody who has gone is DROPPED AND NAMED rather than silently skipped: a check-in that quietly
+   * opened without one of the people somebody agreed to is a check-in they will read the report of
+   * and not understand.
+   */
+  private async resolveParkedOpening(
+    organizationId: string,
+    personId: string,
+    who: string,
+    parked: any,
+    decision: 'accept' | 'decline',
+  ): Promise<Reply> {
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
+    });
+
+    if (decision === 'decline') return rules('start_a_check_in', text('Left it. Nothing was sent.'));
+
+    const payload = parked.payload as { scenario: string; label: string; people: string[] };
+
+    const still = await this.prisma.person.findMany({
+      where: { organizationId, externalId: { in: payload.people }, active: true },
+      select: { externalId: true, displayName: true, email: true },
+    });
+    const gone = payload.people.filter((id) => !still.some((p) => p.externalId === id));
+    const reachable = still.filter((p) => p.email);
+    const noAddress = still.filter((p) => !p.email).map((p) => p.displayName ?? p.externalId);
+
+    if (reachable.length === 0) {
+      return rules(
+        'start_a_check_in',
+        text('I did not open it: none of those people can be reached now. Nothing was sent.'),
+      );
+    }
+
+    const me = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who, active: true },
+      select: { linkedUserId: true },
+    });
+    if (!me?.linkedUserId) {
+      return rules(
+        'start_a_check_in',
+        text('I could not open it in your name — your account is not linked yet, and a check-in has to belong to somebody. Nothing was sent.'),
+      );
+    }
+
+    const ground = await this.grounds.create(organizationId, me.linkedUserId, {
+      label: payload.label,
+      scenario: payload.scenario as never,
+      moment: 'STARTING' as never,
+    });
+
+    for (const p of reachable) {
+      await this.grounds.addParticipant(ground.id, organizationId, me.linkedUserId, {
+        email: p.email as string,
+      });
+    }
+
+    const said = [`Opened "${payload.label}". ${saidAsAList(reachable.map((p) => p.displayName ?? p.externalId))} ${reachable.length === 1 ? 'has' : 'have'} been invited.`];
+    /* Named, not counted, in both directions — the same rule the offer runs on. */
+    if (gone.length) said.push(`${saidAsAList(gone)} ${gone.length === 1 ? 'is' : 'are'} no longer on the roster, so ${gone.length === 1 ? 'they were' : 'they were'} left out.`);
+    if (noAddress.length) said.push(`${saidAsAList(noAddress)} ${noAddress.length === 1 ? 'has' : 'have'} no email address on the roster and could not be invited.`);
+
+    return rules('start_a_check_in', text(said.join(' ')));
+  }
+
   /**
    * WHO THE DOCUMENT IS FOR.
    *

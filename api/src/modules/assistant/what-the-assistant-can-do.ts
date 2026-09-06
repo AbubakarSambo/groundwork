@@ -73,10 +73,10 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'start_a_check_in',
-    does: 'Start a check-in that is waiting, or one somebody set up for you',
+    does: 'Start a check-in that is waiting, or open a new one and invite the people in it',
     writes: 'after you confirm it',
     ordered:
-      'Before the objective lane. "Set up a check-in about our objectives" is a request to start a session and reads to that lane as a request to write an objective.',
+      'Before the objective lane. "Set up a check-in about our objectives" is a request to start a session and reads to that lane as a request to write an objective. Starting one that exists and opening one that does not are the SAME capability on purpose — nobody should have to know which they want, and a second lane claiming these words would be another collision.',
     owns: ['start my check-in', 'can I start my check-in', 'set up a check-in', 'open the session'],
     refuses: ['how do I run a check-in', 'when is the next session', 'what is my check-in about'],
   },
