@@ -100,18 +100,31 @@ describe('nothing that assembles document text can reach one', () => {
     expect(body).not.toMatch(/^\s+content\s/m);
   });
 
-  it('and the chat writes a pasted link to that table, never to the documents one', () => {
+  it('records the link only where it could not be read, and holds text only where it could', () => {
+    /* One or the other, never both and never a middle. A link we could not read
+       is a row with no text, in the table nothing text-assembling can reach; a
+       link we DID read is an ordinary document, because that is what it is. */
     const assistant = fs
       .readFileSync(path.join(__dirname, '../assistant/assistant.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
     const from = assistant.indexOf('const where = whereItLives(message);');
-    const to = assistant.indexOf('const [first, ...rest]', from) > from
-      ? assistant.indexOf('const [first, ...rest]', from)
-      : assistant.indexOf('askWhoItIsFor(title)', from);
-    const branch = assistant.slice(from, to);
+    const branch = assistant.slice(from, assistant.indexOf('askWhoItIsFor(title)}`)', from));
+
+    const read = branch.indexOf('if (attempt.read)');
+    const holds = branch.indexOf('groundDocument.create');
+    const records = branch.indexOf('documentElsewhere.create');
+
     expect(from).toBeGreaterThan(-1);
-    expect(branch).toContain('documentElsewhere.create');
-    expect(branch).not.toContain('groundDocument.create');
+    expect(read).toBeGreaterThan(-1);
+    /* The document we hold is created inside the read branch; the link is
+       recorded after it, on the path where reading did not happen. */
+    expect(holds).toBeGreaterThan(read);
+    expect(records).toBeGreaterThan(holds);
+  });
+
+  it('and what it holds is the text that actually came back', () => {
+    const assistant = fs.readFileSync(path.join(__dirname, '../assistant/assistant.service.ts'), 'utf8');
+    expect(assistant).toContain('content: attempt.text');
   });
 });

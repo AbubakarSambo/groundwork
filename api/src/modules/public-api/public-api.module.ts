@@ -33,6 +33,7 @@ import { WhatICanSeeController } from '../assistant/what-i-can-see.controller';
 import { DraftsService } from '../drafts/drafts.service';
 import { ApiAccessService } from './api-access.service';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
+import { ReadItIfWeCanService } from '../documents/read-it-if-we-can.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
 import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
 import { ReviewsComingUpCron } from '../reports/reviews-coming-up.cron';
@@ -68,7 +69,7 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService, WhatIsTrueService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

@@ -38,6 +38,7 @@ import {
   whatToCallIt,
   whatWeCanAndCannotDo,
 } from '../documents/where-a-document-lives';
+import { ReadItIfWeCanService } from '../documents/read-it-if-we-can.service';
 import {
   whyThereIsNowhereToPutIt,
   askWhoItIsFor,
@@ -114,6 +115,7 @@ export class AssistantService {
      * was asked. See `what-is-true-for-this-person.ts`.
      */
     private readonly truth: WhatIsTrueService,
+    private readonly reader: ReadItIfWeCanService,
     private readonly email: EmailService,
     private readonly grounds: GroundsService,
   ) {}
@@ -722,6 +724,52 @@ export class AssistantService {
         select: { id: true },
       });
       const title = whatToCallIt(where, message);
+
+      /*
+       * SOMETIMES WE CAN JUST READ IT.
+       *
+       * A published page, a Doc set to "anyone with the link" — refusing to read
+       * those is not caution. What must never happen is the middle: a document we
+       * half-read, or a claim to have read one we did not. So it is one thing or
+       * the other, and the person is told which.
+       *
+       * READ means a real document with text in it, in the documents table.
+       * NOT READ means a link in its own table, which nothing that assembles
+       * document text can reach.
+       */
+      const attempt = await this.reader.read(where.url);
+      if (attempt.read) {
+        const held = await this.prisma.groundDocument.create({
+          data: {
+            groundId: first.groundId,
+            participantId: participant?.id ?? null,
+            fileName: title,
+            mimeType: 'text/plain',
+            content: attempt.text,
+            uploaderNote: `Read from ${attempt.from}: ${where.url}`,
+          },
+        });
+
+        await this.prisma.assistantProposal.create({
+          data: {
+            organizationId,
+            personExternalId: who,
+            kind: 'document',
+            state: 'PARKED',
+            summary: `Who "${title}" is for`,
+            payload: { documentId: held.id, elsewhere: false, groundId: first.groundId, fileName: title },
+          },
+        });
+
+        return rules(
+          'add_a_document',
+          text(
+            `"${title}" was readable, so I have read it and kept the text — ${attempt.text.length.toLocaleString()} characters from ${attempt.from}. `
+            + `I will use it the way I use anything else on this check-in.\n\n${askWhoItIsFor(title)}`,
+          ),
+        );
+      }
+
       const recorded = await this.prisma.documentElsewhere.create({
         data: {
           groundId: first.groundId,
@@ -744,9 +792,12 @@ export class AssistantService {
         },
       });
 
+      /* WHY it could not be read, said out loud. "I cannot read it" invites the
+         person to try again the same way; "not readable without signing in" tells
+         them what would change it. */
       return rules(
         'add_a_document',
-        text(`${whatWeCanAndCannotDo(where, title)}\n\n${askWhoItIsFor(title)}`),
+        text(`${whatWeCanAndCannotDo(where, title)} (I tried: ${attempt.because}.)\n\n${askWhoItIsFor(title)}`),
       );
     }
 
