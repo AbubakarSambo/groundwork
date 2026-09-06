@@ -23,6 +23,8 @@ import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { whatItTakesToStart } from './what-it-takes-to-start';
 import { WhatIsTrueService } from './what-is-true.service';
+import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
+import { whatIStillCannotDo } from './what-is-not-offered-in-chat';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
@@ -1084,6 +1086,29 @@ export class AssistantService {
       now,
     );
     if (quiet) lines.push(`I am not raising anything until ${quiet.toDateString()}, because your systems were only just connected.`);
+
+    /*
+     * AND WHAT I CAN DO WITH IT, READ FROM THE REGISTRY RATHER THAN LISTED HERE.
+     *
+     * A hand-written list of abilities in this one lane would be wrong within a
+     * fortnight — it is the same failure as a hand-written pattern, one layer up.
+     * Reading the declarations means the answer cannot drift from what the router
+     * actually does, because a guard already holds those together.
+     *
+     * The honest half is `whatIStillCannotDo`: somebody who asks what this can do
+     * is usually about to ask for the one thing it cannot, and hearing "not yet,
+     * and here is why" is a better answer than discovering it a question later.
+     */
+    lines.push('', 'What you can ask me for:');
+    for (const c of WHAT_THE_ASSISTANT_CAN_DO) {
+      lines.push(`- ${c.does}${c.writes === 'nothing' ? '' : ` (${c.writes})`}`);
+    }
+
+    const notYet = whatIStillCannotDo();
+    if (notYet.length) {
+      lines.push('', 'What I cannot do yet:');
+      for (const n of notYet) lines.push(`- ${n}`);
+    }
 
     return rules('what_you_can_see', text(lines.join('\n')));
   }

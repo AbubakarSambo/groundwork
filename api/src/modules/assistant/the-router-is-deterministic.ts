@@ -180,6 +180,10 @@ const RULES = [
    * swallow questions the specific lanes own. Its own rules stay narrow for the same reason.
    */
   rule('how_am_i_doing', [
+    /* "How are things going for me" went nowhere. Found by declaring what this
+       capability owns and running it through the router — which is the registry
+       doing the one job it exists for. */
+    /\bhow\s+(?:are\s+)?things\s+going\s+for\s+me\b/i,
     /*
      * Above the recall lane, because "how am I doing" is not a question about what they said. Both
      * shapes go here - the flat question and the stuck one - since the coach's answer to either is
@@ -216,6 +220,9 @@ const RULES = [
     /\bwhat\s+do\s+i\s+owe\b/i,
   ]),
   rule('what_you_can_see', [
+    /* Same finding, same run: somebody asking what it is connected to says "what
+       data do you have" as readily as "what can you see". */
+    /\bwhat\s+(?:data|information|records)\s+(?:do\s+you\s+)?(?:have|hold|see)\b/i,
     /\bwhat\s+(?:can\s+you|do\s+you)\s+see\b/i,
     /\bwhat(?:'s| is)\s+connected\b/i,
     /\bhow\s+current\b/i,
