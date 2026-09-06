@@ -58,8 +58,8 @@ export class AlignmentService {
     });
   }
 
-  async confirmFigure(organizationId: string, figureId: string, userId: string) {
-    const found = await this.prisma.reportedFigure.findFirst({ where: { id: figureId, organizationId } });
+  async confirmFigure(organizationId: string, groundId: string, figureId: string, userId: string) {
+    const found = await this.prisma.reportedFigure.findFirst({ where: { id: figureId, organizationId, groundId } });
     if (!found) throw new NotFoundException('No such figure.');
     return this.prisma.reportedFigure.update({
       where: { id: figureId },
@@ -162,10 +162,11 @@ export class AlignmentService {
    */
   async answered(
     organizationId: string,
+    groundId: string,
     differenceId: string,
     said: { ruledOut?: CandidateKey[]; accountedForBy?: string },
   ) {
-    const d = await this.prisma.difference.findFirst({ where: { id: differenceId, organizationId } });
+    const d = await this.prisma.difference.findFirst({ where: { id: differenceId, organizationId, groundId } });
     if (!d) throw new NotFoundException('No such difference.');
 
     const ruledOut = [...new Set([...d.ruledOut, ...(said.ruledOut ?? [])])];

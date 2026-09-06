@@ -65,8 +65,8 @@ export class ObligationsService {
   }
 
   /** Somebody was asked about it, in their own check-in. */
-  async asked(organizationId: string, obligationId: string) {
-    return this.moveTo(organizationId, obligationId, 'asked, no answer yet');
+  async asked(organizationId: string, groundId: string, obligationId: string) {
+    return this.moveTo(organizationId, groundId, obligationId, 'asked, no answer yet');
   }
 
   /**
@@ -78,10 +78,11 @@ export class ObligationsService {
    */
   async accountOf(
     organizationId: string,
+    groundId: string,
     obligationId: string,
     account: { by: string; said: string; theyDid: boolean | null },
   ) {
-    const row = await this.prisma.obligation.findFirst({ where: { id: obligationId, organizationId } });
+    const row = await this.prisma.obligation.findFirst({ where: { id: obligationId, organizationId, groundId } });
     if (!row) throw new NotFoundException('No such obligation.');
 
     const accounts = [...((row.accounts as { by: string; said: string }[]) ?? []), { by: account.by, said: account.said }];
@@ -112,8 +113,8 @@ export class ObligationsService {
   }
 
   /** Nobody answered and nothing was shown. Not a claim about anybody. */
-  async nothingShown(organizationId: string, obligationId: string) {
-    return this.moveTo(organizationId, obligationId, 'nothing has been shown either way');
+  async nothingShown(organizationId: string, groundId: string, obligationId: string) {
+    return this.moveTo(organizationId, groundId, obligationId, 'nothing has been shown either way');
   }
 
   /**
@@ -138,8 +139,8 @@ export class ObligationsService {
     }));
   }
 
-  private async moveTo(organizationId: string, obligationId: string, to: ObligationState) {
-    const row = await this.prisma.obligation.findFirst({ where: { id: obligationId, organizationId } });
+  private async moveTo(organizationId: string, groundId: string, obligationId: string, to: ObligationState) {
+    const row = await this.prisma.obligation.findFirst({ where: { id: obligationId, organizationId, groundId } });
     if (!row) throw new NotFoundException('No such obligation.');
 
     const why = whyThisCannotFollow(asItStandsToday({ state: row.state as ObligationState, dueOn: row.dueOn }), to);

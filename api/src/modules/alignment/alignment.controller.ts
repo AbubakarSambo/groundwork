@@ -52,10 +52,11 @@ export class AlignmentController {
   @ApiOperation({ summary: 'A person who would know says a reading is right' })
   confirm(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @CurrentUser('id') userId: string,
     @Param('figureId') figureId: string,
   ) {
-    return this.alignment.confirmFigure(organizationId, figureId, userId);
+    return this.alignment.confirmFigure(organizationId, groundId, figureId, userId);
   }
 
   @Post('compare')
@@ -82,90 +83,107 @@ export class AlignmentController {
   @ApiOperation({ summary: 'An amendment is a new version. The one it replaces is closed the day before, never edited.' })
   amend(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('agreementId') agreementId: string,
     @Body() dto: { inForceFrom: string },
   ) {
-    return this.agreements.amend(organizationId, agreementId, new Date(dto?.inForceFrom));
+    return this.agreements.amend(organizationId, groundId, agreementId, new Date(dto?.inForceFrom));
   }
 
   @Get('agreements/:agreementId/in-force')
   @ApiOperation({ summary: 'What governed a given day, or why nothing did' })
   inForce(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('agreementId') agreementId: string,
     @Query('on') on?: string,
   ) {
-    return this.agreements.inForceOn(organizationId, agreementId, on ? new Date(on) : new Date());
+    return this.agreements.inForceOn(organizationId, groundId, agreementId, on ? new Date(on) : new Date());
   }
 
   @Post('versions/:versionId/agreed')
   @ApiOperation({ summary: 'A side says this version is what they signed. Two sides, and it is in force.' })
   agreedVersion(
     @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+    @Param('groundId') groundId: string,
     @Param('versionId') versionId: string,
     @Body() dto: { who: string },
   ) {
-    return this.agreements.agreed(organizationId, versionId, dto?.who);
+    return this.agreements.agreed(organizationId, groundId, versionId, dto?.who, { userId, role });
   }
 
   @Post('versions/:versionId/terms')
   @ApiOperation({ summary: 'A term read out of the document. Arrives as a reading and nothing may be judged against it.' })
   readTerm(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('versionId') versionId: string,
     @Body() dto: { says: string; reads: string; clause?: string },
   ) {
-    return this.agreements.readTerm(organizationId, versionId, dto);
+    return this.agreements.readTerm(organizationId, groundId, versionId, dto);
   }
 
   @Post('terms/:termId/checked')
   @ApiOperation({ summary: 'Somebody who would know says the reading is right' })
   checked(
     @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+    @Param('groundId') groundId: string,
     @Param('termId') termId: string,
     @Body() dto: { who: string },
   ) {
-    return this.agreements.checked(organizationId, termId, dto?.who);
+    return this.agreements.checked(organizationId, groundId, termId, dto?.who, { userId, role });
   }
 
   @Post('terms/:termId/read-differently')
   @ApiOperation({ summary: 'Somebody reads the same clause differently. Both readings are kept, in both their words.' })
   differently(
     @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+    @Param('groundId') groundId: string,
     @Param('termId') termId: string,
     @Body() dto: { who: string; reads: string },
   ) {
-    return this.agreements.readsItDifferently(organizationId, termId, dto?.who, dto?.reads);
+    return this.agreements.readsItDifferently(organizationId, groundId, termId, dto?.who, dto?.reads, { userId, role });
   }
 
   @Get('terms/:termId/may-be-used-to')
   @ApiOperation({ summary: 'Whether a term may be shown, used to ask, or used to judge — and why not, where not' })
   mayBeUsed(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('termId') termId: string,
     @Query('what') what: WhatFor,
   ) {
-    return this.agreements.mayThisBeUsedTo(organizationId, termId, what);
+    return this.agreements.mayThisBeUsedTo(organizationId, groundId, termId, what);
   }
 
   @Post('versions/:versionId/signed')
   @ApiOperation({ summary: 'It was executed. A different moment from agreeing, and from governing anything.' })
   signed(
     @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+    @Param('groundId') groundId: string,
     @Param('versionId') versionId: string,
     @Body() dto: { said: string; on?: string },
   ) {
-    return this.agreements.signed(organizationId, versionId, dto?.said, dto?.on ? new Date(dto.on) : undefined);
+    return this.agreements.signed(organizationId, groundId, versionId, dto?.said, { userId, role }, dto?.on ? new Date(dto.on) : undefined);
   }
 
   @Get('versions/:versionId/standing')
   @ApiOperation({ summary: 'Where a version stands today — discussed, agreed, signed, in force — and whether anything may be settled against it' })
   standing(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('versionId') versionId: string,
     @Query('on') on?: string,
   ) {
-    return this.agreements.standing(organizationId, versionId, on ? new Date(on) : undefined);
+    return this.agreements.standing(organizationId, groundId, versionId, on ? new Date(on) : undefined);
   }
 
   @Get('obligations')
@@ -193,28 +211,31 @@ export class AlignmentController {
   @ApiOperation({ summary: 'Somebody was asked about it in their own check-in' })
   obligationAsked(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('obligationId') obligationId: string,
   ) {
-    return this.obligations.asked(organizationId, obligationId);
+    return this.obligations.asked(organizationId, groundId, obligationId);
   }
 
   @Post('obligations/:obligationId/account')
   @ApiOperation({ summary: 'What somebody said about it, in their words. Whether it was done is theirs to say.' })
   obligationAccount(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('obligationId') obligationId: string,
     @Body() dto: { by: string; said: string; theyDid: boolean | null },
   ) {
-    return this.obligations.accountOf(organizationId, obligationId, dto);
+    return this.obligations.accountOf(organizationId, groundId, obligationId, dto);
   }
 
   @Post('obligations/:obligationId/nothing-shown')
   @ApiOperation({ summary: 'Nothing was shown either way. Not a claim about anybody.' })
   obligationNothing(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('obligationId') obligationId: string,
   ) {
-    return this.obligations.nothingShown(organizationId, obligationId);
+    return this.obligations.nothingShown(organizationId, groundId, obligationId);
   }
 
   @Get('parties')
@@ -276,20 +297,22 @@ export class AlignmentController {
   @ApiOperation({ summary: 'Record the question the other side was asked. Refused where it gives the claim away.' })
   asked(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('assertionId') assertionId: string,
     @Body() dto: { question: string },
   ) {
-    return this.assertions.asked(organizationId, assertionId, dto?.question);
+    return this.assertions.asked(organizationId, groundId, assertionId, dto?.question);
   }
 
   @Post('assertions/:assertionId/answered')
   @ApiOperation({ summary: 'Their own account, and whether a person judges it to say the same thing' })
   assertionAnswered(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('assertionId') assertionId: string,
     @Body() dto: { theirAccount: string; theyAgree: boolean },
   ) {
-    return this.assertions.answered(organizationId, assertionId, dto);
+    return this.assertions.answered(organizationId, groundId, assertionId, dto);
   }
 
   @Get('differences')
@@ -302,9 +325,10 @@ export class AlignmentController {
   @ApiOperation({ summary: 'What somebody said about a difference. A candidate is only ever ruled out by a person saying so.' })
   answered(
     @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
     @Param('differenceId') differenceId: string,
     @Body() dto: { ruledOut?: CandidateKey[]; accountedForBy?: string },
   ) {
-    return this.alignment.answered(organizationId, differenceId, dto ?? {});
+    return this.alignment.answered(organizationId, groundId, differenceId, dto ?? {});
   }
 }

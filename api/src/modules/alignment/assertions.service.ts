@@ -68,8 +68,8 @@ export class AssertionsService {
   }
 
   /** Record that they were asked, with the question, so what it gave away can be checked later. */
-  async asked(organizationId: string, assertionId: string, question: string) {
-    const a = await this.prisma.assertion.findFirst({ where: { id: assertionId, organizationId } });
+  async asked(organizationId: string, groundId: string, assertionId: string, question: string) {
+    const a = await this.prisma.assertion.findFirst({ where: { id: assertionId, organizationId, groundId } });
     if (!a) throw new NotFoundException('No such assertion.');
 
     /* The subject is what the other side is legitimately being asked about, so its
@@ -98,10 +98,11 @@ export class AssertionsService {
    */
   async answered(
     organizationId: string,
+    groundId: string,
     assertionId: string,
     said: { theirAccount: string; theyAgree: boolean },
   ) {
-    const row = await this.prisma.assertion.findFirst({ where: { id: assertionId, organizationId } });
+    const row = await this.prisma.assertion.findFirst({ where: { id: assertionId, organizationId, groundId } });
     if (!row) throw new NotFoundException('No such assertion.');
 
     const updated = whereItStandsNow(this.asAssertion(row), said);

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AgreementVersion,
@@ -20,6 +20,7 @@ import {
   mayBeJudgedAgainst,
   whyThisCannotGovern,
 } from './an-amendment-is-not-a-conversation';
+import { whyThisIsNotYoursToSay } from './who-may-speak-for-a-side';
 
 /**
  * AN AGREEMENT, ITS VERSIONS, AND THE TERMS READ OUT OF THEM.
@@ -36,6 +37,14 @@ import {
  *   is how anything else asks, and it answers with a sentence rather than a
  *   silence.
  */
+/*
+ * EVERY METHOD TAKES THE GROUND, AND EVERY QUERY IS SCOPED BY IT.
+ *
+ * They were scoped by organisation alone while the routes all carried a `:groundId` — so the path
+ * said one check-in and the query meant "any of them here", and a URL under check-in A could amend
+ * an agreement belonging to check-in B. Nothing leaked across a tenant; what leaked was the shape
+ * the URL promised. Mine, found auditing my own work.
+ */
 @Injectable()
 export class AgreementsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -51,13 +60,34 @@ export class AgreementsService {
   }
 
   /**
+   * WHO MAY SAY WHAT THE AGREEMENT IS.
+   *
+   * Not every write here is the same kind of act — see `who-may-speak-for-a-side.ts`. Recording a
+   * figure is work; saying a version is signed binds the organisation to a reading of a contract.
+   */
+  private async mustBeAbleToSpeakForThisSide(groundId: string, who: { userId: string; role: string }) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+
+    const why = whyThisIsNotYoursToSay('speaking for this side', {
+      userId: who.userId,
+      role: who.role,
+      initiatorId: ground.initiatorId,
+    });
+    if (why) throw new ForbiddenException(why);
+  }
+
+  /**
    * An amendment: the next version, starting on a day after the current one began.
    * The version it replaces is closed the day before, so no day has two answers
    * and no day has none.
    */
-  async amend(organizationId: string, agreementId: string, inForceFrom: Date) {
+  async amend(organizationId: string, groundId: string, agreementId: string, inForceFrom: Date) {
     const agreement = await this.prisma.agreement.findFirst({
-      where: { id: agreementId, organizationId },
+      where: { id: agreementId, organizationId, groundId },
       include: { versions: true },
     });
     if (!agreement) throw new NotFoundException('No such agreement.');
@@ -93,9 +123,11 @@ export class AgreementsService {
    * six months later: both sides agreeing to a change is not the change. See
    * `an-amendment-is-not-a-conversation.ts`.
    */
-  async agreed(organizationId: string, versionId: string, who: string) {
+  async agreed(organizationId: string, groundId: string, versionId: string, who: string, by: { userId: string; role: string }) {
+    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+
     const version = await this.prisma.agreementVersion.findFirst({
-      where: { id: versionId, agreement: { organizationId } },
+      where: { id: versionId, agreement: { organizationId, groundId } },
     });
     if (!version) throw new NotFoundException('No such version.');
 
@@ -120,9 +152,11 @@ export class AgreementsService {
    * facts by `whereItStands`, so a row cannot sit in a standing its dates
    * contradict.
    */
-  async signed(organizationId: string, versionId: string, said: string, on?: Date) {
+  async signed(organizationId: string, groundId: string, versionId: string, said: string, by: { userId: string; role: string }, on?: Date) {
+    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+
     const version = await this.prisma.agreementVersion.findFirst({
-      where: { id: versionId, agreement: { organizationId } },
+      where: { id: versionId, agreement: { organizationId, groundId } },
     });
     if (!version) throw new NotFoundException('No such version.');
     if (version.agreedBy.length < 2) {
@@ -146,9 +180,9 @@ export class AgreementsService {
   }
 
   /** Where a version stands today, worked out rather than read off a column. */
-  async standing(organizationId: string, versionId: string, on?: Date) {
+  async standing(organizationId: string, groundId: string, versionId: string, on?: Date) {
     const version = await this.prisma.agreementVersion.findFirst({
-      where: { id: versionId, agreement: { organizationId } },
+      where: { id: versionId, agreement: { organizationId, groundId } },
     });
     if (!version) throw new NotFoundException('No such version.');
 
@@ -162,9 +196,9 @@ export class AgreementsService {
   }
 
   /** What governed a given day, or why nothing did. */
-  async inForceOn(organizationId: string, agreementId: string, on: Date) {
+  async inForceOn(organizationId: string, groundId: string, agreementId: string, on: Date) {
     const agreement = await this.prisma.agreement.findFirst({
-      where: { id: agreementId, organizationId },
+      where: { id: agreementId, organizationId, groundId },
       include: { versions: { include: { terms: true } } },
     });
     if (!agreement) throw new NotFoundException('No such agreement.');
@@ -191,11 +225,12 @@ export class AgreementsService {
    */
   async readTerm(
     organizationId: string,
+    groundId: string,
     versionId: string,
     t: { says: string; reads: string; clause?: string },
   ) {
     const version = await this.prisma.agreementVersion.findFirst({
-      where: { id: versionId, agreement: { organizationId } },
+      where: { id: versionId, agreement: { organizationId, groundId } },
     });
     if (!version) throw new NotFoundException('No such version.');
 
@@ -206,9 +241,11 @@ export class AgreementsService {
   }
 
   /** Somebody who would know says the reading is right. Two sides, and it is agreed. */
-  async checked(organizationId: string, termId: string, who: string) {
+  async checked(organizationId: string, groundId: string, termId: string, who: string, by: { userId: string; role: string }) {
+    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+
     const term = await this.prisma.agreementTerm.findFirst({
-      where: { id: termId, version: { agreement: { organizationId } } },
+      where: { id: termId, version: { agreement: { organizationId, groundId } } },
     });
     if (!term) throw new NotFoundException('No such term.');
     if (term.state === 'read differently by each side') {
@@ -231,9 +268,11 @@ export class AgreementsService {
    * NOT A FAILURE — the most useful thing this product can find before it becomes
    * an argument about money. Both readings are kept, in both people's words.
    */
-  async readsItDifferently(organizationId: string, termId: string, who: string, reads: string) {
+  async readsItDifferently(organizationId: string, groundId: string, termId: string, who: string, reads: string, by: { userId: string; role: string }) {
+    await this.mustBeAbleToSpeakForThisSide(groundId, by);
+
     const term = await this.prisma.agreementTerm.findFirst({
-      where: { id: termId, version: { agreement: { organizationId } } },
+      where: { id: termId, version: { agreement: { organizationId, groundId } } },
     });
     if (!term) throw new NotFoundException('No such term.');
 
@@ -259,9 +298,9 @@ export class AgreementsService {
    * answer is no, because a refusal nobody sees is a feature that looks broken —
    * and this one has a fix somebody can carry out in a minute.
    */
-  async mayThisBeUsedTo(organizationId: string, termId: string, what: WhatFor) {
+  async mayThisBeUsedTo(organizationId: string, groundId: string, termId: string, what: WhatFor) {
     const term = await this.prisma.agreementTerm.findFirst({
-      where: { id: termId, version: { agreement: { organizationId } } },
+      where: { id: termId, version: { agreement: { organizationId, groundId } } },
     });
     if (!term) throw new NotFoundException('No such term.');
 
