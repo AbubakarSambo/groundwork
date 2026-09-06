@@ -29,6 +29,18 @@ describe('a machine token is not a session', () => {
     await expect(g.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('carries the source system when the token has one, so a replaced credential is the same roster', async () => {
+    const { g, ctx, req } = guard(
+      { sub: 'gwc_2', org: 'org-a', scopes: ['graph:write'], typ: 'machine', src: 'workday' },
+      'graph:write',
+    );
+    await expect(g.canActivate(ctx)).resolves.toBe(true);
+    expect(req.machine.sourceSystem).toBe('workday');
+    /* And it is NOT the client id: that is the whole bug — the client id is random on every
+       issue, so keying the roster on it duplicated everybody whenever a credential was rotated. */
+    expect(req.machine.sourceSystem).not.toBe(req.machine.clientId);
+  });
+
   it('accepts one with it, and hands the org off the token rather than the request', async () => {
     /* The org is never taken from a path, a body or a header - a customer's system cannot name an
        organisation it does not hold a credential for, because it never names one at all. */
@@ -36,6 +48,10 @@ describe('a machine token is not a session', () => {
     await expect(g.canActivate(ctx)).resolves.toBe(true);
     expect(req.machine).toEqual({
       organizationId: 'org-a', clientId: 'gwc_1', scopes: ['subjects:write'],
+      /* No `src` on this token, so the source system falls back to the client id — which is what
+         every credential issued before the two were split wrote its people under. Changing it for
+         them would orphan every row they have pushed. */
+      sourceSystem: 'gwc_1',
       /* A token with no fence means the whole organisation - which is what every credential issued
          before fences existed means, and the only default that does not lock working integrations
          out on deploy. */

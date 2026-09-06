@@ -9,6 +9,8 @@ export const RequiresScope = (scope: string) => SetMetadata(REQUIRED_SCOPE, scop
 export interface MachineCaller {
   organizationId: string;
   clientId: string;
+  /** The system this credential speaks for. What the roster is keyed on, unlike `clientId`. */
+  sourceSystem: string;
   scopes: string[];
   /**
    * WHOSE WORK THIS CREDENTIAL MAY SEE. Empty means the whole organisation.
@@ -71,6 +73,10 @@ export class MachineTokenGuard implements CanActivate {
     req.machine = {
       organizationId: claims.org,
       clientId: claims.sub,
+      /* Older tokens, issued before the split, carry no `src`. Falling back to the client id
+         keeps them writing under exactly the key their people were created with, which is the
+         whole point of the backfill. */
+      sourceSystem: claims.src ?? claims.sub,
       scopes,
       boundToPersonExternalIds: Array.isArray(claims.fence) ? claims.fence : [],
     } satisfies MachineCaller;

@@ -1756,6 +1756,15 @@ model ApiCredential {
   clientSecretHash String   @map("client_secret_hash")
   /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
   /// a subset of what its credential already holds.
+  /// THE SYSTEM THIS CREDENTIAL SPEAKS FOR, AND NOT THE CREDENTIAL ITSELF.
+  ///
+  /// A roster belongs to a system — "workday", "bamboohr" — and `Person` is keyed on it. This used
+  /// to be the `clientId`, which is random on every issue, so rotating a credential changed the
+  /// identity of every person in the organisation and the next sync duplicated the whole roster
+  /// silently. Existing credentials keep their clientId here, because that is what their people
+  /// were written under. See `people/whose-roster-is-this.ts`.
+  sourceSystem String @map("source_system")
+
   scopes           String[]
 
   /// WHOSE WORK THIS CREDENTIAL MAY SEE, when it should not see all of it.

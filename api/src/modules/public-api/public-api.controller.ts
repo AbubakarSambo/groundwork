@@ -124,6 +124,10 @@ export class PublicApiController {
     const access_token = await this.jwt.signAsync(
       {
         sub: cred.clientId, org: cred.organizationId, scopes: granted.scopes, typ: 'machine',
+        /* WHICH SYSTEM, travelling separately from WHICH CREDENTIAL. The roster is keyed on the
+           system, so a rotated credential has to arrive saying the same thing as the one it
+           replaced — see `people/whose-roster-is-this.ts`. */
+        src: cred.sourceSystem,
         /* The fence travels IN the token, so it cannot be stale relative to the scopes it came with
            and a revoked-then-reissued credential cannot keep an old boundary. */
         fence: cred.boundToPersonExternalIds ?? [],
@@ -737,7 +741,7 @@ export class PublicApiController {
       kind: dto.kind,
       /* Where it came from, so a wrong date can be traced rather than argued about. Defaults to the
          credential, which is at least true. */
-      source: dto.source?.trim() || req.machine.clientId,
+      source: dto.source?.trim() || req.machine.sourceSystem,
     });
   }
 
@@ -1024,7 +1028,7 @@ export class PublicApiController {
   @RequiresScope('graph:write')
   @ApiOperation({ summary: 'Create or update a person. Upserts on externalId - a mover is not a new person.' })
   async scimUpsert(@Req() req: { machine: MachineCaller }, @Body() dto: ScimUser) {
-    const { row, created } = await this.scim.upsert(req.machine.organizationId, req.machine.clientId, dto);
+    const { row, created } = await this.scim.upsert(req.machine.organizationId, req.machine.sourceSystem, dto);
     return this.presentPerson(row, created);
   }
 
@@ -1033,7 +1037,24 @@ export class PublicApiController {
   @RequiresScope('graph:write')
   @ApiOperation({ summary: 'Patch a person. The deprovisioning op every IdP sends is active:false.' })
   async scimPatch(@Req() req: { machine: MachineCaller }, @Param('externalId') externalId: string, @Body() body: any) {
-    return this.presentPerson(await this.scim.patch(req.machine.organizationId, req.machine.clientId, externalId, body));
+    return this.presentPerson(await this.scim.patch(req.machine.organizationId, req.machine.sourceSystem, externalId, body));
+  }
+
+  /**
+   * WHO EXISTS TWICE, and ABOVE `:externalId` on purpose — routes are matched in order, so
+   * declared after it, "duplicates" would be read as somebody's id and answer "No such person."
+   *
+   * The duplicate roster a credential rotation used to create is invisible from every other read
+   * here, because they are all organisation-wide and simply return both copies. This one goes
+   * looking. It reports and does not merge: merging decides which record keeps somebody's
+   * objectives and which account is theirs.
+   */
+  @Get('scim/v2/Users/duplicates')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('findings:read')
+  @ApiOperation({ summary: 'People who exist under more than one source system, usually because a credential was replaced' })
+  async scimDuplicates(@Req() req: { machine: MachineCaller }) {
+    return this.scim.whoExistsTwice(req.machine.organizationId);
   }
 
   @Get('scim/v2/Users/:externalId')
@@ -1041,7 +1062,7 @@ export class PublicApiController {
   @RequiresScope('findings:read')
   @ApiOperation({ summary: 'Read one person as we hold them' })
   async scimGet(@Req() req: { machine: MachineCaller }, @Param('externalId') externalId: string) {
-    const row = await this.scim.find(req.machine.organizationId, req.machine.clientId, externalId);
+    const row = await this.scim.find(req.machine.organizationId, req.machine.sourceSystem, externalId);
     if (!row) throw new BadRequestException('No such person.');
     return this.presentPerson(row);
   }

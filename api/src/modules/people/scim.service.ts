@@ -1,3 +1,4 @@
+import { whoExistsTwice, howItReads } from './whose-roster-is-this';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -166,6 +167,26 @@ export class ScimService {
       this.logger.log(`Person ${externalId} deactivated in org ${organizationId}`);
     }
     return { row, created: !prior };
+  }
+
+  /**
+   * WHO EXISTS TWICE, AND UNDER WHICH SYSTEMS.
+   *
+   * The duplicate roster this whole file was keyed wrongly for is invisible from every read that
+   * matters — `list` and `resolve` are organisation-wide, so they simply return both copies and
+   * nothing looks wrong. This is the one read that looks for it on purpose.
+   *
+   * It reports and does not merge. Merging decides which record keeps somebody's objectives and
+   * which account is theirs, and that is not a decision to make from a shape in the data.
+   */
+  async whoExistsTwice(organizationId: string) {
+    const rows = await this.prisma.person.findMany({
+      where: { organizationId },
+      select: { externalId: true, sourceSystem: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const duplicates = whoExistsTwice(rows);
+    return { duplicates, says: howItReads(duplicates) };
   }
 
   /**

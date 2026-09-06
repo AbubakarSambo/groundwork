@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { fromTheCredentialName, whyThisIsNotASourceSystem } from '../people/whose-roster-is-this';
 import { isScope } from './scopes';
 
 /**
@@ -17,7 +18,7 @@ export class CredentialsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async issue(organizationId: string, name: string, scopes: string[], createdByUserId?: string, boundToPersonExternalIds: string[] = []) {
+  async issue(organizationId: string, name: string, scopes: string[], createdByUserId?: string, boundToPersonExternalIds: string[] = [], sourceSystem?: string) {
     if (!name?.trim()) throw new BadRequestException('A credential needs a name, so it can be revoked on purpose later.');
     const bad = (scopes ?? []).filter((s) => !isScope(s));
     if (bad.length) throw new BadRequestException(`Unknown scope(s): ${bad.join(', ')}`);
@@ -28,6 +29,16 @@ export class CredentialsService {
      * we refer to the same integration when something is wrong. The prefixes exist so that a string
      * found in a log or a config file announces what it is.
      */
+    /*
+     * THE SOURCE SYSTEM IS NOT THE CLIENT ID, and the difference is a rotated credential not
+     * duplicating the entire roster. Derived from the name when nobody says, because a customer
+     * calling one "Workday sync" plainly means Workday — and asking them to say it twice is how
+     * the two drift. See `people/whose-roster-is-this.ts`.
+     */
+    const source = sourceSystem?.trim() || fromTheCredentialName(name);
+    const notASystem = whyThisIsNotASourceSystem(source);
+    if (notASystem) throw new BadRequestException(notASystem);
+
     const clientId = `gwc_${randomBytes(12).toString('hex')}`;
     const clientSecret = `gws_${randomBytes(32).toString('base64url')}`;
 
@@ -37,11 +48,12 @@ export class CredentialsService {
         organizationId,
         name: name.trim(),
         clientId,
+        sourceSystem: source,
         clientSecretHash: await bcrypt.hash(clientSecret, 12),
         scopes,
         createdByUserId: createdByUserId ?? null,
       },
-      select: { id: true, name: true, clientId: true, scopes: true, boundToPersonExternalIds: true, createdAt: true },
+      select: { id: true, name: true, clientId: true, sourceSystem: true, scopes: true, boundToPersonExternalIds: true, createdAt: true },
     });
 
     this.logger.log(`Issued credential ${clientId} ("${row.name}") for org ${organizationId}`);
@@ -52,7 +64,7 @@ export class CredentialsService {
   async list(organizationId: string) {
     return this.prisma.apiCredential.findMany({
       where: { organizationId },
-      select: { id: true, name: true, clientId: true, scopes: true, boundToPersonExternalIds: true, lastUsedAt: true, revokedAt: true, createdAt: true },
+      select: { id: true, name: true, clientId: true, sourceSystem: true, scopes: true, boundToPersonExternalIds: true, lastUsedAt: true, revokedAt: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
   }

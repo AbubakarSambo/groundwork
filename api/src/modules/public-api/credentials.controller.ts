@@ -53,9 +53,19 @@ export class CredentialsController {
   issue(
     @CurrentUser('organizationId') organizationId: string,
     @CurrentUser('id') userId: string,
-    @Body() dto: { name: string; scopes: string[] },
+    @Body() dto: { name: string; scopes: string[]; boundToPersonExternalIds?: string[]; sourceSystem?: string },
   ) {
-    return this.credentials.issue(organizationId, dto?.name, dto?.scopes ?? [], userId);
+    /* `sourceSystem` is how a REPLACEMENT credential says it speaks for the same system as the one
+       it replaces. Give it the same value and the roster stays one roster; leave it out and it is
+       derived from the name. See `people/whose-roster-is-this.ts`. */
+    return this.credentials.issue(
+      organizationId,
+      dto?.name,
+      dto?.scopes ?? [],
+      userId,
+      dto?.boundToPersonExternalIds ?? [],
+      dto?.sourceSystem,
+    );
   }
 
   @Get()
