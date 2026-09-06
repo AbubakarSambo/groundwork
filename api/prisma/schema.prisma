@@ -842,6 +842,7 @@ model Ground {
   differences     Difference[]
   agreements      Agreement[]
   assertions      Assertion[]
+  parties         GroundParty[]
   @@map("grounds")
 }
 
@@ -3212,6 +3213,36 @@ model DocumentElsewhere {
 
   @@index([groundId, participantId])
   @@map("documents_elsewhere")
+}
+
+/// A PARTY THAT IS AN ORGANISATION, RATHER THAN A LIST OF PEOPLE SOMEBODY INVITED.
+///
+/// Both sides are named, and each says which of their own people take part. This grants standing on
+/// ONE check-in and nothing anywhere else — the tenant boundary is untouched, and every read stays
+/// scoped to an organisation. A party with no account here is normal: the other side of a contract
+/// has not usually bought this product. See `alignment/a-party-is-an-organisation.ts`.
+model GroundParty {
+  id       String @id @default(uuid())
+  groundId String @map("ground_id")
+
+  /// 'the side that set it up' | 'the other side'. The first carries no extra rights.
+  side String
+  /// What they are called, in their own words.
+  name String
+
+  /// Their organisation here, where they have one. Null is normal.
+  organizationId String? @map("organization_id")
+
+  /// Who named them, and when. A side that appeared with no trace of who added it is one nobody
+  /// can query later.
+  namedByUserId String?  @map("named_by_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, side])
+  @@index([organizationId])
+  @@map("ground_parties")
 }
 
 /// WHAT ONE SIDE SAID, AND WHETHER THE OTHER HAS BEEN ASKED.

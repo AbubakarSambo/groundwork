@@ -3,12 +3,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AlignmentService } from './alignment.service';
 import { AgreementsService } from './agreements.service';
 import { AssertionsService } from './assertions.service';
+import { PartiesService } from './parties.service';
+import { GroundsModule } from '../grounds';
 import { AlignmentController } from './alignment.controller';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, GroundsModule],
   controllers: [AlignmentController],
-  providers: [AlignmentService, AgreementsService, AssertionsService],
-  exports: [AlignmentService, AgreementsService, AssertionsService],
+  providers: [AlignmentService, AgreementsService, AssertionsService, PartiesService],
+  exports: [AlignmentService, AgreementsService, AssertionsService, PartiesService],
 })
 export class AlignmentModule {}

@@ -6,6 +6,8 @@ import { AlignmentService } from './alignment.service';
 import { CandidateKey } from './an-explanation-is-a-candidate';
 import { AgreementsService } from './agreements.service';
 import { AssertionsService } from './assertions.service';
+import { PartiesService } from './parties.service';
+import { Side } from './a-party-is-an-organisation';
 import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
 
 /**
@@ -21,6 +23,7 @@ export class AlignmentController {
     private readonly alignment: AlignmentService,
     private readonly agreements: AgreementsService,
     private readonly assertions: AssertionsService,
+    private readonly parties: PartiesService,
   ) {}
 
   @Get('figures')
@@ -141,6 +144,35 @@ export class AlignmentController {
     @Query('what') what: WhatFor,
   ) {
     return this.agreements.mayThisBeUsedTo(organizationId, termId, what);
+  }
+
+  @Get('parties')
+  @ApiOperation({ summary: 'The two sides, what each may do, and what happens to the record afterwards' })
+  sides(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
+    return this.parties.sides(organizationId, groundId);
+  }
+
+  @Post('parties')
+  @ApiOperation({ summary: 'Name a side. The one that set it up is the organisation the check-in lives in.' })
+  nameParty(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Param('groundId') groundId: string,
+    @Body() dto: { side: Side; name: string; organizationId?: string },
+  ) {
+    return this.parties.name(organizationId, userId, groundId, dto);
+  }
+
+  @Post('parties/:partyId/people')
+  @ApiOperation({ summary: 'A party says which of its own people take part. Refused for anybody not part of it.' })
+  designate(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Param('groundId') groundId: string,
+    @Param('partyId') partyId: string,
+    @Body() dto: { people: { email: string; roleAsDescribed?: string }[] },
+  ) {
+    return this.parties.designate({ organizationId, userId }, groundId, partyId, dto?.people ?? []);
   }
 
   @Post('assertions')
