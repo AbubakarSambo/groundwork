@@ -5,6 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AlignmentService } from './alignment.service';
 import { CandidateKey } from './an-explanation-is-a-candidate';
 import { AgreementsService } from './agreements.service';
+import { AssertionsService } from './assertions.service';
 import { WhatFor } from './a-term-is-not-true-because-a-model-read-it';
 
 /**
@@ -19,6 +20,7 @@ export class AlignmentController {
   constructor(
     private readonly alignment: AlignmentService,
     private readonly agreements: AgreementsService,
+    private readonly assertions: AssertionsService,
   ) {}
 
   @Get('figures')
@@ -139,6 +141,52 @@ export class AlignmentController {
     @Query('what') what: WhatFor,
   ) {
     return this.agreements.mayThisBeUsedTo(organizationId, termId, what);
+  }
+
+  @Post('assertions')
+  @ApiOperation({ summary: 'One side said something. What it is about must be answerable by somebody who never heard the claim.' })
+  said(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
+    @Body() dto: { claim: string; about: string; by: string; theOtherSide: string },
+  ) {
+    return this.assertions.said(organizationId, groundId, dto);
+  }
+
+  @Get('assertions')
+  @ApiOperation({ summary: 'Where every claim on this check-in stands, and since when' })
+  assertionsHere(@CurrentUser('organizationId') organizationId: string, @Param('groundId') groundId: string) {
+    return this.assertions.whereEverythingStands(organizationId, groundId);
+  }
+
+  @Get('assertions/waiting-on/:who')
+  @ApiOperation({ summary: 'What to ask somebody, with the claim not in it — this read cannot return a claim at all' })
+  waitingOn(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('groundId') groundId: string,
+    @Param('who') who: string,
+  ) {
+    return this.assertions.whatIsWaitingOn(organizationId, groundId, who);
+  }
+
+  @Post('assertions/:assertionId/asked')
+  @ApiOperation({ summary: 'Record the question the other side was asked. Refused where it gives the claim away.' })
+  asked(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('assertionId') assertionId: string,
+    @Body() dto: { question: string },
+  ) {
+    return this.assertions.asked(organizationId, assertionId, dto?.question);
+  }
+
+  @Post('assertions/:assertionId/answered')
+  @ApiOperation({ summary: 'Their own account, and whether a person judges it to say the same thing' })
+  assertionAnswered(
+    @CurrentUser('organizationId') organizationId: string,
+    @Param('assertionId') assertionId: string,
+    @Body() dto: { theirAccount: string; theyAgree: boolean },
+  ) {
+    return this.assertions.answered(organizationId, assertionId, dto);
   }
 
   @Get('differences')

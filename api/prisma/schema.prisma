@@ -841,6 +841,7 @@ model Ground {
   reportedFigures ReportedFigure[]
   differences     Difference[]
   agreements      Agreement[]
+  assertions      Assertion[]
   @@map("grounds")
 }
 
@@ -3211,6 +3212,45 @@ model DocumentElsewhere {
 
   @@index([groundId, participantId])
   @@map("documents_elsewhere")
+}
+
+/// WHAT ONE SIDE SAID, AND WHETHER THE OTHER HAS BEEN ASKED.
+///
+/// Without this row, a thing one side said in July is by September indistinguishable from a thing
+/// both sides confirmed. `claim` never reaches the other side; `about` is the neutral subject they
+/// are asked, so two free accounts can be compared and neither was led. See
+/// `alignment/an-assertion-waits-for-the-other-side.ts`.
+model Assertion {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What was said, in their words. NEVER shown to the other side.
+  claim String @db.Text
+  /// The subject, in neutral words. The only thing the other side is asked about.
+  about String
+
+  by           String
+  theOtherSide String @map("the_other_side")
+
+  /// 'said by one side' | 'the other side has been asked' | 'both sides say the same' | 'the two accounts differ'
+  state String @default("said by one side")
+
+  /// The question the other side was asked, kept so it can be checked for what it gave away.
+  asked   String?   @map("asked") @db.Text
+  askedAt DateTime? @map("asked_at")
+
+  /// Their own account, in their words.
+  theirAccount String?   @map("their_account") @db.Text
+  answeredAt   DateTime? @map("answered_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, state])
+  @@map("assertions")
 }
 
 /// AN AGREEMENT BETWEEN TWO SIDES, AND WHAT IS IN FORCE WHEN.
