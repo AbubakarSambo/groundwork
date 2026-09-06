@@ -46,6 +46,15 @@ export const SCENARIO_LABELS = {
   PULSE_CHECK: 'A regular read on live work',
   COHORT_CHECK: 'Several people in the same role',
   CONTRACT_RENEWAL: 'A contract or renewal',
+  /**
+   * TWO CARDS, BECAUSE THESE ARE TWO MOMENTS — and neither is CONTRACT_RENEWAL above, which is one
+   * person's engagement ending and sits beside a new hire and a performance plan.
+   *
+   * The labels say when, because when is the only thing somebody needs to tell them apart:
+   * before you sign, and after.
+   */
+  CONTRACT_REVIEW: 'An agreement before it is signed',
+  IMPLEMENTATION_TRACKING: 'An agreement that is running',
   RECOGNITION: 'A raise, promotion, or recognition',
   PIP: "Someone's work is off track",
   DRIFT: 'A project is off track',
@@ -201,6 +210,8 @@ export interface ScenarioFacts {
 export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   NEW_HIRE:         { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 90 },
   ROLE_HANDOVER:    { group: 'starting', cadence: 'Weekly',        timelineDays: 30 },
+  CONTRACT_REVIEW:  { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 60,
+                      notThisOneIf: 'It is already signed. Use "an agreement that is running" instead.' },
   NEW_PROJECT:      { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 90 },
   NEW_ADVISOR:      { group: 'starting', cadence: 'Monthly',       timelineDays: 365 },
   NEW_COFOUNDER:    { group: 'starting', cadence: 'Every 2 weeks', timelineDays: 90 },
@@ -210,6 +221,8 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   WORKPLAN_BUDGET:  { group: 'planning', cadence: 'Monthly',       timelineDays: 90 },
   BOARD_STRATEGY:   { group: 'planning', cadence: 'Monthly',       timelineDays: 90 },
   CRISIS_ALIGNMENT: { group: 'planning', cadence: 'Every 2 weeks', timelineDays: 60 },
+  IMPLEMENTATION_TRACKING: { group: 'planning', cadence: 'Monthly',  timelineDays: 365,
+                      notThisOneIf: 'Nothing is signed yet. Use "an agreement before it is signed" instead.' },
 
   PULSE_CHECK:      { group: 'reading',  cadence: 'Weekly',        timelineDays: 30,
                       notThisOneIf: 'Everyone does the same job in parallel. Use "several people in the same role" instead.' },
@@ -251,6 +264,8 @@ export type MomentValue = 'STARTING' | 'RECOGNITION' | 'RESOLUTION'
 export const RECOMMENDED_MOMENT: Record<ScenarioKey, MomentValue> = {
   NEW_HIRE: 'STARTING',
   ROLE_HANDOVER: 'STARTING',
+  CONTRACT_REVIEW: 'STARTING',
+  IMPLEMENTATION_TRACKING: 'RECOGNITION',
   NEW_PROJECT: 'STARTING',
   NEW_COFOUNDER: 'STARTING',
   NEW_MANAGER: 'STARTING',

@@ -2507,6 +2507,51 @@ WHAT NOT TO DO:
 
 CLOSING: The record from this ground is a set of independent accounts of a situation nobody had a name for. If the accounts turn out to describe something specific, say so plainly in the report so the reader can open the right kind of ground next time.`;
 
+const CONTRACT_REVIEW_PACK = `MOMENT: Before signing. Nothing is agreed yet.
+
+PURPOSE: Two sides are about to sign something, and each has a picture in their head of what it means. The pictures are never identical and almost nobody finds that out before the money starts. Your job is to get each side's picture down separately, in their own words, while changing it is still free.
+
+OPENING (the side that set this up): Ask what they are trying to get out of this arrangement - not what the draft says, what they want. Then ask what they think they are committing to give.
+
+OPENING (the other side): The same two questions in the same order, and they must be asked without any hint of what the first side said. Their version goes first. Always.
+
+WHAT TO PRESS ON:
+- THE NUMBERS, AND WHAT THEY ARE OF. If there is a share, a fee or a threshold, ask what it is a share OF, in their words. "Twenty per cent" is agreement; "of gross" and "of net after costs" is the whole argument, and it is discoverable now for the price of one question.
+- WHO DOES WHAT, AND BY WHEN. Ask for the two or three things they expect to be responsible for. Then ask what they expect the other side to do, and by when.
+- WHAT COUNTS AS IT WORKING. In their terms, at the end of the first year.
+- WHAT HAPPENS IF. One scenario they think is realistic and unwelcome, and what they believe the arrangement does about it.
+- WHAT THEY WOULD BE UNCOMFORTABLE WITH. Asked plainly. People will say this before signing and will not say it afterwards.
+
+WHAT NOT TO DO:
+- NEVER TELL ONE SIDE WHAT THE OTHER SAID. Not as framing, not as context, not to be helpful, not even where their answers obviously conflict. The conflict is the finding, and narrating it destroys the thing that makes the finding worth having.
+- Do not advise on the contract. You are not their lawyer and you have not read the law. Where somebody asks what a clause means, ask what THEY understand it to mean.
+- Do not push toward signing, and do not treat not signing as a failure. Two companies discovering they meant different things is this ground working.
+- Do not turn a reading into the agreement. What somebody says a clause means is their reading of it, and it stays that until both sides say the same.
+
+CLOSING: The record is two independent accounts of what an agreement is for, side by side. Where the accounts differ, say both, in each side's words, and say plainly that the two have not been reconciled - not which is right. It ends when the contract is signed, or when both sides know why they are not signing it.`;
+
+const IMPLEMENTATION_TRACKING_PACK = `MOMENT: After signing. The arrangement is running.
+
+PURPOSE: A quiet, recurring read on whether what the two sides are doing still matches what they signed. MOST MONTHS THE ANSWER IS THAT IT DOES, and saying so plainly is the product working - not a wasted session.
+
+THE SILENCE RULE, AND IT MATTERS MORE THAN ANY QUESTION BELOW: a tracking ground that asks twelve questions a month about a relationship that is fine is one people stop answering, and then it is worthless in the month that matters. When nothing has changed and nothing is outstanding, take the short answer, say the period looks clear, and stop. Do not manufacture depth.
+
+OPENING: Ask what happened in this period that the other side would want to know about. Not a status report - the two or three things that were actually different.
+
+WHAT TO PRESS ON, WHEN THERE IS SOMETHING TO PRESS ON:
+- THE FIGURES, WITH WHERE THEY CAME FROM. Where a number is owed under the arrangement, ask for it, ask what period it covers, and ask where it comes from - a system, a filing, a spreadsheet somebody keeps. A number with no source cannot be compared to anything later.
+- ANYTHING STILL UNEXPLAINED FROM BEFORE. If a difference was raised in an earlier period and nobody accounted for it, ask about that before asking anything new. Asking a fresh question while last month's is still open reads as not listening.
+- WHAT WAS DUE. For anything that fell due in this period, ask what happened, in their words. If nothing was shown, that is not a claim that nothing was done - it usually means nobody was asked.
+- WHAT HAS DRIFTED. Ask whether the way the two sides are actually working has moved away from what was signed. Almost every long arrangement does, and it is a thing to write down rather than a fault.
+
+WHAT NOT TO DO:
+- NEVER SAY ANYTHING IS MISSING, WITHHELD, CONCEALED, UNDER-REPORTED, BREACHED OR OWED. Where two numbers do not agree, they do not agree; that is arithmetic and it is not an accusation. In real reconciliations the answer is nearly always timing, a different basis, or something out of scope.
+- Do not treat what somebody described in a meeting as a change to the agreement. A conversation is not an amendment, however clearly both sides seemed to agree it.
+- Do not conclude. Where every ordinary explanation has been asked about and none fits, the answer is that it is unexplained and the two of them are better placed than this record to say why.
+- Do not ask the same question every month. If it was answered, it was answered.
+
+CLOSING: The record is what each side says happened, the figures with their sources, and anything the two accounts do not reconcile. A period where the numbers line up and nothing is outstanding should close as running as agreed, in one short paragraph.`;
+
 const REALIGN_TEAM_PACK = `MOMENT: Team realignment.
 
 PURPOSE: Something has shifted - a direction has changed, a priority has moved, or the team has drifted. Each person gives their own account of where they think things stand before the group discusses it.
@@ -2699,6 +2744,8 @@ export const SCENARIO_PACKS: Record<GroundScenario, string> = {
   NEW_PROJECT: composeStartingPack('NEW_PROJECT'),
   NEW_MANAGER: composeStartingPack('NEW_MANAGER'),
   CONTRACT_RENEWAL: composeStartingPack('CONTRACT_RENEWAL'),
+  CONTRACT_REVIEW: CONTRACT_REVIEW_PACK,
+  IMPLEMENTATION_TRACKING: IMPLEMENTATION_TRACKING_PACK,
   DRIFT: DRIFT_PACK,
   RECOGNITION: RECOGNITION_PACK,
   CRISIS_ALIGNMENT: CRISIS_PACK_COMBINED,

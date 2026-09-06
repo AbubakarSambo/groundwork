@@ -53,6 +53,18 @@ const RECOGNISABLE: { scenario: string; says: string; patterns: RegExp[] }[] = [
     patterns: [/\b(pulse|regular read|how (things are|it is) going|weekly read)\b/i],
   },
   {
+    scenario: 'CONTRACT_REVIEW',
+    says: 'an agreement before it is signed',
+    /* "Sign" is the word that separates these two, and it is worth being narrow: somebody who says
+       "contract" alone could mean either, and asking which is better than guessing. */
+    patterns: [/\b(before (we|they) sign|about to sign|not signed yet|draft (agreement|contract)|reviewing the (contract|agreement))\b/i],
+  },
+  {
+    scenario: 'IMPLEMENTATION_TRACKING',
+    says: 'an agreement that is running',
+    patterns: [/\b(revenue share|royalt(y|ies)|reconcile|reconciliation|under the (contract|agreement)|contract is running|licen[cs]e (fees?|reporting))\b/i],
+  },
+  {
     scenario: 'ROLE_HANDOVER',
     says: 'a role changing hands',
     patterns: [/\b(handover|hand(ing|s)? over|changing hands|taking over|leaving|successor)\b/i],

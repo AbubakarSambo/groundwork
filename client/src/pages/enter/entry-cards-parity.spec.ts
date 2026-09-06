@@ -36,6 +36,8 @@ import { SITUATION_CARDS, SITUATION_GROUPS } from './EntryChatPage'
  */
 const ENTRY_COVERS: Record<string, string[]> = {
   'A new hire starting': ['NEW_HIRE'],
+  'An agreement before it is signed': ['CONTRACT_REVIEW'],
+  'An agreement that is running': ['IMPLEMENTATION_TRACKING'],
   'A new project starting': ['NEW_PROJECT'],
   'A new co-founder or partner': ['NEW_COFOUNDER'],
   'A new manager taking over': ['NEW_MANAGER'],

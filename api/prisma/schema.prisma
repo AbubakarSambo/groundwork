@@ -95,6 +95,15 @@ enum GroundScenario {
   /// It is deliberately the one place where a single report is the right shape. Everything else in
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
+
+  /// BEFORE SIGNING. Each side says independently what it thinks the agreement means, and the
+  /// misunderstandings surface while they are still cheap. It ends when the contract is signed.
+  CONTRACT_REVIEW
+
+  /// AFTER SIGNING. Quiet, recurring, management by exception. A healthy quarter should produce a
+  /// report saying the numbers reconcile and nothing needs anybody. See the note on
+  /// CONTRACT_REVIEW for why these are two cards rather than one.
+  IMPLEMENTATION_TRACKING
 }
 
 //

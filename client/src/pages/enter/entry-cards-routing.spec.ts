@@ -16,6 +16,11 @@ const PINNED_MESSAGES = [
   /* Added with the ROLE_HANDOVER card. Pinned from the day it shipped, like the rest: what this
      file protects is that a display reframe never quietly changes what gets SENT. */
   'Somebody is handing a role over and I want the incoming person to have more than a list of tasks.',
+  /* Added with the two contract cards, and pinned from the day they shipped for the same reason.
+     These two messages are what tells the classifier which of them somebody means, and "before we
+     sign" against "has been running for a while" is the whole of that distinction. */
+  'We are about to sign an agreement and I want both sides to say what they think it means before we do.',
+  'We have an agreement that has been running for a while and nobody has checked whether what we are doing still matches it.',
   // retained cards - messages byte-identical to the originals (routing untouched)
   'I have a new hire starting and want to make sure we set clear expectations from the beginning.',
   'We are starting a new project and I want to get the team aligned on goals and roles from the beginning.',

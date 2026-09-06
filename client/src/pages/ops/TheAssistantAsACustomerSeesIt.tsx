@@ -147,6 +147,22 @@ export function TheAssistantAsACustomerSeesIt() {
     staleTime: 0,
   })
 
+  /**
+   * AND WHAT GROUNDWORK TELLS US, WHICH IS THE OTHER HALF OF BEING ITS CUSTOMER.
+   *
+   * The panel above is us USING the product. This is us HEARING from it — the
+   * webhooks it signs and sends when a round finishes. It sits here because a
+   * feed of deliveries on a page of its own would be a page nobody opens; and it
+   * has to sit somewhere, because a read nobody can see is a read nobody checks,
+   * and the deliveries that failed to verify are exactly the ones worth seeing.
+   */
+  const arrived = useQuery({
+    queryKey: ['ops', 'groundwork-events'],
+    queryFn: opsApi.groundworkEvents,
+    retry: false,
+    enabled: open,
+  })
+
   const [session, setSession] = useState<string | null>(null)
   const [said, setSaid] = useState<Said[]>([])
   const [typing, setTyping] = useState('')
@@ -673,6 +689,25 @@ export function TheAssistantAsACustomerSeesIt() {
         ))}
         <div ref={bottom} />
       </div>
+
+      {arrived.data && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4 }}>
+          <div style={{ ...LABEL, marginBottom: 6 }}>What Groundwork has told us</div>
+          {arrived.data.events.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{arrived.data.says}</div>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {arrived.data.events.slice(0, 5).map((e, i) => (
+                <li key={i} style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+                  {/* A delivery that did not verify is the one worth seeing, so it is said
+                      first and in the product's own words rather than shown as a red dot. */}
+                  {e.verified ? (e.says ?? e.kind) : `${e.kind} — the signature did not check out`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {

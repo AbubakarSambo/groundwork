@@ -75,7 +75,14 @@ const shape = (path: string) =>
  * would give two answers to one question and eventually two different answers.
  * The route stays for anything reading this system from outside.
  */
-const NOT_WIRED_ON_PURPOSE = ['GET /ops/metrics/:key']
+const NOT_WIRED_ON_PURPOSE = [
+  'GET /ops/metrics/:key',
+  /* A SERVER CALLS THIS ONE, NOT A PERSON.
+     Groundwork posts a signed delivery here when a round finishes. There is no screen because there
+     is nobody at the other end — what ARRIVES is shown, in the assistant panel, which is the read
+     this guard should be protecting. */
+  'POST /ops/groundwork/events',
+]
 
 describe('the ops routes', () => {
   const routes = everyRoute()

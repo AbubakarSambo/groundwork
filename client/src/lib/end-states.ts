@@ -21,6 +21,18 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'NEEDS_MORE_TIME', label: 'Not finished - extend it' },
     { value: 'PREDECESSOR_GONE', label: 'Ended without the predecessor', description: 'They left before this finished. Recorded honestly so the gaps are attributed to the circumstance rather than to the successor.' },
   ],
+  CONTRACT_REVIEW: [
+    { value: 'SIGNED', label: 'Signed' },
+    { value: 'SIGNED_WITH_CHANGES', label: 'Signed, with what changed named', description: 'The review surfaced things the draft did not say, and they were written in before signing.' },
+    { value: 'NOT_YET', label: 'Not ready to sign - with the open questions named' },
+    { value: 'NOT_PROCEEDING', label: 'Not proceeding', description: 'The two sides found they meant different things by it. Better found now than in a year.' },
+  ],
+  IMPLEMENTATION_TRACKING: [
+    { value: 'RUNNING_AS_AGREED', label: 'Running as agreed' },
+    { value: 'RUNNING_WITH_OPEN_QUESTIONS', label: 'Running, with open questions named', description: 'Nothing is wrong and some things are unexplained. Both sides know which.' },
+    { value: 'NEEDS_AN_AMENDMENT', label: 'The arrangement needs changing', description: 'What the two sides are actually doing has moved away from what was signed, and both say so.' },
+    { value: 'ENDED', label: 'The arrangement ended' },
+  ],
   NEW_HIRE: [
     { value: 'KEEP', label: 'Keep the hire' },
     { value: 'RESTRUCTURE', label: 'Restructure the role' },

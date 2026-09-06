@@ -45,6 +45,12 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_PROJECT: 90,
   NEW_MANAGER: 90,
   CONTRACT_RENEWAL: 60,
+  /** Short, and it has an end: it finishes when the contract is signed. A review that runs for a
+      quarter is two companies who have stopped meaning to sign anything. */
+  CONTRACT_REVIEW: 60,
+  /** A year, because that is the shape of a commercial arrangement, and because the value of this
+      one is entirely in the months where nothing happens. */
+  IMPLEMENTATION_TRACKING: 365,
   RECOGNITION: 30,
   DRIFT: 90,
   CRISIS_ALIGNMENT: 60,
@@ -118,6 +124,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   BOARD_STRATEGY: GroundMoment.STARTING,
   /** One choice with a date on it. The decision is ahead, so this is a beginning. */
   CRISIS_ALIGNMENT: GroundMoment.STARTING,
+  /** Nothing is signed yet, so everything is ahead. */
+  CONTRACT_REVIEW: GroundMoment.STARTING,
   /** The first session establishes what each person owns, which nothing else has. */
   PULSE_CHECK: GroundMoment.STARTING,
   /** The standard is agreed and shown before anything is measured against it. */
@@ -126,6 +134,9 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   ACUTE_SHOCK: GroundMoment.STARTING,
 
   // Work is already running and this is a read on it.
+  /** The agreement is signed and running. This is a read on how it is actually going, month after
+      month, and most months the answer should be that it is going fine. */
+  IMPLEMENTATION_TRACKING: GroundMoment.RECOGNITION,
   COHORT_CHECK: GroundMoment.RECOGNITION,
   DRIFT: GroundMoment.RECOGNITION,
   REALIGN_TEAM: GroundMoment.RECOGNITION,
@@ -151,6 +162,13 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Monthly, not fortnightly: 26 check-ins a year is a job, not an advisory relationship. */
   NEW_ADVISOR: Cadence.MONTHLY,
   CONTRACT_RENEWAL: Cadence.FORTNIGHTLY,
+  /** Fortnightly and short. Before signing there is a decision ahead of both sides, and a monthly
+      rhythm would let a misunderstanding sit for four weeks while the drafting moves on. */
+  CONTRACT_REVIEW: Cadence.FORTNIGHTLY,
+  /** MONTHLY, AND THIS IS THE MOST LOAD-BEARING CADENCE IN THE FILE.
+      A tracking ground that asks twelve questions a fortnight about a relationship that is fine is
+      one people stop answering — and then it is worthless in the month it matters. */
+  IMPLEMENTATION_TRACKING: Cadence.MONTHLY,
   RECOGNITION: Cadence.FORTNIGHTLY,
   /** Weekly. A standard somebody is being measured against deserves more than six readings. */
   PIP: Cadence.WEEKLY,

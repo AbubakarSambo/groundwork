@@ -382,6 +382,30 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'starting',
+    scenario: 'CONTRACT_REVIEW',
+    label: SCENARIO_LABELS.CONTRACT_REVIEW,
+    detail: 'Each side says on its own what it thinks the agreement means, before anybody signs it.',
+    message: 'We are about to sign an agreement and I want both sides to say what they think it means before we do.',
+    timelineHint: 'typically 60 days',
+    examples: [
+      'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
+      'A partnership you are about to sign with somebody you would rather not fall out with.',
+    ],
+  },
+  {
+    group: 'planning',
+    scenario: 'IMPLEMENTATION_TRACKING',
+    label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
+    detail: 'A quiet monthly read on an agreement that is running, that mostly says it is running fine.',
+    message: 'We have an agreement that has been running for a while and nobody has checked whether what we are doing still matches it.',
+    timelineHint: 'typically a year',
+    examples: [
+      'A revenue share where the reported figure and the filed figure have never been put side by side.',
+      'A relationship that is fine, where you would like to be able to prove it was fine.',
+    ],
+  },
+  {
+    group: 'starting',
     scenario: 'NEW_HIRE',
     label: SCENARIO_LABELS.NEW_HIRE,
     detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',

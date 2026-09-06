@@ -204,6 +204,8 @@ export function HomePage() {
                 { param: 'new partner or co-founder', label: 'A new partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
                 { param: 'new manager or lead',    label: 'A new manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
                 { param: 'contract or renewal',    label: 'Contract or renewal',      desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.' },
+                { param: 'agreement before signing', label: 'An agreement before it is signed', desc: 'Each side writes down what it thinks the agreement means, before anybody signs it.' },
+                { param: 'agreement that is running', label: 'An agreement that is running', desc: 'A quiet monthly read that mostly says the numbers reconcile and nothing needs anybody.' },
                 { param: 'raise, promotion, or recognition', label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },
                 { param: 'performance improvement plan', label: 'Performance improvement plan', desc: 'Run a fair plan with both sides on the concern, the support, and what success looks like.' },
                 { param: 'goals & planning',       label: 'Setting shared goals',     desc: 'Check everyone is genuinely on the same goals and plan before the cycle locks in.' },

@@ -577,6 +577,14 @@ export interface OpsCommercialOverview {
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
+  /** What Groundwork has told us: the webhooks that arrived, and the ones that did not verify. */
+  groundworkEvents: () =>
+    apiClient
+      .get<{ events: { kind: string; verified: boolean; receivedAt: string; says: string | null }[]; says: string }>(
+        '/ops/groundwork/events',
+        QUIET,
+      )
+      .then((r) => r.data),
   board: (key: string, period: string) =>
     apiClient.get<OpsBoard>(`/ops/boards/${key}`, { ...QUIET, params: { period } }).then((r) => r.data),
   periods: () =>
