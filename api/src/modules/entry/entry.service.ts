@@ -8,6 +8,7 @@ import { Injectable, Logger, BadRequestException, ForbiddenException, Unauthoriz
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
+import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
@@ -1537,6 +1538,18 @@ STRICT RULES:
 
     let user = await this.prisma.user.findUnique({ where: { email } });
     const existingAccount = !!user;
+    if (user && isASecondOrganisation(user.organizationId, ground.organizationId)) {
+      /* Somebody with an account elsewhere, joining a check-in here. Without this the organisation
+         never appears in their switcher and every org-scoped read returns nothing, because their
+         token still carries their home organisation — the third of the three paths that skipped it.
+         GUEST, never the role they hold at home. */
+      await this.prisma.organizationMembership.upsert({
+        where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+        create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
+        /* Nothing on a second one: a role somebody was given here is theirs to keep. */
+        update: {},
+      });
+    }
     if (!user) {
       user = await this.prisma.user.create({
         data: {

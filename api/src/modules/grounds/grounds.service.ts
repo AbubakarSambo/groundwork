@@ -31,6 +31,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
+import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -774,6 +775,27 @@ export class GroundsService {
     const db = client ?? this.prisma;
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
+      /**
+       * SOMEBODY FROM ANOTHER COMPANY, MADE THE LEAD OF A CHECK-IN HERE.
+       *
+       * This reused their account and wrote no membership, so the organisation they had just been
+       * made lead of did not appear in their switcher and every organisation-scoped read returned
+       * nothing — because their token still carries their home organisation. They were told they
+       * were leading something they could not open.
+       *
+       * The participant path has done this correctly for a while; this one and the join flow were
+       * the two that had not. GUEST, never their home role: being an admin of your own company says
+       * nothing about what you should be able to do in somebody else's.
+       */
+      if (isASecondOrganisation(existing.organizationId, organizationId)) {
+        await db.organizationMembership.upsert({
+          where: { userId_organizationId: { userId: existing.id, organizationId } },
+          create: { userId: existing.id, organizationId, role: GUEST_ROLE },
+          /* Nothing on a second one: a role somebody was given here is theirs to keep. */
+          update: {},
+        });
+      }
+
       return {
         id: existing.id,
         isNewUser: false,
