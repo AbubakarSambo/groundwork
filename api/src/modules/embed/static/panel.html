@@ -54,6 +54,61 @@
   var token = decodeURIComponent(location.hash.slice(1));
   history.replaceState(null, '', location.pathname);
 
+  /**
+   * THE SESSION LASTS FIFTEEN MINUTES AND NOTHING USED TO RENEW IT.
+   *
+   * The service's own comment said "refreshed silently by the widget" and the guard's refusal said
+   * "the panel will reconnect", and neither existed: after fifteen minutes every call failed and the
+   * person got "I could not reach the record just then" for good, until somebody reloaded the page
+   * the panel was sitting on. A conversation that stops working mid-sentence, with a sentence that
+   * blames the network.
+   *
+   * Only the host page can get a new one — the session comes from the customer's own signed
+   * identity token, which we cannot ask for from in here. So we ask, and it hands one back.
+   *
+   * ASKED FOR EARLY, and retried once on a refusal. Waiting for the 401 means somebody's message
+   * fails first; asking at twelve minutes means they never notice.
+   */
+  var SESSION_LASTS_MS = 15 * 60 * 1000;
+  var ASK_AFTER_MS = 12 * 60 * 1000;
+  var waitingForSession = null;
+
+  function askForANewSession() {
+    if (waitingForSession) return waitingForSession;
+    send('needs-session');
+    waitingForSession = new Promise(function (resolve) {
+      var done = false;
+      var settle = function (ok) {
+        if (done) return;
+        done = true;
+        waitingForSession = null;
+        resolve(ok);
+      };
+      window.__gwSessionArrived = function () { settle(true); };
+      /* If the host never answers — an old embed.js that does not know the message, or a page that
+         has gone away — stop waiting rather than hanging every call behind it. */
+      setTimeout(function () { settle(false); }, 8000);
+    });
+    return waitingForSession;
+  }
+
+  setInterval(askForANewSession, ASK_AFTER_MS);
+  void SESSION_LASTS_MS;
+
+  /**
+   * Every call to us goes through here, so a session that expired is a pause rather than a dead
+   * panel. One retry: if the new session does not work either, the problem is not the session.
+   */
+  function withSession(run) {
+    return run(token).then(function (r) {
+      if (r.status !== 401) return r;
+      return askForANewSession().then(function (got) {
+        if (!got) return r;
+        return run(token);
+      });
+    });
+  }
+
   var log = document.getElementById('log');
   var form = document.getElementById('form');
   var input = document.getElementById('input');
@@ -104,10 +159,12 @@
 
   function ask(message) {
     bubble('me', message);
-    fetch(API + '/api/org/v1/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-      body: JSON.stringify({ message: message }),
+    withSession(function (t) {
+      return fetch(API + '/api/org/v1/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t },
+        body: JSON.stringify({ message: message }),
+      });
     })
       .then(function (r) { return r.json(); })
       .then(render)
@@ -133,7 +190,9 @@
    * from one route and holds no idea of its own about what is known.
    */
   document.getElementById('seen').addEventListener('click', function () {
-    fetch(API + '/api/org/v1/assistant/what-you-can-see', { headers: { Authorization: 'Bearer ' + token } })
+    withSession(function (t) {
+      return fetch(API + '/api/org/v1/assistant/what-you-can-see', { headers: { Authorization: 'Bearer ' + t } });
+    })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (s) {
         if (!s) { bubble('them', 'I could not read that just then. Try again in a moment.'); return; }
@@ -158,7 +217,12 @@
   /* Two inbound, and neither carries content. */
   window.addEventListener('message', function (e) {
     if (!e.data || e.source !== parent) return;
-    if (e.data.type === 'open') input.focus();
+    if (e.data.type === 'session' && typeof e.data.token === 'string' && e.data.token) {
+      /* Only from the page we are embedded in, checked above. A bogus token from anywhere else
+         would simply fail to authenticate, but there is no reason to hold one. */
+      token = e.data.token;
+      if (window.__gwSessionArrived) window.__gwSessionArrived();
+    } else if (e.data.type === 'open') input.focus();
     else if (e.data.type === 'context' && e.data.subjectExternalId) {
       window.__gwContext = String(e.data.subjectExternalId);
     }

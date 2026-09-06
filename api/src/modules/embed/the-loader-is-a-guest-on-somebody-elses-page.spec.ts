@@ -68,15 +68,26 @@ describe("the loader is a guest on somebody else's page", () => {
   });
 });
 
-describe('three events out, two in, and no content either way', () => {
-  it('sends only ready, resize and closed', () => {
-    const sent = new Set([...code(PANEL).matchAll(/send\('(\w+)'/g)].map((m) => m[1]));
-    expect([...sent].sort()).toEqual(['closed', 'ready', 'resize']);
+describe('four events out, three in, and no content either way', () => {
+  it('sends only ready, resize, closed and a request for a new session', () => {
+    /* `needs-session` carries nothing — it is the panel saying its fifteen minutes are nearly up.
+       Only the host can get another, because the session comes from the customer's own signed
+       identity token, which the panel cannot ask their server for. */
+    const sent = new Set([...code(PANEL).matchAll(/send\('([\w-]+)'/g)].map((m) => m[1]));
+    expect([...sent].sort()).toEqual(['closed', 'needs-session', 'ready', 'resize']);
   });
 
-  it('accepts only open and context', () => {
-    const handled = new Set([...code(PANEL).matchAll(/e\.data\.type === '(\w+)'/g)].map((m) => m[1]));
-    expect([...handled].sort()).toEqual(['context', 'open']);
+  it('accepts only open, context and a session handed back', () => {
+    const handled = new Set([...code(PANEL).matchAll(/e\.data\.type === '([\w-]+)'/g)].map((m) => m[1]));
+    expect([...handled].sort()).toEqual(['context', 'open', 'session']);
+  });
+
+  it('and the loader answers that request by handshaking again, not by inventing a token', () => {
+    const loader = code(LOADER);
+    expect(loader).toMatch(/e\.data\.type === 'needs-session'/);
+    const branch = loader.slice(loader.indexOf("'needs-session'"), loader.indexOf("'closed'"));
+    expect(branch).toContain('handshake()');
+    expect(branch).toContain("type: 'session'");
   });
 
   it('context carries an identifier and never content', () => {
@@ -117,5 +128,56 @@ describe('what a browser fetches is not wrapped in our envelope', () => {
     expect(SRC).toMatch(/embed\\\.js/);
     expect(SRC).toMatch(/embed\\\/panel/);
     expect(SRC).toMatch(/api\\\/org\\\/v1/);
+  });
+});
+
+/**
+ * A PANEL OPEN ALL DAY.
+ *
+ * The session lasts fifteen minutes. The service's comment said the widget refreshed it silently
+ * and the guard's refusal said "the panel will reconnect", and neither existed — so a conversation
+ * stopped working mid-afternoon and blamed the network, until somebody reloaded the host page.
+ */
+describe('a session that is about to run out', () => {
+  const panel = code(PANEL);
+  const loader = code(LOADER);
+
+  it('is asked about before it expires, not after somebody’s message fails', () => {
+    /* Waiting for the 401 means the person loses a turn first. */
+    expect(panel).toMatch(/setInterval\(askForANewSession/);
+    const asked = Number(/ASK_AFTER_MS = (\d+) \* 60 \* 1000/.exec(panel)?.[1]);
+    const lasts = Number(/SESSION_LASTS_MS = (\d+) \* 60 \* 1000/.exec(panel)?.[1]);
+    expect(asked).toBeGreaterThan(0);
+    expect(asked).toBeLessThan(lasts);
+  });
+
+  it('and again when a call comes back 401, once', () => {
+    const fn = panel.slice(panel.indexOf('function withSession'), panel.indexOf('function bubble'));
+    expect(fn).toContain('401');
+    expect(fn).toContain('askForANewSession');
+    /* One retry. If the new session fails too, the problem is not the session. */
+    expect([...fn.matchAll(/run\(token\)/g)]).toHaveLength(2);
+  });
+
+  it('every call to us goes through it, so no call can miss the retry', () => {
+    /* A fetch that reaches for `token` directly is one that dies at fifteen minutes. */
+    const calls = [...panel.matchAll(/fetch\(API \+ '[^']+'/g)].length;
+    const wrapped = [...panel.matchAll(/withSession\(function/g)].length;
+    const opening = [...panel.matchAll(/embed\/opening/g)].length;
+    /* The opening call runs once, at load, on a session seconds old. */
+    expect(wrapped).toBe(calls - opening);
+  });
+
+  it('stops waiting if the host never answers', () => {
+    /* An old loader that does not know the message, or a page that has gone away. Hanging every
+       call behind a promise nobody will resolve is worse than the expiry it replaced. */
+    expect(panel).toMatch(/setTimeout\(function \(\) \{ settle\(false\); \}/);
+  });
+
+  it('and the loader is the only thing that can mint one', () => {
+    /* The session comes from the customer's own signed identity token. The panel has no way to ask
+       their server for one, and must never look as though it does. */
+    expect(panel).not.toMatch(/embed\/session/);
+    expect(loader).toMatch(/embed\/session/);
   });
 });

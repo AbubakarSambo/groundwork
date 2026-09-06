@@ -12,7 +12,15 @@ import {
 } from '../assistant/what-is-worth-saying-when-you-arrive';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
 
-/** Short, and refreshed silently by the widget. A panel open all day re-handshakes, it does not expire on somebody. */
+/**
+ * Short, and refreshed by the widget before it runs out.
+ *
+ * This comment described the refresh for months before one existed: the panel had no timer, no 401
+ * handler and no way to ask for another session, so a panel open all day stopped working after
+ * fifteen minutes and said "I could not reach the record just then" until somebody reloaded the
+ * host page. The panel now asks at twelve minutes, and again if a call comes back 401 — see
+ * `static/panel.html` and the `needs-session` message in `static/embed.js`.
+ */
 const SESSION_TTL_SECONDS = 900;
 
 @Injectable()

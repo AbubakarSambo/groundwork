@@ -105,6 +105,17 @@
       } else if (e.data.type === 'resize' && MODE === 'anchor') {
         var h = Number(e.data.height);
         if (h > 0 && h < 2000) panel.style.height = h + 'px';
+      } else if (e.data.type === 'needs-session') {
+        /* The panel's session is expiring or has expired. Only this side can get another, so it
+           asks and we hand one back — the reconnect two comments used to promise. */
+        handshake()
+          .then(function (session) {
+            if (session && session.sessionToken) post({ type: 'session', token: session.sessionToken });
+          })
+          .catch(function () {
+            /* Silent on a customer's page, as everything here is. The panel says its own sentence
+               when the retry does not arrive. */
+          });
       } else if (e.data.type === 'closed' && MODE === 'floating') {
         open = false;
         panel.style.display = 'none';
@@ -132,24 +143,39 @@
     };
   }
 
-  function start() {
-    identityToken().then(function (token) {
-      if (!token) return;
+  /**
+   * THE HANDSHAKE, WHICH NOW HAPPENS MORE THAN ONCE.
+   *
+   * A panel session lasts fifteen minutes. The comment on it said the widget refreshed it silently
+   * and the guard's own refusal said "the panel will reconnect" — and nothing anywhere did either.
+   * After fifteen minutes every call failed and the person got "I could not reach the record just
+   * then", for good, until somebody reloaded the host page.
+   *
+   * Only this side can do it: the session comes from the customer's own signed identity token, and
+   * the panel cannot ask their server for one. So the panel asks us, and we do this again.
+   */
+  function handshake() {
+    return identityToken().then(function (token) {
+      if (!token) return null;
       return fetch(API + '/api/org/v1/embed/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token }),
+      }).then(function (r) { return r.ok ? r.json() : null; });
+    });
+  }
+
+  function start() {
+    handshake()
+      .then(function (session) {
+        /*
+         * `visible: false` RENDERS NOTHING. Not a disabled launcher, not a message - somebody out
+         * of scope should not learn that there is something they are out of.
+         */
+        if (!session || !session.visible) return;
+        mount(session);
       })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (session) {
-          /*
-           * `visible: false` RENDERS NOTHING. Not a disabled launcher, not a message - somebody out
-           * of scope should not learn that there is something they are out of.
-           */
-          if (!session || !session.visible) return;
-          mount(session);
-        });
-    }).catch(function (err) {
+      .catch(function (err) {
       /*
        * Groundwork being unreachable is not the customer's problem and must not look like one, so
        * this stays silent on their pages.
@@ -162,7 +188,7 @@
       if (script.getAttribute('data-debug') !== null && window.console) {
         console.error('[groundwork] embed failed to start:', err);
       }
-    });
+      });
   }
 
   if (document.readyState === 'loading') {
