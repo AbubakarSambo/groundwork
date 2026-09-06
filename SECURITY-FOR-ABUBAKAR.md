@@ -84,3 +84,41 @@ and until they are rotated the first item on this list is still open.
 
 *Written by Claude, working with Hafsah, 1 September 2026. No values are repeated in this note —
 reading it is not a second disclosure.*
+
+---
+
+## 4. A join link plus any email address is a session as that person
+
+**Found 7 September 2026, during the user-journey audit. Verified by reading the code, not by exploiting it.**
+
+`POST /entry/join-accept` (`api/src/modules/entry/entry.controller.ts:271` → `entry.service.ts:1611`)
+is `@Public()`, takes `{ joinToken, email }`, looks the email up with
+`prisma.user.findUnique({ where: { email } })` — **no organisation scope, no proof
+the caller owns the address** — and returns
+
+```ts
+const accessToken = this.jwt.sign({
+  sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role,
+});
+```
+
+which is a full session as that user, with their role and their organisation.
+
+`POST /entry/join-commit` (`entry.service.ts:1490`) has the same shape.
+
+**What that means.** A join link is a broadcast credential — it is meant to be handed
+to a cohort. Anybody holding one can post the org admin's address and be signed in as
+the org admin. `Ground.joinToken` (`prisma/schema.prisma:784`) never expires, is never
+rotated, and is never consumed.
+
+Neither route is throttled, so the surface is also brute-forceable at the global
+60/min once a join link is known.
+
+Mitigation already in place, and why it is not enough: `grounds.service.ts:1494-1506`
+stopped returning `joinToken` to ordinary participants after a related problem, so only
+org admins can copy the link from the ground page. But the link's whole purpose is to be
+distributed, and every person it is distributed to can do the above.
+
+**Not touched.** Fixing it changes an authentication path and wants a deliberate decision
+about what the join flow is for — most likely: send a magic link to the address instead of
+signing the caller in, and stop reusing an existing account from an unauthenticated body.
