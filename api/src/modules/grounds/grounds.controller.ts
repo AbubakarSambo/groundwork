@@ -254,6 +254,16 @@ export class GroundsController {
     return this.grounds.addLeadContext(id, userId, dto);
   }
 
+  @Patch(':id/chasing')
+  @ApiOperation({ summary: 'Initiator-only: which days this check-in reminds people on, whether it reminds at all, and whether the lead hears who never started' })
+  async setChasing(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { days?: number[]; stopped?: boolean; tellTheLead?: boolean },
+  ) {
+    return this.grounds.setChasing(id, userId, dto ?? {});
+  }
+
   @Post(':id/closing-session')
   @ApiOperation({ summary: "Begin the closing session: flag every participant's next session as final (initiator only)" })
   async beginClosingSession(

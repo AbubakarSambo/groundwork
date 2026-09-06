@@ -3864,6 +3864,56 @@ export class GroundsService {
     return { report, shared: participant.soloArtifactShared };
   }
 
+  /**
+   * THE LEAD'S OWN SCHEDULE FOR CHASING THEIR PEOPLE.
+   *
+   * Initiator only, because the person who is being chased must not be the person
+   * who decides whether the chasing happens — that is the setting turning itself
+   * off. Days are whole days since the check-in opened; an empty list and
+   * `stopped: true` are the same instruction said two ways and both are honoured.
+   */
+  async setChasing(
+    groundId: string,
+    userId: string,
+    dto: { days?: number[]; stopped?: boolean; tellTheLead?: boolean },
+  ): Promise<{ days: number[]; stopped: boolean; tellTheLead: boolean }> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== userId) {
+      throw new ForbiddenException('Only whoever set this check-in up can change how it reminds people.');
+    }
+
+    let days = ground.chaseAfterDays;
+    if (dto.days !== undefined) {
+      /* Whole days, in order, each one only once. A schedule with 3 twice in it
+         nudges twice on day three, and the 24-hour throttle would be the only
+         thing standing between somebody and two identical emails. */
+      if (dto.days.some((d) => !Number.isInteger(d) || d < 1 || d > 365)) {
+        throw new BadRequestException('Reminder days are whole days between 1 and 365.');
+      }
+      days = [...new Set(dto.days)].sort((a, b) => a - b);
+    }
+
+    const updated = await this.prisma.ground.update({
+      where: { id: groundId },
+      data: {
+        chaseAfterDays: days,
+        chasingStopped: dto.stopped ?? ground.chasingStopped,
+        tellTheLead: dto.tellTheLead ?? ground.tellTheLead,
+      },
+      select: { chaseAfterDays: true, chasingStopped: true, tellTheLead: true },
+    });
+
+    return {
+      days: updated.chaseAfterDays,
+      stopped: updated.chasingStopped,
+      tellTheLead: updated.tellTheLead,
+    };
+  }
+
   async setMySoloReportShared(groundId: string, userId: string, shared: boolean): Promise<{ shared: boolean }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId },

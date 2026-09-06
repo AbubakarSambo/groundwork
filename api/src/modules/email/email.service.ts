@@ -403,6 +403,25 @@ export class EmailService {
   }
 
   /** Ground stalled. Timeline elapsed without resolution. Both parties notified. (GW-06) */
+  /**
+   * WHO HAS NOT STARTED, BY NAME, TO THE LEAD.
+   *
+   * The body is composed in `chasing-belongs-to-the-lead.ts` — the names, and the
+   * rule that it is never a count, belong with the decision to send it rather than
+   * with the mail. Here it is only wrapped and posted.
+   */
+  async sendWhoHasNotStarted(email: string, subject: string, text: string): Promise<void> {
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(escaped.split('\n').map((l) => `<p>${l || '&nbsp;'}</p>`).join('')),
+    });
+  }
+
   async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,

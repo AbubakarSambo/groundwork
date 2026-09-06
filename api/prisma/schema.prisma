@@ -676,6 +676,22 @@ model Ground {
   closedAt           DateTime? @map("closed_at")
   pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
 
+  /// WHO CHASES, AND HOW OFTEN, BELONGS TO WHOEVER SET THE WORK UP.
+  ///
+  /// The schedule used to be a constant in the reminder service, which meant every
+  /// ground in every organisation chased on the same three days whatever the work
+  /// was. A fortnightly delivery and a week-long handover are not chased alike, and
+  /// a lead who wants the chasing to stop had nowhere to say so.
+  ///
+  /// Days are counted from when the check-in opened. An empty list is a lead who
+  /// wants nobody nudged; `chasingStopped` is the same answer said explicitly, and
+  /// both are honoured, because a lead who turned it off and got emails anyway is a
+  /// lead who turns the product off.
+  chaseAfterDays  Int[]   @default([3, 7, 14]) @map("chase_after_days")
+  chasingStopped  Boolean @default(false) @map("chasing_stopped")
+  /// Whether the lead hears who has not started once the chasing is done with them.
+  tellTheLead     Boolean @default(true) @map("tell_the_lead")
+
   sessionsBalance            Int      @default(1) @map("sessions_balance")
   // When true (default), participants cannot see each other's email address - only
   // their own. Names, roles, roster and presence stay visible. Initiator-only toggle;
@@ -1038,6 +1054,13 @@ model CheckIn {
 
   @@unique([participantId, sessionNumber])
   @@index([groundId])
+  /// WHEN THE LEAD WAS TOLD THIS ONE NEVER STARTED.
+  ///
+  /// Set once, after the chasing has finished with the person. Without it the
+  /// lead hears the same names every morning, which is the chase moved one person
+  /// along rather than an end to it.
+  leadToldAt DateTime? @map("lead_told_at")
+
   @@map("check_ins")
 }
 
