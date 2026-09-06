@@ -1148,7 +1148,11 @@ export function EntryChatPage() {
         await generateSessionReport(withReply)
       }
     } catch {
-      toast.error('That did not send. What you wrote is still here — try again.')
+      /* Same defect, same shape: the textarea was cleared before the call and the message said
+         otherwise. The turn stays in the history — the server may have taken it — and the words go
+         back where they were typed. */
+      setCorrectionText(text)
+      toast.error('That did not send — what you wrote is back in the box. Try again.')
     } finally {
       setCorrectionLoading(false)
     }
@@ -1281,8 +1285,19 @@ export function EntryChatPage() {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
     } catch {
-      toast.error('That did not send. Your message is still here — try again.')
-      setOnboardingHistory(onboardingHistory) // revert
+      /**
+       * IT SAID THE MESSAGE WAS STILL HERE AND PUT IT NOWHERE.
+       *
+       * The composer was cleared on the way in and the turn was reverted out of the history on the
+       * way out, so the text existed in neither place — and the toast said the opposite, which is
+       * worse than saying nothing: somebody who is told their words are safe does not retype them.
+       *
+       * Put it back where they wrote it. The turn still comes out of the history, because a turn
+       * the server never took is not part of the conversation.
+       */
+      setOnboardingHistory(onboardingHistory)
+      setInput(text.trim())
+      toast.error('That did not send — your message is back in the box. Try again.')
     } finally {
       setOnboardingLoading(false)
     }
@@ -1501,7 +1516,24 @@ export function EntryChatPage() {
         payload: buildCommitPayload(),
         history,
       }))
-    } catch { /* storage full or blocked - the sign-in still works, the ground is re-creatable */ }
+    } catch {
+      /**
+       * STORAGE REFUSING USED TO COST THEM THE CONVERSATION, SILENTLY.
+       *
+       * The comment said "the ground is re-creatable", and then it navigated away regardless — so
+       * in a private window, with a full quota, or in a browser told to block site data, somebody
+       * pressed a button and their whole conversation was gone with no warning. Re-creatable is
+       * true and is not the same as re-created: nobody types twenty minutes of it again.
+       *
+       * We cannot carry it past this page without storage, so the honest thing is to say so and
+       * stay put. The email route works in every one of those browsers, and it is right there.
+       */
+      toast.error(
+        'Nothing has been lost. This browser will not let us hold your conversation while you sign '
+        + 'in with Google — use the email option below and it will be waiting for you.',
+      )
+      return
+    }
     window.location.href = `${API_ORIGIN}/api/v1/auth/google`
   }
 

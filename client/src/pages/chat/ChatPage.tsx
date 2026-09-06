@@ -490,7 +490,20 @@ export function ChatPage() {
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
           if (res.sessionComplete) setDone(true)
         } catch {
-          toast.error('Message failed. Try again.')
+          /**
+           * A MESSAGE THAT NEVER LANDED USED TO STAY ON SCREEN.
+           *
+           * The composer is cleared on the way in, and on a total failure the person's bubble was
+           * left sitting in the transcript — never acknowledged, so never real. It looked sent, the
+           * words were gone from the box, and a reload made the bubble disappear too. Somebody who
+           * reads their own message on screen does not retype it.
+           *
+           * So the bubble comes back out and the words go back where they were written. `started`
+           * is false here, which is what tells us the server took nothing.
+           */
+          setMsgs(v => v.filter(m => m.id !== localId))
+          setInput(message)
+          toast.error('That did not send — your message is back in the box. Try again.')
         }
         setLoading(false)
       } else {

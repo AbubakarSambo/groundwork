@@ -239,8 +239,31 @@ export class AuthService {
     const pending = await this.prisma.pendingSignup.findUnique({ where: { token: dto.token } });
     if (pending) {
       if (pending.expiresAt < new Date()) {
-        await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        throw new BadRequestException('This verification link has expired. Please request a new one.');
+        /**
+         * AN EXPIRED LINK USED TO DESTROY THE WHOLE CONVERSATION.
+         *
+         * The record deleted here is not a token. It is everything somebody did before they gave
+         * us an address: the situation they described, the transcript, the draft ground. Clicking
+         * a day-old link deleted it and said "request a new one" — and the new one rebuilt from an
+         * empty record, so the answer to "did I lose my work" was yes, silently, at the moment
+         * they were trying to come back.
+         *
+         * The link expiring is a fact about the LINK. So the link is replaced and the work is
+         * kept: a new token, a new day, and a new email to the same address — which is not a way in
+         * for anybody else, because it goes where the first one went.
+         */
+        const freshToken = crypto.randomBytes(32).toString('hex');
+        await this.prisma.pendingSignup.update({
+          where: { id: pending.id },
+          data: { token: freshToken, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+        });
+        await this.emailService
+          .sendMagicLinkEmail(pending.email, pending.firstName, freshToken)
+          .catch((err) => this.logger.error(`Could not re-send an expired link to ${pending.email}: ${err?.message}`));
+
+        throw new BadRequestException(
+          'That link had expired, so we have sent a new one to the same address. Nothing you wrote has been lost.',
+        );
       }
 
       // Someone may have signed up by another route in the meantime.
