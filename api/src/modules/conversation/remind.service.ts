@@ -101,7 +101,12 @@ export class RemindService {
         if (hoursSince < 24) continue;
       }
 
-      const checkInUrl = `${frontendUrl}/check-ins/${participant.checkIns[0]?.id ?? ''}`;
+      /* THROUGH THE HELPER, BECAUSE THIS FILE GOT THE PATH WRONG.
+         It hand-built `/check-ins/:id` and the client route is `/checkin/:id`, so every
+         reminder this service has ever sent landed on the not-found page. The helper is
+         the one place that knows, and reaching past it into `frontendUrl` is what let the
+         two drift. */
+      const checkInUrl = this.email.buildCheckInUrl(participant.checkIns[0]?.id ?? '');
       const specificThing = `session ${checkIn.sessionNumber} on "${ground.label}"`;
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
@@ -247,7 +252,7 @@ export class RemindService {
         select: { id: true },
       }).then((r) => r !== null);
 
-      const checkInUrl = `${frontendUrl}/check-ins/${checkIn.id}`;
+      const checkInUrl = this.email.buildCheckInUrl(checkIn.id);
 
       try {
         await this.email.sendNudge(
@@ -275,6 +280,7 @@ export class RemindService {
       if (daysElapsed === 14) {
         try {
           await this.checkAndSendConsecutiveAbsenceReminder(
+            checkInUrl,
             participant.id,
             participant.email,
             participant.user?.firstName ?? participant.email,
@@ -324,6 +330,7 @@ export class RemindService {
    * If missedCount >= 3, sends a sendAbsenceReminder email.
    */
   private async checkAndSendConsecutiveAbsenceReminder(
+    checkInUrl: string,
     participantId: string,
     email: string,
     name: string,
@@ -358,7 +365,7 @@ export class RemindService {
     }
 
     if (consecutiveMissed >= 3) {
-      await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed);
+      await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed, checkInUrl);
       this.logger.warn(
         `Absence reminder sent to participant ${participantId}: ${consecutiveMissed} consecutive missed check-in(s) on "${groundName}"`,
       );

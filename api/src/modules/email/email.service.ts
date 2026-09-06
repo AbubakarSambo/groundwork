@@ -38,6 +38,12 @@ export class EmailService {
     return `${this.frontendUrl}/checkin/${checkInId}`;
   }
 
+  /** Where somebody opens a new one. Here rather than inline, for the same two reasons as
+      above: one place knows the path, and the copy guard reads literals in this file. */
+  buildNewCheckInUrl(): string {
+    return `${this.frontendUrl}/grounds/new`;
+  }
+
   private isDev(): boolean {
     const nodeEnv = process.env.NODE_ENV ?? 'development';
     if (nodeEnv === 'production') return false;
@@ -677,6 +683,15 @@ export class EmailService {
     name: string,
     groundName: string,
     missedCount: number,
+    /**
+     * A WAY BACK IN, WHICH THIS EMAIL DID NOT HAVE.
+     *
+     * It said "sign in to Groundwork to add your version" and carried no link at all — sent
+     * to the one person in the product least likely to find their own way back, after three
+     * missed rounds. Every other reminder carries the check-in; this one asked them to go
+     * and look for it.
+     */
+    checkInUrl: string,
   ): Promise<void> {
     await this.sendEmail({
       to,
@@ -685,7 +700,7 @@ export class EmailService {
         `<p>Hi ${name},</p>
          <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
          <p>Your record is incomplete. The shared picture for this check-in cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
-         <p>Sign in to Groundwork to add your version before the check-in moves on without it.</p>`,
+         <p><a href="${checkInUrl}">Add your version</a></p>`,
       ),
     });
   }
@@ -745,7 +760,7 @@ export class EmailService {
          ${urgencyNote}
          <p>You have used your contributor code (<strong>${code}</strong>) to create one check-in so far. You still have time to create another check-in with it before it expires.</p>
          <p>Every check-in you create is a record that belongs to the people involved - start another before the code runs out.</p>
-         <p><a href="${this.frontendUrl}/check-ins/new">Create another check-in</a></p>`
+         <p><a href="${this.buildNewCheckInUrl()}">Create another check-in</a></p>`
       : `<p>Hi ${firstName},</p>
          ${urgencyNote}
          <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} check-in${groundsCreated !== 1 ? 's' : ''} so far.</p>

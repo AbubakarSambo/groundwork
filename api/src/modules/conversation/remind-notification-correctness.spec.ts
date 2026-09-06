@@ -23,7 +23,13 @@ function makeService(overrides: any = {}) {
       update: jest.fn(async (a: any) => { nudged.push(a.where.id); return {}; }),
     },
   };
-  const email: any = { sendNudge: jest.fn(async (to: string) => { sent.push(to); return {}; }) };
+  const email: any = {
+    sendNudge: jest.fn(async (to: string) => { sent.push(to); return {}; }),
+    /* The real one. The service reaches for the helper now rather than hand-building a path
+       it had been getting wrong — see a-link-in-an-email-has-to-resolve.spec.ts. */
+    buildCheckInUrl: (id: string) => `http://localhost:5173/checkin/${id}`,
+    sendAbsenceReminder: jest.fn(async () => ({})),
+  };
   const service = new RemindService(prisma, email);
   return { service, prisma, email, sent, nudged };
 }
