@@ -26,6 +26,12 @@ import { WhatIsTrueService } from './what-is-true.service';
 import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
 import { EmailService } from '../email/email.service';
 import {
+  whyThereIsNowhereToPutIt,
+  whoTheyMeant,
+  askAgain,
+  whatWasDone,
+} from './a-document-is-private-until-you-say-otherwise';
+import {
   whyThisCannotBeSent,
   askBeforeSending,
   theMail,
@@ -170,6 +176,8 @@ export class AssistantService {
         return this.startACheckIn(organizationId, personId, who);
       case 'send_me_that':
         return this.sendMeThat(organizationId, personId, who);
+      case 'add_a_document':
+        return this.addADocument(organizationId, personId);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -654,6 +662,50 @@ export class AssistantService {
    * sitting in front of them is told there is nothing.
    */
   /**
+   * PUTTING A DOCUMENT IN.
+   *
+   * A chat cannot carry a file, which is why this was on the not-offered list. What it can do is
+   * start it and own the question that matters — who the document is for — and the panel it lives in
+   * has the file picker.
+   *
+   * IT OFFERS, IT DOES NOT UPLOAD. Same shape as everything else that acts: this returns a
+   * `next_step` the panel performs, so a customer whose own application has a place for files can
+   * point at that instead. And the file arrives PRIVATE whatever happens next: the question of who
+   * it is for is asked afterwards, when somebody is actually looking at it, and a conversation
+   * abandoned halfway leaves it seen by nobody but its owner.
+   */
+  private async addADocument(organizationId: string, personId: string): Promise<Reply> {
+    const truth = await this.truth.forPerson(organizationId, personId);
+    if (!truth) {
+      return rules('add_a_document', text('I cannot see you in your organisation records, so I do not know where to put it.'));
+    }
+
+    const open = truth.sessions.value.filter((s) => s.standing === 'open to you');
+    const nowhere = whyThereIsNowhereToPutIt(open.length);
+    if (nowhere) return rules('add_a_document', text(nowhere));
+
+    const [first, ...rest] = open;
+    const also = rest.length
+      ? ` You have ${rest.length === 1 ? 'one other check-in' : `${rest.length} other check-ins`} open — say which if it belongs somewhere else.`
+      : '';
+
+    return rules(
+      'add_a_document',
+      text(
+        `It will go on "${first.label}", and only you will be able to see it until you say otherwise.${also}`,
+      ),
+      {
+        type: 'next_step',
+        label: 'Choose a file',
+        href: '/grounds',
+        kind: 'upload_a_document',
+        id: first.checkInId as string,
+        context: { groundId: first.groundId, label: first.label },
+      },
+    );
+  }
+
+  /**
    * EMAIL ME THAT.
    *
    * The first capability that could not have been a lane in the old sense: it does not answer a
@@ -822,6 +874,16 @@ export class AssistantService {
    * authorisation it had when it was offered, and that is exactly what must not be trusted.
    */
   private async resolveParked(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    /*
+     * A DOCUMENT IS ANSWERED BEFORE THE YES/NO READING, because its question is not a yes/no one.
+     * "Everyone" is not a confirmation and "just me" is not a refusal, and running them through
+     * that reading first would take "no one" as a decline and drop the whole thing — leaving a file
+     * uploaded, private, and nobody told what happened to it.
+     */
+    if (parked.kind === 'document') {
+      return this.resolveParkedDocument(organizationId, who, parked, message);
+    }
+
     const decision = resolveConfirmation(message);
 
     if (decision === 'drop') {
@@ -963,6 +1025,39 @@ export class AssistantService {
    * message fires a write. What differs is only what a yes means, so this branches on `kind` and
    * nowhere else.
    */
+  /**
+   * WHO THE DOCUMENT IS FOR.
+   *
+   * The file is already in and already private. This only ever OPENS it, and only on an answer clear
+   * enough to act on — anything ambiguous asks again rather than guessing, because guessing in the
+   * permissive direction publishes somebody's document to their team and there is no undo for that.
+   *
+   * The proposal stays parked while the answer is unclear, so somebody can say it properly rather
+   * than starting again.
+   */
+  private async resolveParkedDocument(organizationId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const payload = parked.payload as { documentId: string; groundId: string; fileName: string };
+    const meant = whoTheyMeant(message);
+
+    if (meant === null) return rules('add_a_document', text(askAgain()));
+
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: 'ACCEPTED', resolvedAt: new Date() },
+    });
+
+    /* OWN is where it already is. Saying so is not a write — and a write that changes nothing is
+       still a write somebody has to be able to account for. */
+    if (meant !== 'OWN') {
+      await this.prisma.groundDocument.update({
+        where: { id: payload.documentId },
+        data: { visibility: meant },
+      });
+    }
+
+    return rules('add_a_document', text(whatWasDone(payload.fileName, meant)));
+  }
+
   /**
    * SENDING IT, OR NOT.
    *

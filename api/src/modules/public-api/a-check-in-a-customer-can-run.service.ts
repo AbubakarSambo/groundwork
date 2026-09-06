@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
+import { DocumentsService } from '../documents/documents.service';
+import { askWhoItIsFor } from '../assistant/a-document-is-private-until-you-say-otherwise';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
 
 /**
@@ -29,6 +31,7 @@ export class ACheckInACustomerCanRunService {
     private readonly conversation: ConversationService,
     private readonly grounds: GroundsService,
     private readonly truth: WhatIsTrueService,
+    private readonly documents: DocumentsService,
   ) {}
 
   /**
@@ -169,6 +172,60 @@ export class ACheckInACustomerCanRunService {
     if (!ground) throw new NotFoundException('No such check-in in your organisation.');
 
     return this.grounds.confirmLead(groundId, userId, edits);
+  }
+
+  /**
+   * A DOCUMENT, PUT IN FROM THE PANEL.
+   *
+   * The product's own upload route wants a signed-in product user, which a panel session is not —
+   * so this is the same resolution every other check-in route here does, and then the same service.
+   * No second implementation of what a file may be or how big it can get.
+   *
+   * IT ARRIVES PRIVATE. The upload defaults to the uploader alone, and the question of who it is
+   * for is asked afterwards in the conversation. A file that became visible to a team because
+   * somebody walked away mid-sentence is not a mistake anybody can take back.
+   */
+  async putADocumentIn(
+    organizationId: string,
+    personId: string,
+    groundId: string,
+    file: Express.Multer.File,
+    uploaderNote?: string,
+  ) {
+    const userId = await this.actingAs(organizationId, personId);
+
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { id: true },
+    });
+    if (!ground) throw new NotFoundException('No such check-in in your organisation.');
+
+    const document = await this.documents.upload(groundId, userId, file, false, uploaderNote);
+
+    /*
+     * THE QUESTION IS PARKED HERE RATHER THAN LEFT TO THE PANEL.
+     *
+     * So the conversation carries it: the file goes in, the assistant asks who it is for, and the
+     * answer resolves in the same box. A panel that asked on its own would be a second place the
+     * decision could be made, and the two would eventually disagree.
+     */
+    const person = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true },
+    });
+
+    const fileName = file.originalname;
+    await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: person!.externalId,
+        kind: 'document',
+        summary: askWhoItIsFor(fileName),
+        payload: { documentId: (document as { id: string }).id, groundId, fileName } as never,
+      },
+    });
+
+    return { documentId: (document as { id: string }).id, fileName, asks: askWhoItIsFor(fileName) };
   }
 
   async open(organizationId: string, personId: string, checkInId: string) {

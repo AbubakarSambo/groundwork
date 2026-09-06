@@ -73,7 +73,7 @@ function readBlocks(payload: unknown): string {
           const label = typeof b.label === 'string' ? b.label : 'Something to set up'
           /* The two kinds that ACT are handled as buttons below rather than as
              a sentence. Only the page-to-open kind is described in words. */
-          if (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in') return null
+          if (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in' || b.kind === 'upload_a_document') return null
           const href = typeof b.href === 'string' ? b.href : null
           return href ? `${label} — in Groundwork, at ${href}` : label
         }
@@ -112,13 +112,24 @@ function readCheckIn(payload: unknown): string {
  * somebody just asked for, and rendering it as prose ("in Groundwork, at
  * /grounds") would answer a request to start a check-in with directions.
  */
-function actIn(payload: unknown): { kind: string; id: string; label: string } | null {
-  const blocks = (payload as { blocks?: { type?: string; kind?: string; id?: string; label?: string }[] })?.blocks
+function actIn(payload: unknown): { kind: string; id: string; label: string; context?: Record<string, string> } | null {
+  const blocks = (payload as {
+    blocks?: { type?: string; kind?: string; id?: string; label?: string; context?: unknown }[]
+  })?.blocks
   if (!Array.isArray(blocks)) return null
   const step = blocks.find(
-    (b) => b.type === 'next_step' && (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in'),
+    (b) =>
+      b.type === 'next_step'
+      && (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in' || b.kind === 'upload_a_document'),
   )
-  return step?.id && step.kind ? { kind: step.kind, id: step.id, label: step.label ?? 'Do it' } : null
+  return step?.id && step.kind
+    ? {
+        kind: step.kind,
+        id: step.id,
+        label: step.label ?? 'Do it',
+        context: step.context as Record<string, string> | undefined,
+      }
+    : null
 }
 
 type Said = { from: 'us' | 'them'; text: string }
@@ -165,7 +176,8 @@ export function TheAssistantAsACustomerSeesIt() {
   const [inCheckIn, setInCheckIn] = useState<string | null>(null)
   /* What the assistant just offered to do, if anything. One at a time — it
      offers one act, so there is one button. */
-  const [offered, setOffered] = useState<{ kind: string; id: string; label: string } | null>(null)
+  const [offered, setOffered] = useState<{ kind: string; id: string; label: string; context?: Record<string, string> } | null>(null)
+  const filePicker = useRef<HTMLInputElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
   const ready = panel.data?.ready ? panel.data : null
@@ -289,6 +301,38 @@ export function TheAssistantAsACustomerSeesIt() {
        chat that does not follow its own last message looks broken. */
     if (bottom.current) scrollTo(bottom.current)
   }, [said])
+
+  /**
+   * A DOCUMENT, PUT IN FROM HERE.
+   *
+   * The upload carries no visibility. It arrives seen by the uploader alone and
+   * the conversation asks who it is for — so a person who closes this panel
+   * halfway has still done the safe thing.
+   */
+  async function putTheFileIn(groundId: string, file: File) {
+    if (!ready || !session) return
+    setBusy(true)
+    setSaid((s) => [...s, { from: 'us', text: `Adding ${file.name}` }])
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/grounds/${groundId}/documents`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+        body: form,
+      })
+      const body = await res.json().catch(() => null)
+      const drawn = res.ok
+        ? (body?.data ?? body)?.asks ?? 'It is in, and only you can see it.'
+        : body?.message ?? `Groundwork answered ${res.status}.`
+      setSaid((s) => [...s, { from: 'them', text: drawn }])
+    } catch (e) {
+      setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
+    } finally {
+      setBusy(false)
+    }
+  }
 
   /** The named lead reads what was set up for them and starts it. */
   async function startIt(groundId: string) {
@@ -472,6 +516,22 @@ export function TheAssistantAsACustomerSeesIt() {
         {/* WHAT THE ASSISTANT JUST OFFERED TO DO. Said in words above; this is
             the doing of it, so asking to start a check-in starts one rather
             than returning directions to a page. */}
+        {/* THE PICKER. Hidden, because the assistant's offer is the affordance —
+            a file input sitting in a chat window is a form somebody has to
+            interpret. It only ever appears via the button above. */}
+        <input
+          ref={filePicker}
+          type="file"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            const groundId = offered?.context?.groundId
+            e.target.value = ''
+            if (file && groundId) putTheFileIn(groundId, file)
+            setOffered(null)
+          }}
+        />
+
         {offered && (
           <button
             type="button"
@@ -479,6 +539,7 @@ export function TheAssistantAsACustomerSeesIt() {
               const act = offered
               setOffered(null)
               if (act.kind === 'confirm_a_check_in') startIt(act.id)
+              else if (act.kind === 'upload_a_document') filePicker.current?.click()
               else openCheckIn(act.id)
             }}
             disabled={busy}

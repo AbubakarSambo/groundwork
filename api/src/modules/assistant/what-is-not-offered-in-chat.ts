@@ -116,11 +116,6 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
       'Answering a check-in in the same box as the assistant. The panel routes between them today; doing it inside one conversation needs the two never to be confused, which is not a thing to get nearly right.',
   },
   {
-    area: 'documents',
-    why: 'not yet',
-    because: 'Uploading a document by chat needs a file, which a sentence is not. Reading what is in one already works through what the organisation has written down.',
-  },
-  {
     area: 'participants',
     why: 'not yet',
     because:
@@ -158,6 +153,10 @@ export const NOT_OFFERED_AREAS = new Set(NOT_OFFERED_IN_CHAT.map((n) => n.area))
  */
 export const REACHABLE_IN_CHAT: Record<string, string> = {
   grounds: 'start_a_check_in',
+  /* Moved off the not-offered list on 6 September. A chat cannot carry a file;
+     it can start the upload, ask who the document is for, and make the answer
+     stick — which is the part that matters. */
+  documents: 'add_a_document',
   drafts: 'set_an_objective',
   detectors: 'what_should_we_talk_about',
   knowledge: 'how_we_work',

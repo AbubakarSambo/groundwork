@@ -26,6 +26,7 @@ export type Lane =
   | 'set_an_objective'
   | 'start_a_check_in'
   | 'send_me_that'
+  | 'add_a_document'
   | 'unplaced';
 
 export interface Routed {
@@ -49,6 +50,17 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('add_a_document', [
+    /*
+     * ABOVE `send_me_that`, because "send me the handbook" and "add the handbook" are opposite
+     * directions and the send lane owns the word "send". Narrow: it wants a word that names a FILE
+     * or an act of adding one, not any mention of a document.
+     */
+    /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes?)\b/i,
+    /\bhere\s+is\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf|handbook|policy|contract)\b/i,
+    /\bi\s+(?:have|want\s+to\s+(?:add|upload|attach))\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf)\b/i,
+  ]),
+
   rule('send_me_that', [
     /*
      * FIRST, AND ONLY ON SHAPES THAT NAME SENDING.

@@ -76,7 +76,7 @@ export interface NextStepBlock {
    * doing something different with each: one opens their own setup screen, the
    * other two call a route.
    */
-  kind: 'set_up_a_check_in' | 'confirm_a_check_in' | 'open_a_check_in';
+  kind: 'set_up_a_check_in' | 'confirm_a_check_in' | 'open_a_check_in' | 'upload_a_document';
   /** The record it acts on, for the two kinds that act on one. */
   id?: string;
   /** Carried so a customer's setup screen can prefill what we already know. */

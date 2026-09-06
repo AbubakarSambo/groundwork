@@ -54,6 +54,15 @@ export interface Capability {
  */
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
+    key: 'add_a_document',
+    does: 'Put a document into a check-in, and say who it is for',
+    writes: 'after you confirm it',
+    ordered:
+      'Above the sending lane: "send me the handbook" and "add the handbook" are opposite directions, and that lane owns the word "send".',
+    owns: ['upload a document', 'add our handbook', 'here is our policy', 'attach a file'],
+    refuses: ['email me that', 'what did we agree'],
+  },
+  {
     key: 'send_me_that',
     does: 'Email you what I just told you, to you and nobody else',
     writes: 'after you confirm it',

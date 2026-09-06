@@ -85,6 +85,12 @@ const PANEL_AUTHENTICATED = [
   "@Post('check-ins/:id/complete')",
   "@Get('check-ins/:id/transcript')",
   /*
+   * A DOCUMENT IS ONE PERSON PUTTING SOMETHING INTO THEIR OWN CHECK-IN, and it arrives visible to
+   * them alone. A machine credential doing it would be an organisation's server adding evidence in
+   * somebody's name to a session that is theirs.
+   */
+  "@Post('grounds/:groundId/documents')",
+  /*
    * Deciding a suggested conversation is the one thing in this product that a machine must NOT be
    * able to do. "Detection is a proposal, never a launch" is only true while the acceptance needs a
    * person, and a machine token carries an organisation and nobody in particular - so a server-to-

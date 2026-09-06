@@ -113,6 +113,19 @@ describe('the assistant panel', () => {
     expect(CODE).toMatch(/openCheckIn\(act\.id\)/)
   })
 
+  it('puts a document in through the published route, and carries no visibility', () => {
+    /**
+     * IT ARRIVES PRIVATE. The upload sends a file and nothing about who may read
+     * it — the conversation asks afterwards. A panel that could set visibility on
+     * the way in would be a second place that decision is made, and the two would
+     * eventually disagree.
+     */
+    expect(CODE).toMatch(/grounds\/\$\{groundId\}\/documents/)
+    const upload = CODE.slice(CODE.indexOf('async function putTheFileIn'), CODE.indexOf('async function startIt'))
+    expect(upload.length).toBeGreaterThan(200)
+    expect(upload).not.toMatch(/visibility|OPEN|CLOSED|'OWN'/)
+  })
+
   it('never reaches into the product', () => {
     /* An import from modules/embed, or from anywhere in the API, is the panel
        marking its own homework. */
