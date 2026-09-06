@@ -14,6 +14,7 @@ import { subjectsFrom, objectivesFrom } from './what-we-send-to-groundwork';
 
 const objective = {
   id: 'o1',
+  ownerId: 'person-1',
   title: 'Ten companies onboarded',
   keyResults: [
     {
@@ -29,6 +30,28 @@ const objective = {
     },
   ],
 };
+
+describe('who an objective belongs to', () => {
+  /**
+   * WE PUSHED OBJECTIVES THAT BELONGED TO NOBODY, for months.
+   *
+   * `ownerExternalId` was never sent, so "what am I on" answered "nothing your
+   * organisation has sent us lists you as an owner or contributor on" to
+   * everybody — correctly. It reads as a person having no work. It was every
+   * objective having no person.
+   */
+  it('is sent, so somebody can be told what they are on', () => {
+    const [subject] = subjectsFrom([objective], () => 'sahar');
+    expect(subject.ownerExternalId).toBe('sahar');
+  });
+
+  it('and is left off rather than guessed when we cannot resolve them', () => {
+    /* An objective attributed to the wrong person is worse than one attributed
+       to nobody, because it is believed. */
+    const [subject] = subjectsFrom([objective], () => null);
+    expect(subject.ownerExternalId).toBeUndefined();
+  });
+});
 
 describe('what we send', () => {
   it('carries why the number matters and how it will be moved', () => {
@@ -51,5 +74,31 @@ describe('what we send', () => {
     const [sent] = objectivesFrom([objective]);
     expect(sent.target).toBe('10');
     expect(sent.measure).toBe('companies');
+  });
+});
+
+describe('the idempotency key', () => {
+  const { fingerprint } = require('./what-we-send-to-groundwork');
+
+  it('changes when the content changes, so an enriched payload is a new write', () => {
+    /**
+     * IT WAS THE SUBJECT'S ID ALONE, so the first push of an objective set the
+     * key and every later push with anything changed was refused 409 — "already
+     * used with a different request body". Found the day owners started being
+     * sent: five objectives unchanged, one now owned, and that one refused.
+     *
+     * Which is the API being right. A key promises "this exact write, once".
+     */
+    const before = fingerprint({ externalId: 'kr1', title: 'A number' });
+    const after = fingerprint({ externalId: 'kr1', title: 'A number', ownerExternalId: 'sahar' });
+    expect(after).not.toBe(before);
+  });
+
+  it('and does not change when the same thing is sent twice', () => {
+    const a = fingerprint({ externalId: 'kr1', title: 'A number', ownerExternalId: 'sahar' });
+    const b = fingerprint({ ownerExternalId: 'sahar', externalId: 'kr1', title: 'A number' });
+    /* Two objects with the same fields in a different order are the same write,
+       and JSON.stringify does not think so. */
+    expect(a).toBe(b);
   });
 });

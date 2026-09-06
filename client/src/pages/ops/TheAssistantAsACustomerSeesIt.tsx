@@ -58,12 +58,78 @@ function readBlocks(payload: unknown): string {
   if (Array.isArray(blocks)) {
     /* `body` is what the typed blocks carry; `text` is checked too rather than
        assumed, because a block the panel cannot read must not render as JSON. */
-    const said = blocks.map((b) => b.body ?? b.text).filter(Boolean)
+    const said = blocks
+      .map((b) => {
+        /*
+         * A `next_step` HAS NEITHER, and dropping it silently loses the only
+         * actionable part of the reply. It is deliberately not a link: the href
+         * is a path inside the Groundwork product, and this panel is what a
+         * customer embeds in their own page — following it there would take
+         * somebody out of their own system, which is the thing the block shape
+         * exists to let them avoid. A real customer routes `kind` into their own
+         * setup screen; we say where ours is.
+         */
+        if (b.type === 'next_step') {
+          const label = typeof b.label === 'string' ? b.label : 'Something to set up'
+          /* The two kinds that ACT are handled as buttons below rather than as
+             a sentence. Only the page-to-open kind is described in words. */
+          if (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in' || b.kind === 'upload_a_document') return null
+          const href = typeof b.href === 'string' ? b.href : null
+          return href ? `${label} — in Groundwork, at ${href}` : label
+        }
+        return b.body ?? b.text
+      })
+      .filter((t): t is string => Boolean(t))
     if (said.length) return said.join('\n\n')
   }
 
   const reply = payload as { reply?: string; message?: string }
   return reply?.reply ?? reply?.message ?? 'Groundwork answered in a shape this panel does not know how to draw.'
+}
+
+/**
+ * A CHECK-IN ANSWERS IN A DIFFERENT SHAPE FROM THE ASSISTANT, AND THAT IS FINE.
+ *
+ * The assistant returns typed blocks; the conversation returns `{ reply }`. Two
+ * shapes rather than one is a fact about the contract, and a customer writing
+ * this meets both — so the panel reads both rather than pretending they are the
+ * same. `sessionComplete` rides along on the reply that finishes a session, and
+ * it is worth saying out loud: somebody who has finished should not be left
+ * looking at a box wondering whether it took.
+ */
+function readCheckIn(payload: unknown): string {
+  const body = payload as { reply?: string; sessionComplete?: boolean } | null
+  if (!body?.reply) return 'Groundwork answered in a shape this panel does not know how to draw.'
+  return body.sessionComplete
+    ? `${body.reply}\n\nThat is your check-in done. What you said is released with everybody else's, not before.`
+    : body.reply
+}
+
+/**
+ * AN ACT THE ASSISTANT OFFERED, PULLED OUT OF THE REPLY.
+ *
+ * A `next_step` of these two kinds is not a sentence to read — it is the thing
+ * somebody just asked for, and rendering it as prose ("in Groundwork, at
+ * /grounds") would answer a request to start a check-in with directions.
+ */
+function actIn(payload: unknown): { kind: string; id: string; label: string; context?: Record<string, string> } | null {
+  const blocks = (payload as {
+    blocks?: { type?: string; kind?: string; id?: string; label?: string; context?: unknown }[]
+  })?.blocks
+  if (!Array.isArray(blocks)) return null
+  const step = blocks.find(
+    (b) =>
+      b.type === 'next_step'
+      && (b.kind === 'confirm_a_check_in' || b.kind === 'open_a_check_in' || b.kind === 'upload_a_document'),
+  )
+  return step?.id && step.kind
+    ? {
+        kind: step.kind,
+        id: step.id,
+        label: step.label ?? 'Do it',
+        context: step.context as Record<string, string> | undefined,
+      }
+    : null
 }
 
 type Said = { from: 'us' | 'them'; text: string }
@@ -86,18 +152,67 @@ export function TheAssistantAsACustomerSeesIt() {
   const [typing, setTyping] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
+
+  /**
+   * A CHECK-IN WAITING, AND WHETHER WE ARE IN ONE.
+   *
+   * The panel proved the assistant and stopped there, which left the acceptance
+   * test half done: the assistant is the help, and the CHECK-IN is the product.
+   * A customer who can only chat has not been sold what we sell.
+   *
+   * `inCheckIn` also decides where typing goes, and that is not cosmetic. A
+   * check-in answer routed to the assistant is lost from the record it was meant
+   * for, and an assistant question routed into a check-in becomes part of
+   * somebody's account of their quarter. The two must never share a box without
+   * the box knowing which it is.
+   */
+  const [waiting, setWaiting] = useState<{ checkInId: string; ground: { label: string } }[]>([])
+  /* A session that exists and cannot be opened yet. Kept apart from `waiting`
+     because showing them together produces a button that refuses. */
+  const [unaccepted, setUnaccepted] = useState<{ ground: { label: string }; says: string }[]>([])
+  /* Set up for this person and not started. Until it is confirmed nothing
+     happens on it — no session opens and nobody is asked anything. */
+  const [toStart, setToStart] = useState<{ groundId: string; label: string; brief: string | null; says: string }[]>([])
+  const [inCheckIn, setInCheckIn] = useState<string | null>(null)
+  /* What the assistant just offered to do, if anything. One at a time — it
+     offers one act, so there is one button. */
+  const [offered, setOffered] = useState<{ kind: string; id: string; label: string; context?: Record<string, string> } | null>(null)
+  const filePicker = useRef<HTMLInputElement>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
   const ready = panel.data?.ready ? panel.data : null
+  /* A STABLE THING TO DEPEND ON. `ready` is rebuilt on every render, so an
+     effect keyed on it re-runs on every render and cancels its own work. */
+  const readyToken = ready?.token ?? null
+  const started = useRef(false)
 
-  /* The handshake, exactly as a customer's widget makes it on every load. */
+  /**
+   * The handshake, exactly as a customer's widget makes it on every load.
+   *
+   * THE EFFECT USED TO CANCEL ITSELF HALFWAY THROUGH, and the panel's greeting
+   * has never once been drawn because of it.
+   *
+   * It depended on `session`, and it SETS `session` in the middle: storing the
+   * token re-runs the effect, React runs the previous run's cleanup, the cleanup
+   * sets `cancelled`, and the run still in flight returns at its next check —
+   * which sits between fetching the opening and rendering it. Every request
+   * before that point succeeded, so the network tab looked perfect and the box
+   * stayed empty.
+   *
+   * Keyed on the token and guarded by a ref instead: the handshake runs once per
+   * token, and setting state during it cannot interrupt it.
+   */
   useEffect(() => {
-    if (!ready || session) return
+    if (!readyToken || !ready || started.current) return
+    started.current = true
+    /* Captured, so the whole handshake uses the values it started with rather
+       than whatever a later render happens to be holding. */
+    const base = ready.baseUrl
     let cancelled = false
     ;(async () => {
       setProblem('')
       try {
-        const res = await fetch(`${ready.baseUrl}/api/org/v1/embed/session`, {
+        const res = await fetch(`${base}/api/org/v1/embed/session`, {
           method: 'POST',
           credentials: 'omit',
           headers: { 'Content-Type': 'application/json' },
@@ -139,7 +254,7 @@ export function TheAssistantAsACustomerSeesIt() {
         }
         setSession(token)
 
-        const opening = await fetch(`${ready.baseUrl}/api/org/v1/embed/opening`, {
+        const opening = await fetch(`${base}/api/org/v1/embed/opening`, {
           credentials: 'omit',
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -149,6 +264,29 @@ export function TheAssistantAsACustomerSeesIt() {
           const text = readBlocks(drawn.data ?? drawn)
           if (text) setSaid([{ from: 'them', text }])
         }
+
+        /* What is waiting for this person, on the same session. A customer's
+           page has a person, not a check-in id, so this is the route without
+           which none of the others can be reached. */
+        const mine = await fetch(`${base}/api/org/v1/check-ins/mine`, {
+          credentials: 'omit',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const list = await mine.json().catch(() => null)
+        if (cancelled) return
+        if (mine.ok) {
+          const mineBody = list?.data ?? list
+          setWaiting(mineBody?.waiting ?? [])
+          setUnaccepted(mineBody?.invitationNotAccepted ?? [])
+        }
+
+        const awaiting = await fetch(`${base}/api/org/v1/grounds/awaiting-me`, {
+          credentials: 'omit',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const pending = await awaiting.json().catch(() => null)
+        if (cancelled) return
+        if (awaiting.ok) setToStart((pending?.data ?? pending) ?? [])
       } catch (e) {
         if (!cancelled) setProblem((e as Error).message)
       }
@@ -156,13 +294,96 @@ export function TheAssistantAsACustomerSeesIt() {
     return () => {
       cancelled = true
     }
-  }, [ready, session])
+  }, [readyToken])
 
   useEffect(() => {
     /* The app's own scroll, not the raw call: smooth is not guaranteed, and a
        chat that does not follow its own last message looks broken. */
     if (bottom.current) scrollTo(bottom.current)
   }, [said])
+
+  /**
+   * A DOCUMENT, PUT IN FROM HERE.
+   *
+   * The upload carries no visibility. It arrives seen by the uploader alone and
+   * the conversation asks who it is for — so a person who closes this panel
+   * halfway has still done the safe thing.
+   */
+  async function putTheFileIn(groundId: string, file: File) {
+    if (!ready || !session) return
+    setBusy(true)
+    setSaid((s) => [...s, { from: 'us', text: `Adding ${file.name}` }])
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/grounds/${groundId}/documents`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+        body: form,
+      })
+      const body = await res.json().catch(() => null)
+      const drawn = res.ok
+        ? (body?.data ?? body)?.asks ?? 'It is in, and only you can see it.'
+        : body?.message ?? `Groundwork answered ${res.status}.`
+      setSaid((s) => [...s, { from: 'them', text: drawn }])
+    } catch (e) {
+      setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** The named lead reads what was set up for them and starts it. */
+  async function startIt(groundId: string) {
+    if (!ready || !session) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/grounds/${groundId}/confirm-lead`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify({}),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        setSaid((s) => [...s, { from: 'them', text: body?.message ?? `Groundwork answered ${res.status}.` }])
+        return
+      }
+      setToStart((t) => t.filter((g) => g.groundId !== groundId))
+      setSaid((s) => [...s, { from: 'them', text: 'Started. Everybody on it will be asked separately, and what they say is released together.' }])
+    } catch (e) {
+      setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Open the one waiting, and draw its first question. */
+  async function openCheckIn(checkInId: string) {
+    if (!ready || !session) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${checkInId}/open`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        setSaid((s) => [...s, { from: 'them', text: body?.message ?? `Groundwork answered ${res.status}.` }])
+        return
+      }
+      setInCheckIn(checkInId)
+      setWaiting((w) => w.filter((c) => c.checkInId !== checkInId))
+      const asked = readCheckIn(body?.data ?? body)
+      if (asked) setSaid((s) => [...s, { from: 'them', text: asked }])
+    } catch (e) {
+      setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function send() {
     const message = typing.trim()
@@ -171,17 +392,31 @@ export function TheAssistantAsACustomerSeesIt() {
     setSaid((s) => [...s, { from: 'us', text: message }])
     setBusy(true)
     try {
-      const res = await fetch(`${ready.baseUrl}/api/org/v1/chat`, {
+      /* WHERE THIS GOES IS DECIDED BY WHICH THING WE ARE IN, never by what was
+         typed. A check-in answer sent to the assistant is lost from the record
+         it was meant for. */
+      const res = inCheckIn
+        ? await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${inCheckIn}/messages`, {
+            method: 'POST',
+            credentials: 'omit',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+            body: JSON.stringify({ content: message }),
+          })
+        : await fetch(`${ready.baseUrl}/api/org/v1/chat`, {
         method: 'POST',
         credentials: 'omit',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
         body: JSON.stringify({ message }),
       })
       const body = await res.json().catch(() => null)
-      setSaid((s) => [
-        ...s,
-        { from: 'them', text: res.ok ? readBlocks(body?.data ?? body) : body?.message ?? `Groundwork answered ${res.status}.` },
-      ])
+      const drawn = res.ok
+        ? inCheckIn
+          ? readCheckIn(body?.data ?? body)
+          : readBlocks(body?.data ?? body)
+        : body?.message ?? `Groundwork answered ${res.status}.`
+      setSaid((s) => [...s, { from: 'them', text: drawn }])
+      /* Cleared first, so an old offer cannot sit under a new answer. */
+      setOffered(res.ok && !inCheckIn ? actIn(body?.data ?? body) : null)
     } catch (e) {
       setSaid((s) => [...s, { from: 'them', text: (e as Error).message }])
     } finally {
@@ -273,6 +508,148 @@ export function TheAssistantAsACustomerSeesIt() {
         )}
 
         {problem && <p style={{ fontSize: 13, color: 'var(--gw-red-t)', lineHeight: 1.6 }}>{problem}</p>}
+
+        {/* WHAT IS WAITING, OFFERED RATHER THAN OPENED. The panel does not put
+            somebody into a check-in because they opened a chat window — a
+            session is ten minutes of their attention and starting one for them
+            is the product deciding how they spend it. */}
+        {/* WHAT THE ASSISTANT JUST OFFERED TO DO. Said in words above; this is
+            the doing of it, so asking to start a check-in starts one rather
+            than returning directions to a page. */}
+        {/* THE PICKER. Hidden, because the assistant's offer is the affordance —
+            a file input sitting in a chat window is a form somebody has to
+            interpret. It only ever appears via the button above. */}
+        <input
+          ref={filePicker}
+          type="file"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            const groundId = offered?.context?.groundId
+            e.target.value = ''
+            if (file && groundId) putTheFileIn(groundId, file)
+            setOffered(null)
+          }}
+        />
+
+        {offered && (
+          <button
+            type="button"
+            onClick={() => {
+              const act = offered
+              setOffered(null)
+              if (act.kind === 'confirm_a_check_in') startIt(act.id)
+              else if (act.kind === 'upload_a_document') filePicker.current?.click()
+              else openCheckIn(act.id)
+            }}
+            disabled={busy}
+            style={{
+              alignSelf: 'flex-start',
+              fontSize: 12.5,
+              padding: '5px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--gw-border)',
+              background: 'var(--gw-card)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {offered.label}
+          </button>
+        )}
+
+        {/* SET UP FOR THEM AND NOT STARTED. The brief is somebody else's words
+            about their work, and it is the thing being agreed to — so it is
+            shown, not summarised. */}
+        {toStart.map((g) => (
+          <div
+            key={g.groundId}
+            style={{
+              border: '1px solid var(--gw-border)',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            <strong>{g.label}</strong>
+            <div style={{ color: 'var(--gw-sub)' }}>{g.says}</div>
+            {g.brief && (
+              <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{g.brief}</div>
+            )}
+            <button
+              type="button"
+              onClick={() => startIt(g.groundId)}
+              disabled={busy}
+              style={{
+                marginTop: 8,
+                fontSize: 12.5,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--gw-border)',
+                background: 'var(--gw-card)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Start it
+            </button>
+          </div>
+        ))}
+
+        {/* A SESSION THAT EXISTS AND IS NOT THEIRS TO OPEN YET. Drawn, because a
+            person shown an empty list concludes the product has nothing for
+            them — the opposite of true, and the harder mistake to recover
+            from. No button: accepting an invitation is how somebody agrees to
+            take part, and it is not this panel's to do for them. */}
+        {unaccepted.map((c, i) => (
+          <div
+            key={i}
+            style={{
+              border: '1px solid var(--gw-border)',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+              color: 'var(--gw-sub)',
+            }}
+          >
+            <strong style={{ color: 'var(--gw-text)' }}>{c.ground?.label ?? 'A piece of work'}</strong>
+            <div>{c.says}</div>
+          </div>
+        ))}
+
+        {waiting.map((c) => (
+          <div
+            key={c.checkInId}
+            style={{
+              border: '1px solid var(--gw-border)',
+              borderRadius: 10,
+              padding: '10px 12px',
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            You have a check-in waiting on {c.ground?.label ?? 'a piece of work'}.
+            <button
+              type="button"
+              onClick={() => openCheckIn(c.checkInId)}
+              disabled={busy}
+              style={{
+                marginLeft: 8,
+                fontSize: 12.5,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: '1px solid var(--gw-border)',
+                background: 'var(--gw-card)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Open it
+            </button>
+          </div>
+        ))}
 
         {said.map((s, i) => (
           <div

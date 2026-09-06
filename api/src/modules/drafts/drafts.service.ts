@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { DraftParticipantState } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   whatToAskForNext,
@@ -287,6 +288,35 @@ export class DraftsService {
     const unjustified = whyThisIsNotReadyToSeed(draft);
     if (unjustified) throw new BadRequestException(unjustified);
 
+    /*
+     * THE PEOPLE WHO AGREED IT ARE THE CONTRIBUTORS, AND THE SEED WAS DROPPING THEM.
+     *
+     * A draft exists because several people worked out an objective together. It seeded an owner and
+     * nobody else, so the objective arrived looking like one person's — losing the one fact that
+     * makes a drafted objective different from an assigned one.
+     *
+     * It also broke the step after this without either being obviously connected: the suggestion
+     * that proposes a check-in about new work requires TWO OR MORE contributors, so an objective
+     * six people agreed could never produce one. "Once we have objectives, check in on them" was
+     * failing on an empty array.
+     *
+     * RESPONDED ONLY, and the enum is why this is written positively rather than as "not invited".
+     * DECLINED is a first-class state here — saying no is an answer — and it is also not INVITED, so
+     * excluding silence by exclusion would have recorded everybody who refused this objective as a
+     * contributor to it. Naming the one state that means agreement is the only version of this that
+     * cannot go wrong when a fourth state is added.
+     */
+    const contributors = await this.prisma.draftParticipant.findMany({
+      where: { draftId, state: DraftParticipantState.RESPONDED },
+      select: { personExternalId: true },
+    });
+    const contributorExternalIds = [
+      ...new Set([
+        draft.initiatorExternalId,
+        ...contributors.map((c) => c.personExternalId),
+      ]),
+    ].filter((id) => id !== (draft.proposedOwnerExternalId ?? draft.initiatorExternalId));
+
     const subject = await this.prisma.subject.upsert({
       where: { organizationId_sourceSystem_externalId: { organizationId, sourceSystem, externalId } },
       create: {
@@ -300,6 +330,7 @@ export class DraftsService {
         justification: draft.proposedJustification,
         approach: draft.proposedApproach,
         ownerExternalId: draft.proposedOwnerExternalId ?? draft.initiatorExternalId,
+        contributorExternalIds,
         parentExternalId: draft.parentSubjectExternalId,
         /*
          * `self` rather than `imported`. Everybody on this draft was demonstrably in the
@@ -312,6 +343,7 @@ export class DraftsService {
       update: {
         title: draft.workingTitle, measure: draft.proposedMeasure, target: draft.proposedTarget,
         justification: draft.proposedJustification, approach: draft.proposedApproach,
+        contributorExternalIds,
         authoredBy: 'self',
       },
     });

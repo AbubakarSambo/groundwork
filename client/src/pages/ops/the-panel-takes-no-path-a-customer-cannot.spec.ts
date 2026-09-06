@@ -36,6 +36,96 @@ describe('the assistant panel', () => {
     expect(chat).toBeGreaterThan(opening)
   })
 
+  it('runs a check-in, not only a chat', () => {
+    /**
+     * THE HALF THAT WAS MISSING, AND THE HALF THAT IS THE PRODUCT.
+     *
+     * The assistant is the help; the CHECK-IN is what we sell. A panel that can
+     * only chat proves the easier half of the claim and leaves the acceptance
+     * test looking finished — which is worse than leaving it obviously undone.
+     *
+     * Same rule as everything else here: through the published routes, on the
+     * panel session, exactly as a stranger would.
+     */
+    expect(CODE).toContain('/api/org/v1/check-ins/mine')
+    expect(CODE).toMatch(/check-ins\/\$\{[a-zA-Z.]+\}\/open/)
+    expect(CODE).toMatch(/check-ins\/\$\{[a-zA-Z]+\}\/messages/)
+  })
+
+  it('and never sends a check-in answer to the assistant', () => {
+    /*
+     * WHERE TYPING GOES IS DECIDED BY WHICH THING WE ARE IN, never by what was
+     * typed. An answer routed to the assistant is lost from the record it was
+     * meant for, and a question routed into a check-in becomes part of
+     * somebody's account of their quarter. Both are silent.
+     */
+    /* Tied to the ROUTE, not just to the name. The first version asserted that
+       `inCheckIn ?` appeared somewhere, which stayed true after replacing the
+       whole condition with `false` — the name is used in three other places. */
+    expect(CODE).toMatch(
+      /inCheckIn[\s\S]{0,40}\?[\s\S]{0,200}check-ins\/\$\{inCheckIn\}\/messages/,
+    )
+  })
+
+  it('offers a waiting check-in rather than opening one', () => {
+    /* Ten minutes of somebody's attention is not the product's to spend because
+       they opened a chat window. */
+    /*
+     * SAYS WHAT IT MEANS, after two versions that did not.
+     *
+     * The first asserted that no `useEffect` sat within 200 characters of
+     * `openCheckIn` — it fired on the unrelated scroll effect. The second
+     * counted call sites and demanded exactly two, so adding a legitimate
+     * second caller broke it. Both were proxies for one rule: nothing opens a
+     * check-in without somebody pressing something.
+     */
+    expect(CODE).toMatch(/onClick=\{\(\) => openCheckIn\(c\.checkInId\)\}/)
+
+    const handshake = CODE.slice(CODE.indexOf('useEffect'), CODE.indexOf('}, [readyToken])'))
+    expect(handshake).not.toMatch(/openCheckIn\(|startIt\(/)
+  })
+
+  it('does not cancel its own handshake', () => {
+    /**
+     * IT DID, AND THE GREETING HAD NEVER ONCE BEEN DRAWN.
+     *
+     * The effect depended on `session` and SET `session` halfway through. Storing
+     * the token re-ran the effect, React ran the previous run's cleanup, the
+     * cleanup set `cancelled`, and the run still in flight returned at its next
+     * check — which sits between fetching the opening and rendering it.
+     *
+     * Every request before that point succeeded, so the network tab looked
+     * perfect and the box stayed empty. Only opening it found it.
+     */
+    expect(CODE).toMatch(/\}, \[readyToken\]\)/)
+    expect(CODE).not.toMatch(/\}, \[ready, session\]\)/)
+  })
+
+  it('does what the assistant offered, rather than describing it', () => {
+    /**
+     * Asking to start a check-in must start one. Rendering the offer as prose
+     * ("in Groundwork, at /grounds") answers a request to do something with
+     * directions to somewhere else — which is the same failure as the path in
+     * prose, one turn later.
+     */
+    expect(CODE).toMatch(/confirm_a_check_in/)
+    expect(CODE).toMatch(/startIt\(act\.id\)/)
+    expect(CODE).toMatch(/openCheckIn\(act\.id\)/)
+  })
+
+  it('puts a document in through the published route, and carries no visibility', () => {
+    /**
+     * IT ARRIVES PRIVATE. The upload sends a file and nothing about who may read
+     * it — the conversation asks afterwards. A panel that could set visibility on
+     * the way in would be a second place that decision is made, and the two would
+     * eventually disagree.
+     */
+    expect(CODE).toMatch(/grounds\/\$\{groundId\}\/documents/)
+    const upload = CODE.slice(CODE.indexOf('async function putTheFileIn'), CODE.indexOf('async function startIt'))
+    expect(upload.length).toBeGreaterThan(200)
+    expect(upload).not.toMatch(/visibility|OPEN|CLOSED|'OWN'/)
+  })
+
   it('never reaches into the product', () => {
     /* An import from modules/embed, or from anywhere in the API, is the panel
        marking its own homework. */

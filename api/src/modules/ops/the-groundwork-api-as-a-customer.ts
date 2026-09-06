@@ -164,6 +164,17 @@ export class GroundworkApiClient {
     return this.send('/subjects', 'POST', subject, idempotencyKey);
   }
 
+  /**
+   * WHAT THE COMPANY DECIDED, AS CARDS.
+   *
+   * One at a time rather than in a batch: a decision that will not go through
+   * should be named in the result, and a batch that half-succeeds tells you a
+   * number. The volume is five or six, so there is nothing to save.
+   */
+  pushCard(cardIn: object) {
+    return this.send('/knowledge/cards', 'POST', cardIn);
+  }
+
   pushEvidence(evidence: object[]) {
     return this.send('/evidence', 'PUT', { evidence });
   }

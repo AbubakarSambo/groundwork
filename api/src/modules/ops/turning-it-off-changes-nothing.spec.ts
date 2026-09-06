@@ -272,6 +272,15 @@ describe('a 200 is not the same as something happening', () => {
       opsActivity: { findMany: async () => [] },
       opsPerson: { findMany: async () => [] },
       opsGrant: { findFirst: async () => ({ person: { key: 'hafsah' } }) },
+      /* WHAT THE COMPANY DECIDED, which the push now sends before the objectives.
+         Empty here on purpose: this spec is about what happens when evidence does
+         not land, and a company with nothing written down must still be able to
+         push. An empty set produces no cards and no noise. */
+      opsProductStatement: { findFirst: async () => null },
+      opsMoatComponent: { findMany: async () => [] },
+      opsPhase: { findMany: async () => [] },
+      opsFreeze: { findFirst: async () => null },
+      opsResource: { findMany: async () => [] },
     };
 
     const intent = {
@@ -295,11 +304,22 @@ describe('a 200 is not the same as something happening', () => {
     };
 
     const service = new OpsIntegrationService(prisma, intent);
-    // Stand in for the network: the token, the subject, then the evidence.
+    /*
+     * Stand in for the network: the token, the subject, the objectives, ONE CARD,
+     * then the evidence.
+     *
+     * The card is not optional and that is why it is here. Everything the company
+     * decided is read from our tables and this fake has none of it — but what a
+     * piece of work has to serve is a CONSTANT, read from the enum so the card
+     * cannot drift from the rule, so it sends whether or not anybody has written
+     * anything down. Leaving it out shifted every later reply by one and the
+     * evidence answered with the wrong body.
+     */
     const replies = [
       { status: 200, body: { access_token: 't', expires_in: 900, scope: '' } },
       { status: 201, body: { externalId: 'kr1' } },
       { status: 200, body: { seeded: [{ externalId: 'kr1' }] } },
+      { status: 200, body: { key: 'what-work-can-serve' } },
       { status: 200, body: evidenceBody },
     ];
     /**

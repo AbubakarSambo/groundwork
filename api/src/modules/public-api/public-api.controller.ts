@@ -1,4 +1,6 @@
 import {
+  UseInterceptors,
+  UploadedFile,
   Controller, Post, Get, Put, Patch, Delete, Body, Param, Query, Headers, Req,
   UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
@@ -24,6 +26,7 @@ import { GroundsByApiService } from './grounds-by-api.service';
 import { RoundDigestService } from '../email/round-digest.service';
 import { resolveReferences } from '../people/an-unresolved-reference-is-a-fact';
 import { WhatHappenedWithACustomerService } from './what-happened-with-a-customer.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DraftsService } from '../drafts/drafts.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
@@ -586,6 +589,40 @@ export class PublicApiController {
     return this.checkIns.whatIsWaitingFor(req.panel.organizationId, req.panel.personId);
   }
 
+  /**
+   * WHAT IS WAITING ON THIS PERSON TO START, as the named lead.
+   *
+   * A ground created through this API sits at AWAITING_LEAD until the person it
+   * was set up for has read the context and said yes. There was no way to do
+   * that here, so a customer could create a ground from their own system and the
+   * lead had to log into ours to start it.
+   */
+  @Get('grounds/awaiting-me')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Check-ins set up for this person that have not started yet' })
+  async awaitingMe(@Req() req: { panel: PanelCaller }) {
+    return this.checkIns.whatIsWaitingOnYouToStart(req.panel.organizationId, req.panel.personId);
+  }
+
+  /**
+   * The named lead confirms it, and only then does it begin.
+   *
+   * Panel-authenticated. A machine credential doing this would be a customer's
+   * server deciding on somebody's behalf that they have read the context and
+   * agree with it, which is the one thing this step exists to prevent.
+   */
+  @Post('grounds/:id/confirm-lead')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'The named lead reads what was set up for them and starts it' })
+  async confirmLead(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @Body() dto: { brief?: string; managingOnly?: boolean; remit?: string },
+  ) {
+    return this.checkIns.confirmAsLead(req.panel.organizationId, req.panel.personId, id, dto ?? {});
+  }
+
   /** Open one. Returns the opening question. */
   @Post('check-ins/:id/open')
   @HttpCode(200)
@@ -616,6 +653,33 @@ export class PublicApiController {
   @ApiOperation({ summary: 'Finish a check-in' })
   async completeCheckIn(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
     return this.checkIns.complete(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /**
+   * PUT A DOCUMENT IN, FROM THE PANEL.
+   *
+   * It arrives private — visible to the uploader alone — and the conversation asks who it is for
+   * afterwards. Opening it to a team is a thing somebody says, never a default.
+   */
+  @Post('grounds/:groundId/documents')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Add a document to a check-in. It arrives private.' })
+  async putADocumentIn(
+    @Req() req: { panel: PanelCaller },
+    @Param('groundId') groundId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { uploaderNote?: string },
+  ) {
+    if (!file) throw new BadRequestException('No file was sent.');
+    return this.checkIns.putADocumentIn(
+      req.panel.organizationId,
+      req.panel.personId,
+      groundId,
+      file,
+      body?.uploaderNote,
+    );
   }
 
   /** Their own transcript, and never anybody else's. */

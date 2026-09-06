@@ -31,8 +31,11 @@ import { CheckinsController } from '../detectors/checkins.controller';
 import { DraftsController } from '../drafts/drafts.controller';
 import { DraftsService } from '../drafts/drafts.service';
 import { ApiAccessService } from './api-access.service';
+import { WhatIsTrueService } from '../assistant/what-is-true.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { ConversationModule } from '../conversation/conversation.module';
+import { EmailModule } from '../email/email.module';
+import { DocumentsModule } from '../documents/documents.module';
 import { RolesService } from '../detectors/roles-and-their-action.service';
 import { DetectorsService } from '../detectors/detectors.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
@@ -51,13 +54,17 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
        has ten dependencies and listing it here would drag every one of them into
        this module, which is a wiring fault only starting the server reveals. */
     ConversationModule,
+    /* The assistant can send what it says. Imported rather than re-provided, like
+       the others: EmailService has its own dependency chain. */
+    EmailModule,
+    DocumentsModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService, WhatIsTrueService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}
