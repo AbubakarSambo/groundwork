@@ -37,7 +37,7 @@ function makeService(prismaOverrides: any) {
    * report names anyone who declined the round, which reads `getSessionProgress`. Returning null is the
    * honest default for these fixtures: no round in progress, so nobody declined.
    */
-  return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE, { getSessionProgress: jest.fn(async () => null) } as any);
+  return new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, MOCK_USAGE, { getSessionProgress: jest.fn(async () => null) } as any, { tell: async () => [] } as any);
 }
 
 const releasedReport = {

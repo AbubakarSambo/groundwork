@@ -24,6 +24,7 @@ import { AnthropicService } from '../conversation';
 import { EmailService } from '../email/email.service';
 import { UsageService } from '../usage/usage.service';
 import { GroundsService } from '../grounds';
+import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
@@ -326,6 +327,7 @@ export class ReportsService {
     private config: ConfigService,
     private usage: UsageService,
     private grounds: GroundsService,
+    private workspace: WorkspaceNotifierService,
   ) {}
 
   /**
@@ -2082,6 +2084,19 @@ happened, and what is in the way.`;
     const emailResults = await Promise.allSettled(
       ground.participants.map((p) => this.email.sendReportReady(p.email, ground.label, reportUrl)),
     );
+    /*
+     * AND THE CHANNEL, IF THERE IS ONE.
+     *
+     * After the emails and outside the failure count on purpose: nobody's report
+     * is unreleased because a customer's Slack channel was archived. The notice
+     * says a report is ready and links to it — never what is in it, because a
+     * channel is read by more people than a check-in. See
+     * `what-a-channel-may-be-told.ts`.
+     */
+    await this.workspace
+      .tell(ground.organizationId, { what: 'a report is ready', about: ground.label, link: reportUrl })
+      .catch((err) => this.logger.warn(`Workspace notice failed for ground ${groundId}: ${err?.message}`));
+
     const failures = emailResults.filter((r) => r.status === 'rejected');
     if (failures.length) {
       failures.forEach((r) => this.logger.error(`Report release email failed for ground ${groundId}: ${(r as PromiseRejectedResult).reason}`));

@@ -90,7 +90,7 @@ function makeService(overrides: {
     }),
   };
 
-  const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, {} as any, {} as any);
+  const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, {} as any, {} as any, { tell: async () => [] } as any);
   return {
     service,
     getCorpus: () => capturedCorpus,

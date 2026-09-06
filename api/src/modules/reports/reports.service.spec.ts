@@ -15,7 +15,7 @@ describe('ReportsService.release - org scoping (GW-02)', () => {
     };
     const email: any = { sendReportReady: jest.fn(async () => undefined) };
     const config: any = { get: () => 'http://localhost:5173' };
-    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, {} as any, { tell: async () => [] } as any);
     return { service, prisma, email };
   }
 
@@ -98,7 +98,7 @@ describe('ReportsService.synthesize - promptVersionId stamping (GW-41)', () => {
       })),
     };
 
-    const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any, { tell: async () => [] } as any);
     await service.synthesize('g1');
 
     expect(prompts.getActive).toHaveBeenCalledWith('report_synthesis');

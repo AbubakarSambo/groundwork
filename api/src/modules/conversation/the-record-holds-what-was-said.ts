@@ -132,9 +132,8 @@ export function namesWorthReporting(reply: string, personSaid: string[]): string
  * alone, which at least makes the rate knowable.
  */
 export function truncationsOfTheirWords(reply: string, personSaid: string[]): string[] {
-  const said = new Set(
-    (personSaid.join(' ').toLowerCase().match(/[a-z][a-z0-9'-]*/g) ?? []).filter((w) => w.length >= 8),
-  );
+  const words: string[] = personSaid.join(' ').toLowerCase().match(/[a-z][a-z0-9'-]*/g) ?? [];
+  const said = new Set(words.filter((w) => w.length >= 8));
   if (!said.size) return [];
 
   const out = new Set<string>();

@@ -314,6 +314,46 @@ enum ApiAccessStatus {
   WITHDRAWN
 }
 
+/// WHERE AN ORGANISATION WANTS TO BE TOLD THINGS, OUTSIDE THIS PRODUCT.
+///
+/// Slack first, Teams next: both accept a posted payload at a URL somebody in the customer's
+/// workspace creates, so neither needs us to be an installed app before it is useful. The URL is
+/// a secret — anybody holding it can post into that channel — so it is never returned by any read.
+model WorkspaceNotifier {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// Which workspace this posts into. The payload shape differs; nothing else does.
+  kind WorkspaceKind
+
+  /// The incoming-webhook address. Write-only: no route returns it.
+  url String
+
+  /// Said by the person who set it up, so a channel can be recognised later without opening Slack.
+  channelSaid String? @map("channel_said")
+
+  /// Off until somebody turns it on. A notifier that starts posting the moment a URL is pasted
+  /// posts into a channel nobody has told yet.
+  enabled Boolean @default(false)
+
+  lastPostedAt DateTime? @map("last_posted_at")
+  /// Why the last post failed, or null. Kept so a dead channel is visible without reading logs.
+  lastError    String?   @map("last_error")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, kind])
+  @@map("workspace_notifiers")
+}
+
+enum WorkspaceKind {
+  SLACK
+  TEAMS
+}
+
 model Organization {
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
@@ -417,6 +457,7 @@ model Organization {
   knowledgeProposals KnowledgeProposal[]
   callRequests       CallRequest[]
 
+  workspaceNotifiers WorkspaceNotifier[]
   @@map("organizations")
 }
 
