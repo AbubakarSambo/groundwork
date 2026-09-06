@@ -167,7 +167,10 @@ export class EntryController {
    * ground name, cadence, contributors) that previously lived only in
    * localStorage and were lost when the magic link opened elsewhere. */
   @Public()
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  /* `global`, not `default`: the throttler is registered under the name `global`
+     in app.module.ts, and a limit named for a throttler that does not exist is a
+     silent no-op — this route was falling back to the plain 60/min. */
+  @Throttle({ global: { limit: 30, ttl: 60_000 } })
   @Patch('draft')
   async patchDraft(@Body() body: { draftToken: string; payload: Record<string, any> }) {
     return this.service.patchDraft(body.draftToken, body.payload);
@@ -250,24 +253,13 @@ export class EntryCommitController {
     return this.service.joinPreview(token);
   }
 
+  /**
+   * ASKING TO JOIN. This does not sign anybody in — see
+   * `a-join-link-is-not-a-password.ts`. Throttled because it sends mail to an
+   * address the caller chose.
+   */
   @Public()
-  @Post('join-commit')
-  async joinCommit(@Body() dto: {
-    joinToken: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    roleAsDescribed?: string;
-    history: { role: 'user' | 'assistant'; content: string }[];
-    report?: any;
-  }) {
-    return this.service.joinCommit(dto);
-  }
-
-  // ONE PATH: sign in against a broadcast join link and land in the real engine.
-  // Public: the joining cohort member is unauthenticated - the join link is the
-  // credential (like join-preview / join-commit above).
-  @Public()
+  @Throttle({ global: { limit: 5, ttl: 60000 } })
   @Post('join-accept')
   async joinAccept(@Body() dto: {
     joinToken: string;
@@ -276,6 +268,14 @@ export class EntryCommitController {
     lastName?: string;
     roleAsDescribed?: string;
   }) {
-    return this.service.joinAccept(dto);
+    return this.service.askToJoin(dto);
+  }
+
+  /** The address answered. This is the one that creates anything. */
+  @Public()
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
+  @Post('join-confirm')
+  async joinConfirm(@Body() dto: { token: string }) {
+    return this.service.joinConfirm(dto?.token);
   }
 }

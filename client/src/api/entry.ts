@@ -171,21 +171,11 @@ export const joinApi = {
       { params: { t: token } },
     ).then(r => r.data),
 
-  commit: (payload: {
-    joinToken: string
-    firstName?: string
-    lastName?: string
-    email?: string
-    roleAsDescribed?: string
-    history: ChatTurn[]
-    report?: EntryReport | null
-  }) =>
-    apiClient.post<{ groundId: string; accessToken?: string; userId?: string }>(
-      '/entry/join-commit',
-      payload,
-    ).then(r => r.data),
-
-  // ONE PATH: sign in against the join link and land in the real engine.
+  /**
+   * ASKING TO JOIN. This does not sign anybody in and never did anything else
+   * safely: it used to hand back a session as whoever the typed address belonged
+   * to. It now sends a link and says so.
+   */
   accept: (payload: {
     joinToken: string
     email: string
@@ -193,8 +183,15 @@ export const joinApi = {
     lastName?: string
     roleAsDescribed?: string
   }) =>
-    apiClient.post<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }>(
+    apiClient.post<{ sent: true; to: string; says: string }>(
       '/entry/join-accept',
       payload,
+    ).then(r => r.data),
+
+  /** The address answered. This is the call that creates anything. */
+  confirm: (token: string) =>
+    apiClient.post<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }>(
+      '/entry/join-confirm',
+      { token },
     ).then(r => r.data),
 }

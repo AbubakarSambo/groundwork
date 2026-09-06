@@ -119,6 +119,21 @@ stopped returning `joinToken` to ordinary participants after a related problem, 
 org admins can copy the link from the ground page. But the link's whole purpose is to be
 distributed, and every person it is distributed to can do the above.
 
-**Not touched.** Fixing it changes an authentication path and wants a deliberate decision
-about what the join flow is for — most likely: send a magic link to the address instead of
-signing the caller in, and stop reusing an existing account from an unauthenticated body.
+**FIXED, 7 September 2026**, on Hafsah's instruction, and driven against the running server.
+
+`/entry/join-commit` is **deleted** — nothing called it, the orphan list had already asked
+somebody to confirm that before deleting, and it carried the same hole.
+
+`/entry/join-accept` no longer signs anybody in. It records a `PendingJoin`, emails a
+single-use 24-hour link to the address that was typed, and answers with the same sentence
+whether or not that address has an account here. `POST /entry/join-confirm` is the only
+route that now creates an account, a participant, a check-in or a session, and it runs only
+because the address opened the link.
+
+The rule is not softer for an address nobody has seen before: typing a colleague's address
+would otherwise produce a check-in in their name — a false record, which is worse than
+access to an old one. See `api/src/modules/entry/a-join-link-is-not-a-password.ts`.
+
+Driven: posting the admin's address returns `sent: true` with no token and creates nothing;
+the emailed link works once and then says so; a made-up token is refused with what to do
+next. Both routes are now throttled.

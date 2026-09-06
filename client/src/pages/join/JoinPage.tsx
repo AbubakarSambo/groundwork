@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
-import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 
-type Phase = 'loading' | 'start' | 'error'
+type Phase = 'loading' | 'start' | 'sent' | 'error'
 
 /**
  * Broadcast join landing. ONE PATH: joining signs the person in against the
@@ -19,9 +18,7 @@ type Phase = 'loading' | 'start' | 'error'
  */
 export function JoinPage() {
   const [params] = useSearchParams()
-  const navigate = useNavigate()
   const joinToken = params.get('t') ?? ''
-  const setAuth = useAuthStore(s => s.setAuth)
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [ground, setGround] = useState<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string } | null>(null)
@@ -39,6 +36,18 @@ export function JoinPage() {
       .catch(() => setPhase('error'))
   }, [joinToken])
 
+  const [sentTo, setSentTo] = useState('')
+  const [sentSays, setSentSays] = useState('')
+
+  /**
+   * ASKING TO JOIN, WHICH IS NOT THE SAME AS JOINING.
+   *
+   * This used to hand back a session and navigate straight into a check-in. What
+   * it was really doing was signing the caller in as whoever the typed address
+   * belonged to — a join link is shared with a whole cohort, so anybody with it
+   * could type the admin's address. Now the address gets a link and the link does
+   * the work.
+   */
   async function join() {
     if (!email.trim().includes('@') || joining) return
     setJoining(true)
@@ -50,17 +59,12 @@ export function JoinPage() {
         lastName: lastName.trim() || undefined,
         roleAsDescribed: role.trim() || undefined,
       })
-      setAuth(
-        { id: res.userId, email: email.trim(), firstName: firstName.trim() || email.split('@')[0], lastName: lastName.trim(), role: 'MEMBER', organizationId: '' },
-        res.accessToken,
-      )
-      if (res.existingAccount) toast.info(`Welcome back - continuing as ${email.trim()}`)
-      navigate(`/checkin/${res.checkInId}`, {
-        state: { groundId: res.groundId, sessionNumber: 1, groundLabel: ground?.groundLabel },
-        replace: true,
-      })
+      setSentTo(res.to)
+      setSentSays(res.says)
+      setPhase('sent')
     } catch {
-      toast.error('Could not start your session. Please try again.')
+      toast.error('Could not send your link — nobody has been emailed and nothing was added. Try again.')
+    } finally {
       setJoining(false)
     }
   }
@@ -68,6 +72,27 @@ export function JoinPage() {
   if (phase === 'loading') return <Shell><div style={{ textAlign: 'center', color: 'var(--gw-muted)', fontSize: 13 }}>Loading…</div></Shell>
   // Was a red tick, one sentence and nothing to press. W8-62.
   if (phase === 'error' || !ground) return <Shell><LinkProblem kind="join" /></Shell>
+
+  if (phase === 'sent') return (
+    <Shell>
+      <h1 className="gw-ttl">Check your email</h1>
+      {/* The same words whether or not that address has an account here — a
+          different sentence for each would turn this form into a way of asking
+          whether somebody is registered. */}
+      <div className="gw-sub-t" style={{ marginTop: 10 }}>{sentSays}</div>
+      <div style={{ marginTop: 18, fontSize: 13, color: 'var(--gw-muted)' }}>
+        Sent to <strong>{sentTo}</strong>.
+      </div>
+      <button
+        type="button"
+        className="gw-btn-ghost"
+        style={{ marginTop: 18 }}
+        onClick={() => setPhase('start')}
+      >
+        Use a different address
+      </button>
+    </Shell>
+  )
 
   return (
     <Shell>

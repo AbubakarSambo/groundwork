@@ -542,6 +542,36 @@ model User {
 // pending signup is not yet a member of anything.
 //
 // See GW-001 in journey/run18/ISSUES-LOG.md.
+/// SOMEBODY ASKING TO JOIN A CHECK-IN FROM A BROADCAST LINK, BEFORE THEY HAVE PROVED THE ADDRESS.
+///
+/// A join link proves you were given a link. It does not prove you own the address you typed into
+/// the form — and the old flow signed you straight in as whoever that address belonged to, which
+/// meant everybody holding the link could become the admin. Nothing is created now until the
+/// address answers: no account, no participant, no check-in, no session. See
+/// `entry/a-join-link-is-not-a-password.ts`.
+model PendingJoin {
+  id        String @id @default(uuid())
+  /// The link they arrived on.
+  joinToken String @map("join_token")
+  /// The address they typed. Lower-cased. Unproven until this row is used.
+  email     String
+
+  /// What they told us about themselves, kept until the address answers for it.
+  firstName       String? @map("first_name")
+  lastName        String? @map("last_name")
+  roleAsDescribed String? @map("role_as_described")
+
+  /// The secret in the emailed link. Single use.
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([joinToken, email])
+  @@map("pending_joins")
+}
+
 model PendingSignup {
   id           String   @id @default(uuid())
   email        String   @unique

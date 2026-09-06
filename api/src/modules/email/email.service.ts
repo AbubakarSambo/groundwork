@@ -422,6 +422,27 @@ export class EmailService {
     });
   }
 
+  /**
+   * THE LINK THAT TURNS ASKING TO JOIN INTO JOINING.
+   *
+   * Deliberately says nothing about whether that address already has an account
+   * here — the asking page says the same sentence either way, and an email that
+   * said "welcome back" would put the difference back.
+   */
+  async sendJoinConfirmation(email: string, token: string): Promise<void> {
+    const url = `${this.frontendUrl}/join/confirm?token=${token}`;
+    await this.sendEmail({
+      to: email,
+      subject: 'Your Groundwork check-in',
+      html: this.layout(
+        `<p>Somebody shared a Groundwork check-in with you and this address was entered to join it.</p>
+         <p>Opening the link below starts your check-in. It lasts 24 hours and works once.</p>
+         <p><a href="${url}">Start my check-in</a></p>
+         <p style="color:#6B6560;font-size:13px;">If you did not ask for this, nothing has been created and you can ignore it.</p>`,
+      ),
+    });
+  }
+
   async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
