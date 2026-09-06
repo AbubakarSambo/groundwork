@@ -29,8 +29,16 @@ export function isReallyFromGroundwork(
   if (!header) return { ok: false, because: 'no signature header' };
 
   const t = /(?:^|,)t=(\d+)/.exec(header)?.[1];
-  const v1 = /(?:^|,)v1=([a-f0-9]+)/.exec(header)?.[1];
-  if (!t || !v1) return { ok: false, because: 'signature header is not in the documented shape' };
+  /*
+   * EVERY `v1`, BECAUSE A ROTATION SENDS TWO.
+   *
+   * This read the first and only the first, so the day the product rotated its signing secret this
+   * back office would have started refusing its own deliveries — half the time, depending on which
+   * signature happened to come first. That is the whole reason this system runs on the product: a
+   * receiver we wrote, failing the way a customer's would.
+   */
+  const offered = [...header.matchAll(/(?:^|,)v1=([a-f0-9]+)/g)].map((m) => m[1]);
+  if (!t || offered.length === 0) return { ok: false, because: 'signature header is not in the documented shape' };
 
   const age = Math.abs(Math.floor(now.getTime() / 1000) - Number(t));
   if (age > TOLERANCE_SECONDS) return { ok: false, because: `signed ${age} seconds ago, outside the window` };
@@ -43,8 +51,11 @@ export function isReallyFromGroundwork(
    * time.
    */
   const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(v1, 'hex');
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, because: 'signature does not match' };
+  const matched = offered.some((v1) => {
+    const b = Buffer.from(v1, 'hex');
+    return a.length === b.length && timingSafeEqual(a, b);
+  });
+  if (!matched) return { ok: false, because: 'signature does not match' };
 
   return { ok: true };
 }

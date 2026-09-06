@@ -2,7 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { WebhookDeliveryStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { newSecret, sign, nextAttemptAfter, SIGNATURE_HEADER, TIMESTAMP_HEADER, EVENT_ID_HEADER } from './how-a-receiver-knows-it-was-us';
+import { newSecret, signWithBoth, nextAttemptAfter, SIGNATURE_HEADER, TIMESTAMP_HEADER, EVENT_ID_HEADER } from './how-a-receiver-knows-it-was-us';
 import { validateEvents, SENDABLE_EVENTS } from './events-we-can-actually-send';
 
 /** Somebody else's error page can be a megabyte of HTML. */
@@ -229,7 +229,13 @@ export class WebhooksService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          [SIGNATURE_HEADER]: sign(body, d.endpoint.secret, timestamp),
+          /* Both secrets while a rotation is in flight — see `signWithBoth`. Signing with the
+             current one alone is what made the advertised grace period a fiction. */
+          [SIGNATURE_HEADER]: signWithBoth(
+            body,
+            { current: d.endpoint.secret, previous: d.endpoint.previousSecret },
+            timestamp,
+          ),
           [TIMESTAMP_HEADER]: String(timestamp),
           [EVENT_ID_HEADER]: d.eventId,
         },

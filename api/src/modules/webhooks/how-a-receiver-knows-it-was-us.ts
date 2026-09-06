@@ -26,22 +26,56 @@ export function sign(rawBody: string, secret: string, timestampSeconds: number):
 }
 
 /**
+ * SIGNED WITH BOTH SECRETS WHILE A ROTATION IS IN FLIGHT.
+ *
+ * `rotateSecret` has always stored the old secret and answered
+ * `previousSecretAcceptedUntilNextRotation: true`, and nothing anywhere read that column. Every
+ * delivery after a rotation was signed with the new secret alone, so a receiver still holding the
+ * old one failed verification on the very next event — the exact outage the grace period exists to
+ * prevent, promised in the API's own response.
+ *
+ * Two `v1` values, oldest last, which is the shape Stripe made ordinary: a receiver that checks
+ * whether ANY `v1` matches passes throughout the rotation, and one that only reads the first still
+ * works the moment it has the new secret.
+ */
+export function signWithBoth(
+  rawBody: string,
+  secrets: { current: string; previous?: string | null },
+  timestampSeconds: number,
+): string {
+  const mac = (secret: string) =>
+    createHmac('sha256', secret).update(`${timestampSeconds}.${rawBody}`).digest('hex');
+
+  const values = [mac(secrets.current)];
+  /* Never twice, and never an empty one: a header carrying the same signature twice tells a
+     receiver nothing and looks like a bug in ours. */
+  if (secrets.previous && secrets.previous !== secrets.current) values.push(mac(secrets.previous));
+
+  return `t=${timestampSeconds},${values.map((v) => `v1=${v}`).join(',')}`;
+}
+
+/**
  * Provided so the documentation can show a receiver exactly how to check, and so the test suite
  * verifies against the same code a customer would write rather than against itself.
  */
 export function verify(rawBody: string, header: string, secret: string, toleranceSeconds = 300, now = new Date()): boolean {
   const t = /(?:^|,)t=(\d+)/.exec(header)?.[1];
-  const v1 = /(?:^|,)v1=([a-f0-9]+)/.exec(header)?.[1];
-  if (!t || !v1) return false;
+  /* EVERY `v1`, not the first. During a rotation the header carries two, and a receiver that
+     read only one would pass or fail depending on which secret it happened to hold — which is
+     the outage the grace period is for, moved into the documentation we hand people. */
+  const offered = [...header.matchAll(/(?:^|,)v1=([a-f0-9]+)/g)].map((m) => m[1]);
+  if (!t || offered.length === 0) return false;
 
   const age = Math.abs(Math.floor(now.getTime() / 1000) - Number(t));
   if (age > toleranceSeconds) return false;
 
   const expected = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
-  /* Constant time, so the comparison does not leak the signature one byte at a time. */
   const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(v1, 'hex');
-  return a.length === b.length && timingSafeEqual(a, b);
+  return offered.some((v1) => {
+    /* Constant time, so the comparison does not leak the signature one byte at a time. */
+    const b = Buffer.from(v1, 'hex');
+    return a.length === b.length && timingSafeEqual(a, b);
+  });
 }
 
 /**

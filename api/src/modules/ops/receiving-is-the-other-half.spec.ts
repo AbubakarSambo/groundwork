@@ -20,6 +20,24 @@ const signedNow = (raw = body, at = new Date(), secret = SECRET) => {
   return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${raw}`).digest('hex')}`;
 };
 
+/**
+ * A ROTATION SENDS TWO SIGNATURES, and this receiver read the first one only — so the day the
+ * product rotated its secret, our own back office would have started refusing its own deliveries.
+ */
+describe('a signing secret being rotated', () => {
+  it('accepts a delivery signed with both the old secret and the new one', () => {
+    const body = JSON.stringify({ kind: 'round.completed', payload: {} });
+    const t = Math.floor(Date.now() / 1000);
+    const mac = (secret: string) =>
+      require('crypto').createHmac('sha256', secret).update(`${t}.${body}`).digest('hex');
+    const header = `t=${t},v1=${mac('the-new-one')},v1=${mac('the-one-we-hold')}`;
+
+    expect(isReallyFromGroundwork(body, header, 'the-one-we-hold')).toEqual({ ok: true });
+    expect(isReallyFromGroundwork(body, header, 'the-new-one')).toEqual({ ok: true });
+    expect(isReallyFromGroundwork(body, header, 'never-ours').ok).toBe(false);
+  });
+});
+
 describe('checking it really came from Groundwork', () => {
   it('accepts a correctly signed delivery', () => {
     expect(isReallyFromGroundwork(body, signedNow(), SECRET)).toEqual({ ok: true });
