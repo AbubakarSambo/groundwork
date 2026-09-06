@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
 import { opsApi } from '@/api/ops'
-import { pagesFor, GROUPS } from './what-you-can-open'
+import { pagesFor, whyThisIsNotYours, GROUPS } from './what-you-can-open'
 import { useAuthStore } from '@/stores/auth'
 import { TheAssistantAsACustomerSeesIt } from './TheAssistantAsACustomerSeesIt'
 
@@ -28,6 +29,38 @@ export const LABEL: React.CSSProperties = {
   letterSpacing: '.08em',
 }
 
+
+/**
+ * WHAT DID NOT LOAD, WHICH THE BACK OFFICE HAS NEVER SAID.
+ *
+ * Every ops call is QUIET — it suppresses its own forbidden, not-found and server-error toasts —
+ * and React Query leaves `data` undefined on an error exactly as it does while pending. So
+ * `OpsTable` renders "Working it out…" and keeps rendering it, for good, on a 403 or a 500. The
+ * two most common failures in this system were invisible by construction.
+ *
+ * Watching the cache rather than each call site: there are dozens of queries across seventeen
+ * pages, and a rule every one of them has to remember is a rule that lasts until the next page.
+ */
+function useWhatDidNotLoad(): { failed: number; retry: () => void } {
+  const client = useQueryClient()
+  const [failed, setFailed] = useState(0)
+
+  useEffect(() => {
+    const count = () =>
+      client
+        .getQueryCache()
+        .findAll({ predicate: (q) => q.state.status === 'error' && q.queryKey[0] === 'ops' }).length
+    setFailed(count())
+    return client.getQueryCache().subscribe(() => setFailed(count()))
+  }, [client])
+
+  return {
+    failed,
+    retry: () =>
+      client.refetchQueries({ predicate: (q) => q.state.status === 'error' && q.queryKey[0] === 'ops' }),
+  }
+}
+
 export function OpsLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isPlatformAdmin = useAuthStore(state => state.user?.isPlatformAdmin)
@@ -36,6 +69,10 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const signedInAs = useAuthStore(state => state.user?.email)
   const logout = useAuthStore(state => state.logout)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  /* ABOVE EVERY EARLY RETURN. Called after them it is a conditional hook: the refusal path renders
+     fewer hooks than the ordinary one and React throws, which is how a guard for one silent
+     failure produced a louder one. */
+  const didNotLoad = useWhatDidNotLoad()
 
   if (me.isError) {
     return (
@@ -103,6 +140,50 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
 
   const mine = pagesFor(me.data?.capabilities ?? [])
 
+  /**
+   * WHILE WE DO NOT YET KNOW WHO THIS IS, SHOW NOTHING RATHER THAN NOTHING-YOU-CAN-DO.
+   *
+   * `me` in flight means `capabilities` is undefined, which read as "holds nothing": the nav drew
+   * itself as the smallest possible back office and the page under it rendered against permissions
+   * nobody had checked, then both popped into place a beat later. Every load flickered somebody's
+   * standing at them.
+   */
+  if (me.isPending) {
+    return (
+      <main id="main" style={{ padding: 40 }}>
+        <p style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening the back office…</p>
+      </main>
+    )
+  }
+
+  /**
+   * AND THE ROUTES ARE GUARDED BY THE SAME LIST THE NAV IS BUILT FROM.
+   *
+   * Thirty-one routes were bare `RequireAuth`, so anybody with an ops identity who typed an
+   * address got the whole page — forms included — and only the writes refused, silently, because
+   * every ops call suppresses its own toast. Here rather than on each route because every ops page
+   * already comes through this layout, and a per-route list is a second list to drift.
+   */
+  const notYours = whyThisIsNotYours(location.pathname, me.data?.capabilities ?? [])
+  if (notYours) {
+    return (
+      <main id="main" style={{ padding: 40, maxWidth: 620 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 8 }}>That part is not yours to open</h1>
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
+          {notYours.because === 'no capability'
+            ? 'There is no such page in the back office.'
+            : <>Opening <strong>{notYours.page}</strong> needs <code>{notYours.because}</code>, which you do not hold.</>}
+        </p>
+        {/* A setting, not a judgement — and the person who can change it, because a refusal with
+            no next step reads as the product being broken. */}
+        <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
+          This is how your grants are set, not anything about you. Whoever runs the back office can change it.
+        </p>
+        <a className="gw-btn" href="/ops" style={{ textDecoration: 'none' }}>Back to your board</a>
+      </main>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
       <nav
@@ -164,7 +245,37 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
       {/* THE WAY BACK, WHICH THERE WAS NOT.
           Three surfaces — the app, the platform console, this — and from here
           the only route to either was typing a URL. */}
-      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {didNotLoad.failed > 0 && (
+          <div
+            role="status"
+            style={{
+              border: '1px solid #E5C07B',
+              background: '#FDF6E7',
+              color: '#7E5411',
+              borderRadius: 6,
+              padding: '10px 14px',
+              margin: '16px 32px 0',
+              fontSize: 13,
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>
+              {didNotLoad.failed === 1
+                ? 'Something on this page did not load'
+                : `${didNotLoad.failed} things on this page did not load`}
+              {' '}— what you can see may be incomplete.
+            </span>
+            <button type="button" className="gw-btn-ghost" style={{ margin: 0 }} onClick={didNotLoad.retry}>
+              Try again
+            </button>
+          </div>
+        )}
+        {children}
+      </div>
 
       {/* ON EVERY BACK-OFFICE PAGE, THE WAY A CUSTOMER'S WOULD BE. It is not a
           feature of one screen; it is the proof that the API we sell works from

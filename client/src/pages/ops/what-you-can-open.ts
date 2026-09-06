@@ -93,16 +93,57 @@ export const GROUPS: OpsPage['group'][] = ['Work', 'Sales & marketing', 'Buildin
  * identical from outside, and the whole point of the register is that they
  * cannot.
  */
-export const REACHED_BY_CLICKING: Array<{ path: string; from: string }> = [
-  { path: '/ops/companies/:key', from: 'a company name on the target list or the pipeline' },
+export const REACHED_BY_CLICKING: Array<{ path: string; from: string; capability: string | null }> = [
+  /* A company page shows the pipeline's own view of one company, so it is held the same way the
+     pipeline is. Left without a capability it would be the hole in the guard below: `/ops` is a
+     prefix of every ops path, so anything not named here would fall through to the page everybody
+     holds. */
+  { path: '/ops/companies/:key', from: 'a company name on the target list or the pipeline', capability: 'sales:read' },
   /*
    * The old pipeline's address. Redirected rather than deleted: it is in
    * people's history and a silent 404 on a page somebody used daily reads as an
    * outage rather than as a move.
    */
-  { path: '/ops/sales', from: 'a bookmark or an old link, and it redirects to /ops/pipeline' },
+  { path: '/ops/sales', from: 'a bookmark or an old link, and it redirects to /ops/pipeline', capability: 'sales:read' },
 ]
 
 export function pagesFor(capabilities: readonly string[]): OpsPage[] {
   return OPS_PAGES.filter((p) => p.capability === null || capabilities.includes(p.capability))
+}
+
+/**
+ * WHY A PERSON CANNOT OPEN THIS PATH, OR NULL WHERE THEY CAN.
+ *
+ * The nav has been generated from this list since it was written; the ROUTER never consulted it.
+ * So the back office hid what you could not use and served it anyway to anybody who typed the
+ * address, bookmarked it, or followed a link from a page that did not know better — with the
+ * forms, the buttons and the chrome, and only the writes refusing, quietly.
+ *
+ * Longest match wins, because `/ops/companies/:key` has to be decided by `/ops/companies` rather
+ * than by `/ops`, which everybody holds.
+ */
+export function whyThisIsNotYours(
+  path: string,
+  capabilities: readonly string[],
+): { because: string; page: string } | null {
+  const clean = path.replace(/\/+$/, '') || '/ops'
+
+  /* EXACT, and then the parameterised ones by shape. Matching on prefix was the first attempt and
+     it is exactly wrong here: `/ops` is a prefix of every ops address, so every unknown path — and
+     every path somebody adds later without telling this list — fell through to the one page
+     everybody holds. */
+  const exact = OPS_PAGES.find((p) => p.path === clean);
+  const shaped = REACHED_BY_CLICKING.find((p) => {
+    const parts = p.path.split('/');
+    const here = clean.split('/');
+    return parts.length === here.length && parts.every((seg, i) => seg.startsWith(':') || seg === here[i]);
+  });
+
+  const page = exact ?? shaped;
+  if (!page) {
+    return { because: 'no such page', page: clean };
+  }
+  const needed = 'capability' in page ? page.capability : null;
+  if (needed === null || capabilities.includes(needed)) return null;
+  return { because: needed, page: 'name' in page ? page.name : clean };
 }
