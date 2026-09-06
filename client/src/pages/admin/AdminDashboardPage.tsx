@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { patternAccuracyApi } from '@/api/prompts'
+import { apiClient } from '@/api/client'
 
 // ── Design tokens (mirrors AdminPage) ────────────────────────────────────────
 
-const C: React.CSSProperties = { background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
+const C: React.CSSProperties = { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
 const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }
 
 function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
@@ -73,6 +74,26 @@ interface UserUsage {
   lastActive: string | null
 }
 
+interface PlatformAdmin {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  createdAt: string
+}
+
+interface OpsDoorState {
+  isSetUp: boolean
+  nobodyCanOpenIt: boolean
+  people: Array<{
+    key: string
+    displayName: string
+    functionalRole: string
+    active: boolean
+    linkedAccount: string | null
+  }>
+}
+
 interface AdminDashboardData {
   overview: AdminOverview
   codes: AdminCode[]
@@ -83,37 +104,47 @@ interface AdminDashboardData {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
-async function apiFetch(path: string, opts?: RequestInit) {
-  const token = useAuthStore.getState().token
-  const res = await fetch(`/api${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opts?.headers ?? {}),
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body?.message ?? `HTTP ${res.status}`)
-  }
-  return res.json()
-}
-
+/**
+ * THIS PAGE HAD ITS OWN FETCH, AND IT POINTED AT THE WRONG PLACE.
+ *
+ * It called `fetch('/api' + path)` — one segment short of the `/api/v1` that
+ * `apiClient` uses, and relative, so on staging the request went to the site
+ * rather than the API and came back as this page's own HTML:
+ *
+ *   Unexpected token '<', "<!doctype "... is not valid JSON
+ *
+ * Underneath that, three of its four routes did not exist at all: there was no
+ * `GET /admin/dashboard`, disabling a code is a PATCH not a POST, and adding an
+ * admin is `add-admin` not `admins`. The wrong prefix hid all of it behind one
+ * parse error. Everything now goes through the shared client, which carries the
+ * base URL, the token and the error handling that every other page relies on.
+ */
 const adminApi = {
-  dashboard: (): Promise<AdminDashboardData> => apiFetch('/admin/dashboard'),
-  requestOtp: (): Promise<void> => apiFetch('/admin/otp/request', { method: 'POST' }),
+  dashboard: (): Promise<AdminDashboardData> =>
+    apiClient.get<AdminDashboardData>('/admin/dashboard').then(r => r.data),
+  requestOtp: (): Promise<void> => apiClient.post('/admin/otp/request').then(() => undefined),
   disableCode: (codeId: string, otp: string): Promise<void> =>
-    apiFetch(`/admin/codes/${codeId}/disable`, {
-      method: 'POST',
-      headers: { 'X-Admin-OTP': otp },
-    }),
+    apiClient
+      .patch(`/admin/codes/${codeId}/disable`, {}, { headers: { 'X-Admin-OTP': otp } })
+      .then(() => undefined),
   addAdmin: (email: string, otp: string): Promise<void> =>
-    apiFetch('/admin/admins', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-      headers: { 'X-Admin-OTP': otp },
-    }),
+    apiClient.post('/admin/add-admin', { email }, { headers: { 'X-Admin-OTP': otp } }).then(() => undefined),
+
+  /** Who can reach this console. Readable without a code, because a list nobody checks is not a control. */
+  admins: (): Promise<PlatformAdmin[]> =>
+    apiClient.get<PlatformAdmin[]>('/admin/admins').then(r => r.data),
+  removeAdmin: (userId: string, otp: string): Promise<void> =>
+    apiClient
+      .post(`/admin/admins/${userId}/remove`, {}, { headers: { 'X-Admin-OTP': otp } })
+      .then(() => undefined),
+
+  /** The door into the team's own operating system. */
+  opsDoor: (): Promise<OpsDoorState> => apiClient.get<OpsDoorState>('/admin/ops').then(r => r.data),
+  setUpOps: (): Promise<OpsDoorState> => apiClient.post<OpsDoorState>('/admin/ops/setup').then(r => r.data),
+  linkOpsAccount: (personKey: string, email: string): Promise<OpsDoorState> =>
+    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account`, { email }).then(r => r.data),
+  unlinkOpsAccount: (personKey: string): Promise<OpsDoorState> =>
+    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account/remove`).then(r => r.data),
 }
 
 // ── OTP Challenge Modal ───────────────────────────────────────────────────────
@@ -182,7 +213,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
               </button>
               <button
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -215,7 +246,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
               </button>
               <button
                 onClick={onClose}
-                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '10px 16px', borderRadius: 7, background: 'var(--gw-bg)', color: 'var(--gw-text)', fontSize: 13, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -273,7 +304,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by code or creator…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -289,19 +320,19 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
               const dl = daysLeft(c.expiresAt)
               const expired = dl === 'Expired'
               return (
-                <tr key={c.id} style={{ borderBottom: '0.5px solid var(--gw-border)', background: !c.active ? 'rgba(0,0,0,0.02)' : 'white' }}>
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--gw-border)', background: !c.active ? 'rgba(0,0,0,0.02)' : 'white' }}>
                   <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', fontFamily: 'monospace', fontSize: 13 }}>{c.code}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.active ? 'Active' : 'Disabled'}
                     </span>
                   </td>
                   <td style={{ padding: '8px 10px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '0.5px solid var(--gw-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.allowCodeCreation ? '#EEF3FB' : 'var(--gw-bg)', color: c.allowCodeCreation ? 'var(--gw-navy)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
                       {c.allowCodeCreation ? 'Yes' : 'No'}
                     </span>
                   </td>
@@ -310,7 +341,7 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                     {c.active && (
                       <button
                         onClick={() => onDisable(c.id)}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '0.5px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 5, background: '#fff0f0', color: 'var(--gw-danger)', border: '1px solid #f5c6cb', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         Disable
                       </button>
@@ -358,7 +389,7 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
             </div>
           )
         })}
-        <div style={{ borderTop: '0.5px solid var(--gw-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Total sessions</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{total}</span>
         </div>
@@ -487,9 +518,27 @@ function FeedbackSection({ feedback }: { feedback: AdminFeedback[] }) {
 
 // ── Admin Management section ──────────────────────────────────────────────────
 
-function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string) => Promise<void> }) {
+/**
+ * WHO CAN REACH THIS CONSOLE.
+ *
+ * There was a way to add somebody and no way to see the list, so "platform ops
+ * is only the people I added" was a belief rather than something anybody could
+ * check. There are two ways onto this list and no more: the one-time bootstrap
+ * variable, which only fires while no admin exists at all, and the form below —
+ * platform admin plus an emailed code. Nothing else in the codebase writes the
+ * flag.
+ */
+function AdminManagementSection({
+  onAdd,
+  onRemove,
+}: {
+  onAdd: (email: string, otp: string) => Promise<void>
+  onRemove: (userId: string, otp: string) => Promise<void>
+}) {
   const [email, setEmail] = useState('')
   const [showOtp, setShowOtp] = useState(false)
+  const [removing, setRemoving] = useState<PlatformAdmin | null>(null)
+  const admins = useQuery({ queryKey: ['platform-admins'], queryFn: adminApi.admins })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -499,19 +548,53 @@ function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string)
 
   return (
     <section>
-      <div style={SL}>Admin Management</div>
+      <div style={SL}>Who can reach this console</div>
       <div style={C}>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14 }}>
-          Add another platform admin by email. An OTP challenge is required.
+          Two ways onto this list and no more: the one-time bootstrap on a brand new install, and
+          this form. Everyone on it sees every organisation, every usage figure and the pricing.
         </div>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
+        {admins.isError && (
+          <div style={{ fontSize: 13, color: 'var(--gw-red-t)', marginBottom: 12 }}>
+            Could not load the list.
+          </div>
+        )}
+
+        {(admins.data ?? []).map(a => (
+          <div
+            key={a.id}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid var(--gw-border)' }}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{a.email}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                {[a.firstName, a.lastName].filter(Boolean).join(' ') || 'no name on the account'}
+              </div>
+            </div>
+            <button
+              onClick={() => setRemoving(a)}
+              style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Take off
+            </button>
+          </div>
+        ))}
+
+        {admins.data?.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', padding: '8px 0' }}>
+            Nobody — which should be impossible, since you are reading this.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 14 }}>
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="admin@example.com"
+            placeholder="them@example.com"
             required
-            style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+            style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
             onFocus={e => { e.target.style.borderColor = 'var(--gw-navy)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--gw-border)' }}
           />
@@ -519,18 +602,174 @@ function AdminManagementSection({ onAdd }: { onAdd: (email: string, otp: string)
             type="submit"
             style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
-            Add admin
+            Add them
           </button>
         </form>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+          They have to have a Groundwork account already — this promotes one, it does not create one.
+        </div>
       </div>
+
       {showOtp && (
         <OtpModal
           title="Add platform admin"
-          description={`Grant platform admin access to ${email}. This cannot be undone from the UI.`}
+          description={`${email} will see every organisation, every usage figure and the pricing. You can take them off again here.`}
           onConfirm={otp => onAdd(email, otp)}
-          onClose={() => { setShowOtp(false); setEmail('') }}
+          onClose={() => { setShowOtp(false); setEmail(''); admins.refetch() }}
         />
       )}
+
+      {removing && (
+        <OtpModal
+          title="Take them off the list"
+          description={`${removing.email} will lose the platform console. Their Groundwork account and their own organisation are untouched.`}
+          onConfirm={otp => onRemove(removing.id, otp)}
+          onClose={() => { setRemoving(null); admins.refetch() }}
+        />
+      )}
+    </section>
+  )
+}
+
+/**
+ * THE DOOR INTO THE TEAM'S OWN OPERATING SYSTEM.
+ *
+ * Every route under `/ops` needs an OpsPerson behind the signed-in account, and
+ * the only place to create or link one is itself inside `/ops`. So the first
+ * person could never get in, and the back office answered "This is not your
+ * system" to the person who owns it.
+ *
+ * This is the way in, and it is the only place it can be: a surface guarded by
+ * the platform-admin list, which is a stronger gate than the one it opens.
+ */
+function OpsAccessSection() {
+  const door = useQuery({ queryKey: ['ops-door'], queryFn: adminApi.opsDoor })
+  const [linking, setLinking] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState('')
+
+  async function run(work: () => Promise<unknown>) {
+    setBusy(true)
+    setProblem('')
+    try {
+      await work()
+      await door.refetch()
+      setLinking(null)
+      setEmail('')
+    } catch (e: any) {
+      setProblem(e?.response?.data?.message ?? e?.message ?? 'That did not work.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const state = door.data
+
+  return (
+    <section>
+      <div style={SL}>The team's operating system</div>
+      <div style={C}>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
+          Targets, the pipeline, commitments, spend, the moat. Everybody on the platform-admin list
+          above is on this team — your account is admitted the first time you open it. Connect the
+          rest of the team below.
+        </div>
+
+        {state?.isSetUp && (
+          <a
+            href="/ops"
+            style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'none', marginBottom: 14 }}
+          >
+            Open the operating system →
+          </a>
+        )}
+
+        {state && !state.isSetUp && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13, marginBottom: 10 }}>
+              It has not been set up here yet. This writes the periods, the workstreams and the six
+              people, and is safe to run twice.
+            </div>
+            <button
+              onClick={() => run(adminApi.setUpOps)}
+              disabled={busy}
+              style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+            >
+              Set it up
+            </button>
+          </div>
+        )}
+
+        {/* The state this whole section exists for: it is set up and nobody's
+            account opens it, so /ops turns everybody away including its owner. */}
+        {state?.nobodyCanOpenIt && state.isSetUp && (
+          /* Not an alarm any more: yours opens it whether or not it is listed
+             here, because you are on the platform-admin list. It still says so,
+             because a team where nobody but the admins can get in is worth
+             seeing. */
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
+            None of the seeded team has an account connected yet. Yours opens it regardless.
+          </div>
+        )}
+
+        {(state?.people ?? []).map(p => (
+          <div key={p.key} style={{ padding: '9px 0', borderTop: '1px solid var(--gw-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  {p.displayName}
+                  {!p.active && <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> · not active</span>}
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                  {p.functionalRole.replace(/_/g, ' ').toLowerCase()} ·{' '}
+                  {p.linkedAccount ?? 'no account connected'}
+                </div>
+              </div>
+              <button
+                onClick={() =>
+                  p.linkedAccount ? run(() => adminApi.unlinkOpsAccount(p.key)) : setLinking(p.key)
+                }
+                disabled={busy}
+                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {p.linkedAccount ? 'Disconnect' : 'Connect an account'}
+              </button>
+            </div>
+
+            {linking === p.key && (
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  run(() => adminApi.linkOpsAccount(p.key, email))
+                }}
+                style={{ display: 'flex', gap: 8, marginTop: 8 }}
+              >
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="the Groundwork account they sign in with"
+                  required
+                  autoFocus
+                  style={{ flex: 1, padding: '8px 11px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', outline: 'none' }}
+                />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Connect
+                </button>
+              </form>
+            )}
+          </div>
+        ))}
+
+        {problem && (
+          <div style={{ fontSize: 13, color: 'var(--gw-red-t)', marginTop: 12 }}>{problem}</div>
+        )}
+      </div>
     </section>
   )
 }
@@ -559,7 +798,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Filter by email…"
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '8px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', background: 'white', marginBottom: 10, boxSizing: 'border-box' }}
       />
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
@@ -572,7 +811,7 @@ function UserUsageSection({ users }: { users: UserUsage[] }) {
           </thead>
           <tbody>
             {sorted.map(u => (
-              <tr key={u.userId} style={{ borderBottom: '0.5px solid var(--gw-border)' }}>
+              <tr key={u.userId} style={{ borderBottom: '1px solid var(--gw-border)' }}>
                 <td style={{ padding: '8px 10px', color: 'var(--gw-text)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</td>
                 <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.groundCount}</td>
                 <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right' }}>{u.codeCount}</td>
@@ -626,6 +865,10 @@ export function AdminDashboardPage() {
     await adminApi.addAdmin(email, otp)
   }
 
+  async function handleRemoveAdmin(userId: string, otp: string) {
+    await adminApi.removeAdmin(userId, otp)
+  }
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
 
@@ -639,9 +882,23 @@ export function AdminDashboardPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => navigate('/admin')}
-              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '0.5px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Ops →
+            </button>
+            <button
+              onClick={() => navigate('/ops')}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Our own system →
+            </button>
+            {/* Access to the API is granted here rather than bought. Our own
+                organisation appears on that list like anybody else's. */}
+            <button
+              onClick={() => navigate('/admin/api-access')}
+              style={{ fontSize: 12, padding: '7px 14px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              API access →
             </button>
             <button
               onClick={() => navigate('/grounds')}
@@ -680,7 +937,9 @@ export function AdminDashboardPage() {
 
             <DetectionAccuracySection />
 
-            <AdminManagementSection onAdd={handleAddAdmin} />
+            <OpsAccessSection />
+
+            <AdminManagementSection onAdd={handleAddAdmin} onRemove={handleRemoveAdmin} />
 
             <UserUsageSection users={data.userUsage} />
           </>

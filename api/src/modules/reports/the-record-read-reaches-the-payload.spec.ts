@@ -77,7 +77,7 @@ function makeService({ closed = true }: { closed?: boolean } = {}) {
   };
   const config: any = { get: jest.fn(() => true) };
   const grounds: any = { getSessionProgress: jest.fn(async () => null) };
-  const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, {} as any, grounds);
+  const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, {} as any, grounds, { tell: async () => [] } as any);
   return { service, prisma, config };
 }
 

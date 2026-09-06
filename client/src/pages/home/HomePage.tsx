@@ -79,7 +79,7 @@ export function HomePage() {
         </div>
         <button
           onClick={() => navigate('/auth')}
-          style={{ fontSize: 12, color: 'rgba(255,255,255,.7)', background: 'rgba(255,255,255,.12)', border: '0.5px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ fontSize: 12, color: 'rgba(255,255,255,.7)', background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           Sign in
         </button>
@@ -171,7 +171,7 @@ export function HomePage() {
           </div>
 
           {faqAnswer && (
-            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+            <div style={{ marginTop: 10, padding: '12px 14px', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, lineHeight: 1.65, color: 'var(--gw-text)' }}>
               {faqAnswer}
             </div>
           )}
@@ -204,6 +204,8 @@ export function HomePage() {
                 { param: 'new partner or co-founder', label: 'A new partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
                 { param: 'new manager or lead',    label: 'A new manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
                 { param: 'contract or renewal',    label: 'Contract or renewal',      desc: 'Both sides give an honest account of how the term actually went, and what a fair next one looks like.' },
+                { param: 'agreement before signing', label: 'An agreement before it is signed', desc: 'Each side writes down what it thinks the agreement means, before anybody signs it.' },
+                { param: 'agreement that is running', label: 'An agreement that is running', desc: 'A quiet monthly read that mostly says the numbers reconcile and nothing needs anybody.' },
                 { param: 'raise, promotion, or recognition', label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },
                 { param: 'performance improvement plan', label: 'Performance improvement plan', desc: 'Run a fair plan with both sides on the concern, the support, and what success looks like.' },
                 { param: 'goals & planning',       label: 'Setting shared goals',     desc: 'Check everyone is genuinely on the same goals and plan before the cycle locks in.' },
@@ -220,7 +222,7 @@ export function HomePage() {
                 <div
                   key={c.param}
                   onClick={() => navigate(`/grounds/new?scenario=${encodeURIComponent(c.param)}`)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
@@ -232,7 +234,7 @@ export function HomePage() {
             </div>
           </div>
 
-          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '0.5px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
               No account needed to start. Your words stay private until you save them.
             </div>

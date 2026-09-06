@@ -136,7 +136,7 @@ export function ChoosePasswordPage() {
         claims only what is true for both.
       */}
       {kind === 'set' && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20, padding: '10px 12px', background: 'var(--gw-blue-bg)', borderRadius: 8, border: '0.5px solid var(--gw-blue-b)' }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 20, padding: '10px 12px', background: 'var(--gw-blue-bg)', borderRadius: 8, border: '1px solid var(--gw-blue-b)' }}>
           Your account is ready. This password secures your access to Groundwork going forward. Anything you have already written is saved.
         </div>
       )}

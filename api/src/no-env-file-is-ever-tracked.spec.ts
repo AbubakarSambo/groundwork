@@ -51,9 +51,26 @@ describe('no env file is ever tracked', () => {
    * better way keeps this green, and deleting it does not.
    */
   it('the pattern really catches the name that got through, asked of git itself', () => {
+    /*
+     * ASKED OF THIS REPOSITORY, NOT OF THE MACHINE.
+     *
+     * `git check-ignore` answers for every ignore source at once: this repo's
+     * files, `.git/info/exclude`, and whatever `core.excludesFile` points at in
+     * the user's or the system's config. So it was answering a question about
+     * the machine, and it gave a different answer on a CI runner than on a
+     * laptop — reporting `api/.env.example` as ignored, which is a fact about
+     * the runner's config and nothing to do with the rule under test.
+     *
+     * Both config files are pointed at nothing for the duration, so what is left
+     * is this repository's own `.gitignore` files and only those.
+     */
+    const onlyThisRepo = {
+      cwd: repoRoot,
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' },
+    } as const;
     const check = (p: string) => {
       try {
-        execSync(`git check-ignore --no-index -q ${p}`, { cwd: repoRoot });
+        execSync(`git check-ignore --no-index -q ${p}`, onlyThisRepo);
         return true;
       } catch { return false; }
     };

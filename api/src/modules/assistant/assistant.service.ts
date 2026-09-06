@@ -19,10 +19,45 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
+import { DraftsService } from '../drafts/drafts.service';
+import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
+import { whatItTakesToStart } from './what-it-takes-to-start';
+import {
+  whichSituation,
+  askWhichSituation,
+  whoWouldBeAsked,
+  askBeforeOpeningIt,
+  saidAsAList,
+} from './what-a-new-check-in-would-be';
+import { WhatIsTrueService } from './what-is-true.service';
+import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
+import { EmailService } from '../email/email.service';
+import { GroundsService } from '../grounds/grounds.service';
+import {
+  whereItLives,
+  whatToCallIt,
+  whatWeCanAndCannotDo,
+} from '../documents/where-a-document-lives';
+import { ReadItIfWeCanService } from '../documents/read-it-if-we-can.service';
+import {
+  whyThereIsNowhereToPutIt,
+  askWhoItIsFor,
+  whoTheyMeant,
+  askAgain,
+  whatWasDone,
+} from './a-document-is-private-until-you-say-otherwise';
+import {
+  whyThisCannotBeSent,
+  askBeforeSending,
+  theMail,
+} from './anything-it-can-say-it-can-send';
+import { whatIStillCannotDo } from './what-is-not-offered-in-chat';
+import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
+import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
-  Suggestible, fromRow, suggestionLine, askAbout, acceptedLine, declinedLine, NOTHING_PENDING,
+  Suggestible, fromRow, suggestionLine, askAbout, acceptedLine, acceptedNextStep, declinedLine, NOTHING_PENDING,
 } from './a-suggestion-you-can-answer';
 import { Prisma } from '@prisma/client';
 
@@ -67,6 +102,22 @@ export class AssistantService {
      * would be a second, weaker copy of it.
      */
     private readonly scenarios: ScenariosService,
+    /*
+     * The drafting flow already existed — it opens a draft, pulls people in,
+     * refuses to seed while anybody still disagrees, and writes the objective.
+     * It was reachable by nothing. Injecting it rather than writing a second
+     * objective-setting path here is what keeps that refusal in one place.
+     */
+    private readonly drafts: DraftsService,
+    /*
+     * WHAT IS TRUE FOR THIS PERSON, ASSEMBLED ONCE. Lanes ask it rather than
+     * querying, so what the assistant knows stops depending on which question
+     * was asked. See `what-is-true-for-this-person.ts`.
+     */
+    private readonly truth: WhatIsTrueService,
+    private readonly reader: ReadItIfWeCanService,
+    private readonly email: EmailService,
+    private readonly grounds: GroundsService,
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
@@ -136,6 +187,14 @@ export class AssistantService {
         return this.whatShouldWeTalkAbout(organizationId, who);
       case 'what_came_of_it':
         return this.whatCameOfIt(organizationId, personId);
+      case 'set_an_objective':
+        return this.setAnObjective(organizationId, who, message);
+      case 'start_a_check_in':
+        return this.startACheckIn(organizationId, personId, who, message);
+      case 'send_me_that':
+        return this.sendMeThat(organizationId, personId, who);
+      case 'add_a_document':
+        return this.addADocument(organizationId, personId, who ?? '', message);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -606,6 +665,399 @@ export class AssistantService {
   }
 
   /**
+   * STARTING A CHECK-IN BY SAYING SO.
+   *
+   * The last thing about a check-in that was a button and not a sentence.
+   *
+   * IT DOES NOT START ANYTHING ITSELF. It works out which of four situations somebody is in and
+   * offers the one act that moves them, as a `next_step` the panel performs — same reason the accept
+   * line stopped carrying a path: this code cannot know which application it is being read inside,
+   * and a customer whose own system has a place for this should be able to use it.
+   *
+   * Matched by the ADDRESS the invitation went to as well as by the account, because a participant
+   * is linked to an account only when somebody accepts. Without that, a person with a session
+   * sitting in front of them is told there is nothing.
+   */
+  /**
+   * PUTTING A DOCUMENT IN.
+   *
+   * A chat cannot carry a file, which is why this was on the not-offered list. What it can do is
+   * start it and own the question that matters — who the document is for — and the panel it lives in
+   * has the file picker.
+   *
+   * IT OFFERS, IT DOES NOT UPLOAD. Same shape as everything else that acts: this returns a
+   * `next_step` the panel performs, so a customer whose own application has a place for files can
+   * point at that instead. And the file arrives PRIVATE whatever happens next: the question of who
+   * it is for is asked afterwards, when somebody is actually looking at it, and a conversation
+   * abandoned halfway leaves it seen by nobody but its owner.
+   */
+  private async addADocument(organizationId: string, personId: string, who: string, message: string): Promise<Reply> {
+    const truth = await this.truth.forPerson(organizationId, personId);
+    if (!truth) {
+      return rules('add_a_document', text('I cannot see you in your organisation records, so I do not know where to put it.'));
+    }
+
+    const open = truth.sessions.value.filter((s) => s.standing === 'open to you');
+    const nowhere = whyThereIsNowhereToPutIt(open.length);
+    if (nowhere) return rules('add_a_document', text(nowhere));
+
+    const [first, ...rest] = open;
+
+    /*
+     * THEY PASTED A LINK, so there is nothing to pick and nothing to upload.
+     *
+     * Almost nothing a company works from lives in here — the job description is
+     * in Drive, the contract is in Dropbox — and asking somebody to download and
+     * re-upload is asking them to keep two copies in step. They do it once.
+     *
+     * It is recorded, never read: see `where-a-document-lives.ts` for why these
+     * are a different table rather than a document with no text in it.
+     */
+    const where = whereItLives(message);
+    if (where) {
+      const me = await this.prisma.person.findFirst({
+        where: { id: personId, organizationId },
+        select: { linkedUserId: true },
+      });
+      const participant = await this.prisma.groundParticipant.findFirst({
+        where: { groundId: first.groundId, userId: me?.linkedUserId ?? undefined },
+        select: { id: true },
+      });
+      const title = whatToCallIt(where, message);
+
+      /*
+       * SOMETIMES WE CAN JUST READ IT.
+       *
+       * A published page, a Doc set to "anyone with the link" — refusing to read
+       * those is not caution. What must never happen is the middle: a document we
+       * half-read, or a claim to have read one we did not. So it is one thing or
+       * the other, and the person is told which.
+       *
+       * READ means a real document with text in it, in the documents table.
+       * NOT READ means a link in its own table, which nothing that assembles
+       * document text can reach.
+       */
+      const attempt = await this.reader.read(where.url);
+      if (attempt.read) {
+        const held = await this.prisma.groundDocument.create({
+          data: {
+            groundId: first.groundId,
+            participantId: participant?.id ?? null,
+            fileName: title,
+            mimeType: 'text/plain',
+            content: attempt.text,
+            uploaderNote: `Read from ${attempt.from}: ${where.url}`,
+          },
+        });
+
+        await this.prisma.assistantProposal.create({
+          data: {
+            organizationId,
+            personExternalId: who,
+            kind: 'document',
+            state: 'PARKED',
+            summary: `Who "${title}" is for`,
+            payload: { documentId: held.id, elsewhere: false, groundId: first.groundId, fileName: title },
+          },
+        });
+
+        return rules(
+          'add_a_document',
+          text(
+            `"${title}" was readable, so I have read it and kept the text — ${attempt.text.length.toLocaleString()} characters from ${attempt.from}. `
+            + `I will use it the way I use anything else on this check-in.\n\n${askWhoItIsFor(title)}`,
+          ),
+        );
+      }
+
+      const recorded = await this.prisma.documentElsewhere.create({
+        data: {
+          groundId: first.groundId,
+          participantId: participant?.id ?? null,
+          url: where.url,
+          livesIn: where.livesIn,
+          title,
+          note: null,
+        },
+      });
+
+      await this.prisma.assistantProposal.create({
+        data: {
+          organizationId,
+          personExternalId: who,
+          kind: 'document',
+          state: 'PARKED',
+          summary: `Who "${title}" is for`,
+          payload: { documentId: recorded.id, elsewhere: true, groundId: first.groundId, fileName: title },
+        },
+      });
+
+      /* WHY it could not be read, said out loud. "I cannot read it" invites the
+         person to try again the same way; "not readable without signing in" tells
+         them what would change it. */
+      return rules(
+        'add_a_document',
+        text(`${whatWeCanAndCannotDo(where, title)} (I tried: ${attempt.because}.)\n\n${askWhoItIsFor(title)}`),
+      );
+    }
+
+    const also = rest.length
+      ? ` You have ${rest.length === 1 ? 'one other check-in' : `${rest.length} other check-ins`} open — say which if it belongs somewhere else.`
+      : '';
+
+    return rules(
+      'add_a_document',
+      text(
+        `It will go on "${first.label}", and only you will be able to see it until you say otherwise.${also}`,
+      ),
+      {
+        type: 'next_step',
+        label: 'Choose a file',
+        href: '/grounds',
+        kind: 'upload_a_document',
+        id: first.checkInId as string,
+        context: { groundId: first.groundId, label: first.label },
+      },
+    );
+  }
+
+  /**
+   * EMAIL ME THAT.
+   *
+   * The first capability that could not have been a lane in the old sense: it does not answer a
+   * question about the records, it acts on what was already said. Which is also why it is the proof
+   * the registry was worth building — it declares that it writes and how that is agreed, and the
+   * guard holds it to that without anybody remembering to.
+   *
+   * IT PROPOSES. Mail leaves the building and cannot be recalled, so it is never sent on a sentence
+   * that merely sounded like a request — "can you send me that" is a question in some rooms.
+   */
+  private async sendMeThat(organizationId: string, personId: string, who: string | null): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true, displayName: true, email: true },
+    });
+    if (!me || !who) {
+      return rules('send_me_that', text('I cannot see you in your organisation records, so I do not know where to send it.'));
+    }
+
+    /*
+     * WHAT WAS ACTUALLY SAID, from their own turns and nobody else's. The last thing the assistant
+     * said, and the question it answered — sending a summary would mean the mail and the
+     * conversation disagree, and only one of them is in front of them.
+     */
+    const recent = await this.prisma.assistantTurn.findMany({
+      where: { organizationId, personExternalId: who },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { role: true, content: true, lane: true },
+    });
+    const lastReply = recent.find((t) => t.role === 'assistant' && t.lane !== 'send_me_that');
+    const theQuestion = recent.find((t) => t.role === 'person');
+
+    const latest = lastReply
+      ? { body: lastReply.content, about: theQuestion?.content ?? 'your work', lane: lastReply.lane ?? 'unplaced' }
+      : null;
+
+    const cannot = whyThisCannotBeSent(latest, me);
+    if (cannot) return rules('send_me_that', text(cannot));
+
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'delivery',
+        summary: askBeforeSending(latest!, me),
+        payload: latest as never,
+      },
+    });
+
+    return {
+      lane: 'send_me_that',
+      composedBy: 'rules',
+      blocks: [
+        text(proposal.summary),
+        { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
+      ],
+    };
+  }
+
+  private async startACheckIn(organizationId: string, personId: string, _who: string | null, message: string): Promise<Reply> {
+    /* THE ONE READ. This lane used to query the grounds and the check-ins
+       itself, which is how the same logic came to exist three times and drift.
+       See `what-is-true.service.ts`. */
+    const truth = await this.truth.forPerson(organizationId, personId);
+    if (!truth) {
+      return rules('start_a_check_in', text('I cannot see you in your organisation records, so I cannot tell what is waiting for you.'));
+    }
+
+    const sessions = truth.sessions.value;
+    const said = whatItTakesToStart({
+      toStart: sessions
+        .filter((x) => x.standing === 'waiting on you to start')
+        .map((x) => ({ groundId: x.groundId, label: x.label })),
+      open: sessions
+        .filter((x) => x.standing === 'open to you')
+        .map((x) => ({ checkInId: x.checkInId as string, label: x.label })),
+      notAccepted: sessions
+        .filter((x) => x.standing === 'invitation not accepted')
+        .map((x) => ({ label: x.label })),
+    });
+
+    if (said.act) {
+      return rules(
+        'start_a_check_in',
+        text(said.line),
+        { type: 'next_step', label: said.act.label, href: '/grounds', kind: said.act.kind, id: said.act.id },
+      );
+    }
+
+    /*
+     * NOTHING WAITING, SO OFFER TO OPEN ONE.
+     *
+     * The same lane rather than a second one, and the registry is why: "set up a check-in" belongs
+     * to this capability, and a lane that also claimed it would be the fifth collision of the week.
+     * It is better for the person too — nobody should have to know whether the thing they want
+     * already exists.
+     */
+    if (truth.sessions.value.length === 0) {
+      return this.offerToOpenOne(organizationId, personId, truth.person.externalId, message);
+    }
+
+    return rules('start_a_check_in', text(said.line));
+  }
+
+  /**
+   * OPENING ONE THAT DOES NOT EXIST YET.
+   *
+   * The first capability that emails people, which changes what care means. Everything else here is
+   * recoverable in the next sentence; an invitation is in somebody's inbox, and what it invites them
+   * to is accounting for themselves.
+   *
+   * So it proposes, and the proposal NAMES EVERYBODY. Never a count.
+   */
+  private async offerToOpenOne(
+    organizationId: string,
+    personId: string,
+    who: string,
+    message: string,
+  ): Promise<Reply> {
+    const read = whichSituation(message);
+
+    if (read === null) return rules('start_a_check_in', text(askWhichSituation()));
+    if ('ambiguous' in read) return rules('start_a_check_in', text(askWhichSituation(read.ambiguous)));
+
+    const roster = await this.prisma.person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, displayName: true, managerExternalId: true, active: true },
+    });
+    const people = whoWouldBeAsked(roster, who);
+    const label = whatTheyWantToCallIt(message) ?? read.says;
+
+    const asks = askBeforeOpeningIt({ says: read.says, label, people });
+
+    /*
+     * NOTHING IS PARKED WHEN THERE IS NOBODY TO ASK, and the first version got this wrong in a way
+     * only running it showed. It parked a proposal with an empty list, so a "yes" resolved it and
+     * answered "none of those people can be reached now" — about people who had never been named.
+     * A parked action nobody can sensibly say yes to should not exist.
+     */
+    if (people.length === 0) return rules('start_a_check_in', text(asks));
+
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'open_a_check_in',
+        summary: asks,
+        payload: {
+          scenario: read.scenario,
+          label,
+          people: people.map((p) => p.externalId),
+        } as never,
+      },
+    });
+
+    return {
+          lane: 'start_a_check_in',
+          composedBy: 'rules',
+          blocks: [
+            text(proposal.summary),
+            { type: 'proposal', proposalId: proposal.id, summary: proposal.summary },
+          ],
+        };
+  }
+
+  /**
+   * SETTING AN OBJECTIVE, WHICH IS THE ONE LANE THAT STARTS SOMETHING.
+   *
+   * Every other lane answers a question about records that already exist. This one opens a draft
+   * and then asks for the four things a draft needs, one at a time, refusing an answer that is a
+   * way of getting past the question rather than answering it.
+   *
+   * IT DOES NOT WRITE THE OBJECTIVE. The draft has to be agreed by the people on it, and seeding is
+   * a separate act with its own refusals — one of which is that nobody has said why the number is
+   * the one that matters. An assistant that could turn a two-minute conversation into an official
+   * target would be the fastest way to fill this system with objectives nobody agreed.
+   *
+   * THE QUESTIONS ARE THE DRAFT'S, NOT THIS LANE'S. `askNext` comes back from the drafting service,
+   * so the screen and the conversation ask the same thing in the same words — and adding a fifth
+   * question later does not mean remembering to add it here too.
+   */
+  private async setAnObjective(organizationId: string, who: string | null, message: string): Promise<Reply> {
+    if (!who) {
+      return rules(
+        'set_an_objective',
+        text('I cannot see you in your organisation records, so I cannot open a draft in your name.'),
+      );
+    }
+
+    /*
+     * AN OPEN DRAFT IS CONTINUED, NEVER DUPLICATED. Somebody saying "let's set an objective" twice
+     * in one conversation means they are still on the first one — and a second draft would split
+     * the answers across two records, each looking half-finished.
+     */
+    const open = await this.prisma.objectiveDraft.findFirst({
+      where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (open) {
+      const next = whatToAskForNext(open);
+      if (!next) {
+        return rules(
+          'set_an_objective',
+          text(
+            `"${open.workingTitle}" has everything it needs from you. It is not an objective yet — the people on it have to agree, and then somebody seeds it.`,
+          ),
+        );
+      }
+      return rules('set_an_objective', text(`Still on "${open.workingTitle}". ${next.asks}`));
+    }
+
+    /*
+     * The working title is the person's own words, minus the asking. Not the model's paraphrase:
+     * this becomes the objective's title if the draft survives, and a title nobody typed is one
+     * nobody recognises in the list a fortnight later.
+     */
+    const workingTitle = whatTheyWantToCallIt(message);
+    if (!workingTitle) {
+      return rules(
+        'set_an_objective',
+        text('What is it about? A few words is enough to start — the title can change.'),
+      );
+    }
+
+    const draft = await this.drafts.start(organizationId, who, { workingTitle });
+    const next = whatToAskForNext(draft);
+
+    return rules(
+      'set_an_objective',
+      text(`Started a draft: "${draft.workingTitle}". ${next ? next.asks : ''}`.trim()),
+    );
+  }
+
+  /**
    * CONFIRM, RE-VERIFY, DELEGATE, AUDIT, READ BACK.
    *
    * The re-verification matters more than it looks: between the offer and the yes, the person may
@@ -613,6 +1065,16 @@ export class AssistantService {
    * authorisation it had when it was offered, and that is exactly what must not be trusted.
    */
   private async resolveParked(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    /*
+     * A DOCUMENT IS ANSWERED BEFORE THE YES/NO READING, because its question is not a yes/no one.
+     * "Everyone" is not a confirmation and "just me" is not a refusal, and running them through
+     * that reading first would take "no one" as a decline and drop the whole thing — leaving a file
+     * uploaded, private, and nobody told what happened to it.
+     */
+    if (parked.kind === 'document') {
+      return this.resolveParkedDocument(organizationId, who, parked, message);
+    }
+
     const decision = resolveConfirmation(message);
 
     if (decision === 'drop') {
@@ -641,6 +1103,14 @@ export class AssistantService {
      */
     if (parked.kind === 'scenario') {
       return this.resolveParkedScenario(organizationId, who, parked, decision);
+    }
+
+    if (parked.kind === 'delivery') {
+      return this.resolveParkedDelivery(organizationId, who, parked, decision);
+    }
+
+    if (parked.kind === 'open_a_check_in') {
+      return this.resolveParkedOpening(organizationId, personId, who, parked, decision);
     }
 
     if (decision === 'decline') {
@@ -750,6 +1220,161 @@ export class AssistantService {
    * message fires a write. What differs is only what a yes means, so this branches on `kind` and
    * nowhere else.
    */
+  /**
+   * OPENING THE CHECK-IN, OR NOT.
+   *
+   * RE-READ AT EXECUTION, and here it matters more than anywhere else in this file. Between the
+   * offer and the yes somebody may have left, been deactivated, or had their address removed — and
+   * this is the one act that puts a message in another person's inbox. A parked action carries the
+   * roster it was offered under, which is exactly what must not be trusted.
+   *
+   * Anybody who has gone is DROPPED AND NAMED rather than silently skipped: a check-in that quietly
+   * opened without one of the people somebody agreed to is a check-in they will read the report of
+   * and not understand.
+   */
+  private async resolveParkedOpening(
+    organizationId: string,
+    personId: string,
+    who: string,
+    parked: any,
+    decision: 'accept' | 'decline',
+  ): Promise<Reply> {
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
+    });
+
+    if (decision === 'decline') return rules('start_a_check_in', text('Left it. Nothing was sent.'));
+
+    const payload = parked.payload as { scenario: string; label: string; people: string[] };
+
+    const still = await this.prisma.person.findMany({
+      where: { organizationId, externalId: { in: payload.people }, active: true },
+      select: { externalId: true, displayName: true, email: true },
+    });
+    const gone = payload.people.filter((id) => !still.some((p) => p.externalId === id));
+    const reachable = still.filter((p) => p.email);
+    const noAddress = still.filter((p) => !p.email).map((p) => p.displayName ?? p.externalId);
+
+    if (reachable.length === 0) {
+      return rules(
+        'start_a_check_in',
+        text('I did not open it: none of those people can be reached now. Nothing was sent.'),
+      );
+    }
+
+    const me = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who, active: true },
+      select: { linkedUserId: true },
+    });
+    if (!me?.linkedUserId) {
+      return rules(
+        'start_a_check_in',
+        text('I could not open it in your name — your account is not linked yet, and a check-in has to belong to somebody. Nothing was sent.'),
+      );
+    }
+
+    const ground = await this.grounds.create(organizationId, me.linkedUserId, {
+      label: payload.label,
+      scenario: payload.scenario as never,
+      moment: 'STARTING' as never,
+    });
+
+    for (const p of reachable) {
+      await this.grounds.addParticipant(ground.id, organizationId, me.linkedUserId, {
+        email: p.email as string,
+      });
+    }
+
+    const said = [`Opened "${payload.label}". ${saidAsAList(reachable.map((p) => p.displayName ?? p.externalId))} ${reachable.length === 1 ? 'has' : 'have'} been invited.`];
+    /* Named, not counted, in both directions — the same rule the offer runs on. */
+    if (gone.length) said.push(`${saidAsAList(gone)} ${gone.length === 1 ? 'is' : 'are'} no longer on the roster, so ${gone.length === 1 ? 'they were' : 'they were'} left out.`);
+    if (noAddress.length) said.push(`${saidAsAList(noAddress)} ${noAddress.length === 1 ? 'has' : 'have'} no email address on the roster and could not be invited.`);
+
+    return rules('start_a_check_in', text(said.join(' ')));
+  }
+
+  /**
+   * WHO THE DOCUMENT IS FOR.
+   *
+   * The file is already in and already private. This only ever OPENS it, and only on an answer clear
+   * enough to act on — anything ambiguous asks again rather than guessing, because guessing in the
+   * permissive direction publishes somebody's document to their team and there is no undo for that.
+   *
+   * The proposal stays parked while the answer is unclear, so somebody can say it properly rather
+   * than starting again.
+   */
+  private async resolveParkedDocument(organizationId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const payload = parked.payload as { documentId: string; groundId: string; fileName: string; elsewhere?: boolean };
+    const meant = whoTheyMeant(message);
+
+    if (meant === null) return rules('add_a_document', text(askAgain()));
+
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: 'ACCEPTED', resolvedAt: new Date() },
+    });
+
+    /* OWN is where it already is. Saying so is not a write — and a write that changes nothing is
+       still a write somebody has to be able to account for. */
+    if (meant !== 'OWN') {
+      /* Two tables, one question. A document that lives elsewhere is recorded in
+         its own table precisely so nothing that assembles document TEXT can reach
+         it — which means this has to know which of the two it is holding. */
+      if (payload.elsewhere) {
+        await this.prisma.documentElsewhere.update({
+          where: { id: payload.documentId },
+          data: { visibility: meant },
+        });
+      } else {
+        await this.prisma.groundDocument.update({
+          where: { id: payload.documentId },
+          data: { visibility: meant },
+        });
+      }
+    }
+
+    return rules('add_a_document', text(whatWasDone(payload.fileName, meant)));
+  }
+
+  /**
+   * SENDING IT, OR NOT.
+   *
+   * RE-READ AT EXECUTION, like every other confirmed act here: between the offer and the yes their
+   * address may have changed or been removed, and a parked action carries the address it was offered
+   * under. Mail to a stale address is the one mistake that cannot be taken back.
+   */
+  private async resolveParkedDelivery(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
+    });
+
+    if (decision === 'decline') return rules('send_me_that', text('Left it in here, then.'));
+
+    const me = await this.prisma.person.findFirst({
+      where: { organizationId, externalId: who, active: true },
+      select: { displayName: true, email: true },
+    });
+    if (!me?.email) {
+      return rules('send_me_that', text('I could not send it: there is no longer an email address for you in your organisation records.'));
+    }
+
+    const latest = parked.payload as { body: string; about: string; lane: string };
+    const mail = theMail(latest, me);
+
+    try {
+      await this.email.sendRoundDigest(me.email, mail.subject, mail.text);
+    } catch (error) {
+      /* Said plainly rather than swallowed. Somebody who asked for an email and got a cheerful
+         "sent" that never arrived stops trusting everything else this says. */
+      this.logger.warn(`Could not send to ${who}: ${(error as Error).message}`);
+      return rules('send_me_that', text('I could not send it just now, so treat it as not sent. It is still here.'));
+    }
+
+    return rules('send_me_that', text(`Sent to ${me.email}. Nobody else was copied.`));
+  }
+
   private async resolveParkedScenario(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     const payload = parked.payload as { candidateId: string; scenario: string };
 
@@ -766,9 +1391,18 @@ export class AssistantService {
        * chat window is the product blaming them for its own timing.
        */
       const decided = fromRow(await this.scenarios.decide(organizationId, payload.candidateId, who, decision === 'accept'));
+
+      if (decision !== 'accept') {
+        return rules('what_should_we_talk_about', text(declinedLine(COOLING_DAYS)));
+      }
+
+      /* The words say what happened; the block says where setting it up lives. Kept apart so the
+         panel can route it into the customer's own application instead of sending somebody out of
+         their own system - see `acceptedNextStep`. */
       return rules(
         'what_should_we_talk_about',
-        text(decision === 'accept' ? acceptedLine(decided) : declinedLine(COOLING_DAYS)),
+        text(acceptedLine(decided)),
+        { type: 'next_step', ...acceptedNextStep(decided) },
       );
     } catch {
       return rules('what_should_we_talk_about', text('That suggestion is no longer open, so there was nothing for me to record. Ask me what is waiting on you and I will tell you what still stands.'));
@@ -939,6 +1573,29 @@ export class AssistantService {
     );
     if (quiet) lines.push(`I am not raising anything until ${quiet.toDateString()}, because your systems were only just connected.`);
 
+    /*
+     * AND WHAT I CAN DO WITH IT, READ FROM THE REGISTRY RATHER THAN LISTED HERE.
+     *
+     * A hand-written list of abilities in this one lane would be wrong within a
+     * fortnight — it is the same failure as a hand-written pattern, one layer up.
+     * Reading the declarations means the answer cannot drift from what the router
+     * actually does, because a guard already holds those together.
+     *
+     * The honest half is `whatIStillCannotDo`: somebody who asks what this can do
+     * is usually about to ask for the one thing it cannot, and hearing "not yet,
+     * and here is why" is a better answer than discovering it a question later.
+     */
+    lines.push('', 'What you can ask me for:');
+    for (const c of WHAT_THE_ASSISTANT_CAN_DO) {
+      lines.push(`- ${c.does}${c.writes === 'nothing' ? '' : ` (${c.writes})`}`);
+    }
+
+    const notYet = whatIStillCannotDo();
+    if (notYet.length) {
+      lines.push('', 'What I cannot do yet:');
+      for (const n of notYet) lines.push(`- ${n}`);
+    }
+
     return rules('what_you_can_see', text(lines.join('\n')));
   }
 
@@ -956,7 +1613,11 @@ export class AssistantService {
 
     const all = await this.prisma.subject.findMany({
       where: { organizationId, sourceDeletedAt: null },
-      select: { title: true, target: true, measure: true, ownerExternalId: true, contributorExternalIds: true, dueDate: true },
+      /* `justification` and `approach` are the reason the number is the number and what anybody
+         meant to do about it. They were collected, carried across the API and rendered into the
+         check-in prompt, and were invisible here - so the one place somebody ASKS about their work
+         was the one place that could not say what it was for. */
+      select: { title: true, target: true, measure: true, ownerExternalId: true, contributorExternalIds: true, dueDate: true, justification: true, approach: true },
       orderBy: { dueDate: 'asc' },
     });
 
@@ -973,12 +1634,13 @@ export class AssistantService {
       return rules('what_am_i_on', text('Nothing your organisation has sent us lists you as an owner or a contributor. That may mean the work is tracked somewhere that is not connected yet.'));
     }
 
-    const line = (s: typeof all[number]) =>
-      `- ${s.title}${s.target ? ` (target: ${s.target})` : ''}${s.dueDate ? `, due ${s.dueDate.toDateString()}` : ''}`;
-
     const parts: string[] = [];
-    if (owned.length) parts.push(`You own ${owned.length}:`, ...owned.map(line));
-    if (contributing.length) parts.push(`${parts.length ? '\n' : ''}You are a contributor on ${contributing.length}:`, ...contributing.map(line));
+    if (owned.length) parts.push(`You own ${owned.length}:`, ...owned.map(asALine));
+    if (contributing.length) parts.push(`${parts.length ? '\n' : ''}You are a contributor on ${contributing.length}:`, ...contributing.map(asALine));
+
+    const missing = whatIsMissingAcrossThem([...owned, ...contributing]);
+    if (missing) parts.push(`\n${missing}`);
+
     parts.push('\nThat is what your systems say. Whether it matches what you are actually spending your time on is the more interesting question, and one for your check-in.');
 
     return rules('what_am_i_on', text(parts.join('\n')));

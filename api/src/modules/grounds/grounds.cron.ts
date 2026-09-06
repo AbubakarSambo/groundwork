@@ -666,7 +666,10 @@ export class GroundsCron {
       for (const p of g.participants) {
         if (alreadySubmitted.has(p.id)) continue;
         try {
-          await this.email.sendFeedbackRequest(p.email, g.label, `${frontend}/grounds/${g.id}/feedback`);
+          /* The report page is where outcome feedback is actually given — there has never
+             been a `/grounds/:id/feedback` route, so this invitation has always led to the
+             not-found page. */
+          await this.email.sendFeedbackRequest(p.email, g.label, `${frontend}/grounds/${g.id}/report`);
           sent++;
         } catch (err: any) {
           this.logger.error(`Feedback request failed for participant ${p.id}: ${err.message}`);

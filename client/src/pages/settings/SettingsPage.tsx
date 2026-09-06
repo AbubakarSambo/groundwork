@@ -343,7 +343,7 @@ export function SettingsPage() {
               </button>
             </div>
             {notifSaved && (
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', padding: '8px 16px', borderTop: '0.5px solid var(--gw-border)', background: 'var(--gw-green-bg)' }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', padding: '8px 16px', borderTop: '1px solid var(--gw-border)', background: 'var(--gw-green-bg)' }}>
                 Saved.
               </div>
             )}
@@ -366,7 +366,7 @@ export function SettingsPage() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="+234 801 234 5678"
-                style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '0.5px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
+                style={{ flex: 1, padding: '9px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit' }}
               />
               <button
                 onClick={() => savePhone.mutate(phoneNumber || null)}
@@ -405,7 +405,7 @@ export function SettingsPage() {
                 <button
                   onClick={() => loadMyData.mutate()}
                   disabled={loadMyData.isPending}
-                  style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ padding: '9px 16px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {loadMyData.isPending ? 'Loading…' : 'Show me'}
                 </button>
@@ -425,21 +425,21 @@ export function SettingsPage() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     onClick={downloadMyData}
-                    style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    style={{ padding: '9px 16px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'var(--gw-slate)', color: 'var(--gw-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     Download all of it
                   </button>
                   {!showEraseConfirm ? (
                     <button
                       onClick={() => setShowEraseConfirm(true)}
-                      style={{ padding: '9px 16px', borderRadius: 7, border: '0.5px solid var(--gw-border)', background: 'none', color: 'var(--gw-red-t)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                      style={{ padding: '9px 16px', borderRadius: 7, border: '1px solid var(--gw-border)', background: 'none', color: 'var(--gw-red-t)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Erase it
                     </button>
                   ) : null}
                 </div>
                 {showEraseConfirm && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid var(--gw-border)' }}>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
                     <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
                       {/**
                         * What this actually does, read off `eraseAccount`, not off what erasure
@@ -463,7 +463,7 @@ export function SettingsPage() {
                       </button>
                       <button
                         onClick={() => setShowEraseConfirm(false)}
-                        style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                        style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                       >
                         Cancel
                       </button>
@@ -504,7 +504,7 @@ export function SettingsPage() {
                   </button>
                   <button
                     onClick={() => setShowLeaveConfirm(false)}
-                    style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                    style={{ padding: '9px 18px', borderRadius: 6, background: 'var(--gw-slate)', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
                   >
                     Cancel
                   </button>

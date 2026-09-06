@@ -82,8 +82,14 @@ const emailProse = (): { line: number; text: string }[] => {
       return;
     }
     if (t.startsWith('*') || t.startsWith('//')) return;
-    // `${...}` is code and `myground.work` is a domain. Neither is prose, and both must keep the word.
-    const probe = raw.replace(/\$\{[^}]*\}/g, '').replace(/myground\.work/g, '');
+    /* `${...}` is code and `myground.work` is a domain. Neither is prose, and both must keep the
+       word. A URL PATH is the third of the same kind: `/grounds/new` is the client's route, and
+       the only way to satisfy this guard without stripping it would be to rename that route —
+       which is the one thing the standing rule forbids. */
+    const probe = raw
+      .replace(/\$\{[^}]*\}/g, '')
+      .replace(/myground\.work/g, '')
+      .replace(/\/grounds?\b[A-Za-z0-9/_-]*/g, '');
     if (/\bgrounds?\b/i.test(probe)) out.push({ line: i + 1, text: probe.trim().slice(0, 90) });
   });
   return out;
@@ -103,6 +109,8 @@ describe('what the emails call it', () => {
     const raw = readFileSync(join(SRC, 'modules/email/email.service.ts'), 'utf8');
     expect(raw).toMatch(/\$\{groundUrl\}/);
     expect(raw).toMatch(/myground\.work/);
+    /* And the path, for the same reason: stripping it above must not let somebody delete it. */
+    expect(raw).toMatch(/\/grounds\/new/);
   });
 });
 

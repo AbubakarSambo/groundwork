@@ -2,6 +2,8 @@
 
 **Two live vulnerabilities, found 1 September 2026. Neither is closed. Both need you.**
 
+*Last checked 5 September 2026. Both still open.*
+
 Nothing here is a code change waiting for review. These are credentials and configuration, and
 only you can act on them.
 
@@ -17,6 +19,10 @@ continuously for exactly this filename.
 
 **The signing secret is still the one in use.** The value in that file is byte-identical to the one
 the API runs on today. It is present in 82 branches.
+
+> **Re-checked 5 September 2026.** Still true, and worse: byte-identical again on that date, and
+> now reachable from **141 branches**, not 82. Four days, fifty-nine more branches. Nothing about
+> this ages out on its own — every branch cut from any of those carries it forward.
 
 Anyone holding it can mint a token the API accepts — **as any user, in any organisation, including
 an admin** — with no password, no failed login, and nothing in the logs to separate it from a real
@@ -78,3 +84,56 @@ and until they are rotated the first item on this list is still open.
 
 *Written by Claude, working with Hafsah, 1 September 2026. No values are repeated in this note —
 reading it is not a second disclosure.*
+
+---
+
+## 4. A join link plus any email address is a session as that person
+
+**Found 7 September 2026, during the user-journey audit. Verified by reading the code, not by exploiting it.**
+
+`POST /entry/join-accept` (`api/src/modules/entry/entry.controller.ts:271` → `entry.service.ts:1611`)
+is `@Public()`, takes `{ joinToken, email }`, looks the email up with
+`prisma.user.findUnique({ where: { email } })` — **no organisation scope, no proof
+the caller owns the address** — and returns
+
+```ts
+const accessToken = this.jwt.sign({
+  sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role,
+});
+```
+
+which is a full session as that user, with their role and their organisation.
+
+`POST /entry/join-commit` (`entry.service.ts:1490`) has the same shape.
+
+**What that means.** A join link is a broadcast credential — it is meant to be handed
+to a cohort. Anybody holding one can post the org admin's address and be signed in as
+the org admin. `Ground.joinToken` (`prisma/schema.prisma:784`) never expires, is never
+rotated, and is never consumed.
+
+Neither route is throttled, so the surface is also brute-forceable at the global
+60/min once a join link is known.
+
+Mitigation already in place, and why it is not enough: `grounds.service.ts:1494-1506`
+stopped returning `joinToken` to ordinary participants after a related problem, so only
+org admins can copy the link from the ground page. But the link's whole purpose is to be
+distributed, and every person it is distributed to can do the above.
+
+**FIXED, 7 September 2026**, on Hafsah's instruction, and driven against the running server.
+
+`/entry/join-commit` is **deleted** — nothing called it, the orphan list had already asked
+somebody to confirm that before deleting, and it carried the same hole.
+
+`/entry/join-accept` no longer signs anybody in. It records a `PendingJoin`, emails a
+single-use 24-hour link to the address that was typed, and answers with the same sentence
+whether or not that address has an account here. `POST /entry/join-confirm` is the only
+route that now creates an account, a participant, a check-in or a session, and it runs only
+because the address opened the link.
+
+The rule is not softer for an address nobody has seen before: typing a colleague's address
+would otherwise produce a check-in in their name — a false record, which is worse than
+access to an old one. See `api/src/modules/entry/a-join-link-is-not-a-password.ts`.
+
+Driven: posting the admin's address returns `sent: true` with no token and creates nothing;
+the emailed link works once and then says so; a made-up token is refused with what to do
+next. Both routes are now throttled.

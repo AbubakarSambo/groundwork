@@ -31,6 +31,7 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
   '/auth/google/callback': 'Google redirects here after sign-in',
   '/billing/callback': 'the payment provider redirects here',
   '/join': 'the broadcast link an admin copies off the check-in page and sends',
+  '/join/confirm': 'the link emailed to the address somebody typed on /join — the only place the join flow creates anything',
   /**
    * The marketing site's header links here when its shared signed-in flag is set. Nothing inside
    * the app links to it and nothing should: in here, signing out is a button in the shell that

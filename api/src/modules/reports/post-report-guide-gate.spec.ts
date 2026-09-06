@@ -37,7 +37,7 @@ function makeService(flagEnabled: boolean, guide?: Record<string, string>) {
     report: { update: jest.fn(async () => ({})) },
   };
   const config: any = { get: jest.fn((key: string) => (key === 'app.postReportGuideEnabled' ? flagEnabled : undefined)) };
-  const service: any = new ReportsService(prisma, {} as any, anthropic, {} as any, config, {} as any, {} as any);
+  const service: any = new ReportsService(prisma, {} as any, anthropic, {} as any, config, {} as any, {} as any, { tell: async () => [] } as any);
   return { service, anthropic, prisma, config };
 }
 

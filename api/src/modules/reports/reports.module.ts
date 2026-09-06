@@ -6,9 +6,10 @@ import { ConversationModule } from '../conversation';
 import { GroundsModule } from '../grounds';
 import { EmailModule } from '../email';
 import { UsageModule } from '../usage/usage.module';
+import { WorkspaceModule } from '../workspace/workspace.module';
 
 @Module({
-  imports: [ConversationModule, GroundsModule, EmailModule, UsageModule],
+  imports: [ConversationModule, GroundsModule, EmailModule, UsageModule, WorkspaceModule],
   controllers: [ReportsController],
   providers: [ReportsService, ReportsListener],
   exports: [ReportsService],

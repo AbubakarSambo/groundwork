@@ -18,7 +18,8 @@ export type BlockType =
   | 'draft'
   | 'picker'
   | 'finding_list'
-  | 'freshness';
+  | 'freshness'
+  | 'next_step';
 
 export interface TextBlock {
   type: 'text';
@@ -45,6 +46,43 @@ export interface DraftBlock {
   state: Record<string, unknown>;
 }
 
+/**
+ * SOMETHING TO GO AND DO, AS A BLOCK RATHER THAN A PATH INSIDE A SENTENCE.
+ *
+ * Accepting a suggested conversation used to answer with the words "Open /grounds/new?scenario=... to
+ * set it up". In the product that path works. In the EMBEDDED PANEL it is read on the customer's own
+ * page, where a relative path resolves against THEIR origin and 404s — and made absolute it walks
+ * somebody out of their own system into ours, which is the opposite of what the panel is for.
+ *
+ * The panel decides what to do with this. A customer whose own application has a place to set up a
+ * check-in points at it; one who has not gets our page. Neither is decided here, because this code
+ * cannot know which application it is being read inside.
+ *
+ * `href` is a path within the Groundwork product and stays relative for that reason - it is not a
+ * URL to follow blindly, it is where OUR page for this is. A panel rendering it verbatim as a link
+ * is the one thing the shape is meant to stop.
+ */
+export interface NextStepBlock {
+  type: 'next_step';
+  /** What doing it accomplishes, in words a person reads. */
+  label: string;
+  /** Where this lives in the Groundwork product. Relative on purpose. */
+  href: string;
+  /**
+   * The kind of thing, so a customer's own page can route it.
+   *
+   * `set_up_a_check_in` is a page to open. The other two are ACTS on a record
+   * that already exists, named separately because a customer routing these is
+   * doing something different with each: one opens their own setup screen, the
+   * other two call a route.
+   */
+  kind: 'set_up_a_check_in' | 'confirm_a_check_in' | 'open_a_check_in' | 'upload_a_document';
+  /** The record it acts on, for the two kinds that act on one. */
+  id?: string;
+  /** Carried so a customer's setup screen can prefill what we already know. */
+  context?: Record<string, string>;
+}
+
 export interface PickerBlock {
   type: 'picker';
   options: { key: string; label: string }[];
@@ -69,7 +107,8 @@ export interface FreshnessBlock {
 
 export type Block =
   | TextBlock | BoardBlock | ProposalBlock | DraftBlock
-  | PickerBlock | FindingListBlock | FreshnessBlock;
+  | PickerBlock | FindingListBlock | FreshnessBlock
+  | NextStepBlock;
 
 /**
  * `composedBy` IS NOT DIAGNOSTICS. It is stamped on every reply so a person always knows which
@@ -100,5 +139,5 @@ export function rules(lane: string, ...blocks: Block[]): Reply {
  */
 export const BLOCK_TYPES: Record<BlockType, true> = {
   text: true, board: true, proposal: true, draft: true,
-  picker: true, finding_list: true, freshness: true,
+  picker: true, finding_list: true, freshness: true, next_step: true,
 };

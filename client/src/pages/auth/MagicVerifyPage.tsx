@@ -365,7 +365,7 @@ export function MagicVerifyPage() {
               ))}
             </div>
           )}
-          <div style={{ background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
             {[
               { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-survives-a-reload'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
@@ -48,6 +49,9 @@ interface ScenarioCard {
 // descriptions, and recognizer sub-examples. DISPLAY ONLY - every card still
 // submits its untouched GroundScenario enum key; packs, classifier keys, and
 // the report schema are unchanged.
+/** One device, one browser, and cleared the moment the check-in exists. */
+const DRAFT_KEY = 'gw-new-ground-draft'
+
 export const SCENARIOS: ScenarioCard[] = [
   { cardKey: 'NEW_HIRE', scenario: 'NEW_HIRE', label: SCENARIO_LABELS.NEW_HIRE, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: "Agree what the role is and what doing it well looks like in the first 90 days, and make sure they have actually seen it. Each check-in then tests what they are doing against that, so a mismatch surfaces in week two instead of at a review.",
@@ -68,6 +72,26 @@ export const SCENARIOS: ScenarioCard[] = [
       'Someone is leaving in four weeks and their replacement has already started.',
       'A role is moving between two people and nobody has written down what the first one was carrying.',
       'You want the incoming person to say what they would be guessing about, before they stop noticing.',
+    ] },
+  { cardKey: 'CONTRACT_REVIEW', scenario: 'CONTRACT_REVIEW', label: SCENARIO_LABELS.CONTRACT_REVIEW, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
+    desc: "Before you sign, each side writes down its own expectations separately - what the numbers are actually of, who does what, and what happens if. Each check-in then tests the two accounts against each other, so a difference surfaces while changing it is still free.",
+    moment: 'You are two weeks from signing and both sides think it is clear.',
+    agreed: 'Each side says, on its own, what it expects to give and to get, and what the numbers are actually of.',
+    tests: 'The check-ins compare the two accounts, so "twenty per cent of gross" and "twenty per cent of net" is found now rather than in a year.',
+    examples: [
+      'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
+      'A licence where one side assumes a client list is fixed and the other assumes it grows.',
+      'A partnership you are about to sign with somebody you would rather not fall out with.',
+    ] },
+  { cardKey: 'IMPLEMENTATION_TRACKING', scenario: 'IMPLEMENTATION_TRACKING', label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING, tag: 'Planning', tagBg: 'var(--gw-blue-bg)', tagColor: 'var(--gw-navy)',
+    desc: "A quiet monthly read on an agreement that is running. Each check-in tests what is actually happening against what was agreed, and most months it should say the numbers reconcile and nothing needs anybody - which is the point. When something does not add up, it stays on the record until somebody explains it.",
+    moment: 'The contract has been running for eight months and neither side has looked at it since.',
+    agreed: 'What each side reports, where the figures come from, and what falls due when.',
+    tests: 'Each month asks what changed, carries anything unexplained forward, and says plainly when a period is clear.',
+    examples: [
+      'A revenue share where the reported figure and the filed figure have never been put side by side.',
+      'An arrangement that has quietly drifted from what was signed, and both sides half know it.',
+      'A relationship that is fine, where you would like to be able to prove it was fine.',
     ] },
   { cardKey: 'NEW_PROJECT', scenario: 'NEW_PROJECT', label: SCENARIO_LABELS.NEW_PROJECT, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
     desc: "Agree scope, who owns what, and what \"done\" means before anyone starts. The check-ins then test the work against that, so a quiet change of scope or a task nobody owns shows up while there is still time to act.",
@@ -365,6 +389,10 @@ const SCENARIO_FROM_LABEL: Record<string, GroundScenario> = {
   'new board member':   'NEW_ADVISOR',
   'new partner':        'NEW_COFOUNDER',
   'contract renewal':   'CONTRACT_RENEWAL',
+  'agreement before signing': 'CONTRACT_REVIEW',
+  'contract review':    'CONTRACT_REVIEW',
+  'agreement that is running': 'IMPLEMENTATION_TRACKING',
+  'implementation tracking': 'IMPLEMENTATION_TRACKING',
   'new direction':      'DRIFT',
   'pip':                'PIP',
   'goals & planning':   'OKR_ALIGNMENT',
@@ -621,6 +649,51 @@ export function CreateGroundPage() {
   const [leadRemit, setLeadRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
+  /**
+   * WHAT WAS TYPED, KEPT ON THIS DEVICE UNTIL IT LANDS.
+   *
+   * This form kept exactly one thing — the situation card — and held everything else in component
+   * state: the brief somebody wrote carefully, the people they listed, the dates, the lead, the
+   * remits. A reload, an accidental back, a session timing out or a phone reclaiming a
+   * backgrounded tab lost the lot, at the end of eight steps.
+   *
+   * Cleared the moment the check-in exists. A draft that outlives the thing it was drafting is
+   * worse than losing it: it reappears, somebody finishes it a second time, and everybody is
+   * invited twice.
+   */
+  const [restored, setRestored] = useState<Date | null>(null)
+
+  useEffect(() => {
+    const kept = whatWasKept<Record<string, unknown>>(DRAFT_KEY)
+    if (!kept.value) return
+    const d = kept.value as any
+    if (typeof d.groundName === 'string') setGroundName(d.groundName)
+    if (typeof d.brief === 'string') setBrief(d.brief)
+    if (typeof d.ownDescription === 'string') setOwnDescription(d.ownDescription)
+    if (typeof d.myRemit === 'string') setMyRemit(d.myRemit)
+    if (typeof d.leadEmail === 'string') setLeadEmail(d.leadEmail)
+    if (typeof d.leadName === 'string') setLeadName(d.leadName)
+    if (typeof d.leadRemit === 'string') setLeadRemit(d.leadRemit)
+    if (typeof d.startsOn === 'string') setStartsOn(d.startsOn)
+    if (typeof d.bulkText === 'string') setBulkText(d.bulkText)
+    if (typeof d.timelineDays === 'number') setTimelineDays(d.timelineDays)
+    if (Array.isArray(d.participants)) setParticipants(d.participants)
+    setRestored(kept.at)
+    /* Once, on arrival. Restoring on every render would fight the person as they type. */
+  }, [])
+
+  useEffect(() => {
+    /* Nothing typed yet is nothing worth keeping — an empty draft would offer to restore a blank
+       form, which reads as the product having lost something. */
+    const anything = brief.trim() || ownDescription.trim() || groundName.trim()
+      || participants.length > 0 || bulkText.trim() || leadEmail.trim()
+    if (!anything) return
+    keep(DRAFT_KEY, {
+      groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit,
+      startsOn, bulkText, timelineDays, participants,
+    })
+  }, [groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
+
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
@@ -783,6 +856,8 @@ export function CreateGroundPage() {
     },
     onSuccess: ({ ground, failed }) => {
       toast.success('Check-in opened')
+      /* It exists now, so the draft must not. See the note on DRAFT_KEY. */
+      forget(DRAFT_KEY)
       /*
        * THE RAIL DOES NOT KNOW IT EXISTS UNTIL SOMEBODY TELLS IT.
        *
@@ -957,6 +1032,42 @@ export function CreateGroundPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+      {/*
+        * SAID, RATHER THAN QUIETLY DONE.
+        *
+        * A form that fills itself in without saying so is a form somebody does not trust: they
+        * cannot tell what is theirs and what the product invented. And there has to be a way to
+        * say no — coming back to start a different check-in and finding the last one's brief in
+        * the box is worse than an empty form.
+        */}
+      {restored && (
+        <div
+          role="status"
+          style={{
+            background: 'var(--gw-blue-bg)',
+            borderBottom: '1px solid var(--gw-border)',
+            padding: '9px 20px',
+            fontSize: 13,
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <span>Picked up where you left off {howLongAgo(restored)} — on this device.</span>
+          <button
+            type="button"
+            className="gw-btn-ghost"
+            style={{ margin: 0 }}
+            onClick={() => {
+              forget(DRAFT_KEY)
+              window.location.reload()
+            }}
+          >
+            Start fresh
+          </button>
+        </div>
+      )}
       <div className="gw-hdr">
         {/* The rail already says Groundwork two inches to the left. This said it again, so
               the page's own name is here instead - which is the thing a second line of
@@ -1597,7 +1708,7 @@ export function CreateGroundPage() {
                 )}
 
                 {showCodeInput && (
-                  <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 14, marginTop: 8 }}>
+                  <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 14, marginTop: 8 }}>
                     <label className="gw-label">Access code</label>
                     <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                       <input
@@ -1768,20 +1879,20 @@ export function CreateGroundPage() {
             </div>
 
             {bulkMode ? (
-              <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Paste emails</div>
                 <textarea
                   rows={4}
                   value={bulkText}
                   onChange={e => setBulkText(e.target.value)}
                   placeholder={'one@example.com\ntwo@example.com\nthree@example.com'}
-                  style={{ width: '100%', padding: '10px 12px', border: '0.5px solid var(--gw-border)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8 }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8 }}
                 />
                 <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8 }}>Separate by line, comma, or semicolon. Roles and notes can be added after.</div>
                 <button onClick={addBulk} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>Add all</button>
               </div>
             ) : (
-            <div style={{ background: 'var(--gw-bg)', border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Add someone new</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                 <div className="gw-fld" style={{ margin: 0 }}>
@@ -1910,17 +2021,17 @@ export function CreateGroundPage() {
                 value={brief}
                 onChange={e => setBrief(e.target.value)}
                 placeholder="What is this about? What needs to be true at the end?"
-                style={{ width: '100%', padding: '12px 14px', border: '0.5px solid var(--gw-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', lineHeight: 1.65, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', lineHeight: 1.65, boxSizing: 'border-box' }}
               />
               <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>{briefWords} words</div>
             </div>
 
             {briefTooShortToInvite ? (
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
                 A little more before you can invite anyone: with nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about - a few more words closes this.
               </div>
             ) : briefShort && (
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '0.5px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
                 A brief this short will produce weaker first sessions. The questions are shaped by what you write here. Add more context.
               </div>
             )}

@@ -1,0 +1,149 @@
+/**
+ * The pages of the back office, and what you must hold to see each.
+ *
+ * Navigation is GENERATED from this. The alternative — a fixed list of
+ * seventeen items with locks on the ones you cannot use — tells a contributor
+ * that the system is mostly not for him, every time he opens it. His interface
+ * should feel deliberately small rather than mostly forbidden.
+ *
+ * One list, so the nav and the router cannot disagree about what exists.
+ */
+
+export interface OpsPage {
+  path: string
+  name: string
+  /** Held to see it at all. Null means everybody on the team. */
+  capability: string | null
+  /** Grouped in the nav, in this order. */
+  group: 'Work' | 'Sales & marketing' | 'Building' | 'Company'
+}
+
+export const OPS_PAGES: OpsPage[] = [
+  { path: '/ops', name: 'My board', capability: null, group: 'Work' },
+  { path: '/ops/target-companies', name: 'Target companies', capability: 'target-companies:read', group: 'Work' },
+  { path: '/ops/commitments', name: 'Commitments', capability: null, group: 'Work' },
+  { path: '/ops/spend', name: 'Spend', capability: 'spend:submit', group: 'Work' },
+
+  /*
+   * ONE PIPELINE. The old `/ops/sales` ran beside this one - same companies,
+   * same stages, no record of who created anything - and two pipelines is how a
+   * company ends up with two answers to "how much are we selling".
+   */
+  { path: '/ops/overview', name: 'Overview', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/pipeline', name: 'Pipeline', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/contribution', name: 'Contribution', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/positioning', name: 'Market access', capability: 'sales:read', group: 'Sales & marketing' },
+  { path: '/ops/attribution', name: 'Attribution review', capability: 'commercial:approve', group: 'Sales & marketing' },
+  { path: '/ops/marketing', name: 'Marketing', capability: 'marketing:read', group: 'Sales & marketing' },
+  /* The register of what we put in front of people. Read by anybody holding
+     marketing:read — it is only useful if whoever writes the next deck can see
+     what the last one was told. */
+  { path: '/ops/resources', name: 'Resources', capability: 'marketing:read', group: 'Sales & marketing' },
+  { path: '/ops/deployment', name: 'Deployment', capability: 'deployment:read', group: 'Sales & marketing' },
+
+  { path: '/ops/roadmap', name: 'Roadmap', capability: 'product:read', group: 'Building' },
+  { path: '/ops/moat', name: 'The moat', capability: 'product:read', group: 'Building' },
+  /* Everybody may read it: it is the document every deck, campaign and page is
+     measured against, and a rule nobody can see is not a rule. Changing it is
+     ceo:board, on the page. */
+  { path: '/ops/what-we-are', name: 'What we are', capability: null, group: 'Building' },
+  { path: '/ops/readiness', name: 'Readiness', capability: 'product:read', group: 'Building' },
+  { path: '/ops/tech', name: 'Tech', capability: 'tech:read', group: 'Building' },
+  { path: '/ops/ux', name: 'UX', capability: 'ux:read', group: 'Building' },
+
+  /* The plan everybody is getting behind, so everybody may read it. */
+  { path: '/ops/workplan', name: 'The workplan', capability: null, group: 'Company' },
+  { path: '/ops/quarter', name: 'Objectives', capability: null, group: 'Company' },
+  /* The one board. Gated on reading somebody else's contribution, because that
+     is what it is — six named people's quarters on one page. A contributor
+     sees their own standing on `/ops`, which is a different question. */
+  { path: '/ops/everybody', name: 'Everybody', capability: 'contributor:read-all', group: 'Company' },
+  /* Anybody may ask for something, so no capability gates the page. Only
+     somebody holding resourcing:approve sees the queue; the page says so
+     rather than showing an empty table. */
+  { path: '/ops/requests', name: 'Requests', capability: null, group: 'Company' },
+  /* Gated on ceo:board, which is who may change them. The GET is open to
+     anybody in the system, so this is a menu decision rather than a gate — but
+     a page whose only control always fails is the locked item wearing a
+     friendlier face, which is exactly what this list exists to avoid. */
+  { path: '/ops/decisions', name: 'Decisions', capability: 'ceo:board', group: 'Company' },
+  /*
+   * Gated on being able to DECIDE, not on being able to ask.
+   *
+   * The page shows the decisions you owe, so for a contributor it is
+   * permanently empty - and a menu item that is always empty is the same
+   * failure as a locked one, wearing a friendlier face. Somebody who has asked
+   * for something reaches it through the record they are waiting on.
+   */
+  { path: '/ops/approvals', name: 'Approvals', capability: 'ceo:board', group: 'Company' },
+  { path: '/ops/fundraise', name: 'Fundraise', capability: 'fundraise:read', group: 'Company' },
+  { path: '/ops/strategy', name: 'Strategy', capability: 'strategy:read', group: 'Company' },
+  { path: '/ops/people', name: 'The team', capability: 'people:admin', group: 'Company' },
+  { path: '/ops/integration', name: 'Groundwork', capability: 'integration:read', group: 'Company' },
+]
+
+export const GROUPS: OpsPage['group'][] = ['Work', 'Sales & marketing', 'Building', 'Company']
+
+/**
+ * Routes that exist and are deliberately NOT in the menu.
+ *
+ * A company page is about one company, so it is reached by clicking that
+ * company's name — never from a list of sixteen destinations. Declared here
+ * rather than left to be caught, because "not in the menu" and "forgotten" look
+ * identical from outside, and the whole point of the register is that they
+ * cannot.
+ */
+export const REACHED_BY_CLICKING: Array<{ path: string; from: string; capability: string | null }> = [
+  /* A company page shows the pipeline's own view of one company, so it is held the same way the
+     pipeline is. Left without a capability it would be the hole in the guard below: `/ops` is a
+     prefix of every ops path, so anything not named here would fall through to the page everybody
+     holds. */
+  { path: '/ops/companies/:key', from: 'a company name on the target list or the pipeline', capability: 'sales:read' },
+  /*
+   * The old pipeline's address. Redirected rather than deleted: it is in
+   * people's history and a silent 404 on a page somebody used daily reads as an
+   * outage rather than as a move.
+   */
+  { path: '/ops/sales', from: 'a bookmark or an old link, and it redirects to /ops/pipeline', capability: 'sales:read' },
+]
+
+export function pagesFor(capabilities: readonly string[]): OpsPage[] {
+  return OPS_PAGES.filter((p) => p.capability === null || capabilities.includes(p.capability))
+}
+
+/**
+ * WHY A PERSON CANNOT OPEN THIS PATH, OR NULL WHERE THEY CAN.
+ *
+ * The nav has been generated from this list since it was written; the ROUTER never consulted it.
+ * So the back office hid what you could not use and served it anyway to anybody who typed the
+ * address, bookmarked it, or followed a link from a page that did not know better — with the
+ * forms, the buttons and the chrome, and only the writes refusing, quietly.
+ *
+ * Longest match wins, because `/ops/companies/:key` has to be decided by `/ops/companies` rather
+ * than by `/ops`, which everybody holds.
+ */
+export function whyThisIsNotYours(
+  path: string,
+  capabilities: readonly string[],
+): { because: string; page: string } | null {
+  const clean = path.replace(/\/+$/, '') || '/ops'
+
+  /* EXACT, and then the parameterised ones by shape. Matching on prefix was the first attempt and
+     it is exactly wrong here: `/ops` is a prefix of every ops address, so every unknown path — and
+     every path somebody adds later without telling this list — fell through to the one page
+     everybody holds. */
+  const exact = OPS_PAGES.find((p) => p.path === clean);
+  const shaped = REACHED_BY_CLICKING.find((p) => {
+    const parts = p.path.split('/');
+    const here = clean.split('/');
+    return parts.length === here.length && parts.every((seg, i) => seg.startsWith(':') || seg === here[i]);
+  });
+
+  const page = exact ?? shaped;
+  if (!page) {
+    return { because: 'no such page', page: clean };
+  }
+  const needed = 'capability' in page ? page.capability : null;
+  if (needed === null || capabilities.includes(needed)) return null;
+  return { because: needed, page: 'name' in page ? page.name : clean };
+}

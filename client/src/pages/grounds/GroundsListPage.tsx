@@ -305,7 +305,7 @@ export function GroundsListPage() {
               <h1 className="gw-logo gw-page-h1">Check-ins</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
             {isAdmin ? 'Admin' : 'Team member'}
           </span>
           {/*

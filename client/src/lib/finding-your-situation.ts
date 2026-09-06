@@ -48,6 +48,11 @@ export const WORDS_PEOPLE_TYPE: Record<string, string[]> = {
   /* 'over' is here for the two-word "handing over": every typed word has to hit the same card,
      and without it "handing" hit this card while "over" hit only "A new manager taking over". */
   ROLE_HANDOVER: ['handover', 'handing', 'over', 'succession', 'replacing', 'successor', 'transition'],
+  /* Before signing. "Draft" and "terms" are the giveaways — somebody with a signed contract does
+     not describe it as a draft. */
+  CONTRACT_REVIEW: ['draft', 'drafting', 'terms', 'before we sign', 'signing', 'unsigned', 'negotiating', 'proposal', 'agreement', 'msa', 'sow'],
+  /* After signing. The words people use are about what is HAPPENING under it. */
+  IMPLEMENTATION_TRACKING: ['royalty', 'royalties', 'revenue share', 'reconcile', 'reconciliation', 'reporting', 'licence', 'license', 'quarterly', 'invoices', 'compliance'],
   PIP: ['underperforming', 'underperformance', 'improvement', 'probation', 'warning', 'struggling'],
   DRIFT: ['slipping', 'behind', 'delayed', 'stalled', 'overdue', 'late'],
   REALIGN_TEAM: ['conflict', 'dispute', 'disagreement', 'argument', 'friction', 'tension'],

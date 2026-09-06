@@ -45,7 +45,11 @@ function svc(opts: { config?: any; person?: any } = {}) {
     subject: { count: jest.fn(async () => 5), findMany: jest.fn(async () => []) },
   };
   const jwt: any = { signAsync: jest.fn(async () => 'session-token') };
-  return new EmbedService(prisma, jwt);
+  /* The assembly, which the opening now reads. Returning null here keeps this
+     spec about what an out-of-scope person can SEE — the opening falls back to
+     the greeting, which is what it was asserting before. */
+  const truth: any = { forPerson: jest.fn(async () => null) };
+  return new EmbedService(prisma, jwt, truth);
 }
 
 const inScope = { id: 'p1', externalId: 'u-1', displayName: 'Naomi Osei', userName: 'naomi', active: true, department: 'Commercial' };

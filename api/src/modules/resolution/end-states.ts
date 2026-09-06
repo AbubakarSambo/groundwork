@@ -14,6 +14,29 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'NEEDS_MORE_TIME', label: 'Not finished - extend it' },
     { value: 'PREDECESSOR_GONE', label: 'Ended without the predecessor', description: 'They left before this finished. Recorded honestly so the gaps are attributed to the circumstance rather than to the successor.' },
   ],
+  /**
+   * IT ENDS WHEN THE CONTRACT IS SIGNED, and the other three endings are the honest ones.
+   *
+   * A review that produces "signed" is the good outcome; a review that produces "we found out we
+   * mean different things and stopped" is a better outcome than signing anyway, and it has to be
+   * available or nobody will pick it.
+   */
+  CONTRACT_REVIEW: [
+    { value: 'SIGNED', label: 'Signed' },
+    { value: 'SIGNED_WITH_CHANGES', label: 'Signed, with what changed named', description: 'The review surfaced things the draft did not say, and they were written in before signing.' },
+    { value: 'NOT_YET', label: 'Not ready to sign - with the open questions named' },
+    { value: 'NOT_PROCEEDING', label: 'Not proceeding', description: 'The two sides found they meant different things by it. Better found now than in a year.' },
+  ],
+  /**
+   * MOST OF THESE ARE "IT IS RUNNING FINE", which is the point of the card. An ending that only
+   * offered dispute-shaped outcomes would make a quiet quarter feel like a failure to conclude.
+   */
+  IMPLEMENTATION_TRACKING: [
+    { value: 'RUNNING_AS_AGREED', label: 'Running as agreed' },
+    { value: 'RUNNING_WITH_OPEN_QUESTIONS', label: 'Running, with open questions named', description: 'Nothing is wrong and some things are unexplained. Both sides know which.' },
+    { value: 'NEEDS_AN_AMENDMENT', label: 'The arrangement needs changing', description: 'What the two sides are actually doing has moved away from what was signed, and both say so.' },
+    { value: 'ENDED', label: 'The arrangement ended' },
+  ],
   NEW_HIRE: [
     { value: 'KEEP', label: 'Keep the hire' },
     { value: 'RESTRUCTURE', label: 'Restructure the role' },

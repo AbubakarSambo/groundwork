@@ -76,7 +76,18 @@ export class GroundsByApiService {
       throw new ForbiddenException('That person is deactivated here, so they cannot open a check-in.');
     }
     if (!person.email) {
-      throw new BadRequestException('That person has no email address here, so nobody can be matched to them.');
+      /*
+       * NAMES THE CALL THAT CAUSED IT. This is three steps downstream of the
+       * SCIM push, and the message used to describe only the symptom - so an
+       * integrator's first instinct was that this endpoint was broken, when the
+       * fault was in a call they made and got a 201 for.
+       *
+       * An error that can point at its own cause should.
+       */
+      throw new BadRequestException(
+        `"${personExternalId}" has no email address here, so nobody can be matched to them. ` +
+          'Push them again with an address in emails[] - or a userName that is one - and try this again.',
+      );
     }
 
     const user = await this.prisma.user.findFirst({
@@ -141,7 +152,10 @@ export class GroundsByApiService {
     const moment = dto.moment ? String(dto.moment).toUpperCase() : undefined;
     if (moment && !(MOMENTS as readonly string[]).includes(moment)) {
       throw new BadRequestException(
-        `"${dto.moment}" is not a moment we have. Send one of: ${MOMENTS.join(', ')}.`,
+        /* Points at where the rest of the closed sets are, so somebody who has
+           just guessed one wrong does not have to guess the next. */
+        `"${dto.moment}" is not a moment we have. Send one of: ${MOMENTS.join(', ')}. ` +
+          'GET /api/org/v1/how-to-connect lists every closed set on this API.',
       );
     }
 
@@ -322,7 +336,17 @@ export class GroundsByApiService {
     const out: { externalId: string; id: string; kind: string | null }[] = [];
     for (const item of items) {
       if (!item.externalId) throw new BadRequestException('Each objective needs an externalId of its own.');
-      if (!item.text?.trim()) throw new BadRequestException(`Objective "${item.externalId}" has no text.`);
+      if (!item.text?.trim()) {
+        /*
+         * NAMES THE FIELD. "has no text" reads as an empty value, and the
+         * commonest cause is a caller who sent `described` - which is the word
+         * every other part of this product uses for the same idea. An error that
+         * knows the likely mistake should say it.
+         */
+        throw new BadRequestException(
+          `Objective "${item.externalId}" has no text. The field is \`text\` - if you sent \`described\`, rename it. See GET /api/org/v1/how-to-connect.`,
+        );
+      }
       if (!(Object.values(ObjectiveKind) as string[]).includes(item.kind)) {
         throw new BadRequestException(NOT_A_KIND);
       }
@@ -352,6 +376,7 @@ export class GroundsByApiService {
           text: item.text.trim(),
           ...shape,
           dueSaid: item.dueSaid ?? null,
+          whyThisNumber: item.whyThisNumber?.trim() || null,
           owedToParticipantId: owedTo?.id ?? null,
           /*
            * Not the acting user's id. `authoredBy` answers "who set this", and for a seeded
@@ -370,6 +395,7 @@ export class GroundsByApiService {
           text: item.text.trim(),
           ...shape,
           dueSaid: item.dueSaid ?? null,
+          whyThisNumber: item.whyThisNumber?.trim() || null,
           owedToParticipantId: owedTo?.id ?? null,
           approvedByExternalId: item.approvedByExternalId ?? null,
           effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
@@ -459,9 +485,33 @@ export class GroundsByApiService {
       out.push({ objectiveExternalId: item.objectiveExternalId, matched: true });
     }
 
-    const matched = out.filter((o) => o.matched).length;
-    this.logger.log(`Evidence: ${matched}/${out.length} matched an objective on a check-in.`);
-    return { received: out };
+    /*
+     * A 200 IS NOT A CONFIRMATION THAT ANYTHING LANDED.
+     *
+     * Every item is reported individually above, and every item can be `matched: false` — so this
+     * call answers 200 having written nothing at all, and a caller that checks only the status code
+     * believes its numbers are in. Our own back-office adapter reported "5 sent, 0 refused" on
+     * exactly such a response, and it was reading the body.
+     *
+     * The endpoint stays 200: a nightly push covering a whole org will legitimately name objectives
+     * that are not on any check-in, and failing the batch for that would make the tolerant case
+     * impossible. What changes is that the summary is impossible to miss, and that nothing matching
+     * at all is logged as a warning rather than counted quietly alongside the successes.
+     */
+    const matchedItems = out.filter((o) => o.matched);
+    const unmatched = out.filter((o) => !o.matched).map((o) => o.objectiveExternalId);
+    const says =
+      matchedItems.length === 0
+        ? `Nothing was written. None of these ${out.length} objectiveExternalIds is on a check-in in this organisation — check the ids you sent, or that the objectives were created with sourceSystem "api".`
+        : unmatched.length === 0
+          ? `${matchedItems.length} updated.`
+          : `${matchedItems.length} updated. ${unmatched.length} matched no objective and were not written.`;
+
+    const line = `Evidence: ${matchedItems.length}/${out.length} matched an objective on a check-in.`;
+    if (matchedItems.length === 0) this.logger.warn(`${line} Nothing was written.`);
+    else this.logger.log(line);
+
+    return { received: out, matched: matchedItems.length, unmatched, says };
   }
 
 

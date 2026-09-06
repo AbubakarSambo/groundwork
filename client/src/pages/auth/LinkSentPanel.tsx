@@ -45,7 +45,7 @@ export function LinkSentPanel({ email, onUseDifferent }: { email: string; onUseD
         We sent a secure link to <strong>{email}</strong>.
       </div>
 
-      <div style={{ border: '0.5px solid var(--gw-border)', borderRadius: 8, padding: '12px 16px', maxWidth: 300, margin: '0 auto 18px', textAlign: 'left' }}>
+      <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 16px', maxWidth: 300, margin: '0 auto 18px', textAlign: 'left' }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 8 }}>What to expect</div>
         {[
           'Click the link in the email.',

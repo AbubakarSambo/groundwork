@@ -458,7 +458,7 @@ export function OnboardingChat() {
 
         {!done && (
           <>
-            <div style={{ padding: '4px 14px', borderTop: '0.5px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
+            <div style={{ padding: '4px 14px', borderTop: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
               Your words are private. Nothing is saved until you choose to save it.
             </div>
             {showInput && (
@@ -488,7 +488,7 @@ export function OnboardingChat() {
       </div>
 
       {done && !loading && (
-        <div style={{ borderTop: '0.5px solid var(--gw-border)', background: 'white', overflowY: 'auto', maxHeight: '65vh', animation: 'gw-slideup 0.35s ease', flexShrink: 0 }}>
+        <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', overflowY: 'auto', maxHeight: '65vh', animation: 'gw-slideup 0.35s ease', flexShrink: 0 }}>
           <div style={{ maxWidth: 680, width: '100%', margin: '0 auto', padding: '16px' }}>
             <SaveCard
               mode={mode as EntryMode}

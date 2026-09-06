@@ -31,6 +31,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
+import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -45,6 +46,12 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   NEW_PROJECT: 90,
   NEW_MANAGER: 90,
   CONTRACT_RENEWAL: 60,
+  /** Short, and it has an end: it finishes when the contract is signed. A review that runs for a
+      quarter is two companies who have stopped meaning to sign anything. */
+  CONTRACT_REVIEW: 60,
+  /** A year, because that is the shape of a commercial arrangement, and because the value of this
+      one is entirely in the months where nothing happens. */
+  IMPLEMENTATION_TRACKING: 365,
   RECOGNITION: 30,
   DRIFT: 90,
   CRISIS_ALIGNMENT: 60,
@@ -118,6 +125,8 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   BOARD_STRATEGY: GroundMoment.STARTING,
   /** One choice with a date on it. The decision is ahead, so this is a beginning. */
   CRISIS_ALIGNMENT: GroundMoment.STARTING,
+  /** Nothing is signed yet, so everything is ahead. */
+  CONTRACT_REVIEW: GroundMoment.STARTING,
   /** The first session establishes what each person owns, which nothing else has. */
   PULSE_CHECK: GroundMoment.STARTING,
   /** The standard is agreed and shown before anything is measured against it. */
@@ -126,6 +135,9 @@ export const RECOMMENDED_MOMENT: Record<GroundScenario, GroundMoment> = {
   ACUTE_SHOCK: GroundMoment.STARTING,
 
   // Work is already running and this is a read on it.
+  /** The agreement is signed and running. This is a read on how it is actually going, month after
+      month, and most months the answer should be that it is going fine. */
+  IMPLEMENTATION_TRACKING: GroundMoment.RECOGNITION,
   COHORT_CHECK: GroundMoment.RECOGNITION,
   DRIFT: GroundMoment.RECOGNITION,
   REALIGN_TEAM: GroundMoment.RECOGNITION,
@@ -151,6 +163,13 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Monthly, not fortnightly: 26 check-ins a year is a job, not an advisory relationship. */
   NEW_ADVISOR: Cadence.MONTHLY,
   CONTRACT_RENEWAL: Cadence.FORTNIGHTLY,
+  /** Fortnightly and short. Before signing there is a decision ahead of both sides, and a monthly
+      rhythm would let a misunderstanding sit for four weeks while the drafting moves on. */
+  CONTRACT_REVIEW: Cadence.FORTNIGHTLY,
+  /** MONTHLY, AND THIS IS THE MOST LOAD-BEARING CADENCE IN THE FILE.
+      A tracking ground that asks twelve questions a fortnight about a relationship that is fine is
+      one people stop answering — and then it is worthless in the month it matters. */
+  IMPLEMENTATION_TRACKING: Cadence.MONTHLY,
   RECOGNITION: Cadence.FORTNIGHTLY,
   /** Weekly. A standard somebody is being measured against deserves more than six readings. */
   PIP: Cadence.WEEKLY,
@@ -756,6 +775,27 @@ export class GroundsService {
     const db = client ?? this.prisma;
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
+      /**
+       * SOMEBODY FROM ANOTHER COMPANY, MADE THE LEAD OF A CHECK-IN HERE.
+       *
+       * This reused their account and wrote no membership, so the organisation they had just been
+       * made lead of did not appear in their switcher and every organisation-scoped read returned
+       * nothing — because their token still carries their home organisation. They were told they
+       * were leading something they could not open.
+       *
+       * The participant path has done this correctly for a while; this one and the join flow were
+       * the two that had not. GUEST, never their home role: being an admin of your own company says
+       * nothing about what you should be able to do in somebody else's.
+       */
+      if (isASecondOrganisation(existing.organizationId, organizationId)) {
+        await db.organizationMembership.upsert({
+          where: { userId_organizationId: { userId: existing.id, organizationId } },
+          create: { userId: existing.id, organizationId, role: GUEST_ROLE },
+          /* Nothing on a second one: a role somebody was given here is theirs to keep. */
+          update: {},
+        });
+      }
+
       return {
         id: existing.id,
         isNewUser: false,
@@ -3862,6 +3902,56 @@ export class GroundsService {
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
       : null;
     return { report, shared: participant.soloArtifactShared };
+  }
+
+  /**
+   * THE LEAD'S OWN SCHEDULE FOR CHASING THEIR PEOPLE.
+   *
+   * Initiator only, because the person who is being chased must not be the person
+   * who decides whether the chasing happens — that is the setting turning itself
+   * off. Days are whole days since the check-in opened; an empty list and
+   * `stopped: true` are the same instruction said two ways and both are honoured.
+   */
+  async setChasing(
+    groundId: string,
+    userId: string,
+    dto: { days?: number[]; stopped?: boolean; tellTheLead?: boolean },
+  ): Promise<{ days: number[]; stopped: boolean; tellTheLead: boolean }> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== userId) {
+      throw new ForbiddenException('Only whoever set this check-in up can change how it reminds people.');
+    }
+
+    let days = ground.chaseAfterDays;
+    if (dto.days !== undefined) {
+      /* Whole days, in order, each one only once. A schedule with 3 twice in it
+         nudges twice on day three, and the 24-hour throttle would be the only
+         thing standing between somebody and two identical emails. */
+      if (dto.days.some((d) => !Number.isInteger(d) || d < 1 || d > 365)) {
+        throw new BadRequestException('Reminder days are whole days between 1 and 365.');
+      }
+      days = [...new Set(dto.days)].sort((a, b) => a - b);
+    }
+
+    const updated = await this.prisma.ground.update({
+      where: { id: groundId },
+      data: {
+        chaseAfterDays: days,
+        chasingStopped: dto.stopped ?? ground.chasingStopped,
+        tellTheLead: dto.tellTheLead ?? ground.tellTheLead,
+      },
+      select: { chaseAfterDays: true, chasingStopped: true, tellTheLead: true },
+    });
+
+    return {
+      days: updated.chaseAfterDays,
+      stopped: updated.chasingStopped,
+      tellTheLead: updated.tellTheLead,
+    };
   }
 
   async setMySoloReportShared(groundId: string, userId: string, shared: boolean): Promise<{ shared: boolean }> {

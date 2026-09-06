@@ -54,6 +54,12 @@ const EXPECTED: Record<string, string> = {
   /* Short, and deliberately shorter than onboarding: a handover still running in three months is
      not a handover, it is the leaver still doing the job. */
   'A role changing hands': 'typically 30 days',
+  /* It ends when the contract is signed, and 60 days is how long that takes when both sides mean
+     to do it. A review still running at three months is two companies who have stopped. */
+  'An agreement before it is signed': 'typically 60 days',
+  /* A year, monthly, because the value of this one is entirely in the months where nothing
+     happens. */
+  'An agreement that is running': 'typically a year',
 }
 
 describe('situation card timeline hints', () => {

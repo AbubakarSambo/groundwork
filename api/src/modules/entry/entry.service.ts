@@ -1,7 +1,14 @@
+import {
+  A_JOIN_LINK_LASTS_HOURS,
+  WhatWeSay,
+  whatToSayAfterAsking,
+  whyThisDidNotWork,
+} from './a-join-link-is-not-a-password';
 import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
+import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
@@ -1427,214 +1434,134 @@ STRICT RULES:
     return this.grounds.getJoinPreview(joinToken);
   }
 
-  /**
-   * Join commit: save an anonymous check-in session to an existing ground via joinToken.
-   * If email + name are provided, create/link a User, send password setup email, and
-   * return a JWT so they're immediately signed in. If no email, the session is discarded.
+  /*
+   * JOIN-COMMIT IS GONE, AND THIS NOTE IS WHY.
+   *
+   * It took a join token and an arbitrary email address, found that person's
+   * existing account with no organisation scope and no proof the caller owned
+   * the address, and returned a signed session as them. A join link is a
+   * broadcast credential — it exists to be handed to a cohort — so everybody who
+   * received one could sign in as anybody whose address they could guess.
+   *
+   * Nothing called it. `entryApi.commit` is the live path; this was its join-flow
+   * twin, and the orphan list had already asked somebody to confirm it was dead
+   * before deleting it. It was. `joinAccept` below had the same hole and is
+   * fixed rather than deleted, because the join page does use it.
    */
-  async joinCommit(dto: {
-    joinToken: string;
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    roleAsDescribed?: string;
-    history: ChatTurn[];
-    report?: EntryReport | null;
-  }): Promise<{ groundId: string; accessToken?: string; userId?: string }> {
-    const ground = await this.prisma.ground.findUnique({
-      where: { joinToken: dto.joinToken },
-      select: { id: true, organizationId: true, label: true, scenario: true },
-    });
-    if (!ground) throw new NotFoundException('Join link not found or has expired');
-
-    if (!dto.email?.trim()) {
-      // Anonymous - nothing stored.
-      return { groundId: ground.id };
-    }
-
-    const email = dto.email.trim().toLowerCase();
-    // Never fabricate a name from the email address - an empty firstName is
-    // the correct "no name given" value; participantLabel() and every other
-    // display surface already fall back to roleAsDescribed / "a teammate".
-    const firstName = dto.firstName?.trim() || '';
-    const lastName = dto.lastName?.trim() || '';
-
-    const { user, isNew } = await this.prisma.$transaction(async (tx) => {
-      let user = await tx.user.findUnique({ where: { email } });
-      const isNew = !user;
-      if (!user) {
-        // Mark isEmailVerified: false - the join flow is authenticated via the joinToken
-        // (ground-scoped), not by proving ownership of the email address. The account is
-        // functional for this ground but email remains unverified until the user completes
-        // a standard sign-in flow (magic link or password setup).
-        user = await tx.user.create({
-          data: {
-            organizationId: ground.organizationId,
-            email,
-            firstName,
-            lastName,
-            role: 'MEMBER',
-            isEmailVerified: false,
-            passwordHash: null,
-          },
-        });
-      }
-      return { user, isNew };
-    });
-
-    // If this email already joined this ground once, don't create a second
-    // GroundParticipant row (the [groundId, email] unique constraint would
-    // otherwise surface as a raw DB error to the joining person). Sign them
-    // back in against their existing participant record instead of
-    // re-processing another "first" check-in on top of it.
-    const existingParticipant = await this.prisma.groundParticipant.findUnique({
-      where: { groundId_email: { groundId: ground.id, email } },
-    });
-    if (existingParticipant) {
-      const accessToken = this.jwt.sign({
-        sub: user.id,
-        email: user.email,
-        organizationId: user.organizationId,
-        role: user.role,
-      });
-      this.logger.log(`join-commit: ${email} already joined ground ${ground.id} - signing back in, no duplicate created`);
-      return { groundId: ground.id, accessToken, userId: user.id };
-    }
-
-    // Create participant record for this person on the ground.
-    const participant = await this.prisma.groundParticipant.create({
-      data: {
-        groundId: ground.id,
-        userId: user.id,
-        email,
-        partyType: PartyType.PARTICIPANT,
-        roleAsDescribed: dto.roleAsDescribed?.trim() || null,
-        notifiedAt: new Date(),
-      },
-    });
-
-    // Create and mark session 1 complete.
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        groundId: ground.id,
-        participantId: participant.id,
-        sessionNumber: 1,
-        status: CheckInStatus.COMPLETED,
-        completedAt: new Date(),
-      },
-    });
-
-    /* Same reason as the other entry path: written straight to COMPLETED, so the round is closed
-       here or nowhere. */
-    await recordRoundCompletion(this.prisma, this.events, ground.id, 1);
-
-    /**
-     * AND SCHEDULE SESSION 2, WHICH NOTHING DID.
-     *
-     * Session 2 onwards is created by `ensureNextSession`, which runs when a
-     * check-in COMPLETES through the conversation service. This path never
-     * completes one - it writes session 1 straight to COMPLETED, above - so a
-     * ground made through the entry chat was created with exactly one check-in
-     * and no second was ever scheduled.
-     *
-     * The ground page offers "Session N is ready for you" only when an open
-     * check-in exists, so for these grounds it never appeared, and the Check-ins
-     * tab showed one completed row with nothing to do. It read as a missing
-     * button; there was simply no session for a button to open.
-     *
-     * Best-effort on purpose: a ground that exists with a saved record is worth
-     * more than one that fails to commit because the follow-up could not be
-     * scheduled. A cadence of ONE_TIME correctly schedules nothing.
-     */
-    await this.conversation
-      .ensureNextSession(ground.id, participant.id, 1)
-      .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
-
-    // Save conversation turns.
-    if (dto.history.length > 0) {
-      await this.prisma.conversationTurn.createMany({
-        data: dto.history.map((t) => ({
-          checkInId: checkIn.id,
-          role: t.role === 'user' ? TurnRole.PERSON : TurnRole.AI,
-          content: t.content,
-        })),
-      });
-      // Extract structured record entries so report synthesis can read them.
-      // Fire-and-forget with error logging - a failure here should not block the commit response.
-      this.conversation.extractRecordEntries(checkIn.id, participant.id)
-        .then(() => this.conversation.buildSoloArtifact(participant.id, ground.id))
-        .catch((err) => this.logger.error(`join-commit: record extraction failed for ${email}: ${err.message}`));
-    }
-
-    // Save solo report artifact.
-    if (dto.report) {
-      await this.prisma.groundParticipant.update({
-        where: { id: participant.id },
-        data: { soloArtifact: JSON.stringify(dto.report), soloArtifactAt: new Date() },
-      });
-    }
-
-    // Send password setup email so they can return and sign in.
-    if (isNew || !(await this.prisma.user.findUnique({ where: { id: user.id }, select: { passwordHash: true } }))?.passwordHash) {
-      const setupToken = crypto.randomBytes(32).toString('hex');
-      await this.prisma.emailVerificationToken.create({
-        data: {
-          userId: user.id,
-          token: setupToken,
-          type: TokenType.PASSWORD_SETUP,
-          expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
-        },
-      });
-      this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
-    }
-
-    const accessToken = this.jwt.sign({
-      sub: user.id,
-      email: user.email,
-      organizationId: user.organizationId,
-      role: user.role,
-    });
-
-    this.logger.log(`join-commit: ${email} checked in on ground ${ground.id} (new user: ${isNew})`);
-    return { groundId: ground.id, accessToken, userId: user.id };
-  }
 
   /**
-   * ONE PATH for broadcast join: instead of running the entry-pipeline chat and
-   * committing a finished transcript, a cohort member signs in against the join
-   * link and lands in the REAL conversation engine (like accepting an invite,
-   * #82/#83). Creates/links their account, a GroundParticipant on the ground,
-   * and a session-1 check-in (NOT_STARTED - they run it in the engine), and
-   * returns the checkInId to hand off to /checkin/:id. Sign-in is required
-   * (there is no anonymous branch): the real engine needs an owned check-in.
+   * ASKING TO JOIN. NOTHING IS CREATED AND NOTHING IS SIGNED.
+   *
+   * This used to take a join token and an arbitrary email address and hand back a
+   * session as whoever that address belonged to. See
+   * `a-join-link-is-not-a-password.ts` for why that was the worst thing in the
+   * product and why the fix is not softer for an address nobody has seen before.
+   *
+   * All that happens here is a row and an email. The link does the work.
    */
-  async joinAccept(dto: {
+  async askToJoin(dto: {
     joinToken: string;
     email: string;
     firstName?: string;
     lastName?: string;
     roleAsDescribed?: string;
-  }): Promise<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }> {
-    // Validate inputs before any DB lookup - a malformed request must be a
-    // clean 400, not a 500 from querying on an undefined join token.
+  }): Promise<WhatWeSay> {
     if (!dto.joinToken?.trim()) throw new BadRequestException('A join link is required.');
     if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
+
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true, organizationId: true },
+      select: { id: true },
     });
     if (!ground) throw new NotFoundException('Join link not found or has expired');
 
     const email = dto.email.trim().toLowerCase();
-    // Never fabricate a name from the email address (see joinCommit above).
-    const firstName = dto.firstName?.trim() || '';
-    const lastName = dto.lastName?.trim() || '';
+    const token = crypto.randomBytes(32).toString('hex');
+
+    /* One live ask per address per link. Somebody who presses the button twice
+       gets one link that works rather than two that race, and the older row
+       cannot be used to arrive twice. */
+    await this.prisma.pendingJoin.updateMany({
+      where: { joinToken: dto.joinToken, email, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    await this.prisma.pendingJoin.create({
+      data: {
+        joinToken: dto.joinToken,
+        email,
+        firstName: dto.firstName?.trim() || null,
+        lastName: dto.lastName?.trim() || null,
+        roleAsDescribed: dto.roleAsDescribed?.trim() || null,
+        token,
+        expiresAt: new Date(Date.now() + A_JOIN_LINK_LASTS_HOURS * 60 * 60 * 1000),
+      },
+    });
+
+    /* Sent, not awaited into the response: whether the mail provider is having a
+       moment must not tell the caller whether that address exists here. */
+    this.email
+      .sendJoinConfirmation(email, token)
+      .catch((err) => this.logger.error(`join confirmation to ${email} failed: ${err?.message}`));
+
+    this.logger.log(`join-ask: link sent for ground ${ground.id}`);
+    return whatToSayAfterAsking(email);
+  }
+
+  /**
+   * THE ADDRESS ANSWERED, SO NOW THE WORK HAPPENS.
+   *
+   * Everything the old `joinAccept` did, moved behind proof of the address: the
+   * account, the participant, the session-1 check-in, and the session itself.
+   *
+   * The account is created `isEmailVerified: true` — unlike before — because
+   * opening this link IS the proof. A row that says unverified after somebody has
+   * proved it is a lie that some later check will believe.
+   */
+  async joinConfirm(token: string): Promise<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }> {
+    if (!token?.trim()) throw new BadRequestException(whyThisDidNotWork('that link is not one we know'));
+
+    const pending = await this.prisma.pendingJoin.findUnique({ where: { token } });
+    if (!pending) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
+    if (pending.usedAt) throw new BadRequestException(whyThisDidNotWork('that link has already been used'));
+    if (pending.expiresAt < new Date()) throw new BadRequestException(whyThisDidNotWork('that link has expired'));
+
+    const ground = await this.prisma.ground.findUnique({
+      where: { joinToken: pending.joinToken },
+      select: { id: true, organizationId: true },
+    });
+    if (!ground) throw new NotFoundException('Join link not found or has expired');
+
+    const email = pending.email;
+    const firstName = pending.firstName ?? '';
+    const lastName = pending.lastName ?? '';
 
     let user = await this.prisma.user.findUnique({ where: { email } });
     const existingAccount = !!user;
+    if (user && isASecondOrganisation(user.organizationId, ground.organizationId)) {
+      /* Somebody with an account elsewhere, joining a check-in here. Without this the organisation
+         never appears in their switcher and every org-scoped read returns nothing, because their
+         token still carries their home organisation — the third of the three paths that skipped it.
+         GUEST, never the role they hold at home. */
+      await this.prisma.organizationMembership.upsert({
+        where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+        create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
+        /* Nothing on a second one: a role somebody was given here is theirs to keep. */
+        update: {},
+      });
+    }
     if (!user) {
       user = await this.prisma.user.create({
-        data: { organizationId: ground.organizationId, email, firstName, lastName, role: 'MEMBER', isEmailVerified: false, passwordHash: null },
+        data: {
+          organizationId: ground.organizationId,
+          email,
+          firstName,
+          lastName,
+          role: 'MEMBER',
+          /* Proved by construction: this only runs because the link opened. */
+          isEmailVerified: true,
+          passwordHash: null,
+        },
       });
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
@@ -1643,8 +1570,6 @@ STRICT RULES:
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
 
-    // Reuse an existing participant+check-in if this email already joined (no
-    // duplicate row - mirrors join-commit's idempotency), else create both.
     let participant = await this.prisma.groundParticipant.findUnique({
       where: { groundId_email: { groundId: ground.id, email } },
     });
@@ -1652,10 +1577,11 @@ STRICT RULES:
       participant = await this.prisma.groundParticipant.create({
         data: {
           groundId: ground.id,
-          userId: user.id,
           email,
+          userId: user.id,
           partyType: PartyType.PARTICIPANT,
-          roleAsDescribed: dto.roleAsDescribed?.trim() || null,
+          roleAsDescribed: pending.roleAsDescribed ?? null,
+          invitedAt: new Date(),
           notifiedAt: new Date(),
         },
       });
@@ -1663,7 +1589,6 @@ STRICT RULES:
       participant = await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
     }
 
-    // The session-1 check-in they will run in the real engine. Reuse an open one.
     let checkIn = await this.prisma.checkIn.findFirst({
       where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
       orderBy: { sessionNumber: 'asc' },
@@ -1674,8 +1599,13 @@ STRICT RULES:
       });
     }
 
+    /* Marked used only now. A failure anywhere above leaves the link usable, which
+       is the right way round: a wasted link is an annoyance, a half-made join is a
+       person who cannot get in and cannot ask again. */
+    await this.prisma.pendingJoin.update({ where: { id: pending.id }, data: { usedAt: new Date() } });
+
     const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
-    this.logger.log(`join-accept: ${email} joined ground ${ground.id} -> real engine check-in ${checkIn.id} (new user: ${!existingAccount})`);
+    this.logger.log(`join-confirm: ${email} joined ground ${ground.id} -> check-in ${checkIn.id} (new user: ${!existingAccount})`);
     return { groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount };
   }
 }

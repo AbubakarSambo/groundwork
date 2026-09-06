@@ -40,7 +40,7 @@ function makeService(overrides: any = {}) {
   const grounds: any = {
     getSessionProgress: jest.fn(async () => ({ completed: 1, total: 2, missingParticipantIds: ['p-part'], declinedParticipantIds: [] })),
   };
-  const service = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, grounds);
+  const service = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, grounds, { tell: async () => [] } as any);
   return { service };
 }
 

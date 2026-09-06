@@ -84,15 +84,62 @@ describe('the magic-link signup (registerMagicLink)', () => {
     return SRC.slice(i, SRC.indexOf('async login', i));
   })();
 
-  it('falls back to the person, not their employer, when no org name is given', () => {
-    expect(REGISTER).toMatch(/const organizationName = dto\.organizationName\?\.trim\(\) \|\| `\$\{firstName\}'s workspace`/);
+  /**
+   * CLOSED THE REST OF THE WAY. The name fallback used to live here, which meant
+   * this path was still creating an Organization and an ADMIN User against an
+   * unverified address - just with a better name on it. It now parks the whole
+   * signup in `pendingSignup` like the entry flow, and `verifyEmail` applies the
+   * same `${firstName}'s workspace` fallback when the link is opened.
+   */
+  it('creates no organisation on the unverified path', () => {
+    expect(REGISTER).not.toMatch(/organization\.create/);
   });
 
-  it('no longer names the organisation after the email domain', () => {
-    expect(REGISTER).not.toMatch(/organizationName = dto\.organizationName\?\.trim\(\) \|\| emailDomain/);
+  it('creates no user on the unverified path either', () => {
+    expect(REGISTER).not.toMatch(/user\.create/);
+  });
+
+  it('computes no slug, so there is nothing to claim', () => {
+    expect(REGISTER).not.toMatch(/generateUniqueSlug/);
+  });
+
+  it('never reads the email domain for naming', () => {
+    expect(REGISTER).not.toMatch(/emailDomain/);
   });
 
   it('still honours an organisation name the caller supplied', () => {
     expect(REGISTER).toMatch(/dto\.organizationName\?\.trim\(\)/);
+  });
+});
+
+describe('the password signup (register)', () => {
+  const REGISTER = (() => {
+    const i = SRC.indexOf('async register(');
+    expect(i).toBeGreaterThan(-1);
+    return SRC.slice(i, SRC.indexOf('async registerMagicLink', i));
+  })();
+
+  /**
+   * THE LAST PATH. This one still named and slugged the organisation from the
+   * EMAIL DOMAIN, so `sahar@meridianhealth.test` took `meridianhealth`
+   * platform-wide before anybody opened the mail. It was left because no client
+   * form posts here - which is not a reason, it is a delay.
+   */
+  it('never reads the email domain for naming', () => {
+    expect(REGISTER).not.toMatch(/emailDomain/);
+  });
+
+  it('creates no organisation and no user before verification', () => {
+    expect(REGISTER).not.toMatch(/organization\.create/);
+    expect(REGISTER).not.toMatch(/user\.create/);
+  });
+
+  it('computes no slug', () => {
+    expect(REGISTER).not.toMatch(/generateUniqueSlug/);
+  });
+
+  it('parks the signup instead, password and all', () => {
+    expect(REGISTER).toMatch(/pendingSignup\.upsert/);
+    expect(REGISTER).toMatch(/passwordHash/);
   });
 });

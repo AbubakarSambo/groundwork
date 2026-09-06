@@ -5,6 +5,8 @@ import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { CurrentUser } from '../../common';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { PricingService } from '../billing/pricing.service';
+import { StripeService } from '../billing/stripe.service';
+import { ApiAccessService } from '../public-api/api-access.service';
 /**
  * Stripe's own USD floor is 50 cents; the ceiling is a typo guard rather than a policy, set well
  * above any plan we would plausibly sell.
@@ -13,7 +15,7 @@ const MIN_PLAN_AMOUNT_CENTS = 50;
 const MAX_PLAN_AMOUNT_CENTS = 500000;
 /** A seat cap larger than this is a typo, not a plan. Enterprise expresses unlimited with null. */
 const MAX_PLAN_MEMBER_CAP = 100000;
-import { SubscriptionPlan } from '@prisma/client';
+import { SubscriptionPlan, ApiAccessStatus } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // OTP guard - reads X-Admin-OTP header and verifies it against the requesting
@@ -63,6 +65,8 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly whatsapp: WhatsAppService,
     private readonly pricing: PricingService,
+    private readonly stripe: StripeService,
+    private readonly apiAccess: ApiAccessService,
   ) {}
 
   // ── Pricing (System -> Pricing) ──────────────────────────────────────────
@@ -161,6 +165,25 @@ export class AdminController {
   // global on/off switch, for once Abubakar's WhatsApp Business API
   // credentials are in place and verified.
 
+  /**
+   * Whether this deployment can take money.
+   *
+   * The Pricing section below lets somebody set what we charge, which reads as a
+   * promise that charging works. With no key it does not, and the only way to
+   * find out was for a customer to press Pay. Never the key itself — only
+   * whether one is set.
+   */
+  @Get('stripe')
+  @ApiOperation({ summary: 'Whether a Stripe key is configured on this deployment. Never the key.' })
+  stripeStatus() {
+    return {
+      isConfigured: this.stripe.isConfigured,
+      says: this.stripe.isConfigured
+        ? 'A Stripe key is set. Checkout and subscriptions will reach Stripe.'
+        : 'No Stripe key is set here, so nothing can be charged. Prices below can still be edited; they will apply when a key is set.',
+    };
+  }
+
   @Get('whatsapp')
   @ApiOperation({ summary: 'WhatsApp integration status: credentials configured, admin toggle, and whether it is actually live' })
   getWhatsAppStatus() {
@@ -175,6 +198,36 @@ export class AdminController {
   }
 
   // ── Read-only ─────────────────────────────────────────────────────────────
+
+  /**
+   * WHO HAS ASKED FOR THE API, AND WHAT WE DECIDED.
+   *
+   * Access stopped being something an organisation buys and became something
+   * somebody here reads and grants. This is where it is read and granted, and
+   * it is also the list our own organisation appears on — a rule we are exempt
+   * from is a rule we would stop noticing was broken.
+   */
+  @Get('api-access')
+  @ApiOperation({ summary: 'Every organisation that has asked for API access' })
+  apiAccessRequests() {
+    return this.apiAccess.everyRequest();
+  }
+
+  @Patch('api-access/:id')
+  @ApiOperation({ summary: 'Approve, decline or withdraw one organisation\'s API access' })
+  decideApiAccess(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { status: ApiAccessStatus; note?: string },
+  ) {
+    return this.apiAccess.decide(id, dto.status, userId, dto.note);
+  }
+
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Everything /admin/dashboard draws: overview, codes, free-reason split, feedback, per-user usage' })
+  getDashboard() {
+    return this.adminService.getDashboard();
+  }
 
   @Get('stats')
   @ApiOperation({ summary: 'Platform-wide stats: orgs, grounds, codes, redemptions, freeReason breakdown' })
@@ -264,4 +317,27 @@ export class AdminController {
     if (!body?.email) throw new BadRequestException('email is required');
     return this.adminService.addPlatformAdmin(body.email);
   }
+
+  /**
+   * Who can reach this console.
+   *
+   * Readable without an OTP on purpose: seeing the list is how somebody checks
+   * that it holds only the people they added, and putting a code in front of
+   * that would make the check rare enough not to happen.
+   */
+  @Get('admins')
+  @ApiOperation({ summary: 'Every platform admin. Two ways onto this list and no more.' })
+  listPlatformAdmins() {
+    return this.adminService.listPlatformAdmins();
+  }
+
+  @Post('admins/:userId/remove')
+  @UseGuards(OtpGuard)
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Take somebody off the platform-admin list. Never the last one.' })
+  @ApiHeader({ name: 'X-Admin-OTP', description: 'Valid 6-digit OTP obtained from POST /admin/otp/request', required: true })
+  removePlatformAdmin(@Param('userId') userId: string, @CurrentUser('id') callerId: string) {
+    return this.adminService.removePlatformAdmin(userId, callerId);
+  }
+
 }

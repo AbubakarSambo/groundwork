@@ -1,0 +1,86 @@
+import { HttpStatus } from '@nestjs/common';
+
+/**
+ * WHAT TO SAY WHEN THE DATABASE REFUSES, WITHOUT SAYING WHAT PRISMA SAID.
+ *
+ * Prisma's own message is a debugging artefact. For a validation failure it
+ * carries the file path on our server, the line number, the model, every field
+ * with its value, and any internal id that happened to be in the arguments —
+ * and the global filter used to pass it into the response body untouched.
+ *
+ * Found by posting a roadmap item without `itemType` and reading back
+ * `/Users/.../ops-build.service.ts:39:39` and a person's UUID.
+ *
+ * Kept apart from the filter so the mapping can be read and tested as the small
+ * table it is. Returns null for anything that is not a database error, so the
+ * filter's existing behaviour is untouched for everything else.
+ */
+export function whatToSayAboutADatabaseError(
+  error: Error,
+): { status: number; message: string } | null {
+  const name = error.name ?? '';
+  const message = error.message ?? '';
+
+  /*
+   * Matched on the name, not on `instanceof`. The Prisma error classes live on
+   * the generated client, and importing them here would tie the product's
+   * exception handling to a generated artefact for no gain — the names are part
+   * of Prisma's public surface and are what appear in logs.
+   */
+  const isPrisma = name.startsWith('PrismaClient');
+  if (!isPrisma) return null;
+
+  if (name === 'PrismaClientValidationError') {
+    /*
+     * The one useful fact in the whole message is which argument was missing,
+     * and it is the only part safe to repeat: a field name is the caller's own
+     * vocabulary, not ours.
+     */
+    const missing = message.match(/Argument `(\w+)` is missing/)?.[1];
+    return {
+      status: HttpStatus.BAD_REQUEST,
+      message: missing
+        ? `${missing} is required and was not sent.`
+        : 'Something in that request was the wrong shape. Check the fields you sent against the API docs.',
+    };
+  }
+
+  if (name === 'PrismaClientKnownRequestError') {
+    const code = (error as { code?: string }).code;
+
+    /* Unique constraint. A conflict, not a server fault — the caller can fix it. */
+    if (code === 'P2002') {
+      return {
+        status: HttpStatus.CONFLICT,
+        message: 'Something with that name or key already exists.',
+      };
+    }
+    /* Record not found for an update or delete. */
+    if (code === 'P2025') {
+      return {
+        status: HttpStatus.NOT_FOUND,
+        message: 'That record does not exist, or no longer does.',
+      };
+    }
+    /* Foreign key: pointed at something that is not there. */
+    if (code === 'P2003') {
+      return {
+        status: HttpStatus.BAD_REQUEST,
+        message: 'That request points at a record that does not exist.',
+      };
+    }
+    return {
+      status: HttpStatus.BAD_REQUEST,
+      message: 'The database refused that request.',
+    };
+  }
+
+  /*
+   * Anything else Prisma throws — a lost connection, a timeout, a panic — is
+   * ours, not the caller's. It stays a 500 and says nothing about itself.
+   */
+  return {
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    message: 'Something went wrong on our side. Nothing was changed.',
+  };
+}

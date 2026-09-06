@@ -1366,6 +1366,10 @@ export class ConversationService {
         kind: o.kind ?? null,
         dueSaid: o.dueSaid ?? null,
         dueDate: o.dueDate ?? null,
+        /* Why the number is that number, where the customer's system recorded one.
+           The session facing a shortfall can then ask whether the reason still
+           holds rather than asking somebody why they are behind. */
+        whyThisNumber: o.whyThisNumber ?? null,
         owedToName: o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null,
         status: o.status ?? null,
       })),

@@ -131,7 +131,7 @@ describe('lead-context corpus separation (ReportsService.synthesize)', () => {
       }),
     };
 
-    const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any);
+    const service = new ReportsService(prisma, prompts, anthropic, {} as any, {} as any, { emit: () => Promise.resolve() } as any, {} as any, { tell: async () => [] } as any);
     await service.synthesize('g1');
 
     const lines = capturedCorpus.split('\n');

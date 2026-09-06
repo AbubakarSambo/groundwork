@@ -30,6 +30,14 @@ export type SeedInput = {
   effectiveFrom?: string;
   seenBySubject?: boolean;
   trackedUrl?: string;
+  /**
+   * WHY THIS NUMBER, AS THE CUSTOMER'S SYSTEM RECORDS IT.
+   *
+   * Optional and staying optional: an agreement seeded from a planning tool
+   * that never asked for a reason has none, and refusing the seed over it would
+   * mean refusing their data.
+   */
+  whyThisNumber?: string;
 };
 
 const enumOr = <T extends object>(e: T, v: string | undefined, fallback: T[keyof T]): T[keyof T] =>
@@ -56,7 +64,10 @@ export function normalise(input: SeedInput) {
 export const NOT_A_KIND =
   `kind must be one of: ${Object.values(ObjectiveKind).join(', ')}. `
   + 'These are not interchangeable - a TARGET is a number crossing a line and a COMMITMENT is '
-  + 'something somebody else is waiting on, and the questions differ.';
+  + 'something somebody else is waiting on, and the questions differ. '
+  /* Where the rest of them are, so somebody guessing one wrong learns the shape
+     rather than the single value. */
+  + 'GET /api/org/v1/how-to-connect lists every closed set on this API.';
 
 /**
  * A COMMITMENT IS OWED TO SOMEBODY, and refusing one without a name is the point of the kind.

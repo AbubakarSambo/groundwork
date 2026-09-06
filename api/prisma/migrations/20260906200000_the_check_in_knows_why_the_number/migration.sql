@@ -1,0 +1,15 @@
+-- THE CHECK-IN COULD SEE THE NUMBER AND NOT THE REASON FOR IT.
+--
+-- A seeded objective carried its text, its target and its measure. So the one
+-- session where the reason matters most — the one where the target is being
+-- missed — could only ask about the gap.
+--
+-- Those are different questions and the second is the useful one. "You are at
+-- four of ten" invites an excuse. "Ten was set because the pipeline could carry
+-- ten — is that still true?" invites the thing worth knowing, and it is a
+-- question about the target rather than about the person.
+--
+-- Nullable, and it stays nullable: objectives that arrived before anybody was
+-- asked for a reason have none, and a blank would read as somebody declining to
+-- answer rather than as a question never put.
+ALTER TABLE "person_objectives" ADD COLUMN "why_this_number" TEXT;

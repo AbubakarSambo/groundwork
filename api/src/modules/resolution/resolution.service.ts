@@ -138,7 +138,10 @@ export class ResolutionService {
      */
     const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
-      const groundUrl = `${frontend}/grounds/${groundId}/resolution`;
+      /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
+       these invitations to settle an end state landed on the not-found page. The panel that
+       accepts a proposal is rendered on the ground page itself. */
+    const groundUrl = `${frontend}/grounds/${groundId}`;
       const needConfirmation = active.filter(
         (p) => p.id !== participant.id && choiceByParticipant.get(p.id) !== endState,
       );
@@ -223,7 +226,10 @@ export class ResolutionService {
      */
     const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
-    const groundUrl = `${frontend}/grounds/${groundId}/resolution`;
+    /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
+       these invitations to settle an end state landed on the not-found page. The panel that
+       accepts a proposal is rendered on the ground page itself. */
+    const groundUrl = `${frontend}/grounds/${groundId}`;
 
     const others = active.filter((p) => p.id !== participant.id);
     for (const p of others) {

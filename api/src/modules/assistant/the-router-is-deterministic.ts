@@ -23,6 +23,10 @@ export type Lane =
   | 'where_am_i_up_to'
   | 'what_should_we_talk_about'
   | 'what_came_of_it'
+  | 'set_an_objective'
+  | 'start_a_check_in'
+  | 'send_me_that'
+  | 'add_a_document'
   | 'unplaced';
 
 export interface Routed {
@@ -46,6 +50,83 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  rule('add_a_document', [
+    /*
+     * ABOVE `send_me_that`, because "send me the handbook" and "add the handbook" are opposite
+     * directions and the send lane owns the word "send". Narrow: it wants a word that names a FILE
+     * or an act of adding one, not any mention of a document.
+     */
+    /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes?)\b/i,
+    /\bhere\s+is\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf|handbook|policy|contract)\b/i,
+    /\bi\s+(?:have|want\s+to\s+(?:add|upload|attach))\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf)\b/i,
+    /*
+     * A PASTED LINK IS SOMEBODY PUTTING A DOCUMENT IN.
+     *
+     * Almost nothing a company works from lives in here, so the commonest way to
+     * put a document on a check-in is to paste where it already lives. Without
+     * this, a pasted Drive link fell to `unplaced` — the assistant answered "I
+     * cannot answer that one yet" to the most ordinary thing anybody does with a
+     * document.
+     *
+     * Narrow on purpose: only an http(s) address, which is the one shape that is
+     * unambiguously somebody handing over a thing rather than asking about one.
+     */
+    /https?:\/\/\S+/i,
+  ]),
+
+  rule('send_me_that', [
+    /*
+     * FIRST, AND ONLY ON SHAPES THAT NAME SENDING.
+     *
+     * First because "email me what I am on" reads to `what_am_i_on` as a question about their work,
+     * and answering it in the box is answering half of what was asked. Narrow because the cost of
+     * being wrong is a confirmation somebody did not want, which is small, in exchange for never
+     * missing the request, which is the point.
+     */
+    /\b(?:email|send|mail)\s+(?:that|this|it|me)\b/i,
+    /\b(?:can|could)\s+you\s+(?:email|send|mail)\b/i,
+    /\bin\s+my\s+inbox\b/i,
+  ]),
+
+  rule('start_a_check_in', [
+    /*
+     * ABOVE `set_an_objective`, because "set up a check-in about our objectives" is a request to
+     * start a session and reads to that lane as a request to write an objective. The more specific
+     * thing somebody named is the thing they asked for.
+     *
+     * Narrow, like the objective lane and for the same reason: it starts something. It owns the
+     * shapes that name a CHECK-IN or a session, and nothing that merely mentions one.
+     */
+    /*
+     * ASKING FOR IT IS NOT ASKING ABOUT IT, and one word separates them. "How do I run a check-in"
+     * is a question about how this product works and belongs to `how_we_work`; this lane would have
+     * taken it and started one instead. Caught by the guard that pins those two next to each other,
+     * which is what that guard is for.
+     */
+    /^(?!.*\bhow\s+(?:do|does|did|to|can|should)\b).*\b(?:start|begin|open|set\s+up|kick\s+off|run)\s+(?:my|our|the|a|this)?\s*(?:check[\s-]?in|session|ground|round)\b/i,
+    /^(?!.*\bhow\s+(?:do|does|did|to|can|should)\b).*\b(?:check[\s-]?in|session)\s+(?:set\s+up\s+)?for\s+me\b/i,
+    /\bready\s+to\s+(?:start|begin)\s+(?:my|our|the)?\s*check[\s-]?in\b/i,
+    /\bcan\s+i\s+(?:start|do|take)\s+(?:my|our|the)?\s*check[\s-]?in\b/i,
+  ]),
+
+  rule('set_an_objective', [
+    /*
+     * FIRST, AND NARROW.
+     *
+     * First because it is the only lane that starts a piece of work rather than
+     * answering a question about one, and "I want to set an objective for the
+     * quarter" reads to three lanes below as a question about the quarter. The
+     * person is not asking what exists; they are asking to make something.
+     *
+     * Narrow because the cost of a false positive is high: it opens a draft and
+     * starts asking questions, which is intrusive in a way that a wrong answer
+     * is not. It owns the shapes that explicitly ask to SET one, and nothing
+     * that merely mentions objectives.
+     */
+    /\b(?:set|write|create|start|draft|agree)\s+(?:up\s+)?(?:an?|our|my|the|some)?\s*(?:new\s+)?(?:objectives?|okrs?|goals?|targets?)\b/i,
+    /\bhelp\s+(?:me|us)\s+(?:to\s+)?(?:set|write|agree|work\s+out)\b.*\b(?:objectives?|okrs?|goals?|targets?)\b/i,
+    /\b(?:objective|okr|goal)\s+setting\b/i,
+  ]),
   rule('where_am_i_up_to', [
     /*
      * Above the handoff and coaching lanes. "What am I meant to be doing" from somebody in their
@@ -139,6 +220,10 @@ const RULES = [
    * swallow questions the specific lanes own. Its own rules stay narrow for the same reason.
    */
   rule('how_am_i_doing', [
+    /* "How are things going for me" went nowhere. Found by declaring what this
+       capability owns and running it through the router — which is the registry
+       doing the one job it exists for. */
+    /\bhow\s+(?:are\s+)?things\s+going\s+for\s+me\b/i,
     /*
      * Above the recall lane, because "how am I doing" is not a question about what they said. Both
      * shapes go here - the flat question and the stuck one - since the coach's answer to either is
@@ -175,6 +260,9 @@ const RULES = [
     /\bwhat\s+do\s+i\s+owe\b/i,
   ]),
   rule('what_you_can_see', [
+    /* Same finding, same run: somebody asking what it is connected to says "what
+       data do you have" as readily as "what can you see". */
+    /\bwhat\s+(?:data|information|records)\s+(?:do\s+you\s+)?(?:have|hold|see)\b/i,
     /\bwhat\s+(?:can\s+you|do\s+you)\s+see\b/i,
     /\bwhat(?:'s| is)\s+connected\b/i,
     /\bhow\s+current\b/i,
@@ -187,6 +275,18 @@ const RULES = [
    */
   rule('how_we_work', [
     /\bhow\s+do\s+(?:we|i)\s+(.{3,})/i,
+    /*
+     * "HOW DOES THE FREEZE WORK" WENT NOWHERE.
+     *
+     * The lane owned `how do we` and `how do I` and neither shape covers a question about a THING
+     * rather than about doing something. Found the day the company's own decisions were first pushed
+     * in: four cards landed, retrieval found them, and two of the three questions anybody would
+     * actually ask were routed to the default.
+     *
+     * Deliberately not a bare `how` — that would take "how am I doing", which is somebody's own
+     * standing and a different question with a lane of its own sitting below this one.
+     */
+    /\bhow\s+(?:does|do)\s+(?:the|our|a|an|this)\s+(.{3,})/i,
     /*
      * "What do I do if I am locked out" reached no lane at all, and the handbook had a section
      * headed exactly that. Found by uploading a real handbook and asking it the questions the

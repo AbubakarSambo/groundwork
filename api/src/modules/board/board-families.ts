@@ -97,6 +97,17 @@ export const SCENARIO_FAMILY: Record<GroundScenario, BoardFamily> = {
   PULSE_CHECK: BoardFamily.RECURRING,
 
   // Sensing the mood: transparency would poison these.
+  /**
+   * SENSING FOR BOTH CONTRACT CARDS, and it is not the obvious choice.
+   *
+   * Delivery was the tempting one — two sides, interlocking obligations, real handoffs. Rejected
+   * because a delivery board shows each side who is blocked on whom, and between two COMPANIES that
+   * is a list of grievances rendered as a screen. What makes these two situations work is each side
+   * answering independently and a report that says what the accounts have in common; a shared board
+   * of who owes what would be read by somebody's lawyer.
+   */
+  CONTRACT_REVIEW: BoardFamily.SENSING,
+  IMPLEMENTATION_TRACKING: BoardFamily.SENSING,
   REALIGN_TEAM: BoardFamily.SENSING,
   /**
    * SENSING, deliberately. OPEN_READ exists because nobody could say what the situation is, so the

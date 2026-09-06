@@ -42,6 +42,8 @@ export function situationInWords(scenario: GroundScenario | null): string | null
   switch (scenario) {
     case GroundScenario.NEW_HIRE: return 'a new person starting';
     case GroundScenario.ROLE_HANDOVER: return 'a role changing hands';
+    case GroundScenario.CONTRACT_REVIEW: return 'an agreement before it is signed';
+    case GroundScenario.IMPLEMENTATION_TRACKING: return 'an agreement that is running';
     case GroundScenario.NEW_PROJECT: return 'a new project starting';
     case GroundScenario.NEW_COFOUNDER: return 'a new co-founder or partner joining';
     case GroundScenario.NEW_MANAGER: return 'a new manager taking over';

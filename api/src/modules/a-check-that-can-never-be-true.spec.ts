@@ -58,6 +58,12 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  */
 const CHECKED_AND_FINE = new Set([
   'modules/entry/entry.service.ts:email',           // the request body's email, before a user exists
+  /*
+   * The REQUEST BODY's join token, checked before anything is looked up. It collides on the name
+   * with `PendingJoin.joinToken`, which is non-nullable precisely because a row is only ever
+   * created once the caller supplied one — which is what this check enforces.
+   */
+  'modules/entry/entry.service.ts:joinToken',
   'modules/entry/entry.service.ts:userId',          // GroundParticipant.userId, which IS nullable
   /*
    * The same column and the same collision, in the file that owns it. `if (!participant.userId)` in

@@ -27,7 +27,7 @@ import { ReportsService } from './reports.service';
 function makeService(grounds: any[]) {
   const synthesised: string[] = [];
   const prisma: any = { ground: { findMany: jest.fn(async () => grounds) } };
-  const service = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { tell: async () => [] } as any);
   jest.spyOn(service, 'synthesize').mockImplementation(async (id: string) => {
     synthesised.push(id);
     return undefined as any;
@@ -116,7 +116,7 @@ describe('the sweep that finishes them', () => {
     const service = new ReportsService(
       { ground: { findMany: jest.fn(async () => { throw new Error('database went away'); }) } } as any,
       {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
-    );
+    { tell: async () => [] } as any);
     await expect(service.finishClosingSynthesesThatFailed()).resolves.toBeUndefined();
   });
 });

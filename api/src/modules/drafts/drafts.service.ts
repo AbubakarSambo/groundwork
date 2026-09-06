@@ -1,5 +1,12 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { DraftParticipantState } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  whatToAskForNext,
+  whyThisIsNotReadyToSeed,
+  whyThatIsNotAnAnswer,
+  type MissingPiece,
+} from './a-number-nobody-argued-for';
 import {
   isContested, canFinish, sayContention, CONTESTABLE_FIELDS, ContestableField, Position,
 } from './it-does-not-average-and-it-does-not-defer';
@@ -135,6 +142,59 @@ export class DraftsService {
   }
 
   /**
+   * ANSWERING THE NEXT QUESTION THE DRAFT IS ASKING.
+   *
+   * Separate from `contribute`, which is how a SECOND person disagrees with a
+   * proposal and opens a contention. This is the draft being filled in — the
+   * first four answers, in order, each refused if it is a way of getting past
+   * the question rather than answering it.
+   *
+   * The two are different acts and collapsing them would break the good half:
+   * a contention exists because two people said different things, and an empty
+   * field is not a disagreement.
+   */
+  async answer(
+    organizationId: string,
+    draftId: string,
+    personExternalId: string,
+    piece: MissingPiece,
+    body: string,
+  ) {
+    const draft = await this.mine(organizationId, draftId);
+
+    const notAnAnswer = whyThatIsNotAnAnswer(piece, body ?? '', {
+      measure: draft.proposedMeasure,
+      target: draft.proposedTarget,
+    });
+    if (notAnAnswer) throw new BadRequestException(notAnAnswer);
+
+    const field = {
+      measure: 'proposedMeasure',
+      target: 'proposedTarget',
+      justification: 'proposedJustification',
+      approach: 'proposedApproach',
+    }[piece];
+
+    const updated = await this.prisma.objectiveDraft.update({
+      where: { id: draftId },
+      data: { [field]: body.trim() },
+    });
+
+    /* Recorded as a contribution too, so who said what survives the draft. The
+       objective that lands says why; this says who said why. */
+    await this.prisma.draftContribution.create({
+      data: {
+        draftId,
+        personExternalId,
+        field: piece === 'measure' || piece === 'target' ? piece : 'general',
+        body: `${piece}: ${body.trim()}`,
+      },
+    });
+
+    return { recorded: true, askNext: whatToAskForNext(updated) };
+  }
+
+  /**
    * SETTLING ONE, WHICH IS A DECISION SOMEBODY MAKES RATHER THAN A STATE THAT DECAYS.
    *
    * The resolution is written onto the field it settles, so agreeing and then not applying it
@@ -177,14 +237,31 @@ export class DraftsService {
       proposedTarget: draft.proposedTarget,
       openContentionFields: open.map((c) => c.field),
     });
+    /*
+     * READY HAS TO MEAN WHAT SEED MEANS.
+     *
+     * `canFinish` answers whether anybody still disagrees. Seeding also refuses
+     * a draft nobody has justified — so a status saying `ready: true` while the
+     * seed refuses would be the screen and the act disagreeing about the same
+     * draft, which is worse than either refusal on its own.
+     */
+    const unjustified = whyThisIsNotReadyToSeed(draft);
+
     return {
       draft: {
         id: draft.id, workingTitle: draft.workingTitle, state: draft.state,
         proposedMeasure: draft.proposedMeasure, proposedTarget: draft.proposedTarget,
+        proposedJustification: draft.proposedJustification,
+        proposedApproach: draft.proposedApproach,
         groundedOnFindingIds: draft.groundedOnFindingIds,
       },
       openContentions: open.map((c) => ({ id: c.id, field: c.field, positions: c.positions })),
       ...verdict,
+      ...(verdict.ready && unjustified ? { ready: false as const, because: unjustified } : {}),
+      /* What it is asking for next, and the question in the words it asks it.
+         The screen and the assistant read this same field, so they cannot ask
+         the same thing differently — or forget a fifth question added later. */
+      askNext: whatToAskForNext(draft),
     };
   }
 
@@ -200,6 +277,46 @@ export class DraftsService {
     if (!s.ready) throw new BadRequestException(s.because);
 
     const draft = await this.mine(organizationId, draftId);
+
+    /*
+     * AGREEMENT IS NOT THE SAME AS THE OBJECTIVE BEING ANY GOOD.
+     *
+     * `status` folds this in too, so the screen and this act agree. Checked
+     * again here because this is the line that writes the objective, and a
+     * caller reaching it another way must not get past it.
+     */
+    const unjustified = whyThisIsNotReadyToSeed(draft);
+    if (unjustified) throw new BadRequestException(unjustified);
+
+    /*
+     * THE PEOPLE WHO AGREED IT ARE THE CONTRIBUTORS, AND THE SEED WAS DROPPING THEM.
+     *
+     * A draft exists because several people worked out an objective together. It seeded an owner and
+     * nobody else, so the objective arrived looking like one person's — losing the one fact that
+     * makes a drafted objective different from an assigned one.
+     *
+     * It also broke the step after this without either being obviously connected: the suggestion
+     * that proposes a check-in about new work requires TWO OR MORE contributors, so an objective
+     * six people agreed could never produce one. "Once we have objectives, check in on them" was
+     * failing on an empty array.
+     *
+     * RESPONDED ONLY, and the enum is why this is written positively rather than as "not invited".
+     * DECLINED is a first-class state here — saying no is an answer — and it is also not INVITED, so
+     * excluding silence by exclusion would have recorded everybody who refused this objective as a
+     * contributor to it. Naming the one state that means agreement is the only version of this that
+     * cannot go wrong when a fourth state is added.
+     */
+    const contributors = await this.prisma.draftParticipant.findMany({
+      where: { draftId, state: DraftParticipantState.RESPONDED },
+      select: { personExternalId: true },
+    });
+    const contributorExternalIds = [
+      ...new Set([
+        draft.initiatorExternalId,
+        ...contributors.map((c) => c.personExternalId),
+      ]),
+    ].filter((id) => id !== (draft.proposedOwnerExternalId ?? draft.initiatorExternalId));
+
     const subject = await this.prisma.subject.upsert({
       where: { organizationId_sourceSystem_externalId: { organizationId, sourceSystem, externalId } },
       create: {
@@ -207,7 +324,13 @@ export class DraftsService {
         title: draft.workingTitle,
         measure: draft.proposedMeasure,
         target: draft.proposedTarget,
+        /* Carried onto the objective rather than left behind in the draft. The
+           reason a target exists is the first thing to go missing, and it is
+           needed most in the check-in where the target is being missed. */
+        justification: draft.proposedJustification,
+        approach: draft.proposedApproach,
         ownerExternalId: draft.proposedOwnerExternalId ?? draft.initiatorExternalId,
+        contributorExternalIds,
         parentExternalId: draft.parentSubjectExternalId,
         /*
          * `self` rather than `imported`. Everybody on this draft was demonstrably in the
@@ -219,6 +342,8 @@ export class DraftsService {
       },
       update: {
         title: draft.workingTitle, measure: draft.proposedMeasure, target: draft.proposedTarget,
+        justification: draft.proposedJustification, approach: draft.proposedApproach,
+        contributorExternalIds,
         authoredBy: 'self',
       },
     });

@@ -32,6 +32,38 @@ import { PaymentPage } from '@/pages/billing/PaymentPage'
 import { BillingCallbackPage } from '@/pages/billing/BillingCallbackPage'
 import { InvitePage } from '@/pages/invite/InvitePage'
 import { JoinPage } from '@/pages/join/JoinPage'
+import { JoinConfirmPage } from '@/pages/join/JoinConfirmPage'
+import OpsBoardPage from '@/pages/ops/OpsBoardPage'
+import OpsTargetCompaniesPage from '@/pages/ops/OpsTargetCompaniesPage'
+import OpsCompanyPage from '@/pages/ops/OpsCompanyPage'
+import OpsPeoplePage from '@/pages/ops/OpsPeoplePage'
+import OpsMoatPage from '@/pages/ops/OpsMoatPage'
+import OpsOverviewPage from '@/pages/ops/OpsOverviewPage'
+import {
+  OpsContributionPage,
+  OpsPositioningPage,
+  OpsAttributionPage,
+  OpsCommercialPipelinePage,
+} from '@/pages/ops/OpsContributionPages'
+import { OpsLayout } from '@/pages/ops/OpsLayout'
+import { OpsWhatWeArePage } from '@/pages/ops/OpsWhatWeArePage'
+import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
+import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
+import { OpsWorkplanPage } from '@/pages/ops/OpsWorkplanPage'
+import { ApiAccessPage } from '@/pages/admin/ApiAccessPage'
+import { OpsDeploymentPage, OpsMarketingPage } from '@/pages/ops/OpsSellingPages'
+import { OpsRoadmapPage, OpsReadinessPage, OpsTechPage, OpsUXPage } from '@/pages/ops/OpsBuildingPages'
+import {
+  OpsQuarterPage,
+  OpsRequestsPage,
+  OpsDecisionsPage,
+  OpsCommitmentsPage,
+  OpsApprovalsPage,
+  OpsSpendPage,
+  OpsFundraisePage,
+  OpsStrategyPage,
+  OpsIntegrationPage,
+} from '@/pages/ops/OpsCompanyPages'
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
@@ -226,6 +258,7 @@ export default function App() {
             <Route path="/start" element={<EntryChatPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
+            <Route path="/join/confirm" element={<JoinConfirmPage />} />
 
             {/* Post-auth setup: an org admin whose org is missing contact email / stage / plan is
                 sent here by RequireOrgSetup before reaching anything else below. Plain RequireAuth,
@@ -293,6 +326,48 @@ export default function App() {
               * the move breaks no navigation. The two redirects are for whoever has them
               * bookmarked, because a silent 404 on a tool you use daily reads as an outage.
               */}
+            {/*
+              * THE TEAM'S OWN OPERATING SYSTEM.
+              *
+              * Under /ops and chromeless, for the same reason the prompt tools moved: it must not
+              * wear the shell of the product it is used to run. It is also not admin - a platform
+              * admin is Groundwork operating Groundwork, and this is our company operating itself.
+              * Who may see what is decided by ops grants, checked by the server on every route;
+              * somebody signed in who is not on this team gets a page that says so rather than six
+              * failing requests.
+              */}
+            <Route path="/ops" element={<RequireAuth><OpsLayout><OpsBoardPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/target-companies" element={<RequireAuth><OpsLayout><OpsTargetCompaniesPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/overview" element={<RequireAuth><OpsLayout><OpsOverviewPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/pipeline" element={<RequireAuth><OpsLayout><OpsCommercialPipelinePage /></OpsLayout></RequireAuth>} />
+            {/* The old address, kept as a redirect: it is in people's history and
+                a silent 404 on a page somebody used daily reads as an outage. */}
+            <Route path="/ops/sales" element={<Navigate to="/ops/pipeline" replace />} />
+            <Route path="/ops/contribution" element={<RequireAuth><OpsLayout><OpsContributionPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/positioning" element={<RequireAuth><OpsLayout><OpsPositioningPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/attribution" element={<RequireAuth><OpsLayout><OpsAttributionPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/marketing" element={<RequireAuth><OpsLayout><OpsMarketingPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/deployment" element={<RequireAuth><OpsLayout><OpsDeploymentPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/roadmap" element={<RequireAuth><OpsLayout><OpsRoadmapPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/moat" element={<RequireAuth><OpsLayout><OpsMoatPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/readiness" element={<RequireAuth><OpsLayout><OpsReadinessPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/workplan" element={<RequireAuth><OpsLayout><OpsWorkplanPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/resources" element={<RequireAuth><OpsLayout><OpsResourcesPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/everybody" element={<RequireAuth><OpsLayout><OpsEverybodyPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/quarter" element={<RequireAuth><OpsLayout><OpsQuarterPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/what-we-are" element={<RequireAuth><OpsLayout><OpsWhatWeArePage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/requests" element={<RequireAuth><OpsLayout><OpsRequestsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/decisions" element={<RequireAuth><OpsLayout><OpsDecisionsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/approvals" element={<RequireAuth><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/fundraise" element={<RequireAuth><OpsLayout><OpsFundraisePage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/strategy" element={<RequireAuth><OpsLayout><OpsStrategyPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/people" element={<RequireAuth><OpsLayout><OpsPeoplePage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/integration" element={<RequireAuth><OpsLayout><OpsIntegrationPage /></OpsLayout></RequireAuth>} />
             <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
             <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />
@@ -311,6 +386,7 @@ export default function App() {
                 every endpoint behind it is admin-gated on the server. */}
             <Route path="/org/integrations" element={<RequireOrgSetup><IntegrationsPage /></RequireOrgSetup>} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
+            <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />
 
             {/* Any unmatched path renders a real not-found page rather than

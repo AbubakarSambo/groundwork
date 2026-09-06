@@ -3,9 +3,17 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
+import {
+  whatToDoToday,
+  theEmailForTheLead,
+  ChasingPolicy,
+} from './chasing-belongs-to-the-lead';
 
-// Day thresholds (in whole days since createdAt) that trigger scheduled nudges.
-const NUDGE_DAY_THRESHOLDS = [3, 7, 14];
+/*
+ * The schedule is the GROUND'S, not this file's. See
+ * `chasing-belongs-to-the-lead.ts`: a week-long handover and a quarter-long
+ * delivery were chased on the same three days because the days lived here.
+ */
 
 @Injectable()
 export class RemindService {
@@ -93,7 +101,12 @@ export class RemindService {
         if (hoursSince < 24) continue;
       }
 
-      const checkInUrl = `${frontendUrl}/check-ins/${participant.checkIns[0]?.id ?? ''}`;
+      /* THROUGH THE HELPER, BECAUSE THIS FILE GOT THE PATH WRONG.
+         It hand-built `/check-ins/:id` and the client route is `/checkin/:id`, so every
+         reminder this service has ever sent landed on the not-found page. The helper is
+         the one place that knows, and reaching past it into `frontendUrl` is what let the
+         two drift. */
+      const checkInUrl = this.email.buildCheckInUrl(participant.checkIns[0]?.id ?? '');
       const specificThing = `session ${checkIn.sessionNumber} on "${ground.label}"`;
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
@@ -142,7 +155,16 @@ export class RemindService {
         availableFrom: true,
         participantId: true,
         groundId: true,
-        ground: { select: { label: true } },
+        leadToldAt: true,
+        ground: {
+          select: {
+            label: true,
+            chaseAfterDays: true,
+            chasingStopped: true,
+            tellTheLead: true,
+            initiator: { select: { email: true, firstName: true } },
+          },
+        },
         participant: {
           select: {
             id: true,
@@ -154,23 +176,70 @@ export class RemindService {
       },
     });
 
+    /* Who the lead should hear about, gathered as we go and sent as ONE email per
+       ground below. A mail per person is the same chase with the lead as its
+       target. */
+    const forTheLead = new Map<string, {
+      to: string; leadName: string | null; label: string; chasedOn: number[];
+      who: string[]; checkInIds: string[];
+    }>();
+
     for (const checkIn of notStarted) {
       // Skip if not yet available.
       if (checkIn.availableFrom && checkIn.availableFrom > now) continue;
 
       const daysElapsed = Math.floor((now.getTime() - checkIn.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (!NUDGE_DAY_THRESHOLDS.includes(daysElapsed)) continue;
-
       const participant = checkIn.participant;
       if (!participant) continue;
-      if (participant.user?.emailNotifications === false) continue;
 
-      // Throttle: skip if already nudged within the past 24 hours.
-      if (participant.lastNudgedAt) {
-        const hoursSince = (now.getTime() - participant.lastNudgedAt.getTime()) / (1000 * 60 * 60);
-        if (hoursSince < 24) continue;
+      const policy: ChasingPolicy = {
+        days: checkIn.ground.chaseAfterDays,
+        stopped: checkIn.ground.chasingStopped,
+        tellTheLead: checkIn.ground.tellTheLead,
+      };
+      const decided = whatToDoToday({
+        policy,
+        daysOpen: daysElapsed,
+        hoursSinceLastNudge: participant.lastNudgedAt
+          ? (now.getTime() - participant.lastNudgedAt.getTime()) / (1000 * 60 * 60)
+          : null,
+        leadAlreadyTold: checkIn.leadToldAt !== null,
+      });
+
+      if (decided.do === 'tell the lead') {
+        const lead = checkIn.ground.initiator;
+        if (lead?.email) {
+          /* Keyed by the GROUND, not the session. A ground with three sessions
+             open sent the lead three emails in one morning, all about the same
+             people — which is the chase this was supposed to end, addressed to
+             the lead instead. */
+          const key = checkIn.groundId;
+          const entry = forTheLead.get(key) ?? {
+            to: lead.email,
+            leadName: lead.firstName ?? null,
+            label: checkIn.ground.label,
+            chasedOn: policy.days,
+            who: [],
+            checkInIds: [],
+          };
+          /* The name they are known by here, and their address only if that is all
+             there is. A lead reading a list of email addresses cannot tell who is
+             who any faster than they could before the email arrived. */
+          const named = participant.user?.firstName ?? participant.email;
+          if (!entry.who.includes(named)) entry.who.push(named);
+          entry.checkInIds.push(checkIn.id);
+          forTheLead.set(key, entry);
+        }
+        continue;
       }
+
+      if (decided.do !== 'nudge them') continue;
+
+      /* The person's own switch still wins over the lead's schedule. A lead can
+         decide WHETHER this ground chases; they cannot decide that somebody who
+         turned email off receives one. */
+      if (participant.user?.emailNotifications === false) continue;
 
       // #34: Check if the other party on the same ground + session has completed.
       const otherPartyCompleted = await this.prisma.checkIn.findFirst({
@@ -183,7 +252,7 @@ export class RemindService {
         select: { id: true },
       }).then((r) => r !== null);
 
-      const checkInUrl = `${frontendUrl}/check-ins/${checkIn.id}`;
+      const checkInUrl = this.email.buildCheckInUrl(checkIn.id);
 
       try {
         await this.email.sendNudge(
@@ -211,6 +280,7 @@ export class RemindService {
       if (daysElapsed === 14) {
         try {
           await this.checkAndSendConsecutiveAbsenceReminder(
+            checkInUrl,
             participant.id,
             participant.email,
             participant.user?.firstName ?? participant.email,
@@ -219,6 +289,34 @@ export class RemindService {
         } catch (err: any) {
           this.logger.error(`Consecutive absence check failed for participant ${participant.id}: ${err.message}`);
         }
+      }
+    }
+
+    /*
+     * AND THEN THE LEAD HEARS, ONCE, BY NAME.
+     *
+     * Marked told only after the send succeeds — a failed email that stamped the
+     * column would mean the lead never hears about those people at all, and
+     * nothing would ever say so.
+     */
+    for (const [, entry] of forTheLead) {
+      const composed = theEmailForTheLead({
+        leadName: entry.leadName,
+        groundLabel: entry.label,
+        whoHasNotStarted: entry.who,
+        chasedOn: entry.chasedOn,
+        link: `${frontendUrl}/grounds`,
+      });
+      if (!composed) continue;
+
+      try {
+        await this.email.sendWhoHasNotStarted(entry.to, composed.subject, composed.text);
+        await this.prisma.checkIn.updateMany({
+          where: { id: { in: entry.checkInIds } },
+          data: { leadToldAt: now },
+        });
+      } catch (err: any) {
+        this.logger.error(`Telling the lead about "${entry.label}" failed: ${err.message}`);
       }
     }
   }
@@ -232,6 +330,7 @@ export class RemindService {
    * If missedCount >= 3, sends a sendAbsenceReminder email.
    */
   private async checkAndSendConsecutiveAbsenceReminder(
+    checkInUrl: string,
     participantId: string,
     email: string,
     name: string,
@@ -266,7 +365,7 @@ export class RemindService {
     }
 
     if (consecutiveMissed >= 3) {
-      await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed);
+      await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed, checkInUrl);
       this.logger.warn(
         `Absence reminder sent to participant ${participantId}: ${consecutiveMissed} consecutive missed check-in(s) on "${groundName}"`,
       );

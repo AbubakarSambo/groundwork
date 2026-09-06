@@ -55,7 +55,7 @@ function makeService(groundRow: any) {
   const email: any = { sendReportReady: jest.fn(async () => undefined) };
   const config: any = { get: () => 'http://localhost:5173' };
   const grounds: any = { getSessionProgress: jest.fn(async () => null) };
-  return new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, grounds);
+  return new ReportsService(prisma, {} as any, {} as any, email, config, { emit: () => Promise.resolve() } as any, grounds, { tell: async () => [] } as any);
 }
 
 describe('#7 forming report surfaces the requesting participant\'s soloArtifact', () => {

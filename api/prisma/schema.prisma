@@ -95,6 +95,15 @@ enum GroundScenario {
   /// It is deliberately the one place where a single report is the right shape. Everything else in
   /// this enum is an objective agreed at the start and a run of check-ins testing work against it.
   SNAPSHOT
+
+  /// BEFORE SIGNING. Each side says independently what it thinks the agreement means, and the
+  /// misunderstandings surface while they are still cheap. It ends when the contract is signed.
+  CONTRACT_REVIEW
+
+  /// AFTER SIGNING. Quiet, recurring, management by exception. A healthy quarter should produce a
+  /// report saying the numbers reconcile and nothing needs anybody. See the note on
+  /// CONTRACT_REVIEW for why these are two cards rather than one.
+  IMPLEMENTATION_TRACKING
 }
 
 //
@@ -262,14 +271,108 @@ model PricingPlan {
 // Identity & tenancy
 // ---------------------------------------------------------------------------
 
+/// ASKING FOR THE API, WHICH IS HOW ACCESS TO IT IS GRANTED.
+///
+/// It used to be sold: an organisation with a live subscription could hold a
+/// machine token and everybody else was refused. That gate had two problems and
+/// only one of them was about money. It made every integration test wait on a
+/// billing state, and it meant we could not use our own API in our own back
+/// office without paying ourselves — which is the acceptance test for the whole
+/// thing, so failing it silently was the worst possible outcome.
+///
+/// So access is ASKED FOR and GRANTED. Somebody says what they intend to build,
+/// somebody here reads it and decides, and that decision is a row with a name
+/// and a date against it. A refusal can say which of those has not happened yet,
+/// which "you have not paid" never could.
+///
+/// It is not the same thing as being free. What it is, is separable from
+/// billing: what a customer pays for and what a customer may connect to are two
+/// decisions, and tying them together meant neither could move without the
+/// other.
+model ApiAccessRequest {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Who asked, and what they said they intend to build. Read by whoever
+  /// decides, so an empty one is refused at the point of asking.
+  requestedByUserId String   @map("requested_by_user_id")
+  whatFor           String   @map("what_for") @db.Text
+  requestedAt       DateTime @default(now()) @map("requested_at")
+
+  status ApiAccessStatus @default(PENDING)
+
+  /// Who decided, when, and why — for a refusal or a withdrawal especially.
+  /// A decision nobody can account for later is one nobody can argue with.
+  decidedByUserId String?   @map("decided_by_user_id")
+  decidedAt       DateTime? @map("decided_at")
+  note            String?   @db.Text
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, requestedAt])
+  @@map("api_access_requests")
+}
+
+enum ApiAccessStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  /// Granted and then taken back. Kept apart from DECLINED because they are
+  /// different facts: one was never trusted, the other was and no longer is,
+  /// and only the second needs somebody told.
+  WITHDRAWN
+}
+
+/// WHERE AN ORGANISATION WANTS TO BE TOLD THINGS, OUTSIDE THIS PRODUCT.
+///
+/// Slack first, Teams next: both accept a posted payload at a URL somebody in the customer's
+/// workspace creates, so neither needs us to be an installed app before it is useful. The URL is
+/// a secret — anybody holding it can post into that channel — so it is never returned by any read.
+model WorkspaceNotifier {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+
+  /// Which workspace this posts into. The payload shape differs; nothing else does.
+  kind WorkspaceKind
+
+  /// The incoming-webhook address. Write-only: no route returns it.
+  url String
+
+  /// Said by the person who set it up, so a channel can be recognised later without opening Slack.
+  channelSaid String? @map("channel_said")
+
+  /// Off until somebody turns it on. A notifier that starts posting the moment a URL is pasted
+  /// posts into a channel nobody has told yet.
+  enabled Boolean @default(false)
+
+  lastPostedAt DateTime? @map("last_posted_at")
+  /// Why the last post failed, or null. Kept so a dead channel is visible without reading logs.
+  lastError    String?   @map("last_error")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, kind])
+  @@map("workspace_notifiers")
+}
+
+enum WorkspaceKind {
+  SLACK
+  TEAMS
+}
+
 model Organization {
+  evaluationsDue     EvaluationDue[]
+  apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
   acceptanceCriteria AcceptanceCriterion[]
   productMetrics     ProductMetric[]
   id                 String                @id @default(uuid())
   name               String
   slug               String                @unique
-  email              String 
+  email              String
 
   // Billing (Stripe, USD). Care fee is the always-on commitment device.
   stripeCustomerId       String?       @map("stripe_customer_id")
@@ -363,6 +466,7 @@ model Organization {
   knowledgeProposals KnowledgeProposal[]
   callRequests       CallRequest[]
 
+  workspaceNotifiers WorkspaceNotifier[]
   @@map("organizations")
 }
 
@@ -438,22 +542,57 @@ model User {
 // pending signup is not yet a member of anything.
 //
 // See GW-001 in journey/run18/ISSUES-LOG.md.
+/// SOMEBODY ASKING TO JOIN A CHECK-IN FROM A BROADCAST LINK, BEFORE THEY HAVE PROVED THE ADDRESS.
+///
+/// A join link proves you were given a link. It does not prove you own the address you typed into
+/// the form — and the old flow signed you straight in as whoever that address belonged to, which
+/// meant everybody holding the link could become the admin. Nothing is created now until the
+/// address answers: no account, no participant, no check-in, no session. See
+/// `entry/a-join-link-is-not-a-password.ts`.
+model PendingJoin {
+  id        String @id @default(uuid())
+  /// The link they arrived on.
+  joinToken String @map("join_token")
+  /// The address they typed. Lower-cased. Unproven until this row is used.
+  email     String
+
+  /// What they told us about themselves, kept until the address answers for it.
+  firstName       String? @map("first_name")
+  lastName        String? @map("last_name")
+  roleAsDescribed String? @map("role_as_described")
+
+  /// The secret in the emailed link. Single use.
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([joinToken, email])
+  @@map("pending_joins")
+}
+
 model PendingSignup {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  token      String   @unique
-  firstName  String   @map("first_name")
-  orgName    String?  @map("org_name")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  token        String   @unique
+  firstName    String   @map("first_name")
+  /// Only the entry flow leaves this empty; the two named signup paths carry it.
+  lastName     String?  @map("last_name")
+  orgName      String?  @map("org_name")
+  /// Set when somebody signed up with a password. Held here rather than on a
+  /// User, because a User is what must not exist before the address is proved.
+  passwordHash String?  @map("password_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
-  payload    Json?
-  history    Json?
+  payload      Json?
+  history      Json?
   // The draft token the entry page keeps, so post-email edits (the org name
   // arrives this way) can still reach this record before there is a user.
-  draftToken String?  @unique @map("draft_token")
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  draftToken   String?  @unique @map("draft_token")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("pending_signups")
 }
@@ -541,6 +680,12 @@ model AdminProfile {
   id        String   @id @default(uuid())
   userId    String   @unique @map("user_id")
   signals   Json     @default("[]") // string[] of observed preference signals
+  /// The one-time code for a destructive admin action: { hash, expiresAt, used }.
+  /// The service has always written here. The column did not exist, so every
+  /// OTP request threw a 500 and every action behind one - disabling a code,
+  /// adding a platform admin - had never worked. Two `@ts-ignore`s kept the
+  /// compiler quiet about it.
+  adminOtp  Json?    @map("admin_otp")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -610,6 +755,22 @@ model Ground {
   resolvedAt         DateTime? @map("resolved_at")
   closedAt           DateTime? @map("closed_at")
   pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
+
+  /// WHO CHASES, AND HOW OFTEN, BELONGS TO WHOEVER SET THE WORK UP.
+  ///
+  /// The schedule used to be a constant in the reminder service, which meant every
+  /// ground in every organisation chased on the same three days whatever the work
+  /// was. A fortnightly delivery and a week-long handover are not chased alike, and
+  /// a lead who wants the chasing to stop had nowhere to say so.
+  ///
+  /// Days are counted from when the check-in opened. An empty list is a lead who
+  /// wants nobody nudged; `chasingStopped` is the same answer said explicitly, and
+  /// both are honoured, because a lead who turned it off and got emails anyway is a
+  /// lead who turns the product off.
+  chaseAfterDays  Int[]   @default([3, 7, 14]) @map("chase_after_days")
+  chasingStopped  Boolean @default(false) @map("chasing_stopped")
+  /// Whether the lead hears who has not started once the chasing is done with them.
+  tellTheLead     Boolean @default(true) @map("tell_the_lead")
 
   sessionsBalance            Int      @default(1) @map("sessions_balance")
   // When true (default), participants cannot see each other's email address - only
@@ -715,6 +876,13 @@ model Ground {
   /// A ground SUMMONED against an imported objective. Declared here as well as created in SQL,
   /// because an index Prisma does not know about is one the next generated migration drops.
   @@index([organizationId, subjectExternalId])
+  documentsElsewhere DocumentElsewhere[]
+  reportedFigures ReportedFigure[]
+  differences     Difference[]
+  agreements      Agreement[]
+  assertions      Assertion[]
+  parties         GroundParty[]
+  obligations     Obligation[]
   @@map("grounds")
 }
 
@@ -910,6 +1078,7 @@ model GroundParticipant {
 
   @@unique([groundId, email])
   @@index([groundId])
+  documentsElsewhere DocumentElsewhere[]
   @@map("ground_participants")
 }
 
@@ -973,6 +1142,13 @@ model CheckIn {
 
   @@unique([participantId, sessionNumber])
   @@index([groundId])
+  /// WHEN THE LEAD WAS TOLD THIS ONE NEVER STARTED.
+  ///
+  /// Set once, after the chasing has finished with the person. Without it the
+  /// lead hears the same names every morning, which is the chase moved one person
+  /// along rather than an end to it.
+  leadToldAt DateTime? @map("lead_told_at")
+
   @@map("check_ins")
 }
 
@@ -1095,6 +1271,7 @@ model GroundObjective {
   groundId       String   @map("ground_id")
   name           String
   target         Int? // null = a qualitative objective, tracked but not counted
+
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
   prevCount      Int      @default(0) @map("prev_count")
@@ -1272,6 +1449,46 @@ model GroundPollOption {
 // ---------------------------------------------------------------------------
 // The Report — the shared picture. Released to BOTH parties simultaneously.
 // ---------------------------------------------------------------------------
+
+/// WHEN A REVIEW FALLS DUE SOMEWHERE ELSE.
+///
+/// Groundwork does not evaluate anybody and this does not make it start. It is
+/// our note of a date held in the customer's own system — a probation end, an
+/// annual cycle — so that the record this product already produces can arrive
+/// BEFORE the conversation rather than after it.
+///
+/// Its own table rather than a column on `Person`, for two reasons. `Person` is
+/// a mirror of their directory and this is not in their directory; and a date
+/// needs to say where it came from, which a column cannot.
+model EvaluationDue {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  personExternalId String @map("person_external_id")
+
+  /// The day the review happens. A date, not a timestamp — nobody's probation
+  /// ends at 14:32, and a time would imply a precision the source does not have.
+  dueOn DateTime @map("due_on") @db.Date
+  /// What kind of review, in the customer's own word for it. Not an enum: their
+  /// vocabulary, and a closed set here would refuse a company that calls it
+  /// something else.
+  kind  String
+
+  /// Where the date came from, so a wrong one can be traced rather than argued
+  /// about. The name of the system, or the person who typed it.
+  source String
+
+  /// Set when the manager has been told, so nobody is told twice about one
+  /// review. Cleared by nothing — a second reminder is a second row.
+  notifiedAt DateTime? @map("notified_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId, dueOn, kind])
+  @@index([organizationId, dueOn, notifiedAt])
+  @@map("evaluations_due")
+}
 
 model Report {
   id              String    @id @default(uuid())
@@ -1539,6 +1756,23 @@ model ApiCredential {
   clientSecretHash String   @map("client_secret_hash")
   /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
   /// a subset of what its credential already holds.
+  /// THE SYSTEM THIS CREDENTIAL SPEAKS FOR, AND NOT THE CREDENTIAL ITSELF.
+  ///
+  /// A roster belongs to a system — "workday", "bamboohr" — and `Person` is keyed on it. This used
+  /// to be the `clientId`, which is random on every issue, so rotating a credential changed the
+  /// identity of every person in the organisation and the next sync duplicated the whole roster
+  /// silently. Existing credentials keep their clientId here, because that is what their people
+  /// were written under. See `people/whose-roster-is-this.ts`.
+  sourceSystem String @map("source_system")
+
+  /// THE CREDENTIAL THAT TOOK OVER FROM THIS ONE.
+  ///
+  /// Set by Replace. Rotating is three steps — issue, deploy, revoke — and the middle one is a
+  /// person going away to change a config file. Without this the page cannot tell the difference
+  /// between "still in use" and "replaced and forgotten", and a superseded key stays live for
+  /// months because nobody remembers which of the two the integration is actually using.
+  replacedByClientId String? @map("replaced_by_client_id")
+
   scopes           String[]
 
   /// WHOSE WORK THIS CREDENTIAL MAY SEE, when it should not see all of it.
@@ -1802,6 +2036,15 @@ model ObjectiveDraft {
   proposedTarget          String?   @map("proposed_target")
   proposedOwnerExternalId String?   @map("proposed_owner_external_id")
   proposedDueDate         DateTime? @map("proposed_due_date")
+
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// The draft agreed a measure and a target and neither says either. The seed
+  /// gate checked that people AGREED, which is a different thing from the
+  /// objective being any good: six people can agree on a number none of them
+  /// can explain.
+  proposedJustification String? @map("proposed_justification") @db.Text
+  proposedApproach      String? @map("proposed_approach") @db.Text
 
   /// The prior-cycle evidence this was built from. A draft carries its own reasons.
   groundedOnFindingIds String[] @map("grounded_on_finding_ids")
@@ -2585,6 +2828,19 @@ model Subject {
   measure String? @db.Text
   target  String? @db.Text
 
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// Carried on the objective rather than left behind in the draft that agreed
+  /// it: the reason a target exists is the first thing to go missing, and it is
+  /// needed most in the check-in where the target is being missed.
+  ///
+  /// Nullable, because an objective imported from a customer's own system
+  /// arrives with whatever that system holds — and refusing an import for a
+  /// missing sentence would mean refusing their data. Drafts agreed in here are
+  /// refused without both.
+  justification String? @db.Text
+  approach      String? @db.Text
+
   /// Held as the customer's own identifiers rather than resolved to rows, because the person may
   /// not have been pushed yet and a subject must not fail to import for naming somebody unknown.
   ownerExternalId        String? @map("owner_external_id")
@@ -2821,6 +3077,18 @@ model PersonObjective {
   /// What is being counted, in their words: "qualified pipeline", "proposals", "days".
   measure String? @map("measure")
 
+  /// WHY THIS NUMBER, AS IT WAS STATED WHEN THE TARGET WAS SET.
+  ///
+  /// The session where the target is being missed is the one where the reason
+  /// matters most and is least likely to still be in anybody's head. Without it
+  /// that session can only ask about the gap, which invites an excuse; with it
+  /// it can ask whether the reason still holds, which is a question about the
+  /// target rather than about the person.
+  ///
+  /// Carried under the same rule as the objective it belongs to: it is what was
+  /// stated when the target was set, NOT something this person agreed to.
+  whyThisNumber String? @map("why_this_number") @db.Text
+
   /// WHERE THIS HAS GOT TO. OPEN until somebody says otherwise.
   ///
   /// Nothing could end before this. An expectation set on day one looked identical on day ninety
@@ -2968,6 +3236,337 @@ model GroundBaselineEntry {
 
   @@index([groundId, createdAt])
   @@map("ground_baseline_entries")
+}
+
+/// A DOCUMENT THAT LIVES SOMEWHERE ELSE, RECORDED RATHER THAN READ.
+///
+/// Its own table, and that is the whole safety argument. A link kept alongside uploaded documents
+/// would be a row with no text sitting where every prompt-assembling read expects text, and the
+/// assistant would answer about a contract having seen nothing but its name. Here there is no
+/// filter for anybody to forget: a read that assembles document text cannot reach one of these.
+model DocumentElsewhere {
+  id            String  @id @default(uuid())
+  groundId      String  @map("ground_id")
+  participantId String? @map("participant_id")
+
+  /// Scheme, host and path. NEVER the query string — sharing links carry tokens, and a token in a
+  /// row the whole check-in can read hands the document to everybody who can see the link.
+  url    String
+  /// Where it lives, in the words a person uses: "Google Docs", "Dropbox".
+  livesIn String @map("lives_in")
+  title  String
+
+  /// The same three answers an uploaded document has. It arrives OWN and is opened by saying so.
+  visibility DocumentVisibility @default(OWN)
+
+  /// What they said about it as they put it in, kept as they said it.
+  note String? @db.Text
+
+  addedByUserId String?  @map("added_by_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId, participantId])
+  @@map("documents_elsewhere")
+}
+
+/// SOMETHING SOMEBODY HAS TO DO, FROM A TERM BOTH SIDES AGREED THE READING OF.
+///
+/// There is no state here that means breached and no path to one. The strongest thing this holds is
+/// the responsible side saying, in their own words, that it was not done. Missing evidence is
+/// "nothing has been shown either way" and is not a claim about anybody. See
+/// `alignment/an-obligation-is-not-evidence-of-itself.ts`.
+model Obligation {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// The term it comes from. An obligation with no term is a duty nobody agreed to.
+  termId String @map("term_id")
+
+  says  String @db.Text
+  whose String
+
+  /// Where it has one. Some obligations are continuous.
+  dueOn DateTime? @map("due_on") @db.Date
+
+  /// One of the seven in ObligationState. None of them is "breached".
+  state String @default("not due yet")
+
+  /// What anybody said about it, in their words: [{ by, said }].
+  accounts Json @default("[]")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, state])
+  @@map("obligations")
+}
+
+/// A PARTY THAT IS AN ORGANISATION, RATHER THAN A LIST OF PEOPLE SOMEBODY INVITED.
+///
+/// Both sides are named, and each says which of their own people take part. This grants standing on
+/// ONE check-in and nothing anywhere else — the tenant boundary is untouched, and every read stays
+/// scoped to an organisation. A party with no account here is normal: the other side of a contract
+/// has not usually bought this product. See `alignment/a-party-is-an-organisation.ts`.
+model GroundParty {
+  id       String @id @default(uuid())
+  groundId String @map("ground_id")
+
+  /// 'the side that set it up' | 'the other side'. The first carries no extra rights.
+  side String
+  /// What they are called, in their own words.
+  name String
+
+  /// Their organisation here, where they have one. Null is normal.
+  organizationId String? @map("organization_id")
+
+  /// Who named them, and when. A side that appeared with no trace of who added it is one nobody
+  /// can query later.
+  namedByUserId String?  @map("named_by_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, side])
+  @@index([organizationId])
+  @@map("ground_parties")
+}
+
+/// WHAT ONE SIDE SAID, AND WHETHER THE OTHER HAS BEEN ASKED.
+///
+/// Without this row, a thing one side said in July is by September indistinguishable from a thing
+/// both sides confirmed. `claim` never reaches the other side; `about` is the neutral subject they
+/// are asked, so two free accounts can be compared and neither was led. See
+/// `alignment/an-assertion-waits-for-the-other-side.ts`.
+model Assertion {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What was said, in their words. NEVER shown to the other side.
+  claim String @db.Text
+  /// The subject, in neutral words. The only thing the other side is asked about.
+  about String
+
+  by           String
+  theOtherSide String @map("the_other_side")
+
+  /// 'said by one side' | 'the other side has been asked' | 'both sides say the same' | 'the two accounts differ'
+  state String @default("said by one side")
+
+  /// The question the other side was asked, kept so it can be checked for what it gave away.
+  asked   String?   @map("asked") @db.Text
+  askedAt DateTime? @map("asked_at")
+
+  /// Their own account, in their words.
+  theirAccount String?   @map("their_account") @db.Text
+  answeredAt   DateTime? @map("answered_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, state])
+  @@map("assertions")
+}
+
+/// AN AGREEMENT BETWEEN TWO SIDES, AND WHAT IS IN FORCE WHEN.
+///
+/// Not contract management: no clause library, no redlining, no signatures. Enough to answer what
+/// is in force, since when, and who checked it — which a relationship that cannot answer has no
+/// ground to stand an argument on. See `alignment/an-agreement-is-versioned-never-edited.ts`.
+model Agreement {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What the two sides call it.
+  says String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground   Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  versions AgreementVersion[]
+
+  @@index([groundId])
+  @@map("agreements")
+}
+
+/// A VERSION IS NEVER EDITED, AND THAT IS THE WHOLE DESIGN.
+///
+/// The moment one can be edited, "what did the agreement say in July" stops having an answer — and
+/// July is when the thing being argued about happened. An amendment is a new version with its own
+/// start date; the old one keeps standing over the period it covered. In a disagreement between two
+/// companies, the side that can quietly change the record is the side nobody should believe.
+model AgreementVersion {
+  id          String @id @default(uuid())
+  agreementId String @map("agreement_id")
+
+  /// 1, 2, 3. An amendment is the next number, never a change to the last one.
+  number Int
+
+  /// 'being put together' | 'in force' | 'replaced'
+  state String @default("being put together")
+
+  inForceFrom DateTime  @map("in_force_from") @db.Date
+  inForceTo   DateTime? @map("in_force_to")   @db.Date
+
+  /// Who said this is what was signed, by name. Both sides, or it is not in force.
+  agreedBy String[] @map("agreed_by")
+
+  /// WHEN IT WAS EXECUTED, AND WHO SAYS SO.
+  ///
+  /// Kept apart from `agreedBy` because agreeing and signing are different moments and people
+  /// collapse them constantly: both sides saying they want a change is not the change. And signed
+  /// is still not in force — an amendment signed in October that starts in January governs nothing
+  /// in November. Where a version stands is worked out from these facts rather than stored, so a
+  /// row cannot sit in a standing its own dates contradict.
+  signedAt   DateTime? @map("signed_at")
+  signedSaid String?   @map("signed_said")
+
+  /// The document it came from, where there is one.
+  documentId String? @map("document_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agreement Agreement       @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  terms     AgreementTerm[]
+
+  @@unique([agreementId, number])
+  @@index([agreementId, inForceFrom])
+  @@map("agreement_versions")
+}
+
+/// A READING IS A PROPOSAL UNTIL A PERSON SAYS OTHERWISE.
+///
+/// The most dangerous object in this programme: a model reads a contract, produces "revenue share
+/// 20%", and a company is held to a sentence nobody signed. What a term in each state may be used
+/// for is decided in `alignment/a-term-is-not-true-because-a-model-read-it.ts`, as arithmetic
+/// rather than as a note in a prompt.
+model AgreementTerm {
+  id        String @id @default(uuid())
+  versionId String @map("version_id")
+
+  /// What it is about, in the words people use: "revenue share", "payment terms".
+  says String
+  /// The reading itself, as plain words. Never a formula this product then executes.
+  reads String @db.Text
+
+  /// 'read from the document' | 'checked by one side' | 'agreed by both' | 'read differently by each side'
+  state String @default("read from the document")
+
+  /// Which clause, so anybody can go and look.
+  clause String?
+
+  /// Who has said the reading is right, by name. Never a count.
+  checkedBy String[] @map("checked_by")
+
+  /// Where the two sides read it differently: [{ by, reads }]. The most useful thing this can find.
+  readDifferently Json? @map("read_differently")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  version AgreementVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@map("agreement_terms")
+}
+
+/// A FIGURE, HELD AS A VALUE RATHER THAN AS A SENTENCE IN A DOCUMENT.
+///
+/// The object that makes arithmetic possible at all. Money is minor units and an integer, because
+/// a reconciliation out by a cent is one nobody trusts again. See
+/// `alignment/a-figure-is-a-value-with-a-source.ts` for what it refuses to do.
+model ReportedFigure {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What it is a figure OF, in the words the person used: "revenue", "VAT declared".
+  says String
+  /// Minor units. Integer, always.
+  minorUnits Int    @map("minor_units")
+  currency   String
+
+  /// Inclusive calendar dates. A period is not a timestamp.
+  periodFrom DateTime @map("period_from") @db.Date
+  periodTo   DateTime @map("period_to")   @db.Date
+
+  /// Where it came from, and who is attached to it. A figure nobody is attached to cannot be
+  /// asked about, and asking is the whole method.
+  source   String
+  statedBy String @map("stated_by")
+  from     String
+
+  /// The document it was read out of, where it was. Null for one somebody typed or said.
+  documentId String? @map("document_id")
+
+  /// A MODEL'S READING IS NOT THE FIGURE UNTIL A PERSON SAYS SO.
+  ///
+  /// The most dangerous failure in this whole area is an extracted number becoming fact. A figure
+  /// read out of a document by a model is held here unconfirmed, and nothing compares it to
+  /// anything until somebody who would know has said it is right.
+  confirmedAt     DateTime? @map("confirmed_at")
+  confirmedByUser String?   @map("confirmed_by_user")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, periodFrom])
+  @@map("reported_figures")
+}
+
+/// A DIFFERENCE THAT SURVIVES THE CONVERSATION.
+///
+/// Without a row, a mismatch noticed in a meeting is gone by next month and the pattern across
+/// months — the thing that actually matters — never forms. States are in
+/// `alignment/what-does-not-add-up.ts`; note that none of them is "breach".
+model Difference {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  groundId       String @map("ground_id")
+
+  /// What was compared, in the words a person reads.
+  between    String
+  minorUnits Int    @map("minor_units")
+  currency   String
+  periodFrom DateTime @map("period_from") @db.Date
+  periodTo   DateTime @map("period_to")   @db.Date
+
+  /// 'not explained yet' | 'explained' | 'explained before, not now' | 'no longer there'
+  state String @default("not explained yet")
+
+  /// The figures it was computed from, so the arithmetic can always be shown.
+  statedFigureId  String   @map("stated_figure_id")
+  countedFigureIds String[] @map("counted_figure_ids")
+
+  /// Which candidate explanations a person has ruled out, in their own answers.
+  ruledOut String[] @map("ruled_out")
+
+  /// What somebody said accounted for it, in their words. Never summarised into a verdict.
+  accountedForBy String?   @map("accounted_for_by") @db.Text
+  accountedAt    DateTime? @map("accounted_at")
+
+  /// The last question asked about it, so the same one is not asked twice in a row.
+  lastAsked   String?   @map("last_asked") @db.Text
+  lastAskedAt DateTime? @map("last_asked_at")
+
+  /// It was raised in this session, and carries into later ones until it is no longer there.
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, state])
+  @@map("differences")
 }
 
 model GroundDocument {
@@ -3855,4 +4454,1723 @@ model PrimaryActionEvent {
   @@unique([organizationId, sourceSystem, externalId])
   @@index([organizationId, personExternalId, actionKey, occurredAt])
   @@map("primary_action_events")
+}
+
+// ===========================================================================
+// THE OPS SYSTEM — the back office the Groundwork team runs on.
+//
+// This is not part of the Groundwork product. It is our own company's
+// management system, and it happens to live in the same database because we
+// are one company with one deployment, not because the two are related.
+//
+// Two rules hold this boundary, and both are enforced by spec:
+//
+//   1. No `Ops*` model may hold a foreign key into a product table. The one
+//      link is `OpsPerson.userId`, and it exists so a person can sign in with
+//      the account they already have. Nothing reads through it.
+//   2. No product code may import ops code, and no ops code may import
+//      product code.
+//
+// The test of the boundary: swap this system for somebody else's ERP and
+// every check-in still works; turn check-ins off and we can still run the
+// company.
+// ===========================================================================
+
+/// What somebody does here. Gives default capabilities and nothing more —
+/// `OpsGrant` is the truth about what a person may do.
+enum OpsFunctionalRole {
+  CEO
+  SALES_MARKETING
+  PRODUCT_TECH_LEAD
+  TECH
+  CONTRIBUTOR
+}
+
+enum OpsPeriodKind {
+  /// A named, dated list of the companies we are trying to land. Was called a
+  /// SPRINT, which is engineering vocabulary for something that is not
+  /// engineering — and read as a two-week iteration to everybody who met it.
+  TARGET_LIST
+  QUARTER
+  /// A biweekly operating cycle. Hangs off a quarter.
+  CYCLE
+}
+
+enum OpsPeriodStatus {
+  PLANNED
+  OPEN
+  CLOSED
+}
+
+/// Where a company has got to with us. Deliberately product-neutral: these are
+/// the stages any company would use for a client going live on anything.
+enum OpsCompanyStage {
+  LINED_UP
+  USE_CASE_CONFIRMED
+  PRODUCT_READY
+  ONBOARDED
+  LIVE
+}
+
+/// Which part of the company an activity belongs to. One log, seven domains —
+/// so that "count these within a window, and show me which ones" is written
+/// once instead of five times that drift.
+enum OpsActivityDomain {
+  SALES
+  FUNDING
+  DEPLOYMENT
+  PRODUCT
+  TECH
+  STRATEGY
+  MARKETING
+}
+
+/// A person in our team. Not a Groundwork user — some of us have no account,
+/// and a person who leaves keeps their record and loses their grants.
+model OpsPerson {
+  id String @id @default(uuid())
+
+  /// Stable handle used by the seed and by anything that names a person in
+  /// config. Survives a name change.
+  key         String  @unique
+  displayName String  @map("display_name")
+  email       String? @unique
+
+  /// Sign-in only. The single nullable link to the product's user table, and
+  /// nothing in the ops system reads through it for anything but auth.
+  userId String? @unique @map("user_id")
+
+  functionalRole OpsFunctionalRole @map("functional_role")
+  active         Boolean           @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  grants             OpsGrant[]               @relation("OpsGrantHolder")
+  attributions       OpsAttribution[]         @relation("OpsAttributionContributor")
+  positioning        OpsPositioningRecord[]   @relation("OpsPositioningContributor")
+  agreement          OpsContributorAgreement? @relation("OpsContributorAgreementHolder")
+  contributorTargets OpsContributorTarget[]   @relation("OpsContributorTargetHolder")
+
+  @@index([active])
+  @@map("ops_people")
+}
+
+/// One capability held by one person. A role suggests a set; this table decides.
+///
+/// Kept as rows rather than an array so that granting and revoking are ordinary
+/// writes with a timestamp and an author, and so a capability check is an index
+/// lookup rather than a scan of somebody's role.
+model OpsGrant {
+  id       String @id @default(uuid())
+  personId String @map("person_id")
+
+  /// `domain:action`, e.g. `sales:write`, `roadmap:approve`. The route asks for
+  /// one of these by name; it never asks what somebody's role is.
+  capability String
+
+  grantedAt DateTime @default(now()) @map("granted_at")
+  /// Who granted it. Null for the seed, which grants the defaults.
+  grantedBy String?  @map("granted_by")
+
+  person OpsPerson @relation("OpsGrantHolder", fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, capability])
+  @@index([capability])
+  @@map("ops_grants")
+}
+
+/// A window of time the company works in: the September sprint, a quarter, or
+/// a biweekly cycle inside one.
+model OpsPeriod {
+  id   String        @id @default(uuid())
+  key  String        @unique
+  name String
+  kind OpsPeriodKind
+
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+
+  /// What this period is for, in a sentence. Optional because a cycle usually
+  /// inherits its point from the quarter above it.
+  goal   String?         @db.Text
+  status OpsPeriodStatus @default(PLANNED)
+
+  parentPeriodId String? @map("parent_period_id")
+
+  contributorTargets OpsContributorTarget[] @relation("OpsContributorTargetPeriod")
+
+  parentPeriod OpsPeriod?  @relation("OpsPeriodParent", fields: [parentPeriodId], references: [id], onDelete: Restrict, map: "ops_periods_parent_fkey")
+  childPeriods OpsPeriod[] @relation("OpsPeriodParent")
+
+  @@index([kind, startsOn])
+  @@map("ops_periods")
+}
+
+/// A standing area of the company with an owner. Five of these, seeded.
+model OpsWorkstream {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
+
+  ownerPersonId            String  @map("owner_person_id")
+  /// Who watches it without running it. Usually the CEO.
+  oversightPersonId        String? @map("oversight_person_id")
+  /// Who does the building where the owner does not build.
+  technicalPartnerPersonId String? @map("technical_partner_person_id")
+
+  /// The named areas this workstream covers, for the board headings.
+  areas String[]
+
+  @@map("ops_workstreams")
+}
+
+/// A company we are selling to, deploying for, or already serving.
+///
+/// One identity. Sales, use cases, deployment and attribution all point here,
+/// which is how "do not create duplicate company records" becomes a property of
+/// the schema instead of a rule somebody has to remember.
+model OpsCompany {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
+
+  primaryContactName  String? @map("primary_contact_name")
+  primaryContactEmail String? @map("primary_contact_email")
+  primaryContactPhone String? @map("primary_contact_phone")
+
+  /// How they reached us, in our own words.
+  source                   String?
+  /// The contributor who brought them, when one did.
+  originatingContributorId String? @map("originating_contributor_id")
+  /// The target list they are on, when they are on one.
+  targetListId             String? @map("target_list_id")
+
+  stage         OpsCompanyStage @default(LINED_UP)
+  ownerPersonId String?         @map("owner_person_id")
+
+  nextAction      String?   @map("next_action")
+  nextActionDueAt DateTime? @map("next_action_due_at")
+  blockerSummary  String?   @map("blocker_summary") @db.Text
+
+  liveAt DateTime? @map("live_at")
+  notes  String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  attributions            OpsAttribution[]
+  useCases                OpsClientUseCase[]
+  deployments             OpsDeployment[]
+  commercialOpportunities OpsCommercialOpportunity[]
+
+  @@index([stage])
+  @@index([targetListId])
+  @@map("ops_companies")
+}
+
+/// Something that happened, in any part of the company.
+///
+/// Every metric in this system needs the same three things from its evidence: a
+/// count inside a window, a first-occurrence test, and a list you can open. One
+/// log gives all three one implementation.
+model OpsActivity {
+  id String @id @default(uuid())
+
+  domain OpsActivityDomain
+  /// The specific kind within the domain — `call`, `demo`, `proposal_sent`,
+  /// `application_submitted`. Free text on purpose: new kinds appear faster
+  /// than migrations ship, and nothing branches on the value.
+  kind   String
+
+  actorPersonId String? @map("actor_person_id")
+
+  /// What it happened against. Not a foreign key: an activity outlives the
+  /// record it describes, and losing the history to a delete is worse than
+  /// holding a pointer that can go stale.
+  recordType String  @map("record_type")
+  recordId   String  @map("record_id")
+  companyId  String? @map("company_id")
+
+  happenedAt  DateTime @map("happened_at")
+  note        String?  @db.Text
+  /// Where somebody else can go and see this for themselves.
+  evidenceUrl String?  @map("evidence_url")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([domain, happenedAt])
+  @@index([recordType, recordId])
+  @@index([companyId, happenedAt])
+  @@index([actorPersonId, happenedAt])
+  @@map("ops_activities")
+}
+
+// --- Phase 2: the September sprint -----------------------------------------
+
+/// How far a contributor's introduction has got. The line at which one counts
+/// toward a target is a SETTING, not a hard-coded stage — see `OpsSetting`.
+enum OpsQualifyingStatus {
+  INTRODUCED
+  READY
+  QUALIFIED
+}
+
+/// Whether the product supports what a company actually wants to do.
+enum OpsUseCaseReadiness {
+  UNKNOWN
+  REVIEWING
+  GAP_IDENTIFIED
+  IN_PROGRESS
+  PRODUCT_READY
+}
+
+/// A client's journey from signed to getting something out of it.
+///
+/// Product-neutral on purpose. `FIRST_USE` and `firstUseAt` mean "they used the
+/// thing"; for us that happens to be a check-in, and it would still mean exactly
+/// what it says if we sold something else tomorrow.
+enum OpsDeploymentStage {
+  READY_SIGNED
+  SETUP
+  ONBOARDING
+  FIRST_USE
+  LIVE
+}
+
+/// A decision, stored rather than hard-coded.
+///
+/// Anything on this table is something a person chose and could choose
+/// differently: where the qualifying line sits, what currency we count in, which
+/// clock the boards show. Burying those in code makes changing one a deploy and
+/// makes disagreeing with one an argument about a constant.
+model OpsSetting {
+  key   String  @id
+  value String
+  /// What choosing differently would change, so the next person is not guessing.
+  note  String? @db.Text
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("ops_settings")
+}
+
+/// A contributor brought this company to us.
+///
+/// Unique on (company, contributor) so the same introduction cannot be counted
+/// twice — which is the only way a target made of introductions stays honest.
+model OpsAttribution {
+  id            String @id @default(uuid())
+  companyId     String @map("company_id")
+  contributorId String @map("contributor_id")
+
+  /// How they know them, in the contributor's own words.
+  sourceType   String  @map("source_type")
+  sourceDetail String? @map("source_detail") @db.Text
+
+  introducedAt     DateTime            @map("introduced_at")
+  qualifyingStatus OpsQualifyingStatus @default(INTRODUCED) @map("qualifying_status")
+  qualifiedAt      DateTime?           @map("qualified_at")
+
+  notes String? @db.Text
+
+  company     OpsCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contributor OpsPerson  @relation("OpsAttributionContributor", fields: [contributorId], references: [id], onDelete: Restrict)
+
+  @@unique([companyId, contributorId])
+  @@index([contributorId, qualifyingStatus])
+  @@map("ops_attributions")
+}
+
+/// How many companies somebody is expected to bring, and by when.
+model OpsContributorTarget {
+  id       String @id @default(uuid())
+  personId String @map("person_id")
+  periodId String @map("period_id")
+
+  targetCount Int      @map("target_count")
+  dueDate     DateTime @map("due_date") @db.Date
+  active      Boolean  @default(true)
+
+  /// A standing target, or an expectation of one sprint. Kept apart so a
+  /// sprint's "bring one ready company" never reads as the year's number.
+  isTargetListExpectation Boolean @default(false) @map("is_sprint_expectation")
+
+  person OpsPerson @relation("OpsContributorTargetHolder", fields: [personId], references: [id], onDelete: Cascade)
+  period OpsPeriod @relation("OpsContributorTargetPeriod", fields: [periodId], references: [id], onDelete: Restrict)
+
+  @@unique([personId, periodId, isTargetListExpectation])
+  @@map("ops_contributor_targets")
+}
+
+/// What one company actually wants to do, and whether we support it yet.
+model OpsClientUseCase {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  title            String
+  description      String? @db.Text
+  /// What they expect to happen, step by step, in their words.
+  expectedWorkflow String? @map("expected_workflow") @db.Text
+  category         String?
+
+  productReadiness OpsUseCaseReadiness @default(UNKNOWN) @map("product_readiness")
+  /// Three separate gaps because three different people close them.
+  productGap       String?             @map("product_gap") @db.Text
+  uxGap            String?             @map("ux_gap") @db.Text
+  technicalGap     String?             @map("technical_gap") @db.Text
+
+  ownerId  String? @map("owner_id")
+  priority Int     @default(3)
+
+  nextAction      String?   @map("next_action")
+  targetReadyDate DateTime? @map("target_ready_date")
+  statusNotes     String?   @map("status_notes") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company     OpsCompany       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  links       OpsUseCaseLink[]
+  deployments OpsDeployment[]
+
+  @@index([productReadiness])
+  @@map("ops_client_use_cases")
+}
+
+/// Getting one company from signed to actually using the thing.
+model OpsDeployment {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  useCaseId String? @map("use_case_id")
+
+  deploymentOwnerId String  @map("deployment_owner_id")
+  productOwnerId    String? @map("product_owner_id")
+  technicalOwnerId  String? @map("technical_owner_id")
+
+  stage OpsDeploymentStage @default(READY_SIGNED)
+
+  startDate      DateTime  @map("start_date")
+  targetLiveDate DateTime? @map("target_live_date")
+  actualLiveDate DateTime? @map("actual_live_date")
+
+  onboardingStartedAt   DateTime? @map("onboarding_started_at")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  /// They used the thing. For us that is a check-in; the field does not know that.
+  firstUseAt            DateTime? @map("first_use_at")
+  /// They got something out of it. For us that is a report.
+  firstResultAt         DateTime? @map("first_result_at")
+
+  /// Which of the three teams is holding this up, when one is.
+  blockerType    String? @map("blocker_type")
+  blockerSummary String? @map("blocker_summary") @db.Text
+
+  nextAction        String?   @map("next_action")
+  nextActionOwnerId String?   @map("next_action_owner_id")
+  nextActionDueAt   DateTime? @map("next_action_due_at")
+
+  notes String? @db.Text
+
+  company OpsCompany        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  useCase OpsClientUseCase? @relation(fields: [useCaseId], references: [id], onDelete: SetNull)
+
+  @@index([stage])
+  @@index([blockerType])
+  @@map("ops_deployments")
+}
+
+// --- Phase 3: pipeline, campaigns, and getting people live -----------------
+
+enum OpsMarketingStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+/// THE OLD SALES PIPELINE IS GONE.
+///
+/// It ran beside the commercial one - same companies, same stages, a different
+/// set of numbers, and no record of who created anything. Two pipelines is how
+/// a company ends up with two answers to "how much are we selling", and the
+/// commercial pipeline is the one that carries attribution.
+///
+/// Its rows were migrated rather than dropped, and every one arrived as
+/// NEEDS_REVIEW. Nothing was inferred: not from who owned the sale, not from
+/// who created the record. Where the old table's unused originatingContributorId
+/// held somebody, that became a CLAIM for them to have approved - a claim, not
+/// a credit, because a field nobody ever filled in deliberately is not evidence.
+
+/// A campaign, a piece of content, an event. Lightweight on purpose.
+model OpsMarketingActivity {
+  id    String @id @default(uuid())
+  title String
+
+  activityType String  @map("activity_type")
+  channel      String?
+
+  /// WHAT THIS CAMPAIGN IS BEING RUN FOR, AS A ROW.
+  ///
+  /// `objective` was a sentence, which is a note about intent and not a
+  /// connection: nothing could ask what is running for a given objective, and a
+  /// campaign could not be checked against the quarter it was actually in.
+  ///
+  /// The sentence stays alongside it, because the link says WHICH objective and
+  /// only the sentence says WHY this campaign serves it.
+  ///
+  /// Nullable for the campaigns that came before the rule. New ones are refused
+  /// without it, in the service, where a refusal can be a sentence.
+  objectiveId String? @map("objective_id")
+  objective   String? @db.Text
+
+  ownerId   String    @map("owner_id")
+  startDate DateTime  @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  status OpsMarketingStatus @default(PLANNED)
+
+  /// The string an opportunity's `source` carries when it came from here.
+  /// Matching on it is how "this campaign generated two leads" gets checked.
+  campaignSource String? @map("campaign_source")
+
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  opportunities   OpsCommercialOpportunity[]
+  linkedObjective OpsObjective?              @relation("OpsMarketingObjective", fields: [objectiveId], references: [id], onDelete: SetNull)
+
+  @@index([status, startDate])
+  @@index([objectiveId])
+  @@map("ops_marketing_activities")
+}
+
+// --- Phase 4: what we build, and who says so -------------------------------
+
+enum OpsRoadmapStatus {
+  PROPOSED
+  READY
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+}
+
+enum OpsWorkItemStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  RESOLVED
+}
+
+enum OpsApprovalType {
+  ROADMAP
+  REPRIORITISATION
+  COMMERCIAL
+  SPEND
+  RESOURCING
+  /// A deck, a campaign, a page of site copy. Signed off against the version of
+  /// the product statement it was checked against, so changing what we say we
+  /// are reopens everything signed against the old words.
+  RESOURCE
+}
+
+enum OpsApprovalStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+/// Something we intend to build.
+///
+/// `approvalRequired` is the field that makes the roadmap a decision rather than
+/// a list: an item carrying it cannot leave PROPOSED until an approval says so.
+/// The rule lives in the service and is asserted by a spec, because a boolean
+/// nobody enforces is a comment.
+model OpsRoadmapItem {
+  id          String  @id @default(uuid())
+  title       String
+  description String? @db.Text
+
+  productArea String? @map("product_area")
+  itemType    String  @map("item_type")
+
+  /// A STANDING ITEM IS NOT A PROPOSAL.
+  ///
+  /// Everything else on this roadmap can be argued with, reprioritised or
+  /// dropped. One or two cannot: they are the frame the others sit in, and
+  /// showing them in the same list with the same controls makes them look like
+  /// opinions somebody could disagree with.
+  ///
+  /// A standing item has no approval and no status somebody moves. It has a
+  /// definition of done, and the definition is COMPUTED - see
+  /// `what-solid-means.ts`. Typing "done" against "every bug fixed" would be
+  /// the one place on this board where a claim outranks a count.
+  standing Boolean @default(false)
+  priority Int     @default(3)
+
+  ownerId      String? @map("owner_id")
+  proposedById String  @map("proposed_by_id")
+
+  relatedCompanyId String? @map("related_company_id")
+  relatedUseCaseId String? @map("related_use_case_id")
+
+  targetDate DateTime?        @map("target_date")
+  status     OpsRoadmapStatus @default(PROPOSED)
+
+  approvalRequired Boolean @default(false) @map("approval_required")
+
+  rationale     String? @db.Text
+  expectedValue String? @map("expected_value") @db.Text
+  evidenceUrl   String? @map("evidence_url")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  /// A stable handle for the seeded items, so re-seeding does not duplicate them.
+  key String? @unique
+
+  @@index([status, priority])
+  @@map("ops_roadmap_items")
+}
+
+/// A bug, a piece of infrastructure, a technical blocker.
+model OpsTechItem {
+  id          String  @id @default(uuid())
+  title       String
+  description String? @db.Text
+
+  itemType String @map("item_type")
+  /// How bad. Free text so a new severity does not need a migration, and
+  /// nothing branches on the value — the board sorts by it and that is all.
+  severity String
+
+  ownerId String? @map("owner_id")
+
+  relatedCompanyId     String? @map("related_company_id")
+  relatedUseCaseId     String? @map("related_use_case_id")
+  relatedRoadmapItemId String? @map("related_roadmap_item_id")
+  relatedDeploymentId  String? @map("related_deployment_id")
+
+  status        OpsWorkItemStatus @default(OPEN)
+  targetDate    DateTime?         @map("target_date")
+  blockerReason String?           @map("blocker_reason") @db.Text
+  evidenceUrl   String?           @map("evidence_url")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([status, severity])
+  @@index([relatedCompanyId])
+  @@map("ops_tech_items")
+}
+
+/// An interface problem, and where it was noticed.
+model OpsUXItem {
+  id           String  @id @default(uuid())
+  title        String
+  affectedFlow String? @map("affected_flow")
+  description  String? @db.Text
+  /// Whose words this came from. A UX problem somebody reported is worth more
+  /// than one somebody thought of, and the board should be able to tell.
+  sourceNote   String? @map("source_note") @db.Text
+
+  relatedCompanyId String? @map("related_company_id")
+  relatedUseCaseId String? @map("related_use_case_id")
+
+  severity String
+  ownerId  String? @map("owner_id")
+
+  status      OpsWorkItemStatus @default(OPEN)
+  targetDate  DateTime?         @map("target_date")
+  evidenceUrl String?           @map("evidence_url")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([status, severity])
+  @@map("ops_ux_items")
+}
+
+/// What a use case needs, whatever kind of item that is.
+///
+/// One table rather than three arrays: a readiness row has to ask "what is
+/// outstanding against this" once, not once per item type.
+model OpsUseCaseLink {
+  id        String @id @default(uuid())
+  useCaseId String @map("use_case_id")
+
+  /// `OpsRoadmapItem`, `OpsTechItem` or `OpsUXItem`.
+  targetType String @map("target_type")
+  targetId   String @map("target_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  useCase OpsClientUseCase @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([useCaseId, targetType, targetId])
+  @@map("ops_use_case_links")
+}
+
+/// One mechanism for every decision.
+///
+/// Roadmap, spend, resourcing and commercial all come through here, so the CEO
+/// has one queue rather than four, and so "who decided this, and when" has the
+/// same answer everywhere.
+model OpsApproval {
+  id           String          @id @default(uuid())
+  approvalType OpsApprovalType @map("approval_type")
+
+  requesterId String @map("requester_id")
+  approverId  String @map("approver_id")
+
+  relatedRecordType String @map("related_record_type")
+  relatedRecordId   String @map("related_record_id")
+
+  requestSummary String            @map("request_summary") @db.Text
+  status         OpsApprovalStatus @default(PENDING)
+  decisionNote   String?           @map("decision_note") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  decidedAt DateTime? @map("decided_at")
+
+  @@index([status, createdAt])
+  @@index([relatedRecordType, relatedRecordId])
+  @@map("ops_approvals")
+}
+
+// --- Phase 5: what we said we would do, and what happened ------------------
+
+enum OpsObjectiveStatus {
+  DRAFT
+  ACTIVE
+  ACHIEVED
+  MISSED
+  ARCHIVED
+}
+
+enum OpsCommitmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum OpsTodoStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+/// What a workstream is trying to achieve this quarter.
+model OpsObjective {
+  id           String @id @default(uuid())
+  periodId     String @map("period_id")
+  workstreamId String @map("workstream_id")
+
+  title       String
+  description String? @db.Text
+  ownerId     String  @map("owner_id")
+
+  /// WHAT SETTING THIS BUYS, AND WHY THIS RATHER THAN SOMETHING ELSE.
+  ///
+  /// The form asked for a title, an area and a sentence, which is a note rather
+  /// than an objective. These four fields are the difference.
+  ///
+  /// `serves` is the same four values a piece of work can serve, so an
+  /// objective and the work under it are answering one question in one
+  /// vocabulary. `instead` is the conveyor belt: "why is this the best use of
+  /// time" is unanswerable in the abstract and only answerable against the
+  /// alternative, and nobody writes it down unless the form makes them.
+  serves        OpsServes?
+  justification String?    @db.Text
+  instead       String?    @db.Text
+
+  /// THE SALES ARITHMETIC, KEPT AS ITS TWO PARTS.
+  ///
+  /// "Eight companies at fifteen thousand" is a claim about the pipeline, and
+  /// the pipeline is in this system. Stored as the two numbers rather than the
+  /// product of them, so the claim can be checked against what is actually
+  /// there rather than only admired.
+  companiesExpected    Int? @map("companies_expected")
+  valuePerCompanyCents Int? @map("value_per_company_cents")
+
+  status   OpsObjectiveStatus @default(DRAFT)
+  priority Int                @default(3)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  keyResults OpsKeyResult[]
+  campaigns  OpsMarketingActivity[] @relation("OpsMarketingObjective")
+
+  @@index([periodId, status])
+  @@map("ops_objectives")
+}
+
+/// A number that says whether the objective happened.
+///
+/// `measurementSource` is either a metric key or the literal MANUAL. Anything
+/// else is a typo, and a key result measured by a typo silently becomes a
+/// number nobody updates — so the resolver refuses rather than falling back.
+model OpsKeyResult {
+  id          String @id @default(uuid())
+  objectiveId String @map("objective_id")
+
+  title      String
+  metricType String @map("metric_type")
+
+  targetValue  Decimal  @map("target_value") @db.Decimal(14, 2)
+  unit         String
+  startValue   Decimal? @map("start_value") @db.Decimal(14, 2)
+  /// Only ever read for a MANUAL key result. A sourced one computes on read, so
+  /// a stored value would be a second answer that goes stale.
+  currentValue Decimal  @default(0) @map("current_value") @db.Decimal(14, 2)
+
+  measurementSource String @map("measurement_source")
+
+  /// WHY THIS NUMBER, AND HOW IT WILL BE MOVED.
+  ///
+  /// A key result was a target and a source: what to reach and where the number
+  /// comes from. Neither says whether the target is the right one or whether
+  /// anybody has thought about how to hit it — and a number with no approach
+  /// behind it is a wish with a deadline.
+  ///
+  /// Kept apart on purpose. The justification is why this number is the one
+  /// that matters; the approach is what somebody is actually going to do. They
+  /// fail differently: a good reason with no plan is a hope, and a good plan
+  /// for the wrong number is worse.
+  justification String? @db.Text
+  approach      String? @db.Text
+
+  ownerId String   @map("owner_id")
+  dueDate DateTime @map("due_date") @db.Date
+
+  status OpsObjectiveStatus @default(ACTIVE)
+
+  objective OpsObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@map("ops_key_results")
+}
+
+/// What one person said they would do in one cycle.
+model OpsCommitment {
+  id                String  @id @default(uuid())
+  ownerId           String  @map("owner_id")
+  operatingPeriodId String  @map("operating_period_id")
+  workstreamId      String? @map("workstream_id")
+
+  linkedObjectiveId String? @map("linked_objective_id")
+  linkedKeyResultId String? @map("linked_key_result_id")
+
+  title       String
+  description String? @db.Text
+
+  measureType String   @map("measure_type")
+  targetValue Decimal? @map("target_value") @db.Decimal(14, 2)
+  unit        String?
+
+  startDate DateTime @map("start_date") @db.Date
+  dueDate   DateTime @map("due_date") @db.Date
+
+  /// As with a key result, only read when the commitment is measured by hand.
+  currentValue Decimal? @map("current_value") @db.Decimal(14, 2)
+
+  status        OpsCommitmentStatus @default(NOT_STARTED)
+  /// Orthogonal to status on purpose: work that is blocked is still in
+  /// progress, and collapsing the two loses the fact somebody needs help.
+  blocked       Boolean             @default(false)
+  blockerReason String?             @map("blocker_reason") @db.Text
+
+  measurementSource String @map("measurement_source")
+
+  actualResult String?   @map("actual_result") @db.Text
+  evidenceUrl  String?   @map("evidence_url")
+  closedAt     DateTime? @map("closed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  links OpsCommitmentLink[]
+
+  @@index([ownerId, operatingPeriodId])
+  @@index([status, dueDate])
+  @@map("ops_commitments")
+}
+
+/// What a commitment is pointed at, whatever kind of record that is.
+model OpsCommitmentLink {
+  id           String @id @default(uuid())
+  commitmentId String @map("commitment_id")
+
+  targetType String @map("target_type")
+  targetId   String @map("target_id")
+
+  commitment OpsCommitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@unique([commitmentId, targetType, targetId])
+  @@map("ops_commitment_links")
+}
+
+/// A task. Deliberately the lightest record here.
+model OpsTodo {
+  id      String @id @default(uuid())
+  title   String
+  ownerId String @map("owner_id")
+
+  assignedById String?   @map("assigned_by_id")
+  dueDate      DateTime? @map("due_date") @db.Date
+
+  status OpsTodoStatus @default(OPEN)
+
+  relatedRecordType String? @map("related_record_type")
+  relatedRecordId   String? @map("related_record_id")
+
+  notes String? @db.Text
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([ownerId, status])
+  @@map("ops_todos")
+}
+
+// --- Phase 6: the CEO's own functions --------------------------------------
+
+enum OpsFundingStage {
+  TARGET
+  CONTACTED
+  MEETING
+  FOLLOW_UP
+  APPLICATION_DILIGENCE
+  COMMITTED
+  CLOSED
+  /// Terminal.
+  DECLINED
+}
+
+enum OpsStrategicStatus {
+  IDENTIFIED
+  OUTREACH
+  ENGAGED
+  OPPORTUNITY_CREATED
+  COMPLETED
+  DORMANT
+  CLOSED
+}
+
+enum OpsRequestStatus {
+  OPEN
+  DECIDED
+}
+
+enum OpsExpenseStatus {
+  REQUESTED
+  /// Claimed by somebody who holds the decision themselves. Money out, but not
+  /// reviewed by a second person, and kept apart so the ledger never implies
+  /// it was.
+  RECORDED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+/// Somebody who might fund us.
+model OpsFundingOpportunity {
+  id             String  @id @default(uuid())
+  funderName     String  @map("funder_name")
+  primaryContact String? @map("primary_contact")
+
+  fundingType String  @map("funding_type")
+  source      String?
+  ownerId     String  @map("owner_id")
+
+  stage OpsFundingStage @default(TARGET)
+
+  askAmount  Decimal? @map("ask_amount") @db.Decimal(14, 2)
+  currency   String   @default("USD")
+  instrument String?
+
+  lastActivityAt      DateTime? @map("last_activity_at")
+  nextAction          String?   @map("next_action")
+  nextActionDueAt     DateTime? @map("next_action_due_at")
+  applicationDeadline DateTime? @map("application_deadline")
+
+  /// What they said yes to, and what actually arrived. Kept apart because the
+  /// gap between them is the only interesting number in a fundraise.
+  committedAmount Decimal? @map("committed_amount") @db.Decimal(14, 2)
+  closedAmount    Decimal? @map("closed_amount") @db.Decimal(14, 2)
+
+  statusNote String? @map("status_note") @db.Text
+  notes      String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([stage, lastActivityAt])
+  @@index([nextActionDueAt])
+  @@map("ops_funding_opportunities")
+}
+
+/// A relationship that could turn into a customer, a funder, a partner or a
+/// contributor. Tracked because network access is work, and untracked work
+/// stops happening.
+model OpsStrategicOpportunity {
+  id              String  @id @default(uuid())
+  personOrNetwork String  @map("person_or_network")
+  organization    String?
+
+  opportunityType String  @map("opportunity_type")
+  objective       String? @db.Text
+  ownerId         String  @map("owner_id")
+
+  status OpsStrategicStatus @default(IDENTIFIED)
+  source String?
+
+  lastActivityAt DateTime? @map("last_activity_at")
+  nextStep       String?   @map("next_step")
+  nextStepDueAt  DateTime? @map("next_step_due_at")
+
+  impactNote      String? @map("impact_note") @db.Text
+  /// What this turned into, so a conversion is a link rather than a claim.
+  convertedToType String? @map("converted_to_type")
+  convertedToId   String? @map("converted_to_id")
+
+  linkedContributorId String? @map("linked_contributor_id")
+  notes               String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("ops_strategic_opportunities")
+}
+
+/// "We cannot deliver X without Y." The decision lives on an approval.
+model OpsResourceRequest {
+  id          String @id @default(uuid())
+  requesterId String @map("requester_id")
+
+  supportNeeded String @map("support_needed") @db.Text
+  reason        String @db.Text
+
+  affectedWorkType String? @map("affected_work_type")
+  affectedRecordId String? @map("affected_record_id")
+
+  urgency         String
+  requestedByDate DateTime? @map("requested_by_date")
+
+  status OpsRequestStatus @default(OPEN)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("ops_resource_requests")
+}
+
+/// Somebody spent money and wants it back.
+model OpsExpense {
+  id          String   @id @default(uuid())
+  requesterId String   @map("requester_id")
+  date        DateTime @db.Date
+  description String   @db.Text
+  category    String
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("USD")
+
+  receiptUrl String? @map("receipt_url")
+  notes      String? @db.Text
+
+  status OpsExpenseStatus @default(REQUESTED)
+
+  submittedAt    DateTime  @default(now()) @map("submitted_at")
+  approvedById   String?   @map("approved_by_id")
+  approvedAt     DateTime? @map("approved_at")
+  paidAt         DateTime? @map("paid_at")
+  rejectedReason String?   @map("rejected_reason") @db.Text
+
+  @@index([requesterId, status])
+  @@index([status])
+  @@map("ops_expenses")
+}
+
+/// Money in. Entered by hand, which is what gives the balance a real basis
+/// rather than a computed guess.
+model OpsEarningsEntry {
+  id       String   @id @default(uuid())
+  date     DateTime @db.Date
+  amount   Decimal  @db.Decimal(14, 2)
+  currency String   @default("USD")
+  source   String
+  note     String?  @db.Text
+
+  recordedById String?  @map("recorded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("ops_earnings_entries")
+}
+
+// --- Phase 8: the seam out to Groundwork -----------------------------------
+
+/// How the ops system reaches Groundwork, and what happened last time it did.
+///
+/// One row. The secret is never read back out of it — `PATCH` writes, nothing
+/// returns it — because a connection screen that shows a client secret is a
+/// credential printed on a monitor in an open-plan office.
+model OpsIntegration {
+  id String @id @default("the-one-row")
+
+  /// Off by default, and turning it off must change nothing on any ops board.
+  /// That is the test of whether these are two systems or one.
+  enabled Boolean @default(false)
+
+  baseUrl      String? @map("base_url")
+  clientId     String? @map("client_id")
+  clientSecret String? @map("client_secret")
+
+  /// The secret Groundwork signs its webhooks with, handed over when we
+  /// registered where to send them. Ours to check against, and it never leaves
+  /// this side — see `what-groundwork-tells-us.ts`.
+  webhookSecret String? @map("webhook_secret")
+
+  /// The check-in our objectives are attached to, in the Groundwork we push to.
+  ///
+  /// Evidence attaches to an objective that exists ON a check-in, so without
+  /// this there is nowhere for our numbers to land - which is exactly what
+  /// happened for the whole of the first build: every push returned 200 and
+  /// wrote nothing. The adapter does not open one itself: opening a check-in
+  /// invites people and starts a conversation, and a nightly job should not do
+  /// that on anybody's behalf.
+  checkInId String? @map("check_in_id")
+
+  /// THE TWO THINGS THE PANEL NEEDS, AND NOTHING ELSE DOES.
+  ///
+  /// A machine credential opens the data routes. The assistant panel is a
+  /// different act: a browser on OUR page asking Groundwork about the person
+  /// looking at it, and a machine secret in a browser is a machine secret in
+  /// developer tools. So the panel goes the way a customer's does - our server
+  /// signs a short assertion about who is signed in, with a secret shared with
+  /// Groundwork, and the browser carries only that.
+  /// IT MUST BE THE ORGANISATION THE CREDENTIAL ABOVE WRITES INTO.
+  ///
+  /// The token names a person by their externalId inside an organisation, and
+  /// SCIM puts that person into whichever organisation the machine credential
+  /// belongs to. Point this at a different one and the handshake answers
+  /// `visible: false` about somebody plainly on the team, with nothing to say
+  /// why. Cost two rounds to find while integrating our own back office.
+  organizationId String? @map("organization_id")
+  embedSecret    String? @map("embed_secret")
+
+  /// What the last push did, in the API's own words.
+  lastSyncAt      DateTime? @map("last_sync_at")
+  lastSyncOk      Boolean?  @map("last_sync_ok")
+  lastSyncSummary String?   @map("last_sync_summary") @db.Text
+  lastSyncDetail  String?   @map("last_sync_detail") @db.Text
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("ops_integration")
+}
+
+// --- The moat, and what gets built on it -----------------------------------
+
+/// One of the five things the defensible advantage is made of.
+///
+/// Seeded and stable: these are the components of the moat as the company
+/// defines them, and they change when the strategy changes rather than when
+/// somebody has an idea.
+/// THE FREEZE: A STABLE PRODUCT, AND NOTHING ADDED TO IT.
+///
+/// Phase one's objective, made enforceable. "No more additions or
+/// modifications. Purely make what exists work for the use cases."
+///
+/// APPEND-ONLY, because turning it off is a decision with a name against it.
+/// Each row is that decision; the newest is the state. A freeze that could be
+/// switched off silently is a rule that lasts until the first person in a hurry.
+///
+/// It carries an end date because a freeze nobody remembers to lift becomes the
+/// reason nothing ships in March.
+model OpsFreeze {
+  id   String  @id @default(uuid())
+  isOn Boolean @map("is_on")
+
+  /// Why, in words. Required both ways: turning it ON and turning it OFF are
+  /// both decisions somebody has to account for later.
+  because String    @db.Text
+  /// When it should lift. Advisory rather than automatic — a freeze that
+  /// expires on its own ends without anybody deciding it should.
+  until   DateTime? @db.Date
+
+  decidedById String   @map("decided_by_id")
+  decidedAt   DateTime @default(now()) @map("decided_at")
+
+  @@index([decidedAt])
+  @@map("ops_freezes")
+}
+
+/// WHAT A PIECE OF WORK SERVES, DECLARED WHEN IT IS PROPOSED.
+///
+/// One table for every kind of item — roadmap, tech, UX — rather than four
+/// columns on each of three models. Two reasons beyond tidiness: the rule and
+/// its wording live in one place, and "work that named nothing" becomes a join
+/// rather than three queries that have to agree with each other.
+///
+/// Nothing here blocks. An item naming nothing is LISTED, at the moment it is
+/// proposed and the answer is cheapest.
+model OpsWhatItServes {
+  id String @id @default(uuid())
+
+  /// 'OpsRoadmapItem' | 'OpsTechItem' | 'OpsUXItem'. A plain string, because
+  /// this table must not need a foreign key into every kind of work there will
+  /// ever be.
+  recordType String @map("record_type")
+  recordId   String @map("record_id")
+
+  serves         OpsServes
+  /// The use case or moat component it points at, when it points at one.
+  servesRecordId String?   @map("serves_record_id")
+  /// Why this, and why now. The sentence somebody has to write down.
+  justification  String    @db.Text
+
+  /// WHAT THIS MAKES US DEPEND ON, AND WHO OWNS IT.
+  ///
+  /// The second threat, and the only one that cannot be detected — a tool or an
+  /// asset belonging to the person adding it. Declared here; the lockfile is the
+  /// witness that does not have to be trusted.
+  dependsOn        String? @map("depends_on") @db.Text
+  dependsOnOwnedBy String? @map("depends_on_owned_by")
+
+  declaredById String   @map("declared_by_id")
+  declaredAt   DateTime @default(now()) @map("declared_at")
+
+  @@unique([recordType, recordId])
+  @@index([serves])
+  @@map("ops_what_it_serves")
+}
+
+/// WHAT A PIECE OF WORK CAN SERVE, AND NOTHING ELSE.
+/// A STRETCH OF THE COMPANY'S PLAN. NOT A PERIOD.
+///
+/// The five phases of the workplan — prove it, build the team, sell it, scale
+/// it, raise on it. They OVERLAP: proving runs through October while the team
+/// phase runs to November and selling starts in October. That overlap is the
+/// whole reason this is its own table rather than a kind of OpsPeriod. A period
+/// contains objectives, has one set of dates, and only one is current; two
+/// phases are routinely running at once, and a quarter can sit inside two.
+///
+/// `exitCondition` is what has to be true to be done with it, and `exitMetric`
+/// is the key it is read from — so "are we out of this phase" is answered by
+/// the same registry every other number comes from, rather than by an opinion
+/// in a meeting. Nullable, because one of the five has an exit nobody has
+/// turned into a number yet, and recording that honestly is better than
+/// inventing one.
+model OpsPhase {
+  id      String @id @default(uuid())
+  key     String @unique
+  ordinal Int
+
+  name String
+  /// What this phase is for, in the words it was agreed in.
+  intent String @db.Text
+
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+
+  exitCondition String  @map("exit_condition") @db.Text
+  /// A key in the metric registry, or null while the exit is not yet a number.
+  exitMetric    String? @map("exit_metric")
+  exitTarget    Decimal? @map("exit_target") @db.Decimal(14, 2)
+
+  /// WHETHER WORK MAY BE JUSTIFIED AS MAKING THE COMPANY OPERABLE WHILE THIS
+  /// PHASE IS RUNNING.
+  ///
+  /// True for exactly one phase. The fifth thing a piece of work can serve is
+  /// bounded by the phase that makes it legitimate; outside that window it is
+  /// the loophole every measure eventually grows.
+  permitsOperability Boolean @default(false) @map("permits_operability")
+
+  @@index([ordinal])
+  @@map("ops_phases")
+}
+
+enum OpsServes {
+  /// It unblocks a customer use case.
+  SALES
+  /// It adds to one of the five moat components.
+  MOAT
+  /// It unlocks a customer we could not have taken before.
+  UNLOCKS_A_CUSTOMER
+  /// Security, a migration, a broken build. Necessary, invisible, and counted —
+  /// with an approval, so it is not the drawer everything gets filed in.
+  KEEPING_IT_UP
+  /// Hiring, onboarding, the operating manual, the things that make a company
+  /// of six work. Real contribution and not product work, so it is bounded by
+  /// the phase that makes it legitimate rather than available forever.
+  MAKES_THE_COMPANY_OPERABLE
+}
+
+/// WHAT WE SAY THIS PRODUCT IS, AND WHAT IT IS NOT.
+///
+/// The statement every piece of marketing is held up against. It lived in slide
+/// three of the sales deck — inside one of the documents it is meant to govern.
+///
+/// APPEND-ONLY. A sign-off records which version it was checked against, so
+/// changing the statement reopens everything signed against the old one — and
+/// that is only computable while the old one still exists. Newest version is the
+/// current one; nothing is ever edited in place.
+model OpsProductStatement {
+  id      String @id @default(uuid())
+  version Int    @unique
+
+  /// The line that says what this is, in the words the company actually uses.
+  headline    String @db.Text
+  /// The line to say out loud in the room.
+  saidOutLoud String @map("said_out_loud") @db.Text
+
+  isIt    String[] @map("is_it")
+  /// The half that does the work: what a piece of marketing actually violates.
+  isNotIt String[] @map("is_not_it")
+
+  writtenAt DateTime @default(now()) @map("written_at")
+  writtenBy String?  @map("written_by")
+  /// Why it changed, so a version nobody can account for is visible as one.
+  because   String?  @db.Text
+
+  @@index([version])
+  @@map("ops_product_statements")
+}
+
+/// WHAT WE PUT IN FRONT OF PEOPLE, AND WHETHER IT MATCHES WHAT WE SELL.
+///
+/// Decks, campaign content, site copy, newsletters. The register exists because
+/// the fastest way to break a product's positioning is a piece of marketing
+/// nobody checked — calling it a coaching tool, promising a use case it does not
+/// support — and marketing is written under time pressure by whoever is closest
+/// to the deadline.
+///
+/// `checkedAgainstVersion` is the whole point. A sign-off is only meaningful
+/// against a fixed set of words, so it records WHICH version of the product
+/// statement it passed, and changing the statement leaves every older sign-off
+/// visibly stale rather than silently wrong.
+model OpsResource {
+  id String @id @default(uuid())
+
+  title          String
+  category       OpsResourceCategory
+  /// Required when the category is OTHER: an unnamed 'other' is a drawer.
+  categoryDetail String?             @map("category_detail")
+
+  /// Where the thing itself lives. It is not stored here — this is a register,
+  /// not a document store, and a copy kept here would go stale against the one
+  /// people actually send.
+  url String?
+
+  /// The words being checked. Pasted, because a link cannot be read by a check.
+  content String @db.Text
+
+  addedById String   @map("added_by_id")
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  /// WHAT THE CHECK FOUND, AND WHICH WORDS IT USED.
+  ///
+  /// `checks` holds one entry per claim in the product statement, each with a
+  /// verdict and the sentence it is about. Kept as rows in JSON rather than a
+  /// count, because "3 of 5" is only meaningful if the 3 can be opened.
+  checks                Json?
+  checkedAgainstVersion Int?      @map("checked_against_version")
+  checkedAt             DateTime? @map("checked_at")
+  /// Said by the model, kept verbatim, and never the verdict on its own.
+  checkSays             String?   @map("check_says") @db.Text
+
+  /// The three things most likely to go wrong with this piece. Written by a
+  /// person, not the model: a risk somebody typed is a risk somebody owns.
+  risks String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([category])
+  @@map("ops_resources")
+}
+
+/// The kinds of thing the register holds. OTHER exists so the list does not
+/// have to be complete on day one, and carries a required detail so it cannot
+/// become the drawer everything is filed in.
+enum OpsResourceCategory {
+  PITCH_DECK
+  SALES_DECK
+  CAMPAIGN_STRATEGY
+  CAMPAIGN_CONTENT
+  MARKETING_SITE_COPY
+  NEWSLETTER
+  OTHER
+}
+
+/// WHAT GROUNDWORK TOLD US, RECEIVED THE WAY A CUSTOMER RECEIVES IT.
+///
+/// Our back office has only ever SENT. It pushes people, objectives, evidence
+/// and what this company decided, and it subscribed to nothing — so a commitment
+/// somebody made in a check-in never reached the board they are measured on, and
+/// a released report had to be gone and found.
+///
+/// Half of being a customer is receiving, and it is the half that flatters us
+/// less. This is the record of it: every event, whether it verified, and what we
+/// did about it.
+///
+/// A webhook from this product carries a fact and a pointer and never what
+/// anybody said, so nothing here needs redacting — which is a property of that
+/// design rather than of this table, and worth not relying on silently.
+model OpsGroundworkEvent {
+  id String @id @default(uuid())
+
+  /// Their id for the delivery, so the same event arriving twice is one row.
+  /// Retries are normal and a duplicate must not become a second fact.
+  eventId String @unique @map("event_id")
+  kind    String
+
+  /// The body exactly as it arrived. Kept whole: a payload we reshaped on the
+  /// way in is one we cannot re-read when we later work out what we should have
+  /// done with it.
+  payload Json
+
+  /// Whether the signature checked out. A failure is RECORDED rather than
+  /// dropped — somebody sending us badly signed events is a thing to know about,
+  /// and a silent 401 tells nobody here.
+  verified Boolean
+
+  receivedAt DateTime @default(now()) @map("received_at")
+  /// What we did, in a sentence, or null where we did nothing yet.
+  actedOn    String?  @map("acted_on")
+
+  @@index([kind, receivedAt])
+  @@map("ops_groundwork_events")
+}
+
+model OpsMoatComponent {
+  id        String @id @default(uuid())
+  key       String @unique
+  ordinal   Int
+  name      String
+  /// The definition, in the words it was written in. Not paraphrased.
+  statement String @db.Text
+
+  entries OpsMoatEntry[]
+
+  @@map("ops_moat_components")
+}
+
+/// Something actually built on the moat.
+///
+/// The reason this table exists: "solidify the moat" was the one roadmap item
+/// nothing could report on. Everything else — companies live, issues closed,
+/// accounts moved — is countable, and an objective that cannot be counted is
+/// the one that quietly stops being worked on while the measurable ones get
+/// attention.
+///
+/// A row here is a claim that something was built, and it carries evidence, so
+/// the count is openable like every other number in this system.
+model OpsMoatEntry {
+  id          String @id @default(uuid())
+  componentId String @map("component_id")
+
+  title       String
+  description String? @db.Text
+
+  /// Where somebody can go and see it: a pull request, a commit, a screen.
+  evidenceUrl       String? @map("evidence_url")
+  /// What it points at in our own records, when it points at something.
+  relatedRecordType String? @map("related_record_type")
+  relatedRecordId   String? @map("related_record_id")
+
+  builtById String?  @map("built_by_id")
+  builtAt   DateTime @map("built_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  component OpsMoatComponent @relation(fields: [componentId], references: [id], onDelete: Restrict)
+
+  @@index([componentId, builtAt])
+  @@map("ops_moat_entries")
+}
+
+// ===========================================================================
+// COMMERCIAL CONTRIBUTION AND ATTRIBUTION
+//
+// What each person actually created, kept apart from what they are responsible
+// for. The distinction is the whole system:
+//
+//   Company performance is not personal contribution.
+//   Function ownership is not personal attribution.
+//   Operational involvement is not origination.
+//
+// Sahar owns Sales and Market Acquisition. That means the health of the
+// function is hers. It does NOT mean a client somebody else originated counts
+// toward her personal target, and it does not mean a contributor with no
+// commercial contribution is underperforming - commercial acquisition is not
+// their job.
+//
+// There are exactly two contribution roles, and no others. No closer, no sales
+// owner, no supported-the-sale, no helped-with-follow-up. Categories like those
+// exist so that people can claim a piece of a deal for having been nearby, and
+// every one of them makes the record less true.
+// ===========================================================================
+
+/// The commercial pipeline, from first contact to a client who stayed a year.
+///
+/// Retention is in the stages rather than a separate flag because a client who
+/// paid once and left is a different commercial outcome from one who is still
+/// paying at six months, and the pipeline should say which.
+enum OpsCommercialStage {
+  LEAD
+  QUALIFIED
+  DEMO_DISCOVERY
+  PROPOSAL
+  VERBAL_YES
+  PAYING
+  RETAINED_3_MONTH
+  RETAINED_6_MONTH
+  RETAINED_12_MONTH
+  LOST
+}
+
+/// How far a positioning relationship has got.
+///
+/// The three middle stages are the point. An introduction is not a commercial
+/// outcome, a meeting is not a commercial outcome, and being connected to
+/// somebody important is not a commercial outcome - so the funnel records each
+/// separately and the value is read from what came out of the far end.
+enum OpsPositioningStage {
+  TARGET
+  INTRODUCTION
+  MEETING
+  QUALIFIED_ACCESS
+  OPPORTUNITY_CREATED
+  COMMERCIAL_OUTCOME
+  /// Went nowhere. Kept rather than deleted: an introduction that produced
+  /// nothing is a fact about the introduction, and hiding it would make every
+  /// contributor's funnel look better than it was.
+  CLOSED
+}
+
+/// Whether a claim of contribution has been looked at.
+///
+/// Attribution locks for ordinary users once an opportunity is QUALIFIED. Admin
+/// can still change it, and every change stays in the history - the point is to
+/// stop retrospective claims, not to stop corrections.
+enum OpsAttributionState {
+  /// Nobody has said who created this. The honest state for anything imported
+  /// or historical: we do not infer origination from who typed the record.
+  NEEDS_REVIEW
+  CLAIMED
+  APPROVED
+  REJECTED
+}
+
+/// The two contribution roles. There are no others, deliberately.
+enum OpsContributionRole {
+  /// Who created the strategic access that ultimately produced this.
+  POSITIONING_SOURCE
+  /// Who actually generated the qualified commercial opportunity.
+  OPPORTUNITY_ORIGINATOR
+}
+
+/// A commercial opportunity, with who created it and what it turned into.
+model OpsCommercialOpportunity {
+  id        String @id @default(uuid())
+  companyId String @map("company_id")
+
+  name            String
+  opportunityType String? @map("opportunity_type")
+
+  stage OpsCommercialStage @default(LEAD)
+
+  /// WHO CREATED THIS. Both nullable, and both meaning something specific.
+  ///
+  /// A null originator is NEEDS_REVIEW, not "the person who owns sales". We do
+  /// not infer origination from who created the record, who attended the
+  /// meeting, who sent the proposal or who owns the function.
+  /// A STATE PER ROLE, because they are two independent decisions.
+  ///
+  /// One shared state looked simpler and was wrong: approving Nate's positioning
+  /// and Hafsah's origination, then rejecting Sahar's claim on the same deal, set
+  /// the single field back to NEEDS_REVIEW and silently took the credit away from
+  /// both of them. Found by running the worked example end to end, and invisible
+  /// in the code - each write was correct on its own.
+  positioningSourceId     String?             @map("positioning_source_id")
+  positioningState        OpsAttributionState @default(NEEDS_REVIEW) @map("positioning_state")
+  opportunityOriginatorId String?             @map("opportunity_originator_id")
+  originatorState         OpsAttributionState @default(NEEDS_REVIEW) @map("originator_state")
+  attributionLockedAt     DateTime?           @map("attribution_locked_at")
+
+  /// Where the positioning came from, when it came from a tracked relationship.
+  positioningRecordId String? @map("positioning_record_id")
+
+  /// The campaign that produced this, where one did.
+  ///
+  /// Re-linked after the old pipeline was retired: campaigns pointed at that
+  /// table, and without this a campaign could only report that it ran. A
+  /// campaign that cannot name what it produced is an activity record, and this
+  /// system is supposed to tell activity from outcomes.
+  campaignId String? @map("campaign_id")
+
+  /// WHO DOES THE WORK. Operational, and it creates no attribution whatsoever.
+  nextAction        String?   @map("next_action")
+  nextActionOwnerId String?   @map("next_action_owner_id")
+  nextActionDueAt   DateTime? @map("next_action_due_at")
+
+  /// Projected. Shown for pipeline, and it can never earn a credit.
+  estimatedMrr           Decimal? @map("estimated_mrr") @db.Decimal(12, 2)
+  estimatedContractValue Decimal? @map("estimated_contract_value") @db.Decimal(14, 2)
+
+  /// Actual. What credits are computed from.
+  actualMrr           Decimal?  @map("actual_mrr") @db.Decimal(12, 2)
+  actualContractValue Decimal?  @map("actual_contract_value") @db.Decimal(14, 2)
+  firstPaymentAt      DateTime? @map("first_payment_at")
+  /// The date they stopped, when they stopped. Null while they are still paying.
+  churnedAt           DateTime? @map("churned_at")
+
+  currency String @default("USD")
+
+  evidenceUrl String? @map("evidence_url")
+  notes       String? @db.Text
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lostAt     DateTime? @map("lost_at")
+  lostReason String?   @map("lost_reason") @db.Text
+
+  company  OpsCompany             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaign OpsMarketingActivity?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  payments OpsCommercialPayment[]
+  claims   OpsAttributionClaim[]
+
+  @@index([stage])
+  @@index([opportunityOriginatorId, stage])
+  @@index([positioningSourceId])
+  @@index([originatorState])
+  @@map("ops_commercial_opportunities")
+}
+
+/// Cash actually collected. Entered by hand until a payment provider is wired.
+///
+/// Separate from the opportunity's own amounts because a contract value is one
+/// number and what arrived is a series of them - and every credit, every
+/// revenue share and every retention milestone is computed from what arrived.
+model OpsCommercialPayment {
+  id            String @id @default(uuid())
+  opportunityId String @map("opportunity_id")
+
+  amount   Decimal  @db.Decimal(12, 2)
+  currency String   @default("USD")
+  paidAt   DateTime @map("paid_at")
+
+  /// Where it can be seen: a Stripe id, a bank reference, an invoice number.
+  reference String?
+  /// `manual` today. When a provider is wired this says which one, so nobody
+  /// has to guess whether a figure was typed or observed.
+  source    String  @default("manual")
+
+  recordedById String?  @map("recorded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  opportunity OpsCommercialOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, paidAt])
+  @@map("ops_commercial_payments")
+}
+
+/// Somebody says they created something, and somebody else decides.
+///
+/// Every claim is kept, decided or not, with what it was based on and who
+/// decided. A claim that was modified keeps the original: the history is the
+/// thing that makes attribution defensible in a conversation about equity, and
+/// a record that only holds the current answer cannot support one.
+model OpsAttributionClaim {
+  id            String @id @default(uuid())
+  opportunityId String @map("opportunity_id")
+
+  claimantId String              @map("claimant_id")
+  role       OpsContributionRole
+
+  /// What they say it was based on, in their words.
+  claimedBasis String  @map("claimed_basis") @db.Text
+  evidenceUrl  String? @map("evidence_url")
+
+  state OpsAttributionState @default(CLAIMED)
+
+  decidedById        String?   @map("decided_by_id")
+  decidedAt          DateTime? @map("decided_at")
+  decisionNote       String?   @map("decision_note") @db.Text
+  /// Set when an approver changed who it was attributed to, so the original
+  /// claim and the decision are both readable.
+  modifiedToPersonId String?   @map("modified_to_person_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  opportunity OpsCommercialOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([state, createdAt])
+  @@index([claimantId])
+  @@map("ops_attribution_claims")
+}
+
+/// Market access: a relationship, network or channel somebody opened up.
+///
+/// Recorded whether or not it produces anything, because that is the only way
+/// to tell ten introductions that produced two clients from ten that produced
+/// nothing. The counts are not stored - they are computed from the
+/// opportunities that name this record, so nobody can improve their funnel by
+/// editing a number.
+model OpsPositioningRecord {
+  id            String @id @default(uuid())
+  contributorId String @map("contributor_id")
+
+  /// Who or what was opened up. A person, an organisation, a network.
+  personOrNetwork String  @map("person_or_network")
+  organization    String?
+  /// Introduction, distribution relationship, procurement access, investor
+  /// access, ecosystem engagement. Free text: the kinds keep appearing.
+  accessType      String  @map("access_type")
+
+  stage       OpsPositioningStage @default(TARGET)
+  openedAt    DateTime            @map("opened_at")
+  evidenceUrl String?             @map("evidence_url")
+  notes       String?             @db.Text
+
+  /// The company it eventually concerned, where it concerned one.
+  companyId String? @map("company_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contributor OpsPerson @relation("OpsPositioningContributor", fields: [contributorId], references: [id], onDelete: Restrict)
+
+  @@index([contributorId, stage])
+  @@map("ops_positioning_records")
+}
+
+/// What a contributor's agreement entitles them to.
+///
+/// NO EQUITY IS STORED HERE. Not agreed, not proposed, not a pathway. The
+/// numbers this system produces are meant to be good enough to hold up in a
+/// conversation about equity - which is a different thing from the software
+/// holding a figure for what somebody owns, and holding one would invite
+/// exactly the inference this whole design refuses to make.
+///
+/// What is here is revenue share, because the alternative is worse. Without it
+/// the system would assume every recorded originator receives the originator
+/// share, and somebody would be told they are owed something they never agreed.
+///
+/// Attribution establishes what happened. The agreement establishes what
+/// somebody is entitled to. Neither is ever inferred from the other.
+model OpsContributorAgreement {
+  id       String @id @default(uuid())
+  personId String @unique @map("person_id")
+
+  /// The originator share, where this person's agreement gives them one at all.
+  /// Null means no entitlement, which is the default and is not a mistake.
+  originatorSharePercent Decimal? @map("originator_share_percent") @db.Decimal(5, 2)
+  originatorShareMonths  Int?     @map("originator_share_months")
+  agreementNote          String?  @map("agreement_note") @db.Text
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  person OpsPerson @relation("OpsContributorAgreementHolder", fields: [personId], references: [id], onDelete: Cascade)
+
+  @@map("ops_contributor_agreements")
 }

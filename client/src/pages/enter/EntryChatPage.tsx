@@ -382,6 +382,30 @@ export const SITUATION_CARDS = [
   },
   {
     group: 'starting',
+    scenario: 'CONTRACT_REVIEW',
+    label: SCENARIO_LABELS.CONTRACT_REVIEW,
+    detail: 'Each side says on its own what it thinks the agreement means, before anybody signs it.',
+    message: 'We are about to sign an agreement and I want both sides to say what they think it means before we do.',
+    timelineHint: 'typically 60 days',
+    examples: [
+      'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
+      'A partnership you are about to sign with somebody you would rather not fall out with.',
+    ],
+  },
+  {
+    group: 'planning',
+    scenario: 'IMPLEMENTATION_TRACKING',
+    label: SCENARIO_LABELS.IMPLEMENTATION_TRACKING,
+    detail: 'A quiet monthly read on an agreement that is running, that mostly says it is running fine.',
+    message: 'We have an agreement that has been running for a while and nobody has checked whether what we are doing still matches it.',
+    timelineHint: 'typically a year',
+    examples: [
+      'A revenue share where the reported figure and the filed figure have never been put side by side.',
+      'A relationship that is fine, where you would like to be able to prove it was fine.',
+    ],
+  },
+  {
+    group: 'starting',
     scenario: 'NEW_HIRE',
     label: SCENARIO_LABELS.NEW_HIRE,
     detail: 'Get you and a new hire meaning the same thing by "doing well", before anything drifts.',
@@ -1124,7 +1148,11 @@ export function EntryChatPage() {
         await generateSessionReport(withReply)
       }
     } catch {
-      toast.error('That did not send. What you wrote is still here — try again.')
+      /* Same defect, same shape: the textarea was cleared before the call and the message said
+         otherwise. The turn stays in the history — the server may have taken it — and the words go
+         back where they were typed. */
+      setCorrectionText(text)
+      toast.error('That did not send — what you wrote is back in the box. Try again.')
     } finally {
       setCorrectionLoading(false)
     }
@@ -1257,8 +1285,19 @@ export function EntryChatPage() {
         if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
       }, 50)
     } catch {
-      toast.error('That did not send. Your message is still here — try again.')
-      setOnboardingHistory(onboardingHistory) // revert
+      /**
+       * IT SAID THE MESSAGE WAS STILL HERE AND PUT IT NOWHERE.
+       *
+       * The composer was cleared on the way in and the turn was reverted out of the history on the
+       * way out, so the text existed in neither place — and the toast said the opposite, which is
+       * worse than saying nothing: somebody who is told their words are safe does not retype them.
+       *
+       * Put it back where they wrote it. The turn still comes out of the history, because a turn
+       * the server never took is not part of the conversation.
+       */
+      setOnboardingHistory(onboardingHistory)
+      setInput(text.trim())
+      toast.error('That did not send — your message is back in the box. Try again.')
     } finally {
       setOnboardingLoading(false)
     }
@@ -1477,7 +1516,24 @@ export function EntryChatPage() {
         payload: buildCommitPayload(),
         history,
       }))
-    } catch { /* storage full or blocked - the sign-in still works, the ground is re-creatable */ }
+    } catch {
+      /**
+       * STORAGE REFUSING USED TO COST THEM THE CONVERSATION, SILENTLY.
+       *
+       * The comment said "the ground is re-creatable", and then it navigated away regardless — so
+       * in a private window, with a full quota, or in a browser told to block site data, somebody
+       * pressed a button and their whole conversation was gone with no warning. Re-creatable is
+       * true and is not the same as re-created: nobody types twenty minutes of it again.
+       *
+       * We cannot carry it past this page without storage, so the honest thing is to say so and
+       * stay put. The email route works in every one of those browsers, and it is right there.
+       */
+      toast.error(
+        'Nothing has been lost. This browser will not let us hold your conversation while you sign '
+        + 'in with Google — use the email option below and it will be waiting for you.',
+      )
+      return
+    }
     window.location.href = `${API_ORIGIN}/api/v1/auth/google`
   }
 
@@ -2811,7 +2867,7 @@ export function EntryChatPage() {
                       {sessionReport.suggestedParties.map((p, i) => {
                         const key = `sug-${i}-${p.role}`
                         return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-blue-bg)' : undefined }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <CardTitle>{p.role}</CardTitle>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
@@ -2860,7 +2916,7 @@ export function EntryChatPage() {
                       {sessionReport.mentionedPeople.map((p, i) => {
                         const key = `men-${i}-${p.name}`
                         return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-border)' : undefined }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                           <div style={{ flex: 1 }}>
                             <CardTitle>{p.name}</CardTitle>
                             <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
@@ -2911,7 +2967,7 @@ export function EntryChatPage() {
                         </div>
                       )}
                       {sessionReport.alsoCameUp.map((p, i) => (
-                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '0.5px solid var(--gw-border)' : undefined }}>
+                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
                           <CardTitle>{p.name}</CardTitle>
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
                         </div>
@@ -3344,10 +3400,10 @@ export function EntryChatPage() {
                     Paste multiple emails
                   </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '0.5px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {window.location.origin}/invite?token={inviteToken}
                     </div>
-                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '0.5px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
                       {copiedLink ? 'Copied!' : 'Copy link'}
                     </button>
                   </div>

@@ -35,7 +35,9 @@ function creations(): string[] {
 
 describe('an organisation is set up at the moment it is created', () => {
   it('finds every creation, so an empty list cannot pass', () => {
-    expect(creations().length).toBeGreaterThanOrEqual(5);
+    /* Three now, not five: the two password/magic-link paths create nothing
+       until the address is verified. See GW-001. */
+    expect(creations().length).toBeGreaterThanOrEqual(3);
   });
 
   it('every one of them sets a contact email', () => {

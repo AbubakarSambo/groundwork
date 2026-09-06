@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { whatToSayAboutADatabaseError } from './a-database-error-is-not-a-message';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -33,7 +34,29 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         errors = responseObj.errors || null;
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
+      /**
+       * A PRISMA ERROR IS NOT A MESSAGE, AND IT IS NOT SAFE EITHER.
+       *
+       * `exception.message` went straight into the response body. For a Prisma
+       * failure that message is the whole invocation: the file path on our
+       * server, the line number, the model, every field with its value, and any
+       * internal id that happened to be in the arguments. Reproduced by posting
+       * a roadmap item without `itemType` and reading back
+       * `.../ops-build.service.ts:39:39` along with a person's UUID.
+       *
+       * Same fault as the ThrottlerException note below — the product answering
+       * in the vocabulary of its own stack — except this one also hands out
+       * information. The detail goes to the log, where it is useful; the caller
+       * gets a sentence and a status that matches what actually went wrong.
+       */
+      const database = whatToSayAboutADatabaseError(exception);
+      if (database) {
+        status = database.status;
+        message = database.message;
+      } else {
+        message = exception.message;
+      }
+
       this.logger.error(
         `Unhandled exception: ${exception.message}`,
         exception.stack,

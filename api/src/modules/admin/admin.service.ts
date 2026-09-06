@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
   OnApplicationBootstrap,
 } from '@nestjs/common';
@@ -98,6 +99,81 @@ export class AdminService implements OnApplicationBootstrap {
     };
   }
 
+  /**
+   * THE PAGE THAT ASKED FOR A ROUTE THAT WAS NEVER BUILT.
+   *
+   * `/admin/dashboard` renders codes, billing, users and feedback, and it asked
+   * for all of it from `GET /admin/dashboard` - which did not exist. It also
+   * asked through a hand-rolled `fetch('/api' + path)`, one segment short of the
+   * `/api/v1` every other call in the client uses, so on staging the request
+   * reached the site rather than the API and came back as the page's own HTML:
+   * "Unexpected token '<', "<!doctype "... is not valid JSON". Two faults, and
+   * the second hid the first.
+   *
+   * This is the aggregate the page has always declared, composed from the reads
+   * that already existed - one round trip for a page that needs four answers at
+   * once.
+   */
+  async getDashboard() {
+    const [stats, codes, feedback, usage, subscribedOrgs, sessionsBalance] = await Promise.all([
+      this.getPlatformStats(),
+      this.getAllCodes(),
+      this.getFeedback(),
+      this.getUsagePatterns(),
+      this.prisma.organization.count({ where: { subscriptionPlan: { not: null } } }),
+      this.prisma.ground.aggregate({ _sum: { sessionsBalance: true } }),
+    ]);
+
+    /* The four buckets the page draws as a bar. `freeReason` is null on a ground
+       somebody paid for, which is the "paid" column - a name rather than a gap. */
+    const breakdown = { FIRST_GROUND: 0, FREE_TIER: 0, ACCESS_CODE: 0, paid: 0 };
+    for (const row of stats.freeReasonBreakdown) {
+      if (row.freeReason === null) breakdown.paid += row.count;
+      else if (row.freeReason in breakdown) breakdown[row.freeReason as 'FIRST_GROUND'] += row.count;
+    }
+
+    return {
+      overview: {
+        totalOrgs: stats.orgsCount,
+        totalGrounds: stats.groundsCount,
+        totalCodes: stats.codesCount,
+        totalRedemptions: stats.redemptionsCount,
+        totalSubscribedOrgs: subscribedOrgs,
+        totalSessionsBalance: sessionsBalance._sum.sessionsBalance ?? 0,
+      },
+      codes: codes.map((c) => ({
+        id: c.id,
+        code: c.code,
+        creatorEmail: c.createdBy?.email ?? 'no longer here',
+        createdAt: c.createdAt,
+        expiresAt: c.expiresAt,
+        active: c.isActive,
+        allowCodeCreation: c.allowCodeCreation,
+        redemptionCount: c._count.redemptions,
+      })),
+      freeReasonBreakdown: breakdown,
+      feedback: feedback.map((f) => ({
+        id: f.id,
+        note: f.note,
+        feltFair: f.feltFair,
+        createdAt: f.createdAt,
+        groundLabel: f.ground?.label ?? 'a deleted check-in',
+        orgSlug: f.ground?.organization?.slug ?? '-',
+      })),
+      userUsage: usage.perUser.map((u) => ({
+        userId: u.id,
+        email: u.email,
+        groundCount: u._count.groundsInitiated,
+        codeCount: u._count.contributorCodes,
+        redemptionCount: u._count.codeRedemptions,
+        /* Null, honestly. Nothing records a last-seen time, and picking the
+           nearest thing we do store - the row's updatedAt - would put a
+           confident date under a heading it does not answer. */
+        lastActive: null,
+      })),
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Per-user + per-org usage patterns
   // ---------------------------------------------------------------------------
@@ -126,7 +202,10 @@ export class AdminService implements OnApplicationBootstrap {
           isPlatformAdmin: true,
           role: true,
           organization: { select: { id: true, name: true, slug: true } },
-          _count: { select: { groundsInitiated: true, codeRedemptions: true } },
+          /* `contributorCodes` is the codes they made; `codeRedemptions` is the
+             codes they used. Two different facts about one person, and the
+             dashboard shows both. */
+          _count: { select: { groundsInitiated: true, codeRedemptions: true, contributorCodes: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 200,
@@ -457,14 +536,84 @@ export class AdminService implements OnApplicationBootstrap {
   // ---------------------------------------------------------------------------
 
   async addPlatformAdmin(targetEmail: string) {
-    const user = await this.prisma.user.findUnique({ where: { email: targetEmail } });
-    if (!user) throw new NotFoundException(`No user found with email ${targetEmail}`);
+    /*
+     * LOWERCASED, BECAUSE THAT IS HOW ADDRESSES ARE STORED.
+     *
+     * Every signup path writes `email.toLowerCase()`. This looked the address up
+     * exactly as typed, so adding "Hafsah.Jumare@coamana.com" answered "No user
+     * found with that email" about an account that plainly exists - and the
+     * person reading it has no way to tell a capital letter from a missing account.
+     */
+    const address = targetEmail?.trim().toLowerCase();
+    if (!address) throw new BadRequestException('email is required');
 
+    const user = await this.prisma.user.findUnique({ where: { email: address } });
+    if (!user) {
+      throw new NotFoundException(
+        `No Groundwork account uses ${address}. They have to sign up and verify the address first - this promotes an account, it does not create one.`,
+      );
+    }
+
+    this.logger.warn(`Platform admin added: ${address}`);
     return this.prisma.user.update({
       where: { id: user.id },
       data: { isPlatformAdmin: true },
       select: { id: true, email: true, firstName: true, lastName: true, isPlatformAdmin: true },
     });
+  }
+
+  /**
+   * WHO CAN REACH THE PLATFORM CONSOLE.
+   *
+   * There was a way to add one and no way to see the list, so "platform ops is
+   * only the people I added" was a belief rather than something anybody could
+   * check. Two ways in exist and no more: the one-time bootstrap, which only
+   * fires while no admin exists at all, and `addPlatformAdmin` above - platform
+   * admin plus an emailed code. Nothing else writes the flag.
+   */
+  listPlatformAdmins() {
+    return this.prisma.user.findMany({
+      where: { isPlatformAdmin: true, deletedAt: null },
+      select: { id: true, email: true, firstName: true, lastName: true, createdAt: true },
+      orderBy: { email: 'asc' },
+    });
+  }
+
+  /**
+   * Take somebody off the list.
+   *
+   * Refuses the last one, for the same reason the ops system refuses to revoke
+   * the last approver: an empty list cannot be added to, because adding needs a
+   * platform admin. It would lock the console permanently and the only way back
+   * would be the database.
+   */
+  async removePlatformAdmin(userId: string, callerUserId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, isPlatformAdmin: true },
+    });
+    if (!user || !user.isPlatformAdmin) throw new NotFoundException('That account is not a platform admin.');
+
+    const others = await this.prisma.user.count({
+      where: { isPlatformAdmin: true, deletedAt: null, id: { not: userId } },
+    });
+    if (others === 0) {
+      throw new ConflictException(
+        `${user.email} is the only platform admin. Add somebody else first - with none, nobody can ever add one, because adding requires being one.`,
+      );
+    }
+
+    /* Removing yourself is allowed and worth saying out loud: it is a normal
+       thing to do when handing over, and refusing it would be the software
+       deciding who runs the company. */
+    if (userId === callerUserId) {
+      this.logger.warn(`Platform admin removed THEMSELVES: ${user.email}`);
+    } else {
+      this.logger.warn(`Platform admin removed: ${user.email}`);
+    }
+
+    await this.prisma.user.update({ where: { id: userId }, data: { isPlatformAdmin: false } });
+    return { removed: user.email };
   }
 
   // ---------------------------------------------------------------------------
@@ -486,16 +635,8 @@ export class AdminService implements OnApplicationBootstrap {
     // Upsert AdminProfile - store OTP in a dedicated key alongside existing signals.
     await this.prisma.adminProfile.upsert({
       where: { userId },
-      create: {
-        userId,
-        signals: [],
-        // @ts-ignore - we extend the JSON shape here
-        adminOtp: otpPayload,
-      } as any,
-      update: {
-        // @ts-ignore
-        adminOtp: otpPayload,
-      } as any,
+      create: { userId, signals: [], adminOtp: otpPayload },
+      update: { adminOtp: otpPayload },
     });
 
     const isDev = this.config.get<string>('NODE_ENV') !== 'production';
@@ -522,7 +663,7 @@ export class AdminService implements OnApplicationBootstrap {
     const profile = await this.prisma.adminProfile.findUnique({ where: { userId } });
     if (!profile) throw new BadRequestException('No OTP has been generated for this user');
 
-    const stored = (profile as any).adminOtp as {
+    const stored = profile.adminOtp as unknown as {
       hash: string;
       expiresAt: string;
       used: boolean;
@@ -538,10 +679,7 @@ export class AdminService implements OnApplicationBootstrap {
     // Mark as used
     await this.prisma.adminProfile.update({
       where: { userId },
-      data: {
-        // @ts-ignore
-        adminOtp: { ...stored, used: true },
-      } as any,
+      data: { adminOtp: { ...stored, used: true } },
     });
 
     return true;

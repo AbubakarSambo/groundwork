@@ -179,3 +179,24 @@ describe('the pending signup is not a member of anything', () => {
     expect(MODEL).toMatch(/token\s+String\s+@unique/);
   });
 });
+
+describe('the password that was parked with the signup', () => {
+  /**
+   * `register` takes a password, and the User it used to hash it onto is exactly
+   * the thing that must not exist yet. So the hash waits on the pending record
+   * and is applied at the moment the user is created.
+   *
+   * The failure this guards is quiet and total: create the user without it and
+   * the person verifies successfully, then cannot log in with the password they
+   * chose — and there is nothing in the row to say why.
+   */
+  const VERIFY = AUTH.slice(AUTH.indexOf('async verifyEmail'), AUTH.indexOf('async resendVerification'));
+
+  it('is carried onto the user at creation', () => {
+    expect(VERIFY).toMatch(/passwordHash: pending\.passwordHash/);
+  });
+
+  it('and the name they typed comes with it, rather than an empty surname', () => {
+    expect(VERIFY).toMatch(/lastName: pending\.lastName/);
+  });
+});

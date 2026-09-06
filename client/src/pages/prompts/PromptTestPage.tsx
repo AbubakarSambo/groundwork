@@ -40,7 +40,7 @@ function ChatBubble({ turn }: { turn: Turn }) {
         background: isUser ? 'var(--gw-navy)' : 'white',
         color: isUser ? 'white' : 'var(--gw-text)',
         fontSize: 12, lineHeight: 1.55,
-        border: isUser ? 'none' : '0.5px solid var(--gw-border)',
+        border: isUser ? 'none' : '1px solid var(--gw-border)',
         whiteSpace: 'pre-wrap',
       }}>
         {turn.content}
@@ -120,7 +120,7 @@ function ConversationLane({
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: ACCENT, flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{lane.label}</span>
           {lane.docName && (
-            <span style={{ fontSize: 10, color: 'var(--gw-sub)', background: 'var(--gw-blue-bg)', borderRadius: 4, padding: '1px 6px', border: '0.5px solid var(--gw-blue-b)' }}>
+            <span style={{ fontSize: 10, color: 'var(--gw-sub)', background: 'var(--gw-blue-bg)', borderRadius: 4, padding: '1px 6px', border: '1px solid var(--gw-blue-b)' }}>
               {lane.docName}
             </span>
           )}
@@ -129,7 +129,7 @@ function ConversationLane({
           <button
             onClick={() => fileRef.current?.click()}
             title="Attach a text document to this lane"
-            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '0.5px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Doc
           </button>
@@ -153,7 +153,7 @@ function ConversationLane({
         {lane.messages.map((m, i) => <ChatBubble key={i} turn={m} />)}
         {sendMutation.isPending && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}>
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'white', border: '0.5px solid var(--gw-border)', borderRadius: '10px 10px 10px 3px', padding: '8px 11px' }}>…</div>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'white', border: '1px solid var(--gw-border)', borderRadius: '10px 10px 10px 3px', padding: '8px 11px' }}>…</div>
           </div>
         )}
       </div>
@@ -166,7 +166,7 @@ function ConversationLane({
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           placeholder={`Type as the ${lane.label.toLowerCase()}…`}
           rows={2}
-          style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '0.5px solid var(--gw-border)', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: 'var(--gw-text)' }}
+          style={{ flex: 1, resize: 'none', fontSize: 12, fontFamily: 'inherit', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '7px 9px', lineHeight: 1.5, color: 'var(--gw-text)' }}
         />
         <button
           onClick={send}
@@ -264,13 +264,13 @@ export function PromptTestPage() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => { setSystemPrompt(DEFAULT_PROMPT); setEditingPrompt(false) }}
-                style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: '0.5px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Reset to default
               </button>
               <button
                 onClick={() => setEditingPrompt(e => !e)}
-                style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: '0.5px solid var(--gw-navy)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
+                style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-navy)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
               >
                 {editingPrompt ? 'Done' : 'Edit'}
               </button>
@@ -315,7 +315,7 @@ export function PromptTestPage() {
                 <select
                   value={session}
                   onChange={e => setSession(e.target.value as '1')}
-                  style={{ fontSize: 11, border: '0.5px solid var(--gw-border)', borderRadius: 4, padding: '2px 6px', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' }}
+                  style={{ fontSize: 11, border: '1px solid var(--gw-border)', borderRadius: 4, padding: '2px 6px', fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)' }}
                 >
                   <option value="1">1 (cross reference)</option>
                 </select>

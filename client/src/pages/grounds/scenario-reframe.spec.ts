@@ -21,6 +21,7 @@ const ENUM_KEYS = [
   'CONTRACT_RENEWAL', 'RECOGNITION', 'DRIFT', 'CRISIS_ALIGNMENT', 'OKR_ALIGNMENT',
   'WORKPLAN_BUDGET', 'PULSE_CHECK', 'REALIGN_TEAM', 'PIP', 'BOARD_STRATEGY',
   'COHORT_CHECK', 'ACUTE_SHOCK',
+  'CONTRACT_REVIEW', 'IMPLEMENTATION_TRACKING',
   /**
    * The scenario a described situation becomes when it matches no card. Its card is "Describe your
    * own situation", which previously carried REALIGN_TEAM here - so this guard passed while the

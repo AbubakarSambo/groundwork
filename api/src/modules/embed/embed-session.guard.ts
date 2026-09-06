@@ -33,7 +33,7 @@ export class EmbedSessionGuard implements CanActivate {
     try {
       claims = await this.jwt.verifyAsync(token);
     } catch {
-      throw new UnauthorizedException('That session has expired. The panel will reconnect.');
+      throw new UnauthorizedException('That session has expired. The panel is asking the page it sits on for another one.');
     }
     if (claims.typ !== 'embed') throw new UnauthorizedException('That token is not a panel session.');
     if (!claims.pid || !claims.org) throw new UnauthorizedException('That session is missing who it is for.');
