@@ -160,6 +160,27 @@ export function IntegrationsPage() {
     mutationFn: integrationsApi.revokeCredential,
     onSuccess: () => { toast.success('Revoked.'); qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] }) },
   })
+
+  /**
+   * REPLACING ONE IS WHAT ROTATING ACTUALLY IS.
+   *
+   * There is no rotate: the secret is hashed the moment it is made, so nothing can hand back a new
+   * one for an existing pair. It is issue, deploy, revoke — and doing that by hand had a trap in
+   * it, because the roster is keyed on the credential's source system, which is derived from its
+   * NAME. A replacement called "Workday sync (new)" is a different system, and the next sync makes
+   * a second copy of every person. The successor here inherits what the original spoke for.
+   */
+  const replace = useMutation({
+    mutationFn: integrationsApi.replaceCredential,
+    onSuccess: (issued) => {
+      /* The same one-time panel the issue flow uses — a secret is shown once, whichever door it
+         came through. */
+      setFreshSecret({ clientId: issued.clientId, clientSecret: issued.clientSecret })
+      qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] })
+      toast.success('New secret issued. The old one keeps working until you revoke it.')
+    },
+    onError: () => toast.error('Could not replace that — nothing was issued and the old one is unchanged.'),
+  })
   const register = useMutation({
     mutationFn: () => integrationsApi.registerEndpoint(hookUrl, hookEvents),
     onSuccess: e => { setFreshHookSecret(e.secret); setHookUrl(''); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
@@ -487,9 +508,30 @@ export function IntegrationsPage() {
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
                 {c.scopes.join(', ')} · {c.lastUsedAt ? `last used ${new Date(c.lastUsedAt).toLocaleString()}` : 'never used'}
               </div>
+              {/* THE SYSTEM IT SPEAKS FOR, said on screen because the roster is keyed on it and
+                  nothing used to show it. Two credentials with different source systems are two
+                  rosters, and until this line existed the only way to know was to read the code. */}
+              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 2 }}>
+                speaks for <span style={S.mono}>{c.sourceSystem}</span>
+                {c.replacedByClientId && (
+                  <> · replaced by <span style={S.mono}>{c.replacedByClientId}</span> — revoke this one once that is live</>
+                )}
+              </div>
             </div>
             {!c.revokedAt && (
-              <button style={S.ghost} onClick={() => revoke.mutate(c.clientId)}>Revoke</button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {!c.replacedByClientId && (
+                  <button
+                    style={S.ghost}
+                    disabled={replace.isPending}
+                    onClick={() => replace.mutate(c.clientId)}
+                    title="Issue a new secret for the same integration. The old one keeps working until you revoke it."
+                  >
+                    Replace
+                  </button>
+                )}
+                <button style={S.ghost} onClick={() => revoke.mutate(c.clientId)}>Revoke</button>
+              </div>
             )}
           </div>
         </div>

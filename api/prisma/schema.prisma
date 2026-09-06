@@ -1765,6 +1765,14 @@ model ApiCredential {
   /// were written under. See `people/whose-roster-is-this.ts`.
   sourceSystem String @map("source_system")
 
+  /// THE CREDENTIAL THAT TOOK OVER FROM THIS ONE.
+  ///
+  /// Set by Replace. Rotating is three steps — issue, deploy, revoke — and the middle one is a
+  /// person going away to change a config file. Without this the page cannot tell the difference
+  /// between "still in use" and "replaced and forgotten", and a superseded key stays live for
+  /// months because nobody remembers which of the two the integration is actually using.
+  replacedByClientId String? @map("replaced_by_client_id")
+
   scopes           String[]
 
   /// WHOSE WORK THIS CREDENTIAL MAY SEE, when it should not see all of it.

@@ -18,7 +18,24 @@ export class CredentialsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async issue(organizationId: string, name: string, scopes: string[], createdByUserId?: string, boundToPersonExternalIds: string[] = [], sourceSystem?: string) {
+  async issue(
+    organizationId: string,
+    name: string,
+    scopes: string[],
+    createdByUserId?: string,
+    boundToPersonExternalIds: string[] = [],
+    sourceSystem?: string,
+    /**
+     * WHETHER THAT SOURCE SYSTEM CAME FROM A PERSON OR FROM A ROW WE ALREADY WROTE.
+     *
+     * The rule about lower-case letters and hyphens is about something somebody types twice. It
+     * must not be applied to a value carried from an existing credential: every credential issued
+     * before the source system was split from the client id was backfilled with its own client id,
+     * which contains an underscore — so validating an inherited one made every legacy credential
+     * impossible to replace. Found by a test that finally used a realistic fixture.
+     */
+    inherited = false,
+  ) {
     if (!name?.trim()) throw new BadRequestException('A credential needs a name, so it can be revoked on purpose later.');
     const bad = (scopes ?? []).filter((s) => !isScope(s));
     if (bad.length) throw new BadRequestException(`Unknown scope(s): ${bad.join(', ')}`);
@@ -36,8 +53,10 @@ export class CredentialsService {
      * the two drift. See `people/whose-roster-is-this.ts`.
      */
     const source = sourceSystem?.trim() || fromTheCredentialName(name);
-    const notASystem = whyThisIsNotASourceSystem(source);
-    if (notASystem) throw new BadRequestException(notASystem);
+    if (!inherited) {
+      const notASystem = whyThisIsNotASourceSystem(source);
+      if (notASystem) throw new BadRequestException(notASystem);
+    }
 
     const clientId = `gwc_${randomBytes(12).toString('hex')}`;
     const clientSecret = `gws_${randomBytes(32).toString('base64url')}`;
@@ -64,9 +83,72 @@ export class CredentialsService {
   async list(organizationId: string) {
     return this.prisma.apiCredential.findMany({
       where: { organizationId },
-      select: { id: true, name: true, clientId: true, sourceSystem: true, scopes: true, boundToPersonExternalIds: true, lastUsedAt: true, revokedAt: true, createdAt: true },
+      select: { id: true, name: true, clientId: true, sourceSystem: true, scopes: true, boundToPersonExternalIds: true, lastUsedAt: true, revokedAt: true, replacedByClientId: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /**
+   * REPLACING ONE, WHICH IS WHAT ROTATING ACTUALLY IS.
+   *
+   * There is no "rotate" here and there should not be: a credential's secret is hashed the moment
+   * it is made, so nothing can hand back a new secret for an existing pair. Rotating is issue,
+   * deploy, revoke — three steps, and the middle one is a person going away to change a config
+   * file somewhere.
+   *
+   * DOING IT BY HAND HAD A TRAP IN IT. The roster is keyed on the credential's source system, which
+   * is derived from its NAME when nobody says otherwise — so a replacement called "Workday sync
+   * (new)" is a different system, and the next sync creates a second copy of every person. The
+   * whole reason this method exists is that the successor inherits what the original said it spoke
+   * for, rather than depending on somebody typing the same name twice.
+   *
+   * IT DOES NOT REVOKE THE OLD ONE. Between issuing and deploying, the integration is still using
+   * it; cutting it off here would mean every rotation is an outage. It is marked as replaced
+   * instead, so the page can ask for the second step rather than trusting anybody to remember it.
+   */
+  async replace(organizationId: string, clientId: string, createdByUserId?: string) {
+    const old = await this.prisma.apiCredential.findFirst({
+      where: { organizationId, clientId },
+      select: {
+        id: true, name: true, scopes: true, sourceSystem: true,
+        boundToPersonExternalIds: true, revokedAt: true, replacedByClientId: true,
+      },
+    });
+    if (!old) throw new NotFoundException('Credential not found');
+    if (old.revokedAt) {
+      throw new BadRequestException('That credential is already revoked. Issue a new one instead of replacing it.');
+    }
+    if (old.replacedByClientId) {
+      throw new BadRequestException(
+        `That credential has already been replaced by ${old.replacedByClientId}. Revoke this one once the new one is live.`,
+      );
+    }
+
+    /* Everything the original spoke for, including the fence and the source system. */
+    const issued = await this.issue(
+      organizationId,
+      old.name,
+      old.scopes,
+      createdByUserId,
+      old.boundToPersonExternalIds,
+      old.sourceSystem,
+      /* Inherited, not typed. See `issue`. */
+      true,
+    );
+
+    await this.prisma.apiCredential.update({
+      where: { id: old.id },
+      data: { replacedByClientId: issued.clientId },
+    });
+
+    return {
+      ...issued,
+      replaces: clientId,
+      says:
+        'This is the same integration under a new secret — it speaks for the same system, so your '
+        + 'roster stays one roster. Put it live, then revoke the old one. The old one keeps working '
+        + 'until you do.',
+    };
   }
 
   /**

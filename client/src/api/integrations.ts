@@ -4,9 +4,13 @@ export interface Credential {
   id: string
   name: string
   clientId: string
+  /** The system this speaks for. The roster is keyed on it, so a replacement must carry the same. */
+  sourceSystem: string
   scopes: string[]
   lastUsedAt: string | null
   revokedAt: string | null
+  /** Set by Replace. Until the old one is revoked, both work. */
+  replacedByClientId: string | null
   createdAt: string
 }
 
@@ -87,6 +91,16 @@ export const integrationsApi = {
   listCredentials: () => apiClient.get<Credential[]>('/integrations/credentials').then(r => r.data),
   issueCredential: (name: string, scopes: string[]) =>
     apiClient.post<IssuedCredential>('/integrations/credentials', { name, scopes }).then(r => r.data),
+  /**
+   * Replacing one is what rotating actually is: issue, deploy, revoke. The successor carries the
+   * original's source system, so the roster stays one roster — which typing the same name by hand
+   * did not guarantee.
+   */
+  replaceCredential: (clientId: string) =>
+    apiClient
+      .post<IssuedCredential & { replaces: string; says: string }>(`/integrations/credentials/${clientId}/replace`, {})
+      .then(r => r.data),
+
   revokeCredential: (clientId: string) =>
     apiClient.delete<{ revoked: boolean }>(`/integrations/credentials/${clientId}`).then(r => r.data),
 

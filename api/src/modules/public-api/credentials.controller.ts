@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -66,6 +66,17 @@ export class CredentialsController {
       dto?.boundToPersonExternalIds ?? [],
       dto?.sourceSystem,
     );
+  }
+
+  @Post(':clientId/replace')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Replace a credential: the same integration under a new secret, speaking for the same system. The old one keeps working until you revoke it.' })
+  replace(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Param('clientId') clientId: string,
+  ) {
+    return this.credentials.replace(organizationId, clientId, userId);
   }
 
   @Get()
