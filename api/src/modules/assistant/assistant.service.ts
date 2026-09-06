@@ -34,7 +34,13 @@ import { WHAT_THE_ASSISTANT_CAN_DO } from './what-the-assistant-can-do';
 import { EmailService } from '../email/email.service';
 import { GroundsService } from '../grounds/grounds.service';
 import {
+  whereItLives,
+  whatToCallIt,
+  whatWeCanAndCannotDo,
+} from '../documents/where-a-document-lives';
+import {
   whyThereIsNowhereToPutIt,
+  askWhoItIsFor,
   whoTheyMeant,
   askAgain,
   whatWasDone,
@@ -186,7 +192,7 @@ export class AssistantService {
       case 'send_me_that':
         return this.sendMeThat(organizationId, personId, who);
       case 'add_a_document':
-        return this.addADocument(organizationId, personId);
+        return this.addADocument(organizationId, personId, who ?? '', message);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -683,7 +689,7 @@ export class AssistantService {
    * it is for is asked afterwards, when somebody is actually looking at it, and a conversation
    * abandoned halfway leaves it seen by nobody but its owner.
    */
-  private async addADocument(organizationId: string, personId: string): Promise<Reply> {
+  private async addADocument(organizationId: string, personId: string, who: string, message: string): Promise<Reply> {
     const truth = await this.truth.forPerson(organizationId, personId);
     if (!truth) {
       return rules('add_a_document', text('I cannot see you in your organisation records, so I do not know where to put it.'));
@@ -694,6 +700,56 @@ export class AssistantService {
     if (nowhere) return rules('add_a_document', text(nowhere));
 
     const [first, ...rest] = open;
+
+    /*
+     * THEY PASTED A LINK, so there is nothing to pick and nothing to upload.
+     *
+     * Almost nothing a company works from lives in here — the job description is
+     * in Drive, the contract is in Dropbox — and asking somebody to download and
+     * re-upload is asking them to keep two copies in step. They do it once.
+     *
+     * It is recorded, never read: see `where-a-document-lives.ts` for why these
+     * are a different table rather than a document with no text in it.
+     */
+    const where = whereItLives(message);
+    if (where) {
+      const me = await this.prisma.person.findFirst({
+        where: { id: personId, organizationId },
+        select: { linkedUserId: true },
+      });
+      const participant = await this.prisma.groundParticipant.findFirst({
+        where: { groundId: first.groundId, userId: me?.linkedUserId ?? undefined },
+        select: { id: true },
+      });
+      const title = whatToCallIt(where, message);
+      const recorded = await this.prisma.documentElsewhere.create({
+        data: {
+          groundId: first.groundId,
+          participantId: participant?.id ?? null,
+          url: where.url,
+          livesIn: where.livesIn,
+          title,
+          note: null,
+        },
+      });
+
+      await this.prisma.assistantProposal.create({
+        data: {
+          organizationId,
+          personExternalId: who,
+          kind: 'document',
+          state: 'PARKED',
+          summary: `Who "${title}" is for`,
+          payload: { documentId: recorded.id, elsewhere: true, groundId: first.groundId, fileName: title },
+        },
+      });
+
+      return rules(
+        'add_a_document',
+        text(`${whatWeCanAndCannotDo(where, title)}\n\n${askWhoItIsFor(title)}`),
+      );
+    }
+
     const also = rest.length
       ? ` You have ${rest.length === 1 ? 'one other check-in' : `${rest.length} other check-ins`} open — say which if it belongs somewhere else.`
       : '';
@@ -1198,7 +1254,7 @@ export class AssistantService {
    * than starting again.
    */
   private async resolveParkedDocument(organizationId: string, who: string, parked: any, message: string): Promise<Reply> {
-    const payload = parked.payload as { documentId: string; groundId: string; fileName: string };
+    const payload = parked.payload as { documentId: string; groundId: string; fileName: string; elsewhere?: boolean };
     const meant = whoTheyMeant(message);
 
     if (meant === null) return rules('add_a_document', text(askAgain()));
@@ -1211,10 +1267,20 @@ export class AssistantService {
     /* OWN is where it already is. Saying so is not a write — and a write that changes nothing is
        still a write somebody has to be able to account for. */
     if (meant !== 'OWN') {
-      await this.prisma.groundDocument.update({
-        where: { id: payload.documentId },
-        data: { visibility: meant },
-      });
+      /* Two tables, one question. A document that lives elsewhere is recorded in
+         its own table precisely so nothing that assembles document TEXT can reach
+         it — which means this has to know which of the two it is holding. */
+      if (payload.elsewhere) {
+        await this.prisma.documentElsewhere.update({
+          where: { id: payload.documentId },
+          data: { visibility: meant },
+        });
+      } else {
+        await this.prisma.groundDocument.update({
+          where: { id: payload.documentId },
+          data: { visibility: meant },
+        });
+      }
     }
 
     return rules('add_a_document', text(whatWasDone(payload.fileName, meant)));

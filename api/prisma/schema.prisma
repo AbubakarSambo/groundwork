@@ -796,6 +796,7 @@ model Ground {
   /// A ground SUMMONED against an imported objective. Declared here as well as created in SQL,
   /// because an index Prisma does not know about is one the next generated migration drops.
   @@index([organizationId, subjectExternalId])
+  documentsElsewhere DocumentElsewhere[]
   @@map("grounds")
 }
 
@@ -991,6 +992,7 @@ model GroundParticipant {
 
   @@unique([groundId, email])
   @@index([groundId])
+  documentsElsewhere DocumentElsewhere[]
   @@map("ground_participants")
 }
 
@@ -3131,6 +3133,40 @@ model GroundBaselineEntry {
 
   @@index([groundId, createdAt])
   @@map("ground_baseline_entries")
+}
+
+/// A DOCUMENT THAT LIVES SOMEWHERE ELSE, RECORDED RATHER THAN READ.
+///
+/// Its own table, and that is the whole safety argument. A link kept alongside uploaded documents
+/// would be a row with no text sitting where every prompt-assembling read expects text, and the
+/// assistant would answer about a contract having seen nothing but its name. Here there is no
+/// filter for anybody to forget: a read that assembles document text cannot reach one of these.
+model DocumentElsewhere {
+  id            String  @id @default(uuid())
+  groundId      String  @map("ground_id")
+  participantId String? @map("participant_id")
+
+  /// Scheme, host and path. NEVER the query string — sharing links carry tokens, and a token in a
+  /// row the whole check-in can read hands the document to everybody who can see the link.
+  url    String
+  /// Where it lives, in the words a person uses: "Google Docs", "Dropbox".
+  livesIn String @map("lives_in")
+  title  String
+
+  /// The same three answers an uploaded document has. It arrives OWN and is opened by saying so.
+  visibility DocumentVisibility @default(OWN)
+
+  /// What they said about it as they put it in, kept as they said it.
+  note String? @db.Text
+
+  addedByUserId String?  @map("added_by_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ground      Ground             @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  participant GroundParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([groundId, participantId])
+  @@map("documents_elsewhere")
 }
 
 model GroundDocument {

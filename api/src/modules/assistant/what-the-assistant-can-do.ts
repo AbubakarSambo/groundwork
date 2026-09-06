@@ -55,7 +55,7 @@ export interface Capability {
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
     key: 'add_a_document',
-    does: 'Put a document into a check-in, and say who it is for',
+    does: 'Put a document into a check-in — a file, or a link to where it already lives — and say who it is for',
     writes: 'after you confirm it',
     ordered:
       'Above the sending lane: "send me the handbook" and "add the handbook" are opposite directions, and that lane owns the word "send".',

@@ -59,6 +59,19 @@ const RULES = [
     /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes?)\b/i,
     /\bhere\s+is\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf|handbook|policy|contract)\b/i,
     /\bi\s+(?:have|want\s+to\s+(?:add|upload|attach))\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf)\b/i,
+    /*
+     * A PASTED LINK IS SOMEBODY PUTTING A DOCUMENT IN.
+     *
+     * Almost nothing a company works from lives in here, so the commonest way to
+     * put a document on a check-in is to paste where it already lives. Without
+     * this, a pasted Drive link fell to `unplaced` — the assistant answered "I
+     * cannot answer that one yet" to the most ordinary thing anybody does with a
+     * document.
+     *
+     * Narrow on purpose: only an http(s) address, which is the one shape that is
+     * unambiguously somebody handing over a thing rather than asking about one.
+     */
+    /https?:\/\/\S+/i,
   ]),
 
   rule('send_me_that', [
