@@ -12,6 +12,7 @@
   .who { font-weight:700; font-size:13px }
   .fresh { font-size:11px; color:var(--sub) }
   .fresh.stale { color:#8A5C1A }
+  .acts { display:flex; align-items:center; gap:6px }
   #close { border:0; background:none; font-size:18px; color:var(--sub); cursor:pointer; line-height:1 }
   #log { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px }
   .msg { max-width:88%; padding:9px 12px; border-radius:12px; white-space:pre-wrap; font-size:13.5px }
@@ -32,7 +33,10 @@
       <div class="who" id="who">Groundwork</div>
       <div class="fresh" id="fresh"></div>
     </div>
-    <button id="close" aria-label="Close">×</button>
+    <div class="acts">
+      <button id="seen" type="button" class="chip">What you can see</button>
+      <button id="close" aria-label="Close">×</button>
+    </div>
   </header>
   <div id="log" role="log" aria-live="polite"></div>
   <form id="form"><input id="input" placeholder="Ask about your work" autocomplete="off"><button type="submit">Send</button></form>
@@ -119,6 +123,34 @@
     if (!v) return;
     input.value = '';
     ask(v);
+  });
+
+  /*
+   * WHAT IT CAN SEE, SHOWN RATHER THAN PROMISED.
+   *
+   * Every answer cites where it came from; this is the place a person can go and
+   * look at the material itself, including what the bound left out. It renders
+   * from one route and holds no idea of its own about what is known.
+   */
+  document.getElementById('seen').addEventListener('click', function () {
+    fetch(API + '/api/org/v1/assistant/what-you-can-see', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        if (!s) { bubble('them', 'I could not read that just then. Try again in a moment.'); return; }
+        var lines = ['Here is everything I am working from.'];
+        (s.groups || []).forEach(function (g) {
+          lines.push('');
+          lines.push(g.what + ' (' + g.howMany + ', from ' + g.from + ')');
+          if (!g.each.length) lines.push('- nothing');
+          g.each.forEach(function (e) { lines.push('- ' + e); });
+        });
+        if (s.leftOut && s.leftOut.length) {
+          lines.push('');
+          lines.push('Left out, because I read at most ' + s.mostOfEach + ' of each: ' + s.leftOut.join(', ') + '.');
+        }
+        bubble('them', lines.join('\n'));
+      })
+      .catch(function () { bubble('them', 'I could not read that just then. Try again in a moment.'); });
   });
 
   document.getElementById('close').addEventListener('click', function () { send('closed'); });
