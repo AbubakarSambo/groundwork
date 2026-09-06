@@ -33,6 +33,8 @@ import { DraftsService } from '../drafts/drafts.service';
 import { ApiAccessService } from './api-access.service';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
+import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
+import { ReviewsComingUpCron } from '../reports/reviews-coming-up.cron';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { ConversationModule } from '../conversation/conversation.module';
 import { EmailModule } from '../email/email.module';
@@ -65,7 +67,7 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
     }),
   ],
   controllers: [PublicApiController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, KnowledgeController, DetectorsController, CheckinsController, DraftsController],
-  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService, WhatIsTrueService, ReportsForMyPeopleService],
+  providers: [CredentialsService, IdempotencyService, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, ApiAccessService, WhatIsTrueService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}

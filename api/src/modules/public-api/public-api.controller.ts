@@ -30,6 +30,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DraftsService } from '../drafts/drafts.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
+import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -81,6 +82,7 @@ export class PublicApiController {
     private readonly drafts: DraftsService,
     private readonly checkIns: ACheckInACustomerCanRunService,
     private readonly myPeople: ReportsForMyPeopleService,
+    private readonly reviews: ReviewsComingUpService,
   ) {}
 
   /**
@@ -701,6 +703,42 @@ export class PublicApiController {
   async reportsForMyPeople(@Req() req: { panel: PanelCaller }) {
     const who = await this.myPeople.whoTheyAre(req.panel.organizationId, req.panel.personId);
     return this.myPeople.forTheirPeople(req.panel.organizationId, who);
+  }
+
+  /**
+   * WHEN A REVIEW FALLS DUE FOR SOMEBODY.
+   *
+   * A date from the customer's own system, so the record this product already produces can arrive
+   * before the conversation rather than after it. Groundwork does not evaluate anybody and this does
+   * not make it start — it is a date, and what it triggers is a report that is unchanged.
+   *
+   * Machine-authenticated, because this is their HR system telling us something rather than a person
+   * asking for anything.
+   */
+  @Post('evaluations-due')
+  @HttpCode(200)
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:write')
+  @ApiOperation({ summary: 'Record when a review falls due for somebody, from your own system' })
+  async noteEvaluationDue(
+    @Req() req: { machine: MachineCaller },
+    @Body() dto: { personExternalId?: string; dueOn?: string; kind?: string; source?: string },
+  ) {
+    if (!dto?.personExternalId || !dto?.dueOn || !dto?.kind) {
+      throw new BadRequestException('personExternalId, dueOn and kind are all required.');
+    }
+    const dueOn = new Date(dto.dueOn);
+    if (Number.isNaN(dueOn.getTime())) throw new BadRequestException('dueOn is not a date.');
+
+    return this.reviews.note({
+      organizationId: req.machine.organizationId,
+      personExternalId: dto.personExternalId,
+      dueOn,
+      kind: dto.kind,
+      /* Where it came from, so a wrong date can be traced rather than argued about. Defaults to the
+         credential, which is at least true. */
+      source: dto.source?.trim() || req.machine.clientId,
+    });
   }
 
   /** Their own transcript, and never anybody else's. */

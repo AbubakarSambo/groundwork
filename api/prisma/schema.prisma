@@ -315,6 +315,7 @@ enum ApiAccessStatus {
 }
 
 model Organization {
+  evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
   acceptanceCriteria AcceptanceCriterion[]
@@ -1337,6 +1338,46 @@ model GroundPollOption {
 // ---------------------------------------------------------------------------
 // The Report — the shared picture. Released to BOTH parties simultaneously.
 // ---------------------------------------------------------------------------
+
+/// WHEN A REVIEW FALLS DUE SOMEWHERE ELSE.
+///
+/// Groundwork does not evaluate anybody and this does not make it start. It is
+/// our note of a date held in the customer's own system — a probation end, an
+/// annual cycle — so that the record this product already produces can arrive
+/// BEFORE the conversation rather than after it.
+///
+/// Its own table rather than a column on `Person`, for two reasons. `Person` is
+/// a mirror of their directory and this is not in their directory; and a date
+/// needs to say where it came from, which a column cannot.
+model EvaluationDue {
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
+  personExternalId String @map("person_external_id")
+
+  /// The day the review happens. A date, not a timestamp — nobody's probation
+  /// ends at 14:32, and a time would imply a precision the source does not have.
+  dueOn DateTime @map("due_on") @db.Date
+  /// What kind of review, in the customer's own word for it. Not an enum: their
+  /// vocabulary, and a closed set here would refuse a company that calls it
+  /// something else.
+  kind  String
+
+  /// Where the date came from, so a wrong one can be traced rather than argued
+  /// about. The name of the system, or the person who typed it.
+  source String
+
+  /// Set when the manager has been told, so nobody is told twice about one
+  /// review. Cleared by nothing — a second reminder is a second row.
+  notifiedAt DateTime? @map("notified_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, personExternalId, dueOn, kind])
+  @@index([organizationId, dueOn, notifiedAt])
+  @@map("evaluations_due")
+}
 
 model Report {
   id              String    @id @default(uuid())
