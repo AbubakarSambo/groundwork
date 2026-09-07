@@ -1165,8 +1165,25 @@ export function EntryChatPage() {
     setStreamingIdx(lastIdx)
     let i = 0
     const full = last.content
-    const CHUNK = 2
+    /*
+     * THE TYPEWRITER IS NOT A STREAM, AND IT WAS CHARGING LIKE ONE.
+     *
+     * The reply arrives whole - this endpoint does not stream - and then this animated it at two
+     * characters every 25ms. That is 80 characters a second, so a 500-character answer spent six
+     * more seconds appearing AFTER the model had already finished. Reported as "the chat is slow
+     * on both entry and when signed in, the response is slow and doesn't render as writing".
+     *
+     * A real stream is slow because the words genuinely are not there yet. This one is slow on
+     * purpose, over text already sitting in memory, which is the worst version: all of the waiting
+     * and none of the reason for it.
+     *
+     * So the animation is bounded by TIME rather than by length - about a second, whatever the
+     * reply's size. Short answers still feel written rather than pasted; long ones stop punishing
+     * the person for having asked something that deserved a full answer.
+     */
+    const ABOUT_A_SECOND = 900
     const DELAY = 25
+    const CHUNK = Math.max(2, Math.ceil(full.length / (ABOUT_A_SECOND / DELAY)))
     const base = history.slice(0, lastIdx)
     const tick = setInterval(() => {
       i += CHUNK

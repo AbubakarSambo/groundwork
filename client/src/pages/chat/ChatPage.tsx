@@ -528,14 +528,16 @@ export function ChatPage() {
 
   function send() {
     const content = input.trim()
-    if (!content || loading || done || !opened) return
+    /* `done` blocked this too, so Enter did nothing once the engine had signalled a close - the
+       other half of the input going dead. What locks the record is `completed`. */
+    if (!content || loading || completed || declined || !opened) return
     setInput('')
     if (taRef.current) { try { taRef.current.style.height = '38px' } catch { /* ref detached */ } }
     sendStreaming(content)
   }
 
   function quickSend(msg: string) {
-    if (loading || done || !opened) return
+    if (loading || completed || declined || !opened) return
     sendStreaming(msg)
   }
 
