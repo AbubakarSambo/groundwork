@@ -152,7 +152,10 @@ export const entryApi = {
       joinToken?: string | null
       // who the commit successfully invited - drives the positive "Invited"
       // confirmation on the completion screen
-      contributors?: { email: string }[]
+      /* `waiting` is true where the invitation has NOT gone: the check-in starts in the future and
+         the row is written uninvited, for the cron to send on the day. The screen has to say so, or
+         "all participants i added didnt get an email" is what it produces. */
+      contributors?: { email: string; waiting?: boolean }[]
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]

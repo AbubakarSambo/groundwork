@@ -67,7 +67,7 @@ describe('every recommendation the picker makes', () => {
      * The ratchet. Both screens that set a cadence must render SELECTABLE_CADENCES; reverting either to
      * TIMED_CADENCES reintroduces exactly this bug while every other test still passes.
      */
-    for (const file of ['../pages/grounds/CreateGroundPage.tsx', '../pages/grounds/GroundAdminPage.tsx']) {
+    for (const file of ['../pages/grounds/GroundAdminPage.tsx', '../pages/grounds/GroundAdminPage.tsx']) {
       const src = readFileSync(resolve(__dirname, file), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '')

@@ -61,8 +61,14 @@ describe('what the product tells people about check-in size', () => {
     expect(offenders).toEqual([])
   })
 
-  it('and the setup screen points at the plan instead', () => {
-    const setup = sources.find((s) => s.file === 'pages/grounds/CreateGroundPage.tsx')!
+  it('and the screen where people are added points at the plan instead', () => {
+    /*
+     * IT USED TO BE THE WIZARD'S PEOPLE SCREEN. `/grounds/new` is a picker that hands over to the
+     * setup conversation, so people are added on the conversation's save-and-invite card now and
+     * the sentence moved with them. Left behind, the next person to guess writes "up to 20 per
+     * check-in" again - which is the defect this whole file exists for.
+     */
+    const setup = sources.find((s) => s.file === 'pages/enter/EntryChatPage.tsx')!
     expect(setup.body).toMatch(/depends on your plan, not on the check-in/)
   })
 })

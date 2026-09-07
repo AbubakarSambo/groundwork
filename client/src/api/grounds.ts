@@ -113,8 +113,18 @@ export const groundsApi = {
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
 
-  create: (body: CreateGroundBody) =>
-    apiClient.post<Ground>('/grounds', body).then(r => r.data),
+  /*
+   * `create` USED TO SIT HERE, and it went with the flow that called it.
+   *
+   * `/grounds/new` was a form whose last screen posted to POST /grounds. It is a picker now, and it
+   * hands the rest to the setup conversation - so the only thing that creates a check-in in this app
+   * is POST /entry/commit, which the conversation's save calls. An uncalled client method is exactly
+   * what every-endpoint-has-a-caller.spec.ts is for.
+   *
+   * THE SERVER ROUTE STAYS, and that is not an oversight: the public API opens check-ins through
+   * `GroundsService.create`, and so does the entry commit that replaced this. What has gone is one
+   * client's way of reaching it.
+   */
 
   /*
    * `createForLead` USED TO SIT HERE, and it went with the answer that reached it.
