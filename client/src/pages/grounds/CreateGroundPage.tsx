@@ -12,6 +12,7 @@ import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
+import { rememberWhoWasNotInvited } from './who-was-not-invited'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -697,6 +698,8 @@ export function CreateGroundPage() {
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
+  /* True when the check itself failed, which is neither allowed nor refused. */
+  const [billingUnknown, setBillingUnknown] = useState(false)
   const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
@@ -728,6 +731,7 @@ export function CreateGroundPage() {
   useEffect(() => {
     if (step === STAGE.situation && !billingChecked) {
       setBillingLoading(true)
+      setBillingUnknown(false)
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
         setBillingLoading(false)
@@ -738,9 +742,18 @@ export function CreateGroundPage() {
           setBillingFree(false)
         }
       }).catch(() => {
+        /*
+         * WE COULD NOT ASK IS NOT THE SAME AS YOU ARE OUT.
+         *
+         * This treated any failure — a dropped connection, a 500, a timeout — as "not allowed",
+         * and the screen for not-allowed is "Subscribe to create more". So a blip told a paying
+         * admin to buy something they already have, and there was no way to tell that answer from
+         * a real one.
+         */
         setBillingChecked(true)
         setBillingLoading(false)
         setBillingFree(false)
+        setBillingUnknown(true)
       })
     }
   }, [step, billingChecked])
@@ -869,6 +882,12 @@ export function CreateGroundPage() {
       qc.invalidateQueries({ queryKey: ['grounds'] })
       /* One toast per person, each carrying the reason that person was refused for. */
       for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
+      /*
+       * AND WRITTEN DOWN, because a toast does not survive the navigation on the next line, let
+       * alone a reload. The admin's list of five silently became three and the destination page
+       * recorded none of it. See who-was-not-invited.ts.
+       */
+      rememberWhoWasNotInvited(ground.id, failed)
       navigate(`/grounds/${ground.id}`)
     },
     /*
@@ -1681,7 +1700,23 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            {!billingLoading && billingChecked && !billingFree && (
+            {!billingLoading && billingChecked && billingUnknown && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We could not check your plan just then</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+                  This is our side, not yours — nothing about your plan has changed. Try again, and if it
+                  keeps failing you can carry on setting this up and create it in a moment.
+                </div>
+                <button
+                  onClick={() => setBillingChecked(false)}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {!billingLoading && billingChecked && !billingFree && !billingUnknown && (
               <div>
                 <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more</div>

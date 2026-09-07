@@ -2392,6 +2392,15 @@ export class GroundsService {
       }
     }
 
+    /*
+     * WHAT THIS CALL CHANGED, so a failed invitation can put it back. See the rollback below: the
+     * participant was deleted and the ground's status change was not, which left a check-in sitting
+     * in AWAITING_PARTIES with no parties on it — a state nothing else in the product produces and
+     * nothing knows how to get out of.
+     */
+    const statusBefore = ground.status;
+    let movedTheGroundOn = false;
+
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
         data: {
@@ -2446,6 +2455,7 @@ export class GroundsService {
        */
       if (ground.status !== GroundStatus.AWAITING_LEAD) {
         await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
+        movedTheGroundOn = true;
       }
 
       return participant;
@@ -2473,8 +2483,34 @@ export class GroundsService {
         { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
       );
     } catch (err: any) {
-      // Roll back the participant row so the caller can retry cleanly.
+      /*
+       * ROLL BACK WHAT THE CALL DID, not only the row it created.
+       *
+       * The participant was deleted here and the ground's status change — made inside the
+       * transaction above, and therefore already committed — was left behind. So an invitation
+       * whose email threw left a ground in AWAITING_PARTIES with zero participants: it reads as
+       * "waiting for people to check in" while there is nobody to wait for, the lead's own
+       * confirmation is no longer reachable, and the only trace is a 500 the admin has already
+       * closed.
+       *
+       * Their check-in goes with them: it is the row that makes them a party who owes an answer.
+       * Deleted explicitly rather than trusted to cascade, because whether it cascades is a
+       * property of the schema that can change without this line noticing.
+       */
+      await this.prisma.checkIn
+        .deleteMany({ where: { participantId: participant.id } })
+        .catch(() => undefined);
       await this.prisma.groundParticipant.delete({ where: { id: participant.id } }).catch(() => undefined);
+      if (movedTheGroundOn) {
+        await this.prisma.ground
+          .update({ where: { id: groundId }, data: { status: statusBefore } })
+          .catch((e) =>
+            this.logger.error(
+              `Could not put ground ${groundId} back to ${statusBefore} after a failed invitation: ${e?.message}. ` +
+                `It may be showing as awaiting parties with none on it.`,
+            ),
+          );
+      }
       throw err;
     }
 

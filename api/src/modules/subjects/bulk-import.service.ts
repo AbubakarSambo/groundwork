@@ -83,6 +83,23 @@ export class BulkImportService {
     return { jobId: job.id, state: job.state, total: job.total };
   }
 
+  /**
+   * Write down what has failed so far and forget it locally.
+   *
+   * Called at every cursor step and once at the end. Idempotent by construction: the array is
+   * emptied on the way out, so a flush that happens twice writes nothing the second time.
+   */
+  private async flush(
+    jobId: string,
+    failures: { index: number; externalId: string | null; message: string }[],
+  ): Promise<void> {
+    if (!failures.length) return;
+    const batch = failures.splice(0, failures.length);
+    await this.prisma.importJobFailure.createMany({ data: batch.map((f) => ({ jobId, ...f })) }).catch((err) =>
+      this.logger?.error?.(`Could not record ${batch.length} import failure(s) for job ${jobId}: ${err?.message}`),
+    );
+  }
+
   private async run(
     jobId: string,
     organizationId: string,
@@ -97,10 +114,16 @@ export class BulkImportService {
 
     /* A resumed job keeps the count it had already earned rather than starting from zero. */
     const prior = startAt > 0
-      ? await this.prisma.importJob.findUnique({ where: { id: jobId }, select: { succeeded: true } })
+      ? await this.prisma.importJob.findUnique({ where: { id: jobId }, select: { succeeded: true, failed: true } })
       : null;
     let succeeded = prior?.succeeded ?? 0;
+    /* Unflushed failures only. `failedSoFar` is the running total, because `failures` is emptied
+       every time it is written down. */
     const failures: { index: number; externalId: string | null; message: string }[] = [];
+    let failedSoFar = prior?.failed ?? 0;
+    /* How many rows named a source system of their own and had it replaced by the batch's. Counted
+       because it is silent: the row was accepted, under a key the caller did not ask for. */
+    let rowsWhoseSourceWasOverridden = 0;
 
     for (let i = startAt; i < rows.length; i++) {
       const row = rows[i];
@@ -108,6 +131,7 @@ export class BulkImportService {
         /* The batch names its source system once; a row claiming a different one is taken as the
            batch's, because a mixed batch is almost certainly a client bug and silently splitting it
            across two source systems would be a very hard thing for them to unpick later. */
+        if (row?.sourceSystem && row.sourceSystem !== sourceSystem) rowsWhoseSourceWasOverridden++;
         await this.subjects.push(organizationId, { ...row, sourceSystem });
         succeeded++;
       } catch (err: any) {
@@ -117,6 +141,7 @@ export class BulkImportService {
           /* Their message, not a stack trace - this is read by somebody fixing a spreadsheet. */
           message: String(err?.response?.message ?? err?.message ?? 'Unknown error'),
         });
+        failedSoFar++;
       }
 
       /*
@@ -125,17 +150,41 @@ export class BulkImportService {
        * idempotent on the customer's own key.
        */
       if ((i + 1) % 50 === 0) {
+        /*
+         * AND THE FAILURES GO DOWN WITH IT.
+         *
+         * They were held in memory and written only after the whole loop, so a crash, a deploy or
+         * a killed process lost every failure recorded so far — and the resumed job then wrote
+         * only the ones it found after resuming. The customer's report of what did not import was
+         * therefore quietly incomplete, which is worse than absent: they fix the twelve rows they
+         * can see and never learn about the other ninety.
+         *
+         * Flushed at the same cadence as the cursor, so what the cursor claims has been processed
+         * and what the failure table holds cannot come apart by more than one batch.
+         */
+        await this.flush(jobId, failures);
         await this.prisma.importJob.update({
           where: { id: jobId },
-          data: { cursor: i + 1, succeeded, heartbeatAt: new Date() },
+          data: { cursor: i + 1, succeeded, failed: failedSoFar, heartbeatAt: new Date() },
         });
       }
     }
 
-    if (failures.length) {
-      await this.prisma.importJobFailure.createMany({
-        data: failures.map((f) => ({ jobId, ...f })),
-      });
+    await this.flush(jobId, failures);
+
+    /*
+     * AND SAY SO WHERE A ROW'S OWN SOURCE SYSTEM WAS REPLACED.
+     *
+     * Taking the batch's is the right call — a mixed batch is almost certainly a client bug, and
+     * splitting it across two source systems would be very hard for them to unpick later. What was
+     * wrong is that it happened in silence: the row was accepted, keyed under something the caller
+     * did not ask for, and nothing anywhere said it had been changed.
+     */
+    if (rowsWhoseSourceWasOverridden) {
+      this.logger.warn(
+        `Import job ${jobId}: ${rowsWhoseSourceWasOverridden} row(s) named their own sourceSystem and were ` +
+          `stored under the batch's ("${sourceSystem}") instead. A mixed batch is usually a client bug.`,
+      );
     }
 
     await this.prisma.importJob.update({
@@ -143,7 +192,7 @@ export class BulkImportService {
       data: {
         state: ImportJobState.COMPLETED,
         succeeded,
-        failed: failures.length,
+        failed: failedSoFar,
         cursor: rows.length,
         completedAt: new Date(),
         heartbeatAt: null,
