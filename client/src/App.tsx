@@ -206,7 +206,38 @@ function RootRoute() {
      * `href=""` logo, which looked like a working link and reloaded the page.
      */
     window.location.replace(MARKETING_URL)
-    return null
+    /*
+     * NOT `null`, WHICH IS A WHITE PAGE.
+     *
+     * Reported as "staging.myground.work is a blank white page", and that is exactly what this is:
+     * a redirect is asked for and nothing is drawn while it happens. When it is quick nobody sees
+     * this; when the destination is slow, blocked by an extension, or offline, the whole product is
+     * a blank screen with no explanation and no way forward. A person cannot tell that apart from
+     * something being broken - and on staging it is worse, because the destination is a DIFFERENT
+     * SITE and they may not have meant to leave.
+     *
+     * So it says where it is going and gives a link that works without JavaScript finishing.
+     */
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 380, textAlign: 'left' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
+            GROUNDWORK
+          </div>
+          <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px' }}>
+            Taking you to <strong>{MARKETING_URL.replace(/^https?:\/\//, '')}</strong>. If nothing
+            happens, follow the link.
+          </p>
+          <p style={{ margin: 0 }}>
+            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontSize: 14.5 }}>Continue →</a>
+            {' · '}
+            {/* The way back into the product itself, for somebody who landed here and wanted to
+                sign in rather than read about it. */}
+            <a href="/auth" style={{ color: 'var(--gw-sub)', fontSize: 14.5 }}>Sign in</a>
+          </p>
+        </div>
+      </div>
+    )
   }
   /**
    * Signed in, the root IS your grounds - her ask, and it was already true. Worth stating rather
