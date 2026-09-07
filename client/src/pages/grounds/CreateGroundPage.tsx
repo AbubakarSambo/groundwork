@@ -1035,6 +1035,24 @@ export function CreateGroundPage() {
                             <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{cardLabel(card)}</div>
                             <p className="cg-moment">{card.moment}</p>
 
+                            {/*
+                              * WHERE YOU ACTUALLY TYPE IT, SAID ON THE CARD.
+                              *
+                              * Every other card on this step is a complete choice: pick it and the
+                              * step is answered. This one is a promise of a text box that lives on
+                              * the NEXT screen, and the card looked identical to the others - so
+                              * picking it appeared to do nothing, and the field it leads to could
+                              * not be found. Reported as exactly that.
+                              *
+                              * Shown only when it is chosen, because before that it is an
+                              * instruction for a screen nobody is going to.
+                              */}
+                            {card.scenario === 'OPEN_READ' && isSel && (
+                              <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
+                                You write it on the next screen, in your own words.
+                              </div>
+                            )}
+
                             <button
                               type="button"
                               className="cg-more"
@@ -1249,14 +1267,31 @@ export function CreateGroundPage() {
                 </div>
               ))}
               {alsoAParty === true && !runByOther && (
-                <input
-                  className="gw-input"
-                  aria-label="What you are responsible for"
-                  placeholder="What are you responsible for here? (optional)"
-                  value={myRemit}
-                  onChange={(e) => setMyRemit(e.target.value)}
-                  style={{ marginTop: 4 }}
-                />
+                /*
+                 * A LABEL, BECAUSE A PLACEHOLDER IS NOT ONE.
+                 *
+                 * This was a bare box under three radio options, carrying its only explanation
+                 * inside itself - so it read as a fourth option somebody had half-filled, and the
+                 * explanation vanished the moment anybody typed. Reported as confusing, and the
+                 * question is a fair one to be confused by: "what are you responsible for here"
+                 * on a screen about who writes the objective could plausibly mean the check-in,
+                 * the situation, or the work. It means the work.
+                 */
+                <div style={{ marginTop: 10 }}>
+                  <label className="gw-label" htmlFor="my-remit">Your part in the work (optional)</label>
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 5, lineHeight: 1.5 }}>
+                    What you are responsible for in the work this check-in is about - not your job
+                    title. It goes on the record beside everyone else's, so the report can tell whose
+                    part is whose.
+                  </div>
+                  <input
+                    id="my-remit"
+                    className="gw-input"
+                    placeholder="e.g. the pricing model and the launch date"
+                    value={myRemit}
+                    onChange={(e) => setMyRemit(e.target.value)}
+                  />
+                </div>
               )}
               {runByOther && (
                 <div style={{ marginTop: 4 }}>
@@ -1919,6 +1954,27 @@ export function CreateGroundPage() {
           <div>
             <h1 className="gw-ttl">Who is in this check-in?</h1>
             <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
+
+            {/*
+              * WHAT ADDING SOMEBODY ACTUALLY DOES, SAID ON THE SCREEN THAT DOES IT.
+              *
+              * This said nothing, and the consequence is not small. Traced through the code rather
+              * than assumed: `participants.service.ts` accept() looks the address up, and if there
+              * is no account it creates a User in THIS organisation with role MEMBER, verified,
+              * inside the same transaction that accepts the invitation. No approval, no queue,
+              * nobody asked. And a seat is any active user in the org - see common/seats.ts - so
+              * that new account counts toward the plan the moment they accept.
+              *
+              * So somebody setting up a check-in for two people outside the company is adding two
+              * members to their organisation and two people to their bill, and nothing on the way
+              * through says so. Said plainly here, and only what is true: an approval step for
+              * this does not exist yet, so this does not promise one.
+              */}
+            <div style={{ background: 'var(--gw-blue-bg)', borderLeft: '3px solid var(--gw-navy)', borderRadius: '0 8px 8px 0', padding: '10px 14px', margin: '10px 0 16px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              Anyone here who does not already have a Groundwork account gets one in your organisation
+              when they accept, so they can write their own account of this. Everyone with an account
+              counts toward your plan.
+            </div>
 
 
             {participants.length > 0 && (
