@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
+import { GroundsByApiService } from './grounds-by-api.service';
 import { DocumentsService } from '../documents/documents.service';
 import { askWhoItIsFor } from '../assistant/a-document-is-private-until-you-say-otherwise';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
@@ -32,6 +33,7 @@ export class ACheckInACustomerCanRunService {
     private readonly grounds: GroundsService,
     private readonly truth: WhatIsTrueService,
     private readonly documents: DocumentsService,
+    private readonly groundsByApi: GroundsByApiService,
   ) {}
 
   /**
@@ -242,6 +244,50 @@ export class ACheckInACustomerCanRunService {
 
   async transcript(organizationId: string, personId: string, checkInId: string) {
     return this.conversation.getTranscript(checkInId, await this.actingAs(organizationId, personId));
+  }
+
+  /**
+   * OPEN A CHECK-IN FROM THE PANEL, AS YOURSELF.
+   *
+   * The panel could answer in a check-in and never start one, so a person with nothing waiting had
+   * nowhere to go and every sentence they typed fell to the assistant's router - which is a
+   * different thing wearing the same box, and reads as one. Her words: it is meant to act exactly
+   * like the check-ins on our system, with more.
+   *
+   * THE SAME SERVICE THE MACHINE ROUTE USES, with one difference that is the whole safety property:
+   * `actingPersonExternalId` is taken from the SESSION and cannot be sent by the caller. A panel
+   * session is one person's session, so it can open a check-in as that person and as nobody else.
+   * A customer's server naming any person it likes is a machine credential doing machine things;
+   * a widget in a browser doing it would be somebody opening a record in a colleague's name.
+   */
+  async openACheckIn(
+    organizationId: string,
+    personId: string,
+    dto: {
+      label?: string;
+      scenario?: string;
+      moment?: string;
+      timelineDays?: number;
+      cadence?: string;
+      participants?: { personExternalId: string; roleAsDescribed?: string }[];
+    },
+  ) {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true },
+    });
+    if (!me?.externalId) throw new NotFoundException('We cannot see you in your organisation.');
+
+    return this.groundsByApi.open(organizationId, {
+      /* Not from the body. See above. */
+      actingPersonExternalId: me.externalId,
+      label: dto?.label ?? '',
+      scenario: dto?.scenario ?? '',
+      moment: dto?.moment ?? 'AT_THE_START',
+      timelineDays: dto?.timelineDays,
+      cadence: dto?.cadence,
+      participants: dto?.participants,
+    });
   }
 
   /**
