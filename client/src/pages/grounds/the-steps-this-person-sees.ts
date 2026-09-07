@@ -12,15 +12,27 @@
  * test of it would have to be a test of the source text. This is the ordering on its own, so the
  * guard exercises the thing the page runs instead of a copy of it.
  */
+/*
+ * THE NUMBERS ARE IDENTITIES, NOT AN ORDER. The order is `stepsThisPersonSees` below, and it has
+ * been since a flow that skipped steps in three places and counted them in a fourth told somebody
+ * "Step 5 of 8" directly after step 3.
+ *
+ * `who` moved from first to last and kept a number, which is why it reads oddly here. It was the
+ * opening screen: who writes the objective, and who checks in against it. Her call moved it to the
+ * end - "you either set the context to checkin or set it and other checkin, you just look at the
+ * reports" - and the reason it had to move is what watching the entry chat showed: whatever
+ * situation somebody picked, the first thing the product did was ask a question about org structure
+ * that would have fitted any situation on the list. The first screen belongs to their situation.
+ */
 export const STAGE = {
-  who: 1,
-  situation: 2,
-  coach: 3,
-  describe: 4,
-  plan: 5,
-  timeline: 6,
-  people: 7,
-  brief: 8,
+  situation: 1,
+  coach: 2,
+  describe: 3,
+  plan: 4,
+  timeline: 5,
+  people: 6,
+  brief: 7,
+  who: 8,
 } as const
 
 export interface WhoIsSettingUp {
@@ -43,7 +55,6 @@ export interface WhoIsSettingUp {
 
 export function stepsThisPersonSees(who: WhoIsSettingUp): number[] {
   return [
-    STAGE.who,
     STAGE.situation,
     ...(who.onAPaidPlan ? [STAGE.coach] : []),
     ...(who.describingOwnSituation ? [STAGE.describe] : []),
@@ -57,6 +68,13 @@ export function stepsThisPersonSees(who: WhoIsSettingUp): number[] {
      * is writing their own context and the brief is theirs to write.
      */
     STAGE.brief,
+    /*
+     * LAST, AND IT IS THE LAST THING ON PURPOSE. Whether this person also checks in is a question
+     * about what happens NEXT, and it can only be answered well once they know what they have set
+     * up. Asked first, it was a question about org structure put to somebody who had not yet said
+     * what any of this was about.
+     */
+    STAGE.who,
   ]
 }
 

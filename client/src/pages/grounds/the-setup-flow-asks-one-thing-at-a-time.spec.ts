@@ -36,10 +36,10 @@ const PAGE = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
 
 describe('the setup flow asks one thing at a time', () => {
   it('has a step for each of the four questions', () => {
-    for (const n of [1, 2, 3, 4]) {
-      expect(PAGE).toMatch(new RegExp(`STEP ${n}:`))
-    }
-    expect(PAGE).toContain("[STAGE.who]: 'Who it is for'")
+    /* Asserted on the stage labels rather than on numbered comments in the source. The comments
+       said "STEP 1: who this check-in is for" and went stale the moment that step moved to the end;
+       these labels are what a person actually reads at the top of each screen. */
+    expect(PAGE).toContain("[STAGE.who]: 'Who checks in'")
     expect(PAGE).toContain("[STAGE.situation]: 'The situation'")
     expect(PAGE).toContain("[STAGE.coach]: 'A coach'")
     expect(PAGE).toContain("[STAGE.describe]: 'Describe it'")
@@ -89,7 +89,9 @@ describe('the setup flow asks one thing at a time', () => {
     const own = seen({ describingOwnSituation: true })
     expect(own).toContain(STAGE.brief)
     expect(own).toContain(STAGE.describe)
-    expect(own[own.length - 1]).toBe(STAGE.brief)
+    /* The brief is no longer last - "who checks in against this" comes after it now - so what is
+       held here is that the brief is asked at all, which is the thing the setter used to skip. */
+    expect(own.indexOf(STAGE.brief)).toBeGreaterThan(own.indexOf(STAGE.describe))
   })
 
   it('skips the free-text step when a card already said what this is', () => {
@@ -108,8 +110,11 @@ describe('the setup flow asks one thing at a time', () => {
      */
     expect(seen({ onAPaidPlan: false })).not.toContain(STAGE.coach)
     expect(seen({ onAPaidPlan: true })).toContain(STAGE.coach)
+    /* Back must not land on the skipped screen: on the free plan the step after the situation is
+       the timeline, not the coach. Read forwards now, because the situation is the FIRST step and
+       has nothing before it to read backwards to. */
     const path = seen({ onAPaidPlan: false })
-    expect(path[path.indexOf(STAGE.situation) - 1]).toBe(STAGE.who)
+    expect(path[path.indexOf(STAGE.situation) + 1]).not.toBe(STAGE.coach)
   })
 
   it('asks for one thing per step rather than everything at once', () => {
@@ -122,7 +127,7 @@ describe('the setup flow asks one thing at a time', () => {
     expect(PAGE).toMatch(/step === STAGE\.describe \? needsRouting/)
   })
 
-  it('still ends where it always did, at the brief that creates the check-in', () => {
+  it('derives the count from the steps this person sees, rather than a typed total', () => {
     /*
      * The count is derived rather than typed, so this asserts the derivation and the stage rather
      * than the literal 8. A number typed in two places is what let the dot comment say "(6)" while
@@ -135,10 +140,12 @@ describe('the setup flow asks one thing at a time', () => {
     expect(PAGE).toContain('const totalStepsForThisPerson = visibleSteps.length')
     expect(PAGE).not.toContain('const TOTAL_STEPS')
     expect(PAGE).toContain("[STAGE.brief]: 'The brief'")
-    // The brief is last for everyone, whichever steps they were shown.
+    /* Who checks in against this is last for everyone, whichever steps they were shown. It was the
+       first screen until her call moved it: a question about org structure, put to somebody who had
+       not yet said what any of this was about. */
     for (const o of [{}, { onAPaidPlan: true }, { describingOwnSituation: true }, { billingSettledAndFree: false }]) {
       const path = seen(o)
-      expect(path[path.length - 1]).toBe(STAGE.brief)
+      expect(path[path.length - 1]).toBe(STAGE.who)
     }
     expect(PAGE).toMatch(/\{step === STAGE\.brief && \(/)
   })

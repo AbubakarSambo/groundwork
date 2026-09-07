@@ -170,7 +170,18 @@ export function theSetupPackFor(
     '',
     `They chose this situation from a list, so you already know what this is. Do NOT ask them what the situation is about - they have answered that, and asking it back is the single thing that makes this feel like the click went nowhere.`,
     '',
-    `YOUR FIRST QUESTION, after the one about who writes the objective, is this one or a close version of it in your own words:`,
+    /*
+     * "AFTER THE ONE ABOUT WHO WRITES THE OBJECTIVE" USED TO BE HERE, AND IT KEPT THAT QUESTION ALIVE.
+     *
+     * The general rules had already been rewritten to forbid asking it - it moved to the end, to the
+     * screen, with two buttons. This line still told the model to ask it first, so it did: driven
+     * against the live endpoint, "A new hire starting. Before we get into the details, who writes
+     * the objective here, and who checks in against it?" Two halves of one prompt disagreeing, and
+     * the one that named a question won over the one that forbade it.
+     *
+     * Caught by running it, not by reading it. Every test passed.
+     */
+    `YOUR FIRST QUESTION IS THIS ONE, or a close version of it in your own words. Ask it straight away - nothing comes before it:`,
     `  "${ask}"`,
     '',
     `Keep asking around it until you have: ${q.until}.`,

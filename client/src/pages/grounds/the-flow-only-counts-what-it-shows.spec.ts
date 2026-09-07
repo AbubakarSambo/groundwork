@@ -31,8 +31,11 @@ const ORDINARY = { onAPaidPlan: false, describingOwn: false, billingSettled: tru
 
 describe('the setup flow counts what it shows', () => {
   it('THE COMMON PATH IS FIVE SCREENS, not eight', () => {
-    // Free plan, picked a situation card, nothing to pay: who, situation, timeline, people, brief.
-    expect(stepsSeen(ORDINARY)).toEqual([1, 2, 6, 7, 8])
+    /* Free plan, picked a situation card, nothing to pay: situation, timeline, people, brief, and
+       then who checks in against it. Asserted by NAME rather than by number now - the numbers are
+       identities and `who` kept its own when it moved from first to last, so a literal list reads
+       as nonsense and would pass while the order was wrong. */
+    expect(stepsSeen(ORDINARY)).toEqual([STAGE.situation, STAGE.timeline, STAGE.people, STAGE.brief, STAGE.who])
     expect(stepsSeen(ORDINARY)).toHaveLength(5)
   })
 
@@ -71,15 +74,21 @@ describe('the setup flow counts what it shows', () => {
     }
   })
 
-  it('every path still ends at the brief, which is what creates the check-in', () => {
+  it('every path ends at who checks in, which is what creates the check-in', () => {
     for (const o of [
       ORDINARY,
       { onAPaidPlan: true, describingOwn: true, billingSettled: false },
       { onAPaidPlan: false, describingOwn: true, billingSettled: true },
     ]) {
       const steps = stepsSeen(o)
-      expect(steps[steps.length - 1]).toBe(STAGE.brief)
-      expect(after(steps, STAGE.brief)).toBe(STAGE.brief) // no next; the brief submits
+      /*
+       * IT USED TO END AT THE BRIEF. Whether this person also checks in was the FIRST screen, asked
+       * before they had said what any of this was about; it is the last one now, because it is a
+       * question about what happens next and it can only be answered once they know what they have
+       * set up.
+       */
+      expect(steps[steps.length - 1]).toBe(STAGE.who)
+      expect(after(steps, STAGE.who)).toBe(STAGE.who) // no next; this screen submits
     }
   })
 

@@ -32,11 +32,25 @@ describe('a team is not a person, and the opener may not be theirs', () => {
     expect(SRC).toMatch(/"my team" is zero people, not one/i);
   });
 
-  it('warns the lead who has named nobody, and only the lead', () => {
-    expect(SRC).toContain("extracted.yourRole === 'a_party' && !extracted.peopleNamed?.length");
+  it('warns anybody who has named nobody', () => {
+    /*
+     * IT USED TO WARN ONLY A PARTY, because a coordinator's roster belonged to the lead they were
+     * handing to. There is no hand-off any more, and setup no longer asks the role - so the old
+     * condition would sit permanently false and the warning would vanish for everyone, which is
+     * worse than either behaviour it was choosing between.
+     */
+    expect(SRC).toContain('const needsPeople = !extracted.peopleNamed?.length;');
   });
 
-  it('stops reading the product’s own opening sentence as a coordinator’s account', () => {
-    expect(SRC).toMatch(/treat that opening sentence as a TOPIC THEY PICKED/);
+  it('stops reading the product’s own opening sentence as anybody’s account', () => {
+    /*
+     * IT USED TO SAY "as a COORDINATOR's account", conditional on `yourRole` not being a_party.
+     * The rule is unconditional now and applies to everyone, which is stricter and simpler: the
+     * sentence a card posts is phrased in the first person and nobody typed a word of it, so it is
+     * a topic they picked whoever they are. The conditional version also could not survive the role
+     * question moving to the end - there is no role to condition on while the opener is being read.
+     */
+    expect(SRC).toMatch(/Treat it as a TOPIC THEY PICKED/);
+    expect(SRC).toMatch(/Never extract goals from it/);
   });
 });

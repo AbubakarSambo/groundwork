@@ -3,54 +3,49 @@ import { onboardingIsReady } from './entry.service';
 /**
  * SETUP ASKS WHAT THIS PERSON CAN ACTUALLY ANSWER.
  *
- * The old gate was `mode && initial && whoInvolved && decision` for everybody, and it was wrong in
- * both directions at once.
+ * The original gate was `mode && initial && whoInvolved && decision` for everybody, and it demanded
+ * a roster from people who did not have one. Instruction and gate contradicted each other - the
+ * prompt said "do not press a bystander for a situation they cannot describe" while the gate refused
+ * to finish without one - and the gate won, by being satisfiable with a guess. Observed live:
+ * `whoInvolved: "My team"` cleared it. Three people, no names.
  *
- * FOR A COORDINATOR IT DEMANDED WHAT THEY DO NOT HAVE. Somebody told to set this up often knows one
- * thing: who runs it. The prompt already said "do not press a bystander for a situation they cannot
- * describe" while this gate refused to finish without a situation, a reason and a roster. Instruction
- * and gate contradicted each other and the gate won, by being satisfiable with a guess - observed
- * live, `whoInvolved: "My team"` cleared it.
+ * IT THEN GATED ON `yourRole` AND NO LONGER DOES, which is the change this file records.
  *
- * FOR EVERYBODY IT LEFT OUT THE FIELD THAT DECIDES WHAT THE OTHERS MEAN. `yourRole` separates
- * somebody's own account from hearsay about other people. It is asked first on purpose and was not
- * in the gate at all.
+ * That field was asked first because it decided what every word after it WAS: a party's words are
+ * their own account, a non-party's are context about other people. The reasoning rested on a third
+ * answer - "somebody else sets the context, you are only setting the check-in up" - which has been
+ * removed. Both remaining answers write their own context, so setup's words are the context either
+ * way. What is still decided is whether this person is ALSO asked to check in, and that is a
+ * question about what happens next.
  *
- * BEHAVIOUR, NOT SOURCE TEXT. This one is a pure function, so it is tested by calling it.
+ * So it is asked at the end now, by the screen, with two buttons - her call: "you either set the
+ * context to checkin or set it and other checkin, you just look at the reports". A gate waiting on a
+ * question nobody asks any more would never open, and setup would never finish.
+ *
+ * BEHAVIOUR, NOT SOURCE TEXT. This is a pure function, so it is tested by calling it.
  */
 describe('setup asks what this person can actually answer', () => {
-  it('is never ready before it knows whose words these are', () => {
-    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(false);
+  it('wants the situation and why now, from everybody', () => {
+    expect(onboardingIsReady({ mode: 'recurring' })).toBe(false);
+    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing' })).toBe(false);
+    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
   });
 
-  describe('somebody setting this up for other people', () => {
-    /**
-     * The step straight after this asks who runs the first check-in, which is the one thing they do
-     * have. It needs none of the other fields.
+  it('does not wait for a question setup no longer asks', () => {
+    /*
+     * THE FAILURE THIS PREVENTS, and it would have been total: the gate returned false without
+     * `yourRole`, the prompt stopped asking for it, so nothing would ever have been ready and the
+     * wrap-up screen would never have appeared for anybody.
      */
-    it('is ready as soon as their role is known, with nothing else', () => {
-      expect(onboardingIsReady({ yourRole: 'setting_up_for_others' })).toBe(true);
-    });
-
-    it('and so is somebody handing it to a third person', () => {
-      expect(onboardingIsReady({ yourRole: 'someone_else_runs_it' })).toBe(true);
-    });
+    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
   });
 
-  describe('a party', () => {
-    it('still owes the situation and why now, because those are genuinely theirs', () => {
-      expect(onboardingIsReady({ yourRole: 'a_party', mode: 'recurring' })).toBe(false);
-      expect(onboardingIsReady({ yourRole: 'a_party', mode: 'recurring', initial: 'a thing' })).toBe(false);
-      expect(onboardingIsReady({ yourRole: 'a_party', mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
-    });
-
-    /**
-     * WHO IS INVOLVED IS DELIBERATELY NOT REQUIRED. Hafsah's call: let them through and warn, because
-     * a required field somebody cannot answer becomes a field they invent - which is the whole
-     * history of "My team". The warning is `needsPeople`, not a refusal.
-     */
-    it('is let through having named nobody', () => {
-      expect(onboardingIsReady({ yourRole: 'a_party', mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
-    });
+  /**
+   * WHO IS INVOLVED IS DELIBERATELY NOT REQUIRED. Her call: let them through and warn, because a
+   * required field somebody cannot answer becomes a field they invent - which is the whole history
+   * of "My team". The warning is `needsPeople`, not a refusal.
+   */
+  it('is let through having named nobody', () => {
+    expect(onboardingIsReady({ mode: 'recurring', initial: 'a thing', decision: 'because' })).toBe(true);
   });
 });

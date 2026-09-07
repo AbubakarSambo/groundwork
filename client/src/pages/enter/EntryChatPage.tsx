@@ -260,33 +260,38 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
 
 
 /**
- * THE SENTENCE THE PRODUCT WROTE IS NOT THE COORDINATOR'S ACCOUNT.
+ * THE SENTENCE THE PRODUCT WROTE IS NOBODY'S ACCOUNT.
  *
  * Setup opens with a first-person sentence taken from whichever situation card was clicked - "I want
- * one honest read from everyone on my team this week..." - which nobody typed. For a party it is
- * near enough to what they meant. For somebody setting this up FOR other people it is the product
- * writing an account in their voice about a situation they never described.
+ * one honest read from everyone on my team this week..." - which nobody typed. It is a topic they
+ * picked off a list, and the extractor was lifting goals out of it as though they had said them.
  *
- * That was not theoretical: driven against the live endpoint, a coordinator who said only "I am the
- * ops admin, I do not really know the details" came back with a `goals` array whose single entry was
- * the canned sentence, almost word for word.
+ * That was not theoretical: driven against the live endpoint, somebody who said only "I am the ops
+ * admin, I do not really know the details" came back with a `goals` array whose single entry was the
+ * canned sentence, almost word for word.
  *
  * AN INSTRUCTION WAS TRIED FIRST AND DID NOT HOLD. The prompt was told, in those words, not to
- * extract goals or a situation from that opener once the person is not a party. It stopped taking
- * `initial` and `decision` from it and kept taking `goals`. So the sentence is removed from what the
- * extractor is shown instead - it cannot lift what it cannot see.
+ * extract goals or a situation from that opener. It stopped taking `initial` and `decision` from it
+ * and kept taking `goals`. So the sentence is removed from what the extractor is shown instead - it
+ * cannot lift what it cannot see. Structural, not instructional.
  *
- * ONLY FOR NON-PARTIES, and only the opener. Everything the person actually typed still goes.
+ * IT USED TO DO THIS ONLY FOR NON-PARTIES, AND NOW IT DOES IT FOR EVERYONE.
+ *
+ * The condition was `yourRole` - a party's opener was near enough to what they meant, so it stayed.
+ * Two things killed that. Setup no longer ASKS the role (it is asked at the end, by the screen), so
+ * `yourRole` is usually null and the strip would simply never run - the leak would be back, quietly,
+ * for everybody. And the reasoning was thin anyway: "near enough to what they meant" is exactly the
+ * kind of judgement that put a sentence nobody typed into a goals array in the first place.
+ *
+ * Everything the person actually typed still goes, untouched. Only the one canned opener is removed.
  */
 export function withoutPickedOpener(
   history: { role: string; content: string }[],
-  role: 'a_party' | 'setting_up_for_others' | null,
 ): { role: string; content: string }[] {
-  if (!role || role === 'a_party') return history
-  const picked = new Set(SITUATION_CARDS.map((c) => c.message))
-  const first = history.findIndex((t) => t.role === 'user')
-  if (first === -1 || !picked.has(history[first].content)) return history
-  return history.filter((_, i) => i !== first)
+  const picked = new Set(SITUATION_CARDS.map((c) => c.message));
+  const first = history.findIndex((t) => t.role === 'user');
+  if (first === -1 || !picked.has(history[first].content)) return history;
+  return history.filter((_, i) => i !== first);
 }
 
 
@@ -1318,7 +1323,7 @@ export function EntryChatPage() {
        * would ask the wrong one of the two with complete confidence.
        */
       const res = await entryApi.onboard(
-        withoutPickedOpener(newHistory, yourRole) as Turn[],
+        withoutPickedOpener(newHistory) as Turn[],
         onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
       )

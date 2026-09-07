@@ -36,14 +36,22 @@ NO_SESSION_ON_DEVICE = "We couldn't find your session on this device"
 # at the end of a six step wizard, and was being used to prove that step 1 had loaded. It never
 # had. The guard could not catch it either - the string does exist in the component, just not on
 # the screen the harness was looking at.
-# Reworded from "First: where do you sit in this?" - that asked where somebody sits, when the thing
-# being decided is who writes the objective and who checks in against it.
-CREATE_STEP_ONE = "Who is this check-in for?"
+# WHO CHECKS IN IS THE LAST SCREEN NOW, NOT THE FIRST, so the sentinel had to change with it.
+#
+# It used to be "Who is this check-in for?", asked before anything else. That question moved to the
+# end on Hafsah's call - "you either set the context to checkin or set it and other checkin, you
+# just look at the reports" - because asked first it was a question about org structure put to
+# somebody who had not yet said what any of this was about, and it made all twenty-two situations
+# open identically.
+#
+# So step one is the picker, and this is a string that only the picker renders.
+CREATE_STEP_ONE = "Or select from the options below"
 
-# The first answer on step one. Setup now asks who the check-in is for BEFORE it shows the
-# situations, so a suite that wants the picker has to answer this and press Continue first -
-# landing on /grounds/new and looking for cards finds a different screen entirely.
-CREATE_STEP_ONE_ANSWER = "I set the context and objective, and I check in too"
+# The answer on the LAST screen. A suite that wants the picker no longer has to get past anything -
+# it lands on /grounds/new and the cards are right there. A suite that wants to CREATE has to reach
+# this and answer it, because this screen is what opens the check-in.
+CREATE_LAST_STEP = "Last thing: do you check in on this too?"
+CREATE_STEP_ONE_ANSWER = "I check in too"
 # One situation card, for the suites that walk PAST the picker rather than checking all of it. It
 # was typed as "New project" in suite_b - a label that has not existed for some time, and which
 # failed silently because the click was guarded by a count().
@@ -78,6 +86,7 @@ PINNED = [
     GROUND_IS_SET_UP,
     NO_SESSION_ON_DEVICE,
     CREATE_STEP_ONE,
+    CREATE_LAST_STEP,
     CREATE_STEP_ONE_ANSWER,
     CREATE_PAGE_HEADING,
     ONE_LAST_STEP,

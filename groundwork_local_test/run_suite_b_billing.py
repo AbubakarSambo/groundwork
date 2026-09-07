@@ -31,7 +31,7 @@ from playwright.async_api import async_playwright
 
 from _runner import BASE_URL, Recorder, api, launch, mail_clear, new_page, provision_admin
 from _ui_strings import (  # UI copy the product owns - see the guard in
-    CREATE_STEP_ONE, CREATE_STEP_ONE_ANSWER, CREATE_PROJECT_CARD, INCLUDED_IN_PLAN,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
+    CREATE_STEP_ONE, CREATE_PROJECT_CARD, INCLUDED_IN_PLAN,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
 )
 
 rec = Recorder("suite_b")
@@ -67,18 +67,12 @@ async def main() -> int:
         on_create = await page.get_by_text(CREATE_STEP_ONE).count()
         rec.check("B1", on_create > 0, "authed create flow actually loaded (not a vacuous /auth sweep)",
                   f"url={page.url}", hard=True)
-        # walk: who it is for -> scenario -> moment -> billing interstitial -> timeline
+        # walk: scenario -> moment -> billing interstitial -> timeline
         #
-        # The first screen is now "who is this check-in for" and the situations are on the second.
-        # Without answering it the walk below silently does nothing - `card.count()` is zero, the
-        # guard skips, and the $5 sweep then runs against the wrong two screens and passes for the
-        # wrong reason.
-        answer = page.get_by_text(CREATE_STEP_ONE_ANSWER, exact=False)
-        if await answer.count():
-            await answer.first.click()
-            await page.wait_for_timeout(400)
-            await page.locator("button:has-text('Continue'):visible").last.click()
-            await page.wait_for_timeout(1500)
+        # THE "WHO CHECKS IN" SCREEN USED TO BE FIRST AND HAD TO BE ANSWERED HERE. It is the LAST
+        # screen now, so the picker is what /grounds/new opens on and there is nothing to get past.
+        # The click that was here is gone rather than moved: this suite sweeps the first two screens
+        # for pricing copy and never reaches the end of the flow.
 
         card = page.get_by_text(CREATE_PROJECT_CARD, exact=True)
         if await card.count():

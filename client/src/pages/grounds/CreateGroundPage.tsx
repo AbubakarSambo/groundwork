@@ -504,7 +504,7 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
  * every link and saved position that already exists.
  */
 const STEP_NAMES: Record<number, string> = {
-  [STAGE.who]: 'Who it is for',
+  [STAGE.who]: 'Who checks in',
   [STAGE.situation]: 'The situation',
   [STAGE.coach]: 'A coach',
   [STAGE.describe]: 'Describe it',
@@ -1195,10 +1195,19 @@ export function CreateGroundPage() {
         </div>
 
         {/* Step 1: Scenario + Moment */}
-        {step >= STAGE.who && step <= STAGE.describe && (
+        {/* The picking screens share one shell. Named rather than ranged: this read
+            `step >= STAGE.who && step <= STAGE.describe`, and `who` is the LAST step now, so a
+            range would have hidden every one of them. */}
+        {(step === STAGE.situation || step === STAGE.coach || step === STAGE.describe || step === STAGE.who) && (
           <div>
-            {/* ---- STEP 1: who this check-in is for ---- */}
-            {step === STAGE.who && (<>
+            {/* SAID BEFORE THE SETUP WORK, NOT AFTER IT, WHICH MEANS IT HAD TO MOVE WITH THE STEPS.
+                The API refuses an eleventh check-in correctly, but it refused it at submit - so the
+                admin picked a card, named it, set the timeline and the people, and only then was
+                told she could not. The block was right; the timing made it feel like a trick.
+                It sat inside the "who checks in" step because that step was FIRST. That step is now
+                LAST, so leaving it there would have put the refusal back at the end - the exact bug,
+                reintroduced by moving a neighbour. It belongs to whichever screen opens the flow. */}
+            {step === STAGE.situation && (<>
             {/* Say the limit is reached BEFORE the setup work, not after it.
                 The API refuses an eleventh ground correctly, but it refused it
                 at submit - so the admin picked a card, named the ground, set
@@ -1221,6 +1230,13 @@ export function CreateGroundPage() {
                 </button>
               </div>
             )}
+            </>)}
+
+            {/* ---- LAST: who checks in against this ----
+                 Numbered comments used to label these ("STEP 1: who this check-in is for"), and the
+                 numbers went stale the moment a step moved. Named now: the order lives in
+                 stepsThisPersonSees and a comment that repeats it is a second copy that can drift. */}
+            {step === STAGE.who && (<>
             {/* MOVED FROM STEP 4 TO THE TOP OF STEP 1.
                 It decides what everything the person types afterwards IS. A party's words are their
                 own account; a non-party's are context about other people, which this product treats
@@ -1245,13 +1261,16 @@ export function CreateGroundPage() {
                 * The same three now read the same way in the entry chat - see ONBOARD_SYSTEM in
                 * entry.service.ts, which asks this in conversation rather than as radio buttons.
                 */}
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Who is this check-in for?</div>
+              {/* THE WORDS FOLLOWED THE SCREEN. "Who is this check-in for? ... Everything after it
+                  is asking you for one or the other" was written for the FIRST screen, and there is
+                  nothing after this one - it is the last thing before the check-in opens. */}
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Last thing: do you check in on this too?</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 9, lineHeight: 1.5 }}>
-                This decides who writes the objective and who is asked to check in against it. Everything after it is asking you for one or the other. You can change it later.
+                You have written what this is about. This decides whether you also give your own account against it, or read what comes back. You can change it later.
               </div>
               {[
-                { v: true, label: 'I set the context and objective, and I check in too', sub: 'You write what this is about and what good looks like. You check in against it alongside everyone else.', other: false },
-                { v: false, label: 'I set the context and objective, others check in', sub: 'You write what this is about and what good looks like. They check in against it. Nothing asks you to check in, and nothing measures you.', other: false },
+                { v: true, label: 'I check in too', sub: 'You give your own account against this, alongside everyone else, and it goes in the report with theirs.', other: false },
+                { v: false, label: 'They check in, I read the reports', sub: 'They give the accounts. Nothing asks you to check in, and nothing measures you.', other: false },
                 /*
                  * THE THIRD ANSWER IS GONE. HER CALL, AND HER REASON.
                  *
@@ -1308,7 +1327,7 @@ export function CreateGroundPage() {
 
             </>)}
 
-            {/* ---- STEP 2: which situation ---- */}
+            {/* ---- FIRST: which situation ---- */}
             {step === STAGE.situation && (<>
             {/*
               * ONE PICK AT THE TOP, THEN A DROPDOWN. What this replaced and why:
@@ -1374,7 +1393,7 @@ export function CreateGroundPage() {
 
             </>)}
 
-            {/* ---- STEP 3: a coach, before you decide ---- */}
+            {/* ---- THEN: a coach, before you decide ---- */}
             {step === STAGE.coach && (<>
             {/*
               * A STEP OF ITS OWN, BEFORE THE SITUATION IS WRITTEN DOWN.
@@ -1551,7 +1570,7 @@ export function CreateGroundPage() {
             </div>
             </>)}
 
-            {/* ---- STEP 4: describe it in your own words ---- */}
+            {/* ---- THEN: describe it in your own words ---- */}
             {step === STAGE.describe && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
@@ -1677,7 +1696,19 @@ export function CreateGroundPage() {
 
                   return (
                     <>
-                      <button className="gw-btn" disabled={blocked} onClick={() => setStep(next)} style={{ margin: 0 }}>Continue</button>
+                      {/* WHEN THERE IS NOTHING AFTER THIS STEP, CONTINUE IS THE END OF THE FLOW.
+                          `stepAfter` returns the SAME step when it is the last one - its documented
+                          contract - so this used to leave somebody exactly where they were with no
+                          message. That is live now rather than theoretical: "who checks in" moved
+                          to the end, so this bar IS the last screen. */}
+                      <button
+                        className="gw-btn"
+                        disabled={blocked || create.isPending}
+                        onClick={() => (next === step ? create.mutate() : setStep(next))}
+                        style={{ margin: 0 }}
+                      >
+                        {next === step ? (create.isPending ? 'Opening…' : 'Open the check-in') : 'Continue'}
+                      </button>
                       {blocked ? (
                         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>{why}</div>
                       ) : null}
@@ -2250,10 +2281,13 @@ export function CreateGroundPage() {
               </div>
             </div>
 
-            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim() || briefTooShortToInvite} style={{ margin: 0 }}>
+            {/* THROUGH THE ORDERING, NOT PAST IT. This called `create.mutate()` because the brief
+                was the last screen. It is not any more - "who checks in against this" comes after
+                it - and a hardcoded ending is exactly what `stepsThisPersonSees` exists to stop. */}
+            <button className="gw-btn" onClick={() => { const n = stepAfter(visibleSteps, STAGE.brief); if (n === STAGE.brief) create.mutate(); else setStep(n) }} disabled={create.isPending || !brief.trim() || briefTooShortToInvite} style={{ margin: 0 }}>
               {/* "Talk it through" described the conversation and not the button. It opens the
                   check-in, so it says so. */}
-              {create.isPending ? 'Opening…' : 'Start check-in →'}
+              {create.isPending ? 'Opening…' : stepAfter(visibleSteps, STAGE.brief) === STAGE.brief ? 'Start check-in →' : 'Continue →'}
             </button>
           </div>
         )}
