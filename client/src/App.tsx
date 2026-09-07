@@ -77,6 +77,7 @@ import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
+import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
 import type { User } from '@/types'
 
@@ -300,6 +301,10 @@ export default function App() {
                 step anyone completes. */}
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
+            {/* PUBLIC, because the person this is for has not signed up. The pricing page's three
+                paid services all ended at a mailto, which does nothing without a configured mail
+                client - see TalkToUsPage. */}
+            <Route path="/talk-to-us" element={<TalkToUsPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
             {/*

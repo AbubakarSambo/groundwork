@@ -126,7 +126,9 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;">Enterprise</div>
           <p style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin:0;">For organizations with custom needs, volume pricing, or dedicated support.</p>
         </div>
-        <a class="gw-tap" href="mailto:hello@myground.work" style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
+        <!-- The Enterprise tier's only control, and it was a mailto too. Same fix, and it arrives
+             already saying which conversation this is. -->
+        <a class="gw-tap" href={`${APP_URL}/talk-to-us?about=other`} style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
       </div>
 
       <!--
@@ -173,7 +175,14 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           above, and it was styled as a footnote in the same weight as the sentence before it. If
           asking for a call is the action the section exists for, it has to look like the action.
         -->
-        <a href="mailto:hello@myground.work?subject=Request%20a%20call" style="display:inline-block;background:var(--gw-navy);color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:7px;text-decoration:none;margin-top:4px;">Request a call &#8594;</a>
+        <!--
+          A FORM, NOT A MAILTO. This was `mailto:hello@myground.work`, which does nothing at all for
+          anybody without a configured mail client - so the only route to the one thing on this page
+          you cannot self-serve was a link that appeared broken. The audit said it plainly: no form,
+          nothing captured, nothing followed up. It now opens a request that lands in the back
+          office and sends a confirmation.
+        -->
+        <a href={`${APP_URL}/talk-to-us`} style="display:inline-block;background:var(--gw-navy);color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:7px;text-decoration:none;margin-top:4px;">Request a call &#8594;</a>
       </div>
 
       <!-- FAQ -->
