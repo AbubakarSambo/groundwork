@@ -94,8 +94,18 @@ describe('and no longer on the chat', () => {
     const src = require('fs').readFileSync(
       require('path').join(__dirname, 'TheAssistantAsACustomerSeesIt.tsx'), 'utf8',
     )
+    /*
+     * THIS USED TO ASSERT THE OPPOSITE, and it was right at the time: the panel offered one thing
+     * and EXPLAINED that starting a check-in and adding a person were machine-side. They are panel
+     * routes now - POST check-ins and POST people - so the panel does them instead of describing
+     * them, and an assertion that the explanation is still there would be pinning a limitation
+     * that has been removed.
+     */
+    expect(src).toMatch(/Start a check-in/)
+    expect(src).toMatch(/Add someone/)
     expect(src).toMatch(/Set an objective/)
-    /* The two that cannot be done from a panel are written down, not drawn as controls. */
-    expect(src).toMatch(/MACHINE route/)
+    /* And the safety sentence stays with the act it belongs to: adding somebody is not letting
+       them in. */
+    expect(src).toMatch(/do not become a member of your organisation/)
   })
 })
