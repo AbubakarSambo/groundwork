@@ -75,9 +75,20 @@ describe('situation card timeline hints', () => {
     expect(freeformBlock).not.toMatch(/timelineHint/)
   })
 
-  it('renders the hint in the card, styled subordinate to the label/detail (not implying a fixed commitment)', () => {
-    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'EntryChatPage.tsx'), 'utf8')
-    expect(src).toMatch(/card\.timelineHint/)
+  it('renders the run length hedged, not as a fixed commitment', () => {
+    /*
+     * IT USED TO READ THE ENTRY CHAT'S OWN CARD, and that card is gone: both pickers share one
+     * component now, because the two drew the same twenty-two situations as two different objects
+     * and it was reported twice. The hint the entry card carried - "typically 90 days" - is the
+     * shared card's "Usually runs for", taken from the catalogue rather than a hand-kept string, so
+     * a situation's length is stated in one place and cannot disagree with itself.
+     *
+     * The rule it protected is unchanged and now applies at both doors: the lead sets the timeframe,
+     * so a bare duration on a card would read as a commitment the product has not made.
+     */
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'components', 'gw', 'SituationCard.tsx'), 'utf8')
+    expect(src).toContain('Usually runs for')
+    expect(src).not.toMatch(/<dt>Runs for<\/dt>/)
     // "typically" phrasing itself signals recommendation, not commitment -
     // guard that the badges array never states a bare fixed duration.
     /**

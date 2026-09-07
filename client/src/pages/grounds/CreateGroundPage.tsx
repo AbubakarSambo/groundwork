@@ -3,10 +3,11 @@ import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-surv
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
+import { SituationCard } from '@/components/gw/SituationCard'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -347,8 +348,21 @@ const CARD_GROUP: Record<string, ScenarioGroupKey> = {
   COHORT_ONBOARDING: 'starting',
 }
 
+/**
+ * WHICH HEADING A CARD SITS UNDER, and it is not always its scenario's group.
+ *
+ * COHORT_CHECK is offered twice - as an ongoing read of a group, and as onboarding one - so two
+ * cards share a scenario and cannot both take the scenario's group. The override is per CARD.
+ *
+ * Exported because the entry chat renders these same cards now, and reading the facts directly there
+ * filed both cohort cards under one heading and silently dropped the onboarding one from the picker.
+ */
+export function groupOfCard(card: { cardKey: string; scenario: string }): ScenarioGroupKey {
+  return CARD_GROUP[card.cardKey] ?? SCENARIO_FACTS[card.scenario as keyof typeof SCENARIO_FACTS].group
+}
+
 export function cardsInGroup(group: ScenarioGroupKey): ScenarioCard[] {
-  return SCENARIOS.filter(c => (CARD_GROUP[c.cardKey] ?? SCENARIO_FACTS[c.scenario].group) === group)
+  return SCENARIOS.filter(c => groupOfCard(c) === group)
 }
 
 /**
@@ -1002,7 +1016,6 @@ export function CreateGroundPage() {
 
   const renderSituation = (card: ScenarioCard) => {
                         const facts = SCENARIO_FACTS[card.scenario]
-                        const sessions = recommendedSessions(card.scenario)
                         const isSel = selectedCard === card.cardKey
                         const arcOpen = openArc === card.cardKey
                         const pick = () => {
@@ -1021,83 +1034,35 @@ export function CreateGroundPage() {
                           setMoment(RECOMMENDED_MOMENT[card.scenario] as GroundMoment)
                         }
                         return (
-                          <div
+                          <SituationCard
                             key={card.cardKey}
-                            role="radio"
-                            tabIndex={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
-                            aria-checked={isSel}
-                            aria-label={`${cardLabel(card)}. ${card.moment} ${card.desc}`}
-                            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
-                            className={`cg-sit-card${isSel ? ' selected' : ''}`}
-                            onClick={pick}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
-                              <div className="cg-sit-check" />
-                            </div>
-                            {/* Named situations are facts about the product and never change. The
-                                describe-your-own card is about the READER, so it does - see
-                                whose-situation-is-it.ts. */}
-                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{cardLabel(card)}</div>
-                            <p className="cg-moment">{card.moment}</p>
-
-                            {/*
-                              * WHERE YOU ACTUALLY TYPE IT, SAID ON THE CARD.
-                              *
-                              * Every other card on this step is a complete choice: pick it and the
-                              * step is answered. This one is a promise of a text box that lives on
-                              * the NEXT screen, and the card looked identical to the others - so
-                              * picking it appeared to do nothing, and the field it leads to could
-                              * not be found. Reported as exactly that.
-                              *
-                              * Shown only when it is chosen, because before that it is an
-                              * instruction for a screen nobody is going to.
-                              */}
-                            {card.scenario === 'OPEN_READ' && isSel && (
-                              <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
-                                You write it on the next screen, in your own words.
-                              </div>
-                            )}
-
-                            <button
-                              type="button"
-                              className="cg-more"
-                              aria-expanded={arcOpen}
-                              onClick={(e) => { e.stopPropagation(); setOpenArc(arcOpen ? null : card.cardKey) }}
-                            >
-                              {arcOpen ? 'How it runs \u2039' : 'How it runs \u203A'}
-                            </button>
-                            {arcOpen && (
-                              <dl className="cg-arc">
-                                <div>
-                                  <dt>Agreed at the start</dt>
-                                  <dd>{card.agreed}</dd>
+                            card={card}
+                            label={cardLabel(card)}
+                            selected={isSel}
+                            focusable={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey)}
+                            expanded={arcOpen}
+                            onToggleExpanded={() => setOpenArc(arcOpen ? null : card.cardKey)}
+                            onPick={pick}
+                            extra={
+                              /*
+                               * WHERE YOU ACTUALLY TYPE IT, SAID ON THE CARD.
+                               *
+                               * Every other card on this step is a complete choice: pick it and the
+                               * step is answered. This one is a promise of a text box that lives on
+                               * the NEXT screen, and the card looked identical to the others - so
+                               * picking it appeared to do nothing, and the field it leads to could
+                               * not be found. Reported as exactly that.
+                               *
+                               * Passed in rather than built into the card, because it is true of
+                               * this screen only: the entry chat has no next screen to promise.
+                               */
+                              card.scenario === 'OPEN_READ' && isSel ? (
+                                <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
+                                  You write it on the next screen, in your own words.
                                 </div>
-                                <div>
-                                  <dt>What the check-ins test</dt>
-                                  <dd>{card.tests}</dd>
-                                </div>
-                                {facts.notThisOneIf && (
-                                  <div className="warn">
-                                    <dt>Not this one if</dt>
-                                    <dd>{facts.notThisOneIf}</dd>
-                                  </div>
-                                )}
-                                {card.examples && card.examples.length > 0 && (
-                                  <div>
-                                    <dt>Also this</dt>
-                                    <dd>{card.examples.map((ex, i) => <div key={i}>{ex}</div>)}</dd>
-                                  </div>
-                                )}
-                              </dl>
-                            )}
-
-                            <dl className="cg-meta">
-                              <div><dt>Recommended cadence</dt><dd>{facts.cadence}</dd></div>
-                              <div><dt>Runs for</dt><dd>{facts.timelineDays === 1 ? 'Once' : `${facts.timelineDays} days`}</dd></div>
-                              <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
-                            </dl>
-                          </div>
+                              ) : undefined
+                            }
+                          />
                         )
   }
 

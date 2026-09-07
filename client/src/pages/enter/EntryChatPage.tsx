@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
+/*
+ * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
+ *
+ * A page importing a page is not lovely, and the alternative was worse: a third file holding a
+ * third copy of twenty-two situations, which is the exact shape of the bug being fixed. SCENARIOS is
+ * already exported and already the thing the signed-in picker reads. Moving it into lib/ is the
+ * tidier home and is a separate change - doing it here would bury the fix in a file move.
+ */
+import { SCENARIOS, groupOfCard } from '@/pages/grounds/CreateGroundPage'
+import { SituationCard } from '@/components/gw/SituationCard'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
@@ -731,6 +741,35 @@ export const SITUATION_CARDS = [
  * cards. Lifted out of the effect that used to own it so that "pick a different situation" can
  * restore the same opening rather than a second wording of it.
  */
+/**
+ * WHAT CLICKING A CARD SAYS, AND WHY IT IS A LOOKUP RATHER THAN A FIELD ON THE CARD.
+ *
+ * The two pickers route differently on purpose: `/grounds/new` sends a scenario KEY, `/start` sends a
+ * SENTENCE that opens the conversation. So the entry chat needs one thing the catalogue does not
+ * carry, and exactly one - which is a lookup, not a second copy of the list. It used to be a second
+ * copy of the list, and that is how this picker fell eight cards behind the other one.
+ *
+ * Keyed by label because that is what both lists already agree on, and a guard holds the agreement:
+ * every card the catalogue offers has a sentence here, or the click does nothing.
+ */
+export function whatThisCardSays(label: string): string | undefined {
+  return SITUATION_CARDS.find((c) => c.label === label)?.message
+}
+
+/**
+ * WHICH GROUP A CARD BELONGS TO, THROUGH THE PICKER'S OWN FUNCTION.
+ *
+ * The first version read `SCENARIO_FACTS[scenario].group` directly, which is right for twenty-one of
+ * the twenty-two and wrong for the one that matters: COHORT_CHECK is offered TWICE, as an ongoing
+ * read and as onboarding a group, and the two cards share a scenario. The per-card override lives in
+ * `cardsInGroup`, so reading the facts directly filed both under the same heading and the onboarding
+ * card vanished - "Starting something (8)" became "(7)" and nobody would have known which card had
+ * gone. Caught by looking at the screen, not by a test.
+ */
+export function groupOf(card: { cardKey: string; scenario: string }): string {
+  return groupOfCard(card)
+}
+
 export const THE_OPENING_QUESTION =
   /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
      were both true of a long scrolling list with the catch-all last, and both wrong the moment it
@@ -2141,7 +2180,11 @@ export function EntryChatPage() {
                   >
                     {SITUATION_GROUPS.map(g => (
                       <option key={g.key} value={g.key}>
-                        {g.heading} ({SITUATION_CARDS.filter(c => c.group === g.key).length})
+                        {/* COUNTED FROM WHAT THE GROUP ACTUALLY RENDERS. This counted the entry
+                            chat's own list while the grid below now renders the catalogue's, so a
+                            situation present in one and not the other would have shown a number that
+                            did not match the cards under it. */}
+                        {g.heading} ({SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === g.key).length})
                       </option>
                     ))}
                   </select>
@@ -2155,141 +2198,41 @@ export function EntryChatPage() {
                   {SITUATION_GROUPS.filter(g => g.key === situationGroup).map((group) => {
                     const cards = SITUATION_CARDS.filter(c => c.group === group.key)
                     if (!cards.length) return null
-                    const last = true
                     return (
                       <div key={group.key}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
-                          {cards.map(card => (
-                            <div
-                              key={card.label}
-                              /**
-                               * NAMED EXPLICITLY, BECAUSE ITS CONTENTS CANNOT NAME IT RELIABLY.
-                               *
-                               * Read back through the accessibility tree while driving this page, every
-                               * one of these eighteen cards came out as an unnamed button - the only
-                               * named thing in the group was the little "i" beside it. Somebody on a
-                               * screen reader gets eighteen buttons called nothing and one called
-                               * "What A pulse check covers".
-                               *
-                               * The cause is the info affordance below: it is a role="button" INSIDE
-                               * this button, which is invalid, and a control nested in a control makes
-                               * the outer one's name unreliable. Naming this one outright fixes what a
-                               * person hears. The nesting itself needs the info control moved out of
-                               * the card, which is a layout change and is flagged rather than smuggled
-                               * in here.
-                               */
-                              style={{
-                                position: 'relative',
-                                textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                                border: '1px solid var(--gw-border)', background: 'white',
-                                cursor: 'pointer', fontFamily: 'inherit',
+                        {/*
+                          * THE SAME CARD AS /grounds/new, BECAUSE IT IS LITERALLY THE SAME COMPONENT.
+                          *
+                          * This block used to draw its own: a smaller title, a 9.5px italic "typically
+                          * 90 days", and an "i" that opened a paragraph. The wizard drew a coloured
+                          * tag, the moment you would open the app, and a "How it runs" disclosure.
+                          * Same twenty-two situations, same groups, two different objects - and
+                          * reported twice, the second time after the LISTS had been reconciled:
+                          * "the scenario cards on the entry chat still look different from what's in
+                          * the wizard".
+                          *
+                          * It renders SCENARIOS now, the catalogue the signed-in picker reads, rather
+                          * than a second list of the same situations. What stays here is the one thing
+                          * that is genuinely different about this door: clicking does not select, it
+                          * SENDS - there is no Continue on a chat - so the sentence that starts the
+                          * conversation is looked up from the card.
+                          */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 8 }}>
+                          {SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === group.key).map(card => (
+                            <SituationCard
+                              key={card.cardKey}
+                              card={card}
+                              label={card.label}
+                              expanded={openCardInfo === card.label}
+                              onToggleExpanded={() => setOpenCardInfo(openCardInfo === card.label ? null : card.label)}
+                              onPick={() => {
+                                const said = whatThisCardSays(card.label)
+                                if (!said) return
+                                setPickedSituation(card.label)
+                                setPickedScenario(card.scenario)
+                                sendOnboarding(said)
                               }}
-                            >
-                              {/*
-                                THE CHOICE IS A BUTTON THE SIZE OF THE CARD, SITTING UNDER THE CONTENT.
-                                
-                                The card used to BE the button, with the info "i" as a role="button"
-                                inside it. A control inside a control is invalid, and it is why every
-                                one of these eighteen cards read back through the accessibility tree as
-                                an unnamed button while the only named thing in the group was the "i"
-                                beside it.
-                                
-                                Splitting them is the fix, and covering the card rather than wrapping
-                                it is what keeps the layout identical: the content lays out exactly as
-                                it did, this sits behind it at inset 0, and the "i" comes back above
-                                both. Two siblings, neither inside the other, and nothing moved.
-                              */}
-                              <button
-                                aria-label={card.label}
-                                onClick={() => { setPickedSituation(card.label); setPickedScenario(card.scenario); sendOnboarding(card.message) }}
-                                style={{
-                                  position: 'absolute', inset: 0, zIndex: 0,
-                                  background: 'none', border: 'none', borderRadius: 10,
-                                  cursor: 'pointer', padding: 0, fontFamily: 'inherit',
-                                }}
-                              />
-                              {/*
-                                THE ICON LIVES IN THE TITLE ROW.
-                                
-                                First version put it on its own line under the detail, where it hung
-                                as a fourth element on every card and made the grid look busier than
-                                the wall of text it was meant to replace. Beside the title it costs no
-                                height at all, and it is obvious which card it belongs to.
-                              */}
-                              {/*
-                                TITLE ON ITS OWN LINE, THE TWO SMALL THINGS UNDER IT.
-                                
-                                They were inline with the title, which meant a long name like "A new
-                                partner, cofounder, or manager" pushed the hint to a second line
-                                anyway and the row wrapped unevenly card to card. Below the title they
-                                sit on one predictable line, and every card is the same shape.
-                              */}
-                              {/*
-                                POINTER EVENTS OFF, SO THE CARD IS STILL CLICKABLE ANYWHERE.
-                                
-                                The content draws above the covering button, which would otherwise
-                                intercept every click that landed on the title. The one thing that DOES
-                                take clicks - the "i" - turns them back on for itself.
-                              */}
-                              <div style={{ position: 'relative', zIndex: 1, pointerEvents: 'none' }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.3 }}>{card.label}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                                {(card.detail || (card.examples && card.examples.length > 0)) && (
-                                  <button
-                                    type="button"
-                                    aria-label={`What ${card.label} covers`}
-                                    title={[card.detail, '', ...(card.examples ?? []).map(e => `e.g. ${e}`)].join('\n')}
-                                    onClick={e => { e.stopPropagation(); setOpenCardInfo(openCardInfo === card.label ? null : card.label) }}
-                                    style={{
-                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                      width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                                      padding: 0, background: 'none', fontFamily: 'inherit',
-                                      pointerEvents: 'auto', position: 'relative', zIndex: 2,
-                                      border: '1px solid',
-                                      color: openCardInfo === card.label ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                                      borderColor: openCardInfo === card.label ? 'var(--gw-navy)' : 'var(--gw-border)',
-                                      fontSize: 9, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
-                                    }}
-                                  >
-                                    i
-                                  </button>
-                                )}
-                                {card.timelineHint && (
-                                  <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>{card.timelineHint}</div>
-                                )}
-                              </div>
-                              {/*
-                                NOTHING ON THE FACE OF THE CARD BUT THE NAME.
-                                
-                                Two attempts got this wrong. The first left the detail paragraph and
-                                put the icon on its own line under it, which added an element instead
-                                of removing one. The second kept the paragraph and only moved the
-                                examples - still a wall, because the paragraph was most of the text.
-                                
-                                Choosing is the only job here, and seventeen titles are choosable.
-                                Everything explanatory is behind the icon, for the person who is not
-                                sure which one is theirs.
-                                
-                                A `caution` branch used to sit here for data no card has: no entry in
-                                SITUATION_CARDS carries that field. Removed rather than left as a
-                                promise the shape does not keep - if a warning is ever needed, it has
-                                to go on the face of the card, because a warning behind an icon is
-                                read by exactly the people who did not need it.
-                              */}
-                              {openCardInfo === card.label && (
-                                <div style={{ marginTop: 5 }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
-                                  {card.examples && card.examples.length > 0 && (
-                                    <div style={{ marginTop: 4 }}>
-                                      {card.examples.map((e, i) => (
-                                        <div key={i} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {e}</div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              </div>
-                            </div>
+                            />
                           ))}
                         </div>
                       </div>
@@ -2436,13 +2379,18 @@ export function EntryChatPage() {
                 </div>
               )}
 
-              /*
-               * THE LEAD-CAPTURE PANEL WAS HERE, and it is gone with the answer that reached it.
-               * It asked for a name, an email and a note, then invited that person to confirm a
-               * situation somebody else had written. Whoever knows what a check-in is about is the
-               * person who should set it up; anybody who only needs to watch is added as oversight
-               * in the check-in's own settings, once it exists.
-               */
+              {/*
+                * THE LEAD-CAPTURE PANEL WAS HERE, and it is gone with the answer that reached it.
+                * It asked for a name, an email and a note, then invited that person to confirm a
+                * situation somebody else had written. Whoever knows what a check-in is about is the
+                * person who should set it up; anybody who only needs to watch is added as oversight
+                * in the check-in's own settings, once it exists.
+                *
+                * WRITTEN AS A BARE /* *\/ FIRST, WHICH JSX RENDERS AS TEXT. It shipped, and this
+                * whole paragraph appeared on the entry chat under the conversation, in front of
+                * anybody who opened it. Inside JSX children a comment needs the braces; without
+                * them it is a string, and nothing in the build says so.
+                */}
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
                   Starting your check-in…
