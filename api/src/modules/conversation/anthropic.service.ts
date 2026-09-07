@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
+import { whyThisModelIsNotAllowed } from './a-preview-model-has-no-data-terms';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -81,6 +82,15 @@ export class AnthropicService {
 
     this.client = this.buildClient();
     this.model = this.config.get<string>('gemini.model') || 'gemini-2.5-pro';
+    /*
+     * A PREVIEW MODEL SITS OUTSIDE THE DATA PROCESSING TERMS. See
+     * a-preview-model-has-no-data-terms.ts — Google's Service Specific Terms exclude Pre-GA
+     * Offerings from the Cloud Data Processing Addendum, and the model is one environment variable.
+     * Refused loudly at boot rather than logged: a deployment processing check-ins outside the DPA
+     * should not start, and a warning in a log is a thing nobody reads until afterwards.
+     */
+    const notAllowed = whyThisModelIsNotAllowed(this.model);
+    if (notAllowed) throw new Error(`Refusing to start: ${notAllowed}`);
     // Floor at 8192 (configuration.ts's own default). A low cap (e.g. a stale
     // GEMINI_MAX_TOKENS=2048) leaves too little room once thinking tokens are
     // counted, truncating the answer. NOTE: prod sets its own GEMINI_MAX_TOKENS;

@@ -115,9 +115,11 @@ now enforced by a test.**
   behaviour includes abuse monitoring, and zero retention is a separate arrangement. The copy says
   data is not used to train public models, which is a different and supportable statement.
 
-**Open, and not answerable from the repository: whether the project runs on promotional credits and
-whether that changes the applicable terms.** Billing state is not in the code. Needs one check in
-the Cloud console. Flagged for Hafsah.
+**The credits question is now answered — see "Do Google Cloud's free credits change the data-use
+terms?" below.** Short version: the no-training commitment does not depend on how the account is
+paid for, so this claim stands. Being on the self-serve online terms (which is what a credits
+account is) does mean prompts are logged for up to 30 days for abuse monitoring, which contradicts
+nothing on the page and is worth closing by request.
 
 ### Claim 3 — "Groundwork may use permitted, privacy-preserving signals to improve Groundwork's own internal systems and models. That learning stays within Groundwork and is not contributed to OpenAI, Claude, Gemini, or other public AI models for training."
 
@@ -165,12 +167,69 @@ Decide these before the first training job, not after:
    `a-public-model-never-sees-it.spec.ts`: whatever assembles a training set asserts what it may
    read, so the claim holds by construction.
 
+## Do Google Cloud's free credits change the data-use terms?
+
+Checked against Google's own documentation and terms on 7 September 2026. Sources at the end of
+this section.
+
+**The no-training commitment does not depend on how the account is paid for.** Google's AI/ML
+Privacy Commitment and the Service Specific Terms say Google "won't use your data to train or
+fine-tune any AI/ML models without your prior permission or instruction", and Google's own
+documentation states this covers managed models including **GA and pre-GA** ones. Nothing in it is
+conditioned on being a paying customer, on the $300 free trial, or on promotional credits. So
+claim 2 survives the credits question.
+
+**But the ACCOUNT TYPE changes prompt logging, and a credits account is the type that gets logged.**
+Two facts together:
+
+1. Google logs prompts and responses **for up to 30 days** for abuse monitoring. That data is
+   explicitly not used to train or fine-tune models.
+2. Prompt logging for abuse monitoring applies to customers **whose use is governed by the Google
+   Cloud Platform Terms of Service** — the online click-through terms, which is exactly what a
+   self-serve account on free credits is on. Customers with a negotiated **Google Cloud Master
+   Agreement are exempt from prompt logging by default**, and an exception can be requested for a
+   named account.
+
+So the credits do not weaken the training promise; they mean we are on the terms where prompts are
+retained for up to 30 days rather than the terms where they are not. **Nothing on the marketing
+page says a provider retains nothing, so this contradicts no published claim** — and it is a real
+difference worth closing.
+
+**What to do about it, in order:**
+
+1. **Ask Google for the abuse-logging exception for this project.** It is a request against a named
+   account and it costs nothing to make.
+2. **When there is a contract, get a Master Agreement rather than staying on the online terms.**
+   That removes prompt logging by default rather than by exception.
+3. **Do not treat "up to 30 days" as a secret.** If a customer asks what a provider holds, the
+   answer is a retention window for abuse monitoring, not training - and that is a defensible
+   answer given in full.
+
+**FIXED while checking this — a Pre-GA hole nobody would have noticed.** The Service Specific Terms
+say of Pre-GA Offerings: *"no data processing terms (including the Cloud Data Processing Addendum)
+apply to Pre-GA Offerings and Customer should not use Pre-GA Offerings to process personal data or
+other data subject to legal or regulatory compliance requirements."* The model is one environment
+variable, `GEMINI_MODEL`. So `GEMINI_MODEL=gemini-3.0-pro-preview` would have moved every check-in
+in the product outside the DPA, silently, while everything kept working - and check-ins carry
+personal data by definition. The service now refuses to start on a model whose terms have not been
+read: `a-preview-model-has-no-data-terms.ts` holds the list, and adding to it is a deliberate act.
+Driven: booting with a preview model exits with the reason.
+
+Sources:
+
+- Google Cloud AI/ML Privacy Commitment - https://cloud.google.com/blog/products/ai-machine-learning/google-cloud-unveils-ai-and-ml-privacy-commitment
+- Vertex AI data governance and zero data retention - https://docs.cloud.google.com/vertex-ai/generative-ai/docs/data-governance
+- Abuse monitoring, 30-day logging, and the account-type distinction - https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/abuse-monitoring
+- Service Specific Terms, Pre-GA Offerings clause - https://cloud.google.com/terms/service-terms
+- Google Cloud Free Trial and free credits - https://cloud.google.com/free
+
 ## Still to confirm, outside the code
 
-- **The Vertex terms in force for this project, including whether credits alter them.** One check in
-  the Cloud console. Everything else in claim 2 rests on it.
-- **Provider retention, logging and human-review posture**, in writing, for the file. Published
-  behaviour is not the same as a term we can point a customer at.
+- **Whether the abuse-logging exception has been granted for this project.** The request is the
+  action; the answer is the thing to file.
+- **Provider retention, logging and human-review posture in writing, for our file.** Published
+  documentation is what this audit read, and it is not the same as a term with our account named on
+  it. Get it with the Master Agreement.
 - **Backups.** Whoever operates the database backups holds unencrypted content today; item 1 above
   fixes that at source, and until then the backup posture is part of the same gap.
 
