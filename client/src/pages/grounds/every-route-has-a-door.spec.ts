@@ -30,6 +30,15 @@ function walk(dir: string, out: string[] = []): string[] {
   return out
 }
 
+function walkAstro(dir: string, out: string[] = []): string[] {
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e)
+    if (statSync(p).isDirectory()) walkAstro(p, out)
+    else if (/\.astro$/.test(e)) out.push(p)
+  }
+  return out
+}
+
 const FILES = walk(SRC)
 /** Comments stripped: a comment SAYING where a page is opened from is exactly the false comfort here. */
 const ALL = FILES.filter(f => !f.endsWith('App.tsx'))
@@ -91,7 +100,34 @@ const REACHED_FROM_OUTSIDE = [
    * proves nothing about either having a door - a circle is not an entrance.
    */
   '/ops',
+  /**
+   * The Request-a-call form. Its door is the "Request a call" button on the marketing pricing page,
+   * which is a different origin and cannot be seen by a scan of this codebase. Nothing in the app
+   * links to it on purpose: it is the way IN for somebody who has not signed up.
+   *
+   * Declared here, and then actually checked below - this file's own opening says a comment
+   * describing where something is reached from "is worth nothing until the link exists", and the
+   * `/signout` entry above had been resting on precisely that kind of claim.
+   */
+  '/talk-to-us',
 ]
+
+/**
+ * THE DOORS THAT ARE ON THE OTHER SITE, CHECKED RATHER THAN ASSERTED IN PROSE.
+ *
+ * Two routes above say a marketing page links to them. Marketing is a separate build in the same
+ * repository, so that claim is checkable, and an unchecked claim is the thing this file exists to
+ * catch. If somebody rewrites the pricing page and drops the button, the route becomes unreachable
+ * from anywhere and this is what says so.
+ */
+const MARKETING = join(__dirname, '../../../../marketing/src')
+const MARKETING_SRC = (() => {
+  try {
+    return walk(MARKETING).concat(walkAstro(MARKETING)).map(f => readFileSync(f, 'utf8')).join('\n')
+  } catch {
+    return ''
+  }
+})()
 
 describe('every route the app serves has a way in', () => {
   const paths = [...APP.matchAll(/<Route\s+path="([^"]+)"/g)]
@@ -112,5 +148,13 @@ describe('every route the app serves has a way in', () => {
       return !new RegExp(`/${tail}\\b`).test(NAV_TARGETS)
     })
     expect(orphans).toEqual([])
+  })
+
+  it('and the two doors that live on the marketing site are really there', () => {
+    /* Skipped rather than failed if marketing is not checked out beside the client - the point is
+       to catch a door being REMOVED, not to require a sibling directory to run the suite. */
+    if (!MARKETING_SRC) return
+    expect(MARKETING_SRC).toMatch(/\/talk-to-us/)
+    expect(MARKETING_SRC).toMatch(/\/signout/)
   })
 })

@@ -27,13 +27,16 @@ const NAV_ITEMS = [
      * The page is not redundant: it holds the ones the rail does not show and the ways in to them.
      * What was redundant was the name.
      */
+    /* WHAT THE BOTTOM BAR CALLS IT (`short`, below). Measured at 320px: this label is 64px wide in
+       a 64px cell on a customer's five-item bar and a 53px cell on our six-item one, so it
+       overflows and - because the cell centres it - loses its START rather than its end.
+       "ll check-ins" is not a truncated label, it reads as a different one. Type size cannot fix
+       it: 8.5px still overflows, and that is not a size to ask a thumb to read. So the bar gets the
+       short name and the rail keeps the full one, which is the only place "All" was ever doing work.
+       The note sits ABOVE the label deliberately: `two-things-called-check-ins.spec.ts` reads a
+       fixed window after `label:` to check this item still points at /grounds, and a comment
+       wedged between the two pushed the route out of its view. */
     label: 'All check-ins',
-    /* WHAT THE BOTTOM BAR CALLS IT. Measured at 320px: this label is 64px wide in a 64px cell on a
-       customer's five-item bar and a 53px cell on our six-item one, so it overflows and - because
-       the cell centres it - loses its START rather than its end. "ll check-ins" is not a truncated
-       label, it reads as a different one. Type size cannot fix it: 8.5px still overflows, and 8.5px
-       is not a size to ask a thumb to read. So the bar gets the short name and the rail keeps the
-       full one, which is the only place "All" was ever doing work. */
     short: 'Check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
@@ -104,9 +107,9 @@ const NAV_ITEMS = [
      * identical word one inch away. Renaming the page's link and leaving this one would have moved
      * the collision rather than removed it.
      */
+    /* Same measurement, same reason as All check-ins. Only platform admins see this one, so it is
+       our own bar that breaks worst - which is no reason to leave it broken. */
     label: 'Platform ops',
-    /* Same measurement, same reason. Only platform admins see this one, so it is our own bar that
-       breaks worst - which is no reason to leave it broken. */
     short: 'Ops',
     to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is

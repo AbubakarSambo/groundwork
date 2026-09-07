@@ -118,6 +118,24 @@ export type _PlanRef = SubscriptionPlan
  * head. Somebody who has just lost a client is not looking for "urgent", they are looking for the
  * shelf marked "something is off".
  */
+/**
+ * HOW MANY THERE ARE, COUNTED RATHER THAN WRITTEN DOWN.
+ *
+ * The set-up wizard opened with "Twenty situations, grouped by the question you are actually
+ * asking". There are twenty-two. Two were added - an agreement before it is signed, and one that is
+ * running - and the sentence that counts them was not part of that change, because nothing tied
+ * the number to the list.
+ *
+ * The stale comment beside the search count made the same mistake worse by explaining it: it said
+ * twenty-one cards covered twenty situations because COHORT_ONBOARDING shared COHORT_CHECK's
+ * situation. They are separate scenarios now, so the reconciliation it described no longer holds
+ * and the wrong number had a justification attached to it.
+ *
+ * The entry chat has always rendered `SITUATION_CARDS.length`. This is the same idea for everything
+ * that reads the catalogue, so the number cannot drift again.
+ */
+export const HOW_MANY_SITUATIONS = Object.keys(SCENARIO_LABELS).length
+
 export const SCENARIO_GROUPS = [
   /**
    * FIRST, NOT LAST. It sat at the bottom of six groups, which is where you put a last resort - and

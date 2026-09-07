@@ -22,6 +22,7 @@
  * clear at 320px too. Our own six-item bar still trims "Check-ins" by a few pixels at 320px, which
  * is where this stops: the alternative is contorting a customer-facing label for our own console.
  */
+import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 

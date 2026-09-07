@@ -7,7 +7,7 @@ import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
 import { whatMatches, alsoTyped, NOTHING_MATCHED } from '@/lib/finding-your-situation'
-import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, SCENARIO_GROUPS, HOW_MANY_SITUATIONS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -1251,7 +1251,7 @@ export function CreateGroundPage() {
             {/* ---- STEP 2: which situation ---- */}
             {step === STAGE.situation && (<>
             <div className="gw-sub-t" style={{ marginBottom: 2 }}>
-              Twenty situations, grouped by the question you are actually asking. Every one of them is an
+              {HOW_MANY_SITUATIONS} situations, grouped by the question you are actually asking. Every one of them is an
               objective agreed at the start, then a run of check-ins testing the work against it. Pick the
               closest fit: it sets the questions people are asked and how often.
             </div>
@@ -1269,9 +1269,10 @@ export function CreateGroundPage() {
               />
               {matches !== null && (
                 <span id="cg-find-count" role="status">
-                  {/* Matches, not "n of 21". There are twenty-one cards covering twenty
-                      situations - COHORT_ONBOARDING shares COHORT_CHECK's situation - so a total
-                      here would contradict the "Twenty situations" line directly above it. */}
+                  {/* Matches, not "n of 22". A running total next to a search box reads as "you
+                      have seen 3 of 22" rather than "3 fit what you typed", which is the opposite
+                      of what it means. The count in the line above now comes from the catalogue -
+                      see HOW_MANY_SITUATIONS - so the two can no longer disagree. */}
                   {matches.length === 0
                     ? 'No match'
                     : `${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}
