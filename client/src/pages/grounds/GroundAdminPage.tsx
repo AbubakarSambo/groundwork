@@ -161,6 +161,8 @@ export function GroundAdminPage() {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  /** Whether the last person added is waiting for the start date rather than having been emailed. */
+  const [lastInviteWaits, setLastInviteWaits] = useState(false)
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
@@ -539,7 +541,20 @@ export function GroundAdminPage() {
 
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
-    onSuccess: () => {
+    onSuccess: (added) => {
+      /*
+       * "INVITE SENT" WAS SAID WHETHER OR NOT ONE WAS SENT.
+       *
+       * An invitation waits when the check-in starts in the future - the row is written with
+       * `invitedAt: null` and no email goes, deliberately, because a mail that has already been read
+       * cannot be recalled. The server returns `invitedAt` saying so, and this screen ignored it and
+       * printed "Invite sent to ..." regardless.
+       *
+       * Reported as "all participants i added didnt get an email", with nothing anywhere on the
+       * screen to explain why. The product was working as designed and lying about it, which is
+       * worse than either.
+       */
+      setLastInviteWaits(!(added as { invitedAt?: string | null }).invitedAt)
       setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')
@@ -720,7 +735,9 @@ export function GroundAdminPage() {
           */}
           {lastInvitedEmail && (
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>Invite sent to {lastInvitedEmail}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
+                {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+              </div>
               <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 2 }}>
                 They check in on their own, and nothing is shown to them until the report is ready.
               </div>
@@ -1696,7 +1713,9 @@ export function GroundAdminPage() {
             <div style={{ marginTop: 20 }}>
               {lastInvitedEmail ? (
                 <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginBottom: 6 }}>
+                    {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.6, marginBottom: 10 }}>
                     They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
                   </div>

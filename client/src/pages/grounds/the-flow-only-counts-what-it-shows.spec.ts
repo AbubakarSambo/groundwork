@@ -1,22 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { STAGE, stepsThisPersonSees, stepAfter } from './the-steps-this-person-sees'
+import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 
 /**
- * THE FLOW COUNTS THE STEPS IT SHOWS, AND NO OTHERS.
+ * THE FLOW IS THE PICKER AND THEN A CONVERSATION.
  *
- * Three of the eight stages are conditional - the coach (paid plans), the free-text description
- * (that path only), and the billing screen. Every part of the flow worked the skipping out for
- * itself: `next` had its own arithmetic, `back` had a special case, and the counter read
- * `Object.keys(STAGE).length`. So somebody on the ordinary path was told "Step 5 of 8" directly
- * after step 3, and Back could land on a screen they were never shown.
+ * This file used to be about counting eight steps honestly - a person on the ordinary path was told
+ * "Step 5 of 8" directly after step 3, because skipping was worked out in three places and counting
+ * in a fourth. That was worth fixing and it is not what this flow is any more.
  *
- * The billing screen is the one worth removing rather than renumbering. It has two states: "no
- * payment needed, press Continue", and a real refusal with an access-code box. The first is a
- * screen whose only content is that it has nothing to say, in the middle of setting something up.
+ * Her words, over a screenshot of "Step 5 of 5 - The brief": "this page should not really exist
+ * based on the conversation we have been having. the entry chat and the wizard should be similar,
+ * right?"
  *
- * The first version of this spec re-implemented the ordering instead of importing it, so it would
- * have passed against any page at all. The ordering is its own module now and this exercises the
- * function the page runs.
+ * They should. The six screens after the picker asked for exactly what the setup conversation
+ * already asks for and extracts - what this is about, who is in it, why now, how long, how often,
+ * the brief - and asked for them worse, then ended on an admin board instead of on the person's own
+ * check-in and a report. So the picker hands over, and what remains here is the picker, the
+ * describe-your-own screen it can lead to, the coach on a paid plan, and billing when it refuses.
+ *
+ * The counting rules still matter and are still held: a step nobody is shown must not be counted,
+ * landed on by Back, or stepped over by arithmetic that forgot it.
  */
 function stepsSeen(o: { onAPaidPlan: boolean; describingOwn: boolean; billingSettled: boolean }) {
   return stepsThisPersonSees({
@@ -25,66 +28,74 @@ function stepsSeen(o: { onAPaidPlan: boolean; describingOwn: boolean; billingSet
     billingSettledAndFree: o.billingSettled,
   })
 }
-const after = (steps: number[], from: number) => stepAfter(steps, from)
 
 const ORDINARY = { onAPaidPlan: false, describingOwn: false, billingSettled: true }
 
 describe('the setup flow counts what it shows', () => {
-  it('THE COMMON PATH IS FIVE SCREENS, not eight', () => {
-    // Free plan, picked a situation card, nothing to pay: who, situation, timeline, people, brief.
-    expect(stepsSeen(ORDINARY)).toEqual([1, 2, 6, 7, 8])
-    expect(stepsSeen(ORDINARY)).toHaveLength(5)
+  it('THE COMMON PATH IS ONE SCREEN', () => {
+    /* Free plan, picked a card, nothing to pay: the picker, and then the conversation. */
+    expect(stepsSeen(ORDINARY)).toEqual([STAGE.situation])
   })
 
-  it('and the billing screen is skipped only when it has nothing to say', () => {
-    expect(stepsSeen(ORDINARY)).not.toContain(STAGE.plan)
-    // Not settled - still checking, or actually refusing - and it must be shown.
+  it('and the billing screen is still there when it is actually refusing', () => {
+    /*
+     * A screen whose only content is that it has nothing to say is not worth showing. A refusal is,
+     * and it must come BEFORE the work rather than after it - which now means before the
+     * conversation rather than before six more forms.
+     */
     expect(stepsSeen({ ...ORDINARY, billingSettled: false })).toContain(STAGE.plan)
+    expect(stepsSeen(ORDINARY)).not.toContain(STAGE.plan)
   })
 
-  it('nobody is walked past a refusal that had not arrived yet', () => {
-    // The dangerous case: skipping the screen while the check is still in flight would let
-    // somebody set the whole thing up and be refused at the end.
-    const stillChecking = stepsSeen({ ...ORDINARY, billingSettled: false })
-    expect(after(stillChecking, STAGE.situation)).toBe(STAGE.plan)
+  it('keeps the free-text screen for somebody describing their own situation', () => {
+    expect(stepsSeen({ ...ORDINARY, describingOwn: true })).toContain(STAGE.describe)
+    expect(stepsSeen(ORDINARY)).not.toContain(STAGE.describe)
+  })
+
+  it('and the coach only on a paid plan', () => {
+    expect(stepsSeen({ ...ORDINARY, onAPaidPlan: true })).toContain(STAGE.coach)
+    expect(stepsSeen(ORDINARY)).not.toContain(STAGE.coach)
+  })
+
+  it('never shows the screens whose questions the conversation now asks', () => {
+    /*
+     * THE POINT OF THE WHOLE CHANGE, asserted rather than described. Every one of these asked for
+     * something the setup conversation extracts, and asking twice is how a person learns that
+     * nothing they said was heard.
+     */
+    for (const o of [
+      ORDINARY,
+      { onAPaidPlan: true, describingOwn: true, billingSettled: false },
+      { onAPaidPlan: false, describingOwn: true, billingSettled: true },
+    ]) {
+      const steps = stepsSeen(o)
+      expect(steps).not.toContain(STAGE.timeline)
+      expect(steps).not.toContain(STAGE.people)
+      expect(steps).not.toContain(STAGE.brief)
+      expect(steps).not.toContain(STAGE.who)
+    }
   })
 
   it('forward never lands on a step this person is not shown', () => {
-    const steps = stepsSeen(ORDINARY)
-    expect(after(steps, STAGE.situation)).toBe(STAGE.timeline)
-    expect(after(steps, STAGE.timeline)).toBe(STAGE.people)
-    expect(after(steps, STAGE.people)).toBe(STAGE.brief)
+    for (const o of [ORDINARY, { onAPaidPlan: true, describingOwn: true, billingSettled: false }]) {
+      const steps = stepsSeen(o)
+      for (const s of steps) expect(steps).toContain(stepAfter(steps, s))
+    }
   })
 
-  it('and back is exactly forward reversed, which is what it was not before', () => {
-    for (const o of [
-      ORDINARY,
-      { onAPaidPlan: true, describingOwn: false, billingSettled: true },
-      { onAPaidPlan: false, describingOwn: true, billingSettled: true },
-      { onAPaidPlan: true, describingOwn: true, billingSettled: false },
-    ]) {
+  it('and back never does either', () => {
+    for (const o of [ORDINARY, { onAPaidPlan: true, describingOwn: true, billingSettled: false }]) {
       const steps = stepsSeen(o)
-      for (let i = 0; i < steps.length - 1; i++) {
-        expect(after(steps, steps[i])).toBe(steps[i + 1])
-        expect(steps[steps.indexOf(steps[i + 1]) - 1]).toBe(steps[i])
+      for (const s of steps) {
+        const previous = stepBefore(steps, s)
+        if (previous !== null) expect(steps).toContain(previous)
       }
     }
   })
 
-  it('every path still ends at the brief, which is what creates the check-in', () => {
-    for (const o of [
-      ORDINARY,
-      { onAPaidPlan: true, describingOwn: true, billingSettled: false },
-      { onAPaidPlan: false, describingOwn: true, billingSettled: true },
-    ]) {
-      const steps = stepsSeen(o)
-      expect(steps[steps.length - 1]).toBe(STAGE.brief)
-      expect(after(steps, STAGE.brief)).toBe(STAGE.brief) // no next; the brief submits
-    }
-  })
-
-  it('the longest anybody sees is seven, and only when everything applies', () => {
-    expect(stepsSeen({ onAPaidPlan: true, describingOwn: true, billingSettled: false })).toHaveLength(8)
-    expect(stepsSeen({ onAPaidPlan: true, describingOwn: true, billingSettled: true })).toHaveLength(7)
+  it('the last step has no next, which is how the page knows to hand over', () => {
+    const steps = stepsSeen(ORDINARY)
+    const last = steps[steps.length - 1]
+    expect(stepAfter(steps, last)).toBe(last)
   })
 })

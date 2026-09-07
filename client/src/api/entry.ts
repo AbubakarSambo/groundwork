@@ -90,7 +90,7 @@ export const entryApi = {
           { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, joinToken },
         ).then(r => r.data),
 
-  onboard: (messages: ChatTurn[]): Promise<{
+  onboard: (messages: ChatTurn[], scenario?: string, moment?: string): Promise<{
     reply: string;
     extracted: {
       mode?: string; initial?: string; whoInvolved?: string; decision?: string;
@@ -120,7 +120,10 @@ export const entryApi = {
      */
     needsPeople: boolean;
   }> =>
-    apiClient.post('/entry/onboard', { messages }).then(r => r.data),
+    /* The situation travels with the messages. Without it the endpoint served one prompt to all
+       twenty-two cards, so every situation opened with the same question about the situation - which
+       is the one question the person answered by clicking. */
+    apiClient.post('/entry/onboard', { messages, scenario, moment }).then(r => r.data),
 
   classifyIntent: (description: string, mode?: string) =>
     apiClient.post<{ scenario: string }>('/entry/classify-intent', { description, mode }).then(r => r.data),

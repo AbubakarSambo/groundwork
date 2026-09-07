@@ -251,6 +251,16 @@ export interface ScenarioFacts {
   group: ScenarioGroupKey
   cadence: CadenceLabel
   timelineDays: number
+  /**
+   * TRUE FOR THE ONES THAT DO NOT END, and `timelineDays` is only a seed for those.
+   *
+   * A probation, a handover and a contract all finish, so "usually runs for 90 days" is the honest
+   * thing to print on the card. A regular read on live work does not finish - you stop it when you
+   * stop wanting it - and printing 30 days there answered a question nobody asked with a number that
+   * read as a cap. Reported as exactly that: "I have a sales team and I want to monitor them for a
+   * year, this should be the one, but it is not from the entry chat."
+   */
+  ongoing?: boolean
   notThisOneIf?: string
 }
 
@@ -271,9 +281,21 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
   IMPLEMENTATION_TRACKING: { group: 'planning', cadence: 'Monthly',  timelineDays: 365,
                       notThisOneIf: 'Nothing is signed yet. Use "an agreement before it is signed" instead.' },
 
-  PULSE_CHECK:      { group: 'reading',  cadence: 'Weekly',        timelineDays: 30,
+  /*
+   * THE TWO THAT DO NOT END, AND THE CARD SAID THEY RAN FOR 30 DAYS.
+   *
+   * Her words: "I have a sales team and I want to monitor them for a year, this should be the one,
+   * but it is not from the entry chat." She was reading the card, and the card told her thirty days.
+   *
+   * The 30 is a seed, not a limit - it fills the timeline field so somebody who says nothing gets a
+   * sensible first period, and they set the real length two screens later. Every other situation has
+   * a natural end (a probation, a handover, a contract) and for those a number is the honest answer.
+   * These two run until you stop them, so printing a number was answering a question they do not
+   * have, with a figure that then read as a cap.
+   */
+  PULSE_CHECK:      { group: 'reading',  cadence: 'Weekly',        timelineDays: 30, ongoing: true,
                       notThisOneIf: 'Everyone does the same job in parallel. Use "several people in the same role" instead.' },
-  COHORT_CHECK:     { group: 'reading',  cadence: 'Every 2 weeks', timelineDays: 30,
+  COHORT_CHECK:     { group: 'reading',  cadence: 'Every 2 weeks', timelineDays: 30, ongoing: true,
                       notThisOneIf: 'They all started together. Use "onboarding several people at once" instead.' },
   SNAPSHOT:         { group: 'reading',  cadence: 'One time',      timelineDays: 1,
                       notThisOneIf: 'There is a specific thing you need people held to. Then pick that situation, so there is something to measure against.' },

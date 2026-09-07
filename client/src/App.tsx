@@ -344,7 +344,22 @@ export default function App() {
             {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
             <Route path="/set-password" element={<ChoosePasswordPage />} />
             <Route path="/reset-password" element={<ChoosePasswordPage />} />
-            <Route path="/start" element={<EntryChatPage />} />
+            {/*
+              * THE SAME DOOR AS /grounds/new, AND IT WAS NOT GUARDED.
+              *
+              * /start ends at `POST /entry/commit`, which asks `mayOpen` exactly as the create page
+              * does and throws a Forbidden for anybody who is not allowed. Nothing said so on the way
+              * in. So a member of an organisation set to NAMED_LEADS, or a guest from another
+              * company, could describe their situation, answer every setup question, give a full
+              * check-in, read their report - and be refused at the save, with all of it thrown away.
+              * That is strictly worse than the create page's version of this bug, which at least
+              * refused before the typing.
+              *
+              * `MayOpenCheckIns` reads `user?.mayOpenCheckIns !== false`, and an anonymous visitor
+              * has no user - so a stranger with no account still walks straight in, which is the
+              * whole point of this door. They become the admin of their own organisation.
+              */}
+            <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/join/confirm" element={<JoinConfirmPage />} />

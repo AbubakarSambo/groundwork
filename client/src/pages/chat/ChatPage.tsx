@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
@@ -527,14 +528,16 @@ export function ChatPage() {
 
   function send() {
     const content = input.trim()
-    if (!content || loading || done || !opened) return
+    /* `done` blocked this too, so Enter did nothing once the engine had signalled a close - the
+       other half of the input going dead. What locks the record is `completed`. */
+    if (!content || loading || completed || declined || !opened) return
     setInput('')
     if (taRef.current) { try { taRef.current.style.height = '38px' } catch { /* ref detached */ } }
     sendStreaming(content)
   }
 
   function quickSend(msg: string) {
-    if (loading || done || !opened) return
+    if (loading || completed || declined || !opened) return
     sendStreaming(msg)
   }
 
@@ -823,7 +826,7 @@ export function ChatPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.72 }}>
                 {priorTurns.map(m => (
                   <div key={`prior-${m.id}`} style={{ alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start', maxWidth: '85%', fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)', background: m.role === 'PERSON' ? 'var(--gw-blue-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '7px 10px' }}>
-                    {m.content}
+                    {nothingInternalReachesTheBubble(m.content)}
                   </div>
                 ))}
               </div>
@@ -886,7 +889,7 @@ export function ChatPage() {
                     </span>
                   )}
                 </span>
-              ) : m.content}
+              ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
                 <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
               )}
@@ -1046,7 +1049,36 @@ export function ChatPage() {
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
               <SessionReportCard checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} isInitiator={isInitiator} />
-              <div style={{ textAlign: 'center', paddingTop: 8 }}>
+              {/*
+                * WHERE THE REPORT LIVES, AND WHERE THE PEOPLE GO.
+                *
+                * The only way out of a finished session was "Back to check-ins", which is the list of
+                * every check-in in the organisation. So the report somebody had just read had no
+                * second home they could find - "the report showed up but I have no place else to see
+                * the report i just saw" - and there was nowhere to add the people who still have to
+                * check in, from the screen where you have just realised you need them.
+                *
+                * Both live on the check-in itself, one click away, and neither was linked from here.
+                */}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
+                <button
+                  onClick={() => navigate(`/grounds/${groundId}?tab=report`)}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  See the full report →
+                </button>
+                {/* The check-in itself, where the people, the sessions and the setup all live.
+                    Deliberately not deep-linked to a tab: the tab keys and their labels differ
+                    ("settings" is shown as "Setup"), and a link that lands on the wrong one is
+                    worse than a link that lands on the page and lets somebody look. */}
+                <button
+                  onClick={() => navigate(`/grounds/${groundId}`)}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Open this check-in
+                </button>
+              </div>
+              <div style={{ textAlign: 'center', paddingTop: 10 }}>
                 <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
                   ← Back to check-ins
                 </button>
@@ -1057,10 +1089,23 @@ export function ChatPage() {
 
         {/* Quick action chips */}
         <div style={{ padding: '8px 14px', background: 'white', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
+          {/*
+            * "COMPLETE SESSION" IS AN OFFER, NOT A LOCK.
+            *
+            * `done` is set the moment the engine signals the conversation has reached a close, and
+            * it was disabling the input, the send button and every quick action. So the button
+            * appearing took the keyboard away: "once the complete session button shows up i can't
+            * seem to be able to do anything, i can't keep typing."
+            *
+            * The engine deciding it has enough is a suggestion about the conversation, not a fact
+            * about whether the person is finished - and it fires while somebody is mid-thought more
+            * often than not. What actually locks the record is `completed`, which only happens after
+            * they click the button and confirm. That is the state the input should follow.
+            */}
           {QUICK_ACTIONS.map(a => (
-            <button key={a.label} onClick={() => quickSend(a.msg)} disabled={loading || done || !opened}
-              title={!opened ? 'Available once your session is open' : done ? 'Session is complete' : undefined}
-              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: (!opened || done) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (!opened || done) ? 0.5 : 1 }}
+            <button key={a.label} onClick={() => quickSend(a.msg)} disabled={loading || completed || declined || !opened}
+              title={!opened ? 'Available once your session is open' : completed ? 'This session is complete' : undefined}
+              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: (!opened || completed || declined) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
             >
               {a.label}
             </button>
@@ -1082,9 +1127,9 @@ export function ChatPage() {
             </label>
             <button
               onClick={() => { if (groundId) setPasteMode(true) }}
-              disabled={!groundId || done}
+              disabled={!groundId || completed || declined}
               title="Paste an email, Slack message, meeting notes, or any text"
-              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: groundId && !done ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId && !done ? 1 : 0.4, fontFamily: 'inherit' }}
+              style={{ padding: '0 10px', borderRadius: 6, background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: groundId && !completed && !declined ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, flexShrink: 0, whiteSpace: 'nowrap', height: 38, opacity: groundId && !completed && !declined ? 1 : 0.4, fontFamily: 'inherit' }}
             >
               📋 <span style={{ fontSize: 11 }}>Paste text</span>
             </button>
@@ -1100,11 +1145,11 @@ export function ChatPage() {
 
             <textarea ref={taRef} placeholder="Share what you have been working on."
               value={input} onChange={autoResize} onKeyDown={handleKeyDown}
-              disabled={loading || done || !opened}
+              disabled={loading || completed || declined || !opened}
               style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
             />
-            <button onClick={send} disabled={loading || done || !opened}
-              style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || done) ? 0.5 : 1 }}
+            <button onClick={send} disabled={loading || completed || declined || !opened}
+              style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
             >
               ↑
             </button>

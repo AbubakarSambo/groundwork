@@ -2262,6 +2262,76 @@ AUTHORITY CLARITY: If the mandate comes from more than one person - a board, inv
   },
 };
 
+/**
+ * THE STANDARD BEFORE THE GAP, AND THE PERSON'S OWN PART IN IT.
+ *
+ * FROM A CHECK-IN SHE READ BACK, NOT FROM A RULE. A lead opened a check-in about a project that had
+ * drifted, and twelve turns later the record was a case against one named person: her prototype, her
+ * failure, what she did not know - plus two colleagues named as agreeing. The last question but one
+ * finally landed on "does she have a written brief that says compassion-based?" and the answer was
+ * no. So the actual finding was that nobody had ever written down what right looked like, and the
+ * person who should have was the one giving the account. Twelve turns to reach it, and it arrived as
+ * a fact about HER rather than about him.
+ *
+ * IT WAS NOT THE MODEL GOING OFF-SCRIPT. `DRIFT_OPENING` opens: "Name the person and the area they
+ * are supposed to own. What specifically are they not doing that you believe they agreed to do?" The
+ * pack asked for a name and a charge sheet, and got one. This is the correction, and it goes FIRST
+ * for the reason the starting pack already records about its own ordering: order is the fix. A
+ * question asked fourth is answered fourth, by which point the conversation is already about a
+ * person.
+ *
+ * IT ALSO CHANGES WHAT THE OTHER SIDE WALKS INTO. The named person gives her own account after this
+ * one. Three colleagues having already agreed she is wrong is not two independent accounts, it is a
+ * verdict with a witness list - which is the one thing this product says it is not.
+ */
+const THE_STANDARD_BEFORE_THE_GAP = `THE STANDARD COMES FIRST, BEFORE ANY QUESTION ABOUT WHAT SOMEBODY IS NOT DOING.
+
+Ask, in this order, and do not move past it:
+  "What was agreed that this is falling short of?"
+  "Where is that written down, and has the person doing the work read it?"
+
+WHY IT IS FIRST. Without an agreed standard there is no gap, there is a disagreement - and those are
+handled completely differently. A person can fail to meet a standard. Nobody can fail to meet one
+that was never set, and treating the second as the first produces a conversation about somebody's
+judgement when it should be a conversation about a missing brief.
+
+IF THERE IS NO WRITTEN STANDARD, THAT IS THE FINDING AND YOU SAY SO PLAINLY, THERE AND THEN. Do not
+carry on collecting evidence about the person as though the standard existed. The record from this
+point is about an expectation that was never set, not about work that fell short of one. Say it in
+one sentence and keep going from there.
+
+NEVER ASK WHO ELSE AGREES. "Does anyone else share your view?" collects corroboration, and the
+people it names have not been asked. The other party gives their own account after this one and it
+has to be worth something when they do - three colleagues already on record agreeing with one side
+is a verdict with a witness list, not two independent accounts. If somebody volunteers that others
+agree, take it as one person's impression and do not build on it.`;
+
+/**
+ * THE ONE QUESTION THE RECORD KEPT LEAVING OUT: what the person giving it did.
+ *
+ * Same check-in. Every question was about the other person, and the thing that actually caused the
+ * situation - no brief was ever written - belonged to the person answering. It surfaced by accident,
+ * at the end, framed as her problem.
+ *
+ * A record built only of one person's account of somebody else's failure is the thing the product
+ * says it is not, and it is what this engine produces unless it is told otherwise. Asked directly,
+ * once, early, it is not an accusation: most people answer it honestly and it is usually the most
+ * useful line in the session.
+ */
+const YOUR_OWN_PART_IN_IT = `THEIR OWN PART, ASKED ONCE AND ASKED EARLY:
+  "What did you do, or not do, that helped get it here?"
+
+ASK IT IMMEDIATELY AFTER THE STANDARD, AND BEFORE ASKING WHO ELSE IS INVOLVED. Driven live three
+times with the standard question working correctly, this one lost every time to "who is on the team,
+and what does each person own" - the roster instruction elsewhere is strong and this was merely next
+in the list. Next in a list is not an order. The roster still gets asked; it gets asked after this.
+
+Not as a challenge - warmly, in one line, as an ordinary part of giving an account. If they answer with something about the other person
+again, ask once more for their own part and then move on; never press a third time.
+
+Record whatever they say, including "nothing". A person who genuinely could not have changed the
+outcome should have that on record too, because that is a finding about how the work is set up.`;
+
 const DRIFT_VALIDATION = `VALIDATION (deliver after the first response, not before; skip if they arrive with specific evidence):
 "Most people who come here have been sitting with a situation longer than they should have. Not because they are avoiding it. Because without evidence, the conversation is just a feeling against another feeling."`;
 
@@ -2559,6 +2629,10 @@ PURPOSE: Something has shifted - a direction has changed, a priority has moved, 
 
 OPENING: Ask the person what they believe the team is currently trying to achieve. Not what was agreed six months ago - what they believe is true today.
 
+${THE_STANDARD_BEFORE_THE_GAP}
+
+${YOUR_OWN_PART_IN_IT}
+
 DRIFT CHECK: Ask what has changed from the original plan or direction, as they understand it. If nothing has changed in their view, note that. If something has, ask when they first noticed it and whether it was discussed formally.
 
 TENSION QUESTION: Ask whether there is anything the team is not talking about openly that is affecting how people are working. If yes, name it. If they say no, accept it and note it.
@@ -2577,6 +2651,10 @@ const PIP_PACK = `MOMENT: Performance improvement.
 PURPOSE: A structured record of what improvement is required, what support is available, and what success looks like. Both the person on the plan and the person setting it give their own account independently. The record shows where they agree and where they differ.
 
 OPENING: Ask the person to describe, in their own words, what they understand the performance concern to be. Do not lead. If their account differs significantly from the concern as set out, note the gap.
+
+${THE_STANDARD_BEFORE_THE_GAP}
+
+${YOUR_OWN_PART_IN_IT}
 
 SUPPORT QUESTION: Ask what support or resources they believe are available to them during this period. If they are not aware of support that exists, note the gap.
 
@@ -2600,7 +2678,14 @@ const COHORT_CHECK_PACK = `MOMENT: Cohort check-in (many people, same question).
 
 PURPOSE: A group of people in the same role or programme (e.g. field officers, franchisees, a training cohort) each give their own independent account against a shared question. The value is the pattern across many individual accounts, and being able to see who is on track and who is stuck without them influencing each other.
 
-OPENING: Ask the person how things are going against the specific thing this cohort is checking on. One concrete example, not a general sentiment.
+FIRST SESSION - WHAT IS THIS COHORT BEING READ AGAINST? A recurring read with no target is a
+repeated snapshot, and this pack is not that. Before the first "how is it going", establish it:
+  "What is each of these people working to this period? Something that could be checked."
+  "Which parts of that do they own, as opposed to depend on somebody else for?"
+If they cannot say, record that plainly - a cohort being watched against nothing is the most useful
+thing this ground can find, and it is a finding about how the work is set up rather than about them. Every session after the first opens from what was set here.
+
+OPENING (session 2 onwards): Ask the person how things are going against the specific thing this cohort is checking on. One concrete example, not a general sentiment.
 
 BLOCKER QUESTION: Ask what is getting in the way for them specifically. A named obstacle, not "the usual".
 
@@ -2629,6 +2714,25 @@ RECORD: The record should show, per person: one concrete example of progress, on
 const COHORT_ONBOARDING_LEAD_PACK = `MOMENT: You are running an onboarding period for several people who each started the same role. At the end of it you have to say whether each of them is right for the role.
 
 PURPOSE: Build the record of how the onboarding itself is going, and of what you are actually basing your view of each person on. They do not work with each other, so you are the only person who sees all of them - and the only source of a view on any of them.
+
+FIRST SESSION - SET WHAT THEY ARE BEING ONBOARDED AGAINST, BEFORE READING ANYTHING.
+Reported from the screen: a lead opened this to set objectives for new sales managers and the first
+question was "which of them have you spent real time with this week?" - a read, in session one, of a
+period that has no standard yet. Their reply was "i am trying to set their objectives to check in
+against, this questioning is confusing", and they were right.
+
+So on session 1 ask, and do not move past it:
+  "What do these people have to achieve in this period? Say it as something that could be checked."
+  "What would tell you at the end that one of them is right for the role, and what would tell you
+   they are not?"
+
+Press for something checkable, once. "Settling in well" is not a standard; "eight qualified meetings
+a month and two signed by day ninety" is. If they genuinely cannot name one, record that plainly and
+say what it means: at the end of this period a decision gets made about each of these people, and
+without a standard it gets made on impressions. That is a finding about how the onboarding is set
+up, not about them.
+
+ONLY THEN the questions below, and every session after this one opens from what was set here.
 
 OPENING: Ask who they have actually got to this period, and who they have not. Not how the cohort is doing in general - which of them they have spent real time with.
 
@@ -2784,7 +2888,21 @@ export function buildScenarioPackForParty(
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
     case GroundScenario.NEW_MANAGER:
-    case GroundScenario.CONTRACT_RENEWAL: {
+    case GroundScenario.CONTRACT_RENEWAL:
+    /*
+     * ROLE_HANDOVER, WHICH HAD ITS QUESTIONS WRITTEN AND NO CASE TO REACH THEM.
+     *
+     * It is in STARTING_ROLE_QUESTIONS with two of the sharpest questions in this file - what is
+     * fragile because you have been watching it, and what somebody could undo without knowing they
+     * were undoing it - and it is in the legacy SCENARIO_PACKS record as composeStartingPack. The
+     * switch below is what the live path actually reads, and it had no case, so every handover
+     * check-in fell to the empty default and was interviewed generically.
+     *
+     * This is the third time: the comment further down records BOARD_STRATEGY and COHORT_CHECK
+     * failing the same way, written and unreachable. A test that reads the enum rather than the
+     * cases is at the bottom of this change - see every-scenario-is-reachable.spec.ts.
+     */
+    case GroundScenario.ROLE_HANDOVER: {
       const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
       if (isInitiator) {
         return [
@@ -2821,6 +2939,9 @@ export function buildScenarioPackForParty(
         return [
           `MOMENT: Something has drifted.`,
           DRIFT_VALIDATION,
+          /* First, and the ordering is the whole correction - see the note on this block. */
+          THE_STANDARD_BEFORE_THE_GAP,
+          YOUR_OWN_PART_IN_IT,
           DRIFT_OPENING,
           DRIFT_INITIATOR_VARIANTS,
           DRIFT_WORRY_TENSION,
@@ -2892,6 +3013,23 @@ export function buildScenarioPackForParty(
 
     case GroundScenario.PIP:
       return PIP_PACK;
+
+    /*
+     * THE OTHER TWO THAT WERE WRITTEN AND UNREACHABLE.
+     *
+     * Both packs are full, specific and party-aware in their own prose - CONTRACT_REVIEW names
+     * "twenty per cent OF WHAT" as the whole argument, IMPLEMENTATION_TRACKING carries the silence
+     * rule that stops a monthly ground asking twelve questions about a relationship that is fine.
+     * Neither had a case, so both were interviewed with nothing.
+     *
+     * They are symmetric on purpose: each pack names its own opening for "the side that set this
+     * up" and for "the other side", so the split is inside the text rather than in this switch.
+     */
+    case GroundScenario.CONTRACT_REVIEW:
+      return CONTRACT_REVIEW_PACK;
+
+    case GroundScenario.IMPLEMENTATION_TRACKING:
+      return IMPLEMENTATION_TRACKING_PACK;
 
     // BOARD_STRATEGY and COHORT_CHECK packs were written (2026-07-10, #17/#16)
     // directly into SCENARIO_PACKS (the legacy combined-format seed record)
