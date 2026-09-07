@@ -52,7 +52,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
       <!-- Header -->
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Pricing</p>
-      <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Simple, honest pricing.</h1>
+      <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Pricing</h1>
       <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
 
       <!-- Free tier -->
@@ -129,86 +129,18 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <a class="gw-tap" href="mailto:hello@myground.work" style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
       </div>
 
-      <!-- Run it yourself, or run it with a coach. This sits after the plans
-           because it is a delivery choice on top of a subscription, not a plan
-           of its own - the subscription is still required either way. The two
-           coaching prices are a service, not a seeded tier, which is why the
-           pricing-parity guard has to know about them by name. -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Run it yourself, or run it with a coach</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">Every plan above is the software. Most teams run it themselves. If you would rather have somebody design the check-ins with you and sit in the room when the report lands, that is the Guided option.</p>
-
-      <div style="background:#fff;border:1px solid var(--gw-border);border-radius:12px;padding:20px 22px;margin-bottom:20px;">
-        <div class="del-row del-head-row" style="padding-bottom:8px;">
-          <div class="del-head"></div>
-          <div class="del-head">DIY</div>
-          <div class="del-head">Guided</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">Setup and situation design</div>
-          <div class="del-cell diy">You, from templates</div>
-          <div class="del-cell guided">Built with you, situation by situation</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">When the report lands</div>
-          <div class="del-cell diy">You read it</div>
-          <div class="del-cell guided">Your coach walks the team through it</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">When something surfaces</div>
-          <div class="del-cell diy">You handle it</div>
-          <div class="del-cell guided">Your coach mediates, in scheduled sessions</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">Cost</div>
-          <div class="del-cell diy">Your subscription only</div>
-          <div class="del-cell guided">Your subscription, plus coaching below</div>
-        </div>
-      </div>
-
       <!--
-        THE PRICES USED TO BE REPEATED HERE, IN A SECOND PAIR OF CARDS.
+        RUN IT YOURSELF, OR WITH SUPPORT.
         
-        This section explains the difference between running it yourself and running it with a
-        coach, which is worth its own space. The numbers moved down to "Help, where you want it",
-        where they sit beside setup and integration - the other two things that are a person's time
-        rather than software. One place for a price is the rule that stopped the retainer being
-        wrong in three files.
+        What sat here was a DIY-versus-Guided comparison table, a note about booking two sessions
+        back to back, a block about how a coach is chosen, and a second heading introducing the same
+        three cards a second time. Removed on Hafsah's instruction, and the reason is worth keeping:
+        it explained the shape of an offer at length before showing what any of it costs. The three
+        cards below say what the things are and what they cost, which is what somebody on a pricing
+        page is there for.
       -->
-      <p style="font-size:13px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">What coaching costs, and the two other things our team does by hand, are below.</p>
-
-
-      <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:18px 20px;margin-bottom:24px;">
-        <p style="font-size:13px;font-weight:700;color:var(--gw-navy);margin:0 0 6px;">Book two sessions per issue, back to back</p>
-        <p style="font-size:13px;color:var(--gw-text);line-height:1.7;margin:0;">One session to understand the situation, the next to work through it. Split across weeks it turns into talking about the problem rather than dealing with it, which is why we will not mediate cold.</p>
-      </div>
-
-      <!--
-        NOT ONE NAMED COACH.
-        
-        This block introduced Sahar as "your people coach", which is both a promise about who turns
-        up and a smaller offer than the real one. She may coach your team herself, and she may
-        find you somebody who fits the situation better - a scenario, a seniority, a language, an
-        industry. Naming her as the coach forecloses the second, and the second is usually the more
-        useful answer.
-      -->
-      <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:20px 24px;margin-bottom:48px;">
-        <p style="font-size:14px;font-weight:700;color:var(--gw-text);margin:0 0 10px;">We find the coach who fits the situation</p>
-        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Tell us what the report found and who is in the room. We identify a coach suited to it: the scenario, the seniority, the language, the industry. You meet them before you commit.</p>
-        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 12px;">These are the conversations a report makes unavoidable: an expectation nobody said out loud, two people who thought they agreed, a role that quietly stopped being the job. A coach in the room means somebody sitting with your team, not a summary emailed to you.</p>
-        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=A%20coach%20in%20the%20room" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Ask about a coach &#8594;</a>
-      </div>
-
-      <!--
-        THE THREE THINGS THAT ARE PEOPLE RATHER THAN SOFTWARE.
-        
-        Nothing on this site said the API existed, so the only way to learn you could connect
-        Groundwork to your own systems was to already be inside the product. And all three of these
-        end the same way: you ask for a call, our team talks to you, and what you agree is invoiced
-        afterwards. None of them is bought from a form, so none of them offers a buy button that
-        would be a lie.
-      -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Help, where you want it</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">The software is the plan above and most teams run it on their own. Your people and objectives can come in from tools you already use, what check-ins produce can go back out, and you can put a check-in inside your own product. The API and the keys come with your subscription: your engineers can do all of it without talking to us. These three are for when you would rather not.</p>
+      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Run it yourself, or with support</h2>
+      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">The plans above are the software, and most teams run it on their own. These three are for when you would rather not: a coach in the room, somebody to set you up, or an engineer to connect it to the tools you already use.</p>
 
       <div class="why-grid" style="margin-bottom:16px;">
         <div class="why-card">
@@ -236,12 +168,19 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
       <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:48px;">
         <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 8px;">All three start with a call, and none of them is charged to a card. Subscribe first, ask from inside the product, and we will tell you the number before anybody starts. What you agree is invoiced by us afterwards.</p>
-        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Request%20a%20call" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Request a call &#8594;</a>
+        <!--
+          A BUTTON, NOT AN UNDERLINED PHRASE. This is the only way to buy any of the three things
+          above, and it was styled as a footnote in the same weight as the sentence before it. If
+          asking for a call is the action the section exists for, it has to look like the action.
+        -->
+        <a href="mailto:hello@myground.work?subject=Request%20a%20call" style="display:inline-block;background:var(--gw-navy);color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:7px;text-decoration:none;margin-top:4px;">Request a call &#8594;</a>
       </div>
 
       <!-- FAQ -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Common questions</h2>
-      <p style="font-size:14px;color:var(--gw-sub);margin-bottom:24px;">Answers to what most people ask before they start.</p>
+      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:24px;">Common questions</h2>
+      <!-- "Answers to what most people ask before they start" under a heading that says "Common
+           questions" is the heading again in a longer sentence. Removed rather than reworded: the
+           questions are right underneath it. -->
 
       <div style="margin-bottom:48px;">
         <div class="faq-item">
@@ -290,7 +229,6 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
         <a class="gw-footer-btn" href="/">Home</a>
         <a class="gw-footer-btn" href="/how-it-works">How it works</a>
-        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
         <a class="gw-footer-btn" href="/privacy-and-ai">Privacy and AI</a>
         <a class="gw-footer-btn" href="/about">About</a>

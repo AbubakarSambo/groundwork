@@ -3,7 +3,7 @@ import Nav from '../components/Nav.astro';
 import Layout from '../layouts/Layout.astro';
 const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 ---
-<Layout title="How it works · Groundwork" description="Start a check-in, everyone checks in privately, and Groundwork shows where people agree, where they understand things differently, and where a conversation is needed, from a clear beginning to a clear end." canonicalPath="/how-it-works">
+<Layout title="How it works · Groundwork" description="Start a check-in, everyone answers privately, and Groundwork shows where people agree, where they understood things differently, and where a conversation is needed." canonicalPath="/how-it-works">
   <style>
     *,*::before,*::after{box-sizing:border-box}
     body{margin:0;overflow-x:hidden}
@@ -27,7 +27,9 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">How it works</p>
       <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">How Groundwork works.</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">Every check-in follows the same simple path, from a clear beginning to a clear end.</p>
+      <!-- "the same simple path, from a clear beginning to a clear end" is three adjectives and no
+           information. What somebody on this page wants is how many steps and who does what. -->
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">Seven steps. You set the starting point, everybody answers separately, Groundwork writes the shared record, and you close it.</p>
 
       <div style="display:flex;flex-direction:column;gap:0;margin-bottom:48px;">
         <div style="display:flex;gap:20px;padding:24px 0;border-bottom:1px solid var(--gw-border);">
@@ -119,7 +121,6 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
         <a class="gw-footer-btn" href="/">Home</a>
         <a class="gw-footer-btn" href="/how-it-works">How it works</a>
-        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
         <a class="gw-footer-btn" href="/privacy-and-ai">Privacy and AI</a>
         <a class="gw-footer-btn" href="/about">About</a>
