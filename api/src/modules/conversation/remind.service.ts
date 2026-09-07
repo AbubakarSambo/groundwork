@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
+import { worthNudging } from './who-is-worth-nudging';
 import {
   whatToDoToday,
   theEmailForTheLead,
@@ -68,6 +69,10 @@ export class RemindService {
         email: true,
         userId: true,
         lastNudgedAt: true,
+        /* Selected, not cast. `(p as any).managingOnly` reads undefined off a row that never
+           carried the column, so the exclusion would have been permanently false — the fault this
+           is fixing, wearing the fix's clothes. */
+        managingOnly: true,
         user: { select: { firstName: true, emailNotifications: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
@@ -82,31 +87,39 @@ export class RemindService {
       return session && session.status === CheckInStatus.COMPLETED;
     });
 
-    const incomplete = allParticipants.filter((p) => {
-      const session = p.checkIns[0];
-      return !session || session.status !== CheckInStatus.COMPLETED;
-    });
+    /*
+     * NOT SIMPLY "NOT COMPLETED". See who-is-worth-nudging.ts — that test also said yes to
+     * somebody who declined, to a managing-only lead who has no check-in by design, and to
+     * anybody with no check-in for this session, whose reminder link was then built out of an
+     * empty string and pointed at nothing.
+     */
+    const incomplete = worthNudging(
+      allParticipants.map((p) => ({
+        ...p,
+        session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any } : null,
+        managingOnly: p.managingOnly,
+        emailNotifications: p.user?.emailNotifications ?? null,
+        hoursSinceLastNudge: p.lastNudgedAt
+          ? (Date.now() - p.lastNudgedAt.getTime()) / (1000 * 60 * 60)
+          : null,
+      })),
+    );
 
     let count = 0;
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
 
     for (const participant of incomplete) {
-      // Respect "Ground invites and reminders" being turned off - a reminder
-      // email is exactly what that setting describes ("check-in is due").
-      if (participant.user?.emailNotifications === false) continue;
-
-      // Throttle: do not nudge the same participant more than once per 24 h.
-      if (participant.lastNudgedAt) {
-        const hoursSince = (Date.now() - participant.lastNudgedAt.getTime()) / (1000 * 60 * 60);
-        if (hoursSince < 24) continue;
-      }
+      /* The switch and the once-a-day throttle are both decided by whyNotNudge above, so they are
+         not re-tested here — two copies of the same rule is how they come apart. */
 
       /* THROUGH THE HELPER, BECAUSE THIS FILE GOT THE PATH WRONG.
          It hand-built `/check-ins/:id` and the client route is `/checkin/:id`, so every
          reminder this service has ever sent landed on the not-found page. The helper is
          the one place that knows, and reaching past it into `frontendUrl` is what let the
          two drift. */
-      const checkInUrl = this.email.buildCheckInUrl(participant.checkIns[0]?.id ?? '');
+      /* `session.id` is guaranteed present by whyNotNudge, which refuses a party without one
+         rather than building a link out of an empty string. */
+      const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
       const specificThing = `session ${checkIn.sessionNumber} on "${ground.label}"`;
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
@@ -276,8 +289,16 @@ export class RemindService {
         continue;
       }
 
-      // #72 - On the Day-14 nudge (last threshold), check for 3 consecutive missed check-ins.
-      if (daysElapsed === 14) {
+      /*
+       * #72 — at or past the last chase day, check for three consecutive missed check-ins.
+       *
+       * This was `daysElapsed === 14`: one pass, on one hardcoded day, on a schedule the lead can
+       * change. A ground chasing on [2, 5] never reached this at all, and a ground chasing on
+       * [3, 7, 14] reached it only if the cron ran that morning. The guard below is what stops it
+       * repeating — it looks at the reminders already sent — so the window can be open.
+       */
+      const lastChaseDay = policy.days.length ? Math.max(...policy.days) : 14;
+      if (daysElapsed >= lastChaseDay) {
         try {
           await this.checkAndSendConsecutiveAbsenceReminder(
             checkInUrl,
@@ -365,7 +386,25 @@ export class RemindService {
     }
 
     if (consecutiveMissed >= 3) {
+      /*
+       * ONCE. The window this runs in is now open rather than one exact day, so without a record
+       * of having sent it the same person would be told every morning that they have missed three
+       * rounds — which is the chase this whole file exists to keep proportionate.
+       *
+       * Stamped only after the send succeeds: a failed email that stamped the column would mean
+       * nobody is ever told, and nothing would say so.
+       */
+      const already = await this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { absenceToldAt: true },
+      });
+      if (already?.absenceToldAt) return;
+
       await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed, checkInUrl);
+      await this.prisma.groundParticipant.update({
+        where: { id: participantId },
+        data: { absenceToldAt: new Date() },
+      });
       this.logger.warn(
         `Absence reminder sent to participant ${participantId}: ${consecutiveMissed} consecutive missed check-in(s) on "${groundName}"`,
       );

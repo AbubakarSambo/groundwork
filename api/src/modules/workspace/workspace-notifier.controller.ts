@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles, Role } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { WorkspaceNotifierService } from './workspace-notifier.service';
+import { theKind } from './a-kind-we-do-not-have';
 
 /**
  * Connecting a channel is a human's job in the console, so this is
@@ -18,6 +19,8 @@ import { WorkspaceNotifierService } from './workspace-notifier.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 export class WorkspaceNotifierController {
+  /* `:kind` is a path segment somebody can type. See a-kind-we-do-not-have.ts — upper-casing it
+     into a Prisma enum answered a typo with a 500. */
   constructor(private readonly notifiers: WorkspaceNotifierService) {}
 
   @Get()
@@ -34,7 +37,7 @@ export class WorkspaceNotifierController {
     @Param('kind') kind: string,
     @Body() dto: { url: string; channelSaid?: string },
   ) {
-    return this.notifiers.connect(organizationId, kind.toUpperCase() as WorkspaceKind, dto?.url ?? '', dto?.channelSaid);
+    return this.notifiers.connect(organizationId, theKind(kind), dto?.url ?? '', dto?.channelSaid);
   }
 
   @Post(':kind/test')
@@ -45,26 +48,26 @@ export class WorkspaceNotifierController {
     @Param('kind') kind: string,
     @Body() dto: { link?: string },
   ) {
-    return this.notifiers.sayHello(organizationId, kind.toUpperCase() as WorkspaceKind, dto?.link ?? 'https://app.groundwork.africa');
+    return this.notifiers.sayHello(organizationId, theKind(kind), dto?.link ?? 'https://app.groundwork.africa');
   }
 
   @Post(':kind/on')
   @HttpCode(200)
   @ApiOperation({ summary: 'Start posting notices there' })
   on(@CurrentUser('organizationId') organizationId: string, @Param('kind') kind: string) {
-    return this.notifiers.turn(organizationId, kind.toUpperCase() as WorkspaceKind, true);
+    return this.notifiers.turn(organizationId, theKind(kind), true);
   }
 
   @Post(':kind/off')
   @HttpCode(200)
   @ApiOperation({ summary: 'Stop posting notices there, keeping the connection' })
   off(@CurrentUser('organizationId') organizationId: string, @Param('kind') kind: string) {
-    return this.notifiers.turn(organizationId, kind.toUpperCase() as WorkspaceKind, false);
+    return this.notifiers.turn(organizationId, theKind(kind), false);
   }
 
   @Delete(':kind')
   @ApiOperation({ summary: 'Forget the address entirely' })
   disconnect(@CurrentUser('organizationId') organizationId: string, @Param('kind') kind: string) {
-    return this.notifiers.disconnect(organizationId, kind.toUpperCase() as WorkspaceKind);
+    return this.notifiers.disconnect(organizationId, theKind(kind));
   }
 }

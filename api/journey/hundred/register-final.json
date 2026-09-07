@@ -122,10 +122,10 @@
  {
   "group": "examined artefacts",
   "issue": "224 of 237 check-ins never say who will read what somebody writes",
-  "evidence": "read from the transcripts",
+  "evidence": "CORRECTED then FIXED: measured from the transcripts, but the SCREEN does say it \u2014 a first-session explainer plus a header line. The real defect underneath: the explainer was gated on sessionNumber === 1, so anybody added halfway through was never shown it. That gate is fixed.",
   "severity": "high",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "examined artefacts",
@@ -186,10 +186,10 @@
  {
   "group": "examined artefacts",
   "issue": "27 of 145 reports were written and never released, so they were shown to nobody",
-  "evidence": "read from the reports",
+  "evidence": "CORRECTED: not a defect. Release is a deliberate admin press (\"report ready \u2014 you release it\"), and the audit runner never pressed it. Worth noting that the shared report is readable before release, so what release means is unclear to both sides.",
   "severity": "high",
   "journeys": null,
-  "state": "open"
+  "state": "corrected"
  },
  {
   "group": "examined artefacts",
@@ -314,10 +314,10 @@
  {
   "group": "individual report",
   "issue": "A finished check-in has no summary of its own: somebody who answered for ten minutes is handed nothing until everybody else has answered too",
-  "evidence": "GET artifact returned {\"artifact\":null} on a COMPLETED check-in",
+  "evidence": "CORRECTED then FIXED: not missing \u2014 it arrives about 22 seconds after finishing, because it is built fire-and-forget so a model failure cannot block completion. Driven and timed. The endpoint now says which of the three states it is in rather than returning a bare null.",
   "severity": "high",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "notifications",

@@ -55,6 +55,10 @@ function makeReleasedReport(groundId = 'g1') {
 function makeService(groundRow: any, activationStatus: 'ACTIVATED' | 'PENDING' | null = 'ACTIVATED') {
   const activation = activationStatus ? { status: activationStatus } : null;
   const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(async () => groundRow), findFirst: jest.fn(async () => groundRow) },
     report: { update: jest.fn(async () => ({ releasedAt: new Date() })) },
     reportActivation: { findUnique: jest.fn(async () => activation), findMany: jest.fn(async () => []) },
@@ -166,6 +170,10 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
   it('throws NotFoundException when org does not match ground owner', async () => {
     const ground = makeGround({ organizationId: 'org-A', report: makeReleasedReport() });
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: {
         findFirst: jest.fn(async (args: any) =>
           args.where.organizationId === 'org-A' ? ground : null,
@@ -184,6 +192,10 @@ describe('GW-PRI-05: release() is scoped to the requesting org', () => {
       report: { ...makeReleasedReport(), releasedAt: null },
     });
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: {
         findFirst: jest.fn(async (args: any) =>
           args.where.organizationId === 'org-A' ? ground : null,
@@ -215,6 +227,10 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
 
     const activated = { status: 'ACTIVATED' };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: { findUnique: jest.fn(async () => activated) },
       checkIn: { findMany: jest.fn(async () => []) },
@@ -246,6 +262,10 @@ describe('GW-PRI-06: post-report guide and solo artifact are scoped to each part
 
     const activated = { status: 'ACTIVATED' };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: { findUnique: jest.fn(async () => activated) },
       checkIn: { findMany: jest.fn(async () => []) },

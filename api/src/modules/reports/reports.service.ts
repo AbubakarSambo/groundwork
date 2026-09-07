@@ -37,6 +37,7 @@ import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 import { notTheWordParty } from './not-the-word-party';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
+import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -2278,6 +2279,39 @@ happened, and what is in the way.`;
     }));
   }
 
+  /**
+   * The documents this reader may know about, by name, with whether anything read them.
+   *
+   * Visibility is `canSeeDocument`'s question and is asked of it rather than answered again here.
+   */
+  private async whatItRestsOn(
+    groundId: string,
+    parties: any[],
+    viewerParticipantId: string | null,
+    viewerIsLead: boolean,
+  ) {
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { groundId },
+      select: { id: true, fileName: true, participantId: true, visibility: true, assessment: true },
+    });
+    if (!docs.length) return { documents: [], otherPartiesHave: 0, nothing: nothingRestsOnADocument() };
+
+    return whatThisRecordRestsOn(
+      docs.map((d) => ({
+        id: d.id,
+        fileName: d.fileName,
+        participantId: d.participantId,
+        visibility: d.visibility,
+        assessed: d.assessment !== null && d.assessment !== undefined,
+      })),
+      { participantId: viewerParticipantId, isLead: viewerIsLead },
+      labelsForParties(parties as any),
+      /* The same flag documents.service reads: off means every document is private to its
+         uploader whatever the column says, and this list must agree with that. */
+      this.config.get<boolean>('app.contextEnabled') === true,
+    );
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2356,6 +2390,11 @@ happened, and what is in the way.`;
         soloArtifact,
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
         declined: await this.declinedThisRound(groundId, ground.participants as any),
+        /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
+           a hundred and forty-five mentioned a document at all — the synthesis prompt is handed a count
+           and nothing else. Computed rather than asked of a model, so a document cannot vanish from the
+           account of what happened. See what-this-record-rests-on.ts. */
+        restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
       };
     }
 
@@ -2419,6 +2458,11 @@ happened, and what is in the way.`;
        * nothing about the fourth person having refused.
        */
       declined: await this.declinedThisRound(groundId, ground.participants as any),
+      /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
+         a hundred and forty-five mentioned a document at all — the synthesis prompt is handed a count
+         and nothing else. Computed rather than asked of a model, so a document cannot vanish from the
+         account of what happened. See what-this-record-rests-on.ts. */
+      restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
       ...(this.confidenceEnabled()
         ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin)
         : {}),

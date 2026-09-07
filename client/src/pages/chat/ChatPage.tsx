@@ -625,7 +625,19 @@ export function ChatPage() {
    *
    * An explainer can wait. An error cannot.
    */
-  const showPrivacyFirst = knowWhatIsHere && sessionNumber === 1 && !privacyAcknowledged && msgs.length === 0 && !openFailed
+  /*
+   * AND IT IS NOT A FACT ABOUT THE GROUND'S SESSION NUMBER.
+   *
+   * This required `sessionNumber === 1`, which is a fact about the check-in rather than about the
+   * person reading it. Somebody added at session 3 — a new manager, a colleague brought in halfway
+   * through — has their first ever check-in numbered 3, so they were never shown this at all, and
+   * wrote their account of the work having been told nothing about who reads it. Found by the
+   * hundred-journey audit, which counted how many check-ins ever say so.
+   *
+   * The acknowledgement is what stops it being read twice, and it already errs the safe way: a
+   * person on a new device sees the explainer again rather than never.
+   */
+  const showPrivacyFirst = knowWhatIsHere && !privacyAcknowledged && msgs.length === 0 && !openFailed
 
   if (showPrivacyFirst) {
     return (

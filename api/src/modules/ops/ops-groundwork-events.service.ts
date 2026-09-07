@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { isReallyFromGroundwork, whatItMeansForUs } from './what-groundwork-tells-us';
 
@@ -9,6 +10,14 @@ import { isReallyFromGroundwork, whatItMeansForUs } from './what-groundwork-tell
  * to nothing, so a released report had to be gone and found and a commitment
  * made in a check-in never reached the board somebody is measured on.
  */
+/** The id the schema gives the single ops-integration row. */
+export const THE_ONE_ROW = 'the-one-row';
+
+/** A stable id for a delivery that arrived without one. Same body, same id, across retries. */
+function idFromBody(rawBody: string): string {
+  return createHash('sha256').update(rawBody).digest('hex').slice(0, 32);
+}
+
 @Injectable()
 export class OpsGroundworkEventsService {
   private readonly logger = new Logger(OpsGroundworkEventsService.name);
@@ -24,7 +33,19 @@ export class OpsGroundworkEventsService {
    * rather than argued about across a network boundary.
    */
   async received(rawBody: string, signature: string | undefined, eventId: string | undefined) {
-    const row = await this.prisma.opsIntegration.findFirst({ select: { webhookSecret: true } });
+    /*
+     * THE ROW FOR THIS SIDE, not whichever row the database returns first.
+     *
+     * `findFirst` with no `where` asks for an arbitrary integration row, so the secret an event is
+     * checked against was whichever one the database happened to return. The model declares its
+     * own id — `@id @default("the-one-row")` — so there is a named row to ask for, and a second
+     * row (a staging credential pasted in, a half-finished rotation) can no longer silently change
+     * what verifies.
+     */
+    const row = await this.prisma.opsIntegration.findUnique({
+      where: { id: THE_ONE_ROW },
+      select: { webhookSecret: true },
+    });
     const secret = row?.webhookSecret;
 
     let payload: Record<string, unknown> = {};
@@ -37,7 +58,19 @@ export class OpsGroundworkEventsService {
     }
 
     const kind = typeof payload.event === 'string' ? payload.event : (payload.kind as string) ?? 'unknown';
-    const id = eventId ?? (payload.id as string) ?? `unsigned-${Date.now()}`;
+    /*
+     * AN ID DERIVED FROM THE DELIVERY, NOT FROM THE CLOCK.
+     *
+     * The fallback was `unsigned-${Date.now()}`, which is a different value every millisecond — so
+     * the upsert below, whose whole job is "the same delivery twice is one row", could never match
+     * anything for an event that arrived without an id. Retries are normal, and each one became a
+     * second fact in a table the ops board reads as a count of what happened.
+     *
+     * A hash of the body is stable across retries of the same delivery and different for a
+     * different one, which is exactly what deduplication needs. Prefixed so it is obvious in the
+     * table which ids we derived rather than were given.
+     */
+    const id = eventId ?? (payload.id as string) ?? `derived-${idFromBody(rawBody)}`;
 
     const checked = secret
       ? isReallyFromGroundwork(rawBody, signature, secret)

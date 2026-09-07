@@ -988,6 +988,10 @@ model GroundParticipant {
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]        @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?      @map("last_nudged_at") // throttles reminder emails (B1)
+  /// When they were last told they have missed three rounds in a row. The absence reminder used to
+  /// fire on one exact day, so nothing needed to remember it; now that a passed day is still due,
+  /// this is what stops the same person being told every morning. Null means never told.
+  absenceToldAt              DateTime?      @map("absence_told_at")
   soloArtifact               String?        @map("solo_artifact") @db.Text // single-party record summary after session 1 (B2)
   soloArtifactAt             DateTime?      @map("solo_artifact_at")
   soloArtifactShared         Boolean        @default(false) @map("solo_artifact_shared") // whether participant chose to share their individual report

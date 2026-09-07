@@ -41,8 +41,12 @@ describe('the privacy screen does not flash', () => {
     expect(SRC).toContain('!openFailed')
   })
 
-  it('and still only on the first session, once', () => {
-    expect(SRC).toContain('sessionNumber === 1 && !privacyAcknowledged')
+  it('and still only once, decided by the acknowledgement rather than by the session number', () => {
+    /* CHANGED DELIBERATELY. This asserted `sessionNumber === 1`, which is a fact about the ground:
+       somebody added at session 3 has no session 1 of their own and was never shown the explainer
+       at all. The acknowledgement is what makes it once. */
+    expect(SRC).toContain('!privacyAcknowledged && msgs.length === 0')
+    expect(SRC).not.toContain('sessionNumber === 1 && !privacyAcknowledged')
     expect(SRC).toContain("localStorage.setItem('gw_privacy_seen', '1')")
   })
 })

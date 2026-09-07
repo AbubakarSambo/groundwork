@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, ForbiddenException, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import { holdsScope } from './scopes';
 
 export const REQUIRED_SCOPE = 'required_scope';
 /** Declares what a public route needs. A route with none is a mistake, and the guard says so. */
@@ -66,7 +67,8 @@ export class MachineTokenGuard implements CanActivate {
       throw new ForbiddenException('This endpoint has no declared scope and cannot be called.');
     }
     const scopes: string[] = claims.scopes ?? [];
-    if (!scopes.includes(required)) {
+    /* `holdsScope`, not `includes`: a caller holding graph:write may read the graph. See scopes.ts. */
+    if (!holdsScope(scopes, required)) {
       throw new ForbiddenException(`This token does not hold the ${required} scope.`);
     }
 

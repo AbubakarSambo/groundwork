@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { coachApi, type CoachRequestRow } from '@/api/coach'
 import { feedbackApi } from '@/api/feedback'
 import { formatMonthlyPrice, type SubscriptionPlan } from '@/api/billing'
+import { SectionFailed } from './a-section-that-failed-says-so'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,12 +51,15 @@ function Bar({ pct, color = 'var(--gw-navy)' }: { pct: number; color?: string })
 
 function WhatsAppToggle() {
   const qc = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['admin-whatsapp'], queryFn: adminApi.getWhatsAppStatus })
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-whatsapp'], queryFn: adminApi.getWhatsAppStatus })
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => adminApi.setWhatsAppEnabled(enabled),
     onSuccess: (updated) => qc.setQueryData(['admin-whatsapp'], updated),
   })
-  if (isLoading || !data) return null
+  /* Was `return null` on a failed fetch, which is indistinguishable from the feature not
+     existing. See a-section-that-failed-says-so.tsx. */
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="WhatsApp" error={error} retry={() => refetch()} />
   return (
     <div style={{ ...C, padding: '14px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -456,8 +460,9 @@ const rankOf = (plan: string) => {
 }
 
 function PricingPanel() {
-  const { data, isLoading } = useQuery({ queryKey: ['admin-pricing'], queryFn: adminApi.getPricing })
-  if (isLoading || !data) return null
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin-pricing'], queryFn: adminApi.getPricing })
+  if (isLoading) return null
+  if (error || !data) return <SectionFailed what="Pricing" error={error} retry={() => refetch()} />
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {[...data].sort((a, b) => rankOf(a.plan) - rankOf(b.plan)).map(row => <PricingRow key={row.plan} row={row} />)}
@@ -770,13 +775,14 @@ function UsageTab({ data }: { data: UsageStatsData }) {
  */
 function InAppFeedback() {
   const qc = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['in-app-feedback'], queryFn: feedbackApi.list, retry: false })
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['in-app-feedback'], queryFn: feedbackApi.list, retry: false })
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => feedbackApi.updateStatus(id, status),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['in-app-feedback'] }) },
     onError: () => toast.error('That did not change — try again.'),
   })
   if (isLoading) return null
+  if (error) return <SectionFailed what="Feedback" error={error} retry={() => refetch()} />
 
   const rows = data ?? []
   const open = rows.filter(r => r.status === 'new')

@@ -32,8 +32,20 @@ describe('what to do about one person today', () => {
       .toEqual({ do: 'nudge them' });
   });
 
-  it('does nothing on a day it does not', () => {
-    const decided = whatToDoToday({ policy: policy(), daysOpen: 5, hoursSinceLastNudge: null, leadAlreadyTold: false });
+  /*
+   * REWRITTEN, deliberately: this asserted that day 5 on a [3,7,14] ground does nothing even when
+   * the person has never been nudged. That was exact-day matching, and it meant a cron that missed
+   * the morning of day 3 dropped that reminder forever. A chase day that has passed unserved is now
+   * still due — see a-missed-morning-is-not-a-cancelled-reminder.spec.ts. What "a day it does not
+   * chase on" means is a day BEFORE the first one.
+   */
+  it('does nothing before the first day it chases on', () => {
+    const decided = whatToDoToday({ policy: policy(), daysOpen: 2, hoursSinceLastNudge: null, leadAlreadyTold: false });
+    expect(decided.do).toBe('nothing');
+  });
+
+  it('and does nothing on a later day once every reminder due has been sent', () => {
+    const decided = whatToDoToday({ policy: policy(), daysOpen: 5, hoursSinceLastNudge: 48, leadAlreadyTold: false });
     expect(decided.do).toBe('nothing');
   });
 
@@ -59,20 +71,25 @@ describe('what to do about one person today', () => {
   });
 
   it('never nudges the same person twice in a day', () => {
+    /* Two hours ago on day 3, so the day is served and nothing else is owed. */
     const decided = whatToDoToday({ policy: policy(), daysOpen: 3, hoursSinceLastNudge: 5, leadAlreadyTold: false });
-    expect(decided).toEqual({ do: 'nothing', because: 'they were nudged in the last day' });
+    expect(decided.do).toBe('nothing');
   });
 
   it('follows a lead’s own schedule rather than the default', () => {
     const theirs = policy({ days: [2] });
     expect(whatToDoToday({ policy: theirs, daysOpen: 2, hoursSinceLastNudge: null, leadAlreadyTold: false }).do)
       .toBe('nudge them');
-    expect(whatToDoToday({ policy: theirs, daysOpen: 3, hoursSinceLastNudge: null, leadAlreadyTold: false }).do)
+    /* Day 3 on a [2] schedule with the day-2 nudge already sent: the schedule is finished with
+       them. (Never nudged, it would still be owed — that is the missed-morning rule.) */
+    expect(whatToDoToday({ policy: theirs, daysOpen: 3, hoursSinceLastNudge: 26, leadAlreadyTold: false }).do)
       .not.toBe('nudge them');
   });
 
+  /* Day 20 rather than 15: a chase day missed by one day is still served to the person first, and
+     only once nothing is owed to them does the lead hear. See A_MISSED_DAY_IS_STILL_DUE_FOR_DAYS. */
   it('tells the lead once the chasing is done', () => {
-    expect(whatToDoToday({ policy: policy(), daysOpen: 15, hoursSinceLastNudge: null, leadAlreadyTold: false }))
+    expect(whatToDoToday({ policy: policy(), daysOpen: 20, hoursSinceLastNudge: null, leadAlreadyTold: false }))
       .toEqual({ do: 'tell the lead' });
   });
 
@@ -83,7 +100,7 @@ describe('what to do about one person today', () => {
 
   it('says nothing to a lead who asked not to hear', () => {
     const decided = whatToDoToday({
-      policy: policy({ tellTheLead: false }), daysOpen: 15, hoursSinceLastNudge: null, leadAlreadyTold: false,
+      policy: policy({ tellTheLead: false }), daysOpen: 20, hoursSinceLastNudge: null, leadAlreadyTold: false,
     });
     expect(decided.do).toBe('nothing');
   });

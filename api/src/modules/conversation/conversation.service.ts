@@ -4041,7 +4041,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: checkIn.participantId },
       select: { soloArtifact: true, soloArtifactAt: true },
     });
-    if (!p?.soloArtifact) return { artifact: null };
+    if (!p?.soloArtifact) {
+      /*
+       * NULL, AND WHY.
+       *
+       * This returned a bare `{ artifact: null }`, so the person who had just spent ten minutes
+       * answering and pressed through to their own summary was handed nothing at all — no
+       * distinction between "you have not finished yet", "it is being written" and "it failed".
+       * Driven and measured: the summary lands about twenty-two seconds after completion, because
+       * `buildSoloArtifact` is deliberately fire-and-forget so a model failure cannot stop a
+       * check-in completing. Twenty-two silent seconds reads as nothing coming.
+       */
+      const saying =
+        checkIn.status !== CheckInStatus.COMPLETED
+          ? 'Your summary is written when you finish this check-in.'
+          : 'Your summary is being written from what you said. It takes up to a minute — this page will show it as soon as it is there.';
+      return { artifact: null, saying, finished: checkIn.status === CheckInStatus.COMPLETED };
+    }
     return { artifact: JSON.parse(p.soloArtifact) as { summary: string; whatToCarry: string }, generatedAt: p.soloArtifactAt };
   }
 

@@ -40,6 +40,9 @@ export type WhatToDo =
  * an argument, so the reason a nudge did not go out can be read rather than
  * reconstructed from a schedule and a clock.
  */
+/** How long after a chase day a missed reminder is still worth sending. */
+export const A_MISSED_DAY_IS_STILL_DUE_FOR_DAYS = 3;
+
 export function whatToDoToday(input: {
   policy: ChasingPolicy;
   daysOpen: number;
@@ -53,7 +56,31 @@ export function whatToDoToday(input: {
 
   const last = Math.max(...policy.days);
 
-  if (policy.days.includes(daysOpen)) {
+  /*
+   * A CHASE DAY THAT HAS PASSED IS STILL DUE.
+   *
+   * This asked `policy.days.includes(daysOpen)` — exact equality with today. So a chase day was a
+   * single cron pass: a deploy that morning, an outage, a queue that ran late, and the day-3 nudge
+   * simply never happened. Nothing retried it and nothing recorded that it had been skipped, so
+   * the person waiting to be reminded was never reminded and the schedule looked like it had run.
+   *
+   * The question is now "is there a chase day between the last time we spoke to them and today",
+   * which is the same on a normal day and correct on the day after a bad one. `hoursSinceLastNudge`
+   * carries where they were up to; nobody is nudged twice for the same day because a served day is
+   * behind that mark.
+   */
+  /*
+   * AND ONLY FOR A FEW DAYS. Without a bound, "a passed chase day is still due" means a ground
+   * opened forty days ago and never chased sends its day-14 nudge today, and the state where the
+   * chasing is finished and the lead is told never arrives. Three days is the width of a bad
+   * weekend, which is what this is for — a missed morning, not a forgotten month.
+   */
+  const dayAtLastNudge =
+    input.hoursSinceLastNudge === null ? -1 : daysOpen - Math.floor(input.hoursSinceLastNudge / 24);
+  const dueDays = policy.days.filter(
+    (d) => d <= daysOpen && d > dayAtLastNudge && daysOpen - d <= A_MISSED_DAY_IS_STILL_DUE_FOR_DAYS,
+  );
+  if (dueDays.length) {
     if (input.hoursSinceLastNudge !== null && input.hoursSinceLastNudge < NOT_TWICE_WITHIN_HOURS) {
       return { do: 'nothing', because: 'they were nudged in the last day' };
     }
@@ -68,6 +95,15 @@ export function whatToDoToday(input: {
   }
 
   if (daysOpen > last) return { do: 'nothing', because: 'the chasing is done and the lead has been told' };
+  /*
+   * TWO DIFFERENT SILENCES, said differently. "Not a day this ground chases on" was returned both
+   * for day two of a [3,7,14] ground and for the evening of day three after the morning's nudge —
+   * and only one of those means the schedule has done its job. The reason is read in logs when
+   * somebody is asking why a person was never reminded, so it has to be the true one.
+   */
+  if (policy.days.some((d) => d <= daysOpen)) {
+    return { do: 'nothing', because: 'they have had every reminder due so far' };
+  }
   return { do: 'nothing', because: 'not a day this ground chases on' };
 }
 

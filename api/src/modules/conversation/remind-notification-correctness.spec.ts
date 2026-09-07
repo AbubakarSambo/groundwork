@@ -34,10 +34,20 @@ function makeService(overrides: any = {}) {
   return { service, prisma, email, sent, nudged };
 }
 
+/*
+ * A PARTICIPANT WHO HAS A CHECK-IN, because the reminder is a link to one.
+ *
+ * This fixture carried `checkIns: []`, and the service used to nudge that party anyway — building
+ * the link from `checkIns[0]?.id ?? ''`, so the email pointed at nothing. The nudge now refuses a
+ * party with no check-in (see who-is-worth-nudging.ts), so a fixture with none was asserting the
+ * defect. `managingOnly` is here because the service reads it: a lead who oversees rather than
+ * answers is not nudged about work that is not theirs.
+ */
 const PARTICIPANT = (over: any) => ({
-  id: over.id, email: over.email, userId: over.userId, lastNudgedAt: null,
+  id: over.id, email: over.email, userId: over.userId, lastNudgedAt: over.lastNudgedAt ?? null,
+  managingOnly: over.managingOnly ?? false,
   user: { firstName: over.firstName ?? 'X', emailNotifications: over.emailNotifications ?? true },
-  checkIns: [],
+  checkIns: over.checkIns ?? [{ id: `${over.id}-checkin`, status: 'NOT_STARTED' }],
 });
 
 describe('sendReminder: does not self-nudge the requester', () => {
@@ -69,5 +79,37 @@ describe('sendReminder: respects "Ground invites and reminders" being turned off
     const res = await service.sendReminder('ci1', 'requester-user');
     expect(sent).toContain('on@x.test');
     expect(res.count).toBe(1);
+  });
+});
+
+/*
+ * AND THE THREE PEOPLE WHO USED TO BE NUDGED AND SHOULD NOT BE. Driven through the service rather
+ * than through the pure list, because the fault was in what the service selected and passed.
+ */
+describe('sendReminder: leaves alone the people a reminder is not for', () => {
+  it('does not chase somebody who declined', async () => {
+    const { service, sent } = makeService({
+      participants: [PARTICIPANT({ id: 'p4', email: 'no@x.test', userId: 'u4', checkIns: [{ id: 'c4', status: 'DECLINED' }] })],
+    });
+    const res = await service.sendReminder('ci1', 'requester-user');
+    expect(sent).not.toContain('no@x.test');
+    expect(res.count).toBe(0);
+  });
+
+  it('does not chase a managing-only lead about a check-in they do not have', async () => {
+    const { service, sent } = makeService({
+      participants: [PARTICIPANT({ id: 'p5', email: 'lead@x.test', userId: 'u5', managingOnly: true, checkIns: [] })],
+    });
+    const res = await service.sendReminder('ci1', 'requester-user');
+    expect(sent).not.toContain('lead@x.test');
+    expect(res.count).toBe(0);
+  });
+
+  it('does not send a reminder whose link would point at nothing', async () => {
+    const { service, sent } = makeService({
+      participants: [PARTICIPANT({ id: 'p6', email: 'nolink@x.test', userId: 'u6', checkIns: [] })],
+    });
+    await service.sendReminder('ci1', 'requester-user');
+    expect(sent).not.toContain('nolink@x.test');
   });
 });
