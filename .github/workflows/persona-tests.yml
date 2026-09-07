@@ -3,14 +3,33 @@ name: Persona tests
 # Runs the full persona/agent test suite whenever code lands on main, then posts
 # a ranked list of issues to a GitHub issue and to the run's summary so it is easy
 # to see at a glance. This is a POST-merge report, not a merge gate.
+# ─────────────────────────────────────────────────────────────────────────────
+# PAUSED 7 SEPTEMBER 2026, ON HER INSTRUCTION, AND MEANT TO COME BACK.
+#
+# Three workflows upload a `persona-results` artifact - this one, persona-gate
+# and overnight - on a fourteen-day retention. Measured on the day it was
+# paused: 225 of them, 3.8 GB, which is the repository's entire artifact
+# storage. GitHub then refuses every new upload with "Artifact storage quota has
+# been hit", which fails the persona job AFTER its suites have passed - so a
+# green test run reads as a red check and blocks a merge for a reason that has
+# nothing to do with the code.
+#
+# The automatic trigger is commented out rather than the file deleted, and
+# workflow_dispatch is left alone, so the suite can still be run by hand from
+# the Actions tab at any time.
+#
+# TO TURN IT BACK ON: delete the `# PAUSED:` prefixes below. Retention has been
+# cut from 14 days to 3 in the same change, so it will not refill the quota as
+# quickly next time.
+# ─────────────────────────────────────────────────────────────────────────────
 on:
-  push:
-    branches: [main]
-    paths:
-      - "api/**"
-      - "client/**"
-      - "groundwork_local_test/**"
-      - ".github/workflows/persona-tests.yml"
+# PAUSED:   push:
+# PAUSED:     branches: [main]
+# PAUSED:     paths:
+# PAUSED:       - "api/**"
+# PAUSED:       - "client/**"
+# PAUSED:       - "groundwork_local_test/**"
+# PAUSED:       - ".github/workflows/persona-tests.yml"
   workflow_dispatch: {} # allow manual runs
 
 concurrency:
@@ -226,4 +245,4 @@ jobs:
             groundwork_local_test/*.log
             api/api.log
             client/client.log
-          retention-days: 14
+          retention-days: 3

@@ -699,9 +699,22 @@ export const SITUATION_CARDS = [
  * restore the same opening rather than a second wording of it.
  */
 export const THE_OPENING_QUESTION =
-  'What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.'
+  /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
+     were both true of a long scrolling list with the catch-all last, and both wrong the moment it
+     became one group at a time with describing your own at the top. */
+  'What brings you here? Describe it in your own words, or pick the situation that fits.'
 
-export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GROUPS.map(
+/*
+ * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
+ *
+ * 'open' holds the describe-your-own card, and that card is the first thing on the picker now
+ * rather than a group of its own - so leaving it in the dropdown gives a heading with nothing
+ * under it. It was the DEFAULT selection, so the picker opened showing "Not sure yet (0)" and no
+ * cards at all: a list of situations that appeared to have none. Caught by looking at it.
+ */
+export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GROUPS.filter(
+  (g) => g.key !== 'open',
+).map(
   (g) => ({ key: g.key, heading: g.heading }),
 )
 
@@ -770,6 +783,15 @@ export function EntryChatPage() {
 
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
+  /**
+   * WHICH GROUP THE PICKER IS SHOWING.
+   *
+   * The set-up wizard was rebuilt to her instruction - describe-your-own first, then a dropdown,
+   * cards changing as you pick - and this picker was left on the old scrolling list. Two doors into
+   * the same twenty-two situations, behaving differently. Reported as a regression, and it is one
+   * in the sense that matters: the two screens agreed yesterday and do not today.
+   */
+  const [situationGroup, setSituationGroup] = useState<string>(SITUATION_GROUPS[0]?.key ?? '')
   /** Which card has its examples open. One at a time, so the grid never doubles in height. */
   const [openCardInfo, setOpenCardInfo] = useState<string | null>(null)
   // Once the user dismisses the natural-close banner, never re-show it
@@ -2020,25 +2042,54 @@ export function EntryChatPage() {
                       descriptions stay, because recognising your own situation
                       matters MORE as the list gets longer. What was missing is
                       any signal that the first screen is not the whole set. */}
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
-                    {SITUATION_CARDS.length} situations, grouped. Scroll for the rest, or{' '}
-                    <button
-                      onClick={() => setPickedSituation('other')}
-                      style={{ font: 'inherit', fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
-                    >describe your own</button>.
+                  {/* DESCRIBE YOUR OWN, FIRST. It used to sit at the bottom under "None of these?",
+                      which is the right words for the end of a list and the wrong ones for the top:
+                      nothing has come before it to be none of. Same order as /grounds/new. */}
+                  <button
+                    onClick={() => setPickedSituation('other')}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                      textAlign: 'left', padding: '14px 16px', borderRadius: 10,
+                      border: '1.5px solid var(--gw-navy)', background: 'white',
+                      cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>Describe your own situation</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
+                    </div>
+                    <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
+                  </button>
+
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 4 }}>
+                    Or select from the options below
                   </div>
+                  <select
+                    className="gw-select"
+                    value={situationGroup}
+                    onChange={(e) => setSituationGroup(e.target.value)}
+                    aria-label="Which kind of situation"
+                    style={{ marginBottom: 10 }}
+                  >
+                    {SITUATION_GROUPS.map(g => (
+                      <option key={g.key} value={g.key}>
+                        {g.heading} ({SITUATION_CARDS.filter(c => c.group === g.key).length})
+                      </option>
+                    ))}
+                  </select>
 
                   {/* One block per group, driven by SITUATION_GROUPS. This was
                       two hand-copied sixty-line blocks differing only by their
                       filter, which is how this picker fell eight cards behind
                       /grounds/new without anyone noticing. */}
-                  {SITUATION_GROUPS.map((group, gi) => {
+                  {/* ONE GROUP AT A TIME, chosen above. Every group at once is what the "scroll for
+                      the rest" line existed to apologise for. */}
+                  {SITUATION_GROUPS.filter(g => g.key === situationGroup).map((group) => {
                     const cards = SITUATION_CARDS.filter(c => c.group === group.key)
                     if (!cards.length) return null
-                    const last = gi === SITUATION_GROUPS.length - 1
+                    const last = true
                     return (
                       <div key={group.key}>
-                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>{group.heading}</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
                           {cards.map(card => (
                             <div
@@ -2176,45 +2227,20 @@ export function EntryChatPage() {
                       </div>
                     )
                   })}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
-                    {/* The describe-your-own option lives IN the grid, as a
-                        real choice.
-                        It used to be dashed-bordered, transparent, and greyed:
-                        the visual language of a DISABLED control, sat among
-                        white solid-bordered cards. It has always worked when
-                        clicked, but nothing said so - and this is the way in
-                        for anyone whose situation is not on the list, so it is
-                        the last card that should look switched off. Solid
-                        border and full-strength label now, like every other
-                        card; the tinted background is the only thing marking it
-                        as the catch-all rather than a situation of its own. */}
-                    {/* STILL HARD TO SEE, BECAUSE LOOKING LIKE THE OTHERS IS THE
-                        PROBLEM. The last fix made it look like every other card,
-                        which cured it reading as disabled and left it eighteenth
-                        in a scrolling list of near-identical tiles. Anyone whose
-                        situation is not on the list has to get all the way to the
-                        bottom and then notice that one of the tiles is different
-                        in kind rather than in topic.
-
-                        So it stops being a tile. Full width, an accent edge, an
-                        arrow, and a line that speaks to the person who has just
-                        read seventeen things and recognised none of them. */}
-                    <button
-                      onClick={() => setPickedSituation('other')}
-                      style={{
-                        gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12,
-                        textAlign: 'left', padding: '14px 16px', borderRadius: 10,
-                        border: '1.5px solid var(--gw-navy)', background: 'white',
-                        cursor: 'pointer', fontFamily: 'inherit', marginTop: 4,
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>None of these? Describe your own situation</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
-                      </div>
-                      <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
-                    </button>
-                  </div>
+                  {/*
+                    * THE DESCRIBE-YOUR-OWN CARD USED TO BE HERE, AT THE BOTTOM.
+                    *
+                    * Its whole history is people trying to make the last item in a list findable:
+                    * first it looked disabled, then it was made to look like every other card and
+                    * became eighteenth in a scroll of near-identical tiles, then it was given an
+                    * accent edge and an arrow. Each fix was right about the problem and could not
+                    * reach it, because the problem was the position.
+                    *
+                    * It is the first thing on the picker now, above the dropdown, and its words
+                    * changed with the move: "None of these?" is the right question at the end of a
+                    * list and the wrong one at the top, where nothing has come before it to be none
+                    * of.
+                    */}
                 </div>
               )}
 

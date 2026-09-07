@@ -5,6 +5,32 @@ import { CARD, LABEL } from './OpsLayout'
 import { scrollTo } from '@/lib/scroll-to'
 
 /**
+ * WHAT A PANEL CAN ACTUALLY DO, AND WHY IT IS NOT THE THREE THINGS ASKED FOR.
+ *
+ * The ask was "just allow people to set scenarios, objectives and add people". One of those works
+ * from a panel today and two of them cannot, and the reason is a deliberate line rather than a
+ * gap - so offering all three would put two buttons here that refuse.
+ *
+ *   SET AN OBJECTIVE   works. The assistant opens a draft in your name and asks for the rest, one
+ *                      question at a time. It is a real lane with a real write behind it.
+ *   START A CHECK-IN   the lane exists but only tells you which are waiting for YOU. Creating one
+ *                      is `POST /grounds`, a MACHINE route with a `grounds:write` scope - the
+ *                      customer's server opens check-ins, not a widget inside their app. A panel
+ *                      session is one person's session, and letting it create organisation-level
+ *                      things is the thing that guard is for.
+ *   ADD PEOPLE         has no panel route at all. People arrive through SCIM from the customer's
+ *                      own directory, which is the whole point of "their login is the only login".
+ *
+ * So the three here are the ones that work, and the two that do not are a decision to be taken
+ * rather than a control to be drawn.
+ */
+const WHAT_YOU_CAN_DO: { label: string; says: string }[] = [
+  { label: 'Set an objective', says: 'I want to set an objective' },
+  { label: "What am I on?", says: 'What am I on?' },
+  { label: 'What is waiting for me?', says: 'What is due?' },
+]
+
+/**
  * THE ASSISTANT, IN OUR OWN ORGANISATION, THROUGH THE PUBLIC API.
  *
  * The whole claim of the API is that a company can run Groundwork inside their
@@ -49,10 +75,13 @@ function readBlocks(payload: unknown): string {
   if (typeof payload === 'string') return payload
 
   const opening = (payload as { opening?: { line?: string; suggestions?: string[] } })?.opening
-  if (opening?.line) {
-    const asked = opening.suggestions?.length ? `\n\n${opening.suggestions.join('  ·  ')}` : ''
-    return `${opening.line}${asked}`
-  }
+  /*
+   * THE LINE ONLY. The suggestions used to be joined with a middle dot and glued onto the end of
+   * the greeting, which turned the one thing telling somebody what they could ask into a run-on
+   * sentence they could not press. Reported as: the chat looks incomplete and there is nothing
+   * telling you what you can do. They are rendered as controls now - see `suggested` below.
+   */
+  if (opening?.line) return opening.line
 
   const blocks = (payload as { blocks?: Block[] })?.blocks
   if (Array.isArray(blocks)) {
@@ -156,16 +185,12 @@ export function TheAssistantAsACustomerSeesIt() {
    * has to sit somewhere, because a read nobody can see is a read nobody checks,
    * and the deliveries that failed to verify are exactly the ones worth seeing.
    */
-  const arrived = useQuery({
-    queryKey: ['ops', 'groundwork-events'],
-    queryFn: opsApi.groundworkEvents,
-    retry: false,
-    enabled: open,
-  })
 
   const [session, setSession] = useState<string | null>(null)
   const [said, setSaid] = useState<Said[]>([])
   const [typing, setTyping] = useState('')
+  /* Emptied on the first question: they are an opening, not a menu that sits there for ever. */
+  const [suggested, setSuggested] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
 
@@ -279,6 +304,10 @@ export function TheAssistantAsACustomerSeesIt() {
         if (opening.ok && drawn) {
           const text = readBlocks(drawn.data ?? drawn)
           if (text) setSaid([{ from: 'them', text }])
+          /* What this assistant can be asked, in its own words. The API has always returned these
+             and the panel has always thrown them away. */
+          const offered = (drawn.data ?? drawn)?.opening?.suggestions
+          if (Array.isArray(offered)) setSuggested(offered.filter((x: unknown) => typeof x === 'string'))
         }
 
         /* What is waiting for this person, on the same session. A customer's
@@ -401,10 +430,60 @@ export function TheAssistantAsACustomerSeesIt() {
     }
   }
 
-  async function send() {
-    const message = typing.trim()
+  const fileInput = useRef<HTMLInputElement | null>(null)
+
+  /**
+   * ATTACH SOMETHING, THE WAY A CUSTOMER'S PANEL WOULD.
+   *
+   * Reported as: why is there no document uploader for context in the chat. The answer was that
+   * the API had no route to take one - so this panel could not offer it, and neither could anybody
+   * building their own. `POST check-ins/:id/documents` exists now, and this is the same fetch as
+   * every other call here: no session, no app client, bearer token only.
+   *
+   * ONLY INSIDE A CHECK-IN, and that is the product's shape rather than a shortcut. A document
+   * here is evidence attached to a record: read against the thing being discussed, assessed, and
+   * visible under that record's rules. Attached to nothing it would have no scope, no reader, and
+   * no rule about who may see it.
+   */
+  async function attach(file: File) {
+    if (!ready || !session || !inCheckIn) return
+    setBusy(true)
+    setSaid((s) => [...s, { from: 'us', text: `Attaching ${file.name}…` }])
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${inCheckIn}/documents`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+        body: form,
+      })
+      const body = await res.json().catch(() => null)
+      setSaid((s) => [
+        ...s,
+        {
+          from: 'them',
+          text: res.ok
+            ? `${file.name} is attached to this check-in.`
+            : /* The server's own sentence: it is the one that says which rule was hit - a slide
+                 format it cannot read, a transcript nobody has consented to, a file too large. */
+              (body?.message ?? body?.data?.message ?? 'That did not attach, and nothing was saved.'),
+        },
+      ])
+    } catch {
+      setSaid((s) => [...s, { from: 'them', text: 'That did not attach, and nothing was saved.' }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function send(asked?: string) {
+    const message = (asked ?? typing).trim()
     if (!message || !ready || !session) return
     setTyping('')
+    /* An opening, not a standing menu: once somebody has asked something the suggestions have done
+       their job and stop taking up the panel. */
+    setSuggested([])
     setSaid((s) => [...s, { from: 'us', text: message }])
     setBusy(true)
     try {
@@ -499,9 +578,21 @@ export function TheAssistantAsACustomerSeesIt() {
       >
         <div>
           <p style={{ ...LABEL, fontSize: 10, margin: 0 }}>Groundwork</p>
-          {/* Said out loud, because it is the whole point of this panel existing. */}
+          {/*
+            * NOT "the public API", which is what this said.
+            *
+            * Nothing about it is public: every call needs a credential the organisation was issued
+            * and access an admin asked for, and it reaches that organisation's data and nobody
+            * else's. "Public API" is a phrase from the inside - it means "the documented one" to us
+            * and "our data is exposed" to everybody else, and it is the first thing somebody reads
+            * on a panel whose whole subject is where their data goes.
+            *
+            * It is on our own back office, so this was one line and not a customer-facing claim -
+            * checked: `public API` appears nowhere in the client or the marketing site apart from
+            * here. The server module keeps the name, which nobody reads.
+            */}
           <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
-            Through the public API, as a customer
+            Connected the way a customer connects, over their own credential
           </p>
         </div>
         <button
@@ -690,22 +781,60 @@ export function TheAssistantAsACustomerSeesIt() {
         <div ref={bottom} />
       </div>
 
-      {arrived.data && (
-        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4 }}>
-          <div style={{ ...LABEL, marginBottom: 6 }}>What Groundwork has told us</div>
-          {arrived.data.events.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{arrived.data.says}</div>
-          ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {arrived.data.events.slice(0, 5).map((e, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-                  {/* A delivery that did not verify is the one worth seeing, so it is said
-                      first and in the product's own words rather than shown as a red dot. */}
-                  {e.verified ? (e.says ?? e.kind) : `${e.kind} — the signature did not check out`}
-                </li>
-              ))}
-            </ul>
-          )}
+      {/*
+        * THE CALLBACK LOG USED TO BE HERE, AND IT IS GONE.
+        *
+        * "Callbacks from Groundwork to this back office / Nothing has arrived. Either nothing has
+        * happened, or nobody has registered where to send it" sat under a conversation, in a chat
+        * window, telling somebody about webhook deliveries. Her words: confusing as fuck on the
+        * chat. She is right - it answered a question nobody in a chat is asking, and the empty
+        * state read as though the assistant had failed at something.
+        *
+        * It has not been deleted, it has been MOVED: the same figures are on the ops Deployment
+        * page, where somebody goes to find out whether an integration is wired. That is the only
+        * place it was ever useful, and it was only here because this panel happened to be the
+        * thing that got built first.
+        *
+        * What takes its place is what she asked for: the things a person can actually do from
+        * here. See `whatAPanelCanActuallyDo` for why the list is three and not five.
+        */}
+      {session && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4, padding: '10px 12px 0' }}>
+          <div style={{ ...LABEL, marginBottom: 6 }}>Things you can do here</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {WHAT_YOU_CAN_DO.map((a) => (
+              <button key={a.says} type="button" className="gw-btn-sm" disabled={busy} onClick={() => send(a.says)}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/*
+        * WHAT YOU CAN ASK IT, PRESSABLE.
+        *
+        * The API returns these with the opening - 'What am I on?', 'What is due?' - and the panel
+        * joined them with a middle dot onto the end of the greeting, where they read as part of a
+        * sentence. So the panel opened with a hello and nothing that said what it was for, which is
+        * what "looks incomplete, nothing tells you what you can do" is describing.
+        *
+        * Buttons rather than a help link on purpose: the answer to "what can I do here" is a
+        * question this thing can actually answer, and pressing one is faster than reading about it.
+        */}
+      {suggested.length > 0 && session && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 12px 10px' }}>
+          {suggested.map((q) => (
+            <button
+              key={q}
+              type="button"
+              className="gw-btn-sm"
+              disabled={busy}
+              onClick={() => send(q)}
+            >
+              {q}
+            </button>
+          ))}
         </div>
       )}
 
@@ -716,6 +845,31 @@ export function TheAssistantAsACustomerSeesIt() {
         }}
         style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--gw-border)' }}
       >
+        {/* Offered only where it can work. A button that explains why it is greyed out on every
+            other screen is a worse answer than a button that is not there. */}
+        {inCheckIn && (
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void attach(f)
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              className="gw-btn-sm"
+              disabled={!session || busy}
+              onClick={() => fileInput.current?.click()}
+              title="Attach a document to this check-in"
+            >
+              + Doc
+            </button>
+          </>
+        )}
         <input
           value={typing}
           onChange={(e) => setTyping(e.target.value)}

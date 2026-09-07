@@ -74,7 +74,21 @@ describe('the entry picker and the catalog', () => {
  */
 describe('the picker reads the catalog rather than copying it', () => {
   it('takes its group headings from the catalog', () => {
-    expect(SITUATION_GROUPS.map((g) => g.heading)).toEqual(SCENARIO_GROUPS.map((g) => g.heading))
+    /*
+     * All of them except 'open', and the exception is the point rather than a loosening.
+     *
+     * 'open' holds one card - describe your own situation - and that card is now the first thing on
+     * the picker, above the dropdown, the same as /grounds/new. Leaving the group in the dropdown
+     * gave a heading with nothing under it, and because it sorts first it was the DEFAULT: the
+     * picker opened on "Not sure yet (0)" showing no cards at all. Caught by looking at the page.
+     *
+     * Still read FROM the catalogue rather than typed here, which is what this file is for - a
+     * heading that is not in the catalogue still fails, and so does a catalogue heading that goes
+     * missing from the picker for any other reason.
+     */
+    const offered = SCENARIO_GROUPS.filter((g) => g.key !== 'open')
+    expect(SITUATION_GROUPS.map((g) => g.heading)).toEqual(offered.map((g) => g.heading))
+    expect(SITUATION_GROUPS.map((g) => g.heading)).not.toContain('Not sure yet')
   })
 
   it('and its group keys, so a card cannot sit in a group that does not exist', () => {

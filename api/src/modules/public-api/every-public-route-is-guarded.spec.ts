@@ -82,6 +82,15 @@ const PANEL_AUTHENTICATED = [
   "@Get('check-ins/mine')",
   "@Post('check-ins/:id/open')",
   "@Post('check-ins/:id/messages')",
+  /*
+   * ATTACHING A DOCUMENT IS THE SAME ACT AS ANSWERING, and belongs on the same side of this line.
+   * A document here is one party's evidence for one record - read against what is being discussed
+   * and visible under that record's rules - so a machine credential naming an organisation and
+   * nobody in particular must not be able to put one into somebody's check-in. There is also no
+   * scope that could express it honestly: "documents:write" for an integration would mean writing
+   * into everybody's, which is the thing the check-in routes above are kept off for.
+   */
+  "@Post('check-ins/:id/documents')",
   "@Post('check-ins/:id/complete')",
   "@Get('check-ins/:id/transcript')",
   /*
