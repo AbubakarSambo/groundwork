@@ -34,6 +34,27 @@ class EntryOnboardDto {
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
+
+  /**
+   * THE SITUATION THEY PICKED, WHICH THIS ROUTE USED NOT TO BE TOLD.
+   *
+   * It took the messages and nothing else, so one prompt served all twenty-two cards and every
+   * situation opened with the same generic question - the complaint that started this. The card is
+   * known at the moment it is clicked, at both doors, and it was simply never sent.
+   *
+   * Optional because it honestly is: somebody describing their own situation has not got one yet,
+   * and the classifier runs on their first answer. An unknown value is ignored rather than refused,
+   * for the same reason - a stale client must not be unable to set anything up.
+   */
+  @IsOptional()
+  @IsString()
+  scenario?: string;
+
+  /** Where in the arc this sits. Only the cohort card reads it, and it reads it to ask a different
+   *  first question for onboarding a group than for an ongoing read of one. */
+  @IsOptional()
+  @IsString()
+  moment?: string;
 }
 
 class EntryOpenerDto {
@@ -180,7 +201,7 @@ export class EntryController {
   @Post('onboard')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async onboard(@Body() dto: EntryOnboardDto) {
-    return this.service.onboard(dto.messages);
+    return this.service.onboard(dto.messages, dto.scenario, dto.moment);
   }
 
   @Public()

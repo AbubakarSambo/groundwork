@@ -133,6 +133,18 @@ describe('the describe-your-own card', () => {
   })
 
   it('is still a button, and still reachable', () => {
-    expect(BLOCK).toMatch(/onClick=\{\(\) => setPickedSituation\('other'\)\}/)
+    /* Loosened past the exact handler body: picking this card now also clears the scenario key, so
+       that setup does not open with the last card's question for a situation nobody has named. What
+       is being held is that the card sets 'other' when clicked, not the shape of the arrow body. */
+    expect(BLOCK).toMatch(/onClick=\{\(\) =>[^}]*setPickedSituation\('other'\)/)
+  })
+
+  it('and clears the situation key, so setup does not ask the last card\'s question', () => {
+    /*
+     * THE FAILURE THIS PREVENTS. Setup now opens with the picked situation's own first question.
+     * Clicking a card, going back, then choosing to describe your own would have left the key set,
+     * so somebody typing about a contract would be asked "who is the new hire".
+     */
+    expect(BLOCK).toContain('setPickedScenario(null)')
   })
 })

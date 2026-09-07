@@ -2784,7 +2784,21 @@ export function buildScenarioPackForParty(
     case GroundScenario.NEW_ADVISOR:
     case GroundScenario.NEW_PROJECT:
     case GroundScenario.NEW_MANAGER:
-    case GroundScenario.CONTRACT_RENEWAL: {
+    case GroundScenario.CONTRACT_RENEWAL:
+    /*
+     * ROLE_HANDOVER, WHICH HAD ITS QUESTIONS WRITTEN AND NO CASE TO REACH THEM.
+     *
+     * It is in STARTING_ROLE_QUESTIONS with two of the sharpest questions in this file - what is
+     * fragile because you have been watching it, and what somebody could undo without knowing they
+     * were undoing it - and it is in the legacy SCENARIO_PACKS record as composeStartingPack. The
+     * switch below is what the live path actually reads, and it had no case, so every handover
+     * check-in fell to the empty default and was interviewed generically.
+     *
+     * This is the third time: the comment further down records BOARD_STRATEGY and COHORT_CHECK
+     * failing the same way, written and unreachable. A test that reads the enum rather than the
+     * cases is at the bottom of this change - see every-scenario-is-reachable.spec.ts.
+     */
+    case GroundScenario.ROLE_HANDOVER: {
       const role = STARTING_ROLE_QUESTIONS[scenario as keyof typeof STARTING_ROLE_QUESTIONS];
       if (isInitiator) {
         return [
@@ -2892,6 +2906,23 @@ export function buildScenarioPackForParty(
 
     case GroundScenario.PIP:
       return PIP_PACK;
+
+    /*
+     * THE OTHER TWO THAT WERE WRITTEN AND UNREACHABLE.
+     *
+     * Both packs are full, specific and party-aware in their own prose - CONTRACT_REVIEW names
+     * "twenty per cent OF WHAT" as the whole argument, IMPLEMENTATION_TRACKING carries the silence
+     * rule that stops a monthly ground asking twelve questions about a relationship that is fine.
+     * Neither had a case, so both were interviewed with nothing.
+     *
+     * They are symmetric on purpose: each pack names its own opening for "the side that set this
+     * up" and for "the other side", so the split is inside the text rather than in this switch.
+     */
+    case GroundScenario.CONTRACT_REVIEW:
+      return CONTRACT_REVIEW_PACK;
+
+    case GroundScenario.IMPLEMENTATION_TRACKING:
+      return IMPLEMENTATION_TRACKING_PACK;
 
     // BOARD_STRATEGY and COHORT_CHECK packs were written (2026-07-10, #17/#16)
     // directly into SCENARIO_PACKS (the legacy combined-format seed record)

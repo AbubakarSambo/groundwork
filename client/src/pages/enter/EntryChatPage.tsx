@@ -812,6 +812,15 @@ export function EntryChatPage() {
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
   /**
+   * THE CARD'S SCENARIO KEY, WHICH IS NOT THE SAME THING AS ITS LABEL.
+   *
+   * `pickedSituation` holds the label, for deciding whether the grid is still on screen. What setup
+   * needs is the key - NEW_HIRE, DRIFT - because that is what selects the situation's own first
+   * question on the server. Without it every card opened with the same generic question, which is
+   * the whole complaint: "new hire does not ask you about the new hire".
+   */
+  const [pickedScenario, setPickedScenario] = useState<string | null>(null)
+  /**
    * WHICH GROUP THE PICKER IS SHOWING.
    *
    * The set-up wizard was rebuilt to her instruction - describe-your-own first, then a dropdown,
@@ -877,6 +886,8 @@ export function EntryChatPage() {
    */
   function pickADifferentSituation() {
     setPickedSituation(null)
+    /* Or the next situation is set up with the last one's first question. */
+    setPickedScenario(null)
     setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
     setOnboardingSelections(defaultSels)
     setOnboardingReady(false)
@@ -1293,7 +1304,24 @@ export function EntryChatPage() {
     setInput('')
     setOnboardingLoading(true)
     try {
-      const res = await entryApi.onboard(withoutPickedOpener(newHistory, yourRole) as Turn[])
+      /*
+       * THE SITUATION GOES WITH THE MESSAGES NOW.
+       *
+       * `classifiedScenario` is preferred over the card because it is later evidence: somebody who
+       * clicked "A new project starting" and then described a contract renewal has been reclassified
+       * from what they typed, and the question should follow what they said rather than what they
+       * first guessed. The card is the fallback, and it is what carries the very first turn - before
+       * the classifier has anything to run on.
+       *
+       * The MOMENT is only ever sent when they have actually said which it is. One card reads it
+       * (onboarding a group is a different question from an ongoing read of one), and guessing it
+       * would ask the wrong one of the two with complete confidence.
+       */
+      const res = await entryApi.onboard(
+        withoutPickedOpener(newHistory, yourRole) as Turn[],
+        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
+      )
       // Safety net: if the endpoint says we are ready to wrap up but the reply
       // still asks a question, showing the wrap-up card would strand that
       // question (the input hides). Swap the question-reply for a clean closer
@@ -2081,7 +2109,7 @@ export function EntryChatPage() {
                       which is the right words for the end of a list and the wrong ones for the top:
                       nothing has come before it to be none of. Same order as /grounds/new. */}
                   <button
-                    onClick={() => setPickedSituation('other')}
+                    onClick={() => { setPickedSituation('other'); setPickedScenario(null) }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 12,
                       textAlign: 'left', padding: '14px 16px', borderRadius: 10,
@@ -2168,7 +2196,7 @@ export function EntryChatPage() {
                               */}
                               <button
                                 aria-label={card.label}
-                                onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
+                                onClick={() => { setPickedSituation(card.label); setPickedScenario(card.scenario); sendOnboarding(card.message) }}
                                 style={{
                                   position: 'absolute', inset: 0, zIndex: 0,
                                   background: 'none', border: 'none', borderRadius: 10,

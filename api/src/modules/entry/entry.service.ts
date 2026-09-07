@@ -8,6 +8,7 @@ import { Injectable, Logger, BadRequestException, ForbiddenException, Unauthoriz
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
+import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
@@ -77,6 +78,38 @@ function resolveScenario(input?: string): GroundScenario {
     scenarioLogger.warn(`resolveScenario fallthrough: input="${input}" defaulted to NEW_PROJECT`);
   }
   return mapped ?? GroundScenario.NEW_PROJECT;
+}
+
+/**
+ * THE SAME LOOKUP, EXCEPT IT ANSWERS "I DO NOT KNOW".
+ *
+ * `resolveScenario` above defaults to NEW_PROJECT, which is right where a ground is being created
+ * and something has to be written down. It is exactly wrong for the setup conversation: an absent
+ * or unrecognised value would make it open with "What is the project, and who is on it?" to
+ * somebody who never mentioned a project - a confidently wrong first question, which is worse than
+ * the generic one it replaced.
+ *
+ * So setup uses this one, and no scenario means no situation pack and the honest open question.
+ */
+/**
+ * THE SETUP PROMPT, ASSEMBLED. Exported so a guard can read what the model is actually given rather
+ * than what the pieces say separately - the whole failure this change fixes was two correct pieces
+ * that never met, because the endpoint was not told which situation it was setting up.
+ */
+export function buildSetupPrompt(base: string, scenarioInput?: string, momentInput?: string): string {
+  const pack = theSetupPackFor(scenarioOrNothing(scenarioInput), momentOrNothing(momentInput));
+  return pack ? `${base}\n\n---\n\n${pack}` : base;
+}
+
+function momentOrNothing(input?: string | null): GroundMoment | null {
+  if (!input) return null;
+  return Object.values(GroundMoment).includes(input as GroundMoment) ? (input as GroundMoment) : null;
+}
+
+function scenarioOrNothing(input?: string | null): GroundScenario | null {
+  if (!input) return null;
+  if (Object.values(GroundScenario).includes(input as GroundScenario)) return input as GroundScenario;
+  return SCENARIO_MAP[input] ?? null;
 }
 
 const DEFAULT_SCENARIO = GroundScenario.NEW_PROJECT;
@@ -475,7 +508,15 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
     return { scenario: resolveScenario(mode) };
   }
 
-  async onboard(messages: ChatTurn[]): Promise<{
+  async onboard(
+    messages: ChatTurn[],
+    /**
+     * THE CARD THEY CLICKED. Twenty-two situations opened with one question because this argument
+     * did not exist - see the-first-question-for-this-situation.ts for the whole account.
+     */
+    scenarioInput?: string,
+    momentInput?: string,
+  ): Promise<{
     reply: string;
     extracted: {
       mode?: string;
@@ -645,7 +686,19 @@ Rules:
      * `onboard()` was left calling the model directly - in the flow every single new person meets
      * first, and the same flow the original "microchipshit" bug was found in.
      */
-    const reply = await this.guardedReply(ONBOARD_SYSTEM, messages);
+    /*
+     * THE SITUATION'S OWN FIRST QUESTION, APPENDED RATHER THAN WOVEN IN.
+     *
+     * The general rules of setup are the same for every card - one question at a time, plain words,
+     * never invent a timeframe, the role question first - and what differs is one question. So the
+     * pack is a block on the end rather than twenty-two variants of the whole prompt, which is the
+     * shape that drifts.
+     *
+     * Empty for somebody describing their own situation, and that is the honest state: nothing has
+     * been classified yet, so the generic opener stands until `classifyIntent` has an answer to
+     * work from and the next turn carries a real scenario.
+     */
+    const reply = await this.guardedReply(buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput), messages);
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
