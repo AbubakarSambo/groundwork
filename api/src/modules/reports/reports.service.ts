@@ -39,6 +39,7 @@ import { notTheWordParty } from './not-the-word-party';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
+import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -766,10 +767,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
     });
     const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
     const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
-    const thinNotice =
+    const relativeThinNotice =
       thinParties.length > 0
         ? `NOTE: ${thinParties.map((p) => p.label).join(', ')}'s record contains significantly fewer exchanges. A further session from ${thinParties.length === 1 ? 'that party' : 'those parties'} would strengthen the cross-reference.\n\n`
         : '';
+    /*
+     * AND THE CASE THE RELATIVE CHECK CANNOT SEE. Two people who each say a hundred and seventy
+     * characters are both at 100% of the maximum, so nothing above fires, and the model is handed
+     * almost nothing with no indication that it is almost nothing. See
+     * a-record-can-be-thin-for-everybody.ts - measured, 58 of 59 thin reports followed a thin
+     * check-in rather than a rich one.
+     */
+    const thinNotice =
+      relativeThinNotice || everybodySaidLittle(turnCounts, relativeThinNotice);
 
     // Fix 6: Longitudinal vagueness - flag participants whose accounts across
     // sessions contain no distinct concrete claims (same progress language, nothing closes).

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { reportsApi } from '@/api/reports'
 import { conversationApi } from '@/api/conversation'
 import type { Report } from '@/types'
+import { whatToCallIt } from './absence-of-evidence-is-not-a-finding'
 
 // ---------------------------------------------------------------------------
 // Alignment ladder labels + colours
@@ -111,7 +112,10 @@ function SecH({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) {
   const engagement = report.engagement as any
-  const status = closed ? 'Aligned' : engagement?.coverage === 'strong' ? 'Clear' : engagement?.coverage === 'moderate' ? 'Emerging' : 'Mixed'
+  /* See absence-of-evidence-is-not-a-finding.ts: a thin record used to render as "Mixed", which is
+     a word about whether the accounts agree. It cannot be, because barely anything was said. */
+  const called = whatToCallIt(engagement?.coverage, closed)
+  const status = called.status
 
   const openAreas: Area[] = (report.divergences ?? []).map(d => ({
     title: d.topic,
@@ -148,13 +152,25 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
       <div style={{ marginBottom: 14 }}>
         <SecH>Alignment status</SecH>
         <div style={{ fontSize: 17, fontWeight: 800 }}>{status}</div>
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
-          {/* Same undefined noun as the header used to carry - "area" is not a heading anywhere
-              in this card. See client/src/lib/alignment.ts. */}
-          {report.agreements?.length ?? 0} agreed
-          {report.divergences?.length ? `, ${report.divergences.length} still open` : ''}.
-        </div>
-        <AlignmentLadder status={status} closed={closed} />
+        {called.note ? (
+          /*
+           * A COUNT OF AGREEMENTS IS THE WRONG THING TO SAY UNDER A THIN RECORD. "1 agreed" reads
+           * as a finding drawn from a conversation; here it is one sentence somebody typed. The
+           * ladder goes too - it places this round on a scale from unresolved to aligned, and this
+           * round is not on that scale yet.
+           */
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.55 }}>{called.note}</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
+              {/* Same undefined noun as the header used to carry - "area" is not a heading anywhere
+                  in this card. See client/src/lib/alignment.ts. */}
+              {report.agreements?.length ?? 0} agreed
+              {report.divergences?.length ? `, ${report.divergences.length} still open` : ''}.
+            </div>
+            <AlignmentLadder status={status} closed={closed} />
+          </>
+        )}
       </div>
 
       {/* Open areas */}
@@ -201,7 +217,12 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 // ---------------------------------------------------------------------------
 function ParticipantCrossRef({ report, closed }: { report: Report; closed: boolean }) {
   const engagement = report.engagement as any
-  const status = closed ? 'Aligned' : engagement?.coverage === 'strong' ? 'Clear, trending to aligned' : engagement?.coverage === 'moderate' ? 'Emerging' : 'Mixed'
+  /* The same rule as the admin view. This variant reads "Clear, trending to aligned" where the
+     record is strong; a thin one says what it is instead of guessing at alignment. */
+  const called = whatToCallIt(engagement?.coverage, closed)
+  const status = called.aboutTheEvidence
+    ? called.status
+    : closed ? 'Aligned' : engagement?.coverage === 'strong' ? 'Clear, trending to aligned' : 'Emerging'
 
   const assumptions = (report.divergences ?? []).map(d =>
     `That ${d.topic.toLowerCase()} is settled - it may read differently from the other seat.`
