@@ -2,6 +2,7 @@ import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestEx
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
+import { isThisTheSameAnswerAgain, STILL_ON_YOUR_LAST_ANSWER } from './a-second-press-is-not-a-second-answer';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
@@ -658,11 +659,41 @@ export class ConversationService {
     throw new BadRequestException('This check-in is closed. Nothing further can be added to it.');
   }
 
+  /**
+   * WHAT TO DO ABOUT A SECOND PRESS. See `a-second-press-is-not-a-second-answer.ts`.
+   *
+   * Both the plain and the streaming path ask this before writing anything, because a person who
+   * presses twice does not know which of the two their client used.
+   */
+  private async theSameAnswerAgain(checkInId: string, message: string) {
+    const recent = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true, createdAt: true },
+    });
+    return isThisTheSameAnswerAgain(
+      recent.map((t) => ({
+        role: t.role === TurnRole.AI ? ('AI' as const) : ('PERSON' as const),
+        content: t.content ?? '',
+        createdAt: t.createdAt,
+      })),
+      message,
+    );
+  }
+
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
     const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     await this.assertGroundAcceptsInput(checkIn.groundId);
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
+    }
+
+    const again = await this.theSameAnswerAgain(checkIn.id, message);
+    if (again.kind === 'the same answer, already answered') {
+      return { reply: again.reply, sessionComplete: false };
+    }
+    if (again.kind === 'the same answer, still working') {
+      return { reply: STILL_ON_YOUR_LAST_ANSWER, sessionComplete: false };
     }
 
     const personTurnCount = await this.prisma.conversationTurn.count({
@@ -863,6 +894,17 @@ export class ConversationService {
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }
+    const againStreaming = await this.theSameAnswerAgain(checkIn.id, message);
+    if (againStreaming.kind !== 'a new answer') {
+      const say =
+        againStreaming.kind === 'the same answer, already answered'
+          ? againStreaming.reply
+          : STILL_ON_YOUR_LAST_ANSWER;
+      yield { type: 'delta', text: say };
+      yield { type: 'done', reply: say, sessionComplete: false };
+      return;
+    }
+
     const personTurnCount = await this.prisma.conversationTurn.count({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
     });

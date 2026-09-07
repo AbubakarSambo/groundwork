@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
+import { greeting } from './a-greeting-with-no-name';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -121,6 +122,12 @@ export class EmailService {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       this.logger.warn(`[DEV EMAIL] Body: ${text}`);
+      /* THE LINK, WHICH THE BODY ABOVE HAS JUST THROWN AWAY.
+         Stripping the tags leaves the anchor TEXT and drops the href, so the one thing anybody
+         testing locally needs — the address the person would click — was the one thing not in the
+         log. Every link in the mail, in order, so a journey can be followed rather than inferred. */
+      const links = [...options.html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+      if (links.length) this.logger.warn(`[DEV EMAIL] Links: ${links.join(' ')}`);
       // Also relay to local mailcatcher (127.0.0.1:1025) so persona tests can read links
       try {
         const transport = nodemailer.createTransport({ host: '127.0.0.1', port: 1025, secure: false, ignoreTLS: true });
@@ -173,7 +180,7 @@ export class EmailService {
       to: email,
       subject: 'We have your request to speak to a coach',
       html: `
-        <p>Hi ${name},</p>
+        <p>${greeting(name)}</p>
         <p>Thanks for asking. Sahar reads these herself and will come back to you within two working days.</p>
         <p>So there are no surprises, coaching is $5,000 a year for twelve sessions, or $500 an hour with no retainer. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
         <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
@@ -187,7 +194,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Verify your email to get started on Groundwork',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Confirm your email to get started.</p><p><a href="${url}">Verify email</a></p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Confirm your email to get started.</p><p><a href="${url}">Verify email</a></p>`),
     }, undefined, 'sendVerificationEmail');
   }
 
@@ -196,7 +203,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>Hi ${firstName},</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
     }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
@@ -205,7 +212,7 @@ export class EmailService {
     const devUrl = await this.sendEmail({
       to: email,
       subject: 'Your Groundwork sign-in link',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Click the link below to sign in to Groundwork. No password needed.</p><p><a href="${url}">Sign in</a></p><p>This link expires in 24 hours and can only be used once.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Click the link below to sign in to Groundwork. No password needed.</p><p><a href="${url}">Sign in</a></p><p>This link expires in 24 hours and can only be used once.</p>`),
     }, undefined, 'sendSignInLinkEmail');
     return { devUrl };
   }
@@ -215,7 +222,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Set a password for Groundwork',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Set a password to sign in without Google.</p><p><a href="${url}">Set password</a></p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Set a password to sign in without Google.</p><p><a href="${url}">Set password</a></p>`),
     }, undefined, 'sendAddPasswordEmail');
   }
 
@@ -224,7 +231,7 @@ export class EmailService {
     const devUrl = await this.sendEmail({
       to: email,
       subject: 'Reset your Groundwork password',
-      html: this.layout(`<p>Hi ${firstName},</p><p>Reset your password (link expires in 1 hour).</p><p><a href="${url}">Reset password</a></p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Reset your password (link expires in 1 hour).</p><p><a href="${url}">Reset password</a></p>`),
     }, undefined, 'sendPasswordResetEmail');
     return { devUrl };
   }
@@ -250,7 +257,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>Hi ${firstName},</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -293,7 +300,7 @@ export class EmailService {
       to: email,
       subject: `Your check-in is approved: ${groundLabel}`,
       html: this.layout(
-        `<p>Hi ${firstName},</p>
+        `<p>${greeting(firstName)}</p>
          <p>An admin in your organisation has approved <strong>${groundLabel}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
@@ -309,7 +316,7 @@ export class EmailService {
       to: email,
       subject: `Your check-in was not approved: ${groundLabel}`,
       html: this.layout(
-        `<p>Hi ${firstName},</p>
+        `<p>${greeting(firstName)}</p>
          <p>An admin in your organisation has not approved <strong>${groundLabel}</strong>, so it will not run and nobody has been invited to it.</p>
          ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${reason}</p>` : ''}
          <p>Nothing you wrote has been shared with anybody. If this was a misunderstanding, the fastest way through it is a conversation with whoever administers Groundwork for your organisation.</p>`,
@@ -352,7 +359,7 @@ export class EmailService {
       to: email,
       subject: `You have both checked in - your shared report is ready: ${groundLabel}`,
       html: this.layout(
-        `<p>Hi ${firstName},</p>
+        `<p>${greeting(firstName)}</p>
          <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
          <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
@@ -616,7 +623,7 @@ export class EmailService {
       to,
       subject: 'Your Groundwork plan has changed',
       html: this.layout(
-        `<p>Hi ${name},</p>
+        `<p>${greeting(name)}</p>
          <p>${changeDescription}</p>
          <p>Your records are unaffected by billing changes. If you have questions about your plan, visit the billing page in your workspace settings.</p>
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
@@ -630,7 +637,7 @@ export class EmailService {
       to: userEmail,
       subject: 'Your Groundwork record is yours to keep',
       html: this.layout(
-        `<p>Hi ${firstName}. Your organisation's Groundwork account has been cancelled.</p>
+        `<p>${greeting(firstName)} Your organisation's Groundwork account has been cancelled.</p>
          <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a>. This link is valid for 30 days.</p>`,
       ),
     }, undefined, 'sendRecordPortabilityNotice');
@@ -761,7 +768,7 @@ export class EmailService {
       to,
       subject: `Your version is still missing from ${groundName}`,
       html: this.layout(
-        `<p>Hi ${name},</p>
+        `<p>${greeting(name)}</p>
          <p>You have missed ${missedCount} check-in${missedCount !== 1 ? 's' : ''} in a row on <strong>${groundName}</strong>.</p>
          <p>Your record is incomplete. The shared picture for this check-in cannot reflect your side until you check in. Everything you write is private until both sides are in. It belongs to you, not to the org.</p>
          <p><a href="${checkInUrl}">Add your version</a></p>`,
@@ -820,12 +827,12 @@ export class EmailService {
         : `<p>Your code expires in <strong>${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}</strong>.</p>`;
 
     const bodyHtml = isCreateNudge
-      ? `<p>Hi ${firstName},</p>
+      ? `<p>${greeting(firstName)}</p>
          ${urgencyNote}
          <p>You have used your contributor code (<strong>${code}</strong>) to create one check-in so far. You still have time to create another check-in with it before it expires.</p>
          <p>Every check-in you create is a record that belongs to the people involved - start another before the code runs out.</p>
          <p><a href="${this.buildNewCheckInUrl()}">Create another check-in</a></p>`
-      : `<p>Hi ${firstName},</p>
+      : `<p>${greeting(firstName)}</p>
          ${urgencyNote}
          <p>Your contributor code <strong>${code}</strong> has been used on ${groundsCreated} check-in${groundsCreated !== 1 ? 's' : ''} so far.</p>
          <p>Once it expires, the code can no longer be redeemed. Any check-ins already created with it are unaffected - their records remain intact.</p>
@@ -840,7 +847,7 @@ export class EmailService {
       to,
       subject: 'Your Groundwork subscription is active',
       html: this.layout(
-        `<p>Hi ${name},</p>
+        `<p>${greeting(name)}</p>
          <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
          <p>Ten check-ins are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,

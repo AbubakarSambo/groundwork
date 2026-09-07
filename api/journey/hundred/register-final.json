@@ -1,0 +1,346 @@
+[
+ {
+  "group": "chat responsiveness",
+  "issue": "Every chat turn takes seconds with nothing on screen saying why",
+  "evidence": "99 of 100 journeys waited over 4s for a reply; 17s seen once",
+  "severity": "high",
+  "journeys": 99,
+  "state": "fixed"
+ },
+ {
+  "group": "completion",
+  "issue": "Finishing a check-in takes seconds with no sign it is working",
+  "evidence": "99 of 100 journeys",
+  "severity": "medium",
+  "journeys": 99,
+  "state": "open"
+ },
+ {
+  "group": "completion",
+  "issue": "A slow reply plus a second press puts the same answer in the record twice",
+  "evidence": "73 journeys; 107 stored check-ins carry a duplicated answer",
+  "severity": "high",
+  "journeys": 73,
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "Finishing and looking says \"Report not found\" \u2014 the sentence for a thing that does not exist",
+  "evidence": "64 journeys, all five personas",
+  "severity": "high",
+  "journeys": 64,
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "The report takes tens of seconds after the last person finishes, unannounced",
+  "evidence": "56 journeys; 12\u201315s typical, 90s cap never hit",
+  "severity": "medium",
+  "journeys": 56,
+  "state": "open"
+ },
+ {
+  "group": "shared report",
+  "issue": "A participant sees a report with nothing in it and a button to reveal it, with no explanation of the button",
+  "evidence": "13 journeys, participants only",
+  "severity": "medium",
+  "journeys": 13,
+  "state": "open"
+ },
+ {
+  "group": "participants",
+  "issue": "Something the organiser expected to do was refused",
+  "evidence": "journeys 40, 46, 72",
+  "severity": "medium",
+  "journeys": 3,
+  "state": "open"
+ },
+ {
+  "group": "completion",
+  "issue": "Finishing too early shows a refusal before the composer re-opens",
+  "evidence": "journeys 46, 72",
+  "severity": "low",
+  "journeys": 2,
+  "state": "open"
+ },
+ {
+  "group": "setup chat",
+  "issue": "Coming back to a setup conversation part-way through did not work",
+  "evidence": "journey 13",
+  "severity": "high",
+  "journeys": 1,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "An invitation email offers no way to stop receiving them",
+  "evidence": "\"P2 invited you to check in on: \u2026\" \u2014 no unsubscribe or \"not me\" line",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "\"Set a password for Groundwork\" opens \"Hi ,\" with no name and is two sentences long",
+  "evidence": "the account made from an address alone has no first name",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "A check-in notification never says what Groundwork is",
+  "evidence": "\"\u2026 has checked in on J6 NEW_HIRE\" assumes the reader knows",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "The report-ready email never says what Groundwork is",
+  "evidence": "\"Your shared record is ready: J6 NEW_HIRE\"",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "An internal scenario code appears in email subjects people read",
+  "evidence": "\"J6 NEW_HIRE\" in the subject line",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "Only 7 distinct email shapes were sent across 910 emails",
+  "evidence": "the whole product speaks in seven sentences",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "224 of 237 check-ins never say who will read what somebody writes",
+  "evidence": "read from the transcripts",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "The same question is asked twice in one check-in",
+  "evidence": "2 of 237",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "The word \"ground\" reached somebody reading their own check-in",
+  "evidence": "1 of 237",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "69 of 92 reports never use the word alignment, which the product is about",
+  "evidence": "read from the reports",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "36 of 92 reports are under 200 characters",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "39 of 145 reports have no agreements recorded",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "33 of 145 reports have no divergences \u2014 the one thing two people cannot get from talking",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "No report has a closing read, and nothing tells the reader one arrives only after a closing session",
+  "evidence": "145 of 145 empty; the field fills only when every party has a final session",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "27 of 145 reports were written and never released, so they were shown to nobody",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "16 documents were attached and 1 report of 145 mentions one",
+  "evidence": "somebody who attached a contract cannot tell it was read",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "Every check-in ran with no cadence, so nothing schedules a second round and nobody is told there will not be one",
+  "evidence": "read from the check-ins",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "27 check-ins are still waiting on somebody with no deadline visible anywhere",
+  "evidence": "read from the check-ins",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "participants",
+  "issue": "Inviting the same person twice sent a second invitation without saying they were already invited",
+  "evidence": "second invite answered 201; 2 invitations reached them",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "first check-in setup",
+  "issue": "A mistyped address was refused with the validation string \"email must be an email\"",
+  "evidence": "from the setup screen",
+  "severity": "low",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "participant check-in chat",
+  "issue": "There is a ceiling of 20 answers and it arrives as a refusal mid-sentence",
+  "evidence": "turn 20: \"Session turn limit reached. Please complete your session.\"",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "shared report",
+  "issue": "Before anybody has answered, the report page said the report does not exist",
+  "evidence": "404 \"Report not found\"",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "signup/sign-in",
+  "issue": "A wrong password on an existing account replies that a set-password link was emailed, which both confirms the address is registered and answers a question nobody asked",
+  "evidence": "\"We've emailed you a link to set your password.\"",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "navigation/cross-system UX",
+  "issue": "Being signed out is reported as \"Invalid or expired token\" rather than \"sign in again\"",
+  "evidence": "401 on every authenticated call",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "visual/responsive UX",
+  "issue": "On mobile the floating Feedback button covers a control in the setup header",
+  "evidence": "375\u00d7812, /start",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "visual/responsive UX",
+  "issue": "On mobile the floating ? button sits on top of the situation cards",
+  "evidence": "375\u00d7812, /start and /grounds",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "email UX",
+  "issue": "No email of the 110 names the organisation the check-in belongs to, so a recipient cannot tell which company is asking",
+  "evidence": "0 of 110",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "email UX",
+  "issue": "54 of 110 emails never say what to do next",
+  "evidence": "read from the log",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "email UX",
+  "issue": "54 of 110 emails never say who will see what the reader writes",
+  "evidence": "read from the log",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "documents",
+  "issue": "The uploader is handed back id, name, mimeType, uploadedAt and an assessment \u2014 and no visibility, so nobody can tell who will see the file they just attached",
+  "evidence": "read from the upload response",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "individual report",
+  "issue": "A finished check-in has no summary of its own: somebody who answered for ten minutes is handed nothing until everybody else has answered too",
+  "evidence": "GET artifact returned {\"artifact\":null} on a COMPLETED check-in",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "notifications",
+  "issue": "Where somebody is told is set per organisation (Slack, then Teams), so an individual cannot choose and every participant is emailed regardless",
+  "evidence": "workspace_notifiers is keyed on organization_id",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "participant check-in chat",
+  "issue": "A reply asked three questions in one turn",
+  "evidence": "seen once, with the text captured",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "signup/sign-in",
+  "issue": "24 of 110 emails opened \"Hi ,\" because the account was created from an address with no name",
+  "evidence": "read from the log",
+  "severity": "high",
+  "journeys": "",
+  "state": "fixed"
+ }
+]

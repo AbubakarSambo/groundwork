@@ -36,6 +36,7 @@ import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 import { notTheWordParty } from './not-the-word-party';
+import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -2287,7 +2288,37 @@ happened, and what is in the way.`;
         report: true,
       },
     });
-    if (!ground?.report) throw new NotFoundException('Report not found');
+    if (!ground) throw new NotFoundException('Report not found');
+    /*
+     * WHY, not just no. See `why-there-is-no-report-yet.ts` — the same 404, with the reason the
+     * person can act on. The entitlement check below still runs for everybody who HAS a report;
+     * this branch is reached before it, so it says nothing a participant list would not.
+     */
+    if (!ground.report) {
+      const mine = ground.participants.some(
+        (p) => p.userId === requestingUserId,
+      ) || ground.initiatorId === requestingUserId || (!!requestingUserOrgId && ground.organizationId === requestingUserOrgId);
+      if (!mine) throw new NotFoundException('Report not found');
+      const checkIns = await this.prisma.checkIn.findMany({
+        where: { groundId },
+        select: { status: true, participantId: true },
+      });
+      const byParty = new Map<string, { completed: boolean; started: boolean }>();
+      for (const c of checkIns) {
+        const at = byParty.get(c.participantId) ?? { completed: false, started: false };
+        byParty.set(c.participantId, {
+          completed: at.completed || c.status === 'COMPLETED',
+          started: at.started || c.status !== 'NOT_STARTED',
+        });
+      }
+      throw new NotFoundException(
+        whyThereIsNoReportYet({
+          parties: ground.participants.map(
+            (p) => byParty.get(p.id) ?? { completed: false, started: false },
+          ),
+        }),
+      );
+    }
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);

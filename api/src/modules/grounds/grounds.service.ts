@@ -2318,7 +2318,19 @@ export class GroundsService {
         { kind: 'PARTICIPANT_INVITE', participantId: existing.id, groundId: ground.id },
       );
       await this.prisma.groundParticipant.update({ where: { id: existing.id }, data: { notifiedAt: new Date() } });
-      return { ...existing, inviteToken: undefined, devUrl: emailResult?.devUrl };
+      /*
+       * AND SAY SO. Re-sending is right (the comment above says why), but it was silent: the
+       * organiser typed an address they had already invited, got a 201 identical to a first
+       * invitation, and had no way to tell the two apart — so nothing stopped them doing it a
+       * third time, and each one really did send another email.
+       */
+      return {
+        ...existing,
+        inviteToken: undefined,
+        devUrl: emailResult?.devUrl,
+        alreadyInvited: true,
+        saying: `${dto.email.toLowerCase()} was already invited and has not opened it yet. We have sent the invitation again — it uses the same link.`,
+      };
     }
 
     // freeParticipantCap was written on check-in creation (DEFAULT_FREE_MEMBER_LIMIT, 100 for
