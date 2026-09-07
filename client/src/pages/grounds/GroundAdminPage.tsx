@@ -34,7 +34,7 @@ import { ReportBody } from '@/pages/report/ReportPage'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
-import { whoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
+import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -550,6 +550,82 @@ export function GroundAdminPage() {
    * checkbox is how somebody publishes a private note by mistake. Different box, different button.
    */
 
+
+  /**
+   * PEOPLE LINED UP TO BE ADDED, EACH WITH THEIR OWN LINE ABOUT WHAT THEY ANSWER FOR.
+   *
+   * "You should be able to add many parties to the check-in at setup and add context about them."
+   * The form took one address at a time and cleared itself, so a team of six was six rounds.
+   *
+   * Nothing is sent until the queue is invited: adding to the list is free and reversible, which is
+   * the whole reason to have a list rather than firing an invitation per keystroke of enthusiasm.
+   */
+  const [queuedToAdd, setQueuedToAdd] = useState<{ email: string; note: string }[]>([])
+
+  /**
+   * SENT ONE AT A TIME, AND EVERY OUTCOME REPORTED.
+   *
+   * `addParticipant` is per-person on the server - it has the seat check, the approval rule and the
+   * deferral in it - so this is a loop rather than a bulk endpoint, and each result is read: refused
+   * ones name their reason and are written down, waiting ones are counted. The same rules the
+   * conversation's save keeps, because "we added them but you heard nothing" is the bug that started
+   * all of this.
+   */
+  const inviteTheQueue = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        queuedToAdd.map((q) =>
+          groundsApi.addParticipant(id!, { email: q.email, note: q.note || undefined }),
+        ),
+      )
+      const failed = results
+        .map((r, i) => ({ r, email: queuedToAdd[i].email }))
+        .filter((x): x is { r: PromiseRejectedResult; email: string } => x.r.status === 'rejected')
+        .map(({ r, email }) => ({
+          email,
+          because: (r.reason as any)?.response?.data?.message ?? 'The invite did not send.',
+        }))
+      const waiting = results
+        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null }> => r.status === 'fulfilled')
+        .filter((r) => !r.value?.invitedAt).length
+      return { failed, waiting, sent: results.length - failed.length - waiting }
+    },
+    onSuccess: ({ failed, waiting, sent }) => {
+      setQueuedToAdd([])
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      if (sent > 0) toast.success(`Invite sent to ${sent} ${sent === 1 ? 'person' : 'people'}`)
+      if (waiting > 0) {
+        toast.info(
+          waiting === 1
+            ? 'One person is on the check-in and will be invited on the start date.'
+            : `${waiting} people are on the check-in and will be invited on the start date.`,
+        )
+      }
+      for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
+      if (failed.length) rememberWhoWasNotInvited(id!, failed)
+    },
+    /*
+     * THE SERVER'S OWN SENTENCE, WHICH THIS THREW AWAY UNTIL TWO GUARDS CAUGHT IT.
+     *
+     * Every reason adding somebody can be refused is written for a person and returned: the seat
+     * limit, an address already on the check-in, the gate that refuses an invitation until
+     * something has been said about what the check-in is for. "Could not add them. Try again."
+     * replaces all of them with a loop the product knows they cannot leave.
+     *
+     * This handler only fires when the whole batch fails - a per-person refusal is reported by name
+     * in onSuccess above - so it also says what became of the queue, which is the other half:
+     * nobody was invited and the list is still there to try again with.
+     */
+    onError: (e: any) => {
+      const said = e?.response?.data?.message
+      const status = e?.response?.status
+      toast.error(
+        status >= 400 && status < 500 && typeof said === 'string' && said
+          ? `${said} Nobody was invited - your list is still here.`
+          : 'Could not add them, and nobody was invited. Your list is still here - try again.',
+      )
+    },
+  })
 
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
@@ -2370,13 +2446,79 @@ export function GroundAdminPage() {
                 value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
               />
-              <button
-                onClick={() => addParticipantMut.mutate()}
-                disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
-              >
-                {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
-              </button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => addParticipantMut.mutate()}
+                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                >
+                  {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
+                </button>
+                {/*
+                  * ADDING FOUR PEOPLE SHOULD NOT BE FOUR VISITS TO THE SAME FORM.
+                  *
+                  * "You should be able to add many parties to the check-in at setup and add context
+                  * about them." The form took one address, sent it, and cleared itself - so a team
+                  * of six was six rounds of typing, pressing, waiting for the invite to go, and
+                  * finding the box again.
+                  *
+                  * The queue below is the fix and it keeps the part that matters: each person keeps
+                  * their OWN line about what they are accountable for, because "what do you want
+                  * them to account for" is the difference between a check-in that asks each person
+                  * the right question and one that asks everybody the same one. A bulk paste of
+                  * addresses would have been easier to build and would have thrown that away.
+                  */}
+                <button
+                  onClick={() => {
+                    const email = newParticipantEmail.trim().toLowerCase()
+                    if (!email.includes('@')) return
+                    if (queuedToAdd.some((q) => q.email === email)) return
+                    setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
+                    setNewParticipantEmail('')
+                    setNewParticipantNote('')
+                  }}
+                  disabled={!newParticipantEmail.includes('@')}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                >
+                  + Add another
+                </button>
+              </div>
+
+              {queuedToAdd.length > 0 && (
+                <div style={{ marginTop: 12, border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden' }}>
+                  {queuedToAdd.map((q, i) => (
+                    <div
+                      key={q.email}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 11px', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined, background: 'white' }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{q.email}</div>
+                        <div style={{ fontSize: 11.5, color: q.note ? 'var(--gw-sub)' : 'var(--gw-muted)', lineHeight: 1.45 }}>
+                          {q.note || 'No note - they will be asked the general questions for this situation.'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
+                        aria-label={`Remove ${q.email}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ padding: '9px 11px', borderTop: '1px solid var(--gw-border)', background: 'var(--gw-bg)' }}>
+                    <button
+                      onClick={() => inviteTheQueue.mutate()}
+                      disabled={inviteTheQueue.isPending}
+                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: inviteTheQueue.isPending ? 0.6 : 1 }}
+                    >
+                      {inviteTheQueue.isPending
+                        ? 'Inviting…'
+                        : `Invite ${queuedToAdd.length} ${queuedToAdd.length === 1 ? 'person' : 'people'}`}
+                    </button>
+                  </div>
+                </div>
+              )}
               {lastInvitedEmail && (
                 <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
                   {lastInviteWaits

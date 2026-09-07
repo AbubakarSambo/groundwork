@@ -1060,13 +1060,25 @@ export function ChatPage() {
                 *
                 * Both live on the check-in itself, one click away, and neither was linked from here.
                 */}
+              {/*
+                * "SEE THE FULL REPORT" WAS A PROMISE THIS BUTTON COULD NOT KEEP.
+                *
+                * It went to the ground's Report tab, which holds the SHARED report - the one that
+                * does not exist until everybody has checked in. So somebody who had just read their
+                * own report pressed a button offering more of it and landed on "waiting for
+                * sessions": "when I click the report, it redirects me somewhere else. Why can't I
+                * see the same report I just saw at the end of a check-in."
+                *
+                * The report she wants is the one directly above this button, and it stays there -
+                * this page renders it for any completed session of yours. What was missing was a
+                * sentence saying which report is which, and that is what replaces the button.
+                */}
+              <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
+                This report is yours and it stays on this session - open it again from Report, under
+                Your sessions. The shared report, where everybody's accounts sit side by side,
+                appears once the others have checked in.
+              </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}?tab=report`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  See the full report →
-                </button>
                 {/* The check-in itself, where the people, the sessions and the setup all live.
                     Deliberately not deep-linked to a tab: the tab keys and their labels differ
                     ("settings" is shown as "Setup"), and a link that lands on the wrong one is

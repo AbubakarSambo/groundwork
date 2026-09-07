@@ -412,23 +412,39 @@ body {
   display: block;
   margin-bottom: 4px;
 }
+/*
+ * AN INPUT SHOULD LOOK LIKE SOMETHING YOU CAN TYPE IN.
+ *
+ * "The input fields should seem like input fields." They were #EDECEA - a warm grey - sitting on
+ * pages whose own background is the same family, so a textarea read as a paragraph of shading
+ * rather than a box waiting for words. On the Context page, which is three fields and little else,
+ * that is most of the page looking like it is not for typing in.
+ *
+ * White with a slightly stronger border is the whole fix. It is the convention for a reason: the
+ * field is lighter than what surrounds it, so it reads as a hole in the page rather than a panel
+ * on it. The padding goes up a little at the same time, because a 13px field with 8px of padding
+ * looks cramped next to the text it is under.
+ */
 .gw-input,
 .gw-select,
 .gw-ta {
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-size: 13px;
-  border: 1px solid #E2E0DB;
+  border: 1px solid #D8D5CF;
   border-radius: var(--gw-radius);
-  background: #EDECEA;
+  background: #FFFFFF;
   color: var(--gw-text);
   font-family: inherit;
   outline: none;
   transition: border-color 0.1s, background 0.1s;
 }
+/* Focus was doing two jobs and now does one: the field is already white, so the border is the
+   whole signal. A ring rather than a hairline, because a one-pixel colour change is not a focus
+   state anybody using a keyboard can see. */
 .gw-input:focus, .gw-select:focus, .gw-ta:focus {
   border-color: #0C447C;
-  background: white;
+  box-shadow: 0 0 0 3px rgba(12, 68, 124, .12);
 }
 .gw-ta { resize: vertical; line-height: 1.5; }
 .gw-er { font-size: 12px; color: var(--gw-red-t); margin-top: 5px; min-height: 16px; }
