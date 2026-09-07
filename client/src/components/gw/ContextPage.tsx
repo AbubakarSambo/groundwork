@@ -246,6 +246,7 @@ export function ContextPage({
               whichever is actually there rather than claiming the check-in for both.
             */}
             <Sec
+              n={1}
               title="What this check-in is for"
               src={
                 theBrief && objectives.length > 0 ? 'from setup, and the lead\u2019s own check-in'
@@ -295,8 +296,19 @@ export function ContextPage({
                 but it should not be the loudest thing on the page while it does.
               */
               /* Only when there is genuinely nothing - a brief alone is not nothing. */
+              /*
+               * THE SAME SHAPE AS EVERY OTHER "NOTHING YET" ON THIS PAGE.
+               *
+               * There were three of them in three shapes: bare grey text here, a bordered panel for
+               * the expectations below, and a dashed drop-zone for documents. Same idea, three
+               * weights, so the page looked like a pile of unrelated states rather than one thing
+               * with sections that are not filled in.
+               *
+               * The bordered panel is the one that wins, because it is the one that reads as a slot
+               * waiting for something rather than as an apology.
+               */
               !theBrief && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
+                <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
                   Nothing yet. This comes out of the lead&rsquo;s own check-in.
                 </div>
               )
@@ -317,6 +329,7 @@ export function ContextPage({
               read like somebody else's list.
             */}
             <Sec
+              n={2}
               title={isLead ? 'Person by person' : 'What is expected of you'}
               src={isLead ? 'stated in your check-in, read by everyone' : 'you cannot change this here'}
             />
@@ -450,7 +463,15 @@ export function ContextPage({
               </div>
             )}
 
-            <Sec n={1} title="Documents" src="each one says who reads it" />
+            {/*
+              * NUMBERED IN THE ORDER THE PAGE ACTUALLY RUNS IN, WHICH IT WAS NOT.
+              *
+              * The numbers went on three of the five bands and started at the third one, so the page
+              * read "What this check-in is for", "Person by person", then "1 DOCUMENTS". A number
+              * that disagrees with the thing above it is worse than no number: it tells somebody
+              * they have missed something.
+              */}
+            <Sec n={3} title="Documents" src="each one says who reads it" />
 
             <div
               style={{
@@ -710,7 +731,7 @@ export function ContextPage({
             */}
             {isLead && privateSteers.length > 0 && (
               <>
-                <Sec n={2} title="Only you see this" src="steers what gets asked &middot; never quoted" />
+                <Sec n={4} title="Only you see this" src="steers what gets asked &middot; never quoted" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
                   {privateSteers.map((n: any) => {
                     const p = n.participantId ? ground.participants.find((x: any) => x.id === n.participantId) : null
@@ -798,7 +819,7 @@ export function ContextPage({
             */}
             {isLead && (
               <div style={{ marginTop: 20 }}>
-                <Sec n={3} title="What everyone here reads" src="your framing, never quoted as a finding" />
+                <Sec n={5} title="What everyone here reads" src="your framing, never quoted as a finding" />
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                   About the whole check-in, not about one person. Everyone sees it with your name on

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sec } from './kit'
 import { reportsApi } from '@/api/reports'
@@ -28,6 +29,8 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
+  /** Who is reading, so their own finished sessions can be listed and nobody else's. */
+  viewerUserId?: string | null
 }
 
 export function SharedReportForAParty({
@@ -35,7 +38,9 @@ export function SharedReportForAParty({
   report,
   ground,
   onOpenBoard,
+  viewerUserId,
 }: SharedReportForAPartyProps) {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   /**
    * SHOWING YOUR REPORT TO THE OTHERS, which came across with the button that does it.
@@ -63,9 +68,55 @@ export function SharedReportForAParty({
     onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
   })
 
+  /**
+   * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
+   *
+   * "I still don't see the report to open at the end of the chat or where to correct it." The Report
+   * tab on the ADMIN page gained this list; the party's own report view - which is what most people
+   * on a check-in actually see - did not, so it still showed the shared report's pending state and
+   * nothing else. The private report each finished session produced had nowhere to be opened from,
+   * and the correction control lives on that card.
+   *
+   * Yours only, and that is the wall rather than a shortcut: another person's session is theirs
+   * until the shared report releases.
+   */
+  const mySessions = ((ground?.checkIns ?? []) as any[])
+    .filter((c) => c.status === 'COMPLETED')
+    .filter((c) => ((ground?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === viewerUserId))
+    .sort((a, b) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+
   return (
     <>
-          <Sec title="Shared report" />
+          {mySessions.length > 0 && (
+            <>
+              <Sec n={1} title="Your sessions" src="each one has its own private report" />
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 4 }}>
+                {mySessions.map((ci, i) => (
+                  <button
+                    key={ci.id}
+                    onClick={() => navigate(`/checkin/${ci.id}`)}
+                    style={{
+                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
+                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
+                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    }}
+                  >
+                    <span>
+                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                        {ci.completedAt
+                          ? `Finished ${new Date(ci.completedAt).toLocaleDateString()} · your private report, and where to correct it`
+                          : 'Finished · your private report, and where to correct it'}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <Sec n={mySessions.length > 0 ? 2 : undefined} title="Shared report" />
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
             Shows where your account and the other party's account agree or differ. It does not quote anyone.
           </div>
