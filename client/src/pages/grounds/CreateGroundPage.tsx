@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-survives-a-reload'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,8 +6,7 @@ import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence 
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { whatMatches, alsoTyped, NOTHING_MATCHED } from '@/lib/finding-your-situation'
-import { SCENARIO_LABELS, SCENARIO_GROUPS, HOW_MANY_SITUATIONS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, HOW_MANY_NAMED_SITUATIONS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -313,11 +312,23 @@ export const SCENARIOS: ScenarioCard[] = [
    * work together would have got a "get a team back on the same page" ground, and nothing would have
    * said so. It carries OPEN_READ now, which exists precisely for "we do not know yet".
    */
-  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ, tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
-    desc: "None of these quite fit? Describe it in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the situations above, pick that instead: it sets the objective and shapes the questions people are asked.",
-    moment: 'Something is off and you cannot name it yet.',
+  /**
+   * ITEM 3: IT IS THE FIRST PICK NOW, SO IT STOPPED READING LIKE THE LAST ONE.
+   *
+   * Every word here was written for a card sitting at the bottom of six groups under a heading
+   * called "Not sure yet": the tag said "Anything else", the line said "Something is off and you
+   * cannot name it yet", and the body opened "None of these quite fit?" and pointed at "the
+   * situations above". At the top of the step all four are wrong - nothing has come before it to be
+   * anything else than, the situation need not be a problem, and the named situations are below.
+   *
+   * It is also no longer only for somebody who cannot name their situation. It is for anybody who
+   * would rather say it in their own words, which is a different and much larger offer.
+   */
+  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ, tag: 'In your own words', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
+    desc: "Say what is happening in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.",
+    moment: 'You would rather describe it yourself than pick from a list.',
     agreed: 'Nothing fixed: each person gives their own read first, privately, because the situation is not named yet.',
-    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the situations above, pick that instead: it sets the objective and shapes the questions people are asked.', },
+    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.', },
 ]
 
 /**
@@ -528,13 +539,19 @@ export function CreateGroundPage() {
   })
   const navigate = useNavigate()
   /* Twenty cards is a wall even in six groups, if your words are not our headings. */
-  const [situationSearch, setSituationSearch] = useState('')
+  /**
+   * WHICH GROUP IS OPEN. One at a time now, chosen from a dropdown, instead of six expanded lists
+   * with a jump bar over them. Defaults to the first group rather than to nothing, so the step
+   * always has cards on it - a picker that shows nothing until you choose a heading is a step that
+   * looks broken when it loads.
+   */
+  const [situationGroup, setSituationGroup] = useState<ScenarioGroupKey>(GROUPS_YOU_PICK_FROM[0].key as ScenarioGroupKey)
+  /* The describe-your-own card, looked up rather than written out again - it is the same card the
+     catalogue has always carried, just no longer inside a group. */
+  const openCard = SCENARIOS.find(c => c.scenario === 'OPEN_READ')
+  const groupNow = GROUPS_YOU_PICK_FROM.find(g => g.key === situationGroup)
   /* null means "not searching" - show the grouped list. An empty array means "searched, found
      nothing", which is a different thing and gets a different message. */
-  const matches = useMemo(
-    () => whatMatches(alsoTyped(SCENARIOS), situationSearch),
-    [situationSearch],
-  )
 
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
@@ -1265,83 +1282,67 @@ export function CreateGroundPage() {
 
             {/* ---- STEP 2: which situation ---- */}
             {step === STAGE.situation && (<>
-            <div className="gw-sub-t" style={{ marginBottom: 2 }}>
-              {/* Whose situation this is decides the pronouns. See whose-situation-is-it.ts. */}
-              {HOW_MANY_SITUATIONS} {theWords.intro}
+            {/*
+              * ONE PICK AT THE TOP, THEN A DROPDOWN. What this replaced and why:
+              *
+              * A "Not sure yet" GROUP holding a single card. Its heading and its blurb existed to
+              * introduce one option, and in a dropdown it would have been an entry leading back to
+              * what the page has already offered. The card it held is the important one, so it is
+              * now the first thing on the step rather than the first of six groups.
+              *
+              * A SEARCH BOX over twenty-one items. It was added for the person who knows their
+              * situation but not our heading for it, and a dropdown answers that better: the
+              * headings are the questions, and picking one changes what is below it. A search also
+              * has to be told when it finds nothing, which is a second empty state to keep true.
+              *
+              * SIX GROUPS ALL EXPANDED, with a jump bar above them to cope with the length. The
+              * length was the problem the jump bar was managing. One group at a time has no length
+              * to manage.
+              */}
+            <div className="gw-sub-t" style={{ marginBottom: 14 }}>
+              {/* Whose situation this is decides the pronouns - see whose-situation-is-it.ts.
+                  NAMED situations, because the describe-your-own card is no longer one of the
+                  things being counted: it is the pick above them. */}
+              {HOW_MANY_NAMED_SITUATIONS} {theWords.intro}
             </div>
 
-            {/* Type it in your own words. The groups fixed the card nobody could find; this is for
-                the person who knows their situation but not our heading for it. */}
-            <div className="cg-find">
-              <input
-                type="search"
-                value={situationSearch}
-                onChange={e => setSituationSearch(e.target.value)}
-                placeholder="Search in your own words - handover, conflict, off track, new hire"
-                aria-label="Search the situations"
-                aria-describedby="cg-find-count"
-              />
-              {matches !== null && (
-                <span id="cg-find-count" role="status">
-                  {/* Matches, not "n of 22". A running total next to a search box reads as "you
-                      have seen 3 of 22" rather than "3 fit what you typed", which is the opposite
-                      of what it means. The count in the line above now comes from the catalogue -
-                      see HOW_MANY_SITUATIONS - so the two can no longer disagree. */}
-                  {matches.length === 0
-                    ? 'No match'
-                    : `${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}
-                </span>
-              )}
-            </div>
+            {/* THE FIRST PICK. Same card, same renderer, same selection behaviour as any other -
+                duplicating the JSX for it is how it would start behaving differently. */}
+            {openCard && (
+              <div role="radiogroup" aria-label={theWords.describeOwnLabel} className="cg-group-grid one" style={{ marginBottom: 20 }}>
+                {renderSituation(openCard)}
+              </div>
+            )}
 
-            {/* Jump bar. The concrete failure this fixes: the recurring read sat at position
-                eleven of twenty in one unbroken list, and the person who built the product
-                could not find it. Nothing was wrong with the card. Hidden while searching,
-                because jumping to a group is meaningless when the list is not grouped. */}
-            {matches === null && (
-            <nav className="cg-jump" aria-label="Jump to a group of situations">
-              {SCENARIO_GROUPS.map(g => (
-                <a key={g.key} href={`#cg-${g.key}`}>{g.heading} <b>{cardsInGroup(g.key).length}</b></a>
+            <label className="gw-label" htmlFor="cg-group">Or select from the options below</label>
+            <select
+              id="cg-group"
+              className="gw-select"
+              value={situationGroup}
+              onChange={(e) => setSituationGroup(e.target.value as ScenarioGroupKey)}
+              style={{ marginBottom: 12 }}
+            >
+              {GROUPS_YOU_PICK_FROM.map(g => (
+                <option key={g.key} value={g.key}>
+                  {g.heading} ({cardsInGroup(g.key as ScenarioGroupKey).length})
+                </option>
               ))}
-            </nav>
-            )}
+            </select>
 
-            {matches !== null && (
-              matches.length === 0
-                ? <p className="cg-nomatch">{NOTHING_MATCHED}</p>
-                : <div role="radiogroup" aria-label="Situations matching your search" className="cg-group-grid" style={{ marginBottom: 24 }}>
-                    {matches.map(renderSituation)}
-                  </div>
-            )}
+            {/* The group's own question, which is what its heading is short for. */}
+            <p className="cg-group-q">{groupNow?.question}</p>
 
-            {/* ONE renderer for both lists. The search results and the grouped list show the same
-                card with the same behaviour, because they are the same card - duplicating this JSX
-                is how the two lists start disagreeing about what a situation is. */}
-            {/* Real radios in ONE radiogroup spanning every group, not one per section:
-                a person arrowing through this is choosing among twenty situations, not
-                among six lists. The headings are structure, not separate controls. */}
-            {matches === null && (
-            <div role="radiogroup" aria-label="What is this for?" style={{ marginBottom: 24 }}>
-              {SCENARIO_GROUPS.map(g => {
-                const cards = cardsInGroup(g.key)
-                if (cards.length === 0) return null
-                return (
-                  <section key={g.key} id={`cg-${g.key}`} className="cg-group">
-                    <div className="cg-group-head">
-                      <h3>{g.heading}</h3>
-                      <span>{cards.length} {cards.length === 1 ? 'situation' : 'situations'}</span>
-                    </div>
-                    <p className="cg-group-q">
-                      {g.key === 'open' ? theWords.openGroupQuestion : g.question}
-                    </p>
-                    <div className={`cg-group-grid${cards.length === 1 ? ' one' : ''}`}>
-                      {cards.map(renderSituation)}
-                    </div>
-                  </section>
-                )
-              })}
+            {/* Real radios in one radiogroup over what is actually on screen. It used to span every
+                group at once because every group was on screen at once. */}
+            {/* `id` is here as a stable anchor for the-picker-gets-the-whole-width.spec.ts, which
+                used to find this block by its aria-label. That label now names the chosen group,
+                which is better for a screen reader and useless as a marker - a guard cannot anchor
+                on a string that varies. */}
+            <div id="cg-situations" role="radiogroup" aria-label={groupNow?.heading ?? 'Situations'} style={{ marginBottom: 24 }}>
+              <div className={`cg-group-grid${cardsInGroup(situationGroup).length === 1 ? ' one' : ''}`}>
+                {cardsInGroup(situationGroup).map(renderSituation)}
+              </div>
             </div>
-            )}
 
             </>)}
 

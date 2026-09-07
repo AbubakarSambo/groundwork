@@ -7,8 +7,12 @@
  * to whoever was clicking as though the situation were theirs:
  *
  *   "22 situations, grouped by the question YOU are actually asking"
- *   "YOU cannot name it, so nothing below should be guessed on YOUR behalf"
  *   "Describe YOUR OWN situation"
+ *
+ * A third one - "YOU cannot name it, so nothing below should be guessed on YOUR behalf" - was the
+ * blurb under a "Not sure yet" group heading. That group has since been removed and its single card
+ * promoted to the top of the step, so the sentence has no place left to appear and the branch for
+ * it came out with it rather than sitting here unused.
  *
  * On that path all three are false. The question is not yours, it is not your behalf the guessing
  * would be on, and the situation is not your own. Reported from the screen, not from a test: the
@@ -26,8 +30,6 @@
 export type TheWordsForPickingASituation = {
   /** The sentence under "Step 2 · The situation". */
   intro: string;
-  /** The blurb under the "Not sure yet" group heading. */
-  openGroupQuestion: string;
   /** The one card that is not a named situation. */
   describeOwnLabel: string;
 };
@@ -46,7 +48,6 @@ export function theWordsForPickingASituation(
     return {
       intro:
         'situations, grouped by the question you are actually asking. Every one of them is an objective agreed at the start, then a run of check-ins testing the work against it. Pick the closest fit: it sets the questions people are asked and how often.',
-      openGroupQuestion: 'You cannot name it, so nothing below should be guessed on your behalf.',
       describeOwnLabel: 'Describe your own situation',
     };
   }
@@ -60,10 +61,6 @@ export function theWordsForPickingASituation(
       } in: it sets the questions people are asked and how often. ${them} still ${
         theirName?.trim() ? 'writes' : 'write'
       } what it is about.`,
-    /* Not "on your behalf" - the guessing would be on theirs. */
-    openGroupQuestion: `You cannot name it for ${
-      theirName?.trim() ? theirName.trim() : 'them'
-    }, so nothing below should be guessed on their behalf.`,
     describeOwnLabel: 'Describe the situation',
   };
 }

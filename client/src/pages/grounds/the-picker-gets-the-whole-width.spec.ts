@@ -36,7 +36,9 @@ const SRC = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
  * screen other than the one holding the cards.
  */
 const PICKER_STAGE = (() => {
-  const marker = SRC.indexOf('role="radiogroup" aria-label="What is this for?"')
+  /* Anchored on the container's id, not its aria-label: the label now names whichever group the
+     dropdown has open, which is right for a screen reader and no use as a marker. */
+  const marker = SRC.indexOf('id="cg-situations"')
   expect(marker).toBeGreaterThan(-1)
   const before = SRC.slice(0, marker)
   const stages = [...before.matchAll(/\{step === STAGE\.(\w+) &&/g)]

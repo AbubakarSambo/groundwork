@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { HOW_MANY_SITUATIONS } from '@/lib/scenario-catalog'
+import { HOW_MANY_SITUATIONS, HOW_MANY_NAMED_SITUATIONS } from '@/lib/scenario-catalog'
 
 /**
  * The set-up wizard opened with "Twenty situations, grouped by the question you are actually
@@ -22,7 +22,7 @@ describe('how many situations the page claims', () => {
     /* The words after the number now depend on whose situation it is (whose-situation-is-it.ts),
        so the assertion is on the NUMBER coming from the catalogue rather than on the sentence it
        introduces - which is what this test was always about. */
-    expect(stripped).toMatch(/\{HOW_MANY_SITUATIONS\} \{theWords\.intro\}/)
+    expect(stripped).toMatch(/\{HOW_MANY_NAMED_SITUATIONS\} \{theWords\.intro\}/)
   })
 
   it('and the words it introduces still say "situations", on both paths', () => {
@@ -39,5 +39,12 @@ describe('how many situations the page claims', () => {
 
   it('matches what the catalogue actually holds', () => {
     expect(HOW_MANY_SITUATIONS).toBe(22)
+  })
+
+  it('and the picker quotes the NAMED count, not the one that includes the escape hatch', () => {
+    /* "21 situations, pick the closest fit" is true. Twenty-two counted the describe-your-own
+       card, which is now the pick above them rather than one of them. */
+    expect(HOW_MANY_NAMED_SITUATIONS).toBe(21)
+    expect(HOW_MANY_NAMED_SITUATIONS).toBe(HOW_MANY_SITUATIONS - 1)
   })
 })

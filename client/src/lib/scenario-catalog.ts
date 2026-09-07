@@ -136,6 +136,20 @@ export type _PlanRef = SubscriptionPlan
  */
 export const HOW_MANY_SITUATIONS = Object.keys(SCENARIO_LABELS).length
 
+/**
+ * AND HOW MANY ARE NAMED, which is a different number and the one a picker should quote.
+ *
+ * `OPEN_READ` is "describe your own situation". It is a card in the catalogue because it has to
+ * behave like one - it carries a cadence and a timeline - but it is not a situation we named, and
+ * it now sits at the top of the set-up wizard as the first pick rather than inside a group. A line
+ * that says "22 situations, pick the closest fit" while one of the twenty-two is "none of these"
+ * is counting the escape hatch as an option.
+ */
+export const HOW_MANY_NAMED_SITUATIONS = Object.keys(SCENARIO_LABELS).filter(
+  (k) => k !== 'OPEN_READ',
+).length
+
+
 export const SCENARIO_GROUPS = [
   /**
    * FIRST, NOT LAST. It sat at the bottom of six groups, which is where you put a last resort - and
@@ -157,6 +171,12 @@ export const SCENARIO_GROUPS = [
   { key: 'off', heading: 'Something is off',
     question: 'It has already happened. What separates these is whether the gap is against something agreed, between two people, or the result of one event.' },
 ] as const
+/**
+ * The groups somebody actually chooses between. "Not sure yet" held one card, the describe-your-own
+ * one, and that card is now the first thing on the step - so the group is an empty heading and a
+ * dropdown entry that leads back to what you have already been offered.
+ */
+export const GROUPS_YOU_PICK_FROM = SCENARIO_GROUPS.filter((g) => g.key !== 'open')
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
 /**

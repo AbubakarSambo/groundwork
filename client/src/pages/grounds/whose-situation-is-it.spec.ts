@@ -19,7 +19,6 @@ const named = theWordsForPickingASituation(true, 'Ada')
 describe('when the situation is the reader’s own', () => {
   it('keeps the second person, because it is true', () => {
     expect(mine.intro).toContain('the question you are actually asking')
-    expect(mine.openGroupQuestion).toContain('on your behalf')
     expect(mine.describeOwnLabel).toBe('Describe your own situation')
   })
 })
@@ -32,11 +31,6 @@ describe('when somebody else sets the context', () => {
 
   it('stops calling it your own situation', () => {
     expect(theirs.describeOwnLabel).toBe('Describe the situation')
-  })
-
-  it('and stops saying the guessing would be on your behalf, because it would be on theirs', () => {
-    expect(theirs.openGroupQuestion).not.toMatch(/on your behalf/)
-    expect(theirs.openGroupQuestion).toMatch(/on their behalf/)
   })
 
   it('says who writes what it is about, since that is the thing being got wrong', () => {
@@ -52,7 +46,7 @@ describe('when somebody else sets the context', () => {
 
   it('and never guesses a pronoun for somebody who has not given one', () => {
     /* A name is not a gender. "They" is the only honest third person here. */
-    expect(named.intro + named.openGroupQuestion).not.toMatch(/\b(he|she|his|her|him)\b/i)
+    expect(named.intro).not.toMatch(/\b(he|she|his|her|him)\b/i)
   })
 })
 
@@ -62,7 +56,6 @@ describe('the page uses it', () => {
 
   it('for the intro, the open group, and the one card that is about the reader', () => {
     expect(src).toMatch(/\{theWords\.intro\}/)
-    expect(src).toMatch(/theWords\.openGroupQuestion/)
     expect(src).toMatch(/theWords\.describeOwnLabel/)
   })
 
