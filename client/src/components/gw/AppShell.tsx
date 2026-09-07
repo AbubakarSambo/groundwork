@@ -14,6 +14,10 @@ import { useFeedbackStore } from '@/stores/feedback'
 import { feedbackApi } from '@/api/feedback'
 import type { Ground } from '@/types'
 import { alignmentShort } from '@/lib/alignment'
+import {
+  asStyle, keepItOnScreen, rememberIt, theyMeantToMoveIt, whereItLands, whereTheyLeftIt,
+  type Resting, type Where,
+} from './a-button-that-gets-out-of-the-way'
 
 const NAV_ITEMS = [
   {
@@ -210,6 +214,77 @@ function FeedbackWidget() {
   const [contactEmail, setContactEmail] = useState('')
   const [sent, setSent] = useState(false)
 
+  /*
+   * WHERE THE FEEDBACK BUTTON SITS IS THE READER'S CALL, NOT OURS.
+   *
+   * It has been moved three times to stop it covering something, and each move covered something
+   * else, because a fixed corner is a bet that no screen will ever need that corner. The arithmetic
+   * - which corner a drop belongs to, and how a position taken on a wide monitor survives a phone -
+   * lives in ./a-button-that-gets-out-of-the-way so it can be tested without a browser.
+   */
+  const [resting, setResting] = useState<Resting | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const justDragged = useRef(false)
+  const moved = resting !== null
+
+  const view = () => ({ width: window.innerWidth, height: window.innerHeight })
+
+  useEffect(() => {
+    const stored = localStorage.getItem('gw-feedback-button-position')
+    /* Nothing stored means nobody has moved it, and the defaults above - with their mobile-safe
+       classes - stay in charge. Only a deliberate move takes this over. */
+    if (stored) setResting(whereTheyLeftIt(view()))
+    const onResize = () => setResting(r => (r ? keepItOnScreen(r, view()) : r))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  function takeHold(e: React.PointerEvent<HTMLButtonElement>) {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    const from: Where = { x: e.clientX, y: e.clientY }
+    const box = triggerRef.current?.getBoundingClientRect()
+    /* Grab offset, so the button does not jump its own width the moment it starts moving. */
+    const grab = { x: from.x - (box?.left ?? from.x), y: from.y - (box?.top ?? from.y) }
+    const size = Math.max(box?.width ?? 44, box?.height ?? 44)
+    let became = false
+
+    const move = (m: PointerEvent) => {
+      const at: Where = { x: m.clientX, y: m.clientY }
+      if (!became && !theyMeantToMoveIt(from, at)) return
+      if (!became) { became = true; setDragging(true) }
+      setResting(whereItLands({ x: at.x - grab.x, y: at.y - grab.y }, view(), size))
+    }
+    const drop = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', drop)
+      if (!became) return
+      justDragged.current = true
+      setDragging(false)
+      setResting(r => { if (r) rememberIt(r); return r })
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', drop)
+  }
+
+  /* A button you can only move with a mouse is a button somebody cannot move. Arrow keys shift it
+     while it has focus; Enter and Space still open feedback, because they are not handled here. */
+  function nudgeIt(e: React.KeyboardEvent<HTMLButtonElement>) {
+    const step = e.shiftKey ? 40 : 10
+    const by: Record<string, [number, number]> = {
+      ArrowUp: [0, -step], ArrowDown: [0, step], ArrowLeft: [-step, 0], ArrowRight: [step, 0],
+    }
+    const shift = by[e.key]
+    if (!shift) return
+    e.preventDefault()
+    const box = triggerRef.current?.getBoundingClientRect()
+    if (!box) return
+    const size = Math.max(box.width, box.height)
+    const next = whereItLands({ x: box.left + shift[0], y: box.top + shift[1] }, view(), size)
+    setResting(next)
+    rememberIt(next)
+  }
+
   function valid() {
     if (tab === 'reaction') return !!reaction
     if (tab === 'build')    return !!buildPick
@@ -300,7 +375,17 @@ function FeedbackWidget() {
       {/* Trigger button */}
       {!hideTrigger && (
         <button
-          onClick={() => (open ? hidePanel() : showPanel())}
+          ref={triggerRef}
+          onPointerDown={takeHold}
+          onKeyDown={nudgeIt}
+          title="Drag me anywhere"
+          aria-label="Feedback. Drag to move, or use the arrow keys while focused."
+          onClick={() => {
+            /* A drag ends with a click event the browser fires anyway. Opening feedback every time
+               somebody repositions the button is the bug that makes a draggable button unusable. */
+            if (justDragged.current) { justDragged.current = false; return }
+            open ? hidePanel() : showPanel()
+          }}
           // On mobile, the bottom nav bar is a fixed 60px strip - without the extra
           // offset this button's inline `bottom: 20` sits inside that strip and
           // overlaps the nav labels. Scoped to non-chat pages only, since chat
@@ -308,11 +393,27 @@ function FeedbackWidget() {
           /* A chat page positions this from the top, which is the header's own row — at 375px it
              covered a control there. `gw-fb-trigger-chat-mobile-safe` moves it below the header on
              a narrow screen; the desktop position is unchanged. */
-          className={isChatPage ? 'gw-feedback-btn gw-fb-trigger-chat-mobile-safe' : 'gw-feedback-btn gw-fb-trigger-mobile-safe'}
+          /*
+           * THE MOBILE-SAFE CLASSES SET `bottom` WITH `!important`, WHICH BEATS AN INLINE STYLE.
+           *
+           * So once somebody has put this button somewhere, the class has to go - otherwise the
+           * drag appears to work, the button snaps back on the next render, and it looks broken.
+           * Our defaults still get the classes, because those are the positions the classes exist
+           * to correct.
+           */
+          className={
+            moved
+              ? 'gw-feedback-btn'
+              : isChatPage
+                ? 'gw-feedback-btn gw-fb-trigger-chat-mobile-safe'
+                : 'gw-feedback-btn gw-fb-trigger-mobile-safe'
+          }
           style={{
             position: 'fixed',
-            ...(isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
+            ...(moved ? asStyle(resting) : isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),
             zIndex: 100,
+            touchAction: 'none',
+            cursor: dragging ? 'grabbing' : 'grab',
           }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

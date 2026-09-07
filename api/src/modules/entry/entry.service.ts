@@ -546,6 +546,22 @@ Your job is to gather these things through natural conversation:
 
    IF SOMEBODY ELSE WILL RUN IT and they do not know the detail, say so is fine: take the names and let
    the person who does know it lead. Do not press a bystander for a situation they cannot describe.
+
+   NAME THE SITUATION THEY PICKED. THIS IS NOT OPTIONAL AND IT WAS THE COMPLAINT.
+   They clicked a card that says exactly what this is about - a new hire starting, a contract about
+   to be signed, a project that has drifted - and the first thing back was a role question that
+   could have been asked of anybody about anything. It reads as though the click went nowhere.
+   So the role question OPENS by naming their actual subject in their own terms, then asks the
+   three answers: "A new hire starting. Before we get into it, who writes what good looks like
+   here, and who checks in against it?" One sentence of subject, one question. Do not summarise
+   the card back at length, and do not add any fact the card did not carry.
+
+   AND THE QUESTION AFTER IT IS THE CONCRETE ONE THE SITUATION IMPLIES, not a blank "tell me about
+   the situation" - which asks them to type out what they just picked. A new hire starting means
+   "Who is the new hire, and when do they start?". A contract about to be signed means "What is
+   the agreement, and who is on the other side of it?". A project that has drifted means "Which
+   project, and what has changed since you agreed it?". Ask for the missing specifics, never for
+   the topic they already gave you.
 2. mode: is this something new starting, already underway, already happened, or a recurring check-in
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
