@@ -22,6 +22,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import { Sec } from '@/components/gw/kit'
 import { scrollTo } from '@/lib/scroll-to'
+import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
@@ -2051,11 +2052,27 @@ export function EntryChatPage() {
       })()}
 
       {/* Start over / clear check-in - hidden once session is closed */}
-      {!closed && (
+      {/*
+        * THE WAY OUT DOES NOT DISAPPEAR WHEN THE SESSION CLOSES.
+        *
+        * This whole bar was hidden on `!closed`, so once the check-in ended there was no "start
+        * over" and no "clear" anywhere on the page - reported as exactly that: "should be able to
+        * start over even when on the chat, clear or end session". A closed session with no exit is
+        * a dead end on the one screen a stranger meets first, and their only way out is the browser
+        * back button or a reload that restores the same finished session.
+        *
+        * Hiding it was defensible while closing meant "your answers lock" and nothing else. It is
+        * not defensible now that closing is followed by a save-and-invite step somebody may not
+        * want to take. The confirmation still stands in front of it, so nothing is thrown away by
+        * a stray click.
+        */}
+      {(
         <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
           {confirmClear ? (
             <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              {phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
+              {closed
+                ? 'This will throw away this session and everything in it. Are you sure?'
+                : phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
               <button onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Yes, clear</button>
               <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
             </span>
@@ -2087,11 +2104,16 @@ export function EntryChatPage() {
                   ← Pick a different situation
                 </button>
               )}
+              {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
+                  organisation name and anybody queued to be invited - cheap to confirm, expensive
+                  to undo. On the picker with nothing said yet there is nothing to lose, so it goes
+                  straight through. Once a session has CLOSED it always confirms: that is the state
+                  where somebody has the most written down and the least expectation of losing it. */}
               <button
-                onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
+                onClick={() => (phase === 'checkin' || closed || onboardingHistory.length > 1) ? setConfirmClear(true) : handleClearSession()}
                 style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
               >
-                {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
+                {closed ? 'Start over' : phase === 'checkin' ? 'Clear check-in' : 'Start over'}
               </button>
             </span>
           )}
@@ -2157,7 +2179,10 @@ export function EntryChatPage() {
                     boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                   }}
                 >
-                  {m.content}
+                  {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
+                      in a bubble in production, with its markdown asterisks intact. Stripped on the
+                      server too - this is a net, not the fix. */}
+                  {nothingInternalReachesTheBubble(m.content)}
                 </div>
               ))}
 
@@ -2580,7 +2605,7 @@ export function EntryChatPage() {
                         ))}
                         <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                       </span>
-                    ) : m.content}
+                    ) : nothingInternalReachesTheBubble(m.content)}
                     {streamingIdx === i && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />}
                   </div>
                 )
@@ -2853,7 +2878,7 @@ export function EntryChatPage() {
                             >
                               {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
                                 ? m.content.slice(CORRECTION_PREFIX.length).trim()
-                                : m.content}
+                                : nothingInternalReachesTheBubble(m.content)}
                             </div>
                           ))}
                         </div>

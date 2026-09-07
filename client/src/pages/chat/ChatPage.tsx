@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
@@ -823,7 +824,7 @@ export function ChatPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.72 }}>
                 {priorTurns.map(m => (
                   <div key={`prior-${m.id}`} style={{ alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start', maxWidth: '85%', fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)', background: m.role === 'PERSON' ? 'var(--gw-blue-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '7px 10px' }}>
-                    {m.content}
+                    {nothingInternalReachesTheBubble(m.content)}
                   </div>
                 ))}
               </div>
@@ -886,7 +887,7 @@ export function ChatPage() {
                     </span>
                   )}
                 </span>
-              ) : m.content}
+              ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
                 <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
               )}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
@@ -226,7 +227,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
               whiteSpace: 'pre-wrap',
             }}
           >
-            {m.content}
+            {nothingInternalReachesTheBubble(m.content)}
           </div>
         ))}
         {(send.isPending || opening.isFetching) && (

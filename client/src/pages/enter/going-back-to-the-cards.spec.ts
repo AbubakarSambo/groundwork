@@ -68,6 +68,20 @@ describe('and it is offered whenever the conversation has begun', () => {
   })
 
   it('while Start over still exists, for somebody who really does want to bin it', () => {
-    expect(SRC).toContain("{phase === 'checkin' ? 'Clear check-in' : 'Start over'}")
+    expect(SRC).toMatch(/phase === 'checkin' \? 'Clear check-in' : 'Start over'/)
+  })
+
+  it('and it survives the session closing, which is when it used to vanish', () => {
+    /*
+     * REPORTED FROM THE SCREEN: "should be able to start over even when on the chat, clear or end
+     * session". The whole bar was hidden on `!closed`, so the moment a check-in ended there was no
+     * way out anywhere on the page - on the one screen a stranger meets first, with the browser
+     * back button as the only exit. Hiding it was defensible while closing meant nothing but
+     * "answers lock"; it is not, now that closing is followed by a save-and-invite step somebody
+     * may not want to take.
+     */
+    expect(SRC).not.toMatch(/\{!closed && \(\s*<div style=\{\{ padding: '6px 20px'/)
+    /* And it confirms first once there is a transcript to lose. */
+    expect(SRC).toMatch(/phase === 'checkin' \|\| closed \|\| onboardingHistory\.length > 1\) \? setConfirmClear\(true\)/)
   })
 })
