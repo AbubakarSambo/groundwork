@@ -62,7 +62,22 @@ this week's implementation; the copy is the company's position and the code has 
 
 ### Claim 1 — "Groundwork staff cannot access your OKRs, check-ins, team performance, evidence, or underlying organizational data. We only see information you deliberately send to us."
 
-**Product surfaces: VERIFIED. Infrastructure: MUST BE FIXED.**
+**Product surfaces: VERIFIED. Infrastructure: ACCEPTED AS IS, by decision, 7 September 2026.**
+
+Hafsah's call after the cost was measured: the encryption work is not being done now. That is a
+defensible decision and it is recorded here rather than left looking like forgotten work, because
+the claim's standing depends on it.
+
+What it means in practice: the claim is about whether GROUNDWORK'S PEOPLE read a customer's work,
+and every route a member of staff could take is closed — no screen, no export, a support view a test
+proves cannot return content, and the three non-screen routes fixed during this audit. What is not
+closed is that a database dump is readable, so the sentence rests on operational discipline rather
+than on cryptography.
+
+The consequence to keep in view: if a customer or an investor asks the technical question in a
+security review, the honest answer is "no staff path in the product, and not encrypted at rest" —
+and that answer is weaker than the one the page implies. The cost of changing it is measured below
+and rises with every customer onboarded.
 
 Verified, with evidence:
 
