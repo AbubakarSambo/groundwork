@@ -19,11 +19,29 @@ export type SessionStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DECLI
 
 export interface APartyToNudge {
   id: string;
+  /**
+   * Whether they have accepted their invitation and have an account.
+   *
+   * The manual reminder queried `userId: { not: null }`, so somebody who never accepted could not
+   * be reminded at all — the one person a lead most wants to chase, and pressing the button did
+   * nothing for them. They are not sent a nudge (the link goes to a check-in they cannot open
+   * without an account); they are sent their invitation again. See `whatToSendThem`.
+   */
+  hasAccepted?: boolean;
   /** Their check-in for the session in question, if they have one. */
   session?: { id: string; status: SessionStatus } | null;
   /** True where the party exists to oversee rather than to answer. */
   managingOnly?: boolean;
   emailNotifications?: boolean | null;
+  /**
+   * Whether their account is still active.
+   *
+   * A leaver keeps receiving reminders about a check-in at a company they have left, at an address
+   * that may now belong to somebody else — the audit's finding was "nothing stops nudges going to
+   * a leaver's address until the roster says inactive", and the roster is optional. The account
+   * being deactivated is the fact we always have.
+   */
+  stillHere?: boolean;
   hoursSinceLastNudge?: number | null;
 }
 
@@ -35,13 +53,21 @@ export type WhyNot =
   | 'they oversee this check-in rather than answering it'
   | 'there is no check-in of theirs to point them at'
   | 'they turned these emails off'
-  | 'they were nudged in the last day';
+  | 'they were nudged in the last day'
+  | 'their account here has been deactivated';
 
 export function whyNotNudge(party: APartyToNudge): WhyNot | null {
   if (party.managingOnly) return 'they oversee this check-in rather than answering it';
-  if (!party.session || !party.session.id) return 'there is no check-in of theirs to point them at';
-  if (party.session.status === 'COMPLETED') return 'they have already finished';
-  if (party.session.status === 'DECLINED') return 'they declined, and that is a decision rather than a delay';
+  /* Somebody who has not accepted has a check-in row and no way into it, so the id being present
+     is not the question for them — `whatToSendThem` decides what they get instead. */
+  if (party.hasAccepted !== false && (!party.session || !party.session.id)) {
+    return 'there is no check-in of theirs to point them at';
+  }
+  /* A party who has not accepted may have no session yet; the two states above have already
+     been decided for anybody who does. */
+  if (party.session?.status === 'COMPLETED') return 'they have already finished';
+  if (party.session?.status === 'DECLINED') return 'they declined, and that is a decision rather than a delay';
+  if (party.stillHere === false) return 'their account here has been deactivated';
   if (party.emailNotifications === false) return 'they turned these emails off';
   if (party.hoursSinceLastNudge !== null && party.hoursSinceLastNudge !== undefined
       && party.hoursSinceLastNudge < NOT_TWICE_WITHIN_HOURS) {
@@ -52,4 +78,23 @@ export function whyNotNudge(party: APartyToNudge): WhyNot | null {
 
 export function worthNudging<T extends APartyToNudge>(parties: readonly T[]): T[] {
   return parties.filter((p) => whyNotNudge(p) === null);
+}
+
+/**
+ * WHAT TO SEND SOMEBODY THE LEAD HAS ASKED TO REMIND.
+ *
+ * Two different mails, and sending the wrong one is worse than sending nothing:
+ *
+ *  - somebody who has accepted gets a nudge, which links to their own check-in;
+ *  - somebody who has not gets their INVITATION again, because a nudge would link to a check-in
+ *    they cannot open. Before this they got nothing at all: the query that found people to remind
+ *    required a `userId`, so the person most worth chasing was the one the button could not reach,
+ *    and the lead's only move was to add them a second time.
+ */
+export type WhatToSend = 'a nudge' | 'their invitation again' | 'nothing';
+
+export function whatToSendThem(party: APartyToNudge): { send: WhatToSend; because?: WhyNot } {
+  const why = whyNotNudge(party);
+  if (why) return { send: 'nothing', because: why };
+  return { send: party.hasAccepted === false ? 'their invitation again' : 'a nudge' };
 }

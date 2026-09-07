@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
-import { worthNudging } from './who-is-worth-nudging';
+import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
@@ -40,7 +40,7 @@ export class RemindService {
    * #34: If the other party has already completed their check-in, the nudge
    * email includes a note that their version is the only thing missing.
    */
-  async sendReminder(checkInId: string, requestingUserId: string): Promise<{ sent: boolean; count: number }> {
+  async sendReminder(checkInId: string, requestingUserId: string): Promise<{ sent: boolean; count: number; reinvited: number }> {
     // Load the check-in to get the ground.
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
@@ -62,12 +62,30 @@ export class RemindService {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
 
-    // Find all OTHER participants who have accepted their invite (userId set)
-    // but have NOT completed a check-in for the same session number. Exclude
-    // the requester themselves - clicking "remind" nudges the other party,
-    // never a self-addressed reminder to complete your own check-in.
+    /* Whose name an invitation is sent in, if one is sent below. A re-invitation from "A founder"
+       is the mail somebody deletes. */
+    const requester = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { firstName: true },
+    });
+    const requesterName = requester?.firstName ?? 'A colleague';
+
+    /*
+     * EVERY OTHER PARTY, INCLUDING THE ONES WHO NEVER ACCEPTED.
+     *
+     * This required `userId: { not: null }` — so the person a lead most wants to chase, the one who
+     * has not opened their invitation, was the one the button could not reach. Pressing "remind"
+     * did nothing for them and said it had reminded nobody; the lead's only move was to add them a
+     * second time and hope. They are included now and sent their INVITATION again rather than a
+     * nudge, because a nudge links to a check-in they cannot open. See `whatToSendThem`.
+     *
+     * The requester is still excluded: "remind" chases the other party, never yourself.
+     */
     const allParticipants = await this.prisma.groundParticipant.findMany({
-      where: { groundId: ground.id, userId: { not: null, notIn: [requestingUserId] } },
+      where: {
+        groundId: ground.id,
+        OR: [{ userId: null }, { userId: { notIn: [requestingUserId] } }],
+      },
       select: {
         id: true,
         email: true,
@@ -77,7 +95,10 @@ export class RemindService {
            carried the column, so the exclusion would have been permanently false — the fault this
            is fixing, wearing the fix's clothes. */
         managingOnly: true,
-        user: { select: { firstName: true, emailNotifications: true } },
+        /* For the invitation path: the token is the same one their first mail carried. */
+        inviteToken: true,
+        invitedAt: true,
+        user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
           select: { id: true, status: true },
@@ -97,19 +118,23 @@ export class RemindService {
      * anybody with no check-in for this session, whose reminder link was then built out of an
      * empty string and pointed at nothing.
      */
-    const incomplete = worthNudging(
-      allParticipants.map((p) => ({
-        ...p,
-        session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any } : null,
-        managingOnly: p.managingOnly,
-        emailNotifications: p.user?.emailNotifications ?? null,
-        hoursSinceLastNudge: p.lastNudgedAt
-          ? (Date.now() - p.lastNudgedAt.getTime()) / (1000 * 60 * 60)
-          : null,
-      })),
-    );
+    const considered = allParticipants.map((p) => ({
+      ...p,
+      session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any } : null,
+      managingOnly: p.managingOnly,
+      hasAccepted: p.userId !== null,
+      /* A leaver's address may now belong to somebody else. Undefined for an invitee with no
+         account yet, which is not the same as deactivated. */
+      stillHere: p.user ? p.user.isActive && !p.user.deletedAt : undefined,
+      emailNotifications: p.user?.emailNotifications ?? null,
+      hoursSinceLastNudge: p.lastNudgedAt
+        ? (Date.now() - p.lastNudgedAt.getTime()) / (1000 * 60 * 60)
+        : null,
+    }));
+    const incomplete = worthNudging(considered);
 
     let count = 0;
+    let reinvited = 0;
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
 
     for (const participant of incomplete) {
@@ -121,10 +146,38 @@ export class RemindService {
          reminder this service has ever sent landed on the not-found page. The helper is
          the one place that knows, and reaching past it into `frontendUrl` is what let the
          two drift. */
-      /* `session.id` is guaranteed present by whyNotNudge, which refuses a party without one
-         rather than building a link out of an empty string. */
-      const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
       const specificThing = `session ${checkIn.sessionNumber} on "${ground.label}"`;
+
+      if (whatToSendThem(participant).send === 'their invitation again') {
+        /*
+         * THEIR INVITATION, NOT A NUDGE. They have no account, so a link to their own check-in
+         * opens a sign-in page they have no password for. The token is the one their first mail
+         * carried — see the note in grounds.service on why re-minting kills the live link.
+         */
+        if (!participant.inviteToken) {
+          this.logger.warn(`Cannot re-invite participant ${participant.id}: no invite token on the row.`);
+          continue;
+        }
+        await this.email.sendParticipantInvite(
+          participant.email,
+          requesterName,
+          ground.label,
+          participant.inviteToken,
+          undefined,
+          { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
+        );
+        await this.prisma.groundParticipant.update({
+          where: { id: participant.id },
+          data: { lastNudgedAt: new Date(), notifiedAt: new Date() },
+        });
+        reinvited++;
+        count++;
+        continue;
+      }
+
+      /* `session.id` is guaranteed present by whyNotNudge for anybody who has accepted, which
+         refuses a party without one rather than building a link out of an empty string. */
+      const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
       await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted);
@@ -137,7 +190,12 @@ export class RemindService {
       count++;
     }
 
-    return { sent: true, count };
+    /*
+     * `reinvited` is reported so the client can say which of the two happened. "Reminded 2 people"
+     * where one of them was actually re-invited is a small lie that matters: the lead is deciding
+     * whether to chase somebody another way.
+     */
+    return { sent: true, count, reinvited };
   }
 
   /**
@@ -189,7 +247,7 @@ export class RemindService {
             id: true,
             email: true,
             lastNudgedAt: true,
-            user: { select: { firstName: true, emailNotifications: true } },
+            user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
         },
       },
@@ -262,6 +320,12 @@ export class RemindService {
          decide WHETHER this ground chases; they cannot decide that somebody who
          turned email off receives one. */
       if (participant.user?.emailNotifications === false) continue;
+      /* And not to somebody who has left. The scheduled sweep runs for weeks after a round opens,
+         which is exactly the window in which people leave. */
+      if (participant.user && (!participant.user.isActive || participant.user.deletedAt)) {
+        this.logger.log(`Not nudging participant ${participant.id}: their account has been deactivated.`);
+        continue;
+      }
 
       // #34: Check if the other party on the same ground + session has completed.
       const otherPartyCompleted = await this.prisma.checkIn.findFirst({

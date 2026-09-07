@@ -31,6 +31,7 @@ import { TokenType } from '@prisma/client';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
 import { whatToSayAboutADeadLink, expiresAtFor, howLongInWords } from './how-long-a-link-lasts';
+import { THE_SAME_ANSWER_EITHER_WAY, type WhyTheyCouldNotSignIn } from './one-answer-at-the-door';
 
 type UserWithOrg = {
   id: string;
@@ -192,9 +193,22 @@ export class AuthService {
       include: { organization: true },
     });
 
-    if (!user || user.deletedAt) throw new UnauthorizedException('Invalid email or password');
-    if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-    if (!user.isEmailVerified) throw new UnauthorizedException('Please verify your email before logging in');
+    /*
+     * ONE ANSWER AT THE DOOR. See one-answer-at-the-door.ts: these branches told a stranger which
+     * addresses are registered, which use Google, and which have never set a password. The reason
+     * is logged for us and never sent, and the useful detail goes by email — where only the owner
+     * of the address can read it.
+     */
+    /* Annotated on the DECLARATION, not only on the arrow: TypeScript narrows after a
+       never-returning call only when the variable itself carries the type. */
+    const refuse: (why: WhyTheyCouldNotSignIn) => never = (why) => {
+      this.logger.log(`Sign-in refused for ${dto.email.toLowerCase()}: ${why}.`);
+      throw new UnauthorizedException(THE_SAME_ANSWER_EITHER_WAY);
+    };
+
+    if (!user || user.deletedAt) refuse('no such account');
+    if (!user.isActive) refuse('the account is deactivated');
+    if (!user.isEmailVerified) refuse('the address is not verified');
 
     if (!user.passwordHash) {
       if (user.googleId) {
@@ -205,7 +219,7 @@ export class AuthService {
         this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
           this.logger.error(`Failed to send add-password email to ${user.email}: ${err.message}`),
         );
-        throw new UnauthorizedException("Your account uses Google Sign-In. We've emailed you a link to set a password.");
+        refuse('they sign in with Google and have no password');
       }
       // Participant accounts are created without a password. Auto-send a setup
       // link so they can get back in without needing to contact anyone.
@@ -216,11 +230,11 @@ export class AuthService {
       this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
         this.logger.error(`Failed to send password setup email to ${user.email}: ${err.message}`),
       );
-      throw new UnauthorizedException("We've emailed you a link to set your password. Check your inbox.");
+      refuse('they have no password yet');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!isPasswordValid) throw new UnauthorizedException('Invalid email or password');
+    if (!isPasswordValid) refuse('the password was wrong');
 
     return await this.buildAuthResponse(user as unknown as UserWithOrg);
   }

@@ -38,6 +38,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
+import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
@@ -699,8 +700,14 @@ export class ConversationService {
     const personTurnCount = await this.prisma.conversationTurn.count({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
     });
-    if (personTurnCount >= 20) {
-      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    if (personTurnCount >= A_CHECK_IN_TAKES_ANSWERS) {
+      /*
+       * A refusal that says their record is safe and what to do, rather than naming a limit nobody
+       * mentioned. `canContinue: false` because this one really cannot be answered by typing more —
+       * unlike the too-short refusal, where it can. See
+       * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
+       */
+      throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
     }
 
     const fullSystem = await this.composeSystemPrompt(checkIn, message);
@@ -830,7 +837,16 @@ export class ConversationService {
     const signalled = hadCloseMarker || this.detectSessionComplete(reply);
     const sessionComplete = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false;
 
-    return { reply: aiTurn.content, sessionComplete };
+    /*
+     * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,
+     * so the count including it is one more. Appended to the reply rather than returned as a
+     * separate field, because a field needs a screen to render it and this has to reach somebody on
+     * the path they are already on.
+     */
+    const room = howMuchRoomIsLeft(personTurnCount + 1);
+    const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
+
+    return { reply: withRoomLeft, sessionComplete };
   }
 
   /**
@@ -908,8 +924,14 @@ export class ConversationService {
     const personTurnCount = await this.prisma.conversationTurn.count({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
     });
-    if (personTurnCount >= 20) {
-      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    if (personTurnCount >= A_CHECK_IN_TAKES_ANSWERS) {
+      /*
+       * A refusal that says their record is safe and what to do, rather than naming a limit nobody
+       * mentioned. `canContinue: false` because this one really cannot be answered by typing more —
+       * unlike the too-short refusal, where it can. See
+       * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
+       */
+      throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
     }
 
     const fullSystem = await this.composeSystemPrompt(checkIn, message);

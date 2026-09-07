@@ -15,6 +15,9 @@ function makeService(overrides: any = {}) {
   const sent: string[] = [];
   const nudged: string[] = [];
   const prisma: any = {
+    /* Whose name a re-invitation is sent in. Somebody who never accepted is now reachable by the
+       reminder button — see `whatToSendThem` — and that mail needs a name on it. */
+    user: { findUnique: jest.fn(async () => ({ firstName: 'Ada' })) },
     checkIn: { findUnique: jest.fn(async () => ({ groundId: 'g1', sessionNumber: 1 })) },
     ground: { findUnique: jest.fn(async () => ({ id: 'g1', label: 'Test ground' })) },
     groundParticipant: {
@@ -59,8 +62,13 @@ describe('sendReminder: does not self-nudge the requester', () => {
       participants: [PARTICIPANT({ id: 'p2', email: 'other@x.test', userId: 'other-user' })],
     });
     await service.sendReminder('ci1', 'requester-user');
+    /* The shape changed: somebody who never accepted has no `userId`, and they are exactly who a
+       lead wants to chase — so the query is an OR rather than `userId: { not: null }`. The rule
+       being tested is unchanged: the requester is never in the result. */
     const where = (prisma.groundParticipant.findMany as jest.Mock).mock.calls[0][0].where;
-    expect(where.userId.notIn).toContain('requester-user');
+    const excludes = JSON.stringify(where.OR ?? where);
+    expect(excludes).toContain('requester-user');
+    expect(excludes).toContain('notIn');
   });
 });
 
