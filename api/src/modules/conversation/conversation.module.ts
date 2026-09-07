@@ -9,9 +9,12 @@ import { DocumentsModule } from '../documents/documents.module';
 import { UsageModule } from '../usage/usage.module';
 import { EmailModule } from '../email/email.module';
 import { KnowledgeService } from '../knowledge/knowledge.service';
+import { WorkspaceModule } from '../workspace/workspace.module';
 
 @Module({
-  imports: [BillingModule, forwardRef(() => DocumentsModule), UsageModule, EmailModule],
+  /* WorkspaceModule: the lead digest now also posts "people have a check-in waiting" to a
+     connected channel — see remind.service.ts. */
+  imports: [BillingModule, forwardRef(() => DocumentsModule), UsageModule, EmailModule, WorkspaceModule],
   controllers: [ConversationController, ClarificationController],
   /*
    * `KnowledgeService` is a provider rather than an imported module because it has none - it is

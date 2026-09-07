@@ -10,10 +10,10 @@
  {
   "group": "completion",
   "issue": "Finishing a check-in takes seconds with no sign it is working",
-  "evidence": "99 of 100 journeys",
+  "evidence": "CORRECTED: it IS announced \u2014 a step list saying it takes about half a minute. The API-level runner could not see the screen.",
   "severity": "medium",
   "journeys": 99,
-  "state": "open"
+  "state": "corrected"
  },
  {
   "group": "completion",
@@ -34,18 +34,18 @@
  {
   "group": "shared report",
   "issue": "The report takes tens of seconds after the last person finishes, unannounced",
-  "evidence": "56 journeys; 12\u201315s typical, 90s cap never hit",
+  "evidence": "FIXED: the page polls while the server says the report is being written, and says it is checking.",
   "severity": "medium",
   "journeys": 56,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "shared report",
   "issue": "A participant sees a report with nothing in it and a button to reveal it, with no explanation of the button",
-  "evidence": "13 journeys, participants only",
+  "evidence": "FIXED: there was no button \u2014 `reportsApi.activate` had no caller anywhere. There is now a screen explaining the exchange and a control that performs it.",
   "severity": "medium",
   "journeys": 13,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "participants",
@@ -90,26 +90,26 @@
  {
   "group": "examined artefacts",
   "issue": "A check-in notification never says what Groundwork is",
-  "evidence": "\"\u2026 has checked in on J6 NEW_HIRE\" assumes the reader knows",
+  "evidence": "FIXED: the notice now says what the admin can and cannot see \u2014 who checked in and the report, never what anybody wrote.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "examined artefacts",
   "issue": "The report-ready email never says what Groundwork is",
-  "evidence": "\"Your shared record is ready: J6 NEW_HIRE\"",
+  "evidence": "FIXED: it now says what Groundwork is, names the check-in, and states that the record does not quote anybody.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "examined artefacts",
   "issue": "An internal scenario code appears in email subjects people read",
-  "evidence": "\"J6 NEW_HIRE\" in the subject line",
+  "evidence": "CORRECTED: my own fixture. The harness names its grounds `J6 NEW_HIRE`; the product uses the label the lead chose. Not a product defect.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "corrected"
  },
  {
   "group": "examined artefacts",
@@ -282,10 +282,10 @@
  {
   "group": "email UX",
   "issue": "No email of the 110 names the organisation the check-in belongs to, so a recipient cannot tell which company is asking",
-  "evidence": "0 of 110",
+  "evidence": "FIXED on the two that most need it (report-ready and the check-in notice). The invitation already named the person inviting them.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "email UX",

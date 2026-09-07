@@ -30,7 +30,10 @@ function makeService(overrides: any = {}) {
     buildCheckInUrl: (id: string) => `http://localhost:5173/checkin/${id}`,
     sendAbsenceReminder: jest.fn(async () => ({})),
   };
-  const service = new RemindService(prisma, email);
+  /* The channel, where a customer has connected one. These tests are about who gets an EMAIL, so
+     the notifier does nothing and records nothing. */
+  const channel = { tell: async () => [] } as any;
+  const service = new RemindService(prisma, email, channel);
   return { service, prisma, email, sent, nudged };
 }
 

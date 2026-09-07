@@ -76,3 +76,42 @@ describe('and no read of that table is left unscoped', () => {
     expect(src).not.toMatch(/opsIntegration\.findFirst/);
   });
 });
+
+/**
+ * AND ONCE THERE IS A SECRET, AN UNSIGNED EVENT IS NOT FILED.
+ *
+ * The route is public by necessity and recorded everything, verified or not, answering 200 either
+ * way — so anybody who found the URL could write rows into the table the ops board reads as a count
+ * of what happened, marked unverified in a column nobody reads.
+ */
+describe('what happens when a secret exists', () => {
+  function withSecret(secret: string | null) {
+    const upserts: any[] = [];
+    const prisma: any = {
+      opsIntegration: { findUnique: jest.fn(async () => ({ webhookSecret: secret })) },
+      opsGroundworkEvent: { upsert: jest.fn(async (a: any) => { upserts.push(a); return {}; }) },
+    };
+    return { service: new OpsGroundworkEventsService(prisma), upserts };
+  }
+
+  it('refuses a delivery that cannot prove it is us, and records nothing', async () => {
+    const { service, upserts } = withSecret('a-real-secret');
+    await expect(service.received('{"event":"report.ready"}', 'sha256=nonsense', 'e1')).rejects.toThrow();
+    expect(upserts).toEqual([]);
+  });
+
+  it('refuses one with no signature header at all', async () => {
+    const { service, upserts } = withSecret('a-real-secret');
+    await expect(service.received('{"event":"report.ready"}', undefined, 'e1')).rejects.toThrow();
+    expect(upserts).toEqual([]);
+  });
+
+  it('but still records an unverifiable one while NOTHING is configured', async () => {
+    /* This is how somebody discovers the secret is missing. Refusing here would make a
+       half-finished setup look like a working one with no traffic. */
+    const { service, upserts } = withSecret(null);
+    await service.received('{"event":"report.ready"}', undefined, 'e1');
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0].create.verified).toBe(false);
+  });
+});

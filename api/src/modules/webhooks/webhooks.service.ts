@@ -357,9 +357,12 @@ export class WebhooksService {
     const url = endpoint?.url ?? 'your endpoint';
 
     await this.workspace
+      /* Its own kind. The first version of this borrowed 'a report is ready' and wrote the whole
+         sentence into `about`, which produced "A report is ready on “Groundwork cannot deliver…”" —
+         a notice whose shape said one thing and whose text said another. */
       .tell(d.organizationId, {
-        what: 'a report is ready',
-        about: `Groundwork cannot deliver events to ${url} — the last one was given up on after ${d.attempts ?? 7} attempts`,
+        what: 'an integration cannot be reached',
+        about: url,
         link: `${this.email.frontendUrlForLinks()}/org/integrations`,
       })
       .catch(() => undefined);

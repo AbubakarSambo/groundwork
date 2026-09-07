@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WebhooksService } from './webhooks.service';
 import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, BlockerEvent, HandoverReadyEvent, ScenarioProposedEvent } from '../../common/events';
 import { roundCompletedPayload, checkInCompletedPayload, blockerPayload, handoverReadyPayload, scenarioProposedPayload } from './what-a-webhook-may-carry';
+import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 
 /**
  * WHERE `round.completed` FINALLY REACHES SOMEBODY.
@@ -25,6 +26,8 @@ export class WebhooksListener {
     private readonly prisma: PrismaService,
     private readonly webhooks: WebhooksService,
     private readonly config: ConfigService,
+    /* A connected Slack or Teams channel. An escalated blocker is the notice that most wants one. */
+    private readonly workspace: WorkspaceNotifierService,
   ) {}
 
   /*
@@ -41,7 +44,7 @@ export class WebhooksListener {
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: e.groundId },
-        select: { organizationId: true },
+        select: { organizationId: true, label: true },
       });
       if (!ground) return;
 
@@ -56,6 +59,20 @@ export class WebhooksListener {
           appUrl: this.appUrl(),
         }) as any,
       );
+
+      /*
+       * AND THE CHANNEL. Distinct from "a report is ready", which fires when an admin RELEASES it:
+       * a round finishing is the moment somebody has to decide to. Without this, the person who
+       * presses release learns about it only by opening the product.
+       */
+      await this.workspace
+        .tell(ground.organizationId, {
+          what: 'a round finished',
+          about: ground.label,
+          howMany: e.participantCount,
+          link: `${this.appUrl()}/grounds/${e.groundId}`,
+        })
+        .catch((err) => this.logger.warn(`Workspace notice failed for ${e.groundId}: ${err?.message}`));
     } catch (err: any) {
       this.logger.warn(`Could not queue round.completed for ${e.groundId}: ${err.message}`);
     }
@@ -104,7 +121,7 @@ export class WebhooksListener {
     try {
       const ground = await this.prisma.ground.findUnique({
         where: { id: e.groundId },
-        select: { organizationId: true },
+        select: { organizationId: true, label: true },
       });
       if (!ground) return;
 
@@ -119,6 +136,29 @@ export class WebhooksListener {
           appUrl: this.appUrl(),
         }) as any,
       );
+
+      /*
+       * AND THE CHANNEL, WHERE ONE IS CONNECTED.
+       *
+       * `what-a-channel-may-be-told.ts` defines four kinds of notice and exactly one was ever
+       * sent, so an admin who wired up Slack saw the test post and then near-silence. This is the
+       * one that most wants a channel: somebody is waiting on somebody else, and the person who
+       * can unblock it is often neither of them.
+       *
+       * The check-in's LABEL and a link, never who is blocked or on what — that file's whole
+       * argument is that a channel is read by more people than a check-in, which is why `Notice`
+       * has nowhere to put a name. Escalations only: a blocker raised in the ordinary course of a
+       * conversation is not news, and a channel that reports every one stops being read.
+       */
+      if (event === 'blocker.escalated') {
+        await this.workspace
+          .tell(ground.organizationId, {
+            what: 'somebody is blocked',
+            about: ground.label,
+            link: `${this.appUrl()}/grounds/${e.groundId}`,
+          })
+          .catch((err) => this.logger.warn(`Workspace notice failed for ${e.groundId}: ${err?.message}`));
+      }
     } catch (err: any) {
       this.logger.warn(`Could not queue ${event} for ${e.blockerId}: ${err.message}`);
     }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { isReallyFromGroundwork, whatItMeansForUs } from './what-groundwork-tells-us';
@@ -77,6 +77,26 @@ export class OpsGroundworkEventsService {
       : { ok: false as const, because: 'no webhook secret is configured on this side yet' };
 
     if (!checked.ok) this.logger.warn(`Event ${id} did not verify: ${checked.because}`);
+
+    /*
+     * ONCE THERE IS A SECRET, AN UNSIGNED EVENT IS REFUSED RATHER THAN FILED.
+     *
+     * This route is public by necessity — Groundwork cannot hold an ops session — and it recorded
+     * everything, verified or not, and answered 200 either way. Recording an unverifiable delivery
+     * is right while nothing is configured: it is how somebody discovers the secret is missing.
+     * It is wrong once a secret EXISTS, because then anybody who finds the URL can write rows into
+     * the table the ops board reads as a count of what happened, and they are marked unverified in
+     * a column nobody reads.
+     *
+     * So the rule turns on configuration: no secret, record it and say so; a secret, and something
+     * that cannot prove it is us is refused. Still a 200-shaped answer for a signature MISMATCH
+     * would teach a prober nothing, but there is no secrecy to protect here — the sender is our own
+     * product and a clear refusal is what makes a broken rotation findable.
+     */
+    if (secret && !checked.ok) {
+      this.logger.error(`Refusing event ${id}: ${checked.because}. Nothing was recorded.`);
+      throw new UnauthorizedException('This delivery could not be verified.');
+    }
 
     const meaning = checked.ok ? whatItMeansForUs(kind, payload) : null;
 

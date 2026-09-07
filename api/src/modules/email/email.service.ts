@@ -401,7 +401,20 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `Your shared record is ready: ${groundLabel}`,
-      html: this.layout(`<p>Both sides have checked in. The shared record is now available to both of you at the same time. It shows where you agree, where you differ, and the one question worth answering together.</p><p><a href="${reportUrl}">View the report</a></p>`),
+      /*
+       * WHAT GROUNDWORK IS, AND WHO CAN SEE THIS.
+       *
+       * The audit read all 110 emails a hundred journeys produced: not one named the organisation
+       * the check-in belongs to, and 54 never said who can see what the reader writes. This is the
+       * mail whose whole job is to bring somebody back to read a shared record — sent, in the
+       * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
+       */
+      html: this.layout(
+        `<p>Everybody on <strong>${groundLabel}</strong> has now checked in, so the shared record is open to all of you at the same moment.</p>` +
+        `<p>It shows where your accounts agree, where they differ, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
+        `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared record →</a></p>` +
+        `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each give their own account of it, privately, and get one shared record back.</p>`,
+      ),
     }, undefined, 'sendReportReady');
   }
 
@@ -526,7 +539,8 @@ export class EmailService {
       html: this.layout(
         `<p><strong>${participantEmail}</strong> has completed their check-in on <strong>${groundLabel}</strong>. Their account is on record.</p>
          ${pendingNote}
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>`,
+         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
+         <p style="font-size:12px;color:#9B9590;">You can see who has checked in and the shared report once it is ready. You cannot see what anybody wrote — accounts stay private until the record is released to everybody at once.</p>`,
       ),
     }, undefined, 'sendParticipantCheckedIn');
   }

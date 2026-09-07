@@ -43,7 +43,11 @@ describe('a dead delivery reaches a person', () => {
     const { service, posted } = makeService();
     await (service as any).tellThemItIsDying(dead);
     expect(posted[0].org).toBe('org1');
-    expect(posted[0].notice.about).toMatch(/cannot deliver events/);
+    /* Its own KIND, with the endpoint in `about`. The first version borrowed "a report is ready"
+       and wrote a whole sentence into `about`, producing a notice whose shape said one thing and
+       whose text said another. */
+    expect(posted[0].notice.what).toBe('an integration cannot be reached');
+    expect(posted[0].notice.about).toBe('https://them.test/hook');
   });
 
   it('says it once a day, not once per dead delivery', async () => {

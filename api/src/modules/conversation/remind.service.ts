@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
 import { worthNudging } from './who-is-worth-nudging';
+import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
   theEmailForTheLead,
@@ -23,6 +24,9 @@ export class RemindService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    /* The channel, where one is connected. Four kinds of notice were defined and one was ever
+       sent; "people have a check-in waiting" is the second. */
+    private workspace: WorkspaceNotifierService,
   ) {}
 
   /**
@@ -172,6 +176,8 @@ export class RemindService {
         ground: {
           select: {
             label: true,
+            /* For the channel notice: `tell` is scoped to an organisation. */
+            organizationId: true,
             chaseAfterDays: true,
             chasingStopped: true,
             tellTheLead: true,
@@ -195,6 +201,8 @@ export class RemindService {
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
       who: string[]; checkInIds: string[];
+      /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
+      organizationId: string;
     }>();
 
     for (const checkIn of notStarted) {
@@ -235,6 +243,7 @@ export class RemindService {
             chasedOn: policy.days,
             who: [],
             checkInIds: [],
+            organizationId: checkIn.ground.organizationId,
           };
           /* The name they are known by here, and their address only if that is all
              there is. A lead reading a list of email addresses cannot tell who is
@@ -336,6 +345,27 @@ export class RemindService {
           where: { id: { in: entry.checkInIds } },
           data: { leadToldAt: now },
         });
+
+        /*
+         * AND THE CHANNEL, IF THERE IS ONE.
+         *
+         * `what-a-channel-may-be-told.ts` defines four kinds of notice and exactly one of them was
+         * ever sent, so an admin who connected Slack saw the test post and then near-silence for
+         * weeks. This is the second: people have a check-in waiting. A COUNT and the check-in's own
+         * label, never the names — the whole point of that file is that a channel is read by more
+         * people than a check-in, and it is why `Notice` has nowhere to put a name.
+         *
+         * Outside the failure path on purpose: a lead is told by email whether or not a customer's
+         * channel is reachable.
+         */
+        await this.workspace
+          .tell(entry.organizationId, {
+            what: 'a check-in is waiting',
+            about: entry.label,
+            howMany: entry.who.length,
+            link: `${frontendUrl}/grounds`,
+          })
+          .catch((err) => this.logger.warn(`Workspace notice failed for "${entry.label}": ${err?.message}`));
       } catch (err: any) {
         this.logger.error(`Telling the lead about "${entry.label}" failed: ${err.message}`);
       }
