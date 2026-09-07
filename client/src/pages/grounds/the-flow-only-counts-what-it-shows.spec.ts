@@ -18,11 +18,14 @@ import { STAGE, stepsThisPersonSees, stepAfter } from './the-steps-this-person-s
  * have passed against any page at all. The ordering is its own module now and this exercises the
  * function the page runs.
  */
-function stepsSeen(o: { onAPaidPlan: boolean; describingOwn: boolean; billingSettled: boolean }) {
+function stepsSeen(o: { onAPaidPlan: boolean; describingOwn: boolean; billingSettled: boolean; somebodyElseLeads?: boolean }) {
   return stepsThisPersonSees({
     onAPaidPlan: o.onAPaidPlan,
     describingOwnSituation: o.describingOwn,
     billingSettledAndFree: o.billingSettled,
+    /* Default false: every case in this file is somebody setting up their own check-in. The
+       setter's shorter flow is covered in the-setup-flow-asks-one-thing-at-a-time.spec.ts. */
+    somebodyElseLeads: o.somebodyElseLeads ?? false,
   })
 }
 const after = (steps: number[], from: number) => stepAfter(steps, from)

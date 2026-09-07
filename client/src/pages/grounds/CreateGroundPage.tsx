@@ -972,6 +972,7 @@ export function CreateGroundPage() {
     onAPaidPlan,
     describingOwnSituation: selectedCard === 'DESCRIBE_OWN',
     billingSettledAndFree: billingChecked && billingFree,
+    somebodyElseLeads: runByOther,
   })
 
   function back() {
@@ -1631,36 +1632,6 @@ export function CreateGroundPage() {
 
             </>)}
 
-            {/* The moment belongs with the situation, so it is bound to step 2 rather than to
-                wherever it happens to sit in the file. */}
-            {step === STAGE.situation && scenario && (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
-                <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                  {MOMENTS.map(m => (
-                    <div
-                      key={m.moment}
-                      role="radio"
-                      tabIndex={moment === m.moment || (!moment && m.moment === MOMENTS[0].moment) ? 0 : -1}
-                      aria-checked={moment === m.moment}
-                      aria-label={`${m.label}. ${m.sub}`}
-                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMoment(m.moment) } }}
-                      className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`}
-                      onClick={() => setMoment(m.moment)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
-                        <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
             {/* Fixed action bar: the 17-card grid pushes the page well past
                 any laptop fold, and position:sticky binds to the .gw-bd
                 overflow ancestor (which is not what actually scrolls here),
@@ -2075,10 +2046,31 @@ export function CreateGroundPage() {
               * second says how many it is continuing with, so neither can be mistaken for the
               * other.
               */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(STAGE.brief)} style={{ margin: 0 }}>
-              {participants.length === 0
-                ? 'Continue'
-                : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
+            {/*
+              * THROUGH THE ORDERING, NOT PAST IT. This said `setStep(STAGE.brief)`, which was
+              * true for everybody until the brief became a step somebody can skip. A hardcoded
+              * next screen is exactly what `stepsThisPersonSees` exists to stop - and here it
+              * would have walked a setter onto the one screen the decision above says is not
+              * theirs. When there is nothing after this step, this button is the end of the flow
+              * and starts the check-in itself.
+              */}
+            <button
+              className="gw-btn"
+              disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@')) || create.isPending}
+              onClick={() => {
+                const next = stepAfter(visibleSteps, STAGE.people)
+                if (next === STAGE.people) create.mutate()
+                else setStep(next)
+              }}
+              style={{ margin: 0 }}
+            >
+              {create.isPending
+                ? 'Opening…'
+                : stepAfter(visibleSteps, STAGE.people) === STAGE.people
+                  ? 'Start check-in →'
+                  : participants.length === 0
+                    ? 'Continue'
+                    : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
             </button>
             {/*
               THE OTHER HALF OF THE SAME REFUSAL, WHICH SAID NOTHING. W-UX-7.
@@ -2156,6 +2148,48 @@ export function CreateGroundPage() {
               </div>
             )}
 
+
+            {/*
+              * WHERE YOU ARE IN THE SITUATION, ASKED WHERE YOU SAY WHAT IT IS ABOUT.
+              *
+              * It used to sit at the bottom of the situation step, under twenty-one cards and a
+              * fixed action bar - "hard to see", and reported as such. Her call: put it on the
+              * page where you describe what this is about, which is also where it belongs by
+              * meaning. Both questions here are about the same thing: what is going on, and how
+              * far through it you are.
+              *
+              * Picking a card already sets a recommended moment (see pick() in renderSituation),
+              * so nobody can arrive at the end without one and this is a change-it control rather
+              * than a required question. That is also why skipping this whole step for somebody who
+              * is only setting a check-in up for a lead loses nothing.
+              */}
+            {scenario && (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
+                <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {MOMENTS.map(m => (
+                    <div
+                      key={m.moment}
+                      role="radio"
+                      tabIndex={moment === m.moment || (!moment && m.moment === MOMENTS[0].moment) ? 0 : -1}
+                      aria-checked={moment === m.moment}
+                      aria-label={`${m.label}. ${m.sub}`}
+                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMoment(m.moment) } }}
+                      className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`}
+                      onClick={() => setMoment(m.moment)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
+                        <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="gw-fld" style={{ marginTop: 16 }}>
               <label className="gw-label" htmlFor="gw-ground-name">Name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
               <input

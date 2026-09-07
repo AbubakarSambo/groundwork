@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { STAGE, stepsThisPersonSees, type WhoIsSettingUp } from './the-steps-this-person-sees'
+import { STAGE, stepsThisPersonSees, stepAfter, type WhoIsSettingUp } from './the-steps-this-person-sees'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -74,7 +74,32 @@ describe('the setup flow asks one thing at a time', () => {
    * both, which is what these were always about: Back must not land on a screen nobody was shown.
    */
   const seen = (o: Partial<WhoIsSettingUp>) => stepsThisPersonSees({
-    onAPaidPlan: false, describingOwnSituation: false, billingSettledAndFree: true, ...o,
+    onAPaidPlan: false, describingOwnSituation: false, billingSettledAndFree: true,
+    somebodyElseLeads: false, ...o,
+  })
+
+  it('does not ask a setter for the brief or the description, because they write neither', () => {
+    /*
+     * Step 1's third answer is "Someone else sets the context": they write what it is about, they
+     * check in, they see the results. The flow did not branch on it, so the setter was walked
+     * through "Describe it" and then "What is this about? Your version of the brief" - two screens
+     * asking for the one thing they had just said was not theirs.
+     */
+    const setter = seen({ somebodyElseLeads: true, describingOwnSituation: true })
+    expect(setter).not.toContain(STAGE.brief)
+    expect(setter).not.toContain(STAGE.describe)
+    /* And what a setter IS for is untouched. */
+    expect(setter).toContain(STAGE.situation)
+    expect(setter).toContain(STAGE.timeline)
+    expect(setter).toContain(STAGE.people)
+  })
+
+  it('and the people step is the end of the flow for them, with nothing after it', () => {
+    /* The button on that step used to hardcode the brief as its next screen. If the last step has
+       no next, that button has to start the check-in instead - see stepAfter's contract. */
+    const setter = seen({ somebodyElseLeads: true })
+    expect(setter[setter.length - 1]).toBe(STAGE.people)
+    expect(stepAfter(setter, STAGE.people)).toBe(STAGE.people)
   })
 
   it('skips the free-text step when a card already said what this is', () => {
