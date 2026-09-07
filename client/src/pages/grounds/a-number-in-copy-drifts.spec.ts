@@ -22,7 +22,7 @@ describe('how many situations the page claims', () => {
     /* The words after the number now depend on whose situation it is (whose-situation-is-it.ts),
        so the assertion is on the NUMBER coming from the catalogue rather than on the sentence it
        introduces - which is what this test was always about. */
-    expect(stripped).toMatch(/\{HOW_MANY_NAMED_SITUATIONS\} \{theWords\.intro\}/)
+    expect(stripped).toMatch(/\{namedCardCount\} \{theWords\.intro\}/)
   })
 
   it('and the words it introduces still say "situations", on both paths', () => {
@@ -42,9 +42,20 @@ describe('how many situations the page claims', () => {
   })
 
   it('and the picker quotes the NAMED count, not the one that includes the escape hatch', () => {
-    /* "21 situations, pick the closest fit" is true. Twenty-two counted the describe-your-own
-       card, which is now the pick above them rather than one of them. */
     expect(HOW_MANY_NAMED_SITUATIONS).toBe(21)
     expect(HOW_MANY_NAMED_SITUATIONS).toBe(HOW_MANY_SITUATIONS - 1)
+  })
+
+  it('and the sentence counts CARDS, which is what the groups under it count', () => {
+    /*
+     * The catalogue counts scenarios; the picker offers cards, and COHORT_CHECK has two of them.
+     * The page said 21 while its own dropdown summed to 22. Both numbers now come off the same
+     * array, so the only way to make them disagree is to count something else on purpose.
+     */
+    const page = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
+    const cards = [...page.matchAll(/cardKey:\s*'[A-Z_]+',\s*scenario:\s*'([A-Z_]+)'/g)].map(m => m[1])
+    const named = cards.filter(s => s !== 'OPEN_READ')
+    expect(named.length).toBe(22)
+    expect(new Set(named).size).toBe(HOW_MANY_NAMED_SITUATIONS)
   })
 })

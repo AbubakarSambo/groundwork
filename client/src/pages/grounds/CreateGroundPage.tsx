@@ -6,7 +6,7 @@ import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence 
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { SCENARIO_LABELS, HOW_MANY_NAMED_SITUATIONS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -551,6 +551,23 @@ export function CreateGroundPage() {
   const [situationGroup, setSituationGroup] = useState<ScenarioGroupKey>(GROUPS_YOU_PICK_FROM[0].key as ScenarioGroupKey)
   /* The describe-your-own card, looked up rather than written out again - it is the same card the
      catalogue has always carried, just no longer inside a group. */
+  /**
+   * HOW MANY THIS STEP OFFERS, COUNTED OFF THE CARDS IT RENDERS.
+   *
+   * It read HOW_MANY_NAMED_SITUATIONS, which counts SCENARIO_LABELS minus the open one - 21. The
+   * dropdown's group counts sum to 22, because they count CARDS, and COHORT_CHECK has two of them:
+   * "Several people in the same role" and "Onboarding several people at once" are one scenario
+   * offered as two situations. So the sentence said 21 while the thing under it offered 22.
+   *
+   * The number somebody is reading is "how many can I pick between", which is the cards. Counted
+   * off the same array the groups are counted off, so the two cannot disagree again.
+   *
+   * (I had also written in the catalogue that the COHORT sharing "no longer holds". It does - my
+   * regex had counted `scenario:` occurrences including OPEN_READ and got 22 distinct where there
+   * are 21. Corrected there.)
+   */
+  const namedCardCount = SCENARIOS.filter(c => c.scenario !== 'OPEN_READ').length
+
   const openCard = SCENARIOS.find(c => c.scenario === 'OPEN_READ')
   const groupNow = GROUPS_YOU_PICK_FROM.find(g => g.key === situationGroup)
   /* null means "not searching" - show the grouped list. An empty array means "searched, found
@@ -1346,7 +1363,7 @@ export function CreateGroundPage() {
               {/* Whose situation this is decides the pronouns - see whose-situation-is-it.ts.
                   NAMED situations, because the describe-your-own card is no longer one of the
                   things being counted: it is the pick above them. */}
-              {HOW_MANY_NAMED_SITUATIONS} {theWords.intro}
+              {namedCardCount} {theWords.intro}
             </div>
 
             {/* THE FIRST PICK. Same card, same renderer, same selection behaviour as any other -
