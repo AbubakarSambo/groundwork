@@ -194,10 +194,10 @@
  {
   "group": "examined artefacts",
   "issue": "16 documents were attached and 1 report of 145 mentions one",
-  "evidence": "somebody who attached a contract cannot tell it was read",
+  "evidence": "FIXED twice over: the report carries a computed \"what this record rests on\" per reader, and documents everybody can see are NAMED in the synthesis corpus with what was read from them. Driven: the report says \"the offer letter, which they state was signed by both, gives sign-off authority to the head of delivery\".",
   "severity": "high",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "examined artefacts",

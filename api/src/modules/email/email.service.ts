@@ -8,6 +8,7 @@ import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
+import { withWhatGroundworkIs } from './what-groundwork-is';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -118,6 +119,14 @@ export class EmailService {
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
       return undefined;
     }
+
+    /*
+     * WHAT GROUNDWORK IS, on the mails where somebody might not know. Appended here rather than
+     * written into forty-two templates, which is forty-two chances to forget — and the ones that
+     * forgot were the ones nobody had read recently. See what-groundwork-is.ts for why the way-back-in
+     * mails are excluded.
+     */
+    options = { ...options, html: withWhatGroundworkIs(options.html, sender) };
 
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);

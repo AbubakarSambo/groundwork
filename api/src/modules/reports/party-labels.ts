@@ -263,6 +263,38 @@ export function withNames(
       .replace(
         /\byou (described|said|stated|gave|reported|characterised|characterized|framed|put|holds|held|has|have) their\b/gi,
         (_m, verb) => `you ${verb} your`,
+      )
+      /**
+       * AND THE VERB AGREES WITH "YOU".
+       *
+       * The model writes about every party in the third person, so a label swapped for "you" leaves
+       * the conjugation behind. Seen in a live report a moment after this was driven: "You is
+       * concerned this sign-off will drift" and "You referenced an offer letter" sitting in the same
+       * paragraph. The first reads as broken software, on the one screen whose whole claim is that
+       * it holds what people said carefully.
+       *
+       * A CLOSED LIST, not `\w+s`. "You" followed by a bare noun is ungrammatical, so a general
+       * rule would usually be right and would occasionally mangle a real sentence - and there is no
+       * way to tell which from here. The four irregulars carry most of it; the -s verbs are the ones
+       * a report of this kind actually uses.
+       */
+      .replace(/\byou is\b/gi, (m) => (m[0] === 'Y' ? 'You are' : 'you are'))
+      .replace(/\byou was\b/gi, (m) => (m[0] === 'Y' ? 'You were' : 'you were'))
+      .replace(/\byou has\b/gi, (m) => (m[0] === 'Y' ? 'You have' : 'you have'))
+      .replace(/\byou does\b/gi, (m) => (m[0] === 'Y' ? 'You do' : 'you do'))
+      .replace(
+        new RegExp(
+          '\\byou (' +
+            [
+              'describes', 'says', 'states', 'gives', 'reports', 'frames', 'puts', 'holds', 'seems',
+              'wants', 'needs', 'expects', 'feels', 'thinks', 'notes', 'believes', 'plans', 'sees',
+              'knows', 'raises', 'flags', 'treats', 'reads', 'takes', 'makes', 'sets', 'owns',
+              'appears', 'remains', 'intends', 'accepts', 'refers',
+            ].join('|') +
+            ')\\b',
+          'gi',
+        ),
+        (_m, verb) => `you ${String(verb).replace(/s$/, '')}`,
       );
 
     /**
