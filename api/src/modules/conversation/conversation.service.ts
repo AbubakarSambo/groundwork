@@ -747,9 +747,16 @@ export class ConversationService {
       const honest = withoutQuotesTheyDidNotSay(forHumans(rawReply), theirWords);
       const misquoted = unmatchedQuotes(forHumans(rawReply), theirWords);
       if (misquoted.length) {
+        /*
+         * THE COUNT, NOT THE WORDS. This logged up to 120 characters of the phrase, which put a
+         * fragment of somebody's account of their work into the application log — a place staff
+         * can read and the product promises they cannot. The log exists to make a RATE knowable,
+         * and a rate does not need the sentence. The length is kept because a two-word misquote
+         * and a two-line one are different problems.
+         */
         this.logger.warn(
           `Check-in ${checkIn.id}: reply quoted ${misquoted.length} phrase(s) this person did not write. ` +
-            `Marks removed. First: "${misquoted[0].slice(0, 120)}"`,
+            `Marks removed. Longest was ${Math.max(...misquoted.map((q) => q.length))} characters.`,
         );
       }
       const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) };
@@ -802,14 +809,16 @@ export class ConversationService {
       // prose that reads as though the engine lost its train of thought.
       const truncated = truncationsOfTheirWords(reply, personWords);
       if (truncated.length) {
+        /* How many, not which: the words are the person's own. */
         this.logger.warn(
-          `Shortened one of their own words on check-in ${checkIn.id}: ${truncated.join(', ')}.`,
+          `Shortened ${truncated.length} of their own word(s) on check-in ${checkIn.id}.`,
         );
       }
       const invented = causalClaimNobodyMade(reply, personWords);
       if (invented.length) {
+        /* The rate is the point of this line; the claim itself is about somebody's work. */
         this.logger.warn(
-          `Causal claim nobody made on ${checkIn.id}: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
+          `${invented.length} causal claim(s) nobody made on ${checkIn.id}. ${ASK_INSTEAD_OF_CONCLUDING}`,
         );
       }
       hadCloseMarker = stripped.hadMarker;

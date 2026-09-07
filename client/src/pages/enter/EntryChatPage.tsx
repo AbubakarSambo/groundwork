@@ -693,6 +693,14 @@ export const SITUATION_CARDS = [
  * The labels above are now `SCENARIO_LABELS[key]` for the same reason: this page hardcoded its own
  * and was the only surface that still carried the retired names months after the rename.
  */
+/**
+ * The first thing the entry chat says, and the thing it says again if somebody goes back to the
+ * cards. Lifted out of the effect that used to own it so that "pick a different situation" can
+ * restore the same opening rather than a second wording of it.
+ */
+export const THE_OPENING_QUESTION =
+  'What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.'
+
 export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GROUPS.map(
   (g) => ({ key: g.key, heading: g.heading }),
 )
@@ -800,6 +808,29 @@ export function EntryChatPage() {
   function handleClearSession() {
     clearEntrySession()
     window.location.reload()
+  }
+
+  /**
+   * BACK TO THE CARDS, WITHOUT THROWING EVERYTHING AWAY.
+   *
+   * The cards render only while `!pickedSituation` and the history is one turn long, so picking a
+   * situation removed them for good. The only route back was "Start over", which calls
+   * `clearEntrySession()` and reloads: it discards the organisation name, the check-in name,
+   * anybody queued to be invited, and the whole conversation. So somebody who clicked the wrong
+   * card - or realised two questions in that this is a contract, not a new hire - had to choose
+   * between the wrong situation and typing everything again. Retrying was the expensive option,
+   * which is backwards: nothing has been set up yet.
+   *
+   * The TRANSCRIPT does go, and that is deliberate rather than lazy. Two questions and two answers
+   * about a new hire are actively misleading context for a contract review, and the classifier
+   * reads that history. What is kept is everything that is not about the situation.
+   */
+  function pickADifferentSituation() {
+    setPickedSituation(null)
+    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
+    setOnboardingSelections(defaultSels)
+    setOnboardingReady(false)
+    setInput('')
   }
 
   const [showEndConfirm, setShowEndConfirm] = useState(false)
@@ -1366,7 +1397,7 @@ export function EntryChatPage() {
    */
   useEffect(() => {
     if (phase !== 'onboarding') return
-    const INTRO = `What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.`
+    const INTRO = THE_OPENING_QUESTION
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       setOnboardingHistory(prev => {
@@ -1878,12 +1909,40 @@ export function EntryChatPage() {
               <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
             </span>
           ) : (
-            <button
-              onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
-              style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-            >
-              {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
-            </button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {/*
+                * PICK A DIFFERENT SITUATION, which is the thing somebody actually wants.
+                *
+                * "Start over" throws away the organisation name, the check-in name, anybody queued
+                * to be invited and the conversation. Somebody who clicked the wrong card had to
+                * choose between the wrong situation and typing everything again - and nothing has
+                * been set up yet, so retrying should be the cheap option. Offered only while still
+                * choosing: once a check-in is running, the situation is what it is about.
+                */}
+              {/*
+                * THE CONDITION IS "THE CONVERSATION HAS BEGUN", NOT "A CARD WAS CLICKED".
+                *
+                * `pickedSituation` is component state and does not survive a reload, while the
+                * transcript does - so somebody who reloaded was in the worst state of all: the
+                * cards hidden because the history is longer than one turn, and no way back
+                * because the flag they had set was gone. Asking about the transcript covers the
+                * click and the reload with one question.
+                */}
+              {phase === 'onboarding' && onboardingHistory.length > 1 && (
+                <button
+                  onClick={pickADifferentSituation}
+                  style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  ← Pick a different situation
+                </button>
+              )}
+              <button
+                onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
+                style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
+              </button>
+            </span>
           )}
         </div>
       )}

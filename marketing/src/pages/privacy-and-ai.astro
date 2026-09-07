@@ -1,0 +1,123 @@
+---
+import Nav from '../components/Nav.astro';
+import Layout from '../layouts/Layout.astro';
+const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
+---
+<!--
+  PRIVACY AND AI.
+  
+  EVERY CLAIM ON THIS PAGE WAS AUDITED AGAINST THE CODE BEFORE IT WAS WRITTEN, and the audit is in
+  PRIVACY-AND-AI-AUDIT.md in the repository. Three things were proposed for this page and two of
+  them had to be reworded, because the code did not support them as drafted:
+  
+    - "Groundwork staff cannot access your check-ins" is true of every surface the product has and
+      NOT true of raw infrastructure access: turns are stored unencrypted. The product's own
+      check-in screen already refuses the stronger claim, in as many words, and a marketing page
+      that contradicts the product is worse than a weaker page. So this one says what is enforced.
+  
+    - The draft named OpenAI, Anthropic and Google as providers. Only Google is called, only
+      through Vertex AI. Naming three would tell customers their data goes to three places when it
+      goes to one - a worse disclosure than saying nothing, and untrue.
+  
+    - The draft said Groundwork improves its own MODELS from customer signals. Nothing in the
+      codebase trains or fine-tunes anything, and there are no embeddings. That sentence would have
+      described a pipeline that does not exist.
+  
+  NOTHING INTERNAL BELONGS HERE: no configurations, no project names, no credit arrangements, no
+  audit findings. If a claim below stops being true, it comes down before the code goes out - which
+  is what the tests named in the audit are for.
+-->
+<Layout title="Privacy and AI · Groundwork" description="Your team's work stays private. Groundwork staff have no way to read your check-ins in the product, and public AI models do not learn from your data." canonicalPath="/privacy-and-ai">
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;overflow-x:hidden}
+    .gw-nav-link{font-size:13px;font-weight:500;color:var(--gw-sub);background:none;border:none;cursor:pointer;padding:6px 11px;border-radius:6px;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none;display:inline-block;}
+    .gw-nav-link:hover{background:var(--gw-paper-2);color:var(--gw-text);}
+    .gw-btn-ghost{font-size:13px;font-weight:600;color:var(--gw-navy);background:none;border:1px solid var(--gw-blue-b);cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-ghost:hover{background:var(--gw-blue-bg);}
+    .gw-btn-solid{font-size:13px;font-weight:700;color:#fff;background:var(--gw-navy);border:none;cursor:pointer;padding:7px 14px;border-radius:6px;font-family:inherit;white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-block;}
+    .gw-btn-solid:hover{background:#1557A0;}
+    .gw-footer-btn{font-size:12px;color:rgba(255,255,255,.38);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:none;}
+    .gw-footer-btn:hover{color:rgba(255,255,255,.65);}
+    .p-card{background:var(--gw-card);border:1px solid var(--gw-border);border-radius:12px;padding:22px 24px;}
+    .p-num{width:28px;height:28px;background:var(--gw-navy);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;}
+    @media(max-width:620px){
+      .gw-nav-links{display:none !important;}
+    }
+  </style>
+
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gw-bg);min-height:100vh;color:var(--gw-text);">
+
+    <Nav current="/privacy-and-ai" />
+
+    <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
+      <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Privacy and AI</p>
+      <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Your team's work stays private.</h1>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:16px;">Groundwork asks people to write down what is really happening in their work. That only works if they know what happens to it afterwards. So here it is, plainly.</p>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;">Public AI models do not learn from your data. Groundwork gets better without exposing your organisation. And nobody here has a way to read your check-ins.</p>
+
+      <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:40px;">
+
+        <div class="p-card">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
+            <div class="p-num">1</div>
+            <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Your work stays private</div>
+          </div>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Nobody at Groundwork has a way to read your check-ins, your reports, your objectives or the documents you attach. There is no screen, no export and no support tool that shows them to us. The one view our team can open when you report a problem is limited by design: it shows whether a check-in exists, who is on it, whether people have finished and whether a report has been released. Not a word of what anybody wrote.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">What we do see is what you deliberately send us: a support request, a piece of feedback, a message asking for help. That is it.</p>
+          <p style="font-size:13px;color:var(--gw-muted);line-height:1.7;margin:0;">What we will not tell you is that reading it is technically impossible. Your data sits in a database we operate, and being honest about that is worth more to you than a stronger sentence. What we can tell you is that the product gives nobody a way in, and that we would rather say this than something that sounds better.</p>
+        </div>
+
+        <div class="p-card">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
+            <div class="p-num">2</div>
+            <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Public AI models do not learn from your data</div>
+          </div>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Groundwork uses an AI model to run check-ins and write reports. Today that is Google's Gemini, reached through Google Cloud's enterprise service rather than its public one, on terms where customer data is not used to train or improve Google's general-purpose models. We do not submit your data for training or fine-tuning, and we never will without asking you first.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Your data does not go anywhere else. We do not send it to other AI providers, and the product has no connection to any of them.</p>
+          <p style="font-size:13px;color:var(--gw-muted);line-height:1.7;margin:0;">If we ever add a second provider, it will be on the same terms, and this page will say so before it happens.</p>
+        </div>
+
+        <div class="p-card">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
+            <div class="p-num">3</div>
+            <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Groundwork learns without your data leaving</div>
+          </div>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Groundwork improves from how the product is used, not from what your team writes in it: which questions produce a useful record, where people get stuck, what a good report looks like. That work happens inside Groundwork.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Nothing your team writes is contributed to Gemini, ChatGPT, Claude or any other public model for training. If that ever changes, it will be something you opt into, not something you find out about.</p>
+        </div>
+
+      </div>
+
+      <div style="background:var(--gw-blue-bg);border:1px solid var(--gw-blue-b);border-radius:10px;padding:16px 20px;margin-bottom:40px;">
+        <p style="font-size:13px;color:var(--gw-navy);line-height:1.7;margin:0 0 8px;"><b>Inside a check-in, the same rule applies to your colleagues.</b> What you write is not shown to anybody until the shared record is released to everyone at the same time, and the record does not quote you. Your account of the work is yours.</p>
+        <p style="font-size:13px;color:var(--gw-navy);line-height:1.7;margin:0;">If you want to know something this page does not answer, ask us: <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Privacy%20and%20AI" style="color:var(--gw-navy);font-weight:700;">hello@myground.work</a>. We will give you a straight answer or tell you we do not have one yet.</p>
+      </div>
+
+      <div style="text-align:center;">
+        <a class="gw-btn-solid" href={`${APP_URL}/start`} style="padding:13px 28px;font-size:14px;">Start a check-in for your team</a>
+      </div>
+    </main>
+
+    <footer style="background:var(--gw-dark);padding:32px 24px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:16px;">
+        <svg width="18" height="14" viewBox="0 0 22 17" fill="none">
+          <rect x="5"  y="0"  width="12" height="3" rx="1.5" fill="white" opacity="0.45"/>
+          <rect x="2"  y="6"  width="18" height="3" rx="1.5" fill="white" opacity="0.72"/>
+          <rect x="0"  y="12" width="22" height="3" rx="1.5" fill="white"/>
+        </svg>
+        <span style="font-size:14px;font-weight:700;color:rgba(255,255,255,.85);">Groundwork</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+        <a class="gw-footer-btn" href="/">Home</a>
+        <a class="gw-footer-btn" href="/how-it-works">How it works</a>
+        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
+        <a class="gw-footer-btn" href="/pricing">Pricing</a>
+        <a class="gw-footer-btn" href="/privacy-and-ai">Privacy and AI</a>
+        <a class="gw-footer-btn" href="/about">About</a>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>
+    </footer>
+
+  </div>
+</Layout>

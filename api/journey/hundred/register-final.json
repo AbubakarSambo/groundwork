@@ -290,18 +290,18 @@
  {
   "group": "email UX",
   "issue": "54 of 110 emails never say what to do next",
-  "evidence": "read from the log",
+  "evidence": "PARTLY FIXED: the shared footer says what the product is and who sees what, and the two mails that most needed a next step now carry one. Not audited across all 42 senders.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "email UX",
   "issue": "54 of 110 emails never say who will see what the reader writes",
-  "evidence": "read from the log",
+  "evidence": "FIXED: appended by the sender to every mail about the work, and deliberately absent from the way-back-in mails. Driven: present on \"somebody has checked in\", absent from \"activate your account\".",
   "severity": "high",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "documents",
@@ -341,6 +341,14 @@
   "evidence": "read from the log",
   "severity": "high",
   "journeys": "",
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "A report addressed the reader as \"you\" and kept the third-person verb: \"You is concerned this sign-off will drift\"",
+  "evidence": "FIXED: found by reading the output of the document proof. The four irregulars plus a closed list of reporting verbs; a general rule would occasionally mangle a real sentence.",
+  "severity": "high",
+  "journeys": null,
   "state": "fixed"
  }
 ]

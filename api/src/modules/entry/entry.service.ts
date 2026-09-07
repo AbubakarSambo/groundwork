@@ -816,7 +816,11 @@ STRICT RULES:
     // the other path, rather than edited into prose that reads as a lost thread.
     const invented = causalClaimNobodyMade(restored, personSaid);
     if (invented.length) {
-      this.logger.warn(`Causal claim nobody made on the entry path: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`);
+      /* The COUNT, not the claim: the same rule as the check-in path. A log is a place staff can
+         read, and the product promises they cannot read somebody's account of their work. */
+      this.logger.warn(
+        `${invented.length} causal claim(s) nobody made on the entry path. ${ASK_INSTEAD_OF_CONCLUDING}`,
+      );
     }
 
     /* The two the substitution above cannot reach: a name invented whole, which has nothing of
