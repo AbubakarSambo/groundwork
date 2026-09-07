@@ -349,14 +349,34 @@ export class ConversationService {
       priorRecordEntries = withEntries.filter((s) => s.entries.length > 0);
     }
 
+    /*
+     * CLEANED ON THE WAY OUT, NOT REWRITTEN IN THE DATABASE.
+     *
+     * `forHumans` runs when a reply is generated, so every turn stored before a rule existed keeps
+     * whatever it was saved with. Scrolling back through a finished session still showed "That
+     * Zainab has not been told is now on the record" - the courtroom sentence the strip was added
+     * to remove - because the strip had never seen that row.
+     *
+     * WHY NOT A MIGRATION. What is stored is what a person was actually told. Editing it changes
+     * the record of the conversation to say something that was not said, on a product whose whole
+     * claim is that it keeps what people said. Cleaning at the read changes only what is shown, and
+     * it covers every old session at once rather than every old session that a migration remembered.
+     *
+     * Only the AI's own turns. A person's words go through untouched: `forHumans` strips OUR
+     * ceremony and house style, and running it over somebody's account would be the product editing
+     * them.
+     */
+    const asRead = <T extends { role: TurnRole; content: string }>(t: T): T =>
+      t.role === TurnRole.AI ? { ...t, content: forHumans(t.content) } : t;
+
     return {
       checkIn: {
         ...checkIn,
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      turns,
-      priorTurns,
+      turns: turns.map(asRead),
+      priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
       priorRecordEntries,
     };
@@ -4318,7 +4338,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         date: (c.completedAt ?? c.createdAt).toISOString(),
         isSelfCorrection: c.isSelfCorrection,
         correctionOf: c.selfCorrectionTargetSession,
-        turns: c.turns.map((t) => ({ id: t.id, role: t.role, content: t.content })),
+        /* Cleaned on the way out, same as `open` above: a turn stored before a rule existed keeps
+           whatever it was saved with, and what is shown should follow today's rules even where the
+           row cannot. The AI's turns only - a person's words are theirs. */
+        turns: c.turns.map((t) => ({ id: t.id, role: t.role, content: t.role === TurnRole.AI ? forHumans(t.content) : t.content })),
       })),
     };
   }

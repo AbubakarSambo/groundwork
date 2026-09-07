@@ -913,6 +913,22 @@ export function GroundAdminPage() {
   )
   const sessionsDone = openRoundFromRule - 1
   /**
+   * HOW MANY SESSIONS *YOU* HAVE FINISHED, which is not the same number.
+   *
+   * `sessionsDone` is the round EVERYONE has finished - the person furthest behind sets the pace,
+   * deliberately, because counting the highest anybody reached would say "Session 12 of 12" while
+   * one party was on 4. That is the right number for the header, which is about the check-in.
+   *
+   * It was also being handed to `MyParticipation`, which prints it under "Sessions completed" in a
+   * card whose other rows are "Your role" and your status. So finishing session 1 and then adding
+   * two people - who have finished nothing - made your own card read "0 of 6". Seen on screen the
+   * moment two people were invited: a session I had completed the night before, reported as not
+   * done, on the panel that is explicitly about me.
+   */
+  const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
+    (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
+  ).length
+  /**
    * How many people have finished the round that is currently open. The round is
    * `sessionsDone + 1` - the one the header already names - so this and the
    * header cannot disagree about which round is being counted.
@@ -1438,7 +1454,7 @@ export function GroundAdminPage() {
             myRecord={myRecord}
             viewerUserId={user?.id}
             totalSessions={plannedSessions ?? null}
-            completedCount={sessionsDone}
+            completedCount={mySessionsDone}
             specificity={mySpecificity}
             /* This page calls the material tab `docs`; the component asks to be sent and the page
                decides where that is. */
@@ -2545,7 +2561,7 @@ export function GroundAdminPage() {
                 viewer={user}
                 ground={ground}
                 myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
-                completedCount={sessionsDone}
+                completedCount={mySessionsDone}
                 totalSessions={plannedSessions ?? null}
               />
             </div>
