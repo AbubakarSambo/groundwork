@@ -407,6 +407,39 @@ export class EmailService {
     return this.frontendUrl;
   }
 
+  /**
+   * THE ONE-TIME CODE FOR A DESTRUCTIVE ADMIN OPERATION.
+   *
+   * A real sender rather than a cast past this class's private `sendEmail`. The admin service
+   * called `(this.email as any).sendEmail(...)`, which reaches around the type to skip the opt-out
+   * check, the sender classification and everything else this class does on the way out. For an OTP
+   * that suppression is CORRECT - it is the way back in and nothing may stop it - but doing it by
+   * casting means the rule is bypassed by construction rather than by decision, and the next
+   * caller to copy the line will be suppressing something that should not be.
+   *
+   * Classified as "the way back in" in `WHAT_EACH_MAIL_IS`, which is how that suppression is now
+   * stated rather than smuggled.
+   *
+   * RETURNS WHETHER IT WENT. The old path caught a send failure, logged it, and returned
+   * `{ sent: true }` regardless - so an admin sat waiting for a code that was never coming.
+   */
+  async sendAdminOtp(email: string, code: string): Promise<{ sent: boolean; because?: string }> {
+    try {
+      await this.sendEmail({
+        to: email,
+        subject: 'Your Groundwork admin code',
+        html: this.layout(
+          `<p>Your one-time code is <strong>${code}</strong>. It expires in ten minutes.</p>` +
+          `<p style="color:#888;font-size:12px;">If you did not ask for this, somebody with your admin account is trying to perform an operation that cannot be undone. Tell the team.</p>`,
+        ),
+      }, undefined, 'sendAdminOtp');
+      return { sent: true };
+    } catch (err: any) {
+      this.logger.error(`Admin OTP to ${email} did not send: ${err?.message}`);
+      return { sent: false, because: 'the code could not be emailed' };
+    }
+  }
+
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,

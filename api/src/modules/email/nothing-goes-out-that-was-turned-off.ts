@@ -96,6 +96,9 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendParticipantInvite: 'the way back in',
   sendLeadInvite: 'the way back in',
   sendContributorCode: 'the way back in',
+  /* A one-time code for an operation that cannot be undone. Nothing may stop it, and saying so
+     here is the difference between a decision and a cast past the type. */
+  sendAdminOtp: 'the way back in',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
