@@ -906,10 +906,30 @@ export function CreateGroundPage() {
             ?? (r.reason as any)?.message
             ?? 'The invite did not send.',
         }))
-      return { ground, failed }
+      /*
+       * WHO WAS ADDED BUT NOT EMAILED, WHICH NOTHING COUNTED.
+       *
+       * An invitation waits when the check-in starts in the future: the row is written with
+       * `invitedAt: null` and no mail goes, on purpose, because a mail that has been read cannot be
+       * recalled. Only refusals were reported here, so setting a start date and adding five people
+       * produced a cheerful "Check-in opened" and five people who heard nothing - reported exactly
+       * that way, with no clue on any screen as to why.
+       */
+      const waiting = results
+        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null }> => r.status === 'fulfilled')
+        .filter((r) => !r.value?.invitedAt).length
+      return { ground, failed, waiting }
     },
-    onSuccess: ({ ground, failed }) => {
+    onSuccess: ({ ground, failed, waiting }) => {
       toast.success('Check-in opened')
+      /* Said once, with the number, rather than per person - it is one fact about the check-in. */
+      if (waiting > 0) {
+        toast.info(
+          waiting === 1
+            ? 'One person is on the check-in and will be invited on the start date.'
+            : `${waiting} people are on the check-in and will be invited on the start date.`,
+        )
+      }
       /* It exists now, so the draft must not. See the note on DRAFT_KEY. */
       forget(DRAFT_KEY)
       /*
