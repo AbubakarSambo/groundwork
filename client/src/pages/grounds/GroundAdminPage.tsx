@@ -227,6 +227,18 @@ export function GroundAdminPage() {
   })
 
 
+  /**
+   * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
+   *
+   * Yours only. Somebody else's session is theirs until the shared report releases, which is the
+   * same wall the session grid keeps - and the reason this reads `userId === user?.id` rather than
+   * "everybody on the check-in".
+   */
+  const mySessions = ((ground as any)?.checkIns ?? [])
+    .filter((c: any) => c.status === 'COMPLETED')
+    .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
     onSuccess: () => {
@@ -1880,6 +1892,33 @@ export function GroundAdminPage() {
         {/* REPORT */}
         {tab === 'report' && (
           <div>
+            {/*
+              * THE BOARD IS THE FIRST THING ON THIS TAB, NOT THE LAST.
+              *
+              * Her call: "open team board should be first item on reports page". It sat under the
+              * report and above the closing controls, which is where you put a footnote - and it is
+              * the opposite of one. The board is the same picture for everyone, built from the
+              * accounts; the report on this tab is the lead's reading of them. Somebody who has
+              * come to the Report tab has come to look at where things stand, and the shared thing
+              * should be the first door offered, not the one below the reading.
+              */}
+            {!!(ground as any).boardRenders && (
+              <button
+                onClick={() => navigate(`/grounds/${id}/board`)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                  background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
+                  padding: '14px 18px', marginTop: 16, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ textAlign: 'left' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Open the team board</span>
+                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.6)' }}>The same picture for everyone, built from the accounts. Never a verdict.</span>
+                </span>
+                <span style={{ fontSize: 13 }}>→</span>
+              </button>
+            )}
+
             {/* What the accounts actually agree on. This was a big "4/5" over
                 a band name over a canned description - all three derived from
                 the number of completed check-ins. */}
@@ -2170,6 +2209,23 @@ export function GroundAdminPage() {
                       </div>
                     </div>
                   )}
+                  {/*
+                    * THE PICTURE THAT IS FORMING, ACTUALLY SHOWN.
+                    *
+                    * Her words: "we are meant to see a forming report, so why make it disappear."
+                    * This branch announced that one was forming, said how many people were still
+                    * out, and offered to release it - and never rendered a line of it. So the lead
+                    * was asked to decide whether to show everybody something they had not been
+                    * allowed to read themselves.
+                    *
+                    * It is the same body the released report uses, because it is the same row: the
+                    * API writes a forming picture as soon as anybody finishes and marks it
+                    * `forming: true`. Nothing about it was private from the lead; it was simply
+                    * never put on the screen.
+                    */}
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--gw-border)' }}>
+                    <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -2207,21 +2263,49 @@ export function GroundAdminPage() {
               
               Full width and named plainly, because it is a departure and should look like one.
             */}
-            {!!(ground as any).boardRenders && (
-              <button
-                onClick={() => navigate(`/grounds/${id}/board`)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                  background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
-                  padding: '14px 18px', marginTop: 16, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <span style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Open the team board</span>
-                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.6)' }}>The same picture for everyone, built from the accounts. Never a verdict.</span>
-                </span>
-                <span style={{ fontSize: 13 }}>→</span>
-              </button>
+
+            {/*
+              * EVERY SESSION YOU HAVE FINISHED, AND THE REPORT EACH ONE PRODUCED.
+              *
+              * Her call: "we need to see each session's report after". A run is six or twelve
+              * sessions and each one ends in a private report, and this tab showed exactly one
+              * thing - the current round - so everything before it was gone. The reports were not
+              * deleted; /checkin/:id renders one for any completed check-in of yours. Nothing
+              * listed them.
+              *
+              * Yours only, and that is the wall rather than a simplification: another person's
+              * session is theirs until the shared report releases.
+              */}
+            {mySessions.length > 0 && (
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+                  Your sessions
+                </div>
+                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+                  {mySessions.map((ci: any, i: number) => (
+                    <button
+                      key={ci.id}
+                      onClick={() => navigate(`/checkin/${ci.id}`)}
+                      style={{
+                        display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 10, padding: '11px 13px', background: 'white', border: 'none',
+                        borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
+                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span>
+                        <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                          {ci.completedAt
+                            ? `Finished ${new Date(ci.completedAt).toLocaleDateString()} · your private report`
+                            : 'Finished · your private report'}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>→</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/*
@@ -2517,9 +2601,20 @@ export function GroundAdminPage() {
               contact toggle's own copy used to promise "participants can see who's here", which
               is not true when this one is off.
             */}
+            {/*
+              * ONE HEADING FOR THE TWO SETTINGS THAT ARE ONE QUESTION.
+              *
+              * "The setup tab can have fewer cards, some things can be dropdowns, some texts or
+              * spacing could make more sense." These were the clearest case: two `gw-fld` blocks,
+              * two headings, two bordered cards and two paragraphs - "Can the people here see each
+              * other?" and "Participant contact details" - for what a person thinks of as one
+              * decision, who can see whom. The second even explains itself in terms of the first
+              * ("this matters again if you turn the setting above on"), which is a card admitting
+              * it should not be a separate card.
+              */}
             <div className="gw-fld">
-              <label className="gw-label">Can the people here see each other?</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+              <label className="gw-label">Who can see whom</label>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: '8px 8px 0 0' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
                     Show who else is in this check-in
@@ -2548,9 +2643,10 @@ export function GroundAdminPage() {
               </div>
             </div>
 
-            <div className="gw-fld">
-              <label className="gw-label">Participant contact details</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+            {/* The second half of the same question, so it carries no heading of its own and sits
+                directly under the first - one card, two rows, read top to bottom. */}
+            <div className="gw-fld" style={{ marginTop: -8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>

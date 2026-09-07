@@ -1,4 +1,4 @@
-import { forHumans, unwrapRecordNarration, withoutRecordNarration } from './outbound';
+import { forHumans, unwrapRecordNarration, withoutRecordNarration, withoutTheMark } from './outbound';
 
 /**
  * "SEEMS LIKE LEGAL TERMS IN A COURT."
@@ -62,5 +62,51 @@ describe('a record is not a courtroom', () => {
        not what this change is about. What matters is that the ceremony is gone. */
     expect(withoutRecordNarration("That's now on the record, and it matters."))
       .toBe('And it matters.');
+  });
+})
+
+/**
+ * AND THE OTHER RULE THAT WAS NOT HOLDING: never open by judging their answer.
+ *
+ * ENGINE_RULES forbids it - "Never open by judging their answer. Not 'that's a specific example',
+ * not 'that's really thoughtful'" - and a stripper existed for it. Both missed three sentences from
+ * one live session: "That is a clean definition", "That is worth knowing", "That makes sense".
+ *
+ * The stripper enumerated ADJECTIVES, so the model simply reached for one that was not on the list.
+ * It is anchored on the NOUN now - definition, answer, example, point, distinction, observation,
+ * framing, read, target - because a sentence whose whole content is "that is a <something>
+ * <one of those>" is talking about the answer, whatever adjective it picked. A sentence about the
+ * work names the work, and keeps its noun.
+ */
+describe('a mark is not a reply', () => {
+  const strip = (s: string) => withoutTheMark(`${s} Who else is in this?`);
+
+  it('removes the ones that were photographed', () => {
+    for (const mark of ['That is a clean definition.', 'That is worth knowing.', 'That makes sense.']) {
+      expect(strip(mark)).toBe('Who else is in this?');
+    }
+  });
+
+  it('and the shapes it already caught', () => {
+    expect(strip("That's a very clear definition.")).toBe('Who else is in this?');
+    expect(strip('Thank you for sharing that.')).toBe('Who else is in this?');
+  });
+
+  it('but never a sentence that is about the work', () => {
+    /* The whole risk of a noun anchor: "that is a written brief" is content, not a compliment. */
+    for (const said of [
+      'That is a written brief.',
+      'That is the whole story.',
+      'That is not subtle.',
+      'That is a fear based prototype.',
+    ]) {
+      expect(strip(said)).toBe(`${said} Who else is in this?`);
+    }
+  });
+
+  it('and never leaves the turn empty', () => {
+    /* If every sentence was a mark, the reply said nothing; sending nothing is worse than sending
+       the mark, so the original stands. */
+    expect(withoutTheMark('That makes sense.')).toBe('That makes sense.');
   });
 })

@@ -254,8 +254,24 @@ export function withoutRecordNarration(text: string): string {
  * So this removes the sentences that are pure mark and nothing more, and leaves anything with
  * content in it alone even when the framing is wrong.
  */
+/*
+ * A CLOSED LIST OF ADJECTIVES IS A LIST THE MODEL WALKS AROUND.
+ *
+ * This caught "that's a very clear definition" and missed "that is a clean definition", "that is
+ * worth knowing" and "that makes sense" - all three read back from one live session, all three the
+ * same move: opening a turn by marking the answer instead of saying something about the work.
+ * ENGINE_RULES forbids it in those words and it keeps happening, because the rule is a rule and
+ * this is the only thing that actually removes it.
+ *
+ * SO IT IS ANCHORED ON THE NOUN NOW, not the adjective. "Definition", "answer", "example", "point",
+ * "distinction", "observation", "framing", "read" - a sentence whose whole content is "that is a
+ * <something> <one of those>" is talking about the ANSWER. Whatever adjective it reaches for. A
+ * sentence about the work names the work: "that is a written brief" keeps its noun and survives.
+ *
+ * The adjective list stays alongside it, because "that's helpful" has no noun to anchor to.
+ */
 const A_MARK_AND_NOTHING_ELSE =
-  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
+  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:definition|answer|example|point|distinction|observation|framing|read|target)|that(?:'s| is)\s+worth (?:knowing|noting|having|saying)|that\s+makes\s+sense|fair\s+enough|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
 
 export function withoutTheMark(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+/);
