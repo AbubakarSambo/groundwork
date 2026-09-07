@@ -19,8 +19,17 @@
  *     because the list renders them with an "inactive" flag and the total has to match the rows.
  *   - the org-delete predicate (unverified-sweep.ts) counts every row including deleted ones,
  *     because destroying an org destroys a deactivated person's data too.
+ *
+ * AND SOMEBODY WAITING AT THE DOOR IS NOT A PERSON ON THE ACCOUNT.
+ *
+ * Accepting a check-in invitation to an organisation you were not already in creates your account
+ * there and queues you for an admin to approve - see
+ * participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts. Until that answer
+ * comes you cannot open a check-in and you cannot use the product, so charging for you would be
+ * charging for a person who cannot do anything. It would also make the queue pointless: the whole
+ * reason it exists is that adding an address to a check-in was quietly adding a person to a bill.
  */
-export const SEAT_WHERE = { isActive: true, deletedAt: null } as const;
+export const SEAT_WHERE = { isActive: true, deletedAt: null, awaitingOrgApproval: false } as const;
 
 /** The same predicate as a filtered relation count, for queries that read many organisations. */
 export const SEAT_RELATION_COUNT = { users: { where: SEAT_WHERE } } as const;

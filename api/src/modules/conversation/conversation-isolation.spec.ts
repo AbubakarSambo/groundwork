@@ -67,7 +67,10 @@ describe('GW-PRI-CONV-01: loadOwnedCheckIn - owning user', () => {
     const prisma: any = (service as any).prisma;
     prisma.groundParticipant.findUnique = jest.fn(async () => ({ soloArtifact: null }));
     const result = await service.getSoloArtifact('ci1', 'user-1');
-    expect(result).toEqual({ artifact: null });
+    /* No artifact, and now a sentence saying why — the bare null told somebody who had just
+       finished nothing at all. What this test is about is that the CONTENT is absent. */
+    expect(result.artifact).toBeNull();
+    expect(result.saying).toMatch(/summary/i);
   });
 
   it('throws ForbiddenException when userId does not match participant owner', async () => {
@@ -133,7 +136,10 @@ describe('GW-PRI-CONV-03: getSoloArtifact - owner-scoped content', () => {
     const prisma: any = (service as any).prisma;
     prisma.groundParticipant.findUnique = jest.fn(async () => ({ soloArtifact: null }));
     const result = await service.getSoloArtifact('ci1', 'user-1');
-    expect(result).toEqual({ artifact: null });
+    /* No artifact, and now a sentence saying why — the bare null told somebody who had just
+       finished nothing at all. What this test is about is that the CONTENT is absent. */
+    expect(result.artifact).toBeNull();
+    expect(result.saying).toMatch(/summary/i);
   });
 
   it('returns the parsed artifact when one exists', async () => {

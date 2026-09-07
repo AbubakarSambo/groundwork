@@ -514,11 +514,20 @@ Your job is to gather these things through natural conversation:
 
      - you set the context and objective, and you check in against it too
      - you set the context and objective, and other people check in against it
-     - somebody else sets the context, and you are only setting the check-in up and inviting them
 
    ASK IT IN THOSE TERMS, not as "are you part of this". The old wording asked where they sit, which
    is a seating plan; what is actually being decided is who writes the objective and who is measured
    against it. The setup screen asks it the same way now and the two must not drift apart.
+
+   THERE USED TO BE A THIRD ANSWER - "somebody else sets the context, you are only setting the
+   check-in up and inviting them" - and it is gone on her call: "I think we should remove the whole
+   org admin setting a context and handing it over to a lead. It seems like it is confusing." It
+   produced a check-in belonging to nobody in the room: this person named a lead, and the lead was
+   emailed to confirm a context they had not written and could not read until they accepted.
+   IF SOMEBODY SAYS THAT IS THEIR SITUATION - they were told to set this up and do not know the
+   detail - do NOT offer to hand it over. Say plainly that whoever knows what this is about should
+   be the one setting it up, and that they can add themselves to watch the reports afterwards from
+   the check-in's settings. Then stop; do not gather a situation they cannot describe.
 
    WHY IT COMES FIRST AND NOT THIRD. It decides what everything they say next IS. A party's words are
    their own account. A non-party's words are context about other people, which this product treats
@@ -546,6 +555,22 @@ Your job is to gather these things through natural conversation:
 
    IF SOMEBODY ELSE WILL RUN IT and they do not know the detail, say so is fine: take the names and let
    the person who does know it lead. Do not press a bystander for a situation they cannot describe.
+
+   NAME THE SITUATION THEY PICKED. THIS IS NOT OPTIONAL AND IT WAS THE COMPLAINT.
+   They clicked a card that says exactly what this is about - a new hire starting, a contract about
+   to be signed, a project that has drifted - and the first thing back was a role question that
+   could have been asked of anybody about anything. It reads as though the click went nowhere.
+   So the role question OPENS by naming their actual subject in their own terms, then asks the
+   three answers: "A new hire starting. Before we get into it, who writes what good looks like
+   here, and who checks in against it?" One sentence of subject, one question. Do not summarise
+   the card back at length, and do not add any fact the card did not carry.
+
+   AND THE QUESTION AFTER IT IS THE CONCRETE ONE THE SITUATION IMPLIES, not a blank "tell me about
+   the situation" - which asks them to type out what they just picked. A new hire starting means
+   "Who is the new hire, and when do they start?". A contract about to be signed means "What is
+   the agreement, and who is on the other side of it?". A project that has drifted means "Which
+   project, and what has changed since you agreed it?". Ask for the missing specifics, never for
+   the topic they already gave you.
 2. mode: is this something new starting, already underway, already happened, or a recurring check-in
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
@@ -630,7 +655,8 @@ From the conversation history, extract whatever you can. Return only what has be
 Fields:
 - mode: one of "something_new", "already_underway", "look_back", "recurring" - infer from context if not stated explicitly
 - initial: a plain description of the situation
-- yourRole: one of "a_party", "setting_up_for_others", "someone_else_runs_it" - what they said in step 1.
+- yourRole: one of "a_party", "setting_up_for_others" - what they said in step 1. There is no third
+  value: handing the context to somebody else was removed.
   Extract it as soon as they answer, and do not infer it from how they describe the situation: a lead
   describing somebody else's problem in detail reads exactly like a party, and getting this wrong
   changes whether their words are treated as an account or as context about other people.
@@ -670,7 +696,7 @@ from finishing at all.`;
            * "ask it early" did not stop it arriving third. A field is a thing the engine either has or
            * does not; an instruction is a request.
            */
-          yourRole: { type: 'string', enum: ['a_party', 'setting_up_for_others', 'someone_else_runs_it'] },
+          yourRole: { type: 'string', enum: ['a_party', 'setting_up_for_others'] },
           whoInvolved: { type: 'string' },
           /**
            * THE PEOPLE, COUNTABLE. `whoInvolved` is a free string, so ANY string satisfies it -
@@ -816,7 +842,11 @@ STRICT RULES:
     // the other path, rather than edited into prose that reads as a lost thread.
     const invented = causalClaimNobodyMade(restored, personSaid);
     if (invented.length) {
-      this.logger.warn(`Causal claim nobody made on the entry path: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`);
+      /* The COUNT, not the claim: the same rule as the check-in path. A log is a place staff can
+         read, and the product promises they cannot read somebody's account of their work. */
+      this.logger.warn(
+        `${invented.length} causal claim(s) nobody made on the entry path. ${ASK_INSTEAD_OF_CONCLUDING}`,
+      );
     }
 
     /* The two the substitution above cannot reach: a name invented whole, which has nothing of

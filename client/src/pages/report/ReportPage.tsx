@@ -9,6 +9,7 @@ import { outcomeFeedbackApi } from '@/api/feedback'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { alignmentLabel, alignmentShort } from '@/lib/alignment'
+import { whyYouCannotSeeThis, whatWentWrong } from './why-you-cannot-see-this'
 import { personLabel, participantLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
@@ -17,6 +18,7 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
+import { TheReveal } from './the-reveal-is-both-sides-at-once'
 
 type ViewTab = 'shared' | 'own'
 
@@ -793,7 +795,7 @@ export function ReportBody({
   const user = useAuthStore(s => s.user)
   const [tab, setTab] = useState<ViewTab>('shared')
 
-  const { data: ground, isLoading: gl } = useQuery({
+  const { data: ground, isLoading: gl, error: groundError, refetch: refetchGround } = useQuery({
     queryKey: ['ground', id],
     queryFn: () => groundsApi.get(id!),
     enabled: !!id,
@@ -811,13 +813,33 @@ export function ReportBody({
    */
   const [reportIsStale, setReportIsStale] = useState(false)
 
-  const { data: report, isLoading: rl } = useQuery({
+  /*
+   * A REPORT BEING WRITTEN IS WORTH WAITING FOR, SO THE PAGE WAITS.
+   *
+   * The server now says which of three situations a missing report is in, and one of them —
+   * "everybody has answered and it is being written" — resolves on its own in under a minute. The
+   * page said so and then did nothing, so the person who had just finished sat looking at a
+   * sentence that never changed and had to guess that a reload was the move. Fifty-six of the
+   * hundred audited journeys waited through this; the audit's runner polled, which is exactly what
+   * a person cannot do.
+   *
+   * Only for that one message. A report nobody has answered for is not coming in a minute, and
+   * polling it would be a spinner with no end.
+   */
+  const [waitingForItToBeWritten, setWaitingForItToBeWritten] = useState(false)
+
+  const { data: report, isLoading: rl, error: reportError } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
     enabled: !!id && reportExists !== false,
     retry: false,
-    refetchInterval: reportIsStale ? 5000 : false,
+    refetchInterval: reportIsStale || waitingForItToBeWritten ? 5000 : false,
   })
+
+  useEffect(() => {
+    const said = (reportError as any)?.response?.data?.message
+    setWaitingForItToBeWritten(typeof said === 'string' && /being written/i.test(said))
+  }, [reportError])
 
   // Someone finished a check-in after this report was written, so what is on
   // screen predates their account.
@@ -883,10 +905,37 @@ export function ReportBody({
   }
 
   if (!ground) {
+    /*
+     * WHICH OF THE THREE THIS IS. A 500, a check-in you are not on, and a link that is out of date
+     * all rendered "Report not found." — see why-you-cannot-see-this.ts. The one that mattered
+     * most was the 500: telling somebody their record is missing when the server broke.
+     */
+    const why = whyYouCannotSeeThis(whatWentWrong(groundError))
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Report not found.</div>
-        <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>{why.say}</div>
+        <div style={{ display: 'flex', gap: 14 }}>
+          {why.canRetry && (
+            <button onClick={() => refetchGround()} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Try again</button>
+          )}
+          <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
+        </div>
+      </div>
+    )
+  }
+
+  /*
+   * WAITING ON THEM, NOT ON EVERYBODY ELSE.
+   *
+   * `activated: false` means the report exists and this party has not agreed to the exchange yet.
+   * Without this branch the page fell through below and said the report "appears once everybody has
+   * checked in" — untrue at that point, and nothing they could act on. See
+   * the-reveal-is-both-sides-at-once.tsx.
+   */
+  if (report && (report as any).activated === false) {
+    return (
+      <div style={{ ...PAGE_STYLE, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <TheReveal groundId={id!} />
       </div>
     )
   }
@@ -901,10 +950,24 @@ export function ReportBody({
           wrong thing, and on a ground where session 1 was complete it read as the
           product having lost the check-in.
         */}
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)', maxWidth: 380, textAlign: 'center', lineHeight: 1.6 }}>
-          The shared report appears once everybody has checked in. Your own record is on
-          your check-in page in the meantime.
+        {/*
+          WHAT THE SERVER SAID, WHERE IT SAID SOMETHING. The API now distinguishes "nobody has
+          answered", "somebody has not finished" and "it is being written right now" — and the
+          third is the one people met, pressing straight through from the end of their own
+          session. Falling back to the general sentence keeps this honest where it said nothing.
+        */}
+        <div style={{ fontSize: 13, color: 'var(--gw-muted)', maxWidth: 400, textAlign: 'center', lineHeight: 1.6 }}>
+          {whatWentWrong(reportError).message && !Array.isArray(whatWentWrong(reportError).message)
+            ? whatWentWrong(reportError).message
+            : 'The shared report appears once everybody has checked in. Your own record is on your check-in page in the meantime.'}
         </div>
+        {waitingForItToBeWritten && (
+          /* Not decoration: without it the sentence above is indistinguishable from a page that
+             has given up, which is what sends somebody looking for the reload button. */
+          <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+            Checking again every few seconds — this page will show it the moment it is there.
+          </div>
+        )}
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
     )
@@ -1011,8 +1074,42 @@ export function ReportBody({
         ? 'You see this the same way.'
         : 'Where you see it differently is below, most important first.'
 
+  /*
+   * WHAT THIS RECORD RESTS ON.
+   *
+   * The audit attached sixteen documents across a hundred journeys and found one report of a
+   * hundred and forty-five that mentioned a document at all — so somebody who attached a contract
+   * and answered questions about it had no sign from the record that it was ever read. The server
+   * computes this list from the rows rather than asking the model to remember, and honours the
+   * same visibility rule the documents list does.
+   */
+  const restsOn = (report as any).restsOn as
+    | { documents: { fileName: string; whose: string; read: boolean }[]; otherPartiesHave: number; nothing?: string }
+    | undefined
+
   const body = (
     <>
+      {restsOn && restsOn.documents.length > 0 && (
+        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>What this record rests on</div>
+          <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--gw-sub)' }}>
+            {restsOn.documents.map(d => (
+              <li key={d.fileName} style={{ marginBottom: 3 }}>
+                <span style={{ color: 'var(--gw-text)' }}>{d.fileName}</span> — {d.whose}
+                {d.read ? ', and it was read' : '. Nothing has read it yet'}
+              </li>
+            ))}
+          </ul>
+          {restsOn.otherPartiesHave > 0 && (
+            <div style={{ color: 'var(--gw-muted)', marginTop: 6, fontSize: 12.5 }}>
+              {restsOn.otherPartiesHave === 1
+                ? 'One more document was attached as somebody\'s own evidence, which stays with them.'
+                : `${restsOn.otherPartiesHave} more documents were attached as people's own evidence, which stay with them.`}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* FORMING BANNER - the picture updates as people check in; this isn't
           the final, mutually-revealed report yet. */}
       {declined.length > 0 && (

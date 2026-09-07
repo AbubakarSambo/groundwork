@@ -34,6 +34,7 @@ import { ReportBody } from '@/pages/report/ReportPage'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
+import { whoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -150,6 +151,9 @@ export function GroundAdminPage() {
     setSearchParams(next, { replace: true })
   }
   const [reportSession, setReportSession] = useState<ReportSession>('s1')
+  /* People the wizard could not invite, kept against this ground so the toast that faded is not
+     the only record. Read once on mount: it is unfinished business, not live data. */
+  const [notInvited, setNotInvited] = useState<NotInvited[]>(() => (id ? whoWasNotInvited(id) : []))
   const [groundLabel, setGroundLabel] = useState('')
   const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
@@ -1164,6 +1168,33 @@ export function GroundAdminPage() {
           </div>
         )}
 
+
+        {/*
+          WHO WAS NOT INVITED, said on the page the admin actually lands on.
+          
+          Adding people happens one call at a time, so a refusal for one of them — a seat limit, an
+          address already on the check-in — was a toast on the wizard, which the admin is navigated
+          away from a moment later. Their list of five became three and this page said nothing about
+          it, so they left believing everybody had been asked. See who-was-not-invited.ts.
+        */}
+        {notInvited.length > 0 && (
+          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>
+              {whatToSayAboutThem(notInvited)}
+            </div>
+            <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              {notInvited.map(f => (
+                <li key={f.email}><span style={{ color: 'var(--gw-text)' }}>{f.email}</span> — {f.because}</li>
+              ))}
+            </ul>
+            <button
+              onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}
+              style={{ fontSize: 12.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'inherit' }}
+            >
+              I have dealt with this
+            </button>
+          </div>
+        )}
 
         {/* CHECK-INS */}
         {tab === 'chat' && (

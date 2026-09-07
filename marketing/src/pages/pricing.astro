@@ -52,7 +52,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
       <!-- Header -->
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Pricing</p>
-      <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Simple, honest pricing.</h1>
+      <h1 style="font-size:34px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Pricing</h1>
       <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;max-width:520px;">Start free with 10 check-ins for teams of 5 or fewer, no card required. Subscribe as your team grows. Unlimited sessions and reports on every plan.</p>
 
       <!-- Free tier -->
@@ -126,129 +126,63 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;">Enterprise</div>
           <p style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin:0;">For organizations with custom needs, volume pricing, or dedicated support.</p>
         </div>
-        <a class="gw-tap" href="mailto:hello@myground.work" style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
-      </div>
-
-      <!-- Run it yourself, or run it with a coach. This sits after the plans
-           because it is a delivery choice on top of a subscription, not a plan
-           of its own - the subscription is still required either way. The two
-           coaching prices are a service, not a seeded tier, which is why the
-           pricing-parity guard has to know about them by name. -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Run it yourself, or run it with a coach</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">Every plan above is the software. Most teams run it themselves. If you would rather have somebody design the check-ins with you and sit in the room when the report lands, that is the Guided option.</p>
-
-      <div style="background:#fff;border:1px solid var(--gw-border);border-radius:12px;padding:20px 22px;margin-bottom:20px;">
-        <div class="del-row del-head-row" style="padding-bottom:8px;">
-          <div class="del-head"></div>
-          <div class="del-head">DIY</div>
-          <div class="del-head">Guided</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">Setup and situation design</div>
-          <div class="del-cell diy">You, from templates</div>
-          <div class="del-cell guided">Built with you, situation by situation</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">When the report lands</div>
-          <div class="del-cell diy">You read it</div>
-          <div class="del-cell guided">Your coach walks the team through it</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">When something surfaces</div>
-          <div class="del-cell diy">You handle it</div>
-          <div class="del-cell guided">Your coach mediates, in scheduled sessions</div>
-        </div>
-        <div class="del-row">
-          <div class="del-lbl">Cost</div>
-          <div class="del-cell diy">Your subscription only</div>
-          <div class="del-cell guided">Your subscription, plus coaching below</div>
-        </div>
+        <!-- The Enterprise tier's only control, and it was a mailto too. Same fix, and it arrives
+             already saying which conversation this is. -->
+        <a class="gw-tap" href={`${APP_URL}/talk-to-us?about=other`} style="font-size:13px;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:9px 20px;text-decoration:none;white-space:nowrap;">Contact us</a>
       </div>
 
       <!--
-        THE PRICES USED TO BE REPEATED HERE, IN A SECOND PAIR OF CARDS.
+        RUN IT YOURSELF, OR WITH SUPPORT.
         
-        This section explains the difference between running it yourself and running it with a
-        coach, which is worth its own space. The numbers moved down to "Help, where you want it",
-        where they sit beside setup and integration - the other two things that are a person's time
-        rather than software. One place for a price is the rule that stopped the retainer being
-        wrong in three files.
+        What sat here was a DIY-versus-Guided comparison table, a note about booking two sessions
+        back to back, a block about how a coach is chosen, and a second heading introducing the same
+        three cards a second time. Removed on Hafsah's instruction, and the reason is worth keeping:
+        it explained the shape of an offer at length before showing what any of it costs. The three
+        cards below say what the things are and what they cost, which is what somebody on a pricing
+        page is there for.
       -->
-      <p style="font-size:13px;color:var(--gw-sub);line-height:1.7;margin-bottom:48px;">What coaching costs, and the two other things our team does by hand, are below.</p>
-
-
-      <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:18px 20px;margin-bottom:24px;">
-        <p style="font-size:13px;font-weight:700;color:var(--gw-navy);margin:0 0 6px;">Book two sessions per issue, back to back</p>
-        <p style="font-size:13px;color:var(--gw-text);line-height:1.7;margin:0;">One session to understand the situation, the next to work through it. Split across weeks it turns into talking about the problem rather than dealing with it, which is why we will not mediate cold.</p>
-      </div>
-
-      <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:20px 24px;margin-bottom:48px;">
-        <p style="font-size:14px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">Your people coach is <a class="gw-tap-inline" href="https://www.linkedin.com/in/saharjamal/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);">Sahar Jamal</a></p>
-        <p style="font-size:12px;color:var(--gw-muted);margin:0 0 10px;">ICF-certified growth coach, founder and CEO of Maziwa, and a partner at Groundwork</p>
-        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Sahar coaches entrepreneurs, start-up teams and emerging leaders through exactly the conversations a report makes unavoidable: an expectation nobody said out loud, two people who thought they agreed, a role that quietly stopped being the job. Guided is her in the room with your team, not a summary emailed to you.</p>
-        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 12px;">A decade in maternal and newborn health across East Africa, through Jacaranda Health, Johnson &amp; Johnson and the Aga Khan Development Network. ACC-level certificate from the International Coaching Federation, graduate of the Canada Coach Academy, MBA from Kellogg. The person who sits with your team is a partner in the company building the product.</p>
-        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Guided%20check-ins" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Ask about Guided &#8594;</a>
-      </div>
-
-      <!--
-        THE THREE THINGS THAT ARE PEOPLE RATHER THAN SOFTWARE.
-        
-        Nothing on this site said the API existed, so the only way to learn you could connect
-        Groundwork to your own systems was to already be inside the product. And all three of these
-        end the same way: you ask for a call, our team talks to you, and what you agree is invoiced
-        afterwards. None of them is bought from a form, so none of them offers a buy button that
-        would be a lie.
-      -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Help, where you want it</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">The software is the plan above and most teams run it on their own. Your people and objectives can come in from tools you already use, what check-ins produce can go back out, and you can put a check-in inside your own product. The API and the keys come with your subscription: your engineers can do all of it without talking to us. These three are for when you would rather not.</p>
+      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Run it yourself, or with support</h2>
+      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:22px;">The plans above are the software, and most teams run it on their own. These three are for when you would rather not: a coach in the room, somebody to set you up, or an engineer to connect it to the tools you already use.</p>
 
       <div class="why-grid" style="margin-bottom:16px;">
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">A coach in the room</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingRetainer}</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">a year for twelve sessions, or {SERVICES.coachingHourly} an hour</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Sahar reads the report with your team and turns what it found into a decision somebody owns. About $625 a session retained, against {SERVICES.coachingHourly} booked one at a time.</p>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingHourly} an hour</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">or {SERVICES.coachingRetainer} a year for twelve sessions</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 6px;">A coach reads the report with your team and turns what it found into a decision somebody owns.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">The annual plan is {SERVICES.coachingMonthly} a month for twelve sessions, held by a team, attached to one scenario, or belonging to one person. You can opt in a session at a time instead.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Setting you up</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.handsOnFirstMonth}</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">first month</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">A named person to get you running and train your team. Three sessions covering planning, setup and training, so the first check-ins are ones you would want to read.</p>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.setupMonthly} a month</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">two two-hour sessions a month</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 6px;">We reach out to support your teams, and they book the time that suits them.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Opt in a month at a time, for as long as it is useful.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Integration support</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.integrationSupportFrom}+</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">depending on complexity</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">If you would rather we connected it with you. Priced from rather than at, because a two-system sync and a whole HR platform are not the same week of work.</p>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.integrationSupport}</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">one dedicated engineer, for a month</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 6px;">One of our engineers works with your team to embed Groundwork in the tools you already use.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Pick the month your team has the time.</p>
         </div>
       </div>
 
       <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:48px;">
         <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 8px;">All three start with a call, and none of them is charged to a card. Subscribe first, ask from inside the product, and we will tell you the number before anybody starts. What you agree is invoiced by us afterwards.</p>
-        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Request%20a%20call" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Request a call &#8594;</a>
-      </div>
-
-      <!-- Why we price this way -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Why we price this way</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:24px;">Most tools charge you for seats and call it a feature. We charge you for your team size and give you everything.</p>
-
-      <div class="why-grid" style="margin-bottom:48px;">
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Start free, no card required.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">10 check-ins on a team of 5 or fewer is enough to know whether Groundwork works for you. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Pay for your team size, not your usage.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts toward your plan. Unlimited check-ins, sessions, and reports at every tier. No counting clicks.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">One price, no tiers per feature.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Every plan gives you the same thing: full AI-facilitated check-ins, structured reports, and a permanent record. No features locked behind higher tiers.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Transparent and consistent.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">The price you see is the price you pay. No proration surprises, no hidden add-ons, no sudden price changes without notice.</p>
-        </div>
+        <!--
+          A BUTTON, NOT AN UNDERLINED PHRASE. This is the only way to buy any of the three things
+          above, and it was styled as a footnote in the same weight as the sentence before it. If
+          asking for a call is the action the section exists for, it has to look like the action.
+        -->
+        <!--
+          A FORM, NOT A MAILTO. This was `mailto:hello@myground.work`, which does nothing at all for
+          anybody without a configured mail client - so the only route to the one thing on this page
+          you cannot self-serve was a link that appeared broken. The audit said it plainly: no form,
+          nothing captured, nothing followed up. It now opens a request that lands in the back
+          office and sends a confirmation.
+        -->
+        <a href={`${APP_URL}/talk-to-us`} style="display:inline-block;background:var(--gw-navy);color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:7px;text-decoration:none;margin-top:4px;">Request a call &#8594;</a>
       </div>
 
       <!-- FAQ -->
@@ -263,10 +197,6 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Do I need a card to start?</div>
           <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Your first 10 check-ins are free, for teams of 5 or fewer including you, and require no payment details. You add a card only when you want more check-ins or more people.</p>
-        </div>
-        <div class="faq-item">
-          <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What counts as a session?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">One session is one full round of answers from everyone in a check-in. Whether you have two people or twenty, it is one session. Sessions are unlimited on every plan.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Can I cancel a subscription at any time?</div>
@@ -306,8 +236,8 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
         <a class="gw-footer-btn" href="/">Home</a>
         <a class="gw-footer-btn" href="/how-it-works">How it works</a>
-        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
+        <a class="gw-footer-btn" href="/privacy-and-ai">Privacy and AI</a>
         <a class="gw-footer-btn" href="/about">About</a>
       </div>
       <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>

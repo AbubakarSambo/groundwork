@@ -141,6 +141,8 @@ export function ChatPage() {
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const [input, setInput]             = useState('')
   const [loading, setLoading]         = useState(false)
+  /* True once a reply has been outstanding long enough for somebody to start doubting it. */
+  const [waitedAWhile, setWaitedAWhile] = useState(false)
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
@@ -237,6 +239,16 @@ export function ChatPage() {
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
   }, [displayedMsgs, loading])
+
+  /*
+   * FOUR SECONDS is where the audit's waits started being noticed, so it is where the wait starts
+   * explaining itself. Cleared on the way out so a fast reply never shows the line at all.
+   */
+  useEffect(() => {
+    if (!loading) { setWaitedAWhile(false); return }
+    const t = setTimeout(() => setWaitedAWhile(true), 4000)
+    return () => clearTimeout(t)
+  }, [loading])
 
   const openSession = useMutation({
     mutationFn: () => conversationApi.open(checkInId!),
@@ -613,7 +625,19 @@ export function ChatPage() {
    *
    * An explainer can wait. An error cannot.
    */
-  const showPrivacyFirst = knowWhatIsHere && sessionNumber === 1 && !privacyAcknowledged && msgs.length === 0 && !openFailed
+  /*
+   * AND IT IS NOT A FACT ABOUT THE GROUND'S SESSION NUMBER.
+   *
+   * This required `sessionNumber === 1`, which is a fact about the check-in rather than about the
+   * person reading it. Somebody added at session 3 — a new manager, a colleague brought in halfway
+   * through — has their first ever check-in numbered 3, so they were never shown this at all, and
+   * wrote their account of the work having been told nothing about who reads it. Found by the
+   * hundred-journey audit, which counted how many check-ins ever say so.
+   *
+   * The acknowledgement is what stops it being read twice, and it already errs the safe way: a
+   * person on a new device sees the explainer again rather than never.
+   */
+  const showPrivacyFirst = knowWhatIsHere && !privacyAcknowledged && msgs.length === 0 && !openFailed
 
   if (showPrivacyFirst) {
     return (
@@ -837,7 +861,16 @@ export function ChatPage() {
               }}
             >
               {m.id === 'loading' ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                /*
+                 * THE DOTS, AND AFTER A FEW SECONDS WHAT THEY MEAN.
+                 *
+                 * Three bouncing dots say "something is happening" for about two seconds and
+                 * "has this frozen?" for every second after that. Ninety-nine of the hundred
+                 * audited journeys waited longer than four seconds for a reply, and the answer
+                 * to that doubt was people pressing send again — which used to put the same
+                 * sentence in the record twice.
+                 */
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   {[0, 1, 2].map(i => (
                     <span key={i} style={{
                       display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
@@ -847,6 +880,11 @@ export function ChatPage() {
                     }} />
                   ))}
                   <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
+                  {waitedAWhile && (
+                    <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                      Still reading what you wrote. Nothing was lost — you do not need to send it again.
+                    </span>
+                  )}
                 </span>
               ) : m.content}
               {streamingId === m.id && (

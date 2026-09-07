@@ -639,24 +639,39 @@ export class AdminService implements OnApplicationBootstrap {
       update: { adminOtp: otpPayload },
     });
 
-    const isDev = this.config.get<string>('NODE_ENV') !== 'production';
-
-    if (isDev) {
-      this.logger.debug(`[DEV] Admin OTP for ${user.email}: ${plainOtp}`);
-      return { otp: plainOtp, sent: false };
+    /*
+     * THE CODE GOES BY EMAIL, OR THE CALLER IS TOLD IT DID NOT.
+     *
+     * Three things were wrong here and they compounded:
+     *
+     *   1. `NODE_ENV !== 'production'` returned the plain code IN THE RESPONSE BODY. That is right
+     *      for a laptop and wrong for staging, which is not production either - so on staging the
+     *      second factor guarding operations that cannot be undone was handed to whoever asked for
+     *      it. The gate is now whether the mail actually went, not what the environment is called.
+     *
+     *   2. It reached past this class's type with `(this.email as any).sendEmail(...)`, skipping
+     *      the opt-out check and the sender classification. Suppressing the opt-out for an OTP is
+     *      correct; doing it by cast means the next person to copy the line suppresses something
+     *      that should not be. `sendAdminOtp` is a real sender, classified as the way back in.
+     *
+     *   3. A send failure was caught, logged and answered `{ sent: true }` - so an admin waited for
+     *      a code that was never coming, and the operation they were part-way through simply could
+     *      not be completed.
+     *
+     * The code is returned only where there was no way to send it at all, which is a laptop with no
+     * mail key configured. Then it is the difference between a working local setup and none.
+     */
+    const posted = await this.email.sendAdminOtp(user.email, plainOtp);
+    if (posted.sent) {
+      this.logger.log(`Admin code emailed to ${user.email} for an operation that cannot be undone.`);
+      return { sent: true };
     }
 
-    try {
-      await (this.email as any).sendEmail({
-        to: user.email,
-        subject: 'Your Groundwork admin OTP',
-        html: `<p>Your one-time admin code is: <strong>${plainOtp}</strong>. It expires in 10 minutes.</p>`,
-      });
-    } catch (err) {
-      this.logger.error(`Failed to send OTP email to ${user.email}`, err);
-    }
-
-    return { sent: true };
+    this.logger.warn(
+      `Admin code for ${user.email} could not be emailed (${posted.because}). ` +
+        `Returning it to the caller, which is only acceptable because nothing can deliver it.`,
+    );
+    return { otp: plainOtp, sent: false };
   }
 
   async verifyOtpForAdmin(userId: string, plainOtp: string): Promise<boolean> {

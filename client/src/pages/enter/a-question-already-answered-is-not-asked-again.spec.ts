@@ -38,8 +38,16 @@ describe('a question already answered is not asked again', () => {
     expect(PAGE).toContain('setYourRole')
   })
 
-  it('sends the two non-party answers straight on, because what follows is a new question', () => {
-    expect(PAGE).toMatch(/yourRole !== 'a_party'\)\s*setFlowPath\('lead'\)/)
+  it('no longer jumps a non-party to a question that has been removed', () => {
+    /*
+     * IT USED TO, AND THAT WAS RIGHT WHILE THE QUESTION EXISTED. There were two non-party answers,
+     * both handed the check-in to a lead, and "who runs the first check-in?" was a new question -
+     * so advancing to it was not skipping anything. The hand-off is gone on her call, there is one
+     * non-party answer left, and it needs no follow-up question at all: they write the context and
+     * other people check in against it.
+     */
+    expect(PAGE).not.toMatch(/yourRole !== 'a_party'\)\s*setFlowPath/)
+    expect(PAGE).not.toContain('Who runs the first check-in?')
   })
 
   /**
@@ -55,7 +63,9 @@ describe('a question already answered is not asked again', () => {
    * would trade a repeated question for a trapped one.
    */
   it('leaves a way to correct a wrong reading', () => {
-    expect(PAGE).toContain('Actually, someone else gives the accounts.')
+    /* The wording followed the answer it leads to: not "someone else gives the accounts" and gets
+       handed the check-in, but "I do not check in, others do" - which is a mode, not a hand-off. */
+    expect(PAGE).toContain('Actually, I do not check in. Others do.')
   })
 
   /**

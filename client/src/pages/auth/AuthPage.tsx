@@ -13,6 +13,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
 
 
@@ -77,6 +78,9 @@ function GoogleMark() {
 export function AuthPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  /* The honeypot the API has always accepted and no form has ever rendered. */
+  const trap = useTheTrap()
   const setAuth = useAuthStore((s) => s.setAuth)
 
   /**
@@ -128,6 +132,16 @@ export function AuthPage() {
     if (!raw.startsWith('/') || raw.startsWith('//')) return null
     return raw
   })()
+  /*
+   * WHY THEY ARE LOOKING AT THIS PAGE.
+   *
+   * A token expiring mid-check-in used to send the tab to `/`, which bounces a signed-out visitor
+   * to the marketing site — so being signed out read as the product throwing you out. The
+   * interceptor now sends `why=session-expired` and `next`, and this is the sentence that makes
+   * the difference between "sign in again" and "what just happened".
+   */
+  const sessionExpired = searchParams.get('why') === 'session-expired'
+
   const defaultView: View = isSignup ? 'create' : mode === 'member' ? 'link' : 'password'
 
   const [view, setView] = useState<View>(defaultView)
@@ -202,7 +216,7 @@ export function AuthPage() {
   })
 
   const sendLink = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase()),
+    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled),
     onSuccess: () => setLinkSent(true),
     /**
      * A FAILURE IS NOT A SUCCESS. W10-2.
@@ -253,7 +267,7 @@ export function AuthPage() {
         ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
         ...(orgName.trim() ? { orgName: orgName.trim() } : {}),
       },
-    }),
+    }, trap.filled),
     onSuccess: () => setLinkSent(true),
     onError: (err: any) => {
       const status = err?.response?.status
@@ -370,6 +384,11 @@ export function AuthPage() {
               <button className="gw-btn" type="submit" disabled={signIn.isPending}>
                 {signIn.isPending ? 'Signing in…' : 'Sign in'}
               </button>
+              {sessionExpired && !error && (
+                <div role="status" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '8px 10px' }}>
+                  You were signed out because you had been away a while. Sign in and we will take you back to where you were — nothing you wrote has been lost.
+                </div>
+              )}
               {error && <div className="gw-er" style={{ marginTop: 8 }}>{error}</div>}
             </form>
 
@@ -415,6 +434,7 @@ export function AuthPage() {
             </div>
 
             <form onSubmit={e => { e.preventDefault(); setError(''); if (!email.trim().includes('@')) { setError('Enter a valid email address.'); return } createAccount.mutate() }}>
+              {trap.field}
               <div className="gw-fld">
                 <label className="gw-label" htmlFor="signup-name">Your name</label>
                 <input
@@ -510,6 +530,7 @@ export function AuthPage() {
             </div>
 
             <form onSubmit={submitLink}>
+              {trap.field}
               <div className="gw-fld">
                 <label className="gw-label">Email</label>
                 <input

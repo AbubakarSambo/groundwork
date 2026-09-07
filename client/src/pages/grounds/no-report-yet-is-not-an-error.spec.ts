@@ -60,6 +60,19 @@ describe('no report yet is not an error', () => {
       join(__dirname, '../../../../api/src/modules/reports/reports.service.ts'),
       'utf8',
     )
-    expect(service).toMatch(/if \(!ground\?\.report\) throw new NotFoundException/)
+    /*
+     * The SHAPE, not the one line it used to be. The server now says WHICH of the three
+     * situations this is — nobody has answered, somebody has not finished, or it is being
+     * written — because "Report not found" was shown to people who had just spent ten minutes
+     * answering. The 404 is the privacy property and is unchanged: every branch below throws one.
+     */
+    const from = service.indexOf('if (!ground.report) {')
+    expect(from, 'the missing-report branch has moved or been renamed').toBeGreaterThan(-1)
+    const branch = service.slice(from, from + 1800)
+    /* A stranger still gets the bare sentence and nothing about who is on the check-in. */
+    expect(branch).toMatch(/if \(!mine\) throw new NotFoundException\('Report not found'\)/)
+    /* And the reason a party gets is still a 404, never a 200 with an empty body. */
+    expect(branch).toMatch(/throw new NotFoundException\(\s*whyThereIsNoReportYet/)
+    expect(branch).not.toMatch(/return \{ report: null/)
   })
 })

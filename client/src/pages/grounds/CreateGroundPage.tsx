@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-survives-a-reload'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,12 +6,13 @@ import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence 
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { whatMatches, alsoTyped, NOTHING_MATCHED } from '@/lib/finding-your-situation'
-import { SCENARIO_LABELS, SCENARIO_GROUPS, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
+import { theWordsForPickingASituation } from './whose-situation-is-it'
+import { rememberWhoWasNotInvited } from './who-was-not-invited'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -311,11 +312,23 @@ export const SCENARIOS: ScenarioCard[] = [
    * work together would have got a "get a team back on the same page" ground, and nothing would have
    * said so. It carries OPEN_READ now, which exists precisely for "we do not know yet".
    */
-  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ, tag: 'Anything else', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
-    desc: "None of these quite fit? Describe it in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the situations above, pick that instead: it sets the objective and shapes the questions people are asked.",
-    moment: 'Something is off and you cannot name it yet.',
+  /**
+   * ITEM 3: IT IS THE FIRST PICK NOW, SO IT STOPPED READING LIKE THE LAST ONE.
+   *
+   * Every word here was written for a card sitting at the bottom of six groups under a heading
+   * called "Not sure yet": the tag said "Anything else", the line said "Something is off and you
+   * cannot name it yet", and the body opened "None of these quite fit?" and pointed at "the
+   * situations above". At the top of the step all four are wrong - nothing has come before it to be
+   * anything else than, the situation need not be a problem, and the named situations are below.
+   *
+   * It is also no longer only for somebody who cannot name their situation. It is for anybody who
+   * would rather say it in their own words, which is a different and much larger offer.
+   */
+  { cardKey: 'DESCRIBE_OWN', scenario: 'OPEN_READ', label: SCENARIO_LABELS.OPEN_READ, tag: 'In your own words', tagBg: 'var(--gw-paper-2)', tagColor: 'var(--gw-sub)',
+    desc: "Say what is happening in your own words. Each person gives their own read first, privately, and the check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.",
+    moment: 'You would rather describe it yourself than pick from a list.',
     agreed: 'Nothing fixed: each person gives their own read first, privately, because the situation is not named yet.',
-    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the situations above, pick that instead: it sets the objective and shapes the questions people are asked.', },
+    tests: 'The check-ins that follow test whether that picture holds up. If it turns out to be one of the named situations below, pick that instead: it sets the objective and shapes the questions people are asked.', },
 ]
 
 /**
@@ -458,8 +471,11 @@ export function scenarioFromParam(param: string | null): GroundScenario | null {
 /** Every value the picker can produce. Derived from the map, so it cannot fall behind it. */
 const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
-// Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
-// We use integer steps internally: 1,2,3,4,5,6
+// The old numbering comment lived here and described a flow that has not existed for some time -
+// including a "4=resolution" step that offered the end states. It is gone, `END_STATES` is imported
+// by nothing but the spec that mirrors it, and end states are chosen at the CLOSE now. The stale
+// comment is what kept the guide claiming you set a resolution state before a check-in starts.
+// STAGE below is the ordering; the-steps-this-person-sees.ts decides who is shown what.
 /**
  * THE STEPS HAVE NAMES NOW, AND THE NUMBERS ARE DERIVED FROM THEM.
  *
@@ -526,13 +542,36 @@ export function CreateGroundPage() {
   })
   const navigate = useNavigate()
   /* Twenty cards is a wall even in six groups, if your words are not our headings. */
-  const [situationSearch, setSituationSearch] = useState('')
+  /**
+   * WHICH GROUP IS OPEN. One at a time now, chosen from a dropdown, instead of six expanded lists
+   * with a jump bar over them. Defaults to the first group rather than to nothing, so the step
+   * always has cards on it - a picker that shows nothing until you choose a heading is a step that
+   * looks broken when it loads.
+   */
+  const [situationGroup, setSituationGroup] = useState<ScenarioGroupKey>(GROUPS_YOU_PICK_FROM[0].key as ScenarioGroupKey)
+  /* The describe-your-own card, looked up rather than written out again - it is the same card the
+     catalogue has always carried, just no longer inside a group. */
+  /**
+   * HOW MANY THIS STEP OFFERS, COUNTED OFF THE CARDS IT RENDERS.
+   *
+   * It read HOW_MANY_NAMED_SITUATIONS, which counts SCENARIO_LABELS minus the open one - 21. The
+   * dropdown's group counts sum to 22, because they count CARDS, and COHORT_CHECK has two of them:
+   * "Several people in the same role" and "Onboarding several people at once" are one scenario
+   * offered as two situations. So the sentence said 21 while the thing under it offered 22.
+   *
+   * The number somebody is reading is "how many can I pick between", which is the cards. Counted
+   * off the same array the groups are counted off, so the two cannot disagree again.
+   *
+   * (I had also written in the catalogue that the COHORT sharing "no longer holds". It does - my
+   * regex had counted `scenario:` occurrences including OPEN_READ and got 22 distinct where there
+   * are 21. Corrected there.)
+   */
+  const namedCardCount = SCENARIOS.filter(c => c.scenario !== 'OPEN_READ').length
+
+  const openCard = SCENARIOS.find(c => c.scenario === 'OPEN_READ')
+  const groupNow = GROUPS_YOU_PICK_FROM.find(g => g.key === situationGroup)
   /* null means "not searching" - show the grouped list. An empty array means "searched, found
      nothing", which is a different thing and gets a different message. */
-  const matches = useMemo(
-    () => whatMatches(alsoTyped(SCENARIOS), situationSearch),
-    [situationSearch],
-  )
 
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
@@ -618,7 +657,6 @@ export function CreateGroundPage() {
    * administer. It is a one-line question and it changes who is measured.
    */
   const [alsoAParty, setAlsoAParty] = useState<boolean | null>(null)
-  const [myRemit, setMyRemit] = useState('')
   /**
    * Does someone ELSE run this ground?
    *
@@ -643,9 +681,11 @@ export function CreateGroundPage() {
   const [routing, setRouting] = useState(false)
   const [routedTo, setRoutedTo] = useState<GroundScenario | null>(null)
   const [routeFailed, setRouteFailed] = useState(false)
-  const [runByOther, setRunByOther] = useState(false)
   const [leadEmail, setLeadEmail] = useState('')
   const [leadName, setLeadName] = useState('')
+  /* The words for step 2 depend on whose situation it is - "someone else sets the context" makes
+     every "you" on that step point at the wrong person. See whose-situation-is-it.ts. */
+  const theWords = theWordsForPickingASituation()
   const [leadRemit, setLeadRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
@@ -670,7 +710,6 @@ export function CreateGroundPage() {
     if (typeof d.groundName === 'string') setGroundName(d.groundName)
     if (typeof d.brief === 'string') setBrief(d.brief)
     if (typeof d.ownDescription === 'string') setOwnDescription(d.ownDescription)
-    if (typeof d.myRemit === 'string') setMyRemit(d.myRemit)
     if (typeof d.leadEmail === 'string') setLeadEmail(d.leadEmail)
     if (typeof d.leadName === 'string') setLeadName(d.leadName)
     if (typeof d.leadRemit === 'string') setLeadRemit(d.leadRemit)
@@ -689,14 +728,16 @@ export function CreateGroundPage() {
       || participants.length > 0 || bulkText.trim() || leadEmail.trim()
     if (!anything) return
     keep(DRAFT_KEY, {
-      groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit,
+      groundName, brief, ownDescription, leadEmail, leadName, leadRemit,
       startsOn, bulkText, timelineDays, participants,
     })
-  }, [groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
+  }, [groundName, brief, ownDescription, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
 
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
   const [billingFree, setBillingFree] = useState(false)
+  /* True when the check itself failed, which is neither allowed nor refused. */
+  const [billingUnknown, setBillingUnknown] = useState(false)
   const [groundsUsed, setGroundsUsed] = useState<number | null>(null)
   const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeInput, setCodeInput] = useState('')
@@ -709,7 +750,7 @@ export function CreateGroundPage() {
   const sessionTotal = sessionsFor(timelineDays, cadence) ?? 1
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
-  const briefShort = briefWords > 0 && briefWords < 20
+  const briefShort = briefWords > 0 && briefWords < 20 /* BRIEF_WORDS_WORTH_READING, declared below with the other two */
   /**
    * MUST MATCH GroundsService.MEANS_SOMETHING (api/src/modules/grounds/grounds.service.ts).
    *
@@ -721,13 +762,31 @@ export function CreateGroundPage() {
    * Matching the real gate here means the button itself is honest about what
    * "Continue" is actually going to do.
    */
-  const BRIEF_MEANS_SOMETHING = 40
-  const briefTooShortToInvite = participants.length > 0 && brief.trim().length < BRIEF_MEANS_SOMETHING
+  /**
+   * TWO LIMITS ON THIS BOX, IN TWO DIFFERENT UNITS, NEITHER OF THEM STATED.
+   *
+   * The counter under the box reads "N words". The rule that actually blocked inviting anybody
+   * counted CHARACTERS - 40 of them - so you could watch a number climb while the thing stopping
+   * you was measuring something else, and nothing anywhere said either figure. Reported as: we need
+   * to be clear about the word count limit on this page.
+   *
+   * Both are words now, and both are printed. The floor is the same intent as the old
+   * forty characters: enough that the first person invited is told something.
+   *
+   * And the ceiling is real and was also unmentioned: the server accepts 4,000 characters
+   * (@MaxLength on CreateGroundDto.brief) and would refuse the request beyond it. Nothing on the
+   * page said so, so a long brief could be typed and lost on submit.
+   */
+  const BRIEF_WORDS_TO_INVITE = 8
+  const BRIEF_WORDS_WORTH_READING = 20
+  const BRIEF_CHARS_MAX = 4000
+  const briefTooShortToInvite = participants.length > 0 && briefWords < BRIEF_WORDS_TO_INVITE
 
   // When entering step 2 (billing), auto-check
   useEffect(() => {
     if (step === STAGE.situation && !billingChecked) {
       setBillingLoading(true)
+      setBillingUnknown(false)
       billingApi.checkCanCreateGround().then(res => {
         setBillingChecked(true)
         setBillingLoading(false)
@@ -738,9 +797,18 @@ export function CreateGroundPage() {
           setBillingFree(false)
         }
       }).catch(() => {
+        /*
+         * WE COULD NOT ASK IS NOT THE SAME AS YOU ARE OUT.
+         *
+         * This treated any failure — a dropped connection, a 500, a timeout — as "not allowed",
+         * and the screen for not-allowed is "Subscribe to create more". So a blip told a paying
+         * admin to buy something they already have, and there was no way to tell that answer from
+         * a real one.
+         */
         setBillingChecked(true)
         setBillingLoading(false)
         setBillingFree(false)
+        setBillingUnknown(true)
       })
     }
   }, [step, billingChecked])
@@ -767,34 +835,6 @@ export function CreateGroundPage() {
 
   const create = useMutation({
     mutationFn: async () => {
-      // Handing the ground to a lead is a different creation call, but it is the
-      // same set of answers - so it is the same flow, not a second form that
-      // happens to be missing half the fields.
-      if (runByOther) {
-        const ground = await groundsApi.createForLead({
-          leadEmail: leadEmail.trim(),
-          leadName: leadName.trim() || undefined,
-          leadRemit: leadRemit.trim() || undefined,
-          label: groundName.trim() || groundNameFallback(SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario),
-          scenario: scenario!,
-          moment: moment!,
-          timelineDays,
-          cadence,
-          ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
-          brief: (brief.trim() || ownDescription.trim()) || undefined,
-        /**
-         * Sent at CREATE now, not only afterwards. The follow-up confirmLead call below still runs
-         * for the flows where it applies, but it throws "already been confirmed" on a ground an
-         * admin created for themselves - into a silent catch - so this choice was being dropped
-         * every time. The server applies it at creation and skips the creator's own check-in.
-         */
-        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
-          participants: participants.length
-            ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
-            : undefined,
-        })
-        return { ground, failed: [] as { email: string; because: string }[] }
-      }
       const ground = await groundsApi.create({
         label: groundName.trim() || groundNameFallback(SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario),
         scenario: scenario!,
@@ -869,6 +909,12 @@ export function CreateGroundPage() {
       qc.invalidateQueries({ queryKey: ['grounds'] })
       /* One toast per person, each carrying the reason that person was refused for. */
       for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
+      /*
+       * AND WRITTEN DOWN, because a toast does not survive the navigation on the next line, let
+       * alone a reload. The admin's list of five silently became three and the destination page
+       * recorded none of it. See who-was-not-invited.ts.
+       */
+      rememberWhoWasNotInvited(ground.id, failed)
       navigate(`/grounds/${ground.id}`)
     },
     /*
@@ -950,6 +996,10 @@ export function CreateGroundPage() {
   /** Not `Object.keys(STAGE).length`: that counts steps this person is never shown. */
   const totalStepsForThisPerson = visibleSteps.length
 
+  /* Only the open card's label depends on who is reading; every other one is its own name. */
+  const cardLabel = (card: ScenarioCard) =>
+    card.scenario === 'OPEN_READ' ? theWords.describeOwnLabel : card.label
+
   const renderSituation = (card: ScenarioCard) => {
                         const facts = SCENARIO_FACTS[card.scenario]
                         const sessions = recommendedSessions(card.scenario)
@@ -976,7 +1026,7 @@ export function CreateGroundPage() {
                             role="radio"
                             tabIndex={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
                             aria-checked={isSel}
-                            aria-label={`${card.label}. ${card.moment} ${card.desc}`}
+                            aria-label={`${cardLabel(card)}. ${card.moment} ${card.desc}`}
                             onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
                             className={`cg-sit-card${isSel ? ' selected' : ''}`}
                             onClick={pick}
@@ -985,8 +1035,29 @@ export function CreateGroundPage() {
                               <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
                               <div className="cg-sit-check" />
                             </div>
-                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{card.label}</div>
+                            {/* Named situations are facts about the product and never change. The
+                                describe-your-own card is about the READER, so it does - see
+                                whose-situation-is-it.ts. */}
+                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{cardLabel(card)}</div>
                             <p className="cg-moment">{card.moment}</p>
+
+                            {/*
+                              * WHERE YOU ACTUALLY TYPE IT, SAID ON THE CARD.
+                              *
+                              * Every other card on this step is a complete choice: pick it and the
+                              * step is answered. This one is a promise of a text box that lives on
+                              * the NEXT screen, and the card looked identical to the others - so
+                              * picking it appeared to do nothing, and the field it leads to could
+                              * not be found. Reported as exactly that.
+                              *
+                              * Shown only when it is chosen, because before that it is an
+                              * instruction for a screen nobody is going to.
+                              */}
+                            {card.scenario === 'OPEN_READ' && isSel && (
+                              <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
+                                You write it on the next screen, in your own words.
+                              </div>
+                            )}
 
                             <button
                               type="button"
@@ -1055,9 +1126,13 @@ export function CreateGroundPage() {
           }}
         >
           <span>Picked up where you left off {howLongAgo(restored)} — on this device.</span>
+          {/* "Start fresh" was `gw-btn-ghost`, which no stylesheet defines - so it rendered as a
+              raw browser button inside a styled banner. Same silent failure as the seven `gw-in`
+              fields; found by the guard written for those. `gw-btn-sm` is the small muted control
+              this actually is. */}
           <button
             type="button"
-            className="gw-btn-ghost"
+            className="gw-btn-sm"
             style={{ margin: 0 }}
             onClick={() => {
               forget(DRAFT_KEY)
@@ -1177,135 +1252,125 @@ export function CreateGroundPage() {
               {[
                 { v: true, label: 'I set the context and objective, and I check in too', sub: 'You write what this is about and what good looks like. You check in against it alongside everyone else.', other: false },
                 { v: false, label: 'I set the context and objective, others check in', sub: 'You write what this is about and what good looks like. They check in against it. Nothing asks you to check in, and nothing measures you.', other: false },
-                { v: false, label: 'Someone else sets the context', sub: 'You are setting the check-in up and inviting them. They write what it is about, check in themselves, and see the results.', other: true },
+                /*
+                 * THE THIRD ANSWER IS GONE. HER CALL, AND HER REASON.
+                 *
+                 * "I think we should remove the whole org admin setting a context and handing it
+                 * over to a lead. It seems like it is confusing. maybe you set context but you can
+                 * add someone to have oversight."
+                 *
+                 * It was the one answer that produced a check-in belonging to somebody who was not
+                 * in the room: this person filled in a situation, a timeline and a roster, and then
+                 * a lead was emailed to confirm a context they had not written and could not see
+                 * until they accepted. Two people half-owned it and neither could finish it alone.
+                 *
+                 * What is left is the real distinction: you write what good looks like, and either
+                 * you check in against it or you read what comes back. Anybody who needs to watch
+                 * without writing it is added as oversight in the check-in's own settings, after it
+                 * exists - which is where every other "who else should see this" question is asked.
+                 */
               ].map((o) => (
                 <div
                   key={o.label}
                   role="radio"
-                  tabIndex={(alsoAParty === o.v && runByOther === o.other) || (alsoAParty === null && o.v) ? 0 : -1}
-                  aria-checked={alsoAParty === o.v && runByOther === o.other}
+                  tabIndex={alsoAParty === o.v || (alsoAParty === null && o.v) ? 0 : -1}
+                  aria-checked={alsoAParty === o.v}
                   aria-label={`${o.label}. ${o.sub}`}
-                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v); setRunByOther(o.other) } }}
-                  onClick={() => { setAlsoAParty(o.v); setRunByOther(o.other) }}
-                  className={`cg-sit-card${alsoAParty === o.v && runByOther === o.other ? ' selected' : ''}`}
+                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v) } }}
+                  onClick={() => { setAlsoAParty(o.v) }}
+                  className={`cg-sit-card${alsoAParty === o.v ? ' selected' : ''}`}
                   style={{ marginBottom: 6 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v && runByOther === o.other ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v && runByOther === o.other ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
                 </div>
               ))}
-              {alsoAParty === true && !runByOther && (
-                <input
-                  className="gw-in"
-                  aria-label="What you are responsible for"
-                  placeholder="What are you responsible for here? (optional)"
-                  value={myRemit}
-                  onChange={(e) => setMyRemit(e.target.value)}
-                  style={{ marginTop: 4 }}
-                />
-              )}
-              {runByOther && (
-                <div style={{ marginTop: 4 }}>
-                  <input className="gw-in" type="email" aria-label="The lead's email address"
-                    placeholder="Their email address" value={leadEmail}
-                    onChange={(e) => setLeadEmail(e.target.value)} />
-                  <input className="gw-in" aria-label="The lead's name"
-                    placeholder="Their name (optional)" value={leadName}
-                    onChange={(e) => setLeadName(e.target.value)} style={{ marginTop: 6 }} />
-                  {/* Without this the lead is the one person on the ground with no
-                      stated remit, and the only person the board cannot read. */}
-                  <input className="gw-in" aria-label="What the lead is responsible for"
-                    placeholder="What are they responsible for? (optional, they can set this themselves)"
-                    value={leadRemit} onChange={(e) => setLeadRemit(e.target.value)} style={{ marginTop: 6 }} />
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
-                    They get an invitation to lead this check-in. Until they accept it, nobody is asked to check in.
-                  </div>
-                </div>
-              )}
+              {/*
+                * "YOUR PART IN THE WORK" IS GONE, AND IT WAS NEVER GOING ANYWHERE.
+                *
+                * Her call: the chat asks this anyway, and there are too many places asking you for
+                * things. Both true - the check-in asks it in these words: "What are you bringing to
+                * this, what are you responsible for, and what does your contribution look like over
+                * the next period? Not the vision. The work."
+                *
+                * And it was worse than redundant. Traced before removing it: `myRemit` was held in
+                * component state, written into the saved draft, and sent to the server by NEITHER
+                * create path. It asked a question on the way in and threw the answer away, so the
+                * only thing it ever did was make the screen longer.
+                *
+                * `leadRemit` on the other branch is kept: that one is sent at creation, and it is
+                * about somebody who is not here to be asked yet.
+                */}
             </div>
 
             </>)}
 
             {/* ---- STEP 2: which situation ---- */}
             {step === STAGE.situation && (<>
-            <div className="gw-sub-t" style={{ marginBottom: 2 }}>
-              Twenty situations, grouped by the question you are actually asking. Every one of them is an
-              objective agreed at the start, then a run of check-ins testing the work against it. Pick the
-              closest fit: it sets the questions people are asked and how often.
+            {/*
+              * ONE PICK AT THE TOP, THEN A DROPDOWN. What this replaced and why:
+              *
+              * A "Not sure yet" GROUP holding a single card. Its heading and its blurb existed to
+              * introduce one option, and in a dropdown it would have been an entry leading back to
+              * what the page has already offered. The card it held is the important one, so it is
+              * now the first thing on the step rather than the first of six groups.
+              *
+              * A SEARCH BOX over twenty-one items. It was added for the person who knows their
+              * situation but not our heading for it, and a dropdown answers that better: the
+              * headings are the questions, and picking one changes what is below it. A search also
+              * has to be told when it finds nothing, which is a second empty state to keep true.
+              *
+              * SIX GROUPS ALL EXPANDED, with a jump bar above them to cope with the length. The
+              * length was the problem the jump bar was managing. One group at a time has no length
+              * to manage.
+              */}
+            <div className="gw-sub-t" style={{ marginBottom: 14 }}>
+              {/* Whose situation this is decides the pronouns - see whose-situation-is-it.ts.
+                  NAMED situations, because the describe-your-own card is no longer one of the
+                  things being counted: it is the pick above them. */}
+              {namedCardCount} {theWords.intro}
             </div>
 
-            {/* Type it in your own words. The groups fixed the card nobody could find; this is for
-                the person who knows their situation but not our heading for it. */}
-            <div className="cg-find">
-              <input
-                type="search"
-                value={situationSearch}
-                onChange={e => setSituationSearch(e.target.value)}
-                placeholder="Search in your own words - handover, conflict, off track, new hire"
-                aria-label="Search the situations"
-                aria-describedby="cg-find-count"
-              />
-              {matches !== null && (
-                <span id="cg-find-count" role="status">
-                  {/* Matches, not "n of 21". There are twenty-one cards covering twenty
-                      situations - COHORT_ONBOARDING shares COHORT_CHECK's situation - so a total
-                      here would contradict the "Twenty situations" line directly above it. */}
-                  {matches.length === 0
-                    ? 'No match'
-                    : `${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}
-                </span>
-              )}
-            </div>
+            {/* THE FIRST PICK. Same card, same renderer, same selection behaviour as any other -
+                duplicating the JSX for it is how it would start behaving differently. */}
+            {openCard && (
+              <div role="radiogroup" aria-label={theWords.describeOwnLabel} className="cg-group-grid one" style={{ marginBottom: 20 }}>
+                {renderSituation(openCard)}
+              </div>
+            )}
 
-            {/* Jump bar. The concrete failure this fixes: the recurring read sat at position
-                eleven of twenty in one unbroken list, and the person who built the product
-                could not find it. Nothing was wrong with the card. Hidden while searching,
-                because jumping to a group is meaningless when the list is not grouped. */}
-            {matches === null && (
-            <nav className="cg-jump" aria-label="Jump to a group of situations">
-              {SCENARIO_GROUPS.map(g => (
-                <a key={g.key} href={`#cg-${g.key}`}>{g.heading} <b>{cardsInGroup(g.key).length}</b></a>
+            <label className="gw-label" htmlFor="cg-group">Or select from the options below</label>
+            <select
+              id="cg-group"
+              className="gw-select"
+              value={situationGroup}
+              onChange={(e) => setSituationGroup(e.target.value as ScenarioGroupKey)}
+              style={{ marginBottom: 12 }}
+            >
+              {GROUPS_YOU_PICK_FROM.map(g => (
+                <option key={g.key} value={g.key}>
+                  {g.heading} ({cardsInGroup(g.key as ScenarioGroupKey).length})
+                </option>
               ))}
-            </nav>
-            )}
+            </select>
 
-            {matches !== null && (
-              matches.length === 0
-                ? <p className="cg-nomatch">{NOTHING_MATCHED}</p>
-                : <div role="radiogroup" aria-label="Situations matching your search" className="cg-group-grid" style={{ marginBottom: 24 }}>
-                    {matches.map(renderSituation)}
-                  </div>
-            )}
+            {/* The group's own question, which is what its heading is short for. */}
+            <p className="cg-group-q">{groupNow?.question}</p>
 
-            {/* ONE renderer for both lists. The search results and the grouped list show the same
-                card with the same behaviour, because they are the same card - duplicating this JSX
-                is how the two lists start disagreeing about what a situation is. */}
-            {/* Real radios in ONE radiogroup spanning every group, not one per section:
-                a person arrowing through this is choosing among twenty situations, not
-                among six lists. The headings are structure, not separate controls. */}
-            {matches === null && (
-            <div role="radiogroup" aria-label="What is this for?" style={{ marginBottom: 24 }}>
-              {SCENARIO_GROUPS.map(g => {
-                const cards = cardsInGroup(g.key)
-                if (cards.length === 0) return null
-                return (
-                  <section key={g.key} id={`cg-${g.key}`} className="cg-group">
-                    <div className="cg-group-head">
-                      <h3>{g.heading}</h3>
-                      <span>{cards.length} {cards.length === 1 ? 'situation' : 'situations'}</span>
-                    </div>
-                    <p className="cg-group-q">{g.question}</p>
-                    <div className={`cg-group-grid${cards.length === 1 ? ' one' : ''}`}>
-                      {cards.map(renderSituation)}
-                    </div>
-                  </section>
-                )
-              })}
+            {/* Real radios in one radiogroup over what is actually on screen. It used to span every
+                group at once because every group was on screen at once. */}
+            {/* `id` is here as a stable anchor for the-picker-gets-the-whole-width.spec.ts, which
+                used to find this block by its aria-label. That label now names the chosen group,
+                which is better for a screen reader and useless as a marker - a guard cannot anchor
+                on a string that varies. */}
+            <div id="cg-situations" role="radiogroup" aria-label={groupNow?.heading ?? 'Situations'} style={{ marginBottom: 24 }}>
+              <div className={`cg-group-grid${cardsInGroup(situationGroup).length === 1 ? ' one' : ''}`}>
+                {cardsInGroup(situationGroup).map(renderSituation)}
+              </div>
             </div>
-            )}
 
             </>)}
 
@@ -1421,7 +1486,7 @@ export function CreateGroundPage() {
                       <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', display: 'grid', gap: 3 }}>
                         When would you like the first conversation?
                         <input
-                          className="gw-in"
+                          className="gw-input"
                           type="datetime-local"
                           value={coachWhen}
                           min={new Date(Date.now() + 3600_000).toISOString().slice(0, 16)}
@@ -1439,7 +1504,18 @@ export function CreateGroundPage() {
                           empty and we will come back to you to agree a time.
                         </span>
                       </label>
-                      <p style={{ fontSize: 11.5, color: 'var(--gw-muted)', margin: 0, lineHeight: 1.5 }}>{COACHING_PRICE.note}</p>
+                      {/*
+                        * WHAT IT COSTS, BEFORE THE SEND BUTTON.
+                        *
+                        * `COACHING_PRICE` says in its own comment that the price is "shown before
+                        * the send button rather than after a reply is chased", and only `.note` was
+                        * ever rendered - so the two figures were exported, kept in step with the
+                        * pricing page, and read by nobody. Somebody asking to speak to a coach
+                        * learned the number in the reply.
+                        */}
+                      <p style={{ fontSize: 11.5, color: 'var(--gw-muted)', margin: 0, lineHeight: 1.5 }}>
+                        {COACHING_PRICE.hourly}, or {COACHING_PRICE.retained}. {COACHING_PRICE.note}
+                      </p>
                       {coachErr && <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: 0 }}>{coachErr}</p>}
                       <button
                         type="button"
@@ -1484,7 +1560,7 @@ export function CreateGroundPage() {
                   What is happening, who is involved, and what you want out of it. We will suggest the closest
                   situation and you can change it - what gets picked decides the questions people are asked.
                 </div>
-                <textarea id="own-situation" className="gw-in" rows={4} value={ownDescription}
+                <textarea id="own-situation" className="gw-ta" rows={4} value={ownDescription}
                   onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}
                   placeholder="e.g. Four new clinic managers on a three month probation. They run separate clinics and never work together, but they all report to me." />
                 {/*
@@ -1547,36 +1623,6 @@ export function CreateGroundPage() {
             )}
 
             </>)}
-
-            {/* The moment belongs with the situation, so it is bound to step 2 rather than to
-                wherever it happens to sit in the file. */}
-            {step === STAGE.situation && scenario && (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
-                <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                  {MOMENTS.map(m => (
-                    <div
-                      key={m.moment}
-                      role="radio"
-                      tabIndex={moment === m.moment || (!moment && m.moment === MOMENTS[0].moment) ? 0 : -1}
-                      aria-checked={moment === m.moment}
-                      aria-label={`${m.label}. ${m.sub}`}
-                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMoment(m.moment) } }}
-                      className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`}
-                      onClick={() => setMoment(m.moment)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
-                        <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
 
             {/* Fixed action bar: the 17-card grid pushes the page well past
                 any laptop fold, and position:sticky binds to the .gw-bd
@@ -1681,7 +1727,23 @@ export function CreateGroundPage() {
               </div>
             )}
 
-            {!billingLoading && billingChecked && !billingFree && (
+            {!billingLoading && billingChecked && billingUnknown && (
+              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '16px 18px', marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We could not check your plan just then</div>
+                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
+                  This is our side, not yours — nothing about your plan has changed. Try again, and if it
+                  keeps failing you can carry on setting this up and create it in a moment.
+                </div>
+                <button
+                  onClick={() => setBillingChecked(false)}
+                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {!billingLoading && billingChecked && !billingFree && !billingUnknown && (
               <div>
                 <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 10, padding: '20px 18px', marginBottom: 20 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 6 }}>Subscribe to create more</div>
@@ -1805,7 +1867,7 @@ export function CreateGroundPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <input
                   id="gw-starts"
-                  className="gw-in"
+                  className="gw-input"
                   type="date"
                   value={startsOn}
                   min={new Date().toISOString().slice(0, 10)}
@@ -1855,6 +1917,27 @@ export function CreateGroundPage() {
           <div>
             <h1 className="gw-ttl">Who is in this check-in?</h1>
             <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
+
+            {/*
+              * WHAT ADDING SOMEBODY ACTUALLY DOES, SAID ON THE SCREEN THAT DOES IT.
+              *
+              * This said nothing, and the consequence is not small. Traced through the code rather
+              * than assumed: `participants.service.ts` accept() looks the address up, and if there
+              * is no account it creates a User in THIS organisation with role MEMBER, verified,
+              * inside the same transaction that accepts the invitation. No approval, no queue,
+              * nobody asked. And a seat is any active user in the org - see common/seats.ts - so
+              * that new account counts toward the plan the moment they accept.
+              *
+              * So somebody setting up a check-in for two people outside the company is adding two
+              * members to their organisation and two people to their bill, and nothing on the way
+              * through says so. Said plainly here, and only what is true: an approval step for
+              * this does not exist yet, so this does not promise one.
+              */}
+            <div style={{ background: 'var(--gw-blue-bg)', borderLeft: '3px solid var(--gw-navy)', borderRadius: '0 8px 8px 0', padding: '10px 14px', margin: '10px 0 16px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              Anyone here who does not already have a Groundwork account gets one in your organisation
+              when they accept, so they can write their own account of this. Everyone with an account
+              counts toward your plan.
+            </div>
 
 
             {participants.length > 0 && (
@@ -1955,10 +2038,31 @@ export function CreateGroundPage() {
               * second says how many it is continuing with, so neither can be mistaken for the
               * other.
               */}
-            <button className="gw-btn" disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@'))} onClick={() => setStep(STAGE.brief)} style={{ margin: 0 }}>
-              {participants.length === 0
-                ? 'Continue'
-                : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
+            {/*
+              * THROUGH THE ORDERING, NOT PAST IT. This said `setStep(STAGE.brief)`, which was
+              * true for everybody until the brief became a step somebody can skip. A hardcoded
+              * next screen is exactly what `stepsThisPersonSees` exists to stop - and here it
+              * would have walked a setter onto the one screen the decision above says is not
+              * theirs. When there is nothing after this step, this button is the end of the flow
+              * and starts the check-in itself.
+              */}
+            <button
+              className="gw-btn"
+              disabled={participants.length === 0 || create.isPending}
+              onClick={() => {
+                const next = stepAfter(visibleSteps, STAGE.people)
+                if (next === STAGE.people) create.mutate()
+                else setStep(next)
+              }}
+              style={{ margin: 0 }}
+            >
+              {create.isPending
+                ? 'Opening…'
+                : stepAfter(visibleSteps, STAGE.people) === STAGE.people
+                  ? 'Start check-in →'
+                  : participants.length === 0
+                    ? 'Continue'
+                    : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
             </button>
             {/*
               THE OTHER HALF OF THE SAME REFUSAL, WHICH SAID NOTHING. W-UX-7.
@@ -1972,17 +2076,31 @@ export function CreateGroundPage() {
               <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
                 Add at least one person to continue. A check-in needs somebody to check in.
               </div>
-            ) : runByOther && !leadEmail.includes('@') ? (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
-                Add the email address of the person who will lead this check-in.
-              </div>
             ) : null}
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(stepAfter(visibleSteps, step)) }}>
-              Skip - add participants after
+            {/*
+              * THIS SKIPPED TO THE NEXT STEP, AND FOR A SETTER THERE IS NO NEXT STEP.
+              *
+              * `setStep(stepAfter(...))` returns the SAME step when there is nothing after it - the
+              * documented contract of stepAfter - so once the brief was skipped for somebody
+              * setting a check-in up for a lead, this control did nothing at all. Pressing it left
+              * you exactly where you were, with no message. My own doing, from removing that step.
+              *
+              * It starts the check-in in that case, which is what "skip" means on the last screen.
+              */}
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: create.isPending ? 'not-allowed' : 'pointer', opacity: create.isPending ? 0.45 : 1 }}
+              onClick={() => {
+                if (create.isPending) return
+                const next = stepAfter(visibleSteps, step)
+                if (next === step) create.mutate()
+                else setStep(next)
+              }}>
+              {stepAfter(visibleSteps, step) === step ? 'Skip - start it and add people after' : 'Skip - add participants after'}
             </div>
+            {/* WHERE, because "after" on its own is not an instruction. Reported as: if you skip at
+                the start, how do you add them later? */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
-              The shared report cannot generate until at least one other person has checked in.
+              You add people on the check-in's own page afterwards, under Add someone. The shared
+              report cannot be built until at least one other person has checked in.
             </div>
           </div>
         )}
@@ -2019,23 +2137,77 @@ export function CreateGroundPage() {
               <textarea
                 rows={6}
                 value={brief}
+                /* Capped where the server caps it, so a long brief is stopped as it is typed rather
+                   than refused after somebody has written it. */
+                maxLength={BRIEF_CHARS_MAX}
                 onChange={e => setBrief(e.target.value)}
                 placeholder="What is this about? What needs to be true at the end?"
                 style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', lineHeight: 1.65, boxSizing: 'border-box' }}
               />
-              <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>{briefWords} words</div>
+              {/* The count, and what it is counting towards - a bare number tells you nothing about
+                  whether you have enough. */}
+              <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>
+                {briefWords} {briefWords === 1 ? 'word' : 'words'}
+                {briefTooShortToInvite
+                  ? ` · ${BRIEF_WORDS_TO_INVITE - briefWords} more to invite anyone`
+                  : briefShort
+                    ? ` · ${BRIEF_WORDS_WORTH_READING} is where these start to work`
+                    : ''}
+              </div>
             </div>
 
             {briefTooShortToInvite ? (
               <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
-                A little more before you can invite anyone: with nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about - a few more words closes this.
+                A little more before you can invite anyone: {BRIEF_WORDS_TO_INVITE} words is the floor and you have {briefWords}. With nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about.
               </div>
             ) : briefShort && (
               <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
-                A brief this short will produce weaker first sessions. The questions are shaped by what you write here. Add more context.
+                A brief this short will produce weaker first sessions - around {BRIEF_WORDS_WORTH_READING} words is where these start to work, and you have {briefWords}. The questions each person is asked are shaped by what you write here. You can write up to {BRIEF_CHARS_MAX.toLocaleString()} characters.
               </div>
             )}
 
+
+            {/*
+              * WHERE YOU ARE IN THE SITUATION, ASKED WHERE YOU SAY WHAT IT IS ABOUT.
+              *
+              * It used to sit at the bottom of the situation step, under twenty-one cards and a
+              * fixed action bar - "hard to see", and reported as such. Her call: put it on the
+              * page where you describe what this is about, which is also where it belongs by
+              * meaning. Both questions here are about the same thing: what is going on, and how
+              * far through it you are.
+              *
+              * Picking a card already sets a recommended moment (see pick() in renderSituation),
+              * so nobody can arrive at the end without one and this is a change-it control rather
+              * than a required question. That is also why skipping this whole step for somebody who
+              * is only setting a check-in up for a lead loses nothing.
+              */}
+            {scenario && (
+              <>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
+                <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {MOMENTS.map(m => (
+                    <div
+                      key={m.moment}
+                      role="radio"
+                      tabIndex={moment === m.moment || (!moment && m.moment === MOMENTS[0].moment) ? 0 : -1}
+                      aria-checked={moment === m.moment}
+                      aria-label={`${m.label}. ${m.sub}`}
+                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMoment(m.moment) } }}
+                      className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`}
+                      onClick={() => setMoment(m.moment)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
+                        <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="gw-fld" style={{ marginTop: 16 }}>
               <label className="gw-label" htmlFor="gw-ground-name">Name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
               <input

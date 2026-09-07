@@ -82,6 +82,29 @@ const PANEL_AUTHENTICATED = [
   "@Get('check-ins/mine')",
   "@Post('check-ins/:id/open')",
   "@Post('check-ins/:id/messages')",
+  /*
+   * ATTACHING A DOCUMENT IS THE SAME ACT AS ANSWERING, and belongs on the same side of this line.
+   * A document here is one party's evidence for one record - read against what is being discussed
+   * and visible under that record's rules - so a machine credential naming an organisation and
+   * nobody in particular must not be able to put one into somebody's check-in. There is also no
+   * scope that could express it honestly: "documents:write" for an integration would mean writing
+   * into everybody's, which is the thing the check-in routes above are kept off for.
+   */
+  /*
+   * OPENING one is a personal act for the same reason answering in one is: the check-in is opened
+   * AS the session's person and the service refuses to take an acting person from the body, so
+   * there is nobody else it could be opened as. A machine scope here would mean "open records in
+   * anybody's name", which is the thing the routes on this list are kept off for.
+   */
+  "@Post('check-ins')",
+  /*
+   * And REGISTERING somebody is on this list rather than carrying a scope because it is the panel
+   * doing it as a person - decided deliberately. It creates a directory entry, never a member: the
+   * approval queue is what stands between an invitation accepted and somebody being in the
+   * organisation. See participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts.
+   */
+  "@Post('people')",
+  "@Post('check-ins/:id/documents')",
   "@Post('check-ins/:id/complete')",
   "@Get('check-ins/:id/transcript')",
   /*

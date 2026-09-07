@@ -249,5 +249,40 @@ if (existsSync(home)) {
   console.log(`[plain-punctuation] all ${checked} pages ship without em dashes, en dashes or curly quotes.`);
 }
 
+/**
+ * A CONTROL SOMEBODY IS MEANT TO PRESS CANNOT BE A MAILTO.
+ *
+ * Every paid thing on the pricing page ended at `mailto:hello@myground.work`, including the button
+ * for the one tier with no self-serve path. A mailto does nothing at all for anybody without a
+ * configured mail client, which on a work laptop in a browser is most people - so the only route
+ * to what you cannot buy yourself was a link that appeared broken. The audit had already said it:
+ * no form, nothing captured, nothing followed up.
+ *
+ * The rule is narrow on purpose. An ADDRESS shown as an address is fine, and useful: the about page
+ * prints hello@myground.work so somebody can copy it. What is banned is a mailto wearing the
+ * clothes of an action - a button, or a link whose words are an instruction.
+ */
+{
+  const ACTION_WORDS = /\b(request|contact us|book|get started|start|subscribe|buy|talk to|ask about|sign up|apply)\b/i;
+  let controls = 0;
+  for (const f of files.filter((x) => x.endsWith('index.html'))) {
+    const page = '/' + relative(DIST, f).replace(/index\.html$/, '').replace(/\/$/, '');
+    const html = readFileSync(f, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    for (const m of html.matchAll(/<a\b([^>]*href="mailto:[^"]*"[^>]*)>([\s\S]*?)<\/a>/g)) {
+      const attrs = m[1];
+      const words = m[2].replace(/<[^>]+>/g, ' ').replace(/&#\d+;|&\w+;/g, ' ').replace(/\s+/g, ' ').trim();
+      const looksLikeAButton = /background\s*:/i.test(attrs) || /border\s*:/i.test(attrs) || /class="[^"]*btn/i.test(attrs);
+      /* An address shown as an address is the permitted case. */
+      const isJustTheAddress = /^[\w.+-]+@[\w.-]+$/.test(words);
+      if (isJustTheAddress) continue;
+      if (looksLikeAButton || ACTION_WORDS.test(words)) {
+        fail(`${page || '/'} has a mailto styled or worded as an action: "${words}". A mailto does nothing without a mail client - point it at a form that captures the request.`);
+      }
+      controls++;
+    }
+  }
+  console.log(`[a-control-is-not-a-mailto] no page asks somebody to press a mailto.`);
+}
+
 console.log(`[one-domain] sitemap, canonicals and social tags all on ${SITE}.`);
 console.log(`[one-nav] all ${navsByPageCount} pages share one nav of ${navLinkCount} real links, and no page hides a copy of another.`);

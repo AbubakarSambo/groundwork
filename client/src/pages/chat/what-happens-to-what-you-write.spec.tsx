@@ -89,8 +89,11 @@ describe('what it must never claim', () => {
 })
 
 describe('when it appears', () => {
-  it('only on the first session, and only before anything has been said', () => {
-    expect(SRC).toMatch(/sessionNumber === 1 && !privacyAcknowledged && msgs\.length === 0/)
+  it('only before anything has been said, and only until it is acknowledged', () => {
+    /* Not `sessionNumber === 1`: that gate is about the ground, and it meant anybody joining
+       later never saw this. "Before anything has been said, and not yet acknowledged" is the
+       condition that is actually about the person. */
+    expect(SRC).toMatch(/!privacyAcknowledged && msgs\.length === 0/)
   })
 
   it('is not shown again once someone has read it', () => {

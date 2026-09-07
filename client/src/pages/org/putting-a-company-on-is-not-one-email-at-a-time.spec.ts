@@ -102,7 +102,7 @@ describe('what somebody is here', () => {
     /* The server refuses the last admin demoting themselves. A control that exists to be refused
        is worse than no control. */
     expect(control).toContain('m.id === user?.id')
-    expect(control).toContain("{iAmTheOwner ? 'You, and you hold this account' : 'You'}")
+    expect(control).toContain("{iAmTheOwner ? 'You \u00b7 account holder' : 'You'}")
   })
 
   it('and no control at all on the row of whoever holds this account', () => {

@@ -28,16 +28,21 @@ export const SITE = 'https://myground.work';
  * price guard reads these, so changing one changes it everywhere it is said.
  */
 export const SERVICES = {
-  /* Twelve sessions, retained. About $625 a session against the hourly rate. */
-  coachingRetainer: '$7,500',
+  /*
+   * COACHING. The hourly rate leads, because a session at a time is how most people start.
+   *
+   * The annual plan is twelve sessions for $7,500 — $625 a month — and it may be held by a team,
+   * attached to one scenario, or belong to one person.
+   */
   coachingHourly: '$700',
+  coachingRetainer: '$7,500',
+  coachingMonthly: '$625',
   /**
    * INTEGRATION SUPPORT, NOT INTEGRATION. Anybody can connect Groundwork themselves - the API and
    * its keys are part of the subscription, and most engineering teams will not want help. This is
-   * for the ones that do, and it is priced from rather than at, because a two-system sync and a
-   * whole HR platform are not the same week of work.
+   * for the ones that do: one dedicated engineer, for the month your team has time.
    */
-  integrationSupportFrom: '$2,200',
-  /* Somebody to get you running and train your team, in the first month. */
-  handsOnFirstMonth: '$1,500',
+  integrationSupport: '$3,500',
+  /* Setup support, by the month: two two-hour sessions, and we come to you. */
+  setupMonthly: '$500',
 };

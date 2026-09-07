@@ -83,7 +83,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="display:flex;flex-direction:column;gap:20px;margin-bottom:36px;">
 
         <!-- Sahar leads the team, so she is first. Her entry leads on the
-             coaching because that is what a Guided customer is buying: a people
+             coaching because that is what a Guided customer is buying: a
              coach in the room, not an operator reading a report out. The wording
              and the specialisations come from her own coaching one-pager, so
              this page and anything she sends a client say the same thing. Note
@@ -106,7 +106,13 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
           </p>
           <!-- CRISPER, AND CORRECTED AGAINST THE DECK. Two paragraphs became one: the first spent four sentences on what coaching is before saying what she has done. The credentials were also wrong - the MBA is Kellogg, and the decade of operating work is maternal and newborn health in East Africa, not brand management at Reckitt Benckiser. A credential a buyer can check is the one thing on this page that has to be right. -->
           <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 8px;">ICF-certified growth coach, founder and CEO of Maziwa, MBA from Kellogg. A decade in maternal and newborn health across East Africa, through Jacaranda Health, Johnson &amp; Johnson and the Aga Khan Development Network.</p>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">She is the coach who runs Guided sessions, which means she reads the report with your team in the room and turns what it found into a decision somebody owns. She coaches entrepreneurs, start-up teams and emerging leaders, and has been performance coach on the McGowan Fund Fellowship Program and a mentor for Villgro Africa and the Stanford Biodesign Program.</p>
+          <!-- WHAT SHE HAS DONE, NOT WHO WILL TURN UP.
+               This said "she is the coach who runs Guided sessions", which is a promise about
+               availability that no page can keep. Who coaches a session is decided per situation
+               and she is one of the people who might; saying so in advance is what turns a
+               scheduling problem into a broken promise. Her credentials stay, because they are why
+               she is the person choosing. -->
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">She decides who coaches a session, matching the coach to the situation: the scenario, the seniority, the language, the industry. In the room it means somebody reads the report with your team and turns what it found into a decision somebody owns. She coaches entrepreneurs, start-up teams and emerging leaders, and has been performance coach on the McGowan Fund Fellowship Program and a mentor for Villgro Africa and the Stanford Biodesign Program.</p>
         </div>
 
         <div>
@@ -160,8 +166,8 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
         <a class="gw-footer-btn" href="/">Home</a>
         <a class="gw-footer-btn" href="/how-it-works">How it works</a>
-        <a class="gw-footer-btn" href="/use-cases">Use cases</a>
         <a class="gw-footer-btn" href="/pricing">Pricing</a>
+        <a class="gw-footer-btn" href="/privacy-and-ai">Privacy and AI</a>
         <a class="gw-footer-btn" href="/about">About</a>
       </div>
       <p style="font-size:11px;color:rgba(255,255,255,.2);margin:0;">&#169; 2026 Groundwork</p>

@@ -97,7 +97,11 @@ describe('the wizard uses it, and lets go at the right moment', () => {
     const from = src.indexOf('keep(DRAFT_KEY, {')
     const kept = src.slice(from, src.indexOf('})', from))
     expect(from).toBeGreaterThan(-1)
-    for (const field of ['brief', 'participants', 'leadEmail', 'startsOn', 'myRemit', 'groundName']) {
+    /* `myRemit` came off this list with the field itself. It asked "your part in the work" on step
+       one, was never sent to the server by either create path, and the chat asks the same thing in
+       the session - so keeping it across a reload was preserving an answer that went nowhere.
+       `leadRemit` stays: that one is sent at creation. */
+    for (const field of ['brief', 'participants', 'leadEmail', 'leadRemit', 'startsOn', 'groundName']) {
       expect(kept, `${field} is not kept`).toContain(field)
     }
   })

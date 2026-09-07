@@ -118,6 +118,47 @@ export type _PlanRef = SubscriptionPlan
  * head. Somebody who has just lost a client is not looking for "urgent", they are looking for the
  * shelf marked "something is off".
  */
+/**
+ * HOW MANY THERE ARE, COUNTED RATHER THAN WRITTEN DOWN.
+ *
+ * The set-up wizard opened with "Twenty situations, grouped by the question you are actually
+ * asking". There are twenty-two. Two were added - an agreement before it is signed, and one that is
+ * running - and the sentence that counts them was not part of that change, because nothing tied
+ * the number to the list.
+ *
+ * The stale comment beside the search count made the same mistake worse by explaining it: it said
+ * twenty-one cards covered twenty situations because COHORT_ONBOARDING shared COHORT_CHECK's
+ * situation. They are separate scenarios now, so the reconciliation it described no longer holds
+ * and the wrong number had a justification attached to it.
+ *
+ * The entry chat has always rendered `SITUATION_CARDS.length`. This is the same idea for everything
+ * that reads the catalogue, so the number cannot drift again.
+ */
+export const HOW_MANY_SITUATIONS = Object.keys(SCENARIO_LABELS).length
+
+/**
+ * AND HOW MANY ARE NAMED, which is a different number and the one a picker should quote.
+ *
+ * `OPEN_READ` is "describe your own situation". It is a card in the catalogue because it has to
+ * behave like one - it carries a cadence and a timeline - but it is not a situation we named, and
+ * it now sits at the top of the set-up wizard as the first pick rather than inside a group. A line
+ * that says "22 situations, pick the closest fit" while one of the twenty-two is "none of these"
+ * is counting the escape hatch as an option.
+ *
+ * NOT THE NUMBER THE PICKER PRINTS, and I had it wrong there for an hour. This counts LABELS; the
+ * picker offers CARDS, and there are more cards than scenarios because COHORT_CHECK has two -
+ * "Several people in the same role" and "Onboarding several people at once" are one scenario
+ * offered as two situations. So this is 21 and the picker is 22, and the page counts its own cards.
+ *
+ * I had also written elsewhere that the COHORT sharing "no longer holds". It does: the regex I
+ * checked with counted `scenario:` occurrences including OPEN_READ and reported 22 distinct where
+ * there are 21.
+ */
+export const HOW_MANY_NAMED_SITUATIONS = Object.keys(SCENARIO_LABELS).filter(
+  (k) => k !== 'OPEN_READ',
+).length
+
+
 export const SCENARIO_GROUPS = [
   /**
    * FIRST, NOT LAST. It sat at the bottom of six groups, which is where you put a last resort - and
@@ -139,6 +180,12 @@ export const SCENARIO_GROUPS = [
   { key: 'off', heading: 'Something is off',
     question: 'It has already happened. What separates these is whether the gap is against something agreed, between two people, or the result of one event.' },
 ] as const
+/**
+ * The groups somebody actually chooses between. "Not sure yet" held one card, the describe-your-own
+ * one, and that card is now the first thing on the step - so the group is an empty heading and a
+ * dropdown entry that leads back to what you have already been offered.
+ */
+export const GROUPS_YOU_PICK_FROM = SCENARIO_GROUPS.filter((g) => g.key !== 'open')
 
 export type ScenarioGroupKey = (typeof SCENARIO_GROUPS)[number]['key']
 /**

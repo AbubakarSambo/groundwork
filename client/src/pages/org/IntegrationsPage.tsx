@@ -51,6 +51,11 @@ const S = {
  */
 const SCOPES: { key: string; label: string; sub: string }[] = [
   { key: 'graph:write',    label: 'Send people',            sub: 'Who works here and who reports to whom' },
+  /* Reading it back. The API has required this on GET /roles since it was written and the scope
+     could not be granted by anybody, so the route was a permanent 403 — and a scope only somebody
+     reading the source can turn on is not a capability the customer has. Sending people already
+     holds it, so an existing integration needs nothing done. */
+  { key: 'graph:read',     label: 'Read back the shape',    sub: 'The roles configured here, so a system can check what it sent arrived' },
   { key: 'subjects:write', label: 'Send objectives',        sub: 'Objectives, projects and decisions, with their measures and owners' },
   { key: 'knowledge:write',label: 'Send your handbook',     sub: 'Documents people can then ask in plain words' },
   { key: 'grounds:write',  label: 'Open check-ins',         sub: 'Start one from your own system' },

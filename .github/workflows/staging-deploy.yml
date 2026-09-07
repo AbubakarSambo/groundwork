@@ -1,0 +1,85 @@
+name: Staging Deploy (Vercel)
+
+# WHY THIS EXISTS.
+#
+# Vercel's native Git integration deploys every push to `staging` as a
+# Preview Deployment, aliased to the fixed branch URL
+# groundwork-git-staging-collecta-s-projects.vercel.app - but only if the
+# pushed commit's author has contributing access to the project on Vercel.
+# On the Hobby plan that's the project owner alone, so a squash-merge (which
+# keeps the original PR author on the resulting commit) from anyone else
+# gets hard-blocked, same as PR previews were - see preview-deploy.yml.
+#
+# This workflow deploys through the Vercel CLI using an owner-held API
+# token instead, so it's authenticated by token rather than by git commit
+# author, then re-points the same fixed staging alias at the new
+# deployment so nothing downstream needs to change.
+on:
+  push:
+    branches: [staging]
+    paths:
+      - "client/**"
+      - ".github/workflows/staging-deploy.yml"
+
+concurrency:
+  # Shared with preview-deploy.yml: both hit the same Vercel project/token,
+  # and the Hobby plan allows only one concurrent build. Without a shared
+  # group, a merge that fires both workflows at once leaves one deploy
+  # queued server-side on Vercel with no client-side timeout, until this
+  # job's own 15-minute timeout kills it.
+  group: vercel-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: Build and deploy staging
+    runs-on: ubuntu-latest
+    # RAISED FROM 15. The first real use of this workflow uploaded its prebuilt output fine, and
+    # then `vercel deploy` sat waiting for Vercel to finish building for fourteen more minutes and
+    # the job was killed on the limit - after the deployment existed and before the alias step ran.
+    # So the code was on the branch, the build was on Vercel, and the fixed staging URL still served
+    # the previous deployment with nothing saying so.
+    #
+    # The wait is deliberate and stays: if the build fails, the job fails and the alias does not move
+    # to a broken deployment. Waiting longer is the cheap half of that trade.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy prebuilt output
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Alias to the staging branch URL
+        run: |
+          vercel alias set "${{ steps.deploy.outputs.url }}" groundwork-git-staging-collecta-s-projects.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

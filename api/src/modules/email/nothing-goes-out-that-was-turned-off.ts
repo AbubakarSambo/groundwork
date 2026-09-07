@@ -96,11 +96,19 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendParticipantInvite: 'the way back in',
   sendLeadInvite: 'the way back in',
   sendContributorCode: 'the way back in',
+  /* A one-time code for an operation that cannot be undone. Nothing may stop it, and saying so
+     here is the difference between a decision and a cast past the type. */
+  sendAdminOtp: 'the way back in',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',
   sendGroundApproved: 'asked for',
   sendGroundDeclined: 'asked for',
+  /* Both are answers to something the person or their lead set in motion, so neither is a mail we
+     decided to send - and the way-back-in class is for account recovery, which this is not. */
+  sendYouAreInNow: 'asked for',
+  sendTheyWereNotLetIn: 'asked for',
+  sendSomebodyIsWaiting: 'asked for',
   sendGroundActivated: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',
@@ -128,6 +136,9 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
 
   /* Nobody asked this morning. Every one of these stops when somebody says stop. */
   sendNudge: 'we decided to send it',
+  /* Their integration has stopped receiving and only our logs knew. An admin decision to make,
+     so it is ours to send — but it is about their system rather than about their team. */
+  sendWebhookEndpointDying: 'we decided to send it',
   sendAbsenceReminder: 'we decided to send it',
   sendSessionReady: 'we decided to send it',
   sendActivationReminder: 'we decided to send it',

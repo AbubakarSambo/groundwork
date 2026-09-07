@@ -76,7 +76,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
 
   if (me.isError) {
     return (
-      <main id="main" style={{ padding: 40, maxWidth: 640 }}>
+      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
         {/*
           * IT DID NOT SAY WHICH ACCOUNT IT MEANT.
@@ -134,7 +134,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
             Sign in as somebody else
           </button>
         </p>
-      </main>
+      </section>
     )
   }
 
@@ -150,9 +150,9 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
    */
   if (me.isPending) {
     return (
-      <main id="main" style={{ padding: 40 }}>
+      <section className="gw-page" style={{ padding: 40 }}>
         <p style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening the back office…</p>
-      </main>
+      </section>
     )
   }
 
@@ -167,7 +167,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const notYours = whyThisIsNotYours(location.pathname, me.data?.capabilities ?? [])
   if (notYours) {
     return (
-      <main id="main" style={{ padding: 40, maxWidth: 620 }}>
+      <section className="gw-page" style={{ padding: 40, maxWidth: 620 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>That part is not yours to open</h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
           {notYours.because === 'no capability'
@@ -180,22 +180,52 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
           This is how your grants are set, not anything about you. Whoever runs the back office can change it.
         </p>
         <a className="gw-btn" href="/ops" style={{ textDecoration: 'none' }}>Back to your board</a>
-      </main>
+      </section>
     )
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
-      <nav
-        aria-label="Back office"
-        style={{
-          width: 186,
-          flex: 'none',
-          borderRight: '1px solid var(--gw-border)',
-          padding: '24px 14px',
-          background: 'white',
-        }}
-      >
+    /*
+     * ON A PHONE THIS WAS A 186-PIXEL RAIL AGAINST ABOUT 189 PIXELS OF CONTENT.
+     *
+     * A fixed-width nav and `display: flex` with no media query anywhere, so at 375px the back
+     * office was half menu and half a column too narrow to read a table in. The class does the
+     * work rather than an inline style, because a media query cannot be expressed inline — which
+     * is exactly why the original had none.
+     */
+    <div className="gw-ops-shell" style={{ minHeight: '100vh' }}>
+      <style>{`
+        .gw-ops-shell { display: flex; align-items: stretch; }
+        .gw-ops-rail { width: 186px; flex: none; border-right: 1px solid var(--gw-border); padding: 24px 14px; background: white; }
+        @media (max-width: 720px) {
+          /*
+           * Stacked, and the menu becomes ONE ROW that scrolls sideways.
+           *
+           * The first attempt let the four groups stack as columns, which was honest about the
+           * structure and took four hundred pixels of an eight-hundred-pixel screen before a word
+           * of content — the same fault as the rail, rotated. So on a phone the groups flatten
+           * into a single line of links: the grouping is a desktop affordance, and losing it is
+           * cheaper than losing half the screen.
+           */
+          .gw-ops-shell { display: block; }
+          .gw-ops-rail {
+            width: auto; border-right: none; border-bottom: 1px solid var(--gw-border);
+            padding: 8px 12px; display: flex; gap: 4px; overflow-x: auto;
+            align-items: center; white-space: nowrap; -webkit-overflow-scrolling: touch;
+          }
+          /* The group labels and the person's name are structure, not navigation. */
+          .gw-ops-rail > p, .gw-ops-rail > div > p { display: none; }
+          .gw-ops-rail > div { margin-bottom: 0 !important; flex: none; display: flex; gap: 4px; }
+          .gw-ops-rail a { padding: 6px 10px !important; }
+          /* The two ways out stay at the end of the row rather than under it. */
+          .gw-ops-rail > div:last-child {
+            margin-top: 0 !important; padding-top: 0 !important;
+            border-top: none !important; border-left: 1px solid var(--gw-border);
+            padding-left: 10px !important; flex-direction: row;
+          }
+        }
+      `}</style>
+      <nav aria-label="Back office" className="gw-ops-rail">
         <p style={{ ...LABEL, fontSize: 10, marginBottom: 14 }}>{me.data?.displayName ?? '—'}</p>
 
         {GROUPS.map((group) => {
@@ -269,7 +299,11 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
                 : `${didNotLoad.failed} things on this page did not load`}
               {' '}— what you can see may be incomplete.
             </span>
-            <button type="button" className="gw-btn-ghost" style={{ margin: 0 }} onClick={didNotLoad.retry}>
+            {/* `gw-btn-ghost` matches no rule, so the one control on a "something did not load"
+                banner was an unstyled browser button - the moment a control most needs to look
+                like one. Third instance of the same typo; the guard is in
+                grounds/an-input-that-does-not-look-like-one.spec.ts. */}
+            <button type="button" className="gw-btn-sm" style={{ margin: 0 }} onClick={didNotLoad.retry}>
               Try again
             </button>
           </div>

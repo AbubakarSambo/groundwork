@@ -7,7 +7,7 @@ const mammoth = require('mammoth') as { extractRawText: (opts: { buffer: Buffer 
 const XLSX = require('xlsx') as typeof import('xlsx');
 const JSZip = require('jszip') as typeof import('jszip');
 import { ConfigService } from '@nestjs/config';
-import { documentWhereFor } from './who-can-see-a-document';
+import { documentWhereFor, whoCanSeeItInWords } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -130,6 +130,7 @@ const CLAIMS_TOOL = {
 function toDocShape(
   doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null },
   viewerParticipantId?: string,
+  contextEnabled?: boolean,
 ) {
   return {
     id: doc.id,
@@ -148,6 +149,15 @@ function toDocShape(
     // Who can read it. Omitted rather than defaulted when the column was not
     // selected, so a screen cannot mistake "not asked" for "private".
     ...(doc.visibility !== undefined ? { visibility: doc.visibility } : {}),
+    /*
+     * AND THE SAME FACT AS A SENTENCE. `OWN` is a column value, not an answer to "who will read
+     * this" — which is the only question somebody has at the moment they attach a contract. The
+     * flag is passed in because with context off every document is private whatever the column
+     * says, and a sentence that contradicted the read path would be worse than none.
+     */
+    ...(doc.visibility !== undefined
+      ? { whoCanSeeIt: whoCanSeeItInWords(doc.visibility, contextEnabled === true) }
+      : {}),
   };
 }
 
@@ -312,7 +322,10 @@ export class DocumentsService {
         content,
         assessment: assessment as any,
       },
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true },
+      /* `visibility` and `participantId` too — `toDocShape` omits what was not selected rather
+         than guessing, so an upload that did not ask told the person who just attached a file
+         everything except who is about to see it. */
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true },
     });
 
     // Extract structured claims from the document content and write them as
@@ -322,7 +335,9 @@ export class DocumentsService {
       this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
     );
 
-    return toDocShape(doc);
+    /* The uploader's own view of what they just attached, including who can see it. The flag is
+       what documents.list already reads: with context off, everything is private to its uploader. */
+    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
   }
 
   /** Update a document's assessment (user-corrected version). */
@@ -333,7 +348,10 @@ export class DocumentsService {
     const updated = await this.prisma.groundDocument.update({
       where: { id: docId },
       data: { assessment: assessment as any },
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true },
+      /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
+         than guessing, so an upload that did not ask for them told the person who just attached a
+         file everything except who is about to see it. */
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
     });
     return toDocShape(updated);
   }
@@ -460,14 +478,19 @@ export class DocumentsService {
         content,
         assessment: assessment as any,
       },
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true },
+      /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
+         than guessing, so an upload that did not ask for them told the person who just attached a
+         file everything except who is about to see it. */
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
     });
 
     this.extractAndStoreClaims(content, participant.id, file.originalname).catch((err) =>
       this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
     );
 
-    return toDocShape(doc);
+    /* The uploader's own view of what they just attached, including who can see it. The flag is
+       what documents.list already reads: with context off, everything is private to its uploader. */
+    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
   }
 
   /**

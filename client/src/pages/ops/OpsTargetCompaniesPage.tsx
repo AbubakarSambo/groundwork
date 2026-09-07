@@ -67,19 +67,19 @@ export default function OpsTargetCompaniesPage() {
 
   if (targetCompanies.isError) {
     return (
-      <main id="main" style={{ padding: 40, maxWidth: 640 }}>
+      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>We could not load the list</h1>
         <button type="button" onClick={() => targetCompanies.refetch()} style={{ ...CARD, cursor: 'pointer' }}>
           Try again
         </button>
-      </main>
+      </section>
     )
   }
 
   const data = targetCompanies.data
 
   return (
-    <main id="main" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+    <section className="gw-page" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         {/* The back-link went with the board switcher: the navigation is on
             every page now, and a second way home is clutter rather than help. */}
@@ -335,6 +335,6 @@ export default function OpsTargetCompaniesPage() {
           </div>
         </>
       )}
-    </main>
+    </section>
   )
 }

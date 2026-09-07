@@ -120,3 +120,28 @@ export function documentWhereFor(
   }
   return clauses.length ? { groundId, OR: clauses } : nothing;
 }
+
+/**
+ * WHO CAN SEE IT, IN WORDS, FOR THE PERSON WHO JUST ATTACHED IT.
+ *
+ * The upload response carried an id, a name, a mime type, a timestamp and an assessment — and not
+ * the one thing the uploader is actually wondering. `OWN` is not an answer to "who will read this";
+ * it is a column value that happens to be in front of them. The audit put it plainly: somebody who
+ * attached a contract could not tell who was about to see it.
+ */
+export function whoCanSeeItInWords(visibility: DocumentVisibility, contextEnabled: boolean): string {
+  if (!contextEnabled) {
+    /* The flag off is the old product: every document is private to its uploader whatever the
+       column says, so saying anything else here would be a promise the read path does not keep. */
+    return 'Only you can see this. Nobody else on the check-in can open it.';
+  }
+  switch (visibility) {
+    case DocumentVisibility.OPEN:
+      return 'Everybody on this check-in can see this, so they are all working from it.';
+    case DocumentVisibility.CLOSED:
+      return 'Only whoever leads this check-in can see this.';
+    case DocumentVisibility.OWN:
+    default:
+      return 'Only you can see this. It supports your own account and nobody else can open it.';
+  }
+}

@@ -42,6 +42,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { CoachModule } from './modules/coach/coach.module';
 import { JwtAuthGuard, RolesGuard, GlobalExceptionFilter, TransformInterceptor } from './common';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-browser';
 
 @Module({
   imports: [
@@ -77,7 +78,13 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     AlignmentModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    /*
+     * The throttler, with one exception written into it: a machine caller is limited per credential
+     * rather than per IP, at a rate a roster sync can actually finish. See
+     * `a-sync-loop-is-not-a-browser.ts` — the plain guard gave a customer's HR system sixty
+     * requests a minute shared with everybody behind the same address.
+     */
+    { provide: APP_GUARD, useClass: ASyncLoopIsNotABrowser },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

@@ -17,6 +17,16 @@ export interface MagicLinkBody {
   lastName?: string
 }
 
+export interface WaitingAtTheDoor {
+  id: string
+  email: string
+  name: string | null
+  waitingSince: string
+  /** Who added them. Named, because "somebody added them" is not something an admin can act on. */
+  addedBy: string | null
+  forCheckIn: string | null
+}
+
 export const authApi = {
   requestMagicLink: (body: MagicLinkBody) =>
     apiClient.post<MagicLinkResponse>('/auth/register-magic-link', body).then(r => r.data),
@@ -55,8 +65,10 @@ export const authApi = {
   // draft = the server-side copy of the anonymous session (transcript +
   // commit metadata), written the moment the email is given so the commit no
   // longer depends on which browser opens the magic link.
-  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft }).then(r => r.data),
+  /* `hp` is the honeypot — see components/gw/a-field-nobody-can-see.tsx. Sent as `_hp`, which is
+     the name the two older endpoints already use. */
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
@@ -86,6 +98,23 @@ export const authApi = {
    */
   renameOrganization: (name: string) =>
     apiClient.patch<{ id: string; name: string }>('/users/organization', { name }).then(r => r.data),
+
+  /**
+   * WHO IS WAITING TO BE LET INTO THIS ORGANISATION.
+   *
+   * Adding an address to a check-in used to make it a member here the moment they accepted, with
+   * no approval and nobody asked - and because a seat is any active user, on the bill at the same
+   * time. Somebody from outside is queued now, holds no seat, and cannot check in until an admin
+   * answers. This is that queue, and the answer.
+   */
+  whoIsWaiting: () =>
+    apiClient.get<WaitingAtTheDoor[]>('/users/waiting').then(r => r.data),
+
+  letThemIn: (id: string) =>
+    apiClient.post<{ approved: boolean; email: string }>(`/users/waiting/${id}/approve`, {}).then(r => r.data),
+
+  doNotLetThemIn: (id: string, reason?: string) =>
+    apiClient.post<{ declined: boolean; email: string }>(`/users/waiting/${id}/decline`, { reason }).then(r => r.data),
 
   /**
    * Which sign-in methods this deployment can actually complete.

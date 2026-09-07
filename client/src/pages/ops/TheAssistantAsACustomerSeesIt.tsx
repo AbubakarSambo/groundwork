@@ -5,6 +5,33 @@ import { CARD, LABEL } from './OpsLayout'
 import { scrollTo } from '@/lib/scroll-to'
 
 /**
+ * THE SITUATIONS OFFERED IN THE PANEL.
+ *
+ * Six, not twenty-two. The full catalogue lives on a page with room to explain each one - what it
+ * runs for, how often, what it asks - and a dropdown in a narrow widget has room for none of that.
+ * These are the six somebody embedded in another tool is most likely to start from a standing
+ * start, and describing your own is what the chat itself is for.
+ *
+ * The VALUES are the product's scenario enums, checked by the API against a closed set. It refused
+ * an invented moment by naming the three real ones, which is how this list came to be written from
+ * the product rather than from memory.
+ */
+const PANEL_SITUATIONS: { value: string; label: string }[] = [
+  { value: 'ROLE_HANDOVER', label: 'A role changing hands' },
+  { value: 'NEW_HIRE', label: 'A new hire starting' },
+  { value: 'NEW_PROJECT', label: 'A new project starting' },
+  { value: 'OKR_ALIGNMENT', label: 'Setting shared goals' },
+  { value: 'DRIFT', label: 'A project is off track' },
+  { value: 'CONTRACT_REVIEW', label: 'An agreement before it is signed' },
+]
+
+/*
+ * The list of three that used to be here is gone, and so is the note explaining why two of the
+ * things asked for could not be done from a panel. They can now: `POST check-ins` and `POST people`
+ * are panel routes, so the controls below do the thing rather than describing it.
+ */
+
+/**
  * THE ASSISTANT, IN OUR OWN ORGANISATION, THROUGH THE PUBLIC API.
  *
  * The whole claim of the API is that a company can run Groundwork inside their
@@ -49,10 +76,13 @@ function readBlocks(payload: unknown): string {
   if (typeof payload === 'string') return payload
 
   const opening = (payload as { opening?: { line?: string; suggestions?: string[] } })?.opening
-  if (opening?.line) {
-    const asked = opening.suggestions?.length ? `\n\n${opening.suggestions.join('  ·  ')}` : ''
-    return `${opening.line}${asked}`
-  }
+  /*
+   * THE LINE ONLY. The suggestions used to be joined with a middle dot and glued onto the end of
+   * the greeting, which turned the one thing telling somebody what they could ask into a run-on
+   * sentence they could not press. Reported as: the chat looks incomplete and there is nothing
+   * telling you what you can do. They are rendered as controls now - see `suggested` below.
+   */
+  if (opening?.line) return opening.line
 
   const blocks = (payload as { blocks?: Block[] })?.blocks
   if (Array.isArray(blocks)) {
@@ -156,16 +186,12 @@ export function TheAssistantAsACustomerSeesIt() {
    * has to sit somewhere, because a read nobody can see is a read nobody checks,
    * and the deliveries that failed to verify are exactly the ones worth seeing.
    */
-  const arrived = useQuery({
-    queryKey: ['ops', 'groundwork-events'],
-    queryFn: opsApi.groundworkEvents,
-    retry: false,
-    enabled: open,
-  })
 
   const [session, setSession] = useState<string | null>(null)
   const [said, setSaid] = useState<Said[]>([])
   const [typing, setTyping] = useState('')
+  /* Emptied on the first question: they are an opening, not a menu that sits there for ever. */
+  const [suggested, setSuggested] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
 
@@ -279,6 +305,10 @@ export function TheAssistantAsACustomerSeesIt() {
         if (opening.ok && drawn) {
           const text = readBlocks(drawn.data ?? drawn)
           if (text) setSaid([{ from: 'them', text }])
+          /* What this assistant can be asked, in its own words. The API has always returned these
+             and the panel has always thrown them away. */
+          const offered = (drawn.data ?? drawn)?.opening?.suggestions
+          if (Array.isArray(offered)) setSuggested(offered.filter((x: unknown) => typeof x === 'string'))
         }
 
         /* What is waiting for this person, on the same session. A customer's
@@ -401,10 +431,159 @@ export function TheAssistantAsACustomerSeesIt() {
     }
   }
 
-  async function send() {
-    const message = typing.trim()
+  const fileInput = useRef<HTMLInputElement | null>(null)
+
+  /**
+   * ATTACH SOMETHING, THE WAY A CUSTOMER'S PANEL WOULD.
+   *
+   * Reported as: why is there no document uploader for context in the chat. The answer was that
+   * the API had no route to take one - so this panel could not offer it, and neither could anybody
+   * building their own. `POST check-ins/:id/documents` exists now, and this is the same fetch as
+   * every other call here: no session, no app client, bearer token only.
+   *
+   * ONLY INSIDE A CHECK-IN, and that is the product's shape rather than a shortcut. A document
+   * here is evidence attached to a record: read against the thing being discussed, assessed, and
+   * visible under that record's rules. Attached to nothing it would have no scope, no reader, and
+   * no rule about who may see it.
+   */
+  async function attach(file: File) {
+    if (!ready || !session || !inCheckIn) return
+    setBusy(true)
+    setSaid((s) => [...s, { from: 'us', text: `Attaching ${file.name}…` }])
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${inCheckIn}/documents`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+        body: form,
+      })
+      const body = await res.json().catch(() => null)
+      setSaid((s) => [
+        ...s,
+        {
+          from: 'them',
+          text: res.ok
+            ? `${file.name} is attached to this check-in.`
+            : /* The server's own sentence: it is the one that says which rule was hit - a slide
+                 format it cannot read, a transcript nobody has consented to, a file too large. */
+              (body?.message ?? body?.data?.message ?? 'That did not attach, and nothing was saved.'),
+        },
+      ])
+    } catch {
+      setSaid((s) => [...s, { from: 'them', text: 'That did not attach, and nothing was saved.' }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /* What the panel is doing right now, so a form does not appear on top of a conversation. */
+  const [doing, setDoing] = useState<null | 'start' | 'add'>(null)
+  const [form, setForm] = useState({ label: '', scenario: 'ROLE_HANDOVER', email: '', name: '' })
+
+  /**
+   * START A CHECK-IN FROM HERE, AND LAND IN IT.
+   *
+   * Her words: it is meant to act exactly like the check-ins on our system, with more. The engine
+   * was always one route away - `check-ins/:id/messages` is ConversationService, the same one the
+   * product runs - but somebody with nothing waiting could not reach it, so every sentence they
+   * typed fell to the assistant's router. A different thing in the same box reads as one.
+   *
+   * FOUR CALLS, in the order the product requires them, because skipping any of them is a check-in
+   * in a state nobody meant: open it, say yes to leading it (the named lead reads the context and
+   * agrees - a step no machine may take for a person), open the conversation, and put its first
+   * words on the screen. Then typing goes to the engine, because `inCheckIn` is what decides that.
+   */
+  async function startACheckIn() {
+    if (!ready || !session || !form.label.trim()) return
+    setBusy(true)
+    try {
+      const post = (path: string, body: unknown) =>
+        fetch(`${ready.baseUrl}/api/org/v1${path}`, {
+          method: 'POST',
+          credentials: 'omit',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+          body: JSON.stringify(body),
+        })
+
+      const made = await post('/check-ins', { label: form.label.trim(), scenario: form.scenario, moment: 'STARTING', timelineDays: 30 })
+      const madeBody = await made.json().catch(() => null)
+      if (!made.ok) {
+        setSaid((x) => [...x, { from: 'them', text: madeBody?.message ?? 'That did not open, and nothing was created.' }])
+        return
+      }
+      const groundId = (madeBody?.data ?? madeBody)?.groundId ?? (madeBody?.data ?? madeBody)?.id
+      if (groundId) await post(`/grounds/${groundId}/confirm-lead`, {})
+
+      const mine = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/mine`, {
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+      })
+      const list = (await mine.json().catch(() => null))?.data ?? null
+      const found = (list?.waiting ?? [])[0]
+      if (!found?.checkInId) {
+        setSaid((x) => [...x, { from: 'them', text: 'It opened, but it is not ready to answer yet. It will be waiting for you here.' }])
+        return
+      }
+      setDoing(null)
+      setForm((f) => ({ ...f, label: '' }))
+      /* The same call the waiting list uses, so a check-in started here and one opened from the
+         list land in exactly the same place. */
+      await openCheckIn(found.checkInId)
+    } catch {
+      setSaid((x) => [...x, { from: 'them', text: 'That did not open, and nothing was created.' }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
+   * ADD SOMEBODY TO THE ORGANISATION.
+   *
+   * Her call, knowing what it means. What makes it safe is not this form: it is the approval queue.
+   * A person added here is a directory entry, and the moment they accept an invitation to anything
+   * they are queued for an admin rather than becoming a member. So this says exactly that, rather
+   * than implying somebody has just been let in.
+   */
+  async function addSomebody() {
+    if (!ready || !session || !form.email.includes('@')) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/people`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify({ email: form.email.trim(), displayName: form.name.trim() || undefined }),
+      })
+      const body = await res.json().catch(() => null)
+      setSaid((x) => [
+        ...x,
+        {
+          from: 'them',
+          text: res.ok
+            ? `${form.email.trim()} is on your people list. They are not a member of your organisation yet - when they accept an invitation, an admin is asked first.`
+            : (body?.message ?? 'That did not go through, and nobody was added.'),
+        },
+      ])
+      if (res.ok) {
+        setDoing(null)
+        setForm((f) => ({ ...f, email: '', name: '' }))
+      }
+    } catch {
+      setSaid((x) => [...x, { from: 'them', text: 'That did not go through, and nobody was added.' }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function send(asked?: string) {
+    const message = (asked ?? typing).trim()
     if (!message || !ready || !session) return
     setTyping('')
+    /* An opening, not a standing menu: once somebody has asked something the suggestions have done
+       their job and stop taking up the panel. */
+    setSuggested([])
     setSaid((s) => [...s, { from: 'us', text: message }])
     setBusy(true)
     try {
@@ -499,9 +678,24 @@ export function TheAssistantAsACustomerSeesIt() {
       >
         <div>
           <p style={{ ...LABEL, fontSize: 10, margin: 0 }}>Groundwork</p>
-          {/* Said out loud, because it is the whole point of this panel existing. */}
+          {/*
+            * NOT "the public API", which is what this said.
+            *
+            * Nothing about it is public: every call needs a credential the organisation was issued
+            * and access an admin asked for, and it reaches that organisation's data and nobody
+            * else's. "Public API" is a phrase from the inside - it means "the documented one" to us
+            * and "our data is exposed" to everybody else, and it is the first thing somebody reads
+            * on a panel whose whole subject is where their data goes.
+            *
+            * It is on our own back office, so this was one line and not a customer-facing claim -
+            * checked: `public API` appears nowhere in the client or the marketing site apart from
+            * here. The server module keeps the name, which nobody reads.
+            */}
           <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
-            Through the public API, as a customer
+            {/* Which of the two things is happening, at the top where somebody looks first. */}
+            {inCheckIn
+              ? 'You are in a check-in. This is the same conversation the product runs.'
+              : 'Connected the way a customer connects, over their own credential'}
           </p>
         </div>
         <button
@@ -690,22 +884,134 @@ export function TheAssistantAsACustomerSeesIt() {
         <div ref={bottom} />
       </div>
 
-      {arrived.data && (
-        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4 }}>
-          <div style={{ ...LABEL, marginBottom: 6 }}>What Groundwork has told us</div>
-          {arrived.data.events.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{arrived.data.says}</div>
-          ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {arrived.data.events.slice(0, 5).map((e, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-                  {/* A delivery that did not verify is the one worth seeing, so it is said
-                      first and in the product's own words rather than shown as a red dot. */}
-                  {e.verified ? (e.says ?? e.kind) : `${e.kind} — the signature did not check out`}
-                </li>
-              ))}
-            </ul>
+      {/*
+        * THE CALLBACK LOG USED TO BE HERE, AND IT IS GONE.
+        *
+        * "Callbacks from Groundwork to this back office / Nothing has arrived. Either nothing has
+        * happened, or nobody has registered where to send it" sat under a conversation, in a chat
+        * window, telling somebody about webhook deliveries. Her words: confusing as fuck on the
+        * chat. She is right - it answered a question nobody in a chat is asking, and the empty
+        * state read as though the assistant had failed at something.
+        *
+        * It has not been deleted, it has been MOVED: the same figures are on the ops Deployment
+        * page, where somebody goes to find out whether an integration is wired. That is the only
+        * place it was ever useful, and it was only here because this panel happened to be the
+        * thing that got built first.
+        *
+        * What takes its place is what she asked for: the things a person can actually do from
+        * here. See `whatAPanelCanActuallyDo` for why the list is three and not five.
+        */}
+      {/*
+        * WHAT YOU CAN DO FROM HERE, AND IT IS THE PRODUCT RATHER THAN A MENU ABOUT IT.
+        *
+        * Hidden inside a check-in on purpose: once the real engine is asking the questions, a row of
+        * buttons offering to start another one is an interruption. This is the standing-start state.
+        */}
+      {session && !inCheckIn && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', padding: '10px 12px 0' }}>
+          {doing === null && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button type="button" className="gw-btn-sm" disabled={busy} onClick={() => setDoing('start')}>
+                Start a check-in
+              </button>
+              <button type="button" className="gw-btn-sm" disabled={busy} onClick={() => setDoing('add')}>
+                Add someone
+              </button>
+              <button type="button" className="gw-btn-sm" disabled={busy} onClick={() => send('I want to set an objective')}>
+                Set an objective
+              </button>
+            </div>
           )}
+
+          {doing === 'start' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="gw-label" htmlFor="panel-label">What is it about?</label>
+              <input
+                id="panel-label"
+                className="gw-input"
+                value={form.label}
+                placeholder="e.g. Amir taking over the handover"
+                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+              />
+              <label className="gw-label" htmlFor="panel-scenario">Which situation?</label>
+              <select
+                id="panel-scenario"
+                className="gw-select"
+                value={form.scenario}
+                onChange={(e) => setForm((f) => ({ ...f, scenario: e.target.value }))}
+              >
+                {PANEL_SITUATIONS.map((x) => (
+                  <option key={x.value} value={x.value}>{x.label}</option>
+                ))}
+              </select>
+              <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                <button type="button" className="gw-btn" style={{ margin: 0, padding: '7px 14px', fontSize: 13 }} disabled={busy || !form.label.trim()} onClick={startACheckIn}>
+                  {busy ? 'Opening…' : 'Open it'}
+                </button>
+                <button type="button" className="gw-btn-sm" disabled={busy} onClick={() => setDoing(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {doing === 'add' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label className="gw-label" htmlFor="panel-email">Their email address</label>
+              <input
+                id="panel-email"
+                className="gw-input"
+                type="email"
+                value={form.email}
+                placeholder="them@theircompany.com"
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              <label className="gw-label" htmlFor="panel-name">Their name (optional)</label>
+              <input
+                id="panel-name"
+                className="gw-input"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+              {/* Said before the act, not after it, because it is the thing somebody would want to
+                  know BEFORE typing a colleague's address into a widget. */}
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+                This adds them to your people list. They do not become a member of your organisation
+                until they accept something and an admin approves them.
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                <button type="button" className="gw-btn" style={{ margin: 0, padding: '7px 14px', fontSize: 13 }} disabled={busy || !form.email.includes('@')} onClick={addSomebody}>
+                  {busy ? 'Adding…' : 'Add them'}
+                </button>
+                <button type="button" className="gw-btn-sm" disabled={busy} onClick={() => setDoing(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/*
+        * WHAT YOU CAN ASK IT, PRESSABLE.
+        *
+        * The API returns these with the opening - 'What am I on?', 'What is due?' - and the panel
+        * joined them with a middle dot onto the end of the greeting, where they read as part of a
+        * sentence. So the panel opened with a hello and nothing that said what it was for, which is
+        * what "looks incomplete, nothing tells you what you can do" is describing.
+        *
+        * Buttons rather than a help link on purpose: the answer to "what can I do here" is a
+        * question this thing can actually answer, and pressing one is faster than reading about it.
+        */}
+      {suggested.length > 0 && session && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 12px 10px' }}>
+          {suggested.map((q) => (
+            <button
+              key={q}
+              type="button"
+              className="gw-btn-sm"
+              disabled={busy}
+              onClick={() => send(q)}
+            >
+              {q}
+            </button>
+          ))}
         </div>
       )}
 
@@ -716,11 +1022,54 @@ export function TheAssistantAsACustomerSeesIt() {
         }}
         style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--gw-border)' }}
       >
+        {/* Offered only where it can work. A button that explains why it is greyed out on every
+            other screen is a worse answer than a button that is not there. */}
+        {inCheckIn && (
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void attach(f)
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              className="gw-btn-sm"
+              disabled={!session || busy}
+              onClick={() => fileInput.current?.click()}
+              title="Attach a document to this check-in"
+            >
+              + Doc
+            </button>
+          </>
+        )}
         <input
           value={typing}
           onChange={(e) => setTyping(e.target.value)}
           disabled={!session || busy}
-          placeholder={session ? 'Ask it something' : 'Not connected'}
+          /*
+            * THE BOX SAYS WHICH THING IT IS.
+            *
+            * "Ask it something" was the placeholder whether you were talking to the assistant or
+            * answering inside a real check-in, and those are different acts with different
+            * consequences - one is a question, the other goes on the record other people will read.
+            * A person could not tell which they were doing. Reported as: the texts around the chat
+            * box are utter nonsense.
+            *
+            * "Not connected" stays for the case it was written for, but it is now the only state
+            * that says something is wrong.
+            */
+          placeholder={
+            !session
+              ? 'Not connected'
+              : inCheckIn
+                ? 'Your answer goes on the record'
+                : 'Ask about your objectives, people or what is due'
+          }
           aria-label="Message"
           style={{
             flex: 1,

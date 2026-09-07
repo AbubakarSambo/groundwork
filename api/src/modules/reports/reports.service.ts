@@ -36,6 +36,11 @@ import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 import { notTheWordParty } from './not-the-word-party';
+import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
+import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
+import { documentsSection } from './a-document-in-the-corpus';
+import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
+import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -715,31 +720,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .join(', ')}. Reflect this as an absence; do not infer their views.\n\n`
       : '';
 
-    // DETERMINISTIC ROSTER: the corpus below only contains text from parties
-    // who produced record entries. Without an explicit roster, the model has
-    // to guess how many other parties exist and what their roles are from
-    // context alone - and it will invent wrong counts and role names. This
-    // roster is the ONLY source of truth for "who is on this ground."
-    const recordEntryCountByParty = new Map<string, number>();
-    for (const r of records) {
-      recordEntryCountByParty.set(r.participant.id, (recordEntryCountByParty.get(r.participant.id) ?? 0) + 1);
-    }
-    const rosterLines = parties.map((p) => {
-      const label = labelById.get(p.id) ?? 'a party';
-      const entryCount = recordEntryCountByParty.get(p.id) ?? 0;
-      // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
-      // match: they open with "where one party leads another", and a roster of
-      // anonymous labels never says that anyone does. In a live 12-session run
-      // with textbook abdication in the record, zero gaps were found for
-      // exactly this reason - the rule was correct and the input was silent.
-      const leadNote =
-        p.partyType === PartyType.INITIATOR
-          ? ' [leads this ground and the other parties on it]'
-          : '';
-      return `- ${label}${leadNote}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
-    });
-    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
-
     // THIN-RECORD NOTICE: compute turn counts per participant to detect parties
     // whose record is much thinner than others, and warn the synthesis accordingly.
     const participantsWithTurns = await this.prisma.groundParticipant.findMany({
@@ -761,12 +741,51 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const charCount = personTurns.reduce((sum, t) => sum + (t.content?.length ?? 0), 0);
       return { label: labelById.get(p.id) ?? p.partyType, turns: personTurns.length, charCount };
     });
+    // DETERMINISTIC ROSTER: the corpus below only contains text from parties
+    // who produced record entries. Without an explicit roster, the model has
+    // to guess how many other parties exist and what their roles are from
+    // context alone - and it will invent wrong counts and role names. This
+    // roster is the ONLY source of truth for "who is on this ground."
+    const recordEntryCountByParty = new Map<string, number>();
+    for (const r of records) {
+      recordEntryCountByParty.set(r.participant.id, (recordEntryCountByParty.get(r.participant.id) ?? 0) + 1);
+    }
+    const saidByLabel = new Map(turnCounts.map((t) => [t.label, t.charCount]));
+    const rosterLines = parties.map((p) => {
+      const label = labelById.get(p.id) ?? 'a party';
+      // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
+      // match: they open with "where one party leads another", and a roster of
+      // anonymous labels never says that anyone does. In a live 12-session run
+      // with textbook abdication in the record, zero gaps were found for
+      // exactly this reason - the rule was correct and the input was silent.
+      //
+      // And what the line says about a party with no record entries is decided in
+      // a-party-who-spoke-is-not-absent.ts, because it had been telling somebody
+      // who answered that their record was not present.
+      return whatTheRosterSaysAbout({
+        label,
+        leads: p.partyType === PartyType.INITIATOR,
+        recordEntries: recordEntryCountByParty.get(p.id) ?? 0,
+        charsSaid: saidByLabel.get(label) ?? 0,
+      });
+    });
+    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
+
     const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
     const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
-    const thinNotice =
+    const relativeThinNotice =
       thinParties.length > 0
         ? `NOTE: ${thinParties.map((p) => p.label).join(', ')}'s record contains significantly fewer exchanges. A further session from ${thinParties.length === 1 ? 'that party' : 'those parties'} would strengthen the cross-reference.\n\n`
         : '';
+    /*
+     * AND THE CASE THE RELATIVE CHECK CANNOT SEE. Two people who each say a hundred and seventy
+     * characters are both at 100% of the maximum, so nothing above fires, and the model is handed
+     * almost nothing with no indication that it is almost nothing. See
+     * a-record-can-be-thin-for-everybody.ts - measured, 58 of 59 thin reports followed a thin
+     * check-in rather than a rich one.
+     */
+    const thinNotice =
+      relativeThinNotice || everybodySaidLittle(turnCounts, relativeThinNotice);
 
     // Fix 6: Longitudinal vagueness - flag participants whose accounts across
     // sessions contain no distinct concrete claims (same progress language, nothing closes).
@@ -915,11 +934,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       findWaitingBehind(workMentionsForLeadership, (id) => labelById.get(id) ?? 'a party'),
     );
 
+    /*
+     * THE DOCUMENTS EVERYBODY CAN SEE, BY NAME. See a-document-in-the-corpus.ts — the prompt was
+     * handed a count and nothing else, which is why one report of a hundred and forty-five ever
+     * mentioned a document. OPEN only: this corpus produces the one shared picture, and a party's
+     * own evidence is theirs to disclose.
+     */
+    const openDocs = await this.prisma.groundDocument.findMany({
+      where: { groundId, visibility: 'OPEN' },
+      select: { fileName: true, participantId: true, assessment: true, uploaderNote: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const documentsNotice = documentsSection(
+      openDocs.map((d) => ({
+        fileName: d.fileName,
+        attachedBy: d.participantId ? (labelById.get(d.participantId) ?? 'a party') : 'the lead',
+        suggests: Array.isArray((d.assessment as any)?.suggests) ? (d.assessment as any).suggests : [],
+        uploaderNote: d.uploaderNote,
+      })),
+    );
+
     const corpus =
       groundContextHeader +
       roster +
       deferralNotice +
       leadContextSection +
+      documentsNotice +
       thinNotice +
       header +
       longitudinalNotice +
@@ -2277,6 +2317,39 @@ happened, and what is in the way.`;
     }));
   }
 
+  /**
+   * The documents this reader may know about, by name, with whether anything read them.
+   *
+   * Visibility is `canSeeDocument`'s question and is asked of it rather than answered again here.
+   */
+  private async whatItRestsOn(
+    groundId: string,
+    parties: any[],
+    viewerParticipantId: string | null,
+    viewerIsLead: boolean,
+  ) {
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { groundId },
+      select: { id: true, fileName: true, participantId: true, visibility: true, assessment: true },
+    });
+    if (!docs.length) return { documents: [], otherPartiesHave: 0, nothing: nothingRestsOnADocument() };
+
+    return whatThisRecordRestsOn(
+      docs.map((d) => ({
+        id: d.id,
+        fileName: d.fileName,
+        participantId: d.participantId,
+        visibility: d.visibility,
+        assessed: d.assessment !== null && d.assessment !== undefined,
+      })),
+      { participantId: viewerParticipantId, isLead: viewerIsLead },
+      labelsForParties(parties as any),
+      /* The same flag documents.service reads: off means every document is private to its
+         uploader whatever the column says, and this list must agree with that. */
+      this.config.get<boolean>('app.contextEnabled') === true,
+    );
+  }
+
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -2287,7 +2360,37 @@ happened, and what is in the way.`;
         report: true,
       },
     });
-    if (!ground?.report) throw new NotFoundException('Report not found');
+    if (!ground) throw new NotFoundException('Report not found');
+    /*
+     * WHY, not just no. See `why-there-is-no-report-yet.ts` — the same 404, with the reason the
+     * person can act on. The entitlement check below still runs for everybody who HAS a report;
+     * this branch is reached before it, so it says nothing a participant list would not.
+     */
+    if (!ground.report) {
+      const mine = ground.participants.some(
+        (p) => p.userId === requestingUserId,
+      ) || ground.initiatorId === requestingUserId || (!!requestingUserOrgId && ground.organizationId === requestingUserOrgId);
+      if (!mine) throw new NotFoundException('Report not found');
+      const checkIns = await this.prisma.checkIn.findMany({
+        where: { groundId },
+        select: { status: true, participantId: true },
+      });
+      const byParty = new Map<string, { completed: boolean; started: boolean }>();
+      for (const c of checkIns) {
+        const at = byParty.get(c.participantId) ?? { completed: false, started: false };
+        byParty.set(c.participantId, {
+          completed: at.completed || c.status === 'COMPLETED',
+          started: at.started || c.status !== 'NOT_STARTED',
+        });
+      }
+      throw new NotFoundException(
+        whyThereIsNoReportYet({
+          parties: ground.participants.map(
+            (p) => byParty.get(p.id) ?? { completed: false, started: false },
+          ),
+        }),
+      );
+    }
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
@@ -2325,6 +2428,11 @@ happened, and what is in the way.`;
         soloArtifact,
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
         declined: await this.declinedThisRound(groundId, ground.participants as any),
+        /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
+           a hundred and forty-five mentioned a document at all — the synthesis prompt is handed a count
+           and nothing else. Computed rather than asked of a model, so a document cannot vanish from the
+           account of what happened. See what-this-record-rests-on.ts. */
+        restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
       };
     }
 
@@ -2388,6 +2496,11 @@ happened, and what is in the way.`;
        * nothing about the fourth person having refused.
        */
       declined: await this.declinedThisRound(groundId, ground.participants as any),
+      /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
+         a hundred and forty-five mentioned a document at all — the synthesis prompt is handed a count
+         and nothing else. Computed rather than asked of a model, so a document cannot vanish from the
+         account of what happened. See what-this-record-rests-on.ts. */
+      restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
       ...(this.confidenceEnabled()
         ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin)
         : {}),

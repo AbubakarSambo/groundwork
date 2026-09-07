@@ -78,7 +78,7 @@ export default function OpsOverviewPage() {
   const ask = (n: number) => d?.questions.find((q) => q.n === n)?.question ?? ''
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Commercial overview" answers="Everything, in the order somebody asks." />
 
       {/*
@@ -249,6 +249,6 @@ export default function OpsOverviewPage() {
           )}
         </>
       )}
-    </main>
+    </section>
   )
 }

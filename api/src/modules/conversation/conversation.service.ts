@@ -2,6 +2,8 @@ import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestEx
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { isThisTheSameAnswerAgain, STILL_ON_YOUR_LAST_ANSWER } from './a-second-press-is-not-a-second-answer';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
@@ -37,6 +39,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
+import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
@@ -658,6 +661,28 @@ export class ConversationService {
     throw new BadRequestException('This check-in is closed. Nothing further can be added to it.');
   }
 
+  /**
+   * WHAT TO DO ABOUT A SECOND PRESS. See `a-second-press-is-not-a-second-answer.ts`.
+   *
+   * Both the plain and the streaming path ask this before writing anything, because a person who
+   * presses twice does not know which of the two their client used.
+   */
+  private async theSameAnswerAgain(checkInId: string, message: string) {
+    const recent = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true, createdAt: true },
+    });
+    return isThisTheSameAnswerAgain(
+      recent.map((t) => ({
+        role: t.role === TurnRole.AI ? ('AI' as const) : ('PERSON' as const),
+        content: t.content ?? '',
+        createdAt: t.createdAt,
+      })),
+      message,
+    );
+  }
+
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
     const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
     await this.assertGroundAcceptsInput(checkIn.groundId);
@@ -665,11 +690,25 @@ export class ConversationService {
       throw new BadRequestException('This check-in is already complete');
     }
 
+    const again = await this.theSameAnswerAgain(checkIn.id, message);
+    if (again.kind === 'the same answer, already answered') {
+      return { reply: again.reply, sessionComplete: false };
+    }
+    if (again.kind === 'the same answer, still working') {
+      return { reply: STILL_ON_YOUR_LAST_ANSWER, sessionComplete: false };
+    }
+
     const personTurnCount = await this.prisma.conversationTurn.count({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
     });
-    if (personTurnCount >= 20) {
-      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    if (personTurnCount >= A_CHECK_IN_TAKES_ANSWERS) {
+      /*
+       * A refusal that says their record is safe and what to do, rather than naming a limit nobody
+       * mentioned. `canContinue: false` because this one really cannot be answered by typing more —
+       * unlike the too-short refusal, where it can. See
+       * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
+       */
+      throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
     }
 
     const fullSystem = await this.composeSystemPrompt(checkIn, message);
@@ -709,9 +748,16 @@ export class ConversationService {
       const honest = withoutQuotesTheyDidNotSay(forHumans(rawReply), theirWords);
       const misquoted = unmatchedQuotes(forHumans(rawReply), theirWords);
       if (misquoted.length) {
+        /*
+         * THE COUNT, NOT THE WORDS. This logged up to 120 characters of the phrase, which put a
+         * fragment of somebody's account of their work into the application log — a place staff
+         * can read and the product promises they cannot. The log exists to make a RATE knowable,
+         * and a rate does not need the sentence. The length is kept because a two-word misquote
+         * and a two-line one are different problems.
+         */
         this.logger.warn(
           `Check-in ${checkIn.id}: reply quoted ${misquoted.length} phrase(s) this person did not write. ` +
-            `Marks removed. First: "${misquoted[0].slice(0, 120)}"`,
+            `Marks removed. Longest was ${Math.max(...misquoted.map((q) => q.length))} characters.`,
         );
       }
       const stripped = { text: honest, hadMarker: textHadCloseMarker(rawReply) };
@@ -764,14 +810,16 @@ export class ConversationService {
       // prose that reads as though the engine lost its train of thought.
       const truncated = truncationsOfTheirWords(reply, personWords);
       if (truncated.length) {
+        /* How many, not which: the words are the person's own. */
         this.logger.warn(
-          `Shortened one of their own words on check-in ${checkIn.id}: ${truncated.join(', ')}.`,
+          `Shortened ${truncated.length} of their own word(s) on check-in ${checkIn.id}.`,
         );
       }
       const invented = causalClaimNobodyMade(reply, personWords);
       if (invented.length) {
+        /* The rate is the point of this line; the claim itself is about somebody's work. */
         this.logger.warn(
-          `Causal claim nobody made on ${checkIn.id}: ${invented.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
+          `${invented.length} causal claim(s) nobody made on ${checkIn.id}. ${ASK_INSTEAD_OF_CONCLUDING}`,
         );
       }
       hadCloseMarker = stripped.hadMarker;
@@ -799,7 +847,16 @@ export class ConversationService {
     const signalled = hadCloseMarker || this.detectSessionComplete(reply);
     const sessionComplete = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false;
 
-    return { reply: aiTurn.content, sessionComplete };
+    /*
+     * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,
+     * so the count including it is one more. Appended to the reply rather than returned as a
+     * separate field, because a field needs a screen to render it and this has to reach somebody on
+     * the path they are already on.
+     */
+    const room = howMuchRoomIsLeft(personTurnCount + 1);
+    const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
+
+    return { reply: withRoomLeft, sessionComplete };
   }
 
   /**
@@ -863,11 +920,28 @@ export class ConversationService {
     if (checkIn.status === CheckInStatus.COMPLETED) {
       throw new BadRequestException('This check-in is already complete');
     }
+    const againStreaming = await this.theSameAnswerAgain(checkIn.id, message);
+    if (againStreaming.kind !== 'a new answer') {
+      const say =
+        againStreaming.kind === 'the same answer, already answered'
+          ? againStreaming.reply
+          : STILL_ON_YOUR_LAST_ANSWER;
+      yield { type: 'delta', text: say };
+      yield { type: 'done', reply: say, sessionComplete: false };
+      return;
+    }
+
     const personTurnCount = await this.prisma.conversationTurn.count({
       where: { checkInId: checkIn.id, role: TurnRole.PERSON },
     });
-    if (personTurnCount >= 20) {
-      throw new BadRequestException('Session turn limit reached. Please complete your session.');
+    if (personTurnCount >= A_CHECK_IN_TAKES_ANSWERS) {
+      /*
+       * A refusal that says their record is safe and what to do, rather than naming a limit nobody
+       * mentioned. `canContinue: false` because this one really cannot be answered by typing more —
+       * unlike the too-short refusal, where it can. See
+       * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
+       */
+      throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
     }
 
     const fullSystem = await this.composeSystemPrompt(checkIn, message);
@@ -3999,7 +4073,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: checkIn.participantId },
       select: { soloArtifact: true, soloArtifactAt: true },
     });
-    if (!p?.soloArtifact) return { artifact: null };
+    if (!p?.soloArtifact) {
+      /*
+       * NULL, AND WHY.
+       *
+       * This returned a bare `{ artifact: null }`, so the person who had just spent ten minutes
+       * answering and pressed through to their own summary was handed nothing at all — no
+       * distinction between "you have not finished yet", "it is being written" and "it failed".
+       * Driven and measured: the summary lands about twenty-two seconds after completion, because
+       * `buildSoloArtifact` is deliberately fire-and-forget so a model failure cannot stop a
+       * check-in completing. Twenty-two silent seconds reads as nothing coming.
+       */
+      const saying =
+        checkIn.status !== CheckInStatus.COMPLETED
+          ? 'Your summary is written when you finish this check-in.'
+          : 'Your summary is being written from what you said. It takes up to a minute — this page will show it as soon as it is there.';
+      return { artifact: null, saying, finished: checkIn.status === CheckInStatus.COMPLETED };
+    }
     return { artifact: JSON.parse(p.soloArtifact) as { summary: string; whatToCarry: string }, generatedAt: p.soloArtifactAt };
   }
 
@@ -4260,12 +4350,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async loadOwnedCheckIn(checkInId: string, requestingUserId: string) {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
-      include: { participant: true },
+      /**
+       * The participant's own account comes back with them, for the door check below. One query
+       * rather than two: the flag is a boolean on a row this query is already joining to, and the
+       * alternative was a second findUnique on every message anybody sends.
+       */
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
     if (checkIn.participant.userId !== requestingUserId) {
       // Never let one party read another party's conversation.
       throw new ForbiddenException('This check-in does not belong to you');
+    }
+    /**
+     * AND NOT YET, IF THEY ARE STILL WAITING TO BE LET INTO THE ORGANISATION.
+     *
+     * HERE rather than on `open`, because five call sites share this loader - open, send a message,
+     * complete, attach a document, correct a record - and a gate that covers one of them is a gate
+     * somebody walks around by pressing the next button. Driven: answering without opening returns
+     * 403 only because the check is at this level.
+     *
+     * See participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts.
+     */
+    if (checkIn.participant.user?.awaitingOrgApproval) {
+      throw new ForbiddenException(CANNOT_CHECK_IN_YET);
     }
     return checkIn;
   }

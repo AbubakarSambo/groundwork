@@ -27,7 +27,7 @@ export function OpsWhatWeArePage() {
   const d = it.data
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="What we are" answers="What is this product, and what is it not?" />
 
       {d && (
@@ -124,6 +124,6 @@ export function OpsWhatWeArePage() {
           )}
         </>
       )}
-    </main>
+    </section>
   )
 }

@@ -38,7 +38,7 @@ export class IdempotencyService {
     const since = new Date(Date.now() - WINDOW_HOURS * 3_600_000);
     const fingerprint = createHash('sha256').update(JSON.stringify(body ?? null)).digest('hex');
 
-    await this.assertKeyNotReusedElsewhere(organizationId, k, endpoint);
+    await this.assertKeyNotReusedElsewhere(organizationId, k, endpoint, since);
 
     const prior = await this.prisma.idempotencyRecord.findFirst({
       where: { organizationId, key: k, endpoint, createdAt: { gte: since } },
@@ -90,12 +90,33 @@ export class IdempotencyService {
    * - written for a call site I then did not add - which is the same speculative-method failure as
    * the deleted `connectionHealth`, caught by the same guard.
    */
-  private async assertKeyNotReusedElsewhere(organizationId: string, key: string, endpoint: string) {
+  private async assertKeyNotReusedElsewhere(
+    organizationId: string,
+    key: string,
+    endpoint: string,
+    since: Date,
+  ) {
+    /*
+     * WITHIN THE SAME WINDOW THE REPLAY USES, AND NOT FOR EVER.
+     *
+     * This had no time bound while the replay lookup above has one, so the two halves disagreed
+     * about how long a key means anything. A key reused a month later was a permanent 409 —
+     * refused on account of a record whose stored response had long since stopped being replayable,
+     * with nothing the caller could do about it and no expiry to wait for. A client that generates
+     * keys from a short counter, or reuses them across deploys, is simply locked out of an endpoint
+     * for ever.
+     *
+     * Inside the window the conflict is a real favour: it means one of their two calls would
+     * silently never run. Outside it, the old row has no bearing on this request at all.
+     */
     const elsewhere = await this.prisma.idempotencyRecord.findFirst({
-      where: { organizationId, key, endpoint: { not: endpoint } },
+      where: { organizationId, key, endpoint: { not: endpoint }, createdAt: { gte: since } },
     });
     if (elsewhere) {
-      throw new ConflictException(`Idempotency-Key ${key} was already used for ${elsewhere.endpoint}.`);
+      throw new ConflictException(
+        `Idempotency-Key ${key} was already used for ${elsewhere.endpoint} in the last ${WINDOW_HOURS} hours. ` +
+          `Use one key per operation rather than one per retry loop.`,
+      );
     }
   }
 }

@@ -58,3 +58,64 @@ Setup holding only how the check-in runs.
 
 **DECIDED: context is fine.** It stays on Context, beside the other four inputs and their audience
 labels. Seven Tabs' Tab 7 line is superseded.
+
+---
+
+# 7 September 2026, evening — the two pickers, the two flows, and who sets a context
+
+Her words, recorded before anything is built from them, because the last three items reverse
+decisions taken earlier the same day and a summary written afterwards would smooth that over.
+
+## What she said
+
+**The pickers still differ.** "The scenario cards still look different on the entry chat and there's
+no describe your own situation. The entry chat and the in-platform scenario picker look different."
+
+*Established while reading this:* the entry-chat change was merged in #260 and its staging deploy
+was still running when she looked. Staging was serving the previous build. So this one is a
+deployment lag rather than a defect — but the underlying complaint stands and outlives it, because
+the two pickers are two hand-kept lists that have drifted before and will again.
+
+**Each flow is better than the other in a different half.** "The entry chat cards and first page is
+awful but the rest of the flow is better. On the in-platform scenario picker, the rest of the flow
+sucks and the entry chat flow is better, and having a report at the end is nice."
+
+So: the entry chat's FIRST screen is the weak one and its conversation is the strong one; the
+wizard's picker is the strong one and everything after it is the weak one. Her question: should the
+in-platform flow reflect the entry chat, given you can add settings and participants at the end or
+go to check-in settings afterwards?
+
+**The chat carries no context from the card.** "The new hire chat should ask who the new hire is,
+right now it carries no context when you select a card." Picking "A new hire starting" and then
+being asked a generic opening is the whole complaint in one line.
+
+**The feedback button covers things.** "One thing I hate is the feedback button is always covering
+something important, can we make it movable. yes."
+
+## What she decided
+
+**REMOVE the org admin setting a context and handing it to a lead.** "I think we should remove the
+whole org admin setting a context and handing it over to a lead. It seems like it is confusing."
+
+This reverses the morning's decision on the same path. Earlier today the setter path was kept and
+made shorter — the brief and the description were skipped for somebody setting a check-in up for
+somebody else, on her instruction. That is now to go entirely.
+
+**What replaces it: two ways, plus oversight.** "Maybe you set context but you can add someone to
+have oversight... so you either set the context to checkin or set it and other checkin, you just
+look at the reports, you can also have others check it."
+
+Read as: step one keeps two answers, not three —
+
+  1. I set the context and objective, and I check in too.
+  2. I set the context and objective, others check in. I read the reports.
+
+— and separately, anybody can be added to OVERSEE: they see the reports without being asked to
+check in, and without becoming the person who writes the context.
+
+## What this means for the three people
+
+Not decided, and listed because the plan below has to answer it: a LEAD sets context and reads
+reports; a PARTICIPANT checks in; an ORG ADMIN currently gets a third path that is being removed —
+so an admin who wants a check-in they do not own is either setting it and reading it (answer 2) or
+being added for oversight, and never handing the context-writing to somebody else.

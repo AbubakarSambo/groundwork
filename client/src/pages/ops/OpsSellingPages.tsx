@@ -16,6 +16,50 @@ const DEPLOYMENT_STAGES = ['READY_SIGNED', 'SETUP', 'ONBOARDING', 'FIRST_USE', '
  * opportunity - which was the entire reason for replacing it.
  */
 
+/**
+ * WHAT GROUNDWORK HAS CALLED BACK TO THIS BACK OFFICE.
+ *
+ * It used to live under the assistant panel's chat, where it read as something the assistant had
+ * said and its empty state read as a failure. Her words: confusing as fuck on the chat. It belongs
+ * on the page somebody opens to find out whether an integration is actually wired, which is this
+ * one.
+ *
+ * IT IS KEPT RATHER THAN DROPPED because the empty case is the only signal anywhere that our own
+ * callbacks are not arriving - and its sentence separates the two reasons, which is the whole
+ * value: nothing has happened is a different problem from nobody has registered where to send it.
+ */
+function WhatGroundworkHasSentUs() {
+  const arrived = useQuery({
+    queryKey: ['ops', 'groundwork-events'],
+    queryFn: opsApi.groundworkEvents,
+    retry: false,
+  })
+  if (!arrived.data) return null
+  return (
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: 'var(--gw-card)' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>
+        Callbacks from Groundwork to this back office
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+        We are a Groundwork customer too. This is what it has sent us, with each signature checked.
+      </div>
+      {arrived.data.events.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{arrived.data.says}</div>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {arrived.data.events.slice(0, 8).map((e, i) => (
+            <li key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+              {/* A delivery that did not verify is the one worth seeing, so it is said first and in
+                  the product's own words rather than shown as a red dot. */}
+              {e.verified ? (e.says ?? e.kind) : `${e.kind} — the signature did not check out`}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function OpsDeploymentPage() {
   const deployments = useQuery({
     queryKey: ['ops', 'deployments'],
@@ -93,8 +137,9 @@ export function OpsDeploymentPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Deployment" answers="Who is stuck getting live, and on what?" />
+      <WhatGroundworkHasSentUs />
       <Adder
         title="Start a deployment"
         fields={[
@@ -121,7 +166,7 @@ export function OpsDeploymentPage() {
         filteredOutOf={all?.length}
         empty="Nobody is being deployed. Start one once a company converts."
       />
-    </main>
+    </section>
   )
 }
 
@@ -174,7 +219,7 @@ export function OpsMarketingPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Marketing" answers="What did we put out, and what did it bring in?" />
       <Adder
         title="Plan a campaign"
@@ -220,6 +265,6 @@ export function OpsMarketingPage() {
         keyOf={(c) => c.id}
         empty="No campaigns yet."
       />
-    </main>
+    </section>
   )
 }

@@ -364,6 +364,7 @@ enum WorkspaceKind {
 }
 
 model Organization {
+  membershipRequests MembershipRequest[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -481,6 +482,14 @@ model User {
   jobTitle           String?  @map("job_title")
   role               UserRole @default(MEMBER)
   isActive           Boolean  @default(true) @map("is_active")
+  /// WAITING TO BE LET INTO THE ORGANISATION THEY WERE ADDED TO.
+  ///
+  /// True from the moment somebody accepts a check-in invitation to an organisation they were not
+  /// already in, until an admin approves them. While it is true they hold NO SEAT - see
+  /// common/seats.ts, which is the one definition every price and every cap reads - and they
+  /// cannot open or answer a check-in. The audit trail is MembershipRequest; this is the flag the
+  /// hot paths read, because a seat count cannot afford a join and a gate must not be able to miss.
+  awaitingOrgApproval Boolean @default(false) @map("awaiting_org_approval")
   isEmailVerified    Boolean  @default(false) @map("is_email_verified")
   isPlatformAdmin    Boolean  @default(false) @map("is_platform_admin")
   googleId           String?  @unique @map("google_id")
@@ -493,6 +502,7 @@ model User {
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  membershipRequests MembershipRequest[]
   deletedAt DateTime? @map("deleted_at")
 
   organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -988,6 +998,20 @@ model GroundParticipant {
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]        @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?      @map("last_nudged_at") // throttles reminder emails (B1)
+  /// THE WAY OUT OF BEING CHASED. The invitation tells somebody they can simply ignore it, and
+  /// then the reminders arrive anyway - so the mail carries a link that needs no login and this
+  /// is where it lands. Deliberately NOT a decision about taking part: their invitation still
+  /// works and nothing is recorded against them, because "stop reminding me" and "no" are two
+  /// different sentences and only one of them is theirs to be asked for.
+  /// See conversation/ignoring-it-should-be-enough.ts.
+  remindersStoppedAt         DateTime?      @map("reminders_stopped_at")
+  /// Long and random, minted the first time we write to them and kept afterwards - the invite
+  /// token is cleared on accept, and the reminders outlive it.
+  stopRemindersToken         String?        @unique @map("stop_reminders_token")
+  /// When they were last told they have missed three rounds in a row. The absence reminder used to
+  /// fire on one exact day, so nothing needed to remember it; now that a passed day is still due,
+  /// this is what stops the same person being told every morning. Null means never told.
+  absenceToldAt              DateTime?      @map("absence_told_at")
   soloArtifact               String?        @map("solo_artifact") @db.Text // single-party record summary after session 1 (B2)
   soloArtifactAt             DateTime?      @map("solo_artifact_at")
   soloArtifactShared         Boolean        @default(false) @map("solo_artifact_shared") // whether participant chose to share their individual report
@@ -1850,6 +1874,22 @@ model WebhookEndpoint {
   events         String[]
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now()) @map("created_at")
+
+  /// WHEN SOMEBODY REMOVED IT, rather than the row being deleted.
+  ///
+  /// `remove` was a hard delete, and deliveries cascade off this row — so removing an endpoint
+  /// took the entire delivery log with it. That log is the only record of what we sent a customer
+  /// and whether it arrived, and it is exactly what somebody asks for after an incident: "did you
+  /// send us the event or not". Removing an endpoint is a decision about the FUTURE, so it stops
+  /// deliveries and keeps the history.
+  removedAt      DateTime? @map("removed_at")
+
+  /// When we last told this customer that deliveries to this endpoint are dying.
+  ///
+  /// Seven attempts over about twenty-one hours and then DEAD, with a warning in our own logs and
+  /// nothing that reaches the customer. Their integration silently stops receiving. One notice per
+  /// endpoint per day, because a broken endpoint produces a dead delivery for every event.
+  deadNoticeAt   DateTime? @map("dead_notice_at")
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   deliveries   WebhookDelivery[]
@@ -4040,6 +4080,53 @@ model ParticipantNote {
 /// The role is per membership. Somebody can administer their own company and be an
 /// ordinary member of a client's organisation, and flattening that to one role would
 /// either over-grant or under-grant in one of them.
+/// WHO IS WAITING TO BE LET INTO AN ORGANISATION, AND WHO DECIDED.
+///
+/// Adding an address to a check-in used to make that address a MEMBER of your organisation the
+/// moment they accepted: `participants.service.ts` accept() created the User inside the same
+/// transaction, verified, with no approval and nobody asked. Two consequences nobody chose - a
+/// stranger became a member of your company, and because a seat is any active user (common/seats.ts)
+/// they went onto your bill at the same time.
+///
+/// So an address that is not already in the organisation is QUEUED here instead. The account is
+/// still created, because they need one to write their own account of things and because the
+/// alternative is holding their words in a second place - but it holds no seat and cannot check in
+/// until an admin says yes. See `nobody-joins-your-company-by-being-invited-to-a-check-in.ts`.
+model MembershipRequest {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  userId         String @map("user_id")
+  /// Kept beside the user because an admin reading the queue is reading addresses, and because a
+  /// declined request may outlive the account it was for.
+  email          String
+
+  /// Who added them, and to what. Both optional: a request can outlive either.
+  requestedByUserId String? @map("requested_by_user_id")
+  groundId          String? @map("ground_id")
+
+  status     MembershipRequestStatus @default(PENDING)
+  /// Set when somebody decided. Never written by anything automatic.
+  decidedByUserId String?   @map("decided_by_user_id")
+  decidedAt       DateTime? @map("decided_at")
+  /// Why it was declined, in the admin's words.
+  reason          String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, status])
+  @@map("membership_requests")
+}
+
+enum MembershipRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 model OrganizationMembership {
   id             String   @id @default(uuid())
   userId         String   @map("user_id")

@@ -3,7 +3,9 @@ import { IsEmail, IsNotEmpty, IsString, IsOptional, MaxLength, IsDateString } fr
 
 export class AddParticipantDto {
   @ApiProperty({ example: 'ada@acme.com' })
-  @IsEmail()
+  /* The message is the one the organiser reads on the setup screen, so it is a sentence rather
+     than class-validator's default "email must be an email". */
+  @IsEmail({}, { message: 'That does not look like an email address. Check it and try again.' })
   @IsNotEmpty()
   email: string;
 

@@ -105,7 +105,20 @@ export class WhatsAppService {
   async sendMessage(phoneNumber: string, text: string): Promise<boolean> {
     const to = WhatsAppService.normalize(phoneNumber);
     if (!(await this.isEnabled())) {
-      this.logger.warn(`[DEV WHATSAPP] To: ${to} | Body: ${text}`);
+      /*
+       * THE BODY ONLY OUTSIDE PRODUCTION.
+       *
+       * This branch is "the channel is off", not "this is a developer's laptop" — and a production
+       * deployment with no WhatsApp credentials configured is exactly that state. So a message
+       * meant for one person's phone was written into the production log, where staff can read it.
+       * The address stays because knowing a send was attempted and to whom is the point of the
+       * line; the body is somebody's message.
+       */
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.warn(`WhatsApp is not configured; a message to ${to} was not sent (${text.length} characters).`);
+      } else {
+        this.logger.warn(`[DEV WHATSAPP] To: ${to} | Body: ${text}`);
+      }
       return false;
     }
 

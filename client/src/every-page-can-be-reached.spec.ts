@@ -30,6 +30,16 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
   '/reset-password': 'the link in the password-reset email',
   '/auth/google/callback': 'Google redirects here after sign-in',
   '/billing/callback': 'the payment provider redirects here',
+  /* The marketing pricing page's "Request a call" button. A different origin, so no scan of this
+     codebase can see the door - and it is the way IN for somebody with no account, so nothing in
+     the app should link to it. `every-route-has-a-door.spec.ts` checks the marketing side of it. */
+  '/talk-to-us': 'the Request a call button on the marketing pricing page',
+  /* The two links our own mail carries. Both are answered with no login on purpose: somebody who
+     wants the mail to stop must not need an account to say so. See
+     api/src/modules/email/a-link-on-a-mail-needs-a-page.spec.ts, which is the half of this that
+     checks the mail really points here. */
+  '/unsubscribe/:token': 'the unsubscribe link on every round digest',
+  '/stop-reminders/:token': 'the stop-the-reminders link on an invitation and every reminder',
   '/join': 'the broadcast link an admin copies off the check-in page and sends',
   '/join/confirm': 'the link emailed to the address somebody typed on /join — the only place the join flow creates anything',
   /**

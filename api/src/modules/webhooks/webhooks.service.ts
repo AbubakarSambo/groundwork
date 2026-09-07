@@ -4,6 +4,8 @@ import { WebhookDeliveryStatus, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { newSecret, signWithBoth, nextAttemptAfter, SIGNATURE_HEADER, TIMESTAMP_HEADER, EVENT_ID_HEADER } from './how-a-receiver-knows-it-was-us';
 import { validateEvents, SENDABLE_EVENTS } from './events-we-can-actually-send';
+import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
+import { EmailService } from '../email/email.service';
 
 /** Somebody else's error page can be a megabyte of HTML. */
 const MAX_RESPONSE_CHARS = 2_000;
@@ -18,11 +20,37 @@ const REQUEST_TIMEOUT_MS = 10_000;
  */
 export const LEASE_MS = 5 * 60_000;
 
+/**
+ * A LEASE HAS TO OUTLAST THE BATCH IT COVERS.
+ *
+ * `deliverDue` claims up to `limit` deliveries and sends them ONE AT A TIME, each with a ten-second
+ * ceiling. Fifty of those is eight minutes in the worst case — against a five-minute lease. So a
+ * sweep against fifty slow or dead endpoints kept working while its own lease expired underneath
+ * it, and a second instance claimed the tail and sent those deliveries again. Signed and carrying
+ * an event id, so a good receiver deduplicates; a receiver that does not gets the same event twice
+ * and the comment above promising the lease "never expires under a sweep that is still working"
+ * was simply false at any limit above thirty.
+ *
+ * Derived from the batch rather than fixed, so it cannot come apart again when somebody raises the
+ * limit. The cost is what the original constant was protecting against: a pod killed mid-sweep
+ * holds its claim for longer. That is the right trade — a delivery arriving late is a delay, a
+ * delivery arriving twice is somebody's duplicate row.
+ */
+export function leaseForABatchOf(limit: number): number {
+  const worstCase = Math.max(1, limit) * REQUEST_TIMEOUT_MS;
+  /* Plus a margin for the reads, the writes and a slow database. */
+  return Math.max(LEASE_MS, worstCase + 30_000);
+}
+
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workspace: WorkspaceNotifierService,
+    private readonly email: EmailService,
+  ) {}
 
   // ---------------------------------------------------------------- endpoints
 
@@ -64,16 +92,34 @@ export class WebhooksService {
 
   async list(organizationId: string) {
     return this.prisma.webhookEndpoint.findMany({
-      where: { organizationId },
+      /* Removed ones are kept for their delivery history and are not endpoints any more. Without
+         this they would come back looking merely switched off, which somebody would then switch on. */
+      where: { organizationId, removedAt: null },
       select: { id: true, url: true, events: true, active: true, createdAt: true, rotatedAt: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
+  /**
+   * REMOVING AN ENDPOINT IS A DECISION ABOUT THE FUTURE.
+   *
+   * This was a hard delete, and `WebhookDelivery` cascades off the endpoint — so removing one took
+   * the entire delivery log with it. That log is the only record of what we sent this customer and
+   * whether it arrived, and it is exactly what somebody asks for after an incident: did you send us
+   * the event or not. There is no way to answer that afterwards, and nothing warned that pressing
+   * remove would destroy it.
+   *
+   * So it stops deliveries and keeps the history. `active: false` is what the sender already reads;
+   * `removedAt` is what keeps it out of the list, so a removed endpoint does not reappear looking
+   * merely switched off.
+   */
   async remove(organizationId: string, id: string) {
-    const { count } = await this.prisma.webhookEndpoint.deleteMany({ where: { organizationId, id } });
+    const { count } = await this.prisma.webhookEndpoint.updateMany({
+      where: { organizationId, id, removedAt: null },
+      data: { active: false, removedAt: new Date() },
+    });
     if (!count) throw new NotFoundException('No such endpoint.');
-    return { removed: true };
+    return { removed: true, historyKept: true };
   }
 
   /**
@@ -180,7 +226,7 @@ export class WebhooksService {
      */
     const claimed = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
       UPDATE webhook_deliveries
-         SET next_attempt_at = (now() AT TIME ZONE 'UTC') + ${`${LEASE_MS} milliseconds`}::interval
+         SET next_attempt_at = (now() AT TIME ZONE 'UTC') + ${`${leaseForABatchOf(limit)} milliseconds`}::interval
        WHERE id IN (
          SELECT id FROM webhook_deliveries
           WHERE status IN ('PENDING', 'FAILED')
@@ -272,8 +318,64 @@ export class WebhooksService {
         responseCode: code, responseBody: text,
       },
     });
-    if (!next) this.logger.warn(`Delivery ${d.id} (${d.eventType}) is dead after ${attempts} attempts.`);
+    if (!next) {
+      this.logger.warn(`Delivery ${d.id} (${d.eventType}) is dead after ${attempts} attempts.`);
+      /*
+       * AND SOMEBODY IS TOLD. Seven attempts over about twenty-one hours and then DEAD, with a
+       * warning in OUR logs and nothing that reaches the customer — so their integration silently
+       * stops receiving and the first they know of it is a gap in their own data. Never allowed to
+       * throw: a delivery that already failed must not also fail the sweep.
+       */
+      await this.tellThemItIsDying(d).catch((err) =>
+        this.logger.error(`Could not tell ${d.organizationId} that endpoint ${d.endpointId} is dying: ${err?.message}`),
+      );
+    }
     return false;
+  }
+
+  /**
+   * TELL THE CUSTOMER THEIR ENDPOINT IS DYING. Once a day per endpoint.
+   *
+   * A broken endpoint produces a dead delivery for every event, so this cannot fire per delivery —
+   * it would be its own outage. `deadNoticeAt` is what makes it one notice, and it is stamped
+   * before the sending so a failure to send does not turn into a loop either.
+   */
+  private async tellThemItIsDying(d: any): Promise<void> {
+    const A_DAY_AGO = new Date(Date.now() - 24 * 60 * 60_000);
+    /* Conditional update as the lock: whichever attempt gets the row first sends, the rest do
+       nothing. Two dead deliveries in the same second are the normal case, not the rare one. */
+    const { count } = await this.prisma.webhookEndpoint.updateMany({
+      where: {
+        id: d.endpointId,
+        OR: [{ deadNoticeAt: null }, { deadNoticeAt: { lt: A_DAY_AGO } }],
+      },
+      data: { deadNoticeAt: new Date() },
+    });
+    if (!count) return;
+
+    const endpoint = d.endpoint ?? (await this.prisma.webhookEndpoint.findUnique({ where: { id: d.endpointId } }));
+    const url = endpoint?.url ?? 'your endpoint';
+
+    await this.workspace
+      /* Its own kind. The first version of this borrowed 'a report is ready' and wrote the whole
+         sentence into `about`, which produced "A report is ready on “Groundwork cannot deliver…”" —
+         a notice whose shape said one thing and whose text said another. */
+      .tell(d.organizationId, {
+        what: 'an integration cannot be reached',
+        about: url,
+        link: `${this.email.frontendUrlForLinks()}/org/integrations`,
+      })
+      .catch(() => undefined);
+
+    const admins = await this.prisma.user.findMany({
+      where: { organizationId: d.organizationId, role: 'ADMIN' },
+      select: { email: true, firstName: true },
+    });
+    for (const admin of admins) {
+      await this.email
+        .sendWebhookEndpointDying(admin.email, admin.firstName, url, d.eventType, d.attempts ?? 7)
+        .catch(() => undefined);
+    }
   }
 
   // ---------------------------------------------------------------- log
@@ -308,10 +410,21 @@ export class WebhooksService {
     });
     if (!d) throw new NotFoundException('No such delivery.');
 
-    await this.prisma.webhookDelivery.update({
-      where: { id: d.id },
-      data: { status: WebhookDeliveryStatus.PENDING, nextAttemptAt: new Date() },
-    });
+    /*
+     * A REPLAY TAKES THE ROW OUT OF THE SWEEP'S REACH FIRST.
+     *
+     * This set `nextAttemptAt` to NOW and then sent — which is precisely the state the sweep claims
+     * rows in. So a replay pressed while the minute sweep was running could have both of them
+     * sending the same delivery at the same time, and the person who pressed it would see one
+     * result while the receiver got two. The lease is the same mechanism the sweep uses, and it is
+     * taken with the database's clock for the same reason.
+     */
+    await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE webhook_deliveries
+         SET status = 'PENDING',
+             next_attempt_at = (now() AT TIME ZONE 'UTC') + ${`${leaseForABatchOf(1)} milliseconds`}::interval
+       WHERE id = ${d.id}
+    `);
     const ok = await this.attempt({ ...d, attempts: d.attempts });
     return { replayed: true, delivered: ok };
   }

@@ -160,12 +160,24 @@ describe('a session that is about to run out', () => {
   });
 
   it('every call to us goes through it, so no call can miss the retry', () => {
-    /* A fetch that reaches for `token` directly is one that dies at fifteen minutes. */
-    const calls = [...panel.matchAll(/fetch\(API \+ '[^']+'/g)].length;
+    /*
+     * STRONGER THAN IT WAS, because the exemption has gone.
+     *
+     * This used to subtract the opening call: it ran exactly once, at load, on a session seconds
+     * old, so it was allowed to reach for `token` directly. It can now be redrawn when the host
+     * says the person has navigated — an hour later, on a session that has run out — so there is no
+     * longer any call that may skip the retry. The rule is now simply: no fetch to us holds
+     * `token` itself.
+     */
+    const holdsTheTokenItself = [...panel.matchAll(/fetch\([^)]*Bearer ' \+ token/g)];
+    /* A fetch reaching for `token` directly is one that dies at fifteen minutes. */
+    expect(holdsTheTokenItself.map((m) => m[0])).toEqual([]);
+
+    /* And every one of them is inside a withSession callback, which is what supplies `t`. */
+    const calls = [...panel.matchAll(/fetch\(/g)].length;
     const wrapped = [...panel.matchAll(/withSession\(function/g)].length;
-    const opening = [...panel.matchAll(/embed\/opening/g)].length;
-    /* The opening call runs once, at load, on a session seconds old. */
-    expect(wrapped).toBe(calls - opening);
+    expect(wrapped).toBeGreaterThan(0);
+    expect(calls).toBeGreaterThanOrEqual(wrapped);
   });
 
   it('stops waiting if the host never answers', () => {

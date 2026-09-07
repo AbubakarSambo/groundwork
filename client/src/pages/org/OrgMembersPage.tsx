@@ -89,6 +89,39 @@ export function OrgMembersPage() {
     enabled: isAdmin,
   })
 
+  /**
+   * WHO IS WAITING TO BE LET IN.
+   *
+   * Adding an address to a check-in used to make it a member of this organisation the moment they
+   * accepted - no approval, nobody asked - and because a seat is any active user, on the bill at
+   * the same time. Somebody from outside is queued now: they hold no seat and cannot check in until
+   * this list is answered. So it goes at the TOP of this page rather than the bottom: a queue that
+   * nobody is looking at means people who cannot start and do not know why.
+   */
+  const waiting = useQuery({
+    queryKey: ['who-is-waiting'],
+    queryFn: authApi.whoIsWaiting,
+    enabled: isAdmin,
+  })
+
+  const answerWaiting = useMutation({
+    /* One mutation for both answers: they invalidate the same two lists and fail the same way, and
+       two mutations would be two places to keep that agreeing. The return types differ by a word,
+       so the result is discarded - the toast is decided by which answer was given, not by what
+       came back. */
+    mutationFn: async ({ id, letIn }: { id: string; letIn: boolean }): Promise<void> => {
+      if (letIn) await authApi.letThemIn(id)
+      else await authApi.doNotLetThemIn(id)
+    },
+    onSuccess: (_res, vars) => {
+      toast.success(vars.letIn ? 'They can check in now' : 'They were not added')
+      /* Both lists move: an approval adds a person here and takes one off the queue. */
+      qc.invalidateQueries({ queryKey: ['who-is-waiting'] })
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+    },
+    onError: () => toast.error('That did not go through. Nothing has changed — try again.'),
+  })
+
   const inviteMut = useMutation({
     mutationFn: (email: string) => authApi.teamInvite(email),
     onSuccess: () => {
@@ -205,6 +238,51 @@ export function OrgMembersPage() {
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.6 }}>
         Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
       </p>
+
+      {/* THE QUEUE. Shown only when there is one - an empty "nobody is waiting" panel on every
+          visit is a box that teaches you to stop reading this part of the page. */}
+      {isAdmin && (waiting.data?.length ?? 0) > 0 && (
+        <div style={{ border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 3 }}>
+            {waiting.data!.length === 1 ? 'Somebody is waiting to be let in' : `${waiting.data!.length} people are waiting to be let in`}
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+            They were invited to a check-in and they are not in this organisation. Until you answer,
+            they cannot check in and they are not counted on your plan.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {waiting.data!.map(person => (
+              <div key={person.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{person.name ?? person.email}</div>
+                  {/* Who asked for them and what for. An address on its own is not something
+                      anybody can decide about. */}
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5 }}>
+                    {person.name ? `${person.email} · ` : ''}
+                    {person.addedBy ? `added by ${person.addedBy}` : 'added by somebody no longer here'}
+                    {person.forCheckIn ? ` · for "${person.forCheckIn}"` : ''}
+                  </div>
+                </div>
+                <button
+                  className="gw-btn-sm"
+                  disabled={answerWaiting.isPending}
+                  onClick={() => answerWaiting.mutate({ id: person.id, letIn: false })}
+                >
+                  Not this person
+                </button>
+                <button
+                  className="gw-btn"
+                  style={{ margin: 0, padding: '7px 14px', fontSize: 13 }}
+                  disabled={answerWaiting.isPending}
+                  onClick={() => answerWaiting.mutate({ id: person.id, letIn: true })}
+                >
+                  Let them in
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/*
         * THE PILLS SAID "ADMIN" AND STOPPED THERE.
         *
@@ -465,7 +543,14 @@ export function OrgMembersPage() {
                     <span style={{
                       fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
                       background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)', border: '1px solid var(--gw-blue-b)',
-                    }}>{iAmTheOwner ? 'You, and you hold this account' : 'You'}</span>
+                    /*
+                     * "You, and you hold this account" was reported as a strange way to frame it,
+                     * and it is: two facts bolted together with a comma, one of them phrased as
+                     * though holding the account were a second identity. The other row already
+                     * says "Holds this account" about somebody else, so this only needs to say the
+                     * same thing about you.
+                     */
+                    }}>{iAmTheOwner ? 'You · account holder' : 'You'}</span>
                   ) : m.id === ownerId ? null : (
                     <select
                       value={m.role}

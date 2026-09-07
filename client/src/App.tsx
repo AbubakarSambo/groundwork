@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
-import { MARKETING_URL } from '@/lib/marketing'
+import { MARKETING_URL, MARKETING_URL_WAS_CONFIGURED, thisIsTheProductionApp } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
@@ -75,8 +75,10 @@ import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
+import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
+import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
 import type { JSX } from 'react'
 import type { User } from '@/types'
 
@@ -186,6 +188,46 @@ function RequireOrgSetup({ children }: { children: JSX.Element }) {
   return children
 }
 
+/**
+ * WHAT THE ROOT SHOWS WHEN THERE IS NO MARKETING SITE TO SEND SOMEBODY TO.
+ *
+ * Deliberately not a copy of the marketing page. It is the two things somebody at the root of a
+ * non-production build actually wants - sign in, or start a check-in without an account - plus the
+ * one sentence that stops them mistaking it for the live product.
+ */
+function AFrontDoorOfItsOwn() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 420 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 12 }}>
+          GROUNDWORK
+        </div>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 8px', letterSpacing: '-.02em' }}>
+          This is not the live site.
+        </h1>
+        <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>
+          It is a test build of the product, with its own database. An account from the live site does
+          not work here.
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <a
+            href="/start"
+            style={{ display: 'inline-block', background: 'var(--gw-navy)', color: 'white', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+          >
+            Start a check-in
+          </a>
+          <a
+            href="/auth"
+            style={{ display: 'inline-block', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+          >
+            Sign in
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const user = useAuthStore(s => s.user)
@@ -203,8 +245,55 @@ function RootRoute() {
      * deliberate and load-bearing: an env var set to an empty string is the case that produced a
      * `href=""` logo, which looked like a working link and reloaded the page.
      */
+    /**
+     * AND NOT ACROSS ENVIRONMENTS.
+     *
+     * `MARKETING_URL` defaults to the production domain when nothing sets it, and nothing sets it on
+     * staging - there is no staging marketing site to set it to. So the root of staging threw people
+     * onto the LIVE site, where they would sign in against production data believing they were
+     * testing. Reported as "staging.myground.work is a blank white page": the white was this
+     * component drawing nothing, and the part after the white was worse than the white.
+     *
+     * A build that has not been told where its own marketing site is does not guess. It shows its own
+     * front door instead - sign in, or start a check-in, which is the whole product from a standing
+     * start - and says plainly that it is not the live site.
+     */
+    if (!MARKETING_URL_WAS_CONFIGURED && !thisIsTheProductionApp()) {
+      return <AFrontDoorOfItsOwn />
+    }
     window.location.replace(MARKETING_URL)
-    return null
+    /*
+     * NOT `null`, WHICH IS A WHITE PAGE.
+     *
+     * Reported as "staging.myground.work is a blank white page", and that is exactly what this is:
+     * a redirect is asked for and nothing is drawn while it happens. When it is quick nobody sees
+     * this; when the destination is slow, blocked by an extension, or offline, the whole product is
+     * a blank screen with no explanation and no way forward. A person cannot tell that apart from
+     * something being broken - and on staging it is worse, because the destination is a DIFFERENT
+     * SITE and they may not have meant to leave.
+     *
+     * So it says where it is going and gives a link that works without JavaScript finishing.
+     */
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 380, textAlign: 'left' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 10 }}>
+            GROUNDWORK
+          </div>
+          <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px' }}>
+            Taking you to <strong>{MARKETING_URL.replace(/^https?:\/\//, '')}</strong>. If nothing
+            happens, follow the link.
+          </p>
+          <p style={{ margin: 0 }}>
+            <a href={MARKETING_URL} style={{ color: 'var(--gw-navy)', fontSize: 14.5 }}>Continue →</a>
+            {' · '}
+            {/* The way back into the product itself, for somebody who landed here and wanted to
+                sign in rather than read about it. */}
+            <a href="/auth" style={{ color: 'var(--gw-sub)', fontSize: 14.5 }}>Sign in</a>
+          </p>
+        </div>
+      </div>
+    )
   }
   /**
    * Signed in, the root IS your grounds - her ask, and it was already true. Worth stating rather
@@ -300,6 +389,10 @@ export default function App() {
                 step anyone completes. */}
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
+            {/* PUBLIC, because the person this is for has not signed up. The pricing page's three
+                paid services all ended at a mailto, which does nothing without a configured mail
+                client - see TalkToUsPage. */}
+            <Route path="/talk-to-us" element={<TalkToUsPage />} />
             <Route path="/billing/checkout" element={<RequireAuth><PaymentPage /></RequireAuth>} />
             <Route path="/billing/callback" element={<RequireAuth><BillingCallbackPage /></RequireAuth>} />
             {/*
@@ -394,6 +487,11 @@ export default function App() {
                 redirect to an externally-configured marketing URL - if that
                 URL doesn't resolve, silently redirecting here would strand the
                 visitor on a blank tab with no way forward. */}
+            {/* THE LINKS ON OUR MAIL LAND HERE. Public by necessity: somebody who wants the
+                mail to stop must not need an account to say so, and the unsubscribe link had been
+                pointing at a route that did not exist, so it drew the not-found page below. */}
+            <Route path="/unsubscribe/:token" element={<StopMailPage which="unsubscribe" />} />
+            <Route path="/stop-reminders/:token" element={<StopMailPage which="stop-reminders" />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </PageCrash>

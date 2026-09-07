@@ -77,6 +77,21 @@ describe('the setup flow asks one thing at a time', () => {
     onAPaidPlan: false, describingOwnSituation: false, billingSettledAndFree: true, ...o,
   })
 
+  it('asks everybody for the brief, because everybody here writes their own context', () => {
+    /*
+     * THIS USED TO BE TWO TESTS ABOUT A SETTER, AND THE SETTER IS GONE.
+     *
+     * Step 1's third answer - "Someone else sets the context" - skipped both the description and
+     * the brief, since asking somebody to write a brief about a situation they had just said was
+     * not theirs is the wrong question. Her call removed that answer, so the skip has nobody left
+     * to apply to and the brief is the last step for everyone again.
+     */
+    const own = seen({ describingOwnSituation: true })
+    expect(own).toContain(STAGE.brief)
+    expect(own).toContain(STAGE.describe)
+    expect(own[own.length - 1]).toBe(STAGE.brief)
+  })
+
   it('skips the free-text step when a card already said what this is', () => {
     expect(seen({ describingOwnSituation: false })).not.toContain(STAGE.describe)
     expect(seen({ describingOwnSituation: true })).toContain(STAGE.describe)

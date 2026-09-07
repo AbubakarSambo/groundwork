@@ -25,6 +25,10 @@ const MOCK_USAGE = { emit: () => Promise.resolve() } as any;
 
 function makeService(prismaOverrides: any) {
   const base: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(), findFirst: jest.fn() },
     report: { update: jest.fn(), upsert: jest.fn() },
     reportActivation: { findUnique: jest.fn(), upsert: jest.fn(), findMany: jest.fn() },
@@ -61,6 +65,10 @@ describe('GW-PRI-ACT-01 - get() returns stub before participant activates', () =
       report: releasedReport,
     };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: {
         findUnique: jest.fn(async () => ({ status: ReportActivationStatus.PENDING })),
@@ -80,6 +88,10 @@ describe('GW-PRI-ACT-01 - get() returns stub before participant activates', () =
       report: releasedReport,
     };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: { findUnique: jest.fn(async () => null) },
     };
@@ -100,6 +112,10 @@ describe('GW-PRI-ACT-02 - initiator bypasses activation gate', () => {
       report: releasedReport,
     };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: { findUnique: jest.fn() },
     };
@@ -121,6 +137,10 @@ describe('GW-PRI-ACT-03 - get() returns full content after ACTIVATED', () => {
       report: releasedReport,
     };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: {
         findUnique: jest.fn(async () => ({ status: ReportActivationStatus.ACTIVATED })),
@@ -143,6 +163,10 @@ describe('GW-PRI-ACT-04 - activate() blocked before release', () => {
       report: unreleased,
     };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
     };
     const service = makeService(prisma);
@@ -157,6 +181,10 @@ describe('GW-PRI-ACT-04 - activate() blocked before release', () => {
       report: releasedReport,
     };
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
     };
     const service = makeService(prisma);
@@ -175,6 +203,10 @@ describe('GW-PRI-ACT-05 - activate() writes activation row', () => {
     };
     const upserted: any[] = [];
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
       reportActivation: {
         upsert: jest.fn(async (args: any) => { upserted.push(args); return {}; }),
@@ -195,6 +227,10 @@ describe('GW-PRI-ACT-05 - activate() writes activation row', () => {
 describe('GW-PRI-ACT-06 - getActivationStatus.allActivated', () => {
   it('is false when only one party has activated', async () => {
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       reportActivation: {
         findMany: jest.fn(async () => [
           { participantId: 'p1', status: ReportActivationStatus.ACTIVATED },
@@ -211,6 +247,10 @@ describe('GW-PRI-ACT-06 - getActivationStatus.allActivated', () => {
 
   it('is true when all parties have activated', async () => {
     const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
       reportActivation: {
         findMany: jest.fn(async () => [
           { participantId: 'p1', status: ReportActivationStatus.ACTIVATED },

@@ -10,11 +10,16 @@ import { ConversationService } from '../conversation';
 import { CheckInStatus } from '@prisma/client';
 
 /**
- * Inbound WhatsApp webhook. Meta calls GET once to verify the endpoint, then
- * POSTs every inbound message here. Both routes are unauthenticated by
- * necessity (Meta cannot hold a Groundwork session token) - GET is guarded by
- * the shared verify token, POST trusts Meta's payload shape (add X-Hub-
- * Signature-256 verification before going live with real traffic).
+ * Inbound WhatsApp webhook. Meta calls GET once to verify the endpoint, then POSTs every inbound
+ * message here. Both routes are unauthenticated by necessity — Meta cannot hold a Groundwork
+ * session token — so each carries its own proof: GET is guarded by the shared verify token, and
+ * POST verifies `X-Hub-Signature-256` over the raw body before a single field is read.
+ *
+ * THAT LAST SENTENCE USED TO READ "POST trusts Meta's payload shape (add X-Hub-Signature-256
+ * verification before going live with real traffic)". The verification was implemented and this
+ * comment was not updated, so an audit of the code found an unsigned webhook that had in fact been
+ * signed for some time. A comment that understates the code is not harmless: it is what somebody
+ * reads when deciding whether this endpoint is safe to expose.
  */
 @Public()
 @Controller('webhooks/whatsapp')

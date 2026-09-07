@@ -14,6 +14,7 @@ import { Sec } from '@/components/gw/kit'
 import { scrollTo } from '@/lib/scroll-to'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -279,7 +280,7 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
  */
 export function withoutPickedOpener(
   history: { role: string; content: string }[],
-  role: 'a_party' | 'setting_up_for_others' | 'someone_else_runs_it' | null,
+  role: 'a_party' | 'setting_up_for_others' | null,
 ): { role: string; content: string }[] {
   if (!role || role === 'a_party') return history
   const picked = new Set(SITUATION_CARDS.map((c) => c.message))
@@ -308,7 +309,14 @@ export function withoutPickedOpener(
  */
 export function summariseSetup(
   sels: { initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[] },
-  role: 'a_party' | 'setting_up_for_others' | 'someone_else_runs_it' | null,
+  /**
+   * KEPT, THOUGH NOTHING BRANCHES ON IT ANY MORE, and this is the note explaining why rather than
+   * an oversight. It used to excuse every gap for a non-party, because a lead was going to be
+   * invited to write the context. That hand-off is gone and everybody here writes their own, so the
+   * gaps are the same for both answers. The parameter stays because the caller has the value and
+   * the day this list needs to differ again it must differ HERE, not in the caller.
+   */
+  role: 'a_party' | 'setting_up_for_others' | null,
   sessions: number,
   /**
    * THE SERVER DECIDES THIS, NOT A SECOND COPY OF THE RULE HERE.
@@ -330,11 +338,18 @@ export function summariseSetup(
   if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.join('; ') })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
 
-  /**
-   * A coordinator is asked for one thing and it is collected by the next step, so there is nothing
-   * to list as outstanding here. Everything else belongs to the lead.
+  /*
+   * EVERYBODY HERE OWES THE SAME THINGS NOW, AND THIS USED TO EXCUSE HALF OF THEM.
+   *
+   * It returned no gaps for anyone who was not a party, because the non-party answers handed the
+   * check-in to a lead and the situation was the lead's to describe. That hand-off is gone: the
+   * remaining non-party answer is "I write what this is about, other people check in against it",
+   * so the context is theirs and a missing "why now" is a real gap, not an invented debt.
+   *
+   * Only the roster is still forgiven, and only because the server says so via `needsPeople` -
+   * somebody setting this up for a team may genuinely not have the names yet, and the screen says
+   * they can add them afterwards.
    */
-  if (role !== 'a_party') return { have, missing }
 
   /**
    * Said ONCE, and with the consequence attached. It was printed twice - a terse line here and a
@@ -344,6 +359,7 @@ export function summariseSetup(
     missing.push('who is in it, by name - until they are on the record there is nobody to check in with, and nothing can be expected of anyone by name')
   }
   if (!sels.goals?.length) missing.push('what you want out of it')
+  void role
   return { have, missing }
 }
 
@@ -481,7 +497,20 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'off',
+    /*
+     * 'person', NOT 'off', AND THE TWO PICKERS DISAGREED ABOUT IT.
+     *
+     * This list filed PIP under "Something is off"; the catalogue files it under "A decision about
+     * one person", and the signed-in picker reads the catalogue. So the same situation sat in a
+     * different place depending on which door you came through, and somebody who found it once
+     * could not find it again.
+     *
+     * The catalogue wins because it is the one both surfaces can read, and because its answer is
+     * the better one: "Something is off" is about a gap - against an agreement, between two people,
+     * after an event - and a PIP is not a gap, it is a decision being made about a named person
+     * who is entitled to give their own account of it. That is the group's whole heading.
+     */
+    group: 'person',
     scenario: 'PIP',
     label: SCENARIO_LABELS.PIP,
     detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
@@ -692,7 +721,28 @@ export const SITUATION_CARDS = [
  * The labels above are now `SCENARIO_LABELS[key]` for the same reason: this page hardcoded its own
  * and was the only surface that still carried the retired names months after the rename.
  */
-export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GROUPS.map(
+/**
+ * The first thing the entry chat says, and the thing it says again if somebody goes back to the
+ * cards. Lifted out of the effect that used to own it so that "pick a different situation" can
+ * restore the same opening rather than a second wording of it.
+ */
+export const THE_OPENING_QUESTION =
+  /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
+     were both true of a long scrolling list with the catch-all last, and both wrong the moment it
+     became one group at a time with describing your own at the top. */
+  'What brings you here? Describe it in your own words, or pick the situation that fits.'
+
+/*
+ * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
+ *
+ * 'open' holds the describe-your-own card, and that card is the first thing on the picker now
+ * rather than a group of its own - so leaving it in the dropdown gives a heading with nothing
+ * under it. It was the DEFAULT selection, so the picker opened showing "Not sure yet (0)" and no
+ * cards at all: a list of situations that appeared to have none. Caught by looking at it.
+ */
+export const SITUATION_GROUPS: { key: string; heading: string }[] = SCENARIO_GROUPS.filter(
+  (g) => g.key !== 'open',
+).map(
   (g) => ({ key: g.key, heading: g.heading }),
 )
 
@@ -761,6 +811,15 @@ export function EntryChatPage() {
 
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
+  /**
+   * WHICH GROUP THE PICKER IS SHOWING.
+   *
+   * The set-up wizard was rebuilt to her instruction - describe-your-own first, then a dropdown,
+   * cards changing as you pick - and this picker was left on the old scrolling list. Two doors into
+   * the same twenty-two situations, behaving differently. Reported as a regression, and it is one
+   * in the sense that matters: the two screens agreed yesterday and do not today.
+   */
+  const [situationGroup, setSituationGroup] = useState<string>(SITUATION_GROUPS[0]?.key ?? '')
   /** Which card has its examples open. One at a time, so the grid never doubles in height. */
   const [openCardInfo, setOpenCardInfo] = useState<string | null>(null)
   // Once the user dismisses the natural-close banner, never re-show it
@@ -799,6 +858,29 @@ export function EntryChatPage() {
   function handleClearSession() {
     clearEntrySession()
     window.location.reload()
+  }
+
+  /**
+   * BACK TO THE CARDS, WITHOUT THROWING EVERYTHING AWAY.
+   *
+   * The cards render only while `!pickedSituation` and the history is one turn long, so picking a
+   * situation removed them for good. The only route back was "Start over", which calls
+   * `clearEntrySession()` and reloads: it discards the organisation name, the check-in name,
+   * anybody queued to be invited, and the whole conversation. So somebody who clicked the wrong
+   * card - or realised two questions in that this is a contract, not a new hire - had to choose
+   * between the wrong situation and typing everything again. Retrying was the expensive option,
+   * which is backwards: nothing has been set up yet.
+   *
+   * The TRANSCRIPT does go, and that is deliberate rather than lazy. Two questions and two answers
+   * about a new hire are actively misleading context for a contract review, and the classifier
+   * reads that history. What is kept is everything that is not about the situation.
+   */
+  function pickADifferentSituation() {
+    setPickedSituation(null)
+    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
+    setOnboardingSelections(defaultSels)
+    setOnboardingReady(false)
+    setInput('')
   }
 
   const [showEndConfirm, setShowEndConfirm] = useState(false)
@@ -852,7 +934,7 @@ export function EntryChatPage() {
    * Undefined is a real state, not a failure: the model may not have got a clear answer. Then the
    * fork asks, exactly as it did before.
    */
-  const [yourRole, setYourRole] = useState<'a_party' | 'setting_up_for_others' | 'someone_else_runs_it' | null>(null)
+  const [yourRole, setYourRole] = useState<'a_party' | 'setting_up_for_others' | null>(null)
   /**
    * SETUP FINISHED WITHOUT ANYBODY NAMED. Hafsah's call: let them through, tell them, they add the
    * people afterwards.
@@ -863,13 +945,13 @@ export function EntryChatPage() {
    * questions with no people in it.
    */
   const [needsPeople, setNeedsPeople] = useState(false)
-  const [leadName, setLeadName] = useState('')
-  const [leadEmail, setLeadEmail] = useState('')
-  const [leadNote, setLeadNote] = useState('')
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState('')
+
+  /* The honeypot the API has always accepted and no form has ever rendered. */
+  const trap = useTheTrap()
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteNote, setInviteNote] = useState('')
   const [inviteAdded, setInviteAdded] = useState<string[]>([])
@@ -946,12 +1028,10 @@ export function EntryChatPage() {
       // Restore existing session
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
-      // Coordinator/lead path survives reload: restore the fork + lead details.
-      if ((saved as any).flowPath === 'lead') {
-        setFlowPath('lead')
-        const l = (saved as any).lead
-        if (l) { setLeadEmail(l.email ?? ''); setLeadName(l.name ?? ''); setLeadNote(l.contextNote ?? '') }
-      }
+      /* "Others check in, I read what comes back" survives a reload. There are no lead details to
+         restore any more - a saved session from before that answer was removed still carries them,
+         and they are simply not read: the ground it commits to has no lead to invite. */
+      if ((saved as any).flowPath === 'lead') setFlowPath('lead')
       if (saved.email) setEmail(saved.email)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
@@ -1184,16 +1264,23 @@ export function EntryChatPage() {
   // have a session, so nothing pretends they did. The lead (captured below)
   // is invited at commit time via the for-lead machinery and becomes the
   // initiator once they confirm.
-  function submitLeadCapture() {
-    const email = leadEmail.trim()
-    if (!email.includes('@')) return
+  /**
+   * THEY WRITE THE CONTEXT, OTHER PEOPLE CHECK IN AGAINST IT.
+   *
+   * This was `submitLeadCapture`, and it took a lead's email so that person could be invited to
+   * confirm a context they had not written. What is left is the honest half of it: nothing pretends
+   * this person had a session, because they did not, and the next screen is the one that invites
+   * the people who will actually give the accounts.
+   */
+  function othersGiveTheAccounts() {
+    setFlowPath('lead')
     setOnboardingStep(ONBOARDING_STEPS + 1)
     setPhase('checkin')
     setClosed(true)
     setShowSave(true)
     saveSession({
       scenario, history: [], closed: true, onboardingStep: ONBOARDING_STEPS, onboardingSelections,
-      flowPath: 'lead', lead: { email, name: leadName.trim() || undefined, contextNote: leadNote.trim() || undefined },
+      flowPath: 'lead',
     } as any)
   }
 
@@ -1247,16 +1334,19 @@ export function EntryChatPage() {
         setNeedsPeople(!!res.needsPeople)
         if (res.extracted.yourRole) {
           setYourRole(res.extracted.yourRole)
-          /**
-           * The two non-party answers both lead to the same place: somebody else gives the first
-           * account. Advancing straight there is not skipping a question, it is not repeating one -
-           * what follows ("Who runs the first check-in?") is a NEW question they have not answered.
+          /*
+           * THIS USED TO JUMP STRAIGHT TO "WHO RUNS THE FIRST CHECK-IN?", AND THAT QUESTION IS GONE.
            *
-           * The party case is deliberately NOT auto-advanced: `startSelfPath` opens the check-in
-           * immediately, and launching it without a click removes the one beat where somebody learns
-           * what is about to happen to them.
+           * There were two non-party answers and both handed the check-in to a lead, who was then
+           * emailed to confirm a context they had not written and could not read until they
+           * accepted. Her call: "I think we should remove the whole org admin setting a context and
+           * handing it over to a lead. It seems like it is confusing."
+           *
+           * There is one non-party answer left and it does not hand anything over: you write what
+           * this is about, other people check in against it, and you read what comes back. That
+           * needs no extra question, so nothing is auto-advanced - the fork below says back what
+           * they said and the click starts it.
            */
-          if (res.extracted.yourRole !== 'a_party') setFlowPath('lead')
         }
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
@@ -1362,7 +1452,7 @@ export function EntryChatPage() {
    */
   useEffect(() => {
     if (phase !== 'onboarding') return
-    const INTRO = `What brings you here? Scroll for the full list of situations, pick the one that fits, or describe your own at the bottom.`
+    const INTRO = THE_OPENING_QUESTION
     // If URL params pre-populate, inject as first user message
     if (urlInitial) {
       setOnboardingHistory(prev => {
@@ -1490,13 +1580,15 @@ export function EntryChatPage() {
          * record - a figure the report shows to both parties.
          */
         documents: uploadedDoc ? [{ fileName: uploadedDoc.name, content: uploadedDoc.content }] : undefined,
-        // Coordinator/lead path: the lead runs the first check-in; the
-        // onboarding context travels as the brief (there is no transcript).
-        ...(flowPath === 'lead' && leadEmail.trim().includes('@')
-          ? {
-              lead: { email: leadEmail.trim(), name: leadName.trim() || undefined, contextNote: leadNote.trim() || undefined },
-              brief: composeLeadBrief(onboardingSelections) || undefined,
-            }
+        /*
+         * NOBODY IS HANDED THIS ANY MORE, so no `lead` goes with it. What still travels is the
+         * BRIEF: this person wrote the context and gave no account of their own, so the onboarding
+         * is the only thing the people who do check in have to work from. Sending it was always the
+         * useful half of the coordinator path; inviting somebody to confirm a context they had not
+         * written was the half she removed.
+         */
+        ...(flowPath === 'lead'
+          ? { brief: composeLeadBrief(onboardingSelections) || undefined }
           : {}),
       }
   }
@@ -1577,7 +1669,7 @@ export function EntryChatPage() {
     // same-browser mirror (and the legacy path for old links).
     const commitPayload = buildCommitPayload()
       try {
-      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history })
+      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history }, trap.filled)
       setEmailSent(true)
       if (res.draftToken) {
         setDraftToken(res.draftToken)
@@ -1874,12 +1966,40 @@ export function EntryChatPage() {
               <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
             </span>
           ) : (
-            <button
-              onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
-              style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-            >
-              {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
-            </button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {/*
+                * PICK A DIFFERENT SITUATION, which is the thing somebody actually wants.
+                *
+                * "Start over" throws away the organisation name, the check-in name, anybody queued
+                * to be invited and the conversation. Somebody who clicked the wrong card had to
+                * choose between the wrong situation and typing everything again - and nothing has
+                * been set up yet, so retrying should be the cheap option. Offered only while still
+                * choosing: once a check-in is running, the situation is what it is about.
+                */}
+              {/*
+                * THE CONDITION IS "THE CONVERSATION HAS BEGUN", NOT "A CARD WAS CLICKED".
+                *
+                * `pickedSituation` is component state and does not survive a reload, while the
+                * transcript does - so somebody who reloaded was in the worst state of all: the
+                * cards hidden because the history is longer than one turn, and no way back
+                * because the flag they had set was gone. Asking about the transcript covers the
+                * click and the reload with one question.
+                */}
+              {phase === 'onboarding' && onboardingHistory.length > 1 && (
+                <button
+                  onClick={pickADifferentSituation}
+                  style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  ← Pick a different situation
+                </button>
+              )}
+              <button
+                onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
+                style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
+              </button>
+            </span>
           )}
         </div>
       )}
@@ -1957,25 +2077,54 @@ export function EntryChatPage() {
                       descriptions stay, because recognising your own situation
                       matters MORE as the list gets longer. What was missing is
                       any signal that the first screen is not the whole set. */}
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8 }}>
-                    {SITUATION_CARDS.length} situations, grouped. Scroll for the rest, or{' '}
-                    <button
-                      onClick={() => setPickedSituation('other')}
-                      style={{ font: 'inherit', fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
-                    >describe your own</button>.
+                  {/* DESCRIBE YOUR OWN, FIRST. It used to sit at the bottom under "None of these?",
+                      which is the right words for the end of a list and the wrong ones for the top:
+                      nothing has come before it to be none of. Same order as /grounds/new. */}
+                  <button
+                    onClick={() => setPickedSituation('other')}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                      textAlign: 'left', padding: '14px 16px', borderRadius: 10,
+                      border: '1.5px solid var(--gw-navy)', background: 'white',
+                      cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>Describe your own situation</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
+                    </div>
+                    <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
+                  </button>
+
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 4 }}>
+                    Or select from the options below
                   </div>
+                  <select
+                    className="gw-select"
+                    value={situationGroup}
+                    onChange={(e) => setSituationGroup(e.target.value)}
+                    aria-label="Which kind of situation"
+                    style={{ marginBottom: 10 }}
+                  >
+                    {SITUATION_GROUPS.map(g => (
+                      <option key={g.key} value={g.key}>
+                        {g.heading} ({SITUATION_CARDS.filter(c => c.group === g.key).length})
+                      </option>
+                    ))}
+                  </select>
 
                   {/* One block per group, driven by SITUATION_GROUPS. This was
                       two hand-copied sixty-line blocks differing only by their
                       filter, which is how this picker fell eight cards behind
                       /grounds/new without anyone noticing. */}
-                  {SITUATION_GROUPS.map((group, gi) => {
+                  {/* ONE GROUP AT A TIME, chosen above. Every group at once is what the "scroll for
+                      the rest" line existed to apologise for. */}
+                  {SITUATION_GROUPS.filter(g => g.key === situationGroup).map((group) => {
                     const cards = SITUATION_CARDS.filter(c => c.group === group.key)
                     if (!cards.length) return null
-                    const last = gi === SITUATION_GROUPS.length - 1
+                    const last = true
                     return (
                       <div key={group.key}>
-                        <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4, fontWeight: 500 }}>{group.heading}</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
                           {cards.map(card => (
                             <div
@@ -2113,45 +2262,20 @@ export function EntryChatPage() {
                       </div>
                     )
                   })}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))', gap: 6 }}>
-                    {/* The describe-your-own option lives IN the grid, as a
-                        real choice.
-                        It used to be dashed-bordered, transparent, and greyed:
-                        the visual language of a DISABLED control, sat among
-                        white solid-bordered cards. It has always worked when
-                        clicked, but nothing said so - and this is the way in
-                        for anyone whose situation is not on the list, so it is
-                        the last card that should look switched off. Solid
-                        border and full-strength label now, like every other
-                        card; the tinted background is the only thing marking it
-                        as the catch-all rather than a situation of its own. */}
-                    {/* STILL HARD TO SEE, BECAUSE LOOKING LIKE THE OTHERS IS THE
-                        PROBLEM. The last fix made it look like every other card,
-                        which cured it reading as disabled and left it eighteenth
-                        in a scrolling list of near-identical tiles. Anyone whose
-                        situation is not on the list has to get all the way to the
-                        bottom and then notice that one of the tiles is different
-                        in kind rather than in topic.
-
-                        So it stops being a tile. Full width, an accent edge, an
-                        arrow, and a line that speaks to the person who has just
-                        read seventeen things and recognised none of them. */}
-                    <button
-                      onClick={() => setPickedSituation('other')}
-                      style={{
-                        gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 12,
-                        textAlign: 'left', padding: '14px 16px', borderRadius: 10,
-                        border: '1.5px solid var(--gw-navy)', background: 'white',
-                        cursor: 'pointer', fontFamily: 'inherit', marginTop: 4,
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>None of these? Describe your own situation</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Tell it in your own words. We work out the rest from what you say.</div>
-                      </div>
-                      <span style={{ fontSize: 16, color: 'var(--gw-navy)', flexShrink: 0 }}>&rarr;</span>
-                    </button>
-                  </div>
+                  {/*
+                    * THE DESCRIBE-YOUR-OWN CARD USED TO BE HERE, AT THE BOTTOM.
+                    *
+                    * Its whole history is people trying to make the last item in a list findable:
+                    * first it looked disabled, then it was made to look like every other card and
+                    * became eighteenth in a scroll of near-identical tiles, then it was given an
+                    * accent edge and an arrow. Each fix was right about the problem and could not
+                    * reach it, because the problem was the position.
+                    *
+                    * It is the first thing on the picker now, above the dropdown, and its words
+                    * changed with the move: "None of these?" is the right question at the end of a
+                    * list and the wrong one at the top, where nothing has come before it to be none
+                    * of.
+                    */}
                 </div>
               )}
 
@@ -2265,7 +2389,7 @@ export function EntryChatPage() {
                       : 'I am one of the people involved. Start my check-in now.'}
                   </button>
                   <button
-                    onClick={() => setFlowPath('lead')}
+                    onClick={othersGiveTheAccounts}
                     style={{
                       padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
                       border: '1px solid var(--gw-border)', background: 'white',
@@ -2273,58 +2397,19 @@ export function EntryChatPage() {
                     }}
                   >
                     {yourRole === 'a_party'
-                      ? 'Actually, someone else gives the accounts.'
-                      : 'Someone else is. I am setting this up for them.'}
+                      ? 'Actually, I do not check in. Others do.'
+                      : 'They do. I read what comes back.'}
                   </button>
                 </div>
               )}
 
-              {/* Lead capture (coordinator path): who runs the first check-in. */}
-              {onboardingReady && !onboardingLoading && flowPath === 'lead' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
-                  <div style={{
-                    background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
-                    borderRadius: '4px 16px 16px 16px', padding: '12px 14px', fontSize: 14, lineHeight: 1.65,
-                    boxShadow: '0 1px 3px rgba(0,0,0,.06)',
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: 2 }}>Who runs the first check-in?</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
-                      They'll be invited to confirm it and give the first account. You'll see the check-in as its coordinator.
-                    </div>
-                    <input
-                      type="text" placeholder="Their name (optional)" value={leadName}
-                      onChange={e => setLeadName(e.target.value)}
-                      style={{ width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
-                    />
-                    <input
-                      type="email" placeholder="their@email.com" value={leadEmail}
-                      onChange={e => setLeadEmail(e.target.value)}
-                      style={{ width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
-                    />
-                    <textarea
-                      placeholder="Anything the lead should know? (optional)" value={leadNote}
-                      onChange={e => setLeadNote(e.target.value)}
-                      style={{ width: '100%', minHeight: 52, padding: '9px 11px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }}
-                    />
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button
-                        onClick={submitLeadCapture}
-                        disabled={!leadEmail.trim().includes('@')}
-                        style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: leadEmail.trim().includes('@') ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: leadEmail.trim().includes('@') ? 1 : 0.55 }}
-                      >
-                        Continue →
-                      </button>
-                      <button
-                        onClick={() => setFlowPath(null)}
-                        style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-                      >
-                        Actually, this is my situation
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
+              /*
+               * THE LEAD-CAPTURE PANEL WAS HERE, and it is gone with the answer that reached it.
+               * It asked for a name, an email and a note, then invited that person to confirm a
+               * situation somebody else had written. Whoever knows what a check-in is about is the
+               * person who should set it up; anybody who only needs to watch is added as oversight
+               * in the check-in's own settings, once it exists.
+               */
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
                   Starting your check-in…
@@ -3064,6 +3149,7 @@ export function EntryChatPage() {
                   onChange={e => setOrgName(e.target.value)}
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
                 />
+                {trap.field}
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}

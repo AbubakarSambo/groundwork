@@ -1,0 +1,354 @@
+[
+ {
+  "group": "chat responsiveness",
+  "issue": "Every chat turn takes seconds with nothing on screen saying why",
+  "evidence": "99 of 100 journeys waited over 4s for a reply; 17s seen once",
+  "severity": "high",
+  "journeys": 99,
+  "state": "fixed"
+ },
+ {
+  "group": "completion",
+  "issue": "Finishing a check-in takes seconds with no sign it is working",
+  "evidence": "CORRECTED: it IS announced \u2014 a step list saying it takes about half a minute. The API-level runner could not see the screen.",
+  "severity": "medium",
+  "journeys": 99,
+  "state": "corrected"
+ },
+ {
+  "group": "completion",
+  "issue": "A slow reply plus a second press puts the same answer in the record twice",
+  "evidence": "73 journeys; 107 stored check-ins carry a duplicated answer",
+  "severity": "high",
+  "journeys": 73,
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "Finishing and looking says \"Report not found\" \u2014 the sentence for a thing that does not exist",
+  "evidence": "64 journeys, all five personas",
+  "severity": "high",
+  "journeys": 64,
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "The report takes tens of seconds after the last person finishes, unannounced",
+  "evidence": "FIXED: the page polls while the server says the report is being written, and says it is checking.",
+  "severity": "medium",
+  "journeys": 56,
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "A participant sees a report with nothing in it and a button to reveal it, with no explanation of the button",
+  "evidence": "FIXED: there was no button \u2014 `reportsApi.activate` had no caller anywhere. There is now a screen explaining the exchange and a control that performs it.",
+  "severity": "medium",
+  "journeys": 13,
+  "state": "fixed"
+ },
+ {
+  "group": "participants",
+  "issue": "Something the organiser expected to do was refused",
+  "evidence": "journeys 40, 46, 72",
+  "severity": "medium",
+  "journeys": 3,
+  "state": "open"
+ },
+ {
+  "group": "completion",
+  "issue": "Finishing too early shows a refusal before the composer re-opens",
+  "evidence": "journeys 46, 72",
+  "severity": "low",
+  "journeys": 2,
+  "state": "open"
+ },
+ {
+  "group": "setup chat",
+  "issue": "Coming back to a setup conversation part-way through did not work",
+  "evidence": "CORRECTED: not a resume defect. Driven five times, 5/5 resumed cleanly \u2014 the 503 was a transient model failure. And the recovery is already sound: a failed turn puts the words back in the composer with an honest message, so an unlucky blip costs one retry rather than the conversation.",
+  "severity": "high",
+  "journeys": 1,
+  "state": "corrected"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "An invitation email offers no way to stop receiving them",
+  "evidence": "\"P2 invited you to check in on: \u2026\" \u2014 no unsubscribe or \"not me\" line",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "\"Set a password for Groundwork\" opens \"Hi ,\" with no name and is two sentences long",
+  "evidence": "the account made from an address alone has no first name",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "A check-in notification never says what Groundwork is",
+  "evidence": "FIXED: the notice now says what the admin can and cannot see \u2014 who checked in and the report, never what anybody wrote.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "The report-ready email never says what Groundwork is",
+  "evidence": "FIXED: it now says what Groundwork is, names the check-in, and states that the record does not quote anybody.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "An internal scenario code appears in email subjects people read",
+  "evidence": "CORRECTED: my own fixture. The harness names its grounds `J6 NEW_HIRE`; the product uses the label the lead chose. Not a product defect.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "corrected"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "Only 7 distinct email shapes were sent across 910 emails",
+  "evidence": "the whole product speaks in seven sentences",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "224 of 237 check-ins never say who will read what somebody writes",
+  "evidence": "CORRECTED then FIXED: measured from the transcripts, but the SCREEN does say it \u2014 a first-session explainer plus a header line. The real defect underneath: the explainer was gated on sessionNumber === 1, so anybody added halfway through was never shown it. That gate is fixed.",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "The same question is asked twice in one check-in",
+  "evidence": "2 of 237",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "The word \"ground\" reached somebody reading their own check-in",
+  "evidence": "CORRECTED: not a leak. The one instance was \"setting the ground for the new Delivery Lead\" \u2014 ordinary English, and oneWordForTheThing deliberately excludes \"the ground for\" because converting it would put a nonsense sentence in somebody's record. My grep for the word was cruder than the product's own rule.",
+  "severity": "low",
+  "journeys": null,
+  "state": "corrected"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "69 of 92 reports never use the word alignment, which the product is about",
+  "evidence": "read from the reports",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "36 of 92 reports are under 200 characters",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "39 of 145 reports have no agreements recorded",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "33 of 145 reports have no divergences \u2014 the one thing two people cannot get from talking",
+  "evidence": "read from the reports",
+  "severity": "high",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "No report has a closing read, and nothing tells the reader one arrives only after a closing session",
+  "evidence": "145 of 145 empty; the field fills only when every party has a final session",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "27 of 145 reports were written and never released, so they were shown to nobody",
+  "evidence": "CORRECTED: not a defect. Release is a deliberate admin press (\"report ready \u2014 you release it\"), and the audit runner never pressed it. Worth noting that the shared report is readable before release, so what release means is unclear to both sides.",
+  "severity": "high",
+  "journeys": null,
+  "state": "corrected"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "16 documents were attached and 1 report of 145 mentions one",
+  "evidence": "FIXED twice over: the report carries a computed \"what this record rests on\" per reader, and documents everybody can see are NAMED in the synthesis corpus with what was read from them. Driven: the report says \"the offer letter, which they state was signed by both, gives sign-off authority to the head of delivery\".",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "Every check-in ran with no cadence, so nothing schedules a second round and nobody is told there will not be one",
+  "evidence": "read from the check-ins",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "examined artefacts",
+  "issue": "27 check-ins are still waiting on somebody with no deadline visible anywhere",
+  "evidence": "read from the check-ins",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "participants",
+  "issue": "Inviting the same person twice sent a second invitation without saying they were already invited",
+  "evidence": "second invite answered 201; 2 invitations reached them",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "first check-in setup",
+  "issue": "A mistyped address was refused with the validation string \"email must be an email\"",
+  "evidence": "from the setup screen",
+  "severity": "low",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "participant check-in chat",
+  "issue": "There is a ceiling of 20 answers and it arrives as a refusal mid-sentence",
+  "evidence": "FIXED: counts down from three answers left; the refusal says the record is safe and offers finishing.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "Before anybody has answered, the report page said the report does not exist",
+  "evidence": "404 \"Report not found\"",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "signup/sign-in",
+  "issue": "A wrong password on an existing account replies that a set-password link was emailed, which both confirms the address is registered and answers a question nobody asked",
+  "evidence": "FIXED: one answer at the door. Driven \u2014 an unknown address and a registered one now produce byte-identical answers, with the reason logged for us only.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "navigation/cross-system UX",
+  "issue": "Being signed out is reported as \"Invalid or expired token\" rather than \"sign in again\"",
+  "evidence": "FIXED: a 401 now goes to sign-in with why and where they were, and the page says nothing is lost.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "visual/responsive UX",
+  "issue": "On mobile the floating Feedback button covers a control in the setup header",
+  "evidence": "FIXED: on a chat page the button is positioned from the top, which is the header row. Moved below it on narrow screens; checked at 375px, the control is visible.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "visual/responsive UX",
+  "issue": "On mobile the floating ? button sits on top of the situation cards",
+  "evidence": "375\u00d7812, /start and /grounds",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "email UX",
+  "issue": "No email of the 110 names the organisation the check-in belongs to, so a recipient cannot tell which company is asking",
+  "evidence": "FIXED on the two that most need it (report-ready and the check-in notice). The invitation already named the person inviting them.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "email UX",
+  "issue": "54 of 110 emails never say what to do next",
+  "evidence": "PARTLY FIXED: the shared footer says what the product is and who sees what, and the two mails that most needed a next step now carry one. Not audited across all 42 senders.",
+  "severity": "medium",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "email UX",
+  "issue": "54 of 110 emails never say who will see what the reader writes",
+  "evidence": "FIXED: appended by the sender to every mail about the work, and deliberately absent from the way-back-in mails. Driven: present on \"somebody has checked in\", absent from \"activate your account\".",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "documents",
+  "issue": "The uploader is handed back id, name, mimeType, uploadedAt and an assessment \u2014 and no visibility, so nobody can tell who will see the file they just attached",
+  "evidence": "FIXED: both upload paths now select the column, and the answer is a sentence rather than the enum \u2014 honouring the CONTEXT_ENABLED flag so it cannot contradict the read path.",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "individual report",
+  "issue": "A finished check-in has no summary of its own: somebody who answered for ten minutes is handed nothing until everybody else has answered too",
+  "evidence": "CORRECTED then FIXED: not missing \u2014 it arrives about 22 seconds after finishing, because it is built fire-and-forget so a model failure cannot block completion. Driven and timed. The endpoint now says which of the three states it is in rather than returning a bare null.",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ },
+ {
+  "group": "notifications",
+  "issue": "Where somebody is told is set per organisation (Slack, then Teams), so an individual cannot choose and every participant is emailed regardless",
+  "evidence": "workspace_notifiers is keyed on organization_id",
+  "severity": "medium",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "participant check-in chat",
+  "issue": "A reply asked three questions in one turn",
+  "evidence": "seen once, with the text captured",
+  "severity": "low",
+  "journeys": null,
+  "state": "open"
+ },
+ {
+  "group": "signup/sign-in",
+  "issue": "24 of 110 emails opened \"Hi ,\" because the account was created from an address with no name",
+  "evidence": "read from the log",
+  "severity": "high",
+  "journeys": "",
+  "state": "fixed"
+ },
+ {
+  "group": "shared report",
+  "issue": "A report addressed the reader as \"you\" and kept the third-person verb: \"You is concerned this sign-off will drift\"",
+  "evidence": "FIXED: found by reading the output of the document proof. The four irregulars plus a closed list of reporting verbs; a general rule would occasionally mangle a real sentence.",
+  "severity": "high",
+  "journeys": null,
+  "state": "fixed"
+ }
+]

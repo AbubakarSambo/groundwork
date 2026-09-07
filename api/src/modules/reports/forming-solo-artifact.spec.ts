@@ -49,6 +49,10 @@ function makeUnreleasedReport(groundId = 'g1') {
 
 function makeService(groundRow: any) {
   const prisma: any = {
+    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
+       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
+       that list exists to stop. */
+    groundDocument: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(async () => groundRow), findFirst: jest.fn(async () => groundRow) },
     reportActivation: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
   };

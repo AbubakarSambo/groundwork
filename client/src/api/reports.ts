@@ -9,7 +9,9 @@ export type ActivationStatus = {
 
 export const reportsApi = {
   get: (groundId: string) =>
-    apiClient.get<Report & { activated?: boolean }>(`/grounds/${groundId}/report`, { skipNotFoundToast: true }).then(r => r.data),
+    /* The 404 now carries the reason there is no report yet, and the page renders it. A toast
+       saying "Not found" over the top of that sentence contradicts it. */
+    apiClient.get<Report & { activated?: boolean }>(`/grounds/${groundId}/report`, { skipNotFoundToast: true, skipForbiddenToast: true } as any).then(r => r.data),
 
   /**
    * WHAT THIS REPORT SAID AT THE END OF EACH ROUND, and the same rounds read as a sequence.

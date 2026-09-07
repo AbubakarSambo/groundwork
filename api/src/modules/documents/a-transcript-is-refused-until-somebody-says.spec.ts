@@ -26,6 +26,10 @@ const svc = (content: string) => {
   s.assertParticipant = async () => ({ id: 'p1' });
   s.extractContent = async () => content;
   s.assessDocument = async () => null;
+  /* The upload response now says who can see the file, and that answer depends on the
+     CONTEXT_ENABLED flag — with it off, every document is private to its uploader whatever the
+     column says, and a sentence contradicting the read path would be worse than none. */
+  s.config = { get: () => false };
   s.prisma = { groundDocument: { create: async (a: any) => { written.push(a.data); return { id: 'd1', ...a.data }; } } };
   return { s, written };
 };

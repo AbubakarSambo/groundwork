@@ -50,6 +50,12 @@ export function stepsThisPersonSees(who: WhoIsSettingUp): number[] {
     ...(who.billingSettledAndFree ? [] : [STAGE.plan]),
     STAGE.timeline,
     STAGE.people,
+    /*
+     * THE BRIEF IS BACK FOR EVERYBODY, because the person it was skipped for no longer exists.
+     * It came out for "Someone else sets the context" - asking a setter to write a brief about a
+     * situation they had just said was not theirs. That answer is gone, so everybody on this step
+     * is writing their own context and the brief is theirs to write.
+     */
     STAGE.brief,
   ]
 }

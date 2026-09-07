@@ -37,8 +37,21 @@ function makeService(participant: any) {
   const update = jest.fn(async (a: any) => a);
   const prisma: any = {
     groundParticipant: { findUnique: jest.fn(async () => participant), findFirst: jest.fn(async () => participant), update },
-    ground: { findUnique: jest.fn(async () => ({ id: 'g1', organizationId: 'org1' })) },
-    user: { findUnique: jest.fn(async () => null), create: jest.fn(async () => ({ id: 'u1', email: participant.email, firstName: 'A', lastName: 'B', role: 'MEMBER', organizationId: 'org1', passwordHash: 'x' })) },
+    /* `initiatorId` because accept() now reads the inviter's role to decide whether the arrival
+       needs approving - see nobody-joins-your-company-by-being-invited-to-a-check-in.ts. */
+    ground: { findUnique: jest.fn(async () => ({ id: 'g1', organizationId: 'org1', initiatorId: 'admin1' })) },
+    organizationMembership: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
+    /* The queue. Present on the double so this file tests the acceptance rather than the absence
+       of a table - a missing model on a double fails as a TypeError, which says nothing. */
+    membershipRequest: { upsert: jest.fn(async () => ({})) },
+    user: {
+      findUnique: jest.fn(async ({ where }: any) =>
+        /* The inviter, looked up by id: an ADMIN of this org, so nobody in this file is queued and
+           every assertion below is about the invite link, which is what it is for. */
+        where?.id === 'admin1' ? { role: 'ADMIN', organizationId: 'org1' } : null,
+      ),
+      update: jest.fn(async () => ({})),
+      create: jest.fn(async () => ({ id: 'u1', email: participant.email, firstName: 'A', lastName: 'B', role: 'MEMBER', organizationId: 'org1', passwordHash: 'x' })) },
     checkIn: { findFirst: jest.fn(async () => ({ id: 'ci1' })) },
     emailVerificationToken: { create: jest.fn(async () => ({})) },
     $transaction: jest.fn(async (fn: any) => fn(prisma)),

@@ -53,7 +53,19 @@ const SRC = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8').replace(/
  * now. If the card is not there, this throws by name and every test in the file
  * goes red at once.
  */
-const CARD_LABEL = 'None of these? Describe your own situation'
+/*
+ * THE LABEL MOVED WITH THE CARD, AND THE CARD MOVED TO THE TOP.
+ *
+ * It read "None of these? Describe your own situation" while it sat last in a scrolling list, which
+ * is the right question at the end of a list and the wrong one at the start, where nothing has come
+ * before it to be none of. The picker is now describe-your-own first, then a dropdown, then one
+ * group of cards - the same shape as /grounds/new.
+ *
+ * What this file protects has not changed and is checked below exactly as before: it is a
+ * FULL-WIDTH BUTTON with its own label at full strength, not an 11px text link. That distinction is
+ * the whole reason the file exists, and it survived the move.
+ */
+const CARD_LABEL = 'Describe your own situation'
 const BLOCK = (() => {
   const anchor = SRC.indexOf(CARD_LABEL)
   if (anchor === -1) {
@@ -83,10 +95,12 @@ describe('the describe-your-own card', () => {
     expect(BLOCK).not.toMatch(/disabled/)
   })
 
-  it('does not look like the other seventeen either', () => {
-    // THE SECOND REGRESSION, and the reason this file changed. A tile among
-    // tiles is a tile nobody finds. It spans the grid and carries its own accent.
-    expect(BLOCK).toMatch(/gridColumn:\s*'1 \/ -1'/)
+  it('does not look like the other twenty-two either', () => {
+    // THE SECOND REGRESSION, and the reason this file changed. A tile among tiles is a tile nobody
+    // finds. It used to earn that by spanning the grid it sat in; it is now ABOVE the grid entirely,
+    // full width by being its own block, and it keeps the accent border that marks it as different
+    // in kind rather than in topic.
+    expect(BLOCK).toMatch(/width:\s*'100%'/)
     expect(BLOCK).toMatch(/border:\s*'1\.5px solid var\(--gw-navy\)'/)
   })
 
@@ -101,16 +115,21 @@ describe('the describe-your-own card', () => {
     expect(label).not.toMatch(/color:\s*'var\(--gw-(sub|muted)\)'/)
   })
 
-  it('speaks to the person who has just read seventeen things and matched none', () => {
-    expect(BLOCK).toMatch(/None of these\? Describe your own situation/)
+  it('says what it is, without asking a question about a list nobody has read yet', () => {
+    /* "None of these?" was written for the bottom of a scrolling list. At the top it asks about
+       cards that have not been shown. */
+    expect(BLOCK).toMatch(/Describe your own situation/)
+    expect(BLOCK).not.toMatch(/None of these/)
   })
 
-  it('is reachable from the top of the list, not only the bottom of it', () => {
-    // Somebody decides whether to scroll before they have scrolled. The count
-    // line above the grid offers the same route.
-    const countLine = SRC.slice(SRC.indexOf('situations, grouped') - 400, SRC.indexOf('situations, grouped') + 400)
-    expect(countLine).toMatch(/describe your own/)
-    expect(countLine).toMatch(/setPickedSituation\('other'\)/)
+  it('IS the top of the picker now, rather than being reachable from it', () => {
+    /*
+     * This used to check for an 11px shortcut in the count line, because the card itself was
+     * eighteenth in a scroll and somebody decides whether to scroll before they have scrolled. The
+     * card is first now, so the shortcut has nothing left to shortcut - and the stronger property
+     * is checkable directly: the card comes BEFORE the group dropdown in the source.
+     */
+    expect(SRC.indexOf(CARD_LABEL)).toBeLessThan(SRC.indexOf('Or select from the options below'))
   })
 
   it('is still a button, and still reachable', () => {

@@ -28,6 +28,16 @@ export const SCOPES = [
   'proposals:read',
   'proposals:write',
   'chat:write',
+  /*
+   * ISSUABLE, so the route that asks for it can be called.
+   *
+   * `GET /api/org/v1/roles` has required `graph:read` since it was written, and this list did not
+   * contain it — so the scope could not be granted by any credential and the route was a permanent
+   * 403 on a documented address. Adding a scope is additive: nothing that already works stops
+   * working, and `graph:write` is treated as holding it below, because a caller who may write the
+   * shape of an organisation may certainly read it back.
+   */
+  'graph:read',
 ] as const;
 
 export type Scope = (typeof SCOPES)[number];
@@ -48,4 +58,20 @@ export function resolveGrantedScopes(held: string[], requested?: string | null):
   const unheld = asked.filter((s) => !held.includes(s));
   if (unheld.length) return { ok: false, unheld };
   return { ok: true, scopes: asked };
+}
+
+/**
+ * A SCOPE THAT ANOTHER SCOPE ALREADY IMPLIES.
+ *
+ * Only where the wider power obviously contains the narrower one. Writing the graph and then being
+ * refused a read of it is not a security boundary, it is a paperwork error that an integration
+ * meets at three in the morning.
+ */
+const IMPLIED: Record<string, string[]> = {
+  'graph:read': ['graph:write'],
+};
+
+export function holdsScope(held: readonly string[], required: string): boolean {
+  if (held.includes(required)) return true;
+  return (IMPLIED[required] ?? []).some((wider) => held.includes(wider));
 }

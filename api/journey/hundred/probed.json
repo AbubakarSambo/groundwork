@@ -1,0 +1,17 @@
+[
+ {
+  "group": "participants",
+  "issue": "Adding yourself as the other party is answered with",
+  "evidence": "400 \"This email is already a participant on this check-in\""
+ },
+ {
+  "group": "shared report",
+  "issue": "Before anybody has answered, the report page says \"Report not found\"",
+  "evidence": "404 \"There is no report yet: nobody has completed their check-in.\""
+ },
+ {
+  "group": "participant check-in chat",
+  "issue": "There is a ceiling on how much somebody may say, and it arrives as a refusal",
+  "evidence": "at turn 20: 400 \"Session turn limit reached. Please complete your session.\""
+ }
+]

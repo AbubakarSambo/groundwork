@@ -39,7 +39,10 @@ describe('the reader is addressed, not described', () => {
   });
 
   it('and the bare label becomes "you"', () => {
-    expect(render('The sales lead has not checked in.', 'me')).toBe('You has not checked in.');
+    /* "You has" was what this asserted, which is the bug rather than the behaviour: a label
+       swapped for "you" left the third-person conjugation behind, and a live report read "You is
+       concerned this sign-off will drift". The verb agrees now. */
+    expect(render('The sales lead has not checked in.', 'me')).toBe('You have not checked in.');
   });
 
   it('OTHER people keep their names, so the report is still about somebody', () => {
@@ -80,5 +83,48 @@ describe('the pronoun rule is narrow on purpose', () => {
     /** A reader who is not a party at all must not have the text rewritten around them. */
     const text = 'The sales lead described their role.';
     expect(withNames(text, namesVisibleTo(null, parties), undefined, { viewerLabel: null })).toContain('their role');
+  });
+});
+
+/**
+ * AND THE VERB AGREES.
+ *
+ * One report is generated in labels and rendered per reader, so the model writes about everybody in
+ * the third person and the substitution leaves the conjugation behind. Found in a live report a
+ * moment after the document work was driven: "You is concerned this sign-off will drift" and "You
+ * referenced an offer letter" in the same paragraph. The first reads as broken software, on the one
+ * screen whose whole claim is that it holds what people said carefully.
+ */
+describe('the verb agrees with "you"', () => {
+  it('fixes the four irregulars', () => {
+    expect(render('The sales lead is concerned about sign-off.', 'me')).toBe('You are concerned about sign-off.');
+    expect(render('The sales lead was clear about the date.', 'me')).toBe('You were clear about the date.');
+    expect(render('The sales lead has the plan.', 'me')).toBe('You have the plan.');
+    expect(render('The sales lead does the weekly review.', 'me')).toBe('You do the weekly review.');
+  });
+
+  it('and the reporting verbs a record of this kind uses', () => {
+    expect(render('The sales lead describes the handover as unfinished.', 'me'))
+      .toBe('You describe the handover as unfinished.');
+    expect(render('The sales lead expects the board by week four.', 'me'))
+      .toBe('You expect the board by week four.');
+    expect(render('The sales lead seems unsure who signs off.', 'me'))
+      .toBe('You seem unsure who signs off.');
+  });
+
+  it('mid-sentence as well as at the start', () => {
+    expect(render('On the timeline, the sales lead is clear.', 'me')).toBe('On the timeline, you are clear.');
+  });
+
+  it('leaves another party\'s verb alone, because it is correct', () => {
+    /* Only the READER becomes "you". Everybody else stays in the third person and their
+       conjugation was never wrong. */
+    const out = render('The engineer is concerned and the sales lead is not.', 'me');
+    expect(out).toContain('The engineer is concerned');
+    expect(out).toContain('you are not');
+  });
+
+  it('and does not touch a possessive, which the rule above already handled', () => {
+    expect(render("The sales lead's account is thin.", 'me')).toBe('Your account is thin.');
   });
 });

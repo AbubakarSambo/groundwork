@@ -1,0 +1,22 @@
+[
+ {
+  "group": "entry/discovery",
+  "issue": "The first thing the entry chat says does not tell somebody whether what they type is being kept",
+  "evidence": "Welcome to Groundwork. This is a space to build a clear, shared record of a working relationship or situation, one that captures each person's account independently and then shows you where you agree, where you differ, and what the gap is. "
+ },
+ {
+  "group": "completion",
+  "issue": "Finishing too early is refused without telling the person they may simply carry on",
+  "evidence": "400 \"A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.\""
+ },
+ {
+  "group": "signup/sign-in",
+  "issue": "A failed sign-in says more than it should, or less than it needs to",
+  "evidence": "\"We've emailed you a link to set your password. Check your inbox.\""
+ },
+ {
+  "group": "navigation/cross-system UX",
+  "issue": "Being signed out is reported as a token problem rather than as \"sign in again\"",
+  "evidence": "401 \"Invalid or expired token\""
+ }
+]

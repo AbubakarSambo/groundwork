@@ -30,7 +30,11 @@ describe('a row selected is not a row claimed', () => {
         update: jest.fn(async () => ({})),
       },
     };
-    const service = new WebhooksService(prisma);
+    /* The notifier and the mailer: a dead delivery has to reach a person now, and these tests are
+    not about that — see `tellThemItIsDying`. Doubles that do nothing keep them honest. */
+    const quiet = { tell: async () => [] } as any;
+    const mailer = { sendWebhookEndpointDying: async () => undefined, frontendUrlForLinks: () => 'http://localhost:5173' } as any;
+    const service = new WebhooksService(prisma, quiet, mailer);
     return { service, prisma, order };
   }
 

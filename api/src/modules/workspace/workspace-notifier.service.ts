@@ -84,8 +84,21 @@ export class WorkspaceNotifierService {
   }
 
   async disconnect(organizationId: string, kind: WorkspaceKind) {
-    await this.prisma.workspaceNotifier.deleteMany({ where: { organizationId, kind } });
-    return { kind, connected: false };
+    /*
+     * SAY WHETHER ANYTHING WAS THERE. This returned `{ connected: false }` whether it removed a
+     * live connection or found nothing, so an admin who disconnected the wrong one, or who was
+     * looking at a stale page, got the same confirmation either way — and "done" is the one answer
+     * that stops somebody checking.
+     */
+    const { count } = await this.prisma.workspaceNotifier.deleteMany({ where: { organizationId, kind } });
+    return {
+      kind,
+      connected: false,
+      wasConnected: count > 0,
+      saying: count > 0
+        ? `${kind === 'SLACK' ? 'Slack' : 'Teams'} is disconnected. Notices will not be posted there.`
+        : `There was no ${kind === 'SLACK' ? 'Slack' : 'Teams'} connection to remove.`,
+    };
   }
 
   /**

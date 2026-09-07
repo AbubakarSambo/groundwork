@@ -3,6 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus } from '@prisma/client';
+import { worthNudging, whatToSendThem } from './who-is-worth-nudging';
+import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 import {
   whatToDoToday,
   theEmailForTheLead,
@@ -22,6 +24,9 @@ export class RemindService {
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
+    /* The channel, where one is connected. Four kinds of notice were defined and one was ever
+       sent; "people have a check-in waiting" is the second. */
+    private workspace: WorkspaceNotifierService,
   ) {}
 
   /**
@@ -35,7 +40,7 @@ export class RemindService {
    * #34: If the other party has already completed their check-in, the nudge
    * email includes a note that their version is the only thing missing.
    */
-  async sendReminder(checkInId: string, requestingUserId: string): Promise<{ sent: boolean; count: number }> {
+  async sendReminder(checkInId: string, requestingUserId: string): Promise<{ sent: boolean; count: number; reinvited: number }> {
     // Load the check-in to get the ground.
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
@@ -57,18 +62,46 @@ export class RemindService {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
 
-    // Find all OTHER participants who have accepted their invite (userId set)
-    // but have NOT completed a check-in for the same session number. Exclude
-    // the requester themselves - clicking "remind" nudges the other party,
-    // never a self-addressed reminder to complete your own check-in.
+    /* Whose name an invitation is sent in, if one is sent below. A re-invitation from "A founder"
+       is the mail somebody deletes. */
+    const requester = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { firstName: true },
+    });
+    const requesterName = requester?.firstName ?? 'A colleague';
+
+    /*
+     * EVERY OTHER PARTY, INCLUDING THE ONES WHO NEVER ACCEPTED.
+     *
+     * This required `userId: { not: null }` — so the person a lead most wants to chase, the one who
+     * has not opened their invitation, was the one the button could not reach. Pressing "remind"
+     * did nothing for them and said it had reminded nobody; the lead's only move was to add them a
+     * second time and hope. They are included now and sent their INVITATION again rather than a
+     * nudge, because a nudge links to a check-in they cannot open. See `whatToSendThem`.
+     *
+     * The requester is still excluded: "remind" chases the other party, never yourself.
+     */
     const allParticipants = await this.prisma.groundParticipant.findMany({
-      where: { groundId: ground.id, userId: { not: null, notIn: [requestingUserId] } },
+      where: {
+        groundId: ground.id,
+        OR: [{ userId: null }, { userId: { notIn: [requestingUserId] } }],
+      },
       select: {
         id: true,
         email: true,
         userId: true,
         lastNudgedAt: true,
-        user: { select: { firstName: true, emailNotifications: true } },
+        /* Selected, not cast. `(p as any).managingOnly` reads undefined off a row that never
+           carried the column, so the exclusion would have been permanently false — the fault this
+           is fixing, wearing the fix's clothes. */
+        managingOnly: true,
+        /* Selected for the same reason managingOnly is: a column the row never carried reads
+           undefined, and the whole point of this one is to stop a mail. */
+        remindersStoppedAt: true,
+        /* For the invitation path: the token is the same one their first mail carried. */
+        inviteToken: true,
+        invitedAt: true,
+        user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
         checkIns: {
           where: { sessionNumber: checkIn.sessionNumber },
           select: { id: true, status: true },
@@ -82,32 +115,72 @@ export class RemindService {
       return session && session.status === CheckInStatus.COMPLETED;
     });
 
-    const incomplete = allParticipants.filter((p) => {
-      const session = p.checkIns[0];
-      return !session || session.status !== CheckInStatus.COMPLETED;
-    });
+    /*
+     * NOT SIMPLY "NOT COMPLETED". See who-is-worth-nudging.ts — that test also said yes to
+     * somebody who declined, to a managing-only lead who has no check-in by design, and to
+     * anybody with no check-in for this session, whose reminder link was then built out of an
+     * empty string and pointed at nothing.
+     */
+    const considered = allParticipants.map((p) => ({
+      ...p,
+      session: p.checkIns[0] ? { id: p.checkIns[0].id, status: p.checkIns[0].status as any } : null,
+      managingOnly: p.managingOnly,
+      hasAccepted: p.userId !== null,
+      /* A leaver's address may now belong to somebody else. Undefined for an invitee with no
+         account yet, which is not the same as deactivated. */
+      stillHere: p.user ? p.user.isActive && !p.user.deletedAt : undefined,
+      emailNotifications: p.user?.emailNotifications ?? null,
+      hoursSinceLastNudge: p.lastNudgedAt
+        ? (Date.now() - p.lastNudgedAt.getTime()) / (1000 * 60 * 60)
+        : null,
+    }));
+    const incomplete = worthNudging(considered);
 
     let count = 0;
+    let reinvited = 0;
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
 
     for (const participant of incomplete) {
-      // Respect "Ground invites and reminders" being turned off - a reminder
-      // email is exactly what that setting describes ("check-in is due").
-      if (participant.user?.emailNotifications === false) continue;
-
-      // Throttle: do not nudge the same participant more than once per 24 h.
-      if (participant.lastNudgedAt) {
-        const hoursSince = (Date.now() - participant.lastNudgedAt.getTime()) / (1000 * 60 * 60);
-        if (hoursSince < 24) continue;
-      }
+      /* The switch and the once-a-day throttle are both decided by whyNotNudge above, so they are
+         not re-tested here — two copies of the same rule is how they come apart. */
 
       /* THROUGH THE HELPER, BECAUSE THIS FILE GOT THE PATH WRONG.
          It hand-built `/check-ins/:id` and the client route is `/checkin/:id`, so every
          reminder this service has ever sent landed on the not-found page. The helper is
          the one place that knows, and reaching past it into `frontendUrl` is what let the
          two drift. */
-      const checkInUrl = this.email.buildCheckInUrl(participant.checkIns[0]?.id ?? '');
       const specificThing = `session ${checkIn.sessionNumber} on "${ground.label}"`;
+
+      if (whatToSendThem(participant).send === 'their invitation again') {
+        /*
+         * THEIR INVITATION, NOT A NUDGE. They have no account, so a link to their own check-in
+         * opens a sign-in page they have no password for. The token is the one their first mail
+         * carried — see the note in grounds.service on why re-minting kills the live link.
+         */
+        if (!participant.inviteToken) {
+          this.logger.warn(`Cannot re-invite participant ${participant.id}: no invite token on the row.`);
+          continue;
+        }
+        await this.email.sendParticipantInvite(
+          participant.email,
+          requesterName,
+          ground.label,
+          participant.inviteToken,
+          undefined,
+          { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id },
+        );
+        await this.prisma.groundParticipant.update({
+          where: { id: participant.id },
+          data: { lastNudgedAt: new Date(), notifiedAt: new Date() },
+        });
+        reinvited++;
+        count++;
+        continue;
+      }
+
+      /* `session.id` is guaranteed present by whyNotNudge for anybody who has accepted, which
+         refuses a party without one rather than building a link out of an empty string. */
+      const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
       await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted);
@@ -120,7 +193,12 @@ export class RemindService {
       count++;
     }
 
-    return { sent: true, count };
+    /*
+     * `reinvited` is reported so the client can say which of the two happened. "Reminded 2 people"
+     * where one of them was actually re-invited is a small lie that matters: the lead is deciding
+     * whether to chase somebody another way.
+     */
+    return { sent: true, count, reinvited };
   }
 
   /**
@@ -159,6 +237,8 @@ export class RemindService {
         ground: {
           select: {
             label: true,
+            /* For the channel notice: `tell` is scoped to an organisation. */
+            organizationId: true,
             chaseAfterDays: true,
             chasingStopped: true,
             tellTheLead: true,
@@ -170,7 +250,7 @@ export class RemindService {
             id: true,
             email: true,
             lastNudgedAt: true,
-            user: { select: { firstName: true, emailNotifications: true } },
+            user: { select: { firstName: true, emailNotifications: true, isActive: true, deletedAt: true } },
           },
         },
       },
@@ -182,6 +262,8 @@ export class RemindService {
     const forTheLead = new Map<string, {
       to: string; leadName: string | null; label: string; chasedOn: number[];
       who: string[]; checkInIds: string[];
+      /* For the channel notice: `tell` is scoped to an organisation, not to a ground. */
+      organizationId: string;
     }>();
 
     for (const checkIn of notStarted) {
@@ -222,6 +304,7 @@ export class RemindService {
             chasedOn: policy.days,
             who: [],
             checkInIds: [],
+            organizationId: checkIn.ground.organizationId,
           };
           /* The name they are known by here, and their address only if that is all
              there is. A lead reading a list of email addresses cannot tell who is
@@ -240,6 +323,12 @@ export class RemindService {
          decide WHETHER this ground chases; they cannot decide that somebody who
          turned email off receives one. */
       if (participant.user?.emailNotifications === false) continue;
+      /* And not to somebody who has left. The scheduled sweep runs for weeks after a round opens,
+         which is exactly the window in which people leave. */
+      if (participant.user && (!participant.user.isActive || participant.user.deletedAt)) {
+        this.logger.log(`Not nudging participant ${participant.id}: their account has been deactivated.`);
+        continue;
+      }
 
       // #34: Check if the other party on the same ground + session has completed.
       const otherPartyCompleted = await this.prisma.checkIn.findFirst({
@@ -261,6 +350,8 @@ export class RemindService {
           checkInUrl,
           undefined,
           otherPartyCompleted,
+          /* So the reminder carries its own way out. */
+          participant.id,
         );
 
         await this.prisma.groundParticipant.update({
@@ -276,8 +367,16 @@ export class RemindService {
         continue;
       }
 
-      // #72 - On the Day-14 nudge (last threshold), check for 3 consecutive missed check-ins.
-      if (daysElapsed === 14) {
+      /*
+       * #72 — at or past the last chase day, check for three consecutive missed check-ins.
+       *
+       * This was `daysElapsed === 14`: one pass, on one hardcoded day, on a schedule the lead can
+       * change. A ground chasing on [2, 5] never reached this at all, and a ground chasing on
+       * [3, 7, 14] reached it only if the cron ran that morning. The guard below is what stops it
+       * repeating — it looks at the reminders already sent — so the window can be open.
+       */
+      const lastChaseDay = policy.days.length ? Math.max(...policy.days) : 14;
+      if (daysElapsed >= lastChaseDay) {
         try {
           await this.checkAndSendConsecutiveAbsenceReminder(
             checkInUrl,
@@ -315,6 +414,27 @@ export class RemindService {
           where: { id: { in: entry.checkInIds } },
           data: { leadToldAt: now },
         });
+
+        /*
+         * AND THE CHANNEL, IF THERE IS ONE.
+         *
+         * `what-a-channel-may-be-told.ts` defines four kinds of notice and exactly one of them was
+         * ever sent, so an admin who connected Slack saw the test post and then near-silence for
+         * weeks. This is the second: people have a check-in waiting. A COUNT and the check-in's own
+         * label, never the names — the whole point of that file is that a channel is read by more
+         * people than a check-in, and it is why `Notice` has nowhere to put a name.
+         *
+         * Outside the failure path on purpose: a lead is told by email whether or not a customer's
+         * channel is reachable.
+         */
+        await this.workspace
+          .tell(entry.organizationId, {
+            what: 'a check-in is waiting',
+            about: entry.label,
+            howMany: entry.who.length,
+            link: `${frontendUrl}/grounds`,
+          })
+          .catch((err) => this.logger.warn(`Workspace notice failed for "${entry.label}": ${err?.message}`));
       } catch (err: any) {
         this.logger.error(`Telling the lead about "${entry.label}" failed: ${err.message}`);
       }
@@ -365,7 +485,25 @@ export class RemindService {
     }
 
     if (consecutiveMissed >= 3) {
+      /*
+       * ONCE. The window this runs in is now open rather than one exact day, so without a record
+       * of having sent it the same person would be told every morning that they have missed three
+       * rounds — which is the chase this whole file exists to keep proportionate.
+       *
+       * Stamped only after the send succeeds: a failed email that stamped the column would mean
+       * nobody is ever told, and nothing would say so.
+       */
+      const already = await this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { absenceToldAt: true },
+      });
+      if (already?.absenceToldAt) return;
+
       await this.email.sendAbsenceReminder(email, name, groundName, consecutiveMissed, checkInUrl);
+      await this.prisma.groundParticipant.update({
+        where: { id: participantId },
+        data: { absenceToldAt: new Date() },
+      });
       this.logger.warn(
         `Absence reminder sent to participant ${participantId}: ${consecutiveMissed} consecutive missed check-in(s) on "${groundName}"`,
       );

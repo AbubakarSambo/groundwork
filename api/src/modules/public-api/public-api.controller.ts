@@ -3,7 +3,7 @@ import {
   UploadedFile,
   Controller, Post, Get, Put, Patch, Delete, Body, Param, Query, Headers, Req,
   UseGuards, UnauthorizedException, BadRequestException, HttpCode, ForbiddenException } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiExcludeEndpoint, ApiConsumes } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { CredentialsService } from './credentials.service';
 import { SubjectsService, SubjectPush } from '../subjects/subjects.service';
@@ -273,8 +273,11 @@ export class PublicApiController {
   @Get('embed/opening')
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'What the panel draws before anybody types' })
-  async embedOpening(@Req() req: { panel: PanelCaller }) {
-    return this.embed.openingFor(req.panel.organizationId, req.panel.personId);
+  async embedOpening(@Req() req: { panel: PanelCaller }, @Query('about') about?: string) {
+    /* `about` is what the host page said the person is looking at — see
+       embed/what-they-are-looking-at.ts. It is a claim from somebody else's page, checked against
+       this organisation before it changes anything. */
+    return this.embed.openingFor(req.panel.organizationId, req.panel.personId, about);
   }
 
   /**
@@ -652,6 +655,72 @@ export class PublicApiController {
   ) {
     if (!dto?.content?.trim()) throw new BadRequestException('content is required.');
     return this.checkIns.say(req.panel.organizationId, req.panel.personId, id, dto.content);
+  }
+
+  /**
+   * OPEN A CHECK-IN FROM THE PANEL.
+   *
+   * The panel could answer in a check-in and never start one, so somebody with nothing waiting had
+   * nowhere to go: every sentence fell to the assistant's router, which is a different thing in the
+   * same box. Her words - it is meant to act exactly like the check-ins on our system, with more.
+   *
+   * The acting person comes from the SESSION and cannot be sent in the body, which is the whole
+   * difference between this and the machine route beside it. A customer's server naming any person
+   * it likes is a credential doing its job; a browser widget doing it is somebody opening a record
+   * in a colleague's name.
+   */
+  @Post('check-ins')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Open a check-in as the person this panel session belongs to' })
+  async openCheckInFromPanel(
+    @Req() req: { panel: PanelCaller },
+    @Body() dto: { label?: string; scenario?: string; moment?: string; timelineDays?: number; cadence?: string; participants?: { personExternalId: string; roleAsDescribed?: string }[] },
+  ) {
+    return this.checkIns.openACheckIn(req.panel.organizationId, req.panel.personId, dto);
+  }
+
+  /**
+   * ADD SOMEBODY TO THE ORGANISATION, FROM THE PANEL.
+   *
+   * Her call, knowing what it means: a panel session can register a person the way a directory sync
+   * does. The thing that makes it safe is the queue built earlier today - a person added this way is
+   * a directory entry, and the moment they accept an invitation to a check-in they are queued for an
+   * admin rather than becoming a member. So this creates somebody to invite, not somebody who is in.
+   */
+  @Post('people')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything.' })
+  async addPersonFromPanel(
+    @Req() req: { panel: PanelCaller },
+    @Body() dto: { email?: string; displayName?: string; externalId?: string },
+  ) {
+    return this.checkIns.addAPerson(req.panel.organizationId, req.panel.personId, dto);
+  }
+
+  /**
+   * ATTACH SOMETHING TO IT.
+   *
+   * Same shape as the product's own upload - multipart, one file, ten megabytes - because it is
+   * the same service behind it. A second upload path would be a second set of rules about
+   * transcripts and consent, and those rules are the reason the first one is careful.
+   */
+  @Post('check-ins/:id/documents')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Attach a document to a check-in. PDF, Word, Excel, PowerPoint, text.' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  async attachToCheckIn(
+    @Req() req: { panel: PanelCaller },
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { consentConfirmed?: string | boolean; uploaderNote?: string },
+  ) {
+    /* Multipart, so a boolean arrives as the string "true". */
+    const confirmed = body?.consentConfirmed === true || body?.consentConfirmed === 'true';
+    return this.checkIns.attach(req.panel.organizationId, req.panel.personId, id, file, confirmed, body?.uploaderNote);
   }
 
   /** Finish it. What was said is released with everybody else's, not before. */

@@ -47,12 +47,18 @@ describe('setup says what it has', () => {
   })
 
   /**
-   * A coordinator was never expected to hold the situation, so listing it as an outstanding debt
-   * would be inventing one. Their part - who leads - is collected by the step straight after.
+   * THIS TEST SAID THE OPPOSITE UNTIL THE HAND-OFF WAS REMOVED.
+   *
+   * A coordinator used to owe nothing, because a lead was going to be invited to write the context.
+   * Nobody is handed a check-in any more: the one non-party answer left is "I write what this is
+   * about, other people check in against it", so the situation IS theirs and a missing reason is a
+   * real gap. Excusing it would hide from them that the record is thin.
    */
-  it('lists no gaps for somebody setting this up for other people', () => {
-    expect(summariseSetup({}, 'setting_up_for_others', 1, true).missing).toEqual([])
-    expect(summariseSetup({}, 'someone_else_runs_it', 1, true).missing).toEqual([])
+  it('lists the same gaps for somebody whose team does the checking in', () => {
+    const forThem = summariseSetup({}, 'setting_up_for_others', 1, true).missing
+    const forAParty = summariseSetup({}, 'a_party', 1, true).missing
+    expect(forThem).toEqual(forAParty)
+    expect(forThem.join(' ')).toMatch(/who is in it/i)
   })
 
   it('still shows a coordinator whatever they did happen to give', () => {
