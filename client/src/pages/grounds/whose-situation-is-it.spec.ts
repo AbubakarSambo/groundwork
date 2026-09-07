@@ -4,49 +4,30 @@ import { join } from 'path'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
 
 /**
- * Reported from the screen: "if someone else is setting up, the next step is confusing, not your
- * situation but the situation." Step 1 offers "Someone else sets the context" - they write what it
- * is about, they check in, they see the results - and step 2 then addressed the person clicking as
- * though the situation were theirs.
+ * THE BRANCH THIS FILE USED TO HOLD IS GONE, AND SO ARE THE TESTS FOR IT.
  *
- * The hundred-journey run never caught it because that harness drives the API and the entry chat.
- * Nothing in it opens the signed-in set-up wizard, so this whole branch was never walked.
+ * It was reported from the screen: "if someone else is setting up, the next step is confusing, not
+ * your situation but the situation." Step 1's third answer - "Someone else sets the context" - was
+ * removed on her call ("I think we should remove the whole org admin setting a context and handing
+ * it over to a lead. It seems like it is confusing"), so nobody reaches this step describing
+ * somebody else's situation any more.
+ *
+ * Deleting the assertions rather than leaving them passing against a dead branch is the point:
+ * tests kept for a path nothing can take are how a codebase comes to look better covered than it
+ * is. What remains is what the step must still say, and the check that the page actually uses it.
  */
-const mine = theWordsForPickingASituation(false)
-const theirs = theWordsForPickingASituation(true)
-const named = theWordsForPickingASituation(true, 'Ada')
+const words = theWordsForPickingASituation()
 
-describe('when the situation is the reader’s own', () => {
-  it('keeps the second person, because it is true', () => {
-    expect(mine.intro).toContain('the question you are actually asking')
-    expect(mine.describeOwnLabel).toBe('Describe your own situation')
-  })
-})
-
-describe('when somebody else sets the context', () => {
-  it('stops calling it your question', () => {
-    expect(theirs.intro).not.toMatch(/question you are actually asking/)
-    expect(theirs.intro).toContain('the question being asked')
+describe('the words on the situation step', () => {
+  it('speak in the second person, because everybody here writes their own context now', () => {
+    expect(words.intro).toContain('the question you are actually asking')
+    expect(words.describeOwnLabel).toBe('Describe your own situation')
   })
 
-  it('stops calling it your own situation', () => {
-    expect(theirs.describeOwnLabel).toBe('Describe the situation')
-  })
-
-  it('says who writes what it is about, since that is the thing being got wrong', () => {
-    expect(theirs.intro).toMatch(/write what it is about/)
-  })
-
-  it('uses their name when we have one, and reads as English either way', () => {
-    expect(named.intro).toContain('the situation Ada is in')
-    expect(named.intro).toContain('Ada still writes what it is about')
-    expect(theirs.intro).toContain('the situation they are in')
-    expect(theirs.intro).toContain('They still write what it is about')
-  })
-
-  it('and never guesses a pronoun for somebody who has not given one', () => {
-    /* A name is not a gender. "They" is the only honest third person here. */
-    expect(named.intro).not.toMatch(/\b(he|she|his|her|him)\b/i)
+  it('say what a situation actually runs like, which is the part people get wrong', () => {
+    /* Not a form to fill in: an objective agreed at the start, then check-ins against it. */
+    expect(words.intro).toMatch(/objective agreed at the start/)
+    expect(words.intro).toMatch(/it sets the questions people are asked and how often/)
   })
 })
 
@@ -54,12 +35,18 @@ describe('the page uses it', () => {
   const src = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\/|\{\/\*[\s\S]*?\*\/\}|\/\/[^\n]*/g, '')
 
-  it('for the intro, the open group, and the one card that is about the reader', () => {
+  it('for the intro and the one card that is about the reader', () => {
     expect(src).toMatch(/\{theWords\.intro\}/)
     expect(src).toMatch(/theWords\.describeOwnLabel/)
   })
 
   it('and leaves every named situation alone, because those are facts about the product', () => {
     expect(src).toMatch(/card\.scenario === 'OPEN_READ' \? theWords\.describeOwnLabel : card\.label/)
+  })
+
+  it('no longer offers handing the check-in to somebody else to set the context', () => {
+    /* The whole reason the branch above is gone. If the answer comes back, this file is wrong. */
+    expect(src).not.toMatch(/Someone else sets the context/)
+    expect(src).not.toMatch(/runByOther/)
   })
 })

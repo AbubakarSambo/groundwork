@@ -25,12 +25,14 @@ describe('how many situations the page claims', () => {
     expect(stripped).toMatch(/\{namedCardCount\} \{theWords\.intro\}/)
   })
 
-  it('and the words it introduces still say "situations", on both paths', () => {
+  it('and the words it introduces still say "situations"', () => {
     /* Comments stripped: the doc comment at the top of that file QUOTES the old sentence to
        explain what was wrong with it, and a guard a comment can satisfy is not a guard. */
     const words = readFileSync(join(__dirname, 'whose-situation-is-it.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
-    expect((words.match(/situations, grouped by/g) || []).length).toBe(2)
+    /* One wording, not two. The second was for the "Someone else sets the context" answer, which
+       is gone - see whose-situation-is-it.ts. */
+    expect((words.match(/situations, grouped by/g) || []).length).toBe(1)
   })
 
   it('and no spelled-out number is left in that line', () => {

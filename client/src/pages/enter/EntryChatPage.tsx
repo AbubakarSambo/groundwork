@@ -280,7 +280,7 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
  */
 export function withoutPickedOpener(
   history: { role: string; content: string }[],
-  role: 'a_party' | 'setting_up_for_others' | 'someone_else_runs_it' | null,
+  role: 'a_party' | 'setting_up_for_others' | null,
 ): { role: string; content: string }[] {
   if (!role || role === 'a_party') return history
   const picked = new Set(SITUATION_CARDS.map((c) => c.message))
@@ -309,7 +309,14 @@ export function withoutPickedOpener(
  */
 export function summariseSetup(
   sels: { initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[] },
-  role: 'a_party' | 'setting_up_for_others' | 'someone_else_runs_it' | null,
+  /**
+   * KEPT, THOUGH NOTHING BRANCHES ON IT ANY MORE, and this is the note explaining why rather than
+   * an oversight. It used to excuse every gap for a non-party, because a lead was going to be
+   * invited to write the context. That hand-off is gone and everybody here writes their own, so the
+   * gaps are the same for both answers. The parameter stays because the caller has the value and
+   * the day this list needs to differ again it must differ HERE, not in the caller.
+   */
+  role: 'a_party' | 'setting_up_for_others' | null,
   sessions: number,
   /**
    * THE SERVER DECIDES THIS, NOT A SECOND COPY OF THE RULE HERE.
@@ -331,11 +338,18 @@ export function summariseSetup(
   if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.join('; ') })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
 
-  /**
-   * A coordinator is asked for one thing and it is collected by the next step, so there is nothing
-   * to list as outstanding here. Everything else belongs to the lead.
+  /*
+   * EVERYBODY HERE OWES THE SAME THINGS NOW, AND THIS USED TO EXCUSE HALF OF THEM.
+   *
+   * It returned no gaps for anyone who was not a party, because the non-party answers handed the
+   * check-in to a lead and the situation was the lead's to describe. That hand-off is gone: the
+   * remaining non-party answer is "I write what this is about, other people check in against it",
+   * so the context is theirs and a missing "why now" is a real gap, not an invented debt.
+   *
+   * Only the roster is still forgiven, and only because the server says so via `needsPeople` -
+   * somebody setting this up for a team may genuinely not have the names yet, and the screen says
+   * they can add them afterwards.
    */
-  if (role !== 'a_party') return { have, missing }
 
   /**
    * Said ONCE, and with the consequence attached. It was printed twice - a terse line here and a
@@ -345,6 +359,7 @@ export function summariseSetup(
     missing.push('who is in it, by name - until they are on the record there is nobody to check in with, and nothing can be expected of anyone by name')
   }
   if (!sels.goals?.length) missing.push('what you want out of it')
+  void role
   return { have, missing }
 }
 
@@ -906,7 +921,7 @@ export function EntryChatPage() {
    * Undefined is a real state, not a failure: the model may not have got a clear answer. Then the
    * fork asks, exactly as it did before.
    */
-  const [yourRole, setYourRole] = useState<'a_party' | 'setting_up_for_others' | 'someone_else_runs_it' | null>(null)
+  const [yourRole, setYourRole] = useState<'a_party' | 'setting_up_for_others' | null>(null)
   /**
    * SETUP FINISHED WITHOUT ANYBODY NAMED. Hafsah's call: let them through, tell them, they add the
    * people afterwards.
@@ -917,9 +932,6 @@ export function EntryChatPage() {
    * questions with no people in it.
    */
   const [needsPeople, setNeedsPeople] = useState(false)
-  const [leadName, setLeadName] = useState('')
-  const [leadEmail, setLeadEmail] = useState('')
-  const [leadNote, setLeadNote] = useState('')
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
@@ -1003,12 +1015,10 @@ export function EntryChatPage() {
       // Restore existing session
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
-      // Coordinator/lead path survives reload: restore the fork + lead details.
-      if ((saved as any).flowPath === 'lead') {
-        setFlowPath('lead')
-        const l = (saved as any).lead
-        if (l) { setLeadEmail(l.email ?? ''); setLeadName(l.name ?? ''); setLeadNote(l.contextNote ?? '') }
-      }
+      /* "Others check in, I read what comes back" survives a reload. There are no lead details to
+         restore any more - a saved session from before that answer was removed still carries them,
+         and they are simply not read: the ground it commits to has no lead to invite. */
+      if ((saved as any).flowPath === 'lead') setFlowPath('lead')
       if (saved.email) setEmail(saved.email)
       if (saved.onboardingSelections) {
         setOnboardingSelections(saved.onboardingSelections)
@@ -1241,16 +1251,23 @@ export function EntryChatPage() {
   // have a session, so nothing pretends they did. The lead (captured below)
   // is invited at commit time via the for-lead machinery and becomes the
   // initiator once they confirm.
-  function submitLeadCapture() {
-    const email = leadEmail.trim()
-    if (!email.includes('@')) return
+  /**
+   * THEY WRITE THE CONTEXT, OTHER PEOPLE CHECK IN AGAINST IT.
+   *
+   * This was `submitLeadCapture`, and it took a lead's email so that person could be invited to
+   * confirm a context they had not written. What is left is the honest half of it: nothing pretends
+   * this person had a session, because they did not, and the next screen is the one that invites
+   * the people who will actually give the accounts.
+   */
+  function othersGiveTheAccounts() {
+    setFlowPath('lead')
     setOnboardingStep(ONBOARDING_STEPS + 1)
     setPhase('checkin')
     setClosed(true)
     setShowSave(true)
     saveSession({
       scenario, history: [], closed: true, onboardingStep: ONBOARDING_STEPS, onboardingSelections,
-      flowPath: 'lead', lead: { email, name: leadName.trim() || undefined, contextNote: leadNote.trim() || undefined },
+      flowPath: 'lead',
     } as any)
   }
 
@@ -1304,16 +1321,19 @@ export function EntryChatPage() {
         setNeedsPeople(!!res.needsPeople)
         if (res.extracted.yourRole) {
           setYourRole(res.extracted.yourRole)
-          /**
-           * The two non-party answers both lead to the same place: somebody else gives the first
-           * account. Advancing straight there is not skipping a question, it is not repeating one -
-           * what follows ("Who runs the first check-in?") is a NEW question they have not answered.
+          /*
+           * THIS USED TO JUMP STRAIGHT TO "WHO RUNS THE FIRST CHECK-IN?", AND THAT QUESTION IS GONE.
            *
-           * The party case is deliberately NOT auto-advanced: `startSelfPath` opens the check-in
-           * immediately, and launching it without a click removes the one beat where somebody learns
-           * what is about to happen to them.
+           * There were two non-party answers and both handed the check-in to a lead, who was then
+           * emailed to confirm a context they had not written and could not read until they
+           * accepted. Her call: "I think we should remove the whole org admin setting a context and
+           * handing it over to a lead. It seems like it is confusing."
+           *
+           * There is one non-party answer left and it does not hand anything over: you write what
+           * this is about, other people check in against it, and you read what comes back. That
+           * needs no extra question, so nothing is auto-advanced - the fork below says back what
+           * they said and the click starts it.
            */
-          if (res.extracted.yourRole !== 'a_party') setFlowPath('lead')
         }
         if (res.extracted.cadence) { setCadence(res.extracted.cadence); setCadenceChosen(true) }
         if (res.extracted.timelineDays && res.extracted.timelineDays > 0) {
@@ -1547,13 +1567,15 @@ export function EntryChatPage() {
          * record - a figure the report shows to both parties.
          */
         documents: uploadedDoc ? [{ fileName: uploadedDoc.name, content: uploadedDoc.content }] : undefined,
-        // Coordinator/lead path: the lead runs the first check-in; the
-        // onboarding context travels as the brief (there is no transcript).
-        ...(flowPath === 'lead' && leadEmail.trim().includes('@')
-          ? {
-              lead: { email: leadEmail.trim(), name: leadName.trim() || undefined, contextNote: leadNote.trim() || undefined },
-              brief: composeLeadBrief(onboardingSelections) || undefined,
-            }
+        /*
+         * NOBODY IS HANDED THIS ANY MORE, so no `lead` goes with it. What still travels is the
+         * BRIEF: this person wrote the context and gave no account of their own, so the onboarding
+         * is the only thing the people who do check in have to work from. Sending it was always the
+         * useful half of the coordinator path; inviting somebody to confirm a context they had not
+         * written was the half she removed.
+         */
+        ...(flowPath === 'lead'
+          ? { brief: composeLeadBrief(onboardingSelections) || undefined }
           : {}),
       }
   }
@@ -2354,7 +2376,7 @@ export function EntryChatPage() {
                       : 'I am one of the people involved. Start my check-in now.'}
                   </button>
                   <button
-                    onClick={() => setFlowPath('lead')}
+                    onClick={othersGiveTheAccounts}
                     style={{
                       padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
                       border: '1px solid var(--gw-border)', background: 'white',
@@ -2362,58 +2384,19 @@ export function EntryChatPage() {
                     }}
                   >
                     {yourRole === 'a_party'
-                      ? 'Actually, someone else gives the accounts.'
-                      : 'Someone else is. I am setting this up for them.'}
+                      ? 'Actually, I do not check in. Others do.'
+                      : 'They do. I read what comes back.'}
                   </button>
                 </div>
               )}
 
-              {/* Lead capture (coordinator path): who runs the first check-in. */}
-              {onboardingReady && !onboardingLoading && flowPath === 'lead' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
-                  <div style={{
-                    background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
-                    borderRadius: '4px 16px 16px 16px', padding: '12px 14px', fontSize: 14, lineHeight: 1.65,
-                    boxShadow: '0 1px 3px rgba(0,0,0,.06)',
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: 2 }}>Who runs the first check-in?</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
-                      They'll be invited to confirm it and give the first account. You'll see the check-in as its coordinator.
-                    </div>
-                    <input
-                      type="text" placeholder="Their name (optional)" value={leadName}
-                      onChange={e => setLeadName(e.target.value)}
-                      style={{ width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
-                    />
-                    <input
-                      type="email" placeholder="their@email.com" value={leadEmail}
-                      onChange={e => setLeadEmail(e.target.value)}
-                      style={{ width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }}
-                    />
-                    <textarea
-                      placeholder="Anything the lead should know? (optional)" value={leadNote}
-                      onChange={e => setLeadNote(e.target.value)}
-                      style={{ width: '100%', minHeight: 52, padding: '9px 11px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }}
-                    />
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <button
-                        onClick={submitLeadCapture}
-                        disabled={!leadEmail.trim().includes('@')}
-                        style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: leadEmail.trim().includes('@') ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: leadEmail.trim().includes('@') ? 1 : 0.55 }}
-                      >
-                        Continue →
-                      </button>
-                      <button
-                        onClick={() => setFlowPath(null)}
-                        style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: 0 }}
-                      >
-                        Actually, this is my situation
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
+              /*
+               * THE LEAD-CAPTURE PANEL WAS HERE, and it is gone with the answer that reached it.
+               * It asked for a name, an email and a note, then invited that person to confirm a
+               * situation somebody else had written. Whoever knows what a check-in is about is the
+               * person who should set it up; anybody who only needs to watch is added as oversight
+               * in the check-in's own settings, once it exists.
+               */
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
                   Starting your check-in…

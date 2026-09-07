@@ -29,18 +29,6 @@ export interface WhoIsSettingUp {
   /** They chose to write the situation themselves rather than pick a card. */
   describingOwnSituation: boolean
   /**
-   * SOMEBODY ELSE IS LEADING, SO SOMEBODY ELSE WRITES IT.
-   *
-   * Step 1 offers "Someone else sets the context": they write what it is about, they check in,
-   * they see the results. The flow did not branch on it, so the person setting the check-in up was
-   * still walked through "Describe it" and then "What is this about? Your version of the brief" -
-   * two screens asking them for the one thing they had just said was not theirs to write.
-   *
-   * Decided: skip both. What they have already chosen - the situation, the cadence, the people -
-   * is what a setter is for. The brief the lead writes on arrival is the brief.
-   */
-  somebodyElseLeads: boolean
-  /**
    * The billing check has come back AND come back allowing this check-in.
    *
    * THE BILLING STEP EARNS ITS PLACE OR IT IS NOT THERE. It has two states: "no payment needed,
@@ -58,11 +46,17 @@ export function stepsThisPersonSees(who: WhoIsSettingUp): number[] {
     STAGE.who,
     STAGE.situation,
     ...(who.onAPaidPlan ? [STAGE.coach] : []),
-    ...(who.describingOwnSituation && !who.somebodyElseLeads ? [STAGE.describe] : []),
+    ...(who.describingOwnSituation ? [STAGE.describe] : []),
     ...(who.billingSettledAndFree ? [] : [STAGE.plan]),
     STAGE.timeline,
     STAGE.people,
-    ...(who.somebodyElseLeads ? [] : [STAGE.brief]),
+    /*
+     * THE BRIEF IS BACK FOR EVERYBODY, because the person it was skipped for no longer exists.
+     * It came out for "Someone else sets the context" - asking a setter to write a brief about a
+     * situation they had just said was not theirs. That answer is gone, so everybody on this step
+     * is writing their own context and the brief is theirs to write.
+     */
+    STAGE.brief,
   ]
 }
 

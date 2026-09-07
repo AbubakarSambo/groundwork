@@ -100,7 +100,7 @@ export const entryApi = {
        * from this type, so the client could not see it and asked the same question a second time with
        * buttons - which reads, correctly, as not having been heard.
        */
-      yourRole?: 'a_party' | 'setting_up_for_others' | 'someone_else_runs_it';
+      yourRole?: 'a_party' | 'setting_up_for_others';
       /**
        * ONE ENTRY PER INDIVIDUAL. `whoInvolved` is a free string and any string satisfies it, so
        * "My team" passed as an answer to who is involved and the per-person questions had no roster.

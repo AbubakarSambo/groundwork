@@ -1,66 +1,34 @@
 /**
- * "NOT YOUR SITUATION, THE SITUATION."
+ * THE WORDS ON THE SITUATION STEP, AND WHY THEY NO LONGER BRANCH.
  *
- * Step 1 of the set-up wizard has three answers, and one of them is "Someone else sets the
- * context": you are creating the check-in and inviting somebody to lead it, they write what it is
- * about, they check in, they see the results. Nothing on the next step knew that. It kept speaking
- * to whoever was clicking as though the situation were theirs:
+ * This file existed because step 1 had a third answer - "Someone else sets the context": you create
+ * the check-in, somebody else writes what it is about, checks in, and sees the results. On that
+ * path the next screen was speaking to the wrong person ("the question YOU are actually asking",
+ * "Describe YOUR OWN situation") about a situation that was not theirs, so the wording forked.
  *
- *   "22 situations, grouped by the question YOU are actually asking"
- *   "Describe YOUR OWN situation"
+ * That answer is gone, on her call: "I think we should remove the whole org admin setting a context
+ * and handing it over to a lead. It seems like it is confusing." Everybody who reaches this step
+ * now writes the context themselves - the only remaining question is whether they also check in
+ * against it, which does not change a word here. So there is one wording, and it is the second
+ * person, which is true again.
  *
- * A third one - "YOU cannot name it, so nothing below should be guessed on YOUR behalf" - was the
- * blurb under a "Not sure yet" group heading. That group has since been removed and its single card
- * promoted to the top of the step, so the sentence has no place left to appear and the branch for
- * it came out with it rather than sitting here unused.
- *
- * On that path all three are false. The question is not yours, it is not your behalf the guessing
- * would be on, and the situation is not your own. Reported from the screen, not from a test: the
- * next step reads as confusing because the person it addresses is not the person using it.
- *
- * Why this is not fixed in the catalogue: `SCENARIO_LABELS.OPEN_READ` and the group questions are
- * shared with the entry chat, where the person describing the situation IS the person whose
- * situation it is, and "your own" is exactly right there. One string cannot be true for both
- * readers, so the branch belongs to the surface that knows which reader it has.
- *
- * What deliberately does NOT change on either path: the situation names and what each one runs
- * like. Those are facts about the product, not about who is looking.
+ * KEPT AS A MODULE RATHER THAN INLINED, and that is deliberate rather than leftover. These two
+ * strings are asserted from two other files - the situation count in the intro is checked against
+ * the catalogue by a-number-in-copy-drifts.spec.ts - and moving them into the JSX puts them back
+ * inside a 2,000-line component where the last drift went unnoticed.
  */
 
 export type TheWordsForPickingASituation = {
-  /** The sentence under "Step 2 · The situation". */
+  /** The sentence under "Step 2 . The situation". */
   intro: string;
   /** The one card that is not a named situation. */
   describeOwnLabel: string;
 };
 
-/**
- * @param somebodyElseLeads the "Someone else sets the context" answer from step 1
- * @param theirName optional, and only used when we have it - "Ada writes what it is about" beats
- *                  "they write what it is about", and neither is worth an empty space
- */
-export function theWordsForPickingASituation(
-  somebodyElseLeads: boolean,
-  theirName?: string | null,
-): TheWordsForPickingASituation {
-  if (!somebodyElseLeads) {
-    /* The person clicking is a party to this, so the second person is honest. Unchanged wording. */
-    return {
-      intro:
-        'situations, grouped by the question you are actually asking. Every one of them is an objective agreed at the start, then a run of check-ins testing the work against it. Pick the closest fit: it sets the questions people are asked and how often.',
-      describeOwnLabel: 'Describe your own situation',
-    };
-  }
-
-  const them = theirName?.trim() ? theirName.trim() : 'They';
-  const themLower = theirName?.trim() ? theirName.trim() : 'they';
+export function theWordsForPickingASituation(): TheWordsForPickingASituation {
   return {
     intro:
-      `situations, grouped by the question being asked. Every one of them is an objective agreed at the start, then a run of check-ins testing the work against it. Pick the closest fit to the situation ${themLower} ${
-        theirName?.trim() ? 'is' : 'are'
-      } in: it sets the questions people are asked and how often. ${them} still ${
-        theirName?.trim() ? 'writes' : 'write'
-      } what it is about.`,
-    describeOwnLabel: 'Describe the situation',
+      'situations, grouped by the question you are actually asking. Every one of them is an objective agreed at the start, then a run of check-ins testing the work against it. Pick the closest fit: it sets the questions people are asked and how often.',
+    describeOwnLabel: 'Describe your own situation',
   };
 }
