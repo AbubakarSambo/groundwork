@@ -49,10 +49,13 @@ function readBlocks(payload: unknown): string {
   if (typeof payload === 'string') return payload
 
   const opening = (payload as { opening?: { line?: string; suggestions?: string[] } })?.opening
-  if (opening?.line) {
-    const asked = opening.suggestions?.length ? `\n\n${opening.suggestions.join('  ·  ')}` : ''
-    return `${opening.line}${asked}`
-  }
+  /*
+   * THE LINE ONLY. The suggestions used to be joined with a middle dot and glued onto the end of
+   * the greeting, which turned the one thing telling somebody what they could ask into a run-on
+   * sentence they could not press. Reported as: the chat looks incomplete and there is nothing
+   * telling you what you can do. They are rendered as controls now - see `suggested` below.
+   */
+  if (opening?.line) return opening.line
 
   const blocks = (payload as { blocks?: Block[] })?.blocks
   if (Array.isArray(blocks)) {
@@ -166,6 +169,8 @@ export function TheAssistantAsACustomerSeesIt() {
   const [session, setSession] = useState<string | null>(null)
   const [said, setSaid] = useState<Said[]>([])
   const [typing, setTyping] = useState('')
+  /* Emptied on the first question: they are an opening, not a menu that sits there for ever. */
+  const [suggested, setSuggested] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState('')
 
@@ -279,6 +284,10 @@ export function TheAssistantAsACustomerSeesIt() {
         if (opening.ok && drawn) {
           const text = readBlocks(drawn.data ?? drawn)
           if (text) setSaid([{ from: 'them', text }])
+          /* What this assistant can be asked, in its own words. The API has always returned these
+             and the panel has always thrown them away. */
+          const offered = (drawn.data ?? drawn)?.opening?.suggestions
+          if (Array.isArray(offered)) setSuggested(offered.filter((x: unknown) => typeof x === 'string'))
         }
 
         /* What is waiting for this person, on the same session. A customer's
@@ -401,10 +410,13 @@ export function TheAssistantAsACustomerSeesIt() {
     }
   }
 
-  async function send() {
-    const message = typing.trim()
+  async function send(asked?: string) {
+    const message = (asked ?? typing).trim()
     if (!message || !ready || !session) return
     setTyping('')
+    /* An opening, not a standing menu: once somebody has asked something the suggestions have done
+       their job and stop taking up the panel. */
+    setSuggested([])
     setSaid((s) => [...s, { from: 'us', text: message }])
     setBusy(true)
     try {
@@ -499,9 +511,21 @@ export function TheAssistantAsACustomerSeesIt() {
       >
         <div>
           <p style={{ ...LABEL, fontSize: 10, margin: 0 }}>Groundwork</p>
-          {/* Said out loud, because it is the whole point of this panel existing. */}
+          {/*
+            * NOT "the public API", which is what this said.
+            *
+            * Nothing about it is public: every call needs a credential the organisation was issued
+            * and access an admin asked for, and it reaches that organisation's data and nobody
+            * else's. "Public API" is a phrase from the inside - it means "the documented one" to us
+            * and "our data is exposed" to everybody else, and it is the first thing somebody reads
+            * on a panel whose whole subject is where their data goes.
+            *
+            * It is on our own back office, so this was one line and not a customer-facing claim -
+            * checked: `public API` appears nowhere in the client or the marketing site apart from
+            * here. The server module keeps the name, which nobody reads.
+            */}
           <p style={{ fontSize: 11.5, color: 'var(--gw-sub)', margin: '2px 0 0' }}>
-            Through the public API, as a customer
+            Connected the way a customer connects, over their own credential
           </p>
         </div>
         <button
@@ -692,7 +716,23 @@ export function TheAssistantAsACustomerSeesIt() {
 
       {arrived.data && (
         <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4 }}>
-          <div style={{ ...LABEL, marginBottom: 6 }}>What Groundwork has told us</div>
+          {/*
+            * WHY A DELIVERY LOG IS SITTING UNDER A CHAT.
+            *
+            * The panel above proves we can talk TO Groundwork over a customer's credential. This is
+            * the other direction: what Groundwork has called back to this back office, signature
+            * checked. Both halves are the acceptance test - an integration that can only send is
+            * half an integration - and this is the ONLY place either of them is shown, which is why
+            * it is here rather than somewhere tidier.
+            *
+            * Named for what it is now. "What Groundwork has told us" under a chat window reads as
+            * something the assistant said, which is the one thing it is not.
+            */}
+          <div style={{ ...LABEL, marginBottom: 2 }}>Callbacks from Groundwork to this back office</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6, lineHeight: 1.5 }}>
+            Not part of the conversation above. This is the other half of the integration: what
+            Groundwork sent us, with its signature checked.
+          </div>
           {arrived.data.events.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{arrived.data.says}</div>
           ) : (
@@ -706,6 +746,33 @@ export function TheAssistantAsACustomerSeesIt() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {/*
+        * WHAT YOU CAN ASK IT, PRESSABLE.
+        *
+        * The API returns these with the opening - 'What am I on?', 'What is due?' - and the panel
+        * joined them with a middle dot onto the end of the greeting, where they read as part of a
+        * sentence. So the panel opened with a hello and nothing that said what it was for, which is
+        * what "looks incomplete, nothing tells you what you can do" is describing.
+        *
+        * Buttons rather than a help link on purpose: the answer to "what can I do here" is a
+        * question this thing can actually answer, and pressing one is faster than reading about it.
+        */}
+      {suggested.length > 0 && session && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 12px 10px' }}>
+          {suggested.map((q) => (
+            <button
+              key={q}
+              type="button"
+              className="gw-btn-sm"
+              disabled={busy}
+              onClick={() => send(q)}
+            >
+              {q}
+            </button>
+          ))}
         </div>
       )}
 
