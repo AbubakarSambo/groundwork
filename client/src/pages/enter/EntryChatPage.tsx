@@ -1783,8 +1783,19 @@ export function EntryChatPage() {
          * useful half of the coordinator path; inviting somebody to confirm a context they had not
          * written was the half she removed.
          */
+        /*
+         * "THEY DO. I READ WHAT COMES BACK." - and until now that answer went nowhere.
+         *
+         * `flowPath === 'lead'` is set by exactly one control: the second answer on the fork at the
+         * end of setup. The person has said they are not one of the people checking in. Without
+         * `managingOnly` they were recorded as a party anyway, given a session 1 of their own, and
+         * chased for an account they had just said was not theirs to give.
+         *
+         * The BRIEF travels for the same reason it always did: they gave no account, so the
+         * onboarding is the only context the people who do check in have to work from.
+         */
         ...(flowPath === 'lead'
-          ? { brief: composeLeadBrief(onboardingSelections) || undefined }
+          ? { managingOnly: true, brief: composeLeadBrief(onboardingSelections) || undefined }
           : {}),
       }
   }
@@ -3827,9 +3838,33 @@ export function EntryChatPage() {
                   if (pendingNewScenario) {
                     clearEntrySession()
                     setOnboardingSelections(pendingNewScenario.sels)
-                    setOnboardingHistory([])
+                    /*
+                     * THE OPENER, WHICH THIS SET TO AN EMPTY LIST AND LEFT THERE.
+                     *
+                     * `setOnboardingHistory([])` cleared the conversation and put nothing back, and
+                     * the picker only renders while the history is exactly one turn long. So
+                     * "Start new scenario" produced a blank screen: no question, no cards, no way
+                     * forward except reloading. Seen by driving it - the wizard hands over, the
+                     * session from an earlier attempt triggers this modal, and the way through it
+                     * is a dead end.
+                     */
+                    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
                     setOnboardingReady(false)
+                    setPickedSituation(null)
+                    setPickedScenario(null)
                     persistOnboarding([], pendingNewScenario.sels, 1)
+                    /*
+                     * AND IF THEY ARRIVED HAVING ALREADY PICKED, honour that here as well. Coming
+                     * from /grounds/new the situation is chosen and in the URL; showing them the
+                     * picker again after they have just used one is the "click went nowhere" bug
+                     * with an extra modal in front of it.
+                     */
+                    const already = SITUATION_CARDS.find((c) => c.scenario === scenario)
+                    if (already) {
+                      setPickedSituation(already.label)
+                      setPickedScenario(already.scenario)
+                      theyArrivedHavingPicked.current = already.message
+                    }
                   }
                   setShowNewScenarioConflict(false)
                   setPendingNewScenario(null)

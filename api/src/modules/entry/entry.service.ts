@@ -1032,6 +1032,8 @@ STRICT RULES:
       // the lead who will run the first check-in.
       brief?: string;
       lead?: { email: string; name?: string; contextNote?: string };
+      /** True when they said the other people check in and they read what comes back. */
+      managingOnly?: boolean;
       history: ChatTurn[];
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
@@ -1315,6 +1317,20 @@ STRICT RULES:
        * Reading the role costs one query and makes the rule the same rule everywhere. A brand new
        * sign-up is genuinely an ADMIN, so nothing about that case changes.
        */
+      /*
+       * WHETHER THIS PERSON ALSO CHECKS IN, WHICH THE CONVERSATION ASKS AND THIS DROPPED.
+       *
+       * The set-up wizard asked it on a form step and posted `managingOnly` at create. That screen
+       * is gone - /grounds/new is a picker that hands over to the conversation - and the question
+       * moved into the conversation's last beat: "I check in too" against "They do, I read what
+       * comes back". The answer then went nowhere, so somebody who said they do not check in was
+       * still recorded as a party who owes an account, given a session 1, and chased for it.
+       *
+       * Sent AT CREATE rather than through `confirmLead` afterwards, which is the whole of the bug
+       * a-lead-who-is-not-a-party.spec.ts exists for: that call rejects a ground its own creator
+       * just made, so the choice was silently dropped every time.
+       */
+      ...(dto.managingOnly === true ? { managingOnly: true } : {}),
     }, role);
 
     // Find the session 1 check-in and the initiator participant just created.

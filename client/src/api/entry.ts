@@ -145,6 +145,9 @@ export const entryApi = {
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).
     lead?: { email: string; name?: string; contextNote?: string }
+    /** True when they said the other people check in and they read what comes back. Without it
+     *  somebody who has just said they are not a party is still given a session to answer. */
+    managingOnly?: boolean
     brief?: string
   }) =>
     apiClient.post<{
