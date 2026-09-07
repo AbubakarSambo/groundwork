@@ -28,6 +28,13 @@ const NAV_ITEMS = [
      * What was redundant was the name.
      */
     label: 'All check-ins',
+    /* WHAT THE BOTTOM BAR CALLS IT. Measured at 320px: this label is 64px wide in a 64px cell on a
+       customer's five-item bar and a 53px cell on our six-item one, so it overflows and - because
+       the cell centres it - loses its START rather than its end. "ll check-ins" is not a truncated
+       label, it reads as a different one. Type size cannot fix it: 8.5px still overflows, and 8.5px
+       is not a size to ask a thumb to read. So the bar gets the short name and the rail keeps the
+       full one, which is the only place "All" was ever doing work. */
+    short: 'Check-ins',
     to: '/grounds',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -98,6 +105,9 @@ const NAV_ITEMS = [
      * the collision rather than removed it.
      */
     label: 'Platform ops',
+    /* Same measurement, same reason. Only platform admins see this one, so it is our own bar that
+       breaks worst - which is no reason to leave it broken. */
+    short: 'Ops',
     to: '/admin',
     // Groundwork's own back-office, NOT the org admin's area. The route is
     // wrapped in RequirePlatformAdmin, so gating this on `adminOnly` showed
@@ -449,7 +459,8 @@ function NavItem({ item, compact }: { item: typeof NAV_ITEMS[0]; compact?: boole
         }}
       >
         {item.icon(active)}
-        {item.label}
+        {/* The short name where there is one. See the note on the item itself. */}
+        {(item as { short?: string }).short ?? item.label}
       </NavLink>
     )
   }
