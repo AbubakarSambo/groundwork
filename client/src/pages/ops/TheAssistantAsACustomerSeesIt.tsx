@@ -5,6 +5,32 @@ import { CARD, LABEL } from './OpsLayout'
 import { scrollTo } from '@/lib/scroll-to'
 
 /**
+ * WHAT A PANEL CAN ACTUALLY DO, AND WHY IT IS NOT THE THREE THINGS ASKED FOR.
+ *
+ * The ask was "just allow people to set scenarios, objectives and add people". One of those works
+ * from a panel today and two of them cannot, and the reason is a deliberate line rather than a
+ * gap - so offering all three would put two buttons here that refuse.
+ *
+ *   SET AN OBJECTIVE   works. The assistant opens a draft in your name and asks for the rest, one
+ *                      question at a time. It is a real lane with a real write behind it.
+ *   START A CHECK-IN   the lane exists but only tells you which are waiting for YOU. Creating one
+ *                      is `POST /grounds`, a MACHINE route with a `grounds:write` scope - the
+ *                      customer's server opens check-ins, not a widget inside their app. A panel
+ *                      session is one person's session, and letting it create organisation-level
+ *                      things is the thing that guard is for.
+ *   ADD PEOPLE         has no panel route at all. People arrive through SCIM from the customer's
+ *                      own directory, which is the whole point of "their login is the only login".
+ *
+ * So the three here are the ones that work, and the two that do not are a decision to be taken
+ * rather than a control to be drawn.
+ */
+const WHAT_YOU_CAN_DO: { label: string; says: string }[] = [
+  { label: 'Set an objective', says: 'I want to set an objective' },
+  { label: "What am I on?", says: 'What am I on?' },
+  { label: 'What is waiting for me?', says: 'What is due?' },
+]
+
+/**
  * THE ASSISTANT, IN OUR OWN ORGANISATION, THROUGH THE PUBLIC API.
  *
  * The whole claim of the API is that a company can run Groundwork inside their
@@ -159,12 +185,6 @@ export function TheAssistantAsACustomerSeesIt() {
    * has to sit somewhere, because a read nobody can see is a read nobody checks,
    * and the deliveries that failed to verify are exactly the ones worth seeing.
    */
-  const arrived = useQuery({
-    queryKey: ['ops', 'groundwork-events'],
-    queryFn: opsApi.groundworkEvents,
-    retry: false,
-    enabled: open,
-  })
 
   const [session, setSession] = useState<string | null>(null)
   const [said, setSaid] = useState<Said[]>([])
@@ -761,38 +781,33 @@ export function TheAssistantAsACustomerSeesIt() {
         <div ref={bottom} />
       </div>
 
-      {arrived.data && (
-        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4 }}>
-          {/*
-            * WHY A DELIVERY LOG IS SITTING UNDER A CHAT.
-            *
-            * The panel above proves we can talk TO Groundwork over a customer's credential. This is
-            * the other direction: what Groundwork has called back to this back office, signature
-            * checked. Both halves are the acceptance test - an integration that can only send is
-            * half an integration - and this is the ONLY place either of them is shown, which is why
-            * it is here rather than somewhere tidier.
-            *
-            * Named for what it is now. "What Groundwork has told us" under a chat window reads as
-            * something the assistant said, which is the one thing it is not.
-            */}
-          <div style={{ ...LABEL, marginBottom: 2 }}>Callbacks from Groundwork to this back office</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6, lineHeight: 1.5 }}>
-            Not part of the conversation above. This is the other half of the integration: what
-            Groundwork sent us, with its signature checked.
+      {/*
+        * THE CALLBACK LOG USED TO BE HERE, AND IT IS GONE.
+        *
+        * "Callbacks from Groundwork to this back office / Nothing has arrived. Either nothing has
+        * happened, or nobody has registered where to send it" sat under a conversation, in a chat
+        * window, telling somebody about webhook deliveries. Her words: confusing as fuck on the
+        * chat. She is right - it answered a question nobody in a chat is asking, and the empty
+        * state read as though the assistant had failed at something.
+        *
+        * It has not been deleted, it has been MOVED: the same figures are on the ops Deployment
+        * page, where somebody goes to find out whether an integration is wired. That is the only
+        * place it was ever useful, and it was only here because this panel happened to be the
+        * thing that got built first.
+        *
+        * What takes its place is what she asked for: the things a person can actually do from
+        * here. See `whatAPanelCanActuallyDo` for why the list is three and not five.
+        */}
+      {session && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 10, marginTop: 4, padding: '10px 12px 0' }}>
+          <div style={{ ...LABEL, marginBottom: 6 }}>Things you can do here</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {WHAT_YOU_CAN_DO.map((a) => (
+              <button key={a.says} type="button" className="gw-btn-sm" disabled={busy} onClick={() => send(a.says)}>
+                {a.label}
+              </button>
+            ))}
           </div>
-          {arrived.data.events.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{arrived.data.says}</div>
-          ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {arrived.data.events.slice(0, 5).map((e, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
-                  {/* A delivery that did not verify is the one worth seeing, so it is said
-                      first and in the product's own words rather than shown as a red dot. */}
-                  {e.verified ? (e.says ?? e.kind) : `${e.kind} — the signature did not check out`}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       )}
 
