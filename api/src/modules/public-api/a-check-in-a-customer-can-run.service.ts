@@ -5,6 +5,7 @@ import { ConversationService } from '../conversation/conversation.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
 import { GroundsByApiService } from './grounds-by-api.service';
+import { ScimService } from '../people/scim.service';
 import { DocumentsService } from '../documents/documents.service';
 import { askWhoItIsFor } from '../assistant/a-document-is-private-until-you-say-otherwise';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
@@ -34,6 +35,7 @@ export class ACheckInACustomerCanRunService {
     private readonly truth: WhatIsTrueService,
     private readonly documents: DocumentsService,
     private readonly groundsByApi: GroundsByApiService,
+    private readonly scim: ScimService,
   ) {}
 
   /**
@@ -283,11 +285,54 @@ export class ACheckInACustomerCanRunService {
       actingPersonExternalId: me.externalId,
       label: dto?.label ?? '',
       scenario: dto?.scenario ?? '',
-      moment: dto?.moment ?? 'AT_THE_START',
+      /* STARTING, not AT_THE_START. The vocabulary is a closed set and I guessed at it - the API's
+         own refusal named the three, which is what that error message is for. */
+      moment: dto?.moment ?? 'STARTING',
       timelineDays: dto?.timelineDays,
       cadence: dto?.cadence,
       participants: dto?.participants,
     });
+  }
+
+  /**
+   * ADD SOMEBODY TO THE ORGANISATION, FROM THE PANEL.
+   *
+   * Decided knowing what it means: a person's panel session can register a person, the way the
+   * customer's directory sync does. What makes that safe is the queue - a person registered here is
+   * a DIRECTORY ENTRY, not an account and not a member. They become neither until they accept an
+   * invitation to something, and at that moment `participants.service.ts` queues them for an admin
+   * of the organisation. So this creates somebody who can be invited, never somebody who is in.
+   *
+   * SCIM, not a second way of making people. The same upsert the directory push uses, keyed on the
+   * same externalId, so a person added from the panel and the same person arriving later from the
+   * customer's HR system are one row rather than two.
+   */
+  async addAPerson(
+    organizationId: string,
+    personId: string,
+    dto: { email?: string; displayName?: string; externalId?: string },
+  ) {
+    /* Refuses for the same reason every other panel route does: a session that cannot be resolved
+       to a person is a session that may not act in this organisation at all. */
+    await this.actingAs(organizationId, personId);
+
+    const email = dto?.email?.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('An email address is needed. It is how they are invited and how they sign in.');
+    }
+    const name = dto?.displayName?.trim() || email.split('@')[0];
+    const [givenName, ...rest] = name.split(/\s+/);
+
+    return this.scim.upsert(organizationId, 'panel', {
+      /* Their address is the id when the caller has no id of their own to give - a person added by
+         somebody typing an email has no directory key yet, and inventing a random one would make
+         them a different person from the one the HR system pushes tomorrow. */
+      externalId: dto?.externalId?.trim() || email,
+      userName: email,
+      name: { givenName, familyName: rest.join(' ') || undefined },
+      emails: [{ value: email, primary: true }],
+      active: true,
+    } as never);
   }
 
   /**

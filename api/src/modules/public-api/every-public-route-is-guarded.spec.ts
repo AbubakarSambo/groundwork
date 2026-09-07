@@ -90,6 +90,20 @@ const PANEL_AUTHENTICATED = [
    * scope that could express it honestly: "documents:write" for an integration would mean writing
    * into everybody's, which is the thing the check-in routes above are kept off for.
    */
+  /*
+   * OPENING one is a personal act for the same reason answering in one is: the check-in is opened
+   * AS the session's person and the service refuses to take an acting person from the body, so
+   * there is nobody else it could be opened as. A machine scope here would mean "open records in
+   * anybody's name", which is the thing the routes on this list are kept off for.
+   */
+  "@Post('check-ins')",
+  /*
+   * And REGISTERING somebody is on this list rather than carrying a scope because it is the panel
+   * doing it as a person - decided deliberately. It creates a directory entry, never a member: the
+   * approval queue is what stands between an invitation accepted and somebody being in the
+   * organisation. See participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts.
+   */
+  "@Post('people')",
   "@Post('check-ins/:id/documents')",
   "@Post('check-ins/:id/complete')",
   "@Get('check-ins/:id/transcript')",
