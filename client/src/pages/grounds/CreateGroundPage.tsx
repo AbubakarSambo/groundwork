@@ -12,6 +12,7 @@ import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
+import { theWordsForPickingASituation } from './whose-situation-is-it'
 import { rememberWhoWasNotInvited } from './who-was-not-invited'
 
 interface ScenarioCard {
@@ -647,6 +648,9 @@ export function CreateGroundPage() {
   const [runByOther, setRunByOther] = useState(false)
   const [leadEmail, setLeadEmail] = useState('')
   const [leadName, setLeadName] = useState('')
+  /* The words for step 2 depend on whose situation it is - "someone else sets the context" makes
+     every "you" on that step point at the wrong person. See whose-situation-is-it.ts. */
+  const theWords = theWordsForPickingASituation(runByOther, leadName)
   const [leadRemit, setLeadRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
@@ -969,6 +973,10 @@ export function CreateGroundPage() {
   /** Not `Object.keys(STAGE).length`: that counts steps this person is never shown. */
   const totalStepsForThisPerson = visibleSteps.length
 
+  /* Only the open card's label depends on who is reading; every other one is its own name. */
+  const cardLabel = (card: ScenarioCard) =>
+    card.scenario === 'OPEN_READ' ? theWords.describeOwnLabel : card.label
+
   const renderSituation = (card: ScenarioCard) => {
                         const facts = SCENARIO_FACTS[card.scenario]
                         const sessions = recommendedSessions(card.scenario)
@@ -995,7 +1003,7 @@ export function CreateGroundPage() {
                             role="radio"
                             tabIndex={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
                             aria-checked={isSel}
-                            aria-label={`${card.label}. ${card.moment} ${card.desc}`}
+                            aria-label={`${cardLabel(card)}. ${card.moment} ${card.desc}`}
                             onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
                             className={`cg-sit-card${isSel ? ' selected' : ''}`}
                             onClick={pick}
@@ -1004,7 +1012,10 @@ export function CreateGroundPage() {
                               <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
                               <div className="cg-sit-check" />
                             </div>
-                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{card.label}</div>
+                            {/* Named situations are facts about the product and never change. The
+                                describe-your-own card is about the READER, so it does - see
+                                whose-situation-is-it.ts. */}
+                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{cardLabel(card)}</div>
                             <p className="cg-moment">{card.moment}</p>
 
                             <button
@@ -1074,9 +1085,13 @@ export function CreateGroundPage() {
           }}
         >
           <span>Picked up where you left off {howLongAgo(restored)} — on this device.</span>
+          {/* "Start fresh" was `gw-btn-ghost`, which no stylesheet defines - so it rendered as a
+              raw browser button inside a styled banner. Same silent failure as the seven `gw-in`
+              fields; found by the guard written for those. `gw-btn-sm` is the small muted control
+              this actually is. */}
           <button
             type="button"
-            className="gw-btn-ghost"
+            className="gw-btn-sm"
             style={{ margin: 0 }}
             onClick={() => {
               forget(DRAFT_KEY)
@@ -1218,7 +1233,7 @@ export function CreateGroundPage() {
               ))}
               {alsoAParty === true && !runByOther && (
                 <input
-                  className="gw-in"
+                  className="gw-input"
                   aria-label="What you are responsible for"
                   placeholder="What are you responsible for here? (optional)"
                   value={myRemit}
@@ -1228,15 +1243,15 @@ export function CreateGroundPage() {
               )}
               {runByOther && (
                 <div style={{ marginTop: 4 }}>
-                  <input className="gw-in" type="email" aria-label="The lead's email address"
+                  <input className="gw-input" type="email" aria-label="The lead's email address"
                     placeholder="Their email address" value={leadEmail}
                     onChange={(e) => setLeadEmail(e.target.value)} />
-                  <input className="gw-in" aria-label="The lead's name"
+                  <input className="gw-input" aria-label="The lead's name"
                     placeholder="Their name (optional)" value={leadName}
                     onChange={(e) => setLeadName(e.target.value)} style={{ marginTop: 6 }} />
                   {/* Without this the lead is the one person on the ground with no
                       stated remit, and the only person the board cannot read. */}
-                  <input className="gw-in" aria-label="What the lead is responsible for"
+                  <input className="gw-input" aria-label="What the lead is responsible for"
                     placeholder="What are they responsible for? (optional, they can set this themselves)"
                     value={leadRemit} onChange={(e) => setLeadRemit(e.target.value)} style={{ marginTop: 6 }} />
                   <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
@@ -1251,9 +1266,8 @@ export function CreateGroundPage() {
             {/* ---- STEP 2: which situation ---- */}
             {step === STAGE.situation && (<>
             <div className="gw-sub-t" style={{ marginBottom: 2 }}>
-              {HOW_MANY_SITUATIONS} situations, grouped by the question you are actually asking. Every one of them is an
-              objective agreed at the start, then a run of check-ins testing the work against it. Pick the
-              closest fit: it sets the questions people are asked and how often.
+              {/* Whose situation this is decides the pronouns. See whose-situation-is-it.ts. */}
+              {HOW_MANY_SITUATIONS} {theWords.intro}
             </div>
 
             {/* Type it in your own words. The groups fixed the card nobody could find; this is for
@@ -1317,7 +1331,9 @@ export function CreateGroundPage() {
                       <h3>{g.heading}</h3>
                       <span>{cards.length} {cards.length === 1 ? 'situation' : 'situations'}</span>
                     </div>
-                    <p className="cg-group-q">{g.question}</p>
+                    <p className="cg-group-q">
+                      {g.key === 'open' ? theWords.openGroupQuestion : g.question}
+                    </p>
                     <div className={`cg-group-grid${cards.length === 1 ? ' one' : ''}`}>
                       {cards.map(renderSituation)}
                     </div>
@@ -1441,7 +1457,7 @@ export function CreateGroundPage() {
                       <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-sub)', display: 'grid', gap: 3 }}>
                         When would you like the first conversation?
                         <input
-                          className="gw-in"
+                          className="gw-input"
                           type="datetime-local"
                           value={coachWhen}
                           min={new Date(Date.now() + 3600_000).toISOString().slice(0, 16)}
@@ -1515,7 +1531,7 @@ export function CreateGroundPage() {
                   What is happening, who is involved, and what you want out of it. We will suggest the closest
                   situation and you can change it - what gets picked decides the questions people are asked.
                 </div>
-                <textarea id="own-situation" className="gw-in" rows={4} value={ownDescription}
+                <textarea id="own-situation" className="gw-ta" rows={4} value={ownDescription}
                   onChange={(e) => { setOwnDescription(e.target.value); setRoutedTo(null); setRouteFailed(false) }}
                   placeholder="e.g. Four new clinic managers on a three month probation. They run separate clinics and never work together, but they all report to me." />
                 {/*
@@ -1852,7 +1868,7 @@ export function CreateGroundPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <input
                   id="gw-starts"
-                  className="gw-in"
+                  className="gw-input"
                   type="date"
                   value={startsOn}
                   min={new Date().toISOString().slice(0, 10)}

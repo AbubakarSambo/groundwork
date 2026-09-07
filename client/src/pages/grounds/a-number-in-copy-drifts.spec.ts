@@ -19,7 +19,18 @@ const stripped = page.replace(/\/\*[\s\S]*?\*\/|\{\/\*[\s\S]*?\*\/\}|\/\/[^\n]*/
 
 describe('how many situations the page claims', () => {
   it('is counted from the catalogue, not written into the sentence', () => {
-    expect(stripped).toMatch(/\{HOW_MANY_SITUATIONS\} situations, grouped by the question/)
+    /* The words after the number now depend on whose situation it is (whose-situation-is-it.ts),
+       so the assertion is on the NUMBER coming from the catalogue rather than on the sentence it
+       introduces - which is what this test was always about. */
+    expect(stripped).toMatch(/\{HOW_MANY_SITUATIONS\} \{theWords\.intro\}/)
+  })
+
+  it('and the words it introduces still say "situations", on both paths', () => {
+    /* Comments stripped: the doc comment at the top of that file QUOTES the old sentence to
+       explain what was wrong with it, and a guard a comment can satisfy is not a guard. */
+    const words = readFileSync(join(__dirname, 'whose-situation-is-it.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
+    expect((words.match(/situations, grouped by/g) || []).length).toBe(2)
   })
 
   it('and no spelled-out number is left in that line', () => {

@@ -83,9 +83,12 @@ export function JoinPage() {
       <div style={{ marginTop: 18, fontSize: 13, color: 'var(--gw-muted)' }}>
         Sent to <strong>{sentTo}</strong>.
       </div>
+      {/* `gw-btn-ghost` is not defined anywhere, so this rendered as a raw browser button on a page
+          somebody reaches from a broadcast link - the first Groundwork screen they ever see. Same
+          silent typo as the fields on the set-up wizard. */}
       <button
         type="button"
-        className="gw-btn-ghost"
+        className="gw-btn-sm"
         style={{ marginTop: 18 }}
         onClick={() => setPhase('start')}
       >

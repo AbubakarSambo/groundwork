@@ -299,7 +299,11 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
                 : `${didNotLoad.failed} things on this page did not load`}
               {' '}— what you can see may be incomplete.
             </span>
-            <button type="button" className="gw-btn-ghost" style={{ margin: 0 }} onClick={didNotLoad.retry}>
+            {/* `gw-btn-ghost` matches no rule, so the one control on a "something did not load"
+                banner was an unstyled browser button - the moment a control most needs to look
+                like one. Third instance of the same typo; the guard is in
+                grounds/an-input-that-does-not-look-like-one.spec.ts. */}
+            <button type="button" className="gw-btn-sm" style={{ margin: 0 }} onClick={didNotLoad.retry}>
               Try again
             </button>
           </div>
