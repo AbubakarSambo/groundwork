@@ -266,10 +266,10 @@
  {
   "group": "visual/responsive UX",
   "issue": "On mobile the floating Feedback button covers a control in the setup header",
-  "evidence": "375\u00d7812, /start",
+  "evidence": "FIXED: on a chat page the button is positioned from the top, which is the header row. Moved below it on narrow screens; checked at 375px, the control is visible.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "visual/responsive UX",
@@ -306,10 +306,10 @@
  {
   "group": "documents",
   "issue": "The uploader is handed back id, name, mimeType, uploadedAt and an assessment \u2014 and no visibility, so nobody can tell who will see the file they just attached",
-  "evidence": "read from the upload response",
+  "evidence": "FIXED: both upload paths now select the column, and the answer is a sentence rather than the enum \u2014 honouring the CONTEXT_ENABLED flag so it cannot contradict the read path.",
   "severity": "high",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "individual report",

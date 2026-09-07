@@ -38,6 +38,7 @@ import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
 import { notTheWordParty } from './not-the-word-party';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
+import { documentsSection } from './a-document-in-the-corpus';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -917,11 +918,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       findWaitingBehind(workMentionsForLeadership, (id) => labelById.get(id) ?? 'a party'),
     );
 
+    /*
+     * THE DOCUMENTS EVERYBODY CAN SEE, BY NAME. See a-document-in-the-corpus.ts — the prompt was
+     * handed a count and nothing else, which is why one report of a hundred and forty-five ever
+     * mentioned a document. OPEN only: this corpus produces the one shared picture, and a party's
+     * own evidence is theirs to disclose.
+     */
+    const openDocs = await this.prisma.groundDocument.findMany({
+      where: { groundId, visibility: 'OPEN' },
+      select: { fileName: true, participantId: true, assessment: true, uploaderNote: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const documentsNotice = documentsSection(
+      openDocs.map((d) => ({
+        fileName: d.fileName,
+        attachedBy: d.participantId ? (labelById.get(d.participantId) ?? 'a party') : 'the lead',
+        suggests: Array.isArray((d.assessment as any)?.suggests) ? (d.assessment as any).suggests : [],
+        uploaderNote: d.uploaderNote,
+      })),
+    );
+
     const corpus =
       groundContextHeader +
       roster +
       deferralNotice +
       leadContextSection +
+      documentsNotice +
       thinNotice +
       header +
       longitudinalNotice +
