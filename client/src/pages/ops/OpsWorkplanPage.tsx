@@ -17,7 +17,7 @@ export function OpsWorkplanPage() {
   const plan = useQuery({ queryKey: ['ops', 'workplan'], queryFn: opsApi.workplan, retry: false })
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="The workplan" answers="What are we doing, in what order, and what ends each part?" />
 
       {plan.data && (
@@ -76,6 +76,6 @@ export function OpsWorkplanPage() {
       {plan.data && plan.data.phases.length === 0 && (
         <div style={CARD}>No phases are recorded yet.</div>
       )}
-    </main>
+    </section>
   )
 }

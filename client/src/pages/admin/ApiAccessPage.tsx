@@ -121,7 +121,7 @@ export function ApiAccessPage() {
   const decided = (requests.data ?? []).filter((r) => r.status !== 'PENDING')
 
   return (
-    <main id="main" style={{ maxWidth: 820, margin: '0 auto', padding: '32px 20px 80px' }}>
+    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '32px 20px 80px' }}>
       <h1 style={{ fontSize: 24, margin: 0 }}>API access</h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 8 }}>
         Access to the integration API is asked for and granted, not bought. Somebody says what they
@@ -145,6 +145,6 @@ export function ApiAccessPage() {
       {decided.map((r) => (
         <Row key={r.id} request={r} />
       ))}
-    </main>
+    </section>
   )
 }

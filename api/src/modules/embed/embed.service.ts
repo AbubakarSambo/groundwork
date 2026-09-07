@@ -11,6 +11,7 @@ import {
   mayBeSaidEveryTime,
 } from '../assistant/what-is-worth-saying-when-you-arrive';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
+import { openingAbout } from './what-they-are-looking-at';
 
 /**
  * Short, and refreshed by the widget before it runs out.
@@ -35,6 +36,21 @@ export class EmbedService {
 
   async setup(organizationId: string, dto: { allowedDomains?: string[]; placement?: string; outOfScopeDepartments?: string[] }) {
     const domains = (dto.allowedDomains ?? []).map((d) => d.trim()).filter(Boolean);
+    /*
+     * NO DOMAINS IS NOT A CONFIGURATION, IT IS A PANEL THAT RENDERS NOWHERE.
+     *
+     * `frame-ancestors` with nothing in it, and `X-Frame-Options: DENY`, so the iframe is refused on
+     * every page — and the loader is deliberately silent on a customer's site, so the result is
+     * indistinguishable from a broken install. Somebody sets this up, pastes the script tag, sees
+     * nothing, and has no way to learn that the empty field is the reason.
+     *
+     * Refused here rather than reported later: this is the moment somebody is looking at the field.
+     */
+    if (!domains.length) {
+      throw new BadRequestException(
+        'Add at least one domain the panel may appear on. With none, the panel is refused on every page and looks like a broken install. Use the origin only, for example https://app.example.com.',
+      );
+    }
     for (const d of domains) {
       /* A frame-ancestors entry is an origin, not a url. Accepting a path here would silently
          produce a policy that matches nothing. */
@@ -151,14 +167,49 @@ export class EmbedService {
    * this - the handshake's own response goes to the HOST page, which must not be handed the
    * person's name and their systems' state just for embedding a widget.
    */
-  async openingFor(organizationId: string, personId: string) {
+  /**
+   * @param aboutSubjectExternalId what the HOST PAGE says the person is looking at, if it said
+   *   anything. See `what-they-are-looking-at.ts`: the loader has always accepted this and nothing
+   *   has ever read it, so the documented "opens grounded rather than cold" did nothing.
+   */
+  async openingFor(organizationId: string, personId: string, aboutSubjectExternalId?: string) {
     const person = await this.prisma.person.findFirst({ where: { id: personId, organizationId } });
     if (!person) return { opening: null, freshness: [] };
+
+    /* The host's claim, checked against this organisation before it is used for anything. */
+    const on = aboutSubjectExternalId?.trim()
+      ? await this.prisma.subject.findFirst({
+          where: { organizationId, externalId: aboutSubjectExternalId.trim(), sourceDeletedAt: null },
+          /* `type`, not `kind` — the column is SubjectType. The panel's word for it is "kind". */
+          select: { externalId: true, title: true, type: true },
+        })
+      : null;
+
     return {
       person: { externalId: person.externalId, displayName: person.displayName ?? person.userName },
-      opening: await this.opening(organizationId, person),
+      opening: on
+        ? await this.openingOnASubject(organizationId, person, on)
+        : await this.opening(organizationId, person),
       freshness: await this.freshness(organizationId),
+      /* Echoed so the panel can tell the difference between "we used your context" and "your id
+         matched nothing here", which is otherwise invisible on both sides. */
+      openedOn: on ? { externalId: on.externalId, title: on.title } : null,
     };
+  }
+
+  /** The opening for somebody who is demonstrably on one thing. */
+  private async openingOnASubject(
+    organizationId: string,
+    person: { id: string; displayName: string | null; userName: string; externalId?: string },
+    on: { externalId: string; title: string; type: string | null },
+  ) {
+    const firstName = (person.displayName ?? person.userName).split(' ')[0];
+    const waitingOnThem = person.externalId
+      ? await this.prisma.commitment.count({
+          where: { organizationId, personExternalId: person.externalId, state: 'OPEN', subjectExternalId: on.externalId },
+        }).catch(() => 0)
+      : 0;
+    return openingAbout({ externalId: on.externalId, title: on.title, kind: on.type }, firstName, waitingOnThem);
   }
 
   private async opening(organizationId: string, person: { id: string; displayName: string | null; userName: string; externalId?: string; lastNudgedOn?: Date | null }) {

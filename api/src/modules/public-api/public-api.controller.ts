@@ -273,8 +273,11 @@ export class PublicApiController {
   @Get('embed/opening')
   @UseGuards(EmbedSessionGuard)
   @ApiOperation({ summary: 'What the panel draws before anybody types' })
-  async embedOpening(@Req() req: { panel: PanelCaller }) {
-    return this.embed.openingFor(req.panel.organizationId, req.panel.personId);
+  async embedOpening(@Req() req: { panel: PanelCaller }, @Query('about') about?: string) {
+    /* `about` is what the host page said the person is looking at — see
+       embed/what-they-are-looking-at.ts. It is a claim from somebody else's page, checked against
+       this organisation before it changes anything. */
+    return this.embed.openingFor(req.panel.organizationId, req.panel.personId, about);
   }
 
   /**

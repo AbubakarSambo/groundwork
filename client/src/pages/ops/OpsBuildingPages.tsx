@@ -99,7 +99,7 @@ export function OpsRoadmapPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Roadmap" answers="What are we building, and in what order?" />
 
       {/* Both at the top, where somebody adding work will see them. The freeze
@@ -159,7 +159,7 @@ export function OpsRoadmapPage() {
         filteredOutOf={all?.filter((r) => !r.standing).length}
         empty="Nothing proposed yet."
       />
-    </main>
+    </section>
   )
 }
 
@@ -249,7 +249,7 @@ export function OpsReadinessPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader
         name="Readiness"
         answers="Whose use case are we not supporting, and what would it take?"
@@ -277,7 +277,7 @@ export function OpsReadinessPage() {
         keyOf={(u) => u.id}
         empty="No use case has been recorded. Until one is, nobody has asked whether we support anybody."
       />
-    </main>
+    </section>
   )
 }
 
@@ -313,7 +313,7 @@ function workItemColumns(kind: 'tech' | 'ux'): Column<OpsWorkItem>[] {
 export function OpsTechPage() {
   const tech = useQuery({ queryKey: ['ops', 'tech'], queryFn: opsApi.tech, retry: false })
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Tech" answers="What is in my way, and what is holding a client up?" />
       <Adder
         title="Raise something"
@@ -345,14 +345,14 @@ export function OpsTechPage() {
         keyOf={(i) => i.id}
         empty="Nothing raised."
       />
-    </main>
+    </section>
   )
 }
 
 export function OpsUXPage() {
   const ux = useQuery({ queryKey: ['ops', 'ux'], queryFn: opsApi.ux, retry: false })
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="UX" answers="What is hard to use, and where did we notice?" />
       <Adder
         title="Record an interface problem"
@@ -386,6 +386,6 @@ export function OpsUXPage() {
         keyOf={(i) => i.id}
         empty="Nothing recorded."
       />
-    </main>
+    </section>
   )
 }

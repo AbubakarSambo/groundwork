@@ -224,15 +224,51 @@
       if (window.__gwSessionArrived) window.__gwSessionArrived();
     } else if (e.data.type === 'open') input.focus();
     else if (e.data.type === 'context' && e.data.subjectExternalId) {
-      window.__gwContext = String(e.data.subjectExternalId);
+      var next = String(e.data.subjectExternalId);
+      var changed = window.__gwContext !== next;
+      window.__gwContext = next;
+      /* A host that calls context() as the person navigates is telling us they have moved. Drawing
+         the opening for the page they have left is worse than drawing none. */
+      if (changed && typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
     }
   });
 
-  /* The opening state came with the session and is rendered before anybody types. */
-  fetch(API + '/api/org/v1/embed/opening', { headers: { Authorization: 'Bearer ' + token } })
-    .then(function (r) { return r.ok ? r.json() : null; })
+  /*
+   * THE OPENING, AND WHAT THE HOST SAID THE PERSON IS LOOKING AT.
+   *
+   * `__gwContext` was written by the message handler above and read by nothing, so
+   * `groundwork.context({ subjectExternalId })` — which a customer's page is documented to call —
+   * did nothing at all. It is passed here, where it decides what the panel opens on, and nowhere
+   * else: a page's idea of context has no business in what somebody is recorded as having said.
+   */
+  window.__gwDrawOpening = function () {
+  /*
+   * THROUGH `withSession`, LIKE EVERY OTHER CALL.
+   *
+   * It used to run exactly once, at load, on a session seconds old — which is why it was the one
+   * fetch allowed to reach for `token` directly. It can now be redrawn when the host tells us the
+   * person has navigated, which may be an hour later on a session that has run out. Caught by the
+   * guard that counts wrapped calls against total calls, which is exactly what that guard is for.
+   */
+  withSession(function (t) {
+    var openingUrl = API + '/api/org/v1/embed/opening'
+      + (window.__gwContext ? '?about=' + encodeURIComponent(window.__gwContext) : '');
+    return fetch(openingUrl, { headers: { Authorization: 'Bearer ' + t } });
+  })
+    .then(function (r) { return r && r.ok ? r.json() : null; })
     .then(function (s) {
-      if (!s) return;
+      if (!s) {
+        /*
+         * A FAILED OPENING IS NOT AN EMPTY PANEL.
+         *
+         * This returned early, so a panel whose opening call failed drew nothing — identical, from
+         * the outside, to being deliberately out of scope and to a broken install. Somebody sat
+         * looking at an empty box with a text field.
+         */
+        bubble('them', 'I could not read your record just then. Ask me something and I will try again.');
+        send('ready');
+        return;
+      }
       document.getElementById('who').textContent = s.person ? s.person.displayName : 'Groundwork';
       var fresh = document.getElementById('fresh');
       if (s.freshness && s.freshness.length) {
@@ -251,7 +287,14 @@
       send('ready');
       send('resize', { height: Math.min(document.body.scrollHeight, 640) });
     })
-    .catch(function () { send('ready'); });
+    .catch(function () {
+      /* Same rule on a thrown request as on a refused one: never an empty panel. */
+      bubble('them', 'I could not read your record just then. Ask me something and I will try again.');
+      send('ready');
+    });
+  };
+
+  window.__gwDrawOpening();
 })();
 </script>
 </body>

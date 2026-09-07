@@ -125,7 +125,7 @@ export default function OpsPeoplePage() {
   })
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="The team" answers="Who is here, and what can each of them actually do?" />
 
       <Adder
@@ -248,6 +248,6 @@ export default function OpsPeoplePage() {
       {people.data?.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Nobody here yet.</p>
       )}
-    </main>
+    </section>
   )
 }

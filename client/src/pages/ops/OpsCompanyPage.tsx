@@ -51,20 +51,20 @@ export default function OpsCompanyPage() {
 
   if (detail.isError) {
     return (
-      <main id="main" style={PAGE}>
+      <section className="gw-page" style={PAGE}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>No company called {key}</h1>
         <Link to="/ops/target-companies" style={{ fontSize: 13.5 }}>
           Back to the target list
         </Link>
-      </main>
+      </section>
     )
   }
 
   const d = detail.data
-  if (!d) return <main id="main" style={PAGE}><p style={NOTHING}>Working it out…</p></main>
+  if (!d) return <section className="gw-page" style={PAGE}><p style={NOTHING}>Working it out…</p></section>
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <header style={{ marginBottom: 18 }}>
         <Link to="/ops/target-companies" style={{ ...LABEL, textDecoration: 'none', display: 'inline-block' }}>
           ← Target companies
@@ -336,6 +336,6 @@ export default function OpsCompanyPage() {
           </ol>
         )}
       </Section>
-    </main>
+    </section>
   )
 }

@@ -93,7 +93,7 @@ export function OpsDeploymentPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Deployment" answers="Who is stuck getting live, and on what?" />
       <Adder
         title="Start a deployment"
@@ -121,7 +121,7 @@ export function OpsDeploymentPage() {
         filteredOutOf={all?.length}
         empty="Nobody is being deployed. Start one once a company converts."
       />
-    </main>
+    </section>
   )
 }
 
@@ -174,7 +174,7 @@ export function OpsMarketingPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader name="Marketing" answers="What did we put out, and what did it bring in?" />
       <Adder
         title="Plan a campaign"
@@ -220,6 +220,6 @@ export function OpsMarketingPage() {
         keyOf={(c) => c.id}
         empty="No campaigns yet."
       />
-    </main>
+    </section>
   )
 }

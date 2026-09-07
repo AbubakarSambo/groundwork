@@ -47,7 +47,7 @@ export function OpsContributionPage() {
   })
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader
         name="Commercial contribution"
         answers="What has each person actually created, and what share of new revenue came from them?"
@@ -196,7 +196,7 @@ export function OpsContributionPage() {
           )}
         </section>
       ))}
-    </main>
+    </section>
   )
 }
 
@@ -238,7 +238,7 @@ export function OpsPositioningPage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader
         name="Market access"
         answers="Whose relationships and networks are opening doors, and what came of them?"
@@ -276,7 +276,7 @@ export function OpsPositioningPage() {
       />
 
       <OpsTable rows={records.data} columns={columns} keyOf={(r) => r.id} empty="Nothing recorded." />
-    </main>
+    </section>
   )
 }
 
@@ -288,7 +288,7 @@ export function OpsAttributionPage() {
     r === 'OPPORTUNITY_ORIGINATOR' ? 'Opportunity originator' : 'Positioning source'
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader
         name="Attribution review"
         answers="Who says they created what, and is that right?"
@@ -364,7 +364,7 @@ export function OpsAttributionPage() {
       {claims.data?.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Nothing waiting on a decision.</p>
       )}
-    </main>
+    </section>
   )
 }
 
@@ -570,7 +570,7 @@ export function OpsCommercialPipelinePage() {
   ]
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader
         name="Commercial pipeline"
         answers="What are we selling, who created each one, and what has actually been paid?"
@@ -608,6 +608,6 @@ export function OpsCommercialPipelinePage() {
         keyOf={(o) => o.id}
         empty="Nothing in the commercial pipeline yet."
       />
-    </main>
+    </section>
   )
 }

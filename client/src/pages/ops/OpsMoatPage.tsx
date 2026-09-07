@@ -55,7 +55,7 @@ export default function OpsMoatPage() {
   const d = moat.data
 
   return (
-    <main id="main" style={PAGE}>
+    <section className="gw-page" style={PAGE}>
       <OpsHeader
         name={d?.title ?? 'The Groundwork Moat'}
         answers="What is the defensible advantage, and what have we built on it?"
@@ -191,6 +191,6 @@ export default function OpsMoatPage() {
           </p>
         </>
       )}
-    </main>
+    </section>
   )
 }

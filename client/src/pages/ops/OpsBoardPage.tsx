@@ -329,18 +329,18 @@ export default function OpsBoardPage() {
 
   if (me.isError) {
     return (
-      <main id="main" style={{ padding: 40, maxWidth: 640 }}>
+      <section className="gw-page" style={{ padding: 40, maxWidth: 640 }}>
         <h1 style={{ fontSize: 20, marginBottom: 8 }}>This is not your system</h1>
         <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>
           You are signed in, but you are not set up in the Groundwork team's operating system. That is
           a separate list from your Groundwork account.
         </p>
-      </main>
+      </section>
     )
   }
 
   return (
-    <main id="main" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
+    <section className="gw-page" style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <header style={{ marginBottom: 18 }}>
         <p style={LABEL}>The team's operating system</p>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-navy)', margin: '4px 0 2px' }}>
@@ -433,6 +433,6 @@ export default function OpsBoardPage() {
           )}
         </>
       )}
-    </main>
+    </section>
   )
 }
