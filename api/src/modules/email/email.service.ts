@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
 import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
@@ -104,6 +105,38 @@ export class EmailService {
       unsubscribedAt: preference?.unsubscribedAt ?? null,
     });
     return answer.send ? null : answer.because;
+  }
+
+  /**
+   * THE LINK THAT MAKES "SIMPLY IGNORE THIS" TRUE.
+   *
+   * Minted here rather than by six callers, and kept once minted - the invite token is cleared on
+   * accept and the reminders outlive it, so a stop link tied to that one would die exactly when it
+   * starts being needed. Returns null when there is no participant to tie it to (a mail to a lead
+   * about their own check-in has a different way out), and never throws: a failure to build the
+   * footer must not be the reason somebody's invitation does not arrive.
+   */
+  private async theWayToStopBeingChased(participantId?: string): Promise<string | null> {
+    if (!participantId) return null;
+    try {
+      const row = await this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { stopRemindersToken: true },
+      });
+      if (!row) return null;
+      let token = row.stopRemindersToken;
+      if (!token) {
+        token = crypto.randomBytes(32).toString('base64url');
+        await this.prisma.groundParticipant.update({
+          where: { id: participantId },
+          data: { stopRemindersToken: token },
+        });
+      }
+      return STOP_LINE(`${this.frontendUrl.replace(/\/$/, '')}/stop-reminders/${token}`);
+    } catch (err: any) {
+      this.logger.warn(`Could not build a stop-reminders link for participant ${participantId}: ${err.message}`);
+      return null;
+    }
   }
 
   private async sendEmail(
@@ -288,6 +321,8 @@ export class EmailService {
   /** Participant added to a check-in. They are NEVER added silently. */
   async sendParticipantInvite(email: string, founderName: string, groundLabel: string, token: string, note?: string, context?: DeliveryContext): Promise<{ devUrl?: string }> {
     const url = `${this.frontendUrl}/invite?token=${token}`;
+    /* The paragraph below promises that ignoring this is enough. This is what makes it true. */
+    const stopLine = await this.theWayToStopBeingChased(context?.participantId);
     const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
     const devUrl = await this.sendEmail({
       to: email,
@@ -299,7 +334,8 @@ export class EmailService {
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
          ${noteHtml}
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Add my account →</a></p>
-         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>`,
+         <p style="font-size:12px;color:#9B9590;">You are never obligated to take part. If you would rather not, you can simply ignore this - declining is never shown as a negative.</p>
+         ${stopLine ?? ''}`,
       ),
     }, context ?? { kind: 'PARTICIPANT_INVITE' }, 'sendParticipantInvite');
     return { devUrl };
@@ -476,7 +512,7 @@ export class EmailService {
   }
 
   /** Nudge. Scenario-aware subject, names the specific ground that is still open. */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string, otherPartyCompleted?: boolean): Promise<void> {
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string, otherPartyCompleted?: boolean, participantId?: string): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -497,7 +533,8 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject,
-      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>`),
+      /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
+      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
     }, undefined, 'sendNudge');
   }
 

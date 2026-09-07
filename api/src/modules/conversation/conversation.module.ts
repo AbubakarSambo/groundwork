@@ -4,6 +4,7 @@ import { ConversationController, ClarificationController } from './conversation.
 import { AnthropicService } from './anthropic.service';
 import { ConversationContextService } from './context.service';
 import { RemindService } from './remind.service';
+import { StopRemindersController } from './stop-reminders.controller';
 import { BillingModule } from '../billing';
 import { DocumentsModule } from '../documents/documents.module';
 import { UsageModule } from '../usage/usage.module';
@@ -15,7 +16,7 @@ import { WorkspaceModule } from '../workspace/workspace.module';
   /* WorkspaceModule: the lead digest now also posts "people have a check-in waiting" to a
      connected channel — see remind.service.ts. */
   imports: [BillingModule, forwardRef(() => DocumentsModule), UsageModule, EmailModule, WorkspaceModule],
-  controllers: [ConversationController, ClarificationController],
+  controllers: [ConversationController, ClarificationController, StopRemindersController],
   /*
    * `KnowledgeService` is a provider rather than an imported module because it has none - it is
    * registered directly wherever it is used, the same way the public API does it.

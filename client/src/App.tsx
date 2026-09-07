@@ -75,6 +75,7 @@ import { OrgMembersPage } from '@/pages/org/OrgMembersPage'
 import { LeadsGuidePage } from '@/pages/org/LeadsGuidePage'
 import { OrgSetupPage } from '@/pages/org/OrgSetupPage'
 import { NotFoundPage } from '@/pages/notfound/NotFoundPage'
+import { StopMailPage } from '@/pages/mail/StopMailPage'
 import { HelpModal, HelpButton } from '@/components/gw/HelpModal'
 import { AppShell } from '@/components/gw/AppShell'
 import { TalkToUsPage } from '@/pages/talk/TalkToUsPage'
@@ -399,6 +400,11 @@ export default function App() {
                 redirect to an externally-configured marketing URL - if that
                 URL doesn't resolve, silently redirecting here would strand the
                 visitor on a blank tab with no way forward. */}
+            {/* THE LINKS ON OUR MAIL LAND HERE. Public by necessity: somebody who wants the
+                mail to stop must not need an account to say so, and the unsubscribe link had been
+                pointing at a route that did not exist, so it drew the not-found page below. */}
+            <Route path="/unsubscribe/:token" element={<StopMailPage which="unsubscribe" />} />
+            <Route path="/stop-reminders/:token" element={<StopMailPage which="stop-reminders" />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </PageCrash>

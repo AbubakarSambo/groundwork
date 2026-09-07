@@ -95,6 +95,9 @@ export class RemindService {
            carried the column, so the exclusion would have been permanently false — the fault this
            is fixing, wearing the fix's clothes. */
         managingOnly: true,
+        /* Selected for the same reason managingOnly is: a column the row never carried reads
+           undefined, and the whole point of this one is to stop a mail. */
+        remindersStoppedAt: true,
         /* For the invitation path: the token is the same one their first mail carried. */
         inviteToken: true,
         invitedAt: true,
@@ -347,6 +350,8 @@ export class RemindService {
           checkInUrl,
           undefined,
           otherPartyCompleted,
+          /* So the reminder carries its own way out. */
+          participant.id,
         );
 
         await this.prisma.groundParticipant.update({

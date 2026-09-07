@@ -43,7 +43,12 @@ export interface APartyToNudge {
    */
   stillHere?: boolean;
   hoursSinceLastNudge?: number | null;
+  /* They used the link on the mail. The invitation told them ignoring it was enough and it was
+     not, so this is the thing that makes that sentence true. See ignoring-it-should-be-enough.ts. */
+  remindersStoppedAt?: Date | string | null;
 }
+
+import { whyNotRemindThem } from './ignoring-it-should-be-enough';
 
 export const NOT_TWICE_WITHIN_HOURS = 24;
 
@@ -54,9 +59,15 @@ export type WhyNot =
   | 'there is no check-in of theirs to point them at'
   | 'they turned these emails off'
   | 'they were nudged in the last day'
-  | 'their account here has been deactivated';
+  | 'their account here has been deactivated'
+  | 'they asked us to stop reminding them, which the invitation told them they could do';
 
 export function whyNotNudge(party: APartyToNudge): WhyNot | null {
+  /* FIRST, and before anything about check-in state. Somebody who has asked us to stop is done
+     being reasoned about: whether they finished, whether they accepted and whether a day has
+     passed are all questions about chasing them, and they have withdrawn the invitation to. */
+  const asked = whyNotRemindThem(party);
+  if (asked) return asked as WhyNot;
   if (party.managingOnly) return 'they oversee this check-in rather than answering it';
   /* Somebody who has not accepted has a check-in row and no way into it, so the id being present
      is not the question for them — `whatToSendThem` decides what they get instead. */
