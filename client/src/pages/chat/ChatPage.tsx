@@ -1115,8 +1115,41 @@ export function ChatPage() {
 
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
-            {privacyLabel}
+          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
+            {/*
+              * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
+              *
+              * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
+              * me who is involved or tell me i can set context or add people later", and "if someone
+              * else is checking in and then others check in against it, the place to set context is
+              * not very good and you are not told you can set context on a tab".
+              *
+              * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
+              * anywhere in the conversation - so somebody sitting in the chat, realising the context
+              * is thin or that the people who should answer are missing, has no idea either is a
+              * click away. A tab nobody is told about is a tab nobody uses.
+              *
+              * Put in the privacy strip rather than in the model's mouth: an instruction to mention
+              * it would fire whenever the model felt like it, and this is true on every turn of
+              * every session. Quiet, always there, and it goes to the tab rather than describing it.
+              */}
+            {groundId && (
+              <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                <button
+                  onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  Set the context
+                </button>
+                <button
+                  onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  Add people
+                </button>
+              </span>
+            )}
           </div>
           <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <label htmlFor="doc-upload"
