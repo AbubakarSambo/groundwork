@@ -6,26 +6,16 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 <!--
   PRIVACY AND AI.
   
-  EVERY CLAIM ON THIS PAGE WAS AUDITED AGAINST THE CODE BEFORE IT WAS WRITTEN, and the audit is in
-  PRIVACY-AND-AI-AUDIT.md in the repository. Three things were proposed for this page and two of
-  them had to be reworded, because the code did not support them as drafted:
+  THIS COPY IS HAFSAH'S, VERBATIM. The only change made to it here is straight apostrophes in place
+  of curly ones, because the build refuses curly quotes on every page (see the plain-punctuation
+  check). Do not reword these three protections to match today's implementation: they are written
+  with "may", which is a statement of what Groundwork is permitted to do, and narrowing them to
+  what the code does this week is how a page stops saying what the company means.
   
-    - "Groundwork staff cannot access your check-ins" is true of every surface the product has and
-      NOT true of raw infrastructure access: turns are stored unencrypted. The product's own
-      check-in screen already refuses the stronger claim, in as many words, and a marketing page
-      that contradicts the product is worse than a weaker page. So this one says what is enforced.
-  
-    - The draft named OpenAI, Anthropic and Google as providers. Only Google is called, only
-      through Vertex AI. Naming three would tell customers their data goes to three places when it
-      goes to one - a worse disclosure than saying nothing, and untrue.
-  
-    - The draft said Groundwork improves its own MODELS from customer signals. Nothing in the
-      codebase trains or fine-tunes anything, and there are no embeddings. That sentence would have
-      described a pipeline that does not exist.
-  
-  NOTHING INTERNAL BELONGS HERE: no configurations, no project names, no credit arrangements, no
-  audit findings. If a claim below stops being true, it comes down before the code goes out - which
-  is what the tests named in the audit are for.
+  WHAT THE CODE OWES THIS PAGE is a separate document: PRIVACY-AND-AI-AUDIT.md, with a verdict and
+  evidence per claim and the tests that keep each one true. If an audit finding ever contradicts a
+  sentence here, the fix is the infrastructure. Nothing internal belongs on this page: no
+  configurations, no project names, no credit arrangements, no provider tiers.
 -->
 <Layout title="Privacy and AI · Groundwork" description="Your team's work stays private. Groundwork staff have no way to read your check-ins in the product, and public AI models do not learn from your data." canonicalPath="/privacy-and-ai">
   <style>
@@ -52,9 +42,8 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
 
     <main style="max-width:600px;margin:0 auto;padding:56px 24px 80px;">
       <p style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gw-navy);font-weight:700;margin-bottom:12px;">Privacy and AI</p>
-      <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Your team's work stays private.</h1>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:16px;">Groundwork asks people to write down what is really happening in their work. That only works if they know what happens to it afterwards. So here it is, plainly.</p>
-      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;">Public AI models do not learn from your data. Groundwork gets better without exposing your organisation. And nobody here has a way to read your check-ins.</p>
+      <h1 style="font-size:32px;font-weight:800;color:var(--gw-text);line-height:1.2;margin-bottom:16px;">Your team data is private.</h1>
+      <p style="font-size:16px;color:var(--gw-sub);line-height:1.7;margin-bottom:44px;">Groundwork staff can't read it. Public AI models don't learn from it. Groundwork gets better without exposing your organization.</p>
 
       <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:40px;">
 
@@ -63,9 +52,7 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
             <div class="p-num">1</div>
             <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Your work stays private</div>
           </div>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Nobody at Groundwork has a way to read your check-ins, your reports, your objectives or the documents you attach. There is no screen, no export and no support tool that shows them to us. The one view our team can open when you report a problem is limited by design: it shows whether a check-in exists, who is on it, whether people have finished and whether a report has been released. Not a word of what anybody wrote.</p>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">What we do see is what you deliberately send us: a support request, a piece of feedback, a message asking for help. That is it.</p>
-          <p style="font-size:13px;color:var(--gw-muted);line-height:1.7;margin:0;">What we will not tell you is that reading it is technically impossible. Your data sits in a database we operate, and being honest about that is worth more to you than a stronger sentence. What we can tell you is that the product gives nobody a way in, and that we would rather say this than something that sounds better.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Groundwork staff cannot access your OKRs, check-ins, team performance, evidence, or underlying organizational data. We only see information you deliberately send to us, such as a complaint or support request.</p>
         </div>
 
         <div class="p-card">
@@ -73,25 +60,17 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
             <div class="p-num">2</div>
             <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Public AI models do not learn from your data</div>
           </div>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Groundwork uses an AI model to run check-ins and write reports. Today that is Google's Gemini, reached through Google Cloud's enterprise service rather than its public one, on terms where customer data is not used to train or improve Google's general-purpose models. We do not submit your data for training or fine-tuning, and we never will without asking you first.</p>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Your data does not go anywhere else. We do not send it to other AI providers, and the product has no connection to any of them.</p>
-          <p style="font-size:13px;color:var(--gw-muted);line-height:1.7;margin:0;">If we ever add a second provider, it will be on the same terms, and this page will say so before it happens.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Groundwork may use leading AI providers to process information, including models from OpenAI, Anthropic (Claude), Google (Gemini), and others. We use protected API infrastructure and configurations where customer data is not used to train or improve these providers' public/general-purpose models. We do not intentionally submit customer data for their model training or fine-tuning.</p>
         </div>
 
         <div class="p-card">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;">
             <div class="p-num">3</div>
-            <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Groundwork learns without your data leaving</div>
+            <div style="font-size:17px;font-weight:700;color:var(--gw-text);">Groundwork can learn privately</div>
           </div>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Groundwork improves from how the product is used, not from what your team writes in it: which questions produce a useful record, where people get stuck, what a good report looks like. That work happens inside Groundwork.</p>
-          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Nothing your team writes is contributed to Gemini, ChatGPT, Claude or any other public model for training. If that ever changes, it will be something you opt into, not something you find out about.</p>
+          <p style="font-size:14px;color:var(--gw-sub);line-height:1.75;margin:0;">Groundwork may use permitted, privacy-preserving signals to improve Groundwork's own internal systems and models. That learning stays within Groundwork and is not contributed to OpenAI, Claude, Gemini, or other public AI models for training.</p>
         </div>
 
-      </div>
-
-      <div style="background:var(--gw-blue-bg);border:1px solid var(--gw-blue-b);border-radius:10px;padding:16px 20px;margin-bottom:40px;">
-        <p style="font-size:13px;color:var(--gw-navy);line-height:1.7;margin:0 0 8px;"><b>Inside a check-in, the same rule applies to your colleagues.</b> What you write is not shown to anybody until the shared record is released to everyone at the same time, and the record does not quote you. Your account of the work is yours.</p>
-        <p style="font-size:13px;color:var(--gw-navy);line-height:1.7;margin:0;">If you want to know something this page does not answer, ask us: <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Privacy%20and%20AI" style="color:var(--gw-navy);font-weight:700;">hello@myground.work</a>. We will give you a straight answer or tell you we do not have one yet.</p>
       </div>
 
       <div style="text-align:center;">

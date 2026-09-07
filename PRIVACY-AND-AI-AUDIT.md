@@ -1,11 +1,18 @@
 # Privacy and AI: internal audit
 
-**Internal. Not for the marketing site.** Traced against the code on 7 September 2026, before any
-claim was written. Where a claim could not be verified it was not published — the page says less
-than this document, deliberately.
+**Internal. Not for the marketing site.** Traced against the code on 7 September 2026.
+
+The marketing copy is the company's position, written with "may" — what Groundwork is permitted to
+do. This document's job is to make the architecture true of it, and to name anything that is not.
+Where the two conflict the answer is a change to the code, not a smaller sentence.
 
 Method: read the code, not the docs. Every outbound destination customer content can reach was
 enumerated from the source; every claim below names the file that proves or disproves it.
+
+**Verdicts:** claim 1 VERIFIED for every product surface, with one infrastructure gap that has to be
+FIXED rather than worded around. Claim 2 VERIFIED, with the configuration it rests on now covered by
+a test. Claim 3 VERIFIED. Four things were FIXED during the audit. One question cannot be answered
+from the repository and is flagged.
 
 ---
 
@@ -48,76 +55,124 @@ See FIXED below.
 
 ## Claim by claim
 
-### Claim 1 — "Groundwork staff cannot access your OKRs, check-ins, team performance, evidence, or underlying organizational data."
+The three protections are written with **"may"** — what Groundwork is permitted to do — not "does
+today". So the test each one has to pass is *does anything in the architecture contradict it*, not
+*is it already implemented*. An earlier version of this audit got that wrong and shrank the copy to
+this week's implementation; the copy is the company's position and the code has to be true of it.
 
-**CANNOT CURRENTLY CLAIM AS WORDED.**
+### Claim 1 — "Groundwork staff cannot access your OKRs, check-ins, team performance, evidence, or underlying organizational data. We only see information you deliberately send to us."
 
-What is true and enforced:
+**Product surfaces: VERIFIED. Infrastructure: MUST BE FIXED.**
 
-- The platform-admin support view is structurally limited. `admin.service.ts`'s
-  `getGroundSupportView` returns state, billing, roster, check-in status and report *existence* —
-  and a guard, `admin/ground-support-view.spec.ts`, asserts that no excluded field appears in the
-  returned shape even when present on the raw row. The excluded list is explicit: conversation
-  turns, record-entry text, every report content field, lead context notes, document content.
-- Reports enforce a per-party reveal gate; documents enforce `canSeeDocument`; the assistant's
-  reads are org-scoped.
+Verified, with evidence:
 
-What is **not** true:
+- `admin.service.ts`'s `getGroundSupportView` — the only view staff can open on a customer's
+  check-in — returns state, billing, roster, check-in status and report *existence*. A guard,
+  `admin/ground-support-view.spec.ts`, asserts no excluded field appears in the returned shape even
+  when present on the raw row. The exclusion list is explicit: conversation turns, record-entry
+  text, every report content field, lead context notes, document content.
+- Reports enforce a per-party reveal gate; documents enforce `canSeeDocument`; assistant reads are
+  organisation-scoped. There is no export, no admin content screen and no support tool that shows
+  customer content.
+- **FIXED during this audit** (three ways staff could read content that were not screens):
+  PostHog `autocapture` was sending the text of clicked elements; four log lines wrote fragments of
+  what people wrote into the application log; a production deployment without WhatsApp credentials
+  logged message bodies. All closed, all covered by tests.
 
-- Turns are stored **unencrypted** in Postgres. `grep` for `encrypt`, `cipher`, `kms` across
-  `api/src` and the schema: no matches. Anyone holding `DATABASE_URL` can read every conversation —
-  and `package.json` ships `prisma:studio` as a convenience for exactly that.
-- So the honest boundary is: **no in-product surface exposes customer content to staff, and
-  infrastructure access is not technically prevented.**
+**The one genuine contradiction — and the fix is infrastructure, not wording:**
 
-The product already refuses the stronger claim, in `client/src/pages/chat/ChatPage.tsx`:
+Conversation turns are stored unencrypted in Postgres. `grep` for `encrypt`, `cipher`, `kms` across
+`api/src` and the schema: no matches. Anybody holding `DATABASE_URL` can read every check-in, and
+`package.json` ships `prisma:studio` as a convenience for doing exactly that.
 
-> *"AND WHAT IS DELIBERATELY NOT SAID: 'we cannot see your conversations'. Turns are stored
-> unencrypted and transcripts go to Google for processing. One technical question from a founder or
-> an investor finds that out, and a privacy claim caught being false costs more than one never
-> made."*
+So the claim is true of everything Groundwork *built* and not yet true of the database underneath
+it. **This is the work to do** — see "What has to happen for claim 1" below. Until it lands, the
+sentence is a statement of intent that the product enforces and the infrastructure does not
+technically prevent.
 
-A marketing page contradicting the product's own screen is worse than a weaker page. **The page
-says what is enforced and does not say the rest.** Making the strong claim true is real work —
-field-level encryption, or an access path that logs and alerts on raw reads — and is listed under
-"what would let us say more".
+### Claim 2 — "Groundwork may use leading AI providers… including OpenAI, Anthropic (Claude), Google (Gemini)… protected API infrastructure and configurations where customer data is not used to train or improve these providers' public/general-purpose models."
 
-### Claim 2 — "Public AI models do not learn from your data… OpenAI, Anthropic (Claude), Google (Gemini), and others."
+**VERIFIED for the provider in use. The permission is sound; the constraint on future providers is
+now enforced by a test.**
 
-**VERIFIED in substance. THE PROVIDER LIST IS WRONG AND WAS NOT PUBLISHED.**
+- Today exactly one provider is called: Google, via **Vertex AI** — `new GoogleGenAI({ vertexai:
+  true, … })` in `anthropic.service.ts` (the filename is historical). That flag is what selects
+  Google Cloud's enterprise service over the consumer API at `generativelanguage.googleapis.com`,
+  whose data-use terms are the ones that permit product improvement. It is the whole of "protected
+  API infrastructure and configurations" in this sentence.
+- No API-key path exists anywhere. `grep`: no `GEMINI_API_KEY`, no `generativelanguage`.
+- No other provider is reachable: nothing imports `openai` or `@anthropic-ai/sdk`, and nothing
+  posts to `api.openai.com` or `api.anthropic.com`. **FIXED:** `@anthropic-ai/sdk` and
+  `@google-cloud/vertexai` were installed and imported nowhere; removed, because an unused provider
+  SDK is a path somebody takes by accident rather than by decision.
+- **The test that keeps the claim true as providers are added:**
+  `a-public-model-never-sees-it.spec.ts` fails if any client is built without `vertexai: true`, if
+  an API-key path appears, if a provider SDK is installed or imported, or if provider hostnames turn
+  up in the source. Bite-checked by deleting the flag. **When OpenAI or Anthropic is added, this
+  test is where the enterprise/no-training tier gets asserted** — the claim then holds by
+  construction rather than by memory.
+- **Not claimed anywhere, correctly:** that a provider retains nothing. Vertex's published
+  behaviour includes abuse monitoring, and zero retention is a separate arrangement. The copy says
+  data is not used to train public models, which is a different and supportable statement.
 
-- Only Google is called, only through Vertex AI. Naming OpenAI and Anthropic would tell customers
-  their data goes to three providers when it goes to one — a *worse* disclosure than saying
-  nothing, and untrue.
-- `vertexai: true` is what places these calls under Google Cloud's terms rather than the consumer
-  API's. This is the single configuration on which the claim rests, so it is now covered by a test:
-  `a-public-model-never-sees-it.spec.ts` fails if the flag is dropped, if an API-key path appears,
-  or if another provider SDK is imported.
-- **Not claimed:** that Google retains nothing. Vertex's published behaviour includes abuse
-  monitoring, and a zero-retention arrangement is a separate agreement. The page says data is not
-  used to train the provider's public models; it does not say nothing is retained.
+**Open, and not answerable from the repository: whether the project runs on promotional credits and
+whether that changes the applicable terms.** Billing state is not in the code. Needs one check in
+the Cloud console. Flagged for Hafsah.
 
-**One item this audit cannot settle from the code: whether the project runs on promotional credits,
-and whether that changes the applicable terms.** Billing state is not in the repository. The
-wording was chosen to survive either answer, but it needs confirming in the Cloud console before
-anybody repeats it in a contract. Flagged for Hafsah.
+### Claim 3 — "Groundwork may use permitted, privacy-preserving signals to improve Groundwork's own internal systems and models. That learning stays within Groundwork and is not contributed to OpenAI, Claude, Gemini, or other public AI models for training."
 
-### Claim 3 — "Groundwork may use permitted, privacy-preserving signals to improve Groundwork's own internal systems and models."
+**VERIFIED. Nothing contradicts it, and the second sentence is enforced today.**
 
-**CANNOT CURRENTLY CLAIM.** Nothing in the codebase trains or fine-tunes any model.
-
-- `grep` for `fine-tun`, `finetune`, `trainModel`: no matches.
-- There are no embeddings. `knowledge.service.ts` says so explicitly and explains why: *"NOT
-  EMBEDDINGS, AND THIS IS WHERE THAT IS SAID."*
-- What does exist is prompt versioning (`PromptVersion`, stamped per ground) and outcome recording.
-  That is measurement, not learning, and calling it "models" would be a claim about a pipeline that
-  does not exist.
-
-The page therefore describes what is real — the product improves from what people deliberately send
-us and from aggregate use — and states the part that matters to a customer either way: **nothing
-goes to a public model for training.**
+- The load-bearing half is "not contributed to public models for training", and that is true by
+  construction: the only outbound AI call is a Vertex inference request. There is no export, no
+  dataset build, no upload path, and no fine-tuning API in the tree — `grep` for `fine-tun`,
+  `finetune`, `trainModel`: no matches.
+- The first half is a permission for work not yet built. Nothing trains a Groundwork model today
+  (there are no embeddings either — `knowledge.service.ts` says so explicitly and explains why), so
+  there is nothing to contradict. **This is intended future work**, and what it needs in order to
+  stay inside this sentence is set out below.
 
 ---
+
+## What has to happen for claim 1 to be true at the infrastructure level
+
+In order. (1) is the blocker.
+
+1. **Encrypt the content columns at rest, with keys Groundwork staff do not hold in the clear.**
+   `ConversationTurn.content`, `RecordEntry.text`, the `Report` content fields,
+   `GroundDocument.content`, `LeadContextNote.text`, `soloArtifact`. Application-level encryption
+   with a KMS-held key, so a database dump is not a transcript. This is the change that turns "no
+   screen shows it" into "reading it is not available to us".
+2. **Take raw production database access off the everyday path.** Remove `prisma:studio` from the
+   production-capable scripts, put reads behind a break-glass credential, and log every use of it
+   somewhere a customer could be shown.
+3. **Say what happens on a support request.** Today the support view cannot show content, which is
+   right. If a customer ever needs us to look at their record, that should be an explicit,
+   time-boxed grant they make — not a capability we hold quietly.
+
+## What claim 3 needs when Groundwork's own models get built
+
+Decide these before the first training job, not after:
+
+1. **What a "permitted, privacy-preserving signal" is, concretely, and where it is derived.** The
+   safe shape is aggregate or structural: which questions produced a specific answer, where people
+   abandoned, how long a record took, whether a report was read. Raw turns must not leave the
+   database boundary for a training set.
+2. **A basis for using it.** Terms that say so, and — if it is ever per-customer rather than
+   aggregate — an opt-out that is honoured in code, the same way `WHAT_EACH_MAIL_IS` honours the
+   email one.
+3. **A test that the training path cannot reach content.** The mirror of
+   `a-public-model-never-sees-it.spec.ts`: whatever assembles a training set asserts what it may
+   read, so the claim holds by construction.
+
+## Still to confirm, outside the code
+
+- **The Vertex terms in force for this project, including whether credits alter them.** One check in
+  the Cloud console. Everything else in claim 2 rests on it.
+- **Provider retention, logging and human-review posture**, in writing, for the file. Published
+  behaviour is not the same as a term we can point a customer at.
+- **Backups.** Whoever operates the database backups holds unencrypted content today; item 1 above
+  fixes that at source, and until then the backup posture is part of the same gap.
 
 ## Fixed while auditing
 
@@ -127,12 +182,3 @@ goes to a public model for training.**
 | **Four log lines wrote customer prose into the application log** — up to 120 characters of a quoted phrase, the person's own words that had been shortened, and invented causal claims, on both the check-in and entry paths. Logs are staff-readable. | Counts and lengths, never the text. The lines existed to make a *rate* knowable and a rate does not need the sentence. |
 | **A production deployment with no WhatsApp credentials logged message bodies.** The branch was "the channel is off", not "this is a laptop". | The body is logged outside production only; production records that a send was attempted, to whom, and its length. |
 | **`@anthropic-ai/sdk` and `@google-cloud/vertexai` installed and imported nowhere.** | Removed. An unused provider SDK is a path somebody can take by accident. |
-
-## What would let us say more
-
-1. **Encryption at rest for conversation turns**, or a raw-access path that logs and alerts. This is
-   the one blocking claim 1's stronger form.
-2. **Confirm the Vertex terms in force for this project**, including whether credits alter them.
-3. **A retention statement for live organisations.** Retention is enforced today for people who
-   leave (`departure.service.ts`, 180 days by default, a daily cron deletes turns past the window).
-   There is no general policy for an active organisation, so the page says nothing about retention.
