@@ -1060,13 +1060,25 @@ export function ChatPage() {
                 *
                 * Both live on the check-in itself, one click away, and neither was linked from here.
                 */}
+              {/*
+                * "SEE THE FULL REPORT" WAS A PROMISE THIS BUTTON COULD NOT KEEP.
+                *
+                * It went to the ground's Report tab, which holds the SHARED report - the one that
+                * does not exist until everybody has checked in. So somebody who had just read their
+                * own report pressed a button offering more of it and landed on "waiting for
+                * sessions": "when I click the report, it redirects me somewhere else. Why can't I
+                * see the same report I just saw at the end of a check-in."
+                *
+                * The report she wants is the one directly above this button, and it stays there -
+                * this page renders it for any completed session of yours. What was missing was a
+                * sentence saying which report is which, and that is what replaces the button.
+                */}
+              <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
+                This report is yours and it stays on this session - open it again from Report, under
+                Your sessions. The shared report, where everybody's accounts sit side by side,
+                appears once the others have checked in.
+              </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}?tab=report`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  See the full report →
-                </button>
                 {/* The check-in itself, where the people, the sessions and the setup all live.
                     Deliberately not deep-linked to a tab: the tab keys and their labels differ
                     ("settings" is shown as "Setup"), and a link that lands on the wrong one is
@@ -1115,8 +1127,41 @@ export function ChatPage() {
 
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4 }}>
-            {privacyLabel}
+          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
+            {/*
+              * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
+              *
+              * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
+              * me who is involved or tell me i can set context or add people later", and "if someone
+              * else is checking in and then others check in against it, the place to set context is
+              * not very good and you are not told you can set context on a tab".
+              *
+              * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
+              * anywhere in the conversation - so somebody sitting in the chat, realising the context
+              * is thin or that the people who should answer are missing, has no idea either is a
+              * click away. A tab nobody is told about is a tab nobody uses.
+              *
+              * Put in the privacy strip rather than in the model's mouth: an instruction to mention
+              * it would fire whenever the model felt like it, and this is true on every turn of
+              * every session. Quiet, always there, and it goes to the tab rather than describing it.
+              */}
+            {groundId && (
+              <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                <button
+                  onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  Set the context
+                </button>
+                <button
+                  onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  Add people
+                </button>
+              </span>
+            )}
           </div>
           <div style={{ padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <label htmlFor="doc-upload"

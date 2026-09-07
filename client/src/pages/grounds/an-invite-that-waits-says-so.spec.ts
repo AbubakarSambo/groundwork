@@ -19,16 +19,29 @@ import { join } from 'path'
  * what it did is not, and it cost a real afternoon of wondering whether email was broken.
  */
 const ADMIN = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
-const CREATE = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
+/*
+ * THE SETUP FLOW IS THE CONVERSATION NOW. `/grounds/new` is a picker that hands over to it, and its
+ * save is the only thing that creates a check-in - so the counting rule moved there rather than
+ * being deleted with the screen that used to add people.
+ */
+const CREATE = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
 
 describe('an invite that waits says so', () => {
   it('the add-someone box reads what the server returned rather than assuming', () => {
     expect(ADMIN).toMatch(/setLastInviteWaits\(!\(added as \{ invitedAt\?: string \| null \}\)\.invitedAt\)/)
   })
 
-  it('and says what actually happened, in both places it reports it', () => {
+  it('and says what actually happened, everywhere it reports it', () => {
+    /*
+     * THREE PLACES NOW, NOT TWO. The Setup tab gained its own add-a-person control, because the
+     * screen called Setup had no way to add a party to the check-in - and the check-in
+     * conversation's "Add people" link pointed straight at it.
+     *
+     * Counted rather than listed: what matters is that every place which reports an invite tells
+     * the truth about whether one was sent, and a new entrance that forgets to is the whole bug.
+     */
     const said = ADMIN.match(/is on the check-in\. Their invitation goes out on the start date\./g) ?? []
-    expect(said.length).toBe(2)
+    expect(said.length).toBe(3)
   })
 
   it('never claims an invite was sent when the row says it was not', () => {
@@ -38,7 +51,7 @@ describe('an invite that waits says so', () => {
   })
 
   it('and the setup flow counts the people who are waiting, not only the ones refused', () => {
-    expect(CREATE).toMatch(/\.filter\(\(r\) => !r\.value\?\.invitedAt\)\.length/)
+    expect(CREATE).toMatch(/\(res\.contributors \?\? \[\]\)\.filter\(\(c\) => c\.waiting\)\.length/)
     expect(CREATE).toMatch(/will be invited on the start date/)
   })
 

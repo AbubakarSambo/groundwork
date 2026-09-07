@@ -2,7 +2,7 @@ import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException } from
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -142,6 +142,18 @@ export class EntryCommitDto {
   @ValidateNested()
   @Type(() => EntryReportSummaryDto)
   reportSummary?: EntryReportSummaryDto;
+
+  /**
+   * TRUE WHEN THEY SAID THE OTHER PEOPLE CHECK IN AND THEY READ WHAT COMES BACK.
+   *
+   * Asked at the end of the setup conversation, where the wizard used to ask it on a form step. It
+   * decides whether this person is given a session of their own to answer - so dropping it, which
+   * is what happened while it had no field here, records somebody as a party who owes an account
+   * when they have just said they are not one.
+   */
+  @IsOptional()
+  @IsBoolean()
+  managingOnly?: boolean;
 
   @IsOptional()
   @ValidateNested()

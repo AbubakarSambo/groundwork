@@ -145,6 +145,9 @@ export const entryApi = {
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).
     lead?: { email: string; name?: string; contextNote?: string }
+    /** True when they said the other people check in and they read what comes back. Without it
+     *  somebody who has just said they are not a party is still given a session to answer. */
+    managingOnly?: boolean
     brief?: string
   }) =>
     apiClient.post<{
@@ -152,7 +155,10 @@ export const entryApi = {
       joinToken?: string | null
       // who the commit successfully invited - drives the positive "Invited"
       // confirmation on the completion screen
-      contributors?: { email: string }[]
+      /* `waiting` is true where the invitation has NOT gone: the check-in starts in the future and
+         the row is written uninvited, for the cron to send on the day. The screen has to say so, or
+         "all participants i added didnt get an email" is what it produces. */
+      contributors?: { email: string; waiting?: boolean }[]
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]

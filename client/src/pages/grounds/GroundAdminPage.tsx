@@ -34,7 +34,7 @@ import { ReportBody } from '@/pages/report/ReportPage'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
-import { whoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
+import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -226,6 +226,18 @@ export function GroundAdminPage() {
     retry: false,
   })
 
+
+  /**
+   * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
+   *
+   * Yours only. Somebody else's session is theirs until the shared report releases, which is the
+   * same wall the session grid keeps - and the reason this reads `userId === user?.id` rather than
+   * "everybody on the check-in".
+   */
+  const mySessions = ((ground as any)?.checkIns ?? [])
+    .filter((c: any) => c.status === 'COMPLETED')
+    .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
 
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
@@ -538,6 +550,82 @@ export function GroundAdminPage() {
    * checkbox is how somebody publishes a private note by mistake. Different box, different button.
    */
 
+
+  /**
+   * PEOPLE LINED UP TO BE ADDED, EACH WITH THEIR OWN LINE ABOUT WHAT THEY ANSWER FOR.
+   *
+   * "You should be able to add many parties to the check-in at setup and add context about them."
+   * The form took one address at a time and cleared itself, so a team of six was six rounds.
+   *
+   * Nothing is sent until the queue is invited: adding to the list is free and reversible, which is
+   * the whole reason to have a list rather than firing an invitation per keystroke of enthusiasm.
+   */
+  const [queuedToAdd, setQueuedToAdd] = useState<{ email: string; note: string }[]>([])
+
+  /**
+   * SENT ONE AT A TIME, AND EVERY OUTCOME REPORTED.
+   *
+   * `addParticipant` is per-person on the server - it has the seat check, the approval rule and the
+   * deferral in it - so this is a loop rather than a bulk endpoint, and each result is read: refused
+   * ones name their reason and are written down, waiting ones are counted. The same rules the
+   * conversation's save keeps, because "we added them but you heard nothing" is the bug that started
+   * all of this.
+   */
+  const inviteTheQueue = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        queuedToAdd.map((q) =>
+          groundsApi.addParticipant(id!, { email: q.email, note: q.note || undefined }),
+        ),
+      )
+      const failed = results
+        .map((r, i) => ({ r, email: queuedToAdd[i].email }))
+        .filter((x): x is { r: PromiseRejectedResult; email: string } => x.r.status === 'rejected')
+        .map(({ r, email }) => ({
+          email,
+          because: (r.reason as any)?.response?.data?.message ?? 'The invite did not send.',
+        }))
+      const waiting = results
+        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null }> => r.status === 'fulfilled')
+        .filter((r) => !r.value?.invitedAt).length
+      return { failed, waiting, sent: results.length - failed.length - waiting }
+    },
+    onSuccess: ({ failed, waiting, sent }) => {
+      setQueuedToAdd([])
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      if (sent > 0) toast.success(`Invite sent to ${sent} ${sent === 1 ? 'person' : 'people'}`)
+      if (waiting > 0) {
+        toast.info(
+          waiting === 1
+            ? 'One person is on the check-in and will be invited on the start date.'
+            : `${waiting} people are on the check-in and will be invited on the start date.`,
+        )
+      }
+      for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
+      if (failed.length) rememberWhoWasNotInvited(id!, failed)
+    },
+    /*
+     * THE SERVER'S OWN SENTENCE, WHICH THIS THREW AWAY UNTIL TWO GUARDS CAUGHT IT.
+     *
+     * Every reason adding somebody can be refused is written for a person and returned: the seat
+     * limit, an address already on the check-in, the gate that refuses an invitation until
+     * something has been said about what the check-in is for. "Could not add them. Try again."
+     * replaces all of them with a loop the product knows they cannot leave.
+     *
+     * This handler only fires when the whole batch fails - a per-person refusal is reported by name
+     * in onSuccess above - so it also says what became of the queue, which is the other half:
+     * nobody was invited and the list is still there to try again with.
+     */
+    onError: (e: any) => {
+      const said = e?.response?.data?.message
+      const status = e?.response?.status
+      toast.error(
+        status >= 400 && status < 500 && typeof said === 'string' && said
+          ? `${said} Nobody was invited - your list is still here.`
+          : 'Could not add them, and nobody was invited. Your list is still here - try again.',
+      )
+    },
+  })
 
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
@@ -1546,7 +1634,24 @@ export function GroundAdminPage() {
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
-                            const isMine = p.userId === user?.id && !done
+                            /*
+                             * YOUR OWN FINISHED SESSION IS WHERE YOUR REPORT IS, AND IT WAS THE ONE
+                             * CELL YOU COULD NOT CLICK.
+                             *
+                             * `&& !done` made a completed session of your own unclickable, so the
+                             * private report you read the moment you finished had no way back to it:
+                             * "I cannot find the report that popped up after I was done with my
+                             * first check-in, once it closes I have no idea where it went."
+                             *
+                             * It is not in the Report tab and never was - that tab holds the SHARED
+                             * report, which does not exist until everyone has checked in. The
+                             * private one lives on the session itself, and /checkin/:id renders it
+                             * for a completed check-in already. Nothing linked there.
+                             *
+                             * Somebody else's session stays unclickable, done or not. That is the
+                             * wall, and it is the reason this condition existed at all.
+                             */
+                            const isMine = p.userId === user?.id
                             return (
                               <button
                                 key={ci.id}
@@ -1554,7 +1659,7 @@ export function GroundAdminPage() {
                                 onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
                                   state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
                                 }) : undefined}
-                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? ' - yours, open it' : ''}`}
+                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ''}`}
                                 style={{
                                   fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', minWidth: 22,
                                   padding: '2px 6px', borderRadius: 4, cursor: isMine ? 'pointer' : 'default',
@@ -1863,6 +1968,33 @@ export function GroundAdminPage() {
         {/* REPORT */}
         {tab === 'report' && (
           <div>
+            {/*
+              * THE BOARD IS THE FIRST THING ON THIS TAB, NOT THE LAST.
+              *
+              * Her call: "open team board should be first item on reports page". It sat under the
+              * report and above the closing controls, which is where you put a footnote - and it is
+              * the opposite of one. The board is the same picture for everyone, built from the
+              * accounts; the report on this tab is the lead's reading of them. Somebody who has
+              * come to the Report tab has come to look at where things stand, and the shared thing
+              * should be the first door offered, not the one below the reading.
+              */}
+            {!!(ground as any).boardRenders && (
+              <button
+                onClick={() => navigate(`/grounds/${id}/board`)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                  background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
+                  padding: '14px 18px', marginTop: 16, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <span style={{ textAlign: 'left' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Open the team board</span>
+                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.6)' }}>The same picture for everyone, built from the accounts. Never a verdict.</span>
+                </span>
+                <span style={{ fontSize: 13 }}>→</span>
+              </button>
+            )}
+
             {/* What the accounts actually agree on. This was a big "4/5" over
                 a band name over a canned description - all three derived from
                 the number of completed check-ins. */}
@@ -2153,6 +2285,23 @@ export function GroundAdminPage() {
                       </div>
                     </div>
                   )}
+                  {/*
+                    * THE PICTURE THAT IS FORMING, ACTUALLY SHOWN.
+                    *
+                    * Her words: "we are meant to see a forming report, so why make it disappear."
+                    * This branch announced that one was forming, said how many people were still
+                    * out, and offered to release it - and never rendered a line of it. So the lead
+                    * was asked to decide whether to show everybody something they had not been
+                    * allowed to read themselves.
+                    *
+                    * It is the same body the released report uses, because it is the same row: the
+                    * API writes a forming picture as soon as anybody finishes and marks it
+                    * `forming: true`. Nothing about it was private from the lead; it was simply
+                    * never put on the screen.
+                    */}
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--gw-border)' }}>
+                    <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -2190,21 +2339,49 @@ export function GroundAdminPage() {
               
               Full width and named plainly, because it is a departure and should look like one.
             */}
-            {!!(ground as any).boardRenders && (
-              <button
-                onClick={() => navigate(`/grounds/${id}/board`)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                  background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
-                  padding: '14px 18px', marginTop: 16, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <span style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Open the team board</span>
-                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.6)' }}>The same picture for everyone, built from the accounts. Never a verdict.</span>
-                </span>
-                <span style={{ fontSize: 13 }}>→</span>
-              </button>
+
+            {/*
+              * EVERY SESSION YOU HAVE FINISHED, AND THE REPORT EACH ONE PRODUCED.
+              *
+              * Her call: "we need to see each session's report after". A run is six or twelve
+              * sessions and each one ends in a private report, and this tab showed exactly one
+              * thing - the current round - so everything before it was gone. The reports were not
+              * deleted; /checkin/:id renders one for any completed check-in of yours. Nothing
+              * listed them.
+              *
+              * Yours only, and that is the wall rather than a simplification: another person's
+              * session is theirs until the shared report releases.
+              */}
+            {mySessions.length > 0 && (
+              <div style={{ marginTop: 18 }}>
+                <div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+                  Your sessions
+                </div>
+                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+                  {mySessions.map((ci: any, i: number) => (
+                    <button
+                      key={ci.id}
+                      onClick={() => navigate(`/checkin/${ci.id}`)}
+                      style={{
+                        display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 10, padding: '11px 13px', background: 'white', border: 'none',
+                        borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
+                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span>
+                        <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                          {ci.completedAt
+                            ? `Finished ${new Date(ci.completedAt).toLocaleDateString()} · your private report`
+                            : 'Finished · your private report'}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>→</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/*
@@ -2236,6 +2413,121 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/*
+            * ADDING SOMEBODY TO THE CHECK-IN, ON THE SCREEN CALLED SETUP.
+            *
+            * Reported plainly: "the setup page has no way for me to add another party to the
+            * check-in." It did not. The control existed on the Sessions tab, beside the roster,
+            * which is where somebody goes to see how a run is going rather than to change who is in
+            * it - and Setup held the timeline, the cadence, the name, the visibility and how to
+            * close the whole thing, but not the one setting people look for first.
+            *
+            * MY OWN LINK POINTED HERE, which is how it got worse. Two turns ago the check-in
+            * conversation gained an "Add people" link straight to this tab, on the grounds that a
+            * tab nobody is told about is a tab nobody uses. It sent people to a screen without the
+            * control. A link to the wrong place teaches somebody the product cannot do the thing.
+            *
+            * Same control, same mutation as the Sessions tab: this is one queue with two entrances,
+            * not a second way of adding anybody.
+            */}
+          {isInitiator && (
+            <div className="gw-card" style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
+                They give their own account of the same work. You cannot see what they write until the report releases.
+              </div>
+              <input
+                type="email" placeholder="name@company.com" aria-label="Their email address"
+                value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+              />
+              <input
+                type="text" placeholder="What do you want them to account for? (optional)" aria-label="What they are accountable for"
+                value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => addParticipantMut.mutate()}
+                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                >
+                  {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
+                </button>
+                {/*
+                  * ADDING FOUR PEOPLE SHOULD NOT BE FOUR VISITS TO THE SAME FORM.
+                  *
+                  * "You should be able to add many parties to the check-in at setup and add context
+                  * about them." The form took one address, sent it, and cleared itself - so a team
+                  * of six was six rounds of typing, pressing, waiting for the invite to go, and
+                  * finding the box again.
+                  *
+                  * The queue below is the fix and it keeps the part that matters: each person keeps
+                  * their OWN line about what they are accountable for, because "what do you want
+                  * them to account for" is the difference between a check-in that asks each person
+                  * the right question and one that asks everybody the same one. A bulk paste of
+                  * addresses would have been easier to build and would have thrown that away.
+                  */}
+                <button
+                  onClick={() => {
+                    const email = newParticipantEmail.trim().toLowerCase()
+                    if (!email.includes('@')) return
+                    if (queuedToAdd.some((q) => q.email === email)) return
+                    setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
+                    setNewParticipantEmail('')
+                    setNewParticipantNote('')
+                  }}
+                  disabled={!newParticipantEmail.includes('@')}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                >
+                  + Add another
+                </button>
+              </div>
+
+              {queuedToAdd.length > 0 && (
+                <div style={{ marginTop: 12, border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden' }}>
+                  {queuedToAdd.map((q, i) => (
+                    <div
+                      key={q.email}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 11px', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined, background: 'white' }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{q.email}</div>
+                        <div style={{ fontSize: 11.5, color: q.note ? 'var(--gw-sub)' : 'var(--gw-muted)', lineHeight: 1.45 }}>
+                          {q.note || 'No note - they will be asked the general questions for this situation.'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
+                        aria-label={`Remove ${q.email}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ padding: '9px 11px', borderTop: '1px solid var(--gw-border)', background: 'var(--gw-bg)' }}>
+                    <button
+                      onClick={() => inviteTheQueue.mutate()}
+                      disabled={inviteTheQueue.isPending}
+                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: inviteTheQueue.isPending ? 0.6 : 1 }}
+                    >
+                      {inviteTheQueue.isPending
+                        ? 'Inviting…'
+                        : `Invite ${queuedToAdd.length} ${queuedToAdd.length === 1 ? 'person' : 'people'}`}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {lastInvitedEmail && (
+                <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
+                  {lastInviteWaits
+                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                    : `Invite sent to ${lastInvitedEmail}`}
+                </div>
+              )}
+            </div>
+          )}
           {/**
             * WHAT IS TRUE ABOUT YOU, FOR A LEAD WHO IS ALSO IN IT.
             *
@@ -2451,9 +2743,20 @@ export function GroundAdminPage() {
               contact toggle's own copy used to promise "participants can see who's here", which
               is not true when this one is off.
             */}
+            {/*
+              * ONE HEADING FOR THE TWO SETTINGS THAT ARE ONE QUESTION.
+              *
+              * "The setup tab can have fewer cards, some things can be dropdowns, some texts or
+              * spacing could make more sense." These were the clearest case: two `gw-fld` blocks,
+              * two headings, two bordered cards and two paragraphs - "Can the people here see each
+              * other?" and "Participant contact details" - for what a person thinks of as one
+              * decision, who can see whom. The second even explains itself in terms of the first
+              * ("this matters again if you turn the setting above on"), which is a card admitting
+              * it should not be a separate card.
+              */}
             <div className="gw-fld">
-              <label className="gw-label">Can the people here see each other?</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+              <label className="gw-label">Who can see whom</label>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: '8px 8px 0 0' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
                     Show who else is in this check-in
@@ -2482,9 +2785,10 @@ export function GroundAdminPage() {
               </div>
             </div>
 
-            <div className="gw-fld">
-              <label className="gw-label">Participant contact details</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+            {/* The second half of the same question, so it carries no heading of its own and sits
+                directly under the first - one card, two rows, read top to bottom. */}
+            <div className="gw-fld" style={{ marginTop: -8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>

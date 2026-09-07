@@ -61,11 +61,18 @@ describe('and both pages are wired to it', () => {
   const read = (rel: string) =>
     fs.readFileSync(path.join(__dirname, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-  it('the wizard writes it down as well as toasting', () => {
-    const wizard = read('CreateGroundPage.tsx')
-    expect(wizard).toContain('rememberWhoWasNotInvited(ground.id, failed)')
+  it('the conversation writes it down as well as toasting', () => {
+    /*
+     * IT USED TO BE THE WIZARD. `/grounds/new` is a picker that hands over to the setup
+     * conversation, and that conversation's save is the only thing that creates a check-in now, so
+     * this rule moved with it rather than being deleted with the screen that held it.
+     */
+    const chat = read('../enter/EntryChatPage.tsx')
+    expect(chat).toContain('rememberWhoWasNotInvited(res.groundId, refused)')
     /* Before the navigation, or the page it is for never sees it. */
-    expect(wizard.indexOf('rememberWhoWasNotInvited')).toBeLessThan(wizard.indexOf('navigate(`/grounds/${ground.id}`)'))
+    expect(chat.indexOf('rememberWhoWasNotInvited(res.groundId')).toBeLessThan(
+      chat.indexOf('navigate(`/grounds/${res.groundId}`, { replace: true })'),
+    )
   })
 
   it('and the check-in page reads it, names them, and can clear it', () => {

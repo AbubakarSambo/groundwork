@@ -187,9 +187,46 @@ export function oneWordForTheThing(text: string): string {
 const NARRATION_LEAD_IN =
   /(?:^|(?<=[.!?]\s)|(?<=,\s))(?:and\s+)?(?:that(?:'s| is)\s+(?:now\s+)?(?:a\s+critical\s+entry|(?:in|on)\s+(?:your|the)\s+record)|it(?:'s| is)\s+now\s+(?:in|on)\s+the\s+record|your\s+record(?:\s+\w+){0,3}\s+(?:shows|reflects|says)(?:\s+that)?|noted\s+in\s+your\s+record|i(?:'ve| have)\s+noted(?:\s+that)?|that\s+gap\s+is\s+now\s+in\s+your\s+record)\b[\s,:—-]*/gi;
 
+/**
+ * THE SAME NARRATION, ARRIVING AT THE END OF THE SENTENCE INSTEAD OF THE START.
+ *
+ * `NARRATION_LEAD_IN` catches "That's now on the record, and..." because it expects the announcement
+ * to LEAD. Live, this came back:
+ *
+ *   "That Zainab has not been told is now on the record."
+ *
+ * Same announcement, at the tail, with the actual content wedged in the middle - so the lead-in
+ * pattern matched nothing and the whole sentence went out. Her reading of it: "seems like legal
+ * terms in a court".
+ *
+ * She is right, and it is worse than stiff. Telling somebody their colleague's failure has been
+ * entered into a record is the sentence that makes a person stop being candid - which is the one
+ * thing this product cannot afford, since candour is the entire input. What she wants said instead
+ * is what it is FOR: "has been noted and this helps with context on how you might proceed."
+ *
+ * KEPT, NOT DROPPED. The clause carries the finding - Zainab has not been told - so removing the
+ * sentence would remove the substance with the ceremony. The tail goes and the clause becomes the
+ * sentence.
+ */
+const NARRATION_TAIL =
+  /^\s*(?:and\s+)?that\s+(?<clause>.+?)\s+(?:is|are|goes|go|has\s+been(?:\s+\w+)?|have\s+been(?:\s+\w+)?)\s+(?:now\s+)?(?:in|on|onto|into)\s+(?:your|the)\s+record\b[\s.!]*$/i;
+
+/** The tail form, rewritten to the clause it was wrapped around. Returns null when it does not apply. */
+export function unwrapRecordNarration(sentence: string): string | null {
+  const m = NARRATION_TAIL.exec(sentence.trim());
+  const clause = m?.groups?.clause?.trim();
+  if (!clause) return null;
+  const t = clause.charAt(0).toUpperCase() + clause.slice(1);
+  return /[.!?]$/.test(t) ? t : `${t}.`;
+}
+
 export function withoutRecordNarration(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+/);
   const kept = sentences.map((sentence) => {
+    /* The tail form first: it rewrites the whole sentence, so a lead-in pass over it would be
+       looking at a string this is about to replace. */
+    const unwrapped = unwrapRecordNarration(sentence);
+    if (unwrapped) return unwrapped;
     const cleaned = sentence.replace(NARRATION_LEAD_IN, '');
     if (cleaned.trim() === sentence.trim()) return sentence;
     /* Nothing but the narration: the sentence existed only to announce the write. */
@@ -217,8 +254,24 @@ export function withoutRecordNarration(text: string): string {
  * So this removes the sentences that are pure mark and nothing more, and leaves anything with
  * content in it alone even when the framing is wrong.
  */
+/*
+ * A CLOSED LIST OF ADJECTIVES IS A LIST THE MODEL WALKS AROUND.
+ *
+ * This caught "that's a very clear definition" and missed "that is a clean definition", "that is
+ * worth knowing" and "that makes sense" - all three read back from one live session, all three the
+ * same move: opening a turn by marking the answer instead of saying something about the work.
+ * ENGINE_RULES forbids it in those words and it keeps happening, because the rule is a rule and
+ * this is the only thing that actually removes it.
+ *
+ * SO IT IS ANCHORED ON THE NOUN NOW, not the adjective. "Definition", "answer", "example", "point",
+ * "distinction", "observation", "framing", "read" - a sentence whose whole content is "that is a
+ * <something> <one of those>" is talking about the ANSWER. Whatever adjective it reaches for. A
+ * sentence about the work names the work: "that is a written brief" keeps its noun and survives.
+ *
+ * The adjective list stays alongside it, because "that's helpful" has no noun to anchor to.
+ */
 const A_MARK_AND_NOTHING_ELSE =
-  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
+  /^(?:and\s+)?(?:that(?:'s| is)\s+the kind of (?:honesty|candour|candor|clarity|insight|self-awareness|openness|precision|rigour|rigor|courage|maturity)(?:[\s,]+\w+){0,8}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:really\s+|very\s+|quite\s+)?(?:\w+\s+and\s+)?(?:specific|clear|crisp|helpful|useful|important|good|great|strong|excellent|valuable|significant|striking|thorough|detailed)(?:[\s,]+\w+){0,5}|that(?:'s| is)\s+(?:a\s+|an\s+)?(?:\w+\s+){0,2}(?:definition|answer|example|point|distinction|observation|framing|read|target)|that(?:'s| is)\s+worth (?:knowing|noting|having|saying)|that\s+makes\s+sense|fair\s+enough|thank you for(?:[\s,]+\w+){0,6}|well put|nicely put|good\s+answer)\s*[.!]?$/i;
 
 export function withoutTheMark(text: string): string {
   const sentences = text.split(/(?<=[.!?])\s+/);

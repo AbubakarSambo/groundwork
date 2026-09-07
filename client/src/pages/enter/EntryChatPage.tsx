@@ -13,6 +13,7 @@ import { SituationCard } from '@/components/gw/SituationCard'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
+import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
@@ -24,6 +25,7 @@ import { Sec } from '@/components/gw/kit'
 import { scrollTo } from '@/lib/scroll-to'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
+import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
@@ -876,6 +878,33 @@ export function EntryChatPage() {
    * the whole complaint: "new hire does not ask you about the new hire".
    */
   const [pickedScenario, setPickedScenario] = useState<string | null>(null)
+
+  /**
+   * THE REFUSAL COMES BEFORE THE WORK, WHICH IS WHERE IT USED TO BE AND WHERE I MOVED IT FROM.
+   *
+   * The set-up wizard checked the plan on its FIRST screen, with a comment saying exactly why: "the
+   * API refuses an eleventh ground correctly, but it refused it at submit - so the admin picked a
+   * card, named the ground, set the timeline and the people, and only then was told she could not.
+   * The block was right; the timing made it feel like a trick."
+   *
+   * Then the wizard became a picker that hands over to this conversation, and the check stayed
+   * behind on a screen almost nobody now sees. So a signed-in person on a used-up free plan could
+   * be handed here, spend ten minutes setting up and giving their whole account, and be refused at
+   * the save with all of it gone - the same bug, reintroduced by moving its neighbour.
+   *
+   * Only for somebody signed in: a stranger has no organisation to have used anything up, and
+   * asking the billing endpoint on their behalf would answer about nobody.
+   */
+  const whetherTheyMayOpenOne = useQuery({
+    queryKey: ['can-create-ground'],
+    queryFn: () => billingApi.checkCanCreateGround(),
+    enabled: !!user,
+    retry: false,
+  })
+  const refusedByThePlan =
+    !!user && whetherTheyMayOpenOne.data && !whetherTheyMayOpenOne.data.allowed
+      ? (whetherTheyMayOpenOne.data.reason ?? 'Subscribe to open more.')
+      : null
   /**
    * WHICH GROUP THE PICKER IS SHOWING.
    *
@@ -1754,8 +1783,19 @@ export function EntryChatPage() {
          * useful half of the coordinator path; inviting somebody to confirm a context they had not
          * written was the half she removed.
          */
+        /*
+         * "THEY DO. I READ WHAT COMES BACK." - and until now that answer went nowhere.
+         *
+         * `flowPath === 'lead'` is set by exactly one control: the second answer on the fork at the
+         * end of setup. The person has said they are not one of the people checking in. Without
+         * `managingOnly` they were recorded as a party anyway, given a session 1 of their own, and
+         * chased for an account they had just said was not theirs to give.
+         *
+         * The BRIEF travels for the same reason it always did: they gave no account, so the
+         * onboarding is the only context the people who do check in have to work from.
+         */
         ...(flowPath === 'lead'
-          ? { brief: composeLeadBrief(onboardingSelections) || undefined }
+          ? { managingOnly: true, brief: composeLeadBrief(onboardingSelections) || undefined }
           : {}),
       }
   }
@@ -1804,6 +1844,46 @@ export function EntryChatPage() {
    * simply never asked whether it was talking to somebody who had already signed in.
    */
   const [savingAsUser, setSavingAsUser] = useState(false)
+  /**
+   * WHO DID NOT GET A MAIL, AND WHY - CARRIED OVER FROM THE SCREEN THAT USED TO DO IT.
+   *
+   * The set-up wizard reported both of these and has since become a picker that hands over here, so
+   * this is now the only place a check-in is created and the rules have to live here or nowhere.
+   *
+   * REFUSED INVITES ARE WRITTEN DOWN, not only toasted. A toast does not survive the navigation on
+   * the next line, let alone a reload: an admin's list of five silently became three and the
+   * destination page recorded none of it. Each carries the API's own sentence, because "the invite
+   * did not send" is not actionable and "that address is already on this check-in" is.
+   *
+   * WAITING INVITES ARE COUNTED AND SAID ONCE. An invitation waits when the check-in starts in the
+   * future - the row is written uninvited and the cron sends on the day - and saying nothing
+   * produced "all participants i added didnt get an email". Once, with a number: five toasts saying
+   * one thing is how a real message gets dismissed as noise.
+   */
+  function sayWhoWasNotInvited(res: {
+    groundId: string
+    contributors?: { email: string; waiting?: boolean }[]
+    whyInvitesFailed?: { email: string; because: string }[]
+    failedInvites?: string[]
+  }) {
+    const refused =
+      res.whyInvitesFailed?.length
+        ? res.whyInvitesFailed
+        : (res.failedInvites ?? []).map((email) => ({ email, because: 'The invite did not send.' }))
+    if (refused.length) {
+      for (const f of refused) toast.warning(`${f.email}: ${f.because}`)
+      rememberWhoWasNotInvited(res.groundId, refused)
+    }
+    const waiting = (res.contributors ?? []).filter((c) => c.waiting).length
+    if (waiting > 0) {
+      toast.info(
+        waiting === 1
+          ? 'One person is on the check-in and will be invited on the start date.'
+          : `${waiting} people are on the check-in and will be invited on the start date.`,
+      )
+    }
+  }
+
   async function saveAsSignedInUser() {
     setSavingAsUser(true)
     try {
@@ -1811,10 +1891,29 @@ export function EntryChatPage() {
       /** The rail caches the grounds list, so it has to be told the ground exists. GW-019. */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       clearEntryHandover()
+      sayWhoWasNotInvited(res)
       navigate(`/grounds/${res.groundId}`, { replace: true })
     } catch (err: any) {
       setSavingAsUser(false)
-      toast.error(err?.response?.data?.message ?? 'Could not save this. Try again.')
+      /*
+       * THE SERVER'S OWN SENTENCE, AND ONLY WHERE IT IS FOR A PERSON.
+       *
+       * This showed `data.message` for anything at all. Every refusal here is written for somebody
+       * to act on - the plan limit, the seat limit, "you have not been named as able to open
+       * check-ins" - and printing "try again" over those sends them round a loop the product knows
+       * they cannot leave. But a 500 carries an internal message that is nobody's business, and
+       * "try again" is the honest answer to one.
+       *
+       * Carried over from the set-up wizard, whose own screens made this distinction and which is a
+       * picker now. This is the only place a check-in is created, so the rule lives here or nowhere.
+       */
+      const status = err?.response?.status
+      const said = err?.response?.data?.message
+      toast.error(
+        status >= 400 && status < 500 && typeof said === 'string' && said
+          ? said
+          : 'Could not save this. Try again.',
+      )
     }
   }
 
@@ -2216,6 +2315,37 @@ export function EntryChatPage() {
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/*
+              * SAID BEFORE THE SETUP WORK, NOT AFTER IT.
+              *
+              * The wizard checked this on its first screen and said why: refusing at submit means
+              * somebody picked, named, planned and rostered before being told no, and "the block
+              * was right; the timing made it feel like a trick". The wizard is a picker now and
+              * hands over here, so the check has to be here or it is nowhere.
+              *
+              * They are not stopped from looking or from talking - the conversation still runs and
+              * everything stays on this device. What they are not allowed to do is find out at the
+              * save, after giving their whole account.
+              */}
+            {refusedByThePlan && (
+              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-bd)', padding: '12px 20px', flexShrink: 0 }}>
+                <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
+                    You have used all of your free check-ins
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                    {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.
+                  </div>
+                  <button
+                    onClick={() => navigate('/billing')}
+                    style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    See plans
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Product intro - shown once before conversation starts */}
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
@@ -3092,11 +3222,22 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                         {/*
                           W5. TWO PLACES TO ADD PEOPLE, NEITHER SAYING SO.
-                          This list and the invite screen below are the same
-                          queue with two entrances, which nobody could tell from
-                          either one. Both now say which queue they are.
+                          This list and the invite screen below are the same queue with two
+                          entrances, which nobody could tell from either one. Both say which queue
+                          they are.
+
+                          THE WORDS WERE THE PLUMBING RATHER THAN THE POINT. "Adding one puts them
+                          on the same invite list as the screen below, so you will not send twice"
+                          explains our data model to somebody who is deciding whether to invite a
+                          colleague. Read back as "a bit off", and it is: the sentence answers a
+                          question nobody asked and leaves the one they did ask - what happens to
+                          this person if I add them - unanswered.
+
+                          What it says now is what adding somebody DOES. The not-sending-twice
+                          reassurance stays, because two entrances to one queue is a real thing to
+                          wonder about, but it goes second and in half the words.
                         */}
-                        These people came up in this check-in. Adding one puts them on the same invite list as the screen below, so you will not send twice.
+                        You named these people while you were talking. Add anyone who should give their own account of this, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.
                       </div>
                       {sessionReport.mentionedPeople.map((p, i) => {
                         const key = `men-${i}-${p.name}`
@@ -3476,6 +3617,18 @@ export function EntryChatPage() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
                 Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this check-in and confirm your email.
+                {' '}
+                {/*
+                  * HOW MANY PEOPLE CAN BE ON THIS, SAID WHERE PEOPLE ARE ADDED.
+                  *
+                  * A check-in has no size of its own - the limit is the plan's seats. The set-up
+                  * wizard's people screen said so, and that screen is gone: /grounds/new is a picker
+                  * that hands over here, so this is where people are added and this is where the
+                  * sentence has to be. Without it the next person to guess writes "up to 20 per
+                  * check-in" again, which is the defect this rule exists for and which was invented
+                  * once already.
+                  */}
+                How many people you can add depends on your plan, not on the check-in.
               </div>
               {/* THERE IS A LATER, AND IT SHOULD SAY SO.
                   Adding people has always been optional - the commit defaults
@@ -3696,9 +3849,33 @@ export function EntryChatPage() {
                   if (pendingNewScenario) {
                     clearEntrySession()
                     setOnboardingSelections(pendingNewScenario.sels)
-                    setOnboardingHistory([])
+                    /*
+                     * THE OPENER, WHICH THIS SET TO AN EMPTY LIST AND LEFT THERE.
+                     *
+                     * `setOnboardingHistory([])` cleared the conversation and put nothing back, and
+                     * the picker only renders while the history is exactly one turn long. So
+                     * "Start new scenario" produced a blank screen: no question, no cards, no way
+                     * forward except reloading. Seen by driving it - the wizard hands over, the
+                     * session from an earlier attempt triggers this modal, and the way through it
+                     * is a dead end.
+                     */
+                    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
                     setOnboardingReady(false)
+                    setPickedSituation(null)
+                    setPickedScenario(null)
                     persistOnboarding([], pendingNewScenario.sels, 1)
+                    /*
+                     * AND IF THEY ARRIVED HAVING ALREADY PICKED, honour that here as well. Coming
+                     * from /grounds/new the situation is chosen and in the URL; showing them the
+                     * picker again after they have just used one is the "click went nowhere" bug
+                     * with an extra modal in front of it.
+                     */
+                    const already = SITUATION_CARDS.find((c) => c.scenario === scenario)
+                    if (already) {
+                      setPickedSituation(already.label)
+                      setPickedScenario(already.scenario)
+                      theyArrivedHavingPicked.current = already.message
+                    }
                   }
                   setShowNewScenarioConflict(false)
                   setPendingNewScenario(null)

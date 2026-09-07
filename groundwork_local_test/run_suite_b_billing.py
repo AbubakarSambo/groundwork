@@ -31,7 +31,7 @@ from playwright.async_api import async_playwright
 
 from _runner import BASE_URL, Recorder, api, launch, mail_clear, new_page, provision_admin
 from _ui_strings import (  # UI copy the product owns - see the guard in
-    CREATE_STEP_ONE, CREATE_PROJECT_CARD, INCLUDED_IN_PLAN,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
+    CREATE_STEP_ONE, CREATE_PROJECT_CARD,  # client/src/lib/the-persona-harness-and-the-ui-agree.spec.ts
 )
 
 rec = Recorder("suite_b")
@@ -98,8 +98,9 @@ async def main() -> int:
                     await page.wait_for_timeout(900)
                 except Exception:
                     break
-        included = await page.get_by_text(INCLUDED_IN_PLAN).count()
-        rec.check("B1", included >= 0, "swept create-flow steps for billing copy")  # informational marker
+        # The "Included in your plan" interstitial is gone with the wizard's other screens: it only
+        # ever showed when billing was NOT refusing, which is a screen whose entire content is that
+        # it has nothing to say. This sweep was informational anyway (`>= 0` passes on zero).
 
         # ---- B2: the 10-ground gate ----------------------------------------
         created = 0

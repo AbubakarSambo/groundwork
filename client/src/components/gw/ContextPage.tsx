@@ -450,7 +450,7 @@ export function ContextPage({
               </div>
             )}
 
-            <Sec title="Documents" src="each one says who reads it" />
+            <Sec n={1} title="Documents" src="each one says who reads it" />
 
             <div
               style={{
@@ -710,7 +710,7 @@ export function ContextPage({
             */}
             {isLead && privateSteers.length > 0 && (
               <>
-                <Sec title="Only you see this" src="steers what gets asked &middot; never quoted" />
+                <Sec n={2} title="Only you see this" src="steers what gets asked &middot; never quoted" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
                   {privateSteers.map((n: any) => {
                     const p = n.participantId ? ground.participants.find((x: any) => x.id === n.participantId) : null
@@ -798,7 +798,7 @@ export function ContextPage({
             */}
             {isLead && (
               <div style={{ marginTop: 20 }}>
-                <Sec title="What everyone here reads" src="your framing, never quoted as a finding" />
+                <Sec n={3} title="What everyone here reads" src="your framing, never quoted as a finding" />
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                   About the whole check-in, not about one person. Everyone sees it with your name on

@@ -1032,13 +1032,15 @@ STRICT RULES:
       // the lead who will run the first check-in.
       brief?: string;
       lead?: { email: string; name?: string; contextNote?: string };
+      /** True when they said the other people check in and they read what comes back. */
+      managingOnly?: boolean;
       history: ChatTurn[];
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
     // moment). The draft is the base and whatever the browser sent overlays
     // it, so commit works no matter which browser opened the magic link.
@@ -1084,7 +1086,7 @@ STRICT RULES:
    * its ground, briefly waiting out an in-flight winner. */
   private async awaitConsumedDraftGround(
     userId: string,
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
@@ -1151,7 +1153,7 @@ STRICT RULES:
     organizationId: string,
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // Nothing usable from either source: the old client silently skipped this
     // case and stranded the user on /setup. Fail EXPLICITLY so the client can
     // show "we couldn't find your session on this device".
@@ -1315,6 +1317,20 @@ STRICT RULES:
        * Reading the role costs one query and makes the rule the same rule everywhere. A brand new
        * sign-up is genuinely an ADMIN, so nothing about that case changes.
        */
+      /*
+       * WHETHER THIS PERSON ALSO CHECKS IN, WHICH THE CONVERSATION ASKS AND THIS DROPPED.
+       *
+       * The set-up wizard asked it on a form step and posted `managingOnly` at create. That screen
+       * is gone - /grounds/new is a picker that hands over to the conversation - and the question
+       * moved into the conversation's last beat: "I check in too" against "They do, I read what
+       * comes back". The answer then went nowhere, so somebody who said they do not check in was
+       * still recorded as a party who owes an account, given a session 1, and chased for it.
+       *
+       * Sent AT CREATE rather than through `confirmLead` afterwards, which is the whole of the bug
+       * a-lead-who-is-not-a-party.spec.ts exists for: that call rejects a ground its own creator
+       * just made, so the choice was silently dropped every time.
+       */
+      ...(dto.managingOnly === true ? { managingOnly: true } : {}),
     }, role);
 
     // Find the session 1 check-in and the initiator participant just created.
@@ -1420,7 +1436,7 @@ STRICT RULES:
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
     // for the second and subsequent contributors, silently dropping them.
-    const inviteResults: { email: string; devUrl?: string }[] = [];
+    const inviteResults: { email: string; devUrl?: string; waiting?: boolean }[] = [];
     const failedInvites: string[] = [];
     /*
      * WHY EACH ONE FAILED, NOT JUST THAT IT DID.
@@ -1442,7 +1458,20 @@ STRICT RULES:
           roleAsDescribed: c.context,
           note: c.note,
         });
-        inviteResults.push({ email: c.email, devUrl: (result as any)?.devUrl });
+        /*
+         * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
+         *
+         * `addParticipant` returns `invitedAt`, and it is null when the invitation WAITS - the
+         * check-in starts in the future, so the row is written uninvited and grounds.cron.ts sends
+         * on the day. Reported as "all participants i added didnt get an email", with nothing
+         * anywhere to say why. The wizard's own add-people screen was taught to say it and then
+         * that screen was removed, so the rule has to live where check-ins are actually created.
+         */
+        inviteResults.push({
+          email: c.email,
+          devUrl: (result as any)?.devUrl,
+          waiting: !(result as { invitedAt?: Date | null })?.invitedAt,
+        });
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
         failedInvites.push(c.email);

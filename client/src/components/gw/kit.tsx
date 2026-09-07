@@ -47,10 +47,33 @@ export function Zone({ label }: { label: string }) {
  *
  * A component with no case for something real is how the ninth copy gets written.
  */
-export function Sec({ title, src, on = 'light' }: { title: string; src?: string; on?: 'light' | 'dark' }) {
+/**
+ * A SECTION HEADING, OPTIONALLY NUMBERED.
+ *
+ * "The context page should space and number each section." A page of three near-identical panels
+ * with three uppercase labels reads as one long thing; a number tells you how many there are and
+ * where you are in them before you have read a word.
+ *
+ * `n` is optional and nothing else passes it - a numbered section only makes sense where the
+ * sections are a sequence somebody works through, which is Context and not, say, Settings.
+ */
+export function Sec({ title, src, n, on = 'light' }: { title: string; src?: string; n?: number; on?: 'light' | 'dark' }) {
   const dark = on === 'dark'
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '16px 2px 8px' }}>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: n ? '28px 2px 10px' : '16px 2px 8px' }}>
+      {n !== undefined && (
+        <span
+          aria-hidden
+          style={{
+            fontSize: 11, fontWeight: 800, lineHeight: '18px', width: 18, height: 18, flexShrink: 0,
+            borderRadius: 9, textAlign: 'center',
+            background: dark ? 'rgba(255,255,255,.14)' : 'var(--gw-blue-bg)',
+            color: dark ? 'rgba(255,255,255,.75)' : 'var(--gw-navy)',
+          }}
+        >
+          {n}
+        </span>
+      )}
       <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
       {src && <span style={{ fontSize: 10.5, color: dark ? 'rgba(255,255,255,.35)' : 'var(--gw-muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{src}</span>}
     </div>

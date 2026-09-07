@@ -22,29 +22,45 @@ const MIGRATION = readFileSync(
   join(__dirname, '../../../prisma/migrations/20260820120000_relabel_generated_grounds/migration.sql'),
   'utf8',
 );
+/*
+ * THE GENERATOR MOVED WITH THE FLOW THAT CALLS IT.
+ *
+ * `/grounds/new` was a form whose last screen created the check-in and named it. It is a picker now
+ * that hands over to the setup conversation, and that conversation's save is the only thing that
+ * creates one - so the fallback name is `fallbackGroundName` in EntryChatPage.tsx.
+ *
+ * The rule is unchanged and is what this file is for: a label is a subject line in somebody else's
+ * inbox, so it names the TOPIC and never the person, and never the raw enum in shouting caps.
+ */
 const GENERATOR = readFileSync(
-  join(__dirname, '../../../../client/src/pages/grounds/CreateGroundPage.tsx'), 'utf8',
+  join(__dirname, '../../../../client/src/pages/enter/EntryChatPage.tsx'), 'utf8',
 ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('the generator names the topic, never the person', () => {
   it('takes no participant argument at all', () => {
     /** The strongest form of the guarantee: it cannot name somebody it was never given. */
-    expect(GENERATOR).toMatch(/function groundNameFallback\(cardLabel: string \| undefined, scenario: string \| null\)/);
-    expect(GENERATOR).not.toMatch(/groundNameFallback\([^)]*participants\[0\]/);
+    expect(GENERATOR).toMatch(/export function fallbackGroundName\(classifiedScenario\?: string, firstDescription\?: string\)/);
+    expect(GENERATOR).not.toMatch(/fallbackGroundName\([^)]*participants\[0\]/);
+    expect(GENERATOR).not.toMatch(/fallbackGroundName\([^)]*peopleNamed/);
   });
 
   it('and no longer builds a "Name, topic" string', () => {
     expect(GENERATOR).not.toMatch(/\$\{name\}, \$\{base/);
   });
 
-  it('falls back to the card the person clicked', () => {
-    expect(GENERATOR).toMatch(/const base = cardLabel\?\.trim\(\)/);
+  it('falls back to the situation, then to what the person actually typed', () => {
+    /* Better material than the card label it replaced: the situation as CLASSIFIED from their own
+       words, then their own first description, then "Untitled". */
+    expect(GENERATOR).toMatch(/const fromScenario = \(classifiedScenario \?\? ''\)/);
+    expect(GENERATOR).toMatch(/const said = \(firstDescription \?\? ''\)/);
   });
 
   it('and never to the raw enum in shouting caps', () => {
     /** "NEW HIRE ground" is what nineteen rows had to be repaired from. */
     expect(GENERATOR).not.toMatch(/scenario\?\.replace\(\/_\/g, ' '\)\} ground/);
-    expect(GENERATOR).toMatch(/toLowerCase\(\)\.replace\(\/\^\.\/, c => c\.toUpperCase\(\)\)/);
+    /* The underscores go and the shouting stops: NEW_HIRE becomes "New hire", never "NEW HIRE". */
+    expect(GENERATOR).toMatch(/\.replace\(\/_\/g, ' '\)\s*\n?\s*\.toLowerCase\(\)/);
+    expect(GENERATOR).toMatch(/\.replace\(\/\^\\w\/, \(c\) => c\.toUpperCase\(\)\)/);
   });
 });
 
