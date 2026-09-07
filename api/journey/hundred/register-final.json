@@ -234,10 +234,10 @@
  {
   "group": "participant check-in chat",
   "issue": "There is a ceiling of 20 answers and it arrives as a refusal mid-sentence",
-  "evidence": "turn 20: \"Session turn limit reached. Please complete your session.\"",
+  "evidence": "FIXED: counts down from three answers left; the refusal says the record is safe and offers finishing.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "shared report",
@@ -250,18 +250,18 @@
  {
   "group": "signup/sign-in",
   "issue": "A wrong password on an existing account replies that a set-password link was emailed, which both confirms the address is registered and answers a question nobody asked",
-  "evidence": "\"We've emailed you a link to set your password.\"",
+  "evidence": "FIXED: one answer at the door. Driven \u2014 an unknown address and a registered one now produce byte-identical answers, with the reason logged for us only.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "navigation/cross-system UX",
   "issue": "Being signed out is reported as \"Invalid or expired token\" rather than \"sign in again\"",
-  "evidence": "401 on every authenticated call",
+  "evidence": "FIXED: a 401 now goes to sign-in with why and where they were, and the page says nothing is lost.",
   "severity": "medium",
   "journeys": null,
-  "state": "open"
+  "state": "fixed"
  },
  {
   "group": "visual/responsive UX",

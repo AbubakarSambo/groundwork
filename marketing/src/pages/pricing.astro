@@ -182,12 +182,20 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <p style="font-size:13px;color:var(--gw-text);line-height:1.7;margin:0;">One session to understand the situation, the next to work through it. Split across weeks it turns into talking about the problem rather than dealing with it, which is why we will not mediate cold.</p>
       </div>
 
+      <!--
+        NOT ONE NAMED COACH.
+        
+        This block introduced Sahar as "your people coach", which is both a promise about who turns
+        up and a smaller offer than the real one. She may coach your team herself, and she may
+        find you somebody who fits the situation better - a scenario, a seniority, a language, an
+        industry. Naming her as the coach forecloses the second, and the second is usually the more
+        useful answer.
+      -->
       <div style="background:var(--gw-paper);border:1px solid var(--gw-border);border-radius:12px;padding:20px 24px;margin-bottom:48px;">
-        <p style="font-size:14px;font-weight:700;color:var(--gw-text);margin:0 0 4px;">Your people coach is <a class="gw-tap-inline" href="https://www.linkedin.com/in/saharjamal/" target="_blank" rel="noopener noreferrer" style="color:var(--gw-navy);">Sahar Jamal</a></p>
-        <p style="font-size:12px;color:var(--gw-muted);margin:0 0 10px;">ICF-certified growth coach, founder and CEO of Maziwa, and a partner at Groundwork</p>
-        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Sahar coaches entrepreneurs, start-up teams and emerging leaders through exactly the conversations a report makes unavoidable: an expectation nobody said out loud, two people who thought they agreed, a role that quietly stopped being the job. Guided is her in the room with your team, not a summary emailed to you.</p>
-        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 12px;">A decade in maternal and newborn health across East Africa, through Jacaranda Health, Johnson &amp; Johnson and the Aga Khan Development Network. ACC-level certificate from the International Coaching Federation, graduate of the Canada Coach Academy, MBA from Kellogg. The person who sits with your team is a partner in the company building the product.</p>
-        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Guided%20check-ins" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Ask about Guided &#8594;</a>
+        <p style="font-size:14px;font-weight:700;color:var(--gw-text);margin:0 0 10px;">We find the coach who fits the situation</p>
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 10px;">Tell us what the report found and who is in the room. We identify a coach suited to it: the scenario, the seniority, the language, the industry. You meet them before you commit.</p>
+        <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 12px;">These are the conversations a report makes unavoidable: an expectation nobody said out loud, two people who thought they agreed, a role that quietly stopped being the job. A coach in the room means somebody sitting with your team, not a summary emailed to you.</p>
+        <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=A%20coach%20in%20the%20room" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Ask about a coach &#8594;</a>
       </div>
 
       <!--
@@ -205,50 +213,30 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
       <div class="why-grid" style="margin-bottom:16px;">
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">A coach in the room</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingRetainer}</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">a year for twelve sessions, or {SERVICES.coachingHourly} an hour</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Sahar reads the report with your team and turns what it found into a decision somebody owns. About $625 a session retained, against {SERVICES.coachingHourly} booked one at a time.</p>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.coachingHourly} an hour</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">or {SERVICES.coachingRetainer} a year for twelve sessions</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 6px;">A coach reads the report with your team and turns what it found into a decision somebody owns.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">The annual plan is {SERVICES.coachingMonthly} a month for twelve sessions, held by a team, attached to one scenario, or belonging to one person. You can opt in a session at a time instead.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Setting you up</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.handsOnFirstMonth}</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">first month</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">A named person to get you running and train your team. Three sessions covering planning, setup and training, so the first check-ins are ones you would want to read.</p>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.setupMonthly} a month</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">two two-hour sessions a month</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 6px;">We reach out to support your teams, and they book the time that suits them.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Opt in a month at a time, for as long as it is useful.</p>
         </div>
         <div class="why-card">
           <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Integration support</div>
-          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.integrationSupportFrom}+</p>
-          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">depending on complexity</p>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">If you would rather we connected it with you. Priced from rather than at, because a two-system sync and a whole HR platform are not the same week of work.</p>
+          <p style="font-size:26px;font-weight:800;color:var(--gw-text);margin:0 0 2px;">{SERVICES.integrationSupport}</p>
+          <p style="font-size:12px;color:var(--gw-muted);margin:0 0 8px;">one dedicated engineer, for a month</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0 0 6px;">One of our engineers works with your team to embed Groundwork in the tools you already use.</p>
+          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Pick the month your team has the time.</p>
         </div>
       </div>
 
       <div style="background:var(--gw-blue-bg);border-left:3px solid var(--gw-navy);border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:48px;">
         <p style="font-size:13px;color:var(--gw-sub);line-height:1.75;margin:0 0 8px;">All three start with a call, and none of them is charged to a card. Subscribe first, ask from inside the product, and we will tell you the number before anybody starts. What you agree is invoiced by us afterwards.</p>
         <a class="gw-tap-inline" href="mailto:hello@myground.work?subject=Request%20a%20call" style="font-size:13px;font-weight:700;color:var(--gw-navy);text-decoration:none;">Request a call &#8594;</a>
-      </div>
-
-      <!-- Why we price this way -->
-      <h2 style="font-size:20px;font-weight:800;color:var(--gw-text);margin-bottom:8px;">Why we price this way</h2>
-      <p style="font-size:14px;color:var(--gw-sub);line-height:1.65;margin-bottom:24px;">Most tools charge you for seats and call it a feature. We charge you for your team size and give you everything.</p>
-
-      <div class="why-grid" style="margin-bottom:48px;">
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Start free, no card required.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">10 check-ins on a team of 5 or fewer is enough to know whether Groundwork works for you. No credit card, no trial that expires, no pressure to upgrade before you have seen the value.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Pay for your team size, not your usage.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Every person with a Groundwork account in your organization counts toward your plan. Unlimited check-ins, sessions, and reports at every tier. No counting clicks.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">One price, no tiers per feature.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">Every plan gives you the same thing: full AI-facilitated check-ins, structured reports, and a permanent record. No features locked behind higher tiers.</p>
-        </div>
-        <div class="why-card">
-          <div style="font-size:13px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Transparent and consistent.</div>
-          <p style="font-size:12.5px;color:var(--gw-sub);line-height:1.65;margin:0;">The price you see is the price you pay. No proration surprises, no hidden add-ons, no sudden price changes without notice.</p>
-        </div>
       </div>
 
       <!-- FAQ -->
@@ -263,10 +251,6 @@ const APP_URL = import.meta.env.PUBLIC_APP_URL ?? 'https://app.myground.work';
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Do I need a card to start?</div>
           <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">No. Your first 10 check-ins are free, for teams of 5 or fewer including you, and require no payment details. You add a card only when you want more check-ins or more people.</p>
-        </div>
-        <div class="faq-item">
-          <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">What counts as a session?</div>
-          <p style="font-size:13px;color:var(--gw-sub);line-height:1.65;margin:0;">One session is one full round of answers from everyone in a check-in. Whether you have two people or twenty, it is one session. Sessions are unlimited on every plan.</p>
         </div>
         <div class="faq-item">
           <div style="font-size:14px;font-weight:700;color:var(--gw-text);margin-bottom:6px;">Can I cancel a subscription at any time?</div>
