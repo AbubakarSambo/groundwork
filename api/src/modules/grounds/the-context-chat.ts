@@ -80,7 +80,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (!g.timelineDays || g.timelineDays <= 0) {
     gaps.push({
       key: 'timeline',
-      ask: 'How long should this run? Until a date, or for a set number of weeks - either is fine, but without it the ground cannot work out how many check-ins it holds.',
+      ask: 'How long should this run? Until a date, or for a set number of weeks - either is fine, but without it we cannot work out how many check-ins this holds.',
       suggests: null,
     });
   }
@@ -112,7 +112,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (g.perPersonObjectiveCount < g.partyCount) {
     gaps.push({
       key: 'objectives',
-      ask: 'What is each person actually trying to achieve? Without that, the report can only speak about the ground as a whole, not about how anybody is doing against their own thing.',
+      ask: 'What is each person actually trying to achieve? Without that, the report can only speak about the whole thing, not about how anybody is doing against their own part of it.',
       suggests: 'their job description, objectives, or the message where the work was handed over',
     });
   }

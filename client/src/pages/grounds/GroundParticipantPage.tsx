@@ -572,6 +572,7 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
+              viewerUserId={user?.id}
             />
           </div>
         )}
