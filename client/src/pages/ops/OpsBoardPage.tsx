@@ -283,12 +283,41 @@ function WaitingOnYou() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ops'] }),
   })
 
+  /*
+   * SPEND CLAIMS TOO, because a claim nobody knows about is a claim that sits.
+   *
+   * "Waiting on you" was build approvals only, so a spend claim at REQUESTED reached nobody: the
+   * approver found out by opening the spend page and looking for it. They are a separate list
+   * rather than mixed in, because the decisions are different verbs - approve/reject a claim is
+   * not the same control as approving a build record, and one list with two behaviours is how a
+   * button ends up doing the wrong thing.
+   */
+  const spend = useQuery({ queryKey: ['ops', 'spend-waiting'], queryFn: opsApi.spendWaitingOnMe, retry: false })
+  const claims = spend.data?.claims ?? []
+
   const waiting = approvals.data ?? []
-  if (waiting.length === 0) return null
+  if (waiting.length === 0 && claims.length === 0) return null
 
   return (
     <section style={{ ...CARD, marginBottom: 12 }}>
       <p style={LABEL}>Waiting on you</p>
+
+      {claims.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
+          {claims.map((c) => (
+            <li key={c.id} style={{ padding: '8px 0', borderTop: '1px solid var(--gw-border)', display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+              <span style={{ fontSize: 13 }}>
+                {c.who} claimed <strong>${c.amount.toLocaleString()}</strong> for {c.description}
+                {c.waitingDays > 0 && (
+                  <span style={{ color: 'var(--gw-sub)' }}> &middot; waiting {c.waitingDays} {c.waitingDays === 1 ? 'day' : 'days'}</span>
+                )}
+              </span>
+              <a href="/ops/spend" style={{ fontSize: 12, color: 'var(--gw-navy)', whiteSpace: 'nowrap' }}>Decide &rarr;</a>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
         {waiting.map((a) => (
           <li key={a.id} style={{ padding: '8px 0', borderTop: '1px solid var(--gw-border)' }}>

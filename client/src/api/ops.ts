@@ -620,6 +620,17 @@ export const opsApi = {
   todos: (personKey: string) => apiClient.get<OpsTodo[]>(`/ops/todos/${personKey}`, QUIET).then((r) => r.data),
   closeTodo: (id: string, status: 'DONE' | 'CANCELLED') =>
     apiClient.patch(`/ops/todos/${id}/status`, { status }, QUIET).then((r) => r.data),
+  /**
+   * Spend claims waiting on this person to decide.
+   *
+   * A claim went to REQUESTED and nothing told anybody: an approver learned of one by opening the
+   * approvals page and looking. This puts it on the board they already open. Returns an empty list
+   * for somebody who cannot decide spend, so the section simply is not there for them.
+   */
+  spendWaitingOnMe: () =>
+    apiClient
+      .get<{ claims: Array<{ id: string; date: string; description: string; category: string; amount: number; who: string; waitingDays: number }>; total: number }>('/ops/spend/waiting-on-me', QUIET)
+      .then((r) => r.data),
   approvals: () =>
     apiClient
       .get<Array<{ id: string; approvalType: string; requestSummary: string; createdAt: string; relatedRecordType: string | null; relatedRecordId: string | null }>>('/ops/approvals')

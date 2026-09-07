@@ -132,6 +132,13 @@ export class OpsCeoController {
 
   // --- Spend --------------------------------------------------------------
 
+  /* What is waiting on this person to decide. On the board everybody opens, because a claim that
+     nobody knows about is a claim that sits. See `spendWaitingOnYou`. */
+  @Get('spend/waiting-on-me')
+  spendWaitingOnMe(@Req() req: { opsIdentity: OpsIdentity }) {
+    return this.ceo.spendWaitingOnYou(req.opsIdentity);
+  }
+
   @Get('spend')
   @ApiOperation({ summary: 'Your spend, or everybody’s — the CEO’s included — with spend:read-all' })
   expenses(@Req() req: OpsRequest, @Query('person') person?: string) {

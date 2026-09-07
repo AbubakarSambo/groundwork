@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsIdentity } from './ops-people.service';
 import { can } from './what-somebody-may-do';
@@ -14,6 +14,8 @@ const FUNDING_CONCLUDED: OpsFundingStage[] = ['CLOSED', 'DECLINED'];
 
 @Injectable()
 export class OpsCeoService {
+  private readonly logger = new Logger(OpsCeoService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // --- Fundraise ----------------------------------------------------------
@@ -205,12 +207,71 @@ export class OpsCeoService {
       where: { personId: input.requesterId, capability: 'spend:approve' },
     });
 
-    return this.prisma.opsExpense.create({
+    const claim = await this.prisma.opsExpense.create({
       data: {
         ...input,
         status: holdsTheDecision ? 'RECORDED' : 'REQUESTED',
       },
     });
+
+    return claim;
+  }
+
+  /**
+   * WHAT IS WAITING ON YOU TO DECIDE, for the board everybody opens.
+   *
+   * A claim went to REQUESTED and nothing reached anybody: the only way an approver learned of one
+   * was opening the approvals page and looking for it. So a claim could sit for a fortnight while
+   * the person who submitted it assumed it was in hand and the person who could decide it did not
+   * know it existed, and neither of them was wrong.
+   *
+   * NOT AN EMAIL, deliberately. `the-boundary-that-must-not-move.spec.ts` holds the rule that the
+   * ops system imports nothing from the product, and its two tests are the reason: swap ops for
+   * somebody else's ERP and every check-in still works; turn check-ins off and we can still run the
+   * company. Reaching into the product's mailer to send this would have bought a notification and
+   * sold that guarantee. So it goes where these people already look, several times a day.
+   *
+   * Returns nothing at all for somebody who cannot decide spend: a board section that is
+   * permanently empty is the locked menu item wearing a friendlier face.
+   */
+  async spendWaitingOnYou(identity: OpsIdentity) {
+    if (!can(identity.capabilities, 'spend:approve')) return { claims: [], total: 0 };
+
+    const claims = await this.prisma.opsExpense.findMany({
+      where: {
+        status: 'REQUESTED',
+        /* Never your own: nobody approves their own spend, so listing it here would be an
+           invitation to do the one thing the rule forbids. */
+        requesterId: { not: identity.personId },
+      },
+      orderBy: { date: 'asc' },
+      select: {
+        id: true, date: true, description: true, amount: true, category: true, requesterId: true,
+      },
+    });
+
+    /* Names in one query rather than a relation the schema does not have: `requesterId` is a plain
+       column, the same shape as `OpsPerson.userId` — the ops system holds its own references. */
+    const people = await this.prisma.opsPerson.findMany({
+      where: { id: { in: [...new Set(claims.map((c) => c.requesterId))] } },
+      select: { id: true, displayName: true },
+    });
+    const nameOf = new Map(people.map((p) => [p.id, p.displayName]));
+
+    return {
+      claims: claims.map((c) => ({
+        id: c.id,
+        date: c.date,
+        description: c.description,
+        category: c.category,
+        amount: Number(c.amount),
+        who: nameOf.get(c.requesterId) ?? 'Somebody on the team',
+        /* How long it has been sitting, because that is the part that decides whether to look now
+           or on Friday - and it is the number nobody had. */
+        waitingDays: Math.max(0, Math.floor((Date.now() - c.date.getTime()) / 86_400_000)),
+      })),
+      total: claims.reduce((sum, c) => sum + Number(c.amount), 0),
+    };
   }
 
   /**

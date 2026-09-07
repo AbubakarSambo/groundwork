@@ -66,10 +66,10 @@
  {
   "group": "setup chat",
   "issue": "Coming back to a setup conversation part-way through did not work",
-  "evidence": "journey 13",
+  "evidence": "CORRECTED: not a resume defect. Driven five times, 5/5 resumed cleanly \u2014 the 503 was a transient model failure. And the recovery is already sound: a failed turn puts the words back in the composer with an honest message, so an unlucky blip costs one retry rather than the conversation.",
   "severity": "high",
   "journeys": 1,
-  "state": "open"
+  "state": "corrected"
  },
  {
   "group": "examined artefacts",
@@ -138,10 +138,10 @@
  {
   "group": "examined artefacts",
   "issue": "The word \"ground\" reached somebody reading their own check-in",
-  "evidence": "1 of 237",
+  "evidence": "CORRECTED: not a leak. The one instance was \"setting the ground for the new Delivery Lead\" \u2014 ordinary English, and oneWordForTheThing deliberately excludes \"the ground for\" because converting it would put a nonsense sentence in somebody's record. My grep for the word was cruder than the product's own rule.",
   "severity": "low",
   "journeys": null,
-  "state": "open"
+  "state": "corrected"
  },
  {
   "group": "examined artefacts",
