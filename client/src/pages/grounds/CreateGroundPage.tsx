@@ -6,7 +6,7 @@ import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence 
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { SCENARIO_LABELS, HOW_MANY_NAMED_SITUATIONS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
@@ -551,6 +551,23 @@ export function CreateGroundPage() {
   const [situationGroup, setSituationGroup] = useState<ScenarioGroupKey>(GROUPS_YOU_PICK_FROM[0].key as ScenarioGroupKey)
   /* The describe-your-own card, looked up rather than written out again - it is the same card the
      catalogue has always carried, just no longer inside a group. */
+  /**
+   * HOW MANY THIS STEP OFFERS, COUNTED OFF THE CARDS IT RENDERS.
+   *
+   * It read HOW_MANY_NAMED_SITUATIONS, which counts SCENARIO_LABELS minus the open one - 21. The
+   * dropdown's group counts sum to 22, because they count CARDS, and COHORT_CHECK has two of them:
+   * "Several people in the same role" and "Onboarding several people at once" are one scenario
+   * offered as two situations. So the sentence said 21 while the thing under it offered 22.
+   *
+   * The number somebody is reading is "how many can I pick between", which is the cards. Counted
+   * off the same array the groups are counted off, so the two cannot disagree again.
+   *
+   * (I had also written in the catalogue that the COHORT sharing "no longer holds". It does - my
+   * regex had counted `scenario:` occurrences including OPEN_READ and got 22 distinct where there
+   * are 21. Corrected there.)
+   */
+  const namedCardCount = SCENARIOS.filter(c => c.scenario !== 'OPEN_READ').length
+
   const openCard = SCENARIOS.find(c => c.scenario === 'OPEN_READ')
   const groupNow = GROUPS_YOU_PICK_FROM.find(g => g.key === situationGroup)
   /* null means "not searching" - show the grouped list. An empty array means "searched, found
@@ -640,7 +657,6 @@ export function CreateGroundPage() {
    * administer. It is a one-line question and it changes who is measured.
    */
   const [alsoAParty, setAlsoAParty] = useState<boolean | null>(null)
-  const [myRemit, setMyRemit] = useState('')
   /**
    * Does someone ELSE run this ground?
    *
@@ -695,7 +711,6 @@ export function CreateGroundPage() {
     if (typeof d.groundName === 'string') setGroundName(d.groundName)
     if (typeof d.brief === 'string') setBrief(d.brief)
     if (typeof d.ownDescription === 'string') setOwnDescription(d.ownDescription)
-    if (typeof d.myRemit === 'string') setMyRemit(d.myRemit)
     if (typeof d.leadEmail === 'string') setLeadEmail(d.leadEmail)
     if (typeof d.leadName === 'string') setLeadName(d.leadName)
     if (typeof d.leadRemit === 'string') setLeadRemit(d.leadRemit)
@@ -714,10 +729,10 @@ export function CreateGroundPage() {
       || participants.length > 0 || bulkText.trim() || leadEmail.trim()
     if (!anything) return
     keep(DRAFT_KEY, {
-      groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit,
+      groundName, brief, ownDescription, leadEmail, leadName, leadRemit,
       startsOn, bulkText, timelineDays, participants,
     })
-  }, [groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
+  }, [groundName, brief, ownDescription, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
 
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
@@ -1287,33 +1302,22 @@ export function CreateGroundPage() {
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
                 </div>
               ))}
-              {alsoAParty === true && !runByOther && (
-                /*
-                 * A LABEL, BECAUSE A PLACEHOLDER IS NOT ONE.
-                 *
-                 * This was a bare box under three radio options, carrying its only explanation
-                 * inside itself - so it read as a fourth option somebody had half-filled, and the
-                 * explanation vanished the moment anybody typed. Reported as confusing, and the
-                 * question is a fair one to be confused by: "what are you responsible for here"
-                 * on a screen about who writes the objective could plausibly mean the check-in,
-                 * the situation, or the work. It means the work.
-                 */
-                <div style={{ marginTop: 10 }}>
-                  <label className="gw-label" htmlFor="my-remit">Your part in the work (optional)</label>
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 5, lineHeight: 1.5 }}>
-                    What you are responsible for in the work this check-in is about - not your job
-                    title. It goes on the record beside everyone else's, so the report can tell whose
-                    part is whose.
-                  </div>
-                  <input
-                    id="my-remit"
-                    className="gw-input"
-                    placeholder="e.g. the pricing model and the launch date"
-                    value={myRemit}
-                    onChange={(e) => setMyRemit(e.target.value)}
-                  />
-                </div>
-              )}
+              {/*
+                * "YOUR PART IN THE WORK" IS GONE, AND IT WAS NEVER GOING ANYWHERE.
+                *
+                * Her call: the chat asks this anyway, and there are too many places asking you for
+                * things. Both true - the check-in asks it in these words: "What are you bringing to
+                * this, what are you responsible for, and what does your contribution look like over
+                * the next period? Not the vision. The work."
+                *
+                * And it was worse than redundant. Traced before removing it: `myRemit` was held in
+                * component state, written into the saved draft, and sent to the server by NEITHER
+                * create path. It asked a question on the way in and threw the answer away, so the
+                * only thing it ever did was make the screen longer.
+                *
+                * `leadRemit` on the other branch is kept: that one is sent at creation, and it is
+                * about somebody who is not here to be asked yet.
+                */}
               {runByOther && (
                 <div style={{ marginTop: 4 }}>
                   <input className="gw-input" type="email" aria-label="The lead's email address"
@@ -1359,7 +1363,7 @@ export function CreateGroundPage() {
               {/* Whose situation this is decides the pronouns - see whose-situation-is-it.ts.
                   NAMED situations, because the describe-your-own card is no longer one of the
                   things being counted: it is the pick above them. */}
-              {HOW_MANY_NAMED_SITUATIONS} {theWords.intro}
+              {namedCardCount} {theWords.intro}
             </div>
 
             {/* THE FIRST PICK. Same card, same renderer, same selection behaviour as any other -

@@ -69,7 +69,14 @@ CREATE_CARDS = [
     "Setting shared goals", "A workplan and budget", "A regular read on live work",
     "A project is off track", "A big decision", "Board or leadership strategy",
     "Several people in the same role", "A pulse check", "Onboarding several people at once",
-    "Something serious just happened", "People see it differently", "Describe your own situation",
+    "Something serious just happened", "People see it differently",
+    # ADDED LATE, AND NEVER PINNED. Both arrived with the branch that split the contract situations
+    # in two, and this list was not part of that change - so the suite has been checking twenty of
+    # the twenty-one named situations and reporting agreement. The client guard could not see it
+    # either: it only asked whether every label HERE exists in the product, never whether every
+    # situation the product offers is checked here. Both directions now.
+    "An agreement before it is signed", "An agreement that is running",
+    "Describe your own situation",
 ]
 
 VALID_ENUMS = {
@@ -136,8 +143,37 @@ async def main() -> int:
             await page.locator("button:has-text('Continue'):visible").last.click()
             await page.wait_for_timeout(1500)
 
-        body = await page.inner_text("body")
-        missing = [c for c in CREATE_CARDS if c not in body]
+        # THE PICKER SHOWS ONE GROUP AT A TIME NOW, so reading the body once finds one group's
+        # worth of cards and reports the other sixteen missing. That is what this went red with,
+        # and it read as the picker being broken when the picker had been rebuilt to her
+        # instruction: the describe-your-own card first, then a dropdown, then the cards for
+        # whichever group is chosen.
+        #
+        # The thing being checked has not changed - every situation the product supports is
+        # reachable in the picker, under exactly the label the catalogue holds - so the check walks
+        # the dropdown instead of reading one screen. It is also a stronger check than it was: a
+        # group whose option exists but whose cards never render now fails, and that was invisible
+        # when everything was on one page.
+        seen: set[str] = set()
+        group_picker = page.locator("select#cg-group")
+        if await group_picker.count():
+            options = await group_picker.locator("option").all()
+            values = [await o.get_attribute("value") for o in options]
+            for value in values:
+                if not value:
+                    continue
+                await group_picker.select_option(value)
+                await page.wait_for_timeout(400)
+                body = await page.inner_text("body")
+                seen.update(c for c in CREATE_CARDS if c in body)
+        else:
+            # No dropdown at all is itself a finding, and falling back to one read keeps the
+            # failure honest rather than turning it into a crash.
+            rec.check("S1", False, "the situation picker offers a group dropdown", "select#cg-group not found",
+                      hard=True, url=page.url)
+            seen.update(c for c in CREATE_CARDS if c in await page.inner_text("body"))
+
+        missing = [c for c in CREATE_CARDS if c not in seen]
         rec.check("S1", not missing, f"all {len(CREATE_CARDS)} create-picker cards render with exact labels",
                   f"missing: {missing}" if missing else "", hard=True, url=page.url)
         await rec.step(page, "the situation picker", "persona S")

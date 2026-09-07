@@ -144,6 +144,15 @@ export const HOW_MANY_SITUATIONS = Object.keys(SCENARIO_LABELS).length
  * it now sits at the top of the set-up wizard as the first pick rather than inside a group. A line
  * that says "22 situations, pick the closest fit" while one of the twenty-two is "none of these"
  * is counting the escape hatch as an option.
+ *
+ * NOT THE NUMBER THE PICKER PRINTS, and I had it wrong there for an hour. This counts LABELS; the
+ * picker offers CARDS, and there are more cards than scenarios because COHORT_CHECK has two -
+ * "Several people in the same role" and "Onboarding several people at once" are one scenario
+ * offered as two situations. So this is 21 and the picker is 22, and the page counts its own cards.
+ *
+ * I had also written elsewhere that the COHORT sharing "no longer holds". It does: the regex I
+ * checked with counted `scenario:` occurrences including OPEN_READ and reported 22 distinct where
+ * there are 21.
  */
 export const HOW_MANY_NAMED_SITUATIONS = Object.keys(SCENARIO_LABELS).filter(
   (k) => k !== 'OPEN_READ',

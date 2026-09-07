@@ -29,7 +29,15 @@ jobs:
   deploy-staging:
     name: Build and deploy staging
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # RAISED FROM 15. The first real use of this workflow uploaded its prebuilt output fine, and
+    # then `vercel deploy` sat waiting for Vercel to finish building for fourteen more minutes and
+    # the job was killed on the limit - after the deployment existed and before the alias step ran.
+    # So the code was on the branch, the build was on Vercel, and the fixed staging URL still served
+    # the previous deployment with nothing saying so.
+    #
+    # The wait is deliberate and stays: if the build fails, the job fails and the alias does not move
+    # to a broken deployment. Waiting longer is the cheap half of that trade.
+    timeout-minutes: 30
     permissions:
       contents: read
 
