@@ -292,7 +292,10 @@ function FeedbackWidget() {
           // offset this button's inline `bottom: 20` sits inside that strip and
           // overlaps the nav labels. Scoped to non-chat pages only, since chat
           // pages position this button from `top`, not `bottom`.
-          className={isChatPage ? 'gw-feedback-btn' : 'gw-feedback-btn gw-fb-trigger-mobile-safe'}
+          /* A chat page positions this from the top, which is the header's own row — at 375px it
+             covered a control there. `gw-fb-trigger-chat-mobile-safe` moves it below the header on
+             a narrow screen; the desktop position is unchanged. */
+          className={isChatPage ? 'gw-feedback-btn gw-fb-trigger-chat-mobile-safe' : 'gw-feedback-btn gw-fb-trigger-mobile-safe'}
           style={{
             position: 'fixed',
             ...(isChatPage ? { top: 12, right: 16 } : { bottom: 20, right: 20 }),

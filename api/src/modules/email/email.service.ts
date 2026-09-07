@@ -182,8 +182,9 @@ export class EmailService {
       subject: 'We have your request to speak to a coach',
       html: `
         <p>${greeting(name)}</p>
-        <p>Thanks for asking. Sahar reads these herself and will come back to you within two working days.</p>
-        <p>So there are no surprises, coaching is $5,000 a year for twelve sessions, or $500 an hour with no retainer. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
+        <p>Thanks for asking. Somebody reads these and will come back to you within two working days.</p>
+        <p>So there are no surprises, coaching is $700 an hour with no retainer, or $7,500 a year for twelve sessions. We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.</p>
+        <p>We identify a coach suited to the situation: the scenario, the seniority, the language, the industry. You meet them before you commit to anything.</p>
         <p>Nothing has been created in Groundwork and nobody on your team has been contacted. If you would rather just get going, the software works on its own and most teams run it themselves.</p>
         <p>Groundwork</p>
       `,

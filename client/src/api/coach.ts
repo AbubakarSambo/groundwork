@@ -44,10 +44,16 @@ export interface CoachRequestRow {
 /** Kept in step with the DTO. The form advertises it, so it must be the number enforced. */
 export const MIN_INTENTION_LENGTH = 40
 
-/** What coaching costs, shown before the send button rather than after a reply is chased. */
+/**
+ * What coaching costs, shown before the send button rather than after a reply is chased.
+ *
+ * THESE WERE $5,000 AND $500 while the pricing page said $7,500 and $700, and the coach card in the
+ * setup flow said a third thing. One number in three files is how a quote somebody may hold us to
+ * ends up wrong in two of them. The guard that caught the card did not look here, and now does.
+ */
 export const COACHING_PRICE = {
-  retained: '$5,000 a year for twelve sessions',
-  hourly: '$500 an hour, no retainer',
+  hourly: '$700 an hour, no retainer',
+  retained: '$7,500 a year for twelve sessions',
   note: 'We usually suggest two sessions per issue, back to back: one to understand it, the next to work through it.',
 }
 

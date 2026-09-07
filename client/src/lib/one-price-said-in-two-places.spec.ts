@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { COACH_CARD } from './scenario-catalog'
+import { COACHING_PRICE } from '../api/coach'
 
 /**
  * TWO PRICES FOR ONE THING, AND ONE OF THEM INSIDE THE PRODUCT.
@@ -74,6 +75,33 @@ describe('coaching costs the same in the product as on the site', () => {
     for (const figure of onTheCard) {
       expect(moneyOn(PRICING)).toContain(figure)
     }
+  })
+
+  /*
+   * AND EVERYWHERE ELSE A COACH PRICE IS QUOTED.
+   *
+   * The version of this guard that caught the card looked at the card alone, so two other copies
+   * stayed wrong for months: the request form's `COACHING_PRICE` and the confirmation email the API
+   * sends, both saying $5,000 and $500. A guard scoped to the one place a fault was found is a
+   * guard that waits for the next place.
+   */
+  it('the coach request form quotes the pricing page\'s figures', () => {
+    const quoted = [...`${COACHING_PRICE.hourly} ${COACHING_PRICE.retained}`.matchAll(/\$[0-9][0-9,]*/g)].map((m) => m[0])
+    expect(quoted.length).toBeGreaterThan(1)
+    for (const figure of quoted) expect(moneyOn(PRICING)).toContain(figure)
+  })
+
+  it('and so does the confirmation email the API sends', () => {
+    const email = readFileSync(
+      join(__dirname, '..', '..', '..', 'api', 'src', 'modules', 'email', 'email.service.ts'),
+      'utf8',
+    )
+    const from = email.indexOf('async sendCoachRequestReceived')
+    expect(from, 'the coach confirmation email has moved or been renamed').toBeGreaterThan(-1)
+    const body = email.slice(from, email.indexOf('\n  async ', from + 10))
+    const quoted = [...body.matchAll(/\$[0-9][0-9,]*/g)].map((m) => m[0])
+    expect(quoted.length, 'the email quotes no price at all, which is its own problem').toBeGreaterThan(0)
+    for (const figure of quoted) expect(moneyOn(PRICING)).toContain(figure)
   })
 
   it('and the card still says the software works without it', () => {

@@ -1458,7 +1458,18 @@ export function CreateGroundPage() {
                           empty and we will come back to you to agree a time.
                         </span>
                       </label>
-                      <p style={{ fontSize: 11.5, color: 'var(--gw-muted)', margin: 0, lineHeight: 1.5 }}>{COACHING_PRICE.note}</p>
+                      {/*
+                        * WHAT IT COSTS, BEFORE THE SEND BUTTON.
+                        *
+                        * `COACHING_PRICE` says in its own comment that the price is "shown before
+                        * the send button rather than after a reply is chased", and only `.note` was
+                        * ever rendered - so the two figures were exported, kept in step with the
+                        * pricing page, and read by nobody. Somebody asking to speak to a coach
+                        * learned the number in the reply.
+                        */}
+                      <p style={{ fontSize: 11.5, color: 'var(--gw-muted)', margin: 0, lineHeight: 1.5 }}>
+                        {COACHING_PRICE.hourly}, or {COACHING_PRICE.retained}. {COACHING_PRICE.note}
+                      </p>
                       {coachErr && <p style={{ fontSize: 12, color: 'var(--gw-red-t)', margin: 0 }}>{coachErr}</p>}
                       <button
                         type="button"

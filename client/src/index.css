@@ -924,6 +924,24 @@ body.gw-sb-collapsed .gw-sb-reopen { opacity: 1; pointer-events: auto; }
   }
 }
 
+/* ── AND OUT OF THE HEADER ROW ON A NARROW SCREEN ─────────
+   On a chat page this trigger is positioned from the TOP, which puts it in the
+   same row as the header's own controls. At 375px it sat on top of one of them:
+   the audit's screenshot of /start shows the button covering the control beside
+   the check-in's name, so the header offered something no thumb could reach.
+   
+   Below the header instead, at the same right edge, and smaller: a floating
+   feedback button is not worth a header control. */
+@media (max-width: 640px) {
+  .gw-fb-trigger-chat-mobile-safe {
+    top: auto !important;
+    bottom: 76px !important;
+    right: 16px !important;
+    padding: 7px 12px !important;
+    font-size: 11.5px !important;
+  }
+}
+
 /* ── FEEDBACK BUTTON (shared visual style) ────────────────
    Used by the floating trigger in AppShell.tsx and, on /feed only,
    by the header button in AlignmentFeedPage.tsx - kept as one class so
