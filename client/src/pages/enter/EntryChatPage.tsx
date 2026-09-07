@@ -497,7 +497,20 @@ export const SITUATION_CARDS = [
     ],
   },
   {
-    group: 'off',
+    /*
+     * 'person', NOT 'off', AND THE TWO PICKERS DISAGREED ABOUT IT.
+     *
+     * This list filed PIP under "Something is off"; the catalogue files it under "A decision about
+     * one person", and the signed-in picker reads the catalogue. So the same situation sat in a
+     * different place depending on which door you came through, and somebody who found it once
+     * could not find it again.
+     *
+     * The catalogue wins because it is the one both surfaces can read, and because its answer is
+     * the better one: "Something is off" is about a gap - against an agreement, between two people,
+     * after an event - and a PIP is not a gap, it is a decision being made about a named person
+     * who is entitled to give their own account of it. That is the group's whole heading.
+     */
+    group: 'person',
     scenario: 'PIP',
     label: SCENARIO_LABELS.PIP,
     detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
