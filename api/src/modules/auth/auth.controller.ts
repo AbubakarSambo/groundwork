@@ -5,7 +5,7 @@ import { IsString } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto } from './dto';
+import { RegisterDto, LoginDto, AuthResponseDto, VerifyEmailDto, SetPasswordDto, ResendVerificationDto, ForgotPasswordDto, ResetPasswordDto, MagicLinkRegisterDto, MemberSigninDto, UpdateProfileDto, EntrySaveDto } from './dto';
 import { Public, CurrentUser, CurrentUserData, Roles, Role } from '../../common';
 
 /**
@@ -255,8 +255,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ global: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Save an entry session and send a magic link' })
-  async entrySave(@Body() body: { email: string; draft?: { payload?: Record<string, any>; history?: unknown[] } }) {
-    return this.authService.entrySave(body.email, body.draft);
+  async entrySave(@Body() dto: EntrySaveDto) {
+    /*
+     * A DTO, AND THE HONEYPOT ON THE PATH THAT IS ACTUALLY WALKED. See EntrySaveDto: this route
+     * had no validation of any kind, while the two endpoints carrying a honeypot are reached by no
+     * client form. Silent success on a filled trap is deliberate — telling a bot it was caught
+     * teaches it to try again without the trap.
+     */
+    if (dto._hp) {
+      return { message: 'Check your email for your sign-in link.', email: dto.email.toLowerCase() };
+    }
+    return this.authService.entrySave(dto.email, dto.draft);
   }
 
   @Post('request-password-setup')

@@ -14,6 +14,7 @@ import { Sec } from '@/components/gw/kit'
 import { scrollTo } from '@/lib/scroll-to'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
 const STORAGE_KEY = 'gw_entry_session'
 /** Where the API lives, for the one place we hand the browser away (Google). */
@@ -870,6 +871,9 @@ export function EntryChatPage() {
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [emailError, setEmailError] = useState('')
+
+  /* The honeypot the API has always accepted and no form has ever rendered. */
+  const trap = useTheTrap()
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteNote, setInviteNote] = useState('')
   const [inviteAdded, setInviteAdded] = useState<string[]>([])
@@ -1577,7 +1581,7 @@ export function EntryChatPage() {
     // same-browser mirror (and the legacy path for old links).
     const commitPayload = buildCommitPayload()
       try {
-      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history })
+      const res = await authApi.entrySave(trimmed, { payload: commitPayload, history }, trap.filled)
       setEmailSent(true)
       if (res.draftToken) {
         setDraftToken(res.draftToken)
@@ -3064,6 +3068,7 @@ export function EntryChatPage() {
                   onChange={e => setOrgName(e.target.value)}
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
                 />
+                {trap.field}
                 <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}

@@ -55,8 +55,10 @@ export const authApi = {
   // draft = the server-side copy of the anonymous session (transcript +
   // commit metadata), written the moment the email is given so the commit no
   // longer depends on which browser opens the magic link.
-  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft }).then(r => r.data),
+  /* `hp` is the honeypot — see components/gw/a-field-nobody-can-see.tsx. Sent as `_hp`, which is
+     the name the two older endpoints already use. */
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),

@@ -29,6 +29,18 @@ const WHOLE = SRC.slice(
  */
 const CONSUME = WHOLE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
+/*
+ * AND THE SENTENCES THEMSELVES, WHICH HAVE MOVED.
+ *
+ * The used-link message asserted "so your password is set" for every kind of link, including a
+ * verification link whose holder has no password — so the wording now depends on what the link was
+ * for and lives in `how-long-a-link-lasts.ts`. This file still checks the words, because the words
+ * are the fix; it just has to look where they are.
+ */
+const DEAD_LINK = readFileSync(join(__dirname, 'how-long-a-link-lasts.ts'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\/\/.*$/gm, '');
+
 describe('the messages a failed link produces', () => {
   it('found consumeToken at all', () => {
     // The slice above is the whole basis of this file.
@@ -54,8 +66,12 @@ describe('the messages a failed link produces', () => {
      * The one case worth telling apart: they already set a password. "Ask for a new
      * link" would send them round a loop; "sign in" is the thing that works.
      */
-    expect(CONSUME).toMatch(/your password is set/);
-    expect(CONSUME).toMatch(/Forgot your password/);
+    expect(DEAD_LINK).toMatch(/your password is set/);
+    /* And it is claimed only for a password link. Said to somebody holding a verification link,
+       it sends them looking for a password they never chose. */
+    expect(DEAD_LINK).toMatch(/address is confirmed/);
+    expect(CONSUME).toContain('whatToSayAboutADeadLink');
+    expect(DEAD_LINK).toMatch(/Forgot your password/);
   });
 
   it('and the expired case still uses the caller\'s own wording', () => {

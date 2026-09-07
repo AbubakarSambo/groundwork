@@ -66,8 +66,23 @@ apiClient.interceptors.response.use(
       // belonging to more than one organisation now picks one from the rail instead.
       const onAuthPage = ['/auth'].some(p => window.location.pathname.startsWith(p))
       if (!onAuthPage && !isAuthEndpoint) {
+        /*
+         * TO SIGN-IN, WITH WHERE THEY WERE — NOT OFF THE PRODUCT.
+         *
+         * This sent them to `/`, and `/` bounces a signed-out visitor to the marketing site. So a
+         * token expiring in the middle of a check-in did not read as "sign in again": the tab left
+         * the product entirely, landed on a page selling it, and nothing said why or offered a way
+         * back to the conversation they were in the middle of.
+         *
+         * `next` is the parameter AuthPage already reads, so signing in returns them to the page
+         * they lost. `why` is what lets it say so rather than looking like an ordinary sign-in.
+         */
         useAuthStore.getState().logout()
-        window.location.href = '/'
+        const wasAt = window.location.pathname + window.location.search
+        const goingHome = wasAt === '/' || wasAt.startsWith('/auth')
+        window.location.href = goingHome
+          ? '/auth?why=session-expired'
+          : `/auth?why=session-expired&next=${encodeURIComponent(wasAt)}`
       }
       return Promise.reject(error)
     }

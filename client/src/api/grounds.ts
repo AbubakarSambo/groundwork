@@ -103,8 +103,12 @@ export const groundsApi = {
    *
    * One 404, one answer, in the place the person is looking.
    */
+  /* And `skipForbiddenToast` for the same reason. A 403 here stacked "Access denied" on top of
+     the report page's own sentence — two different explanations of one event, one of them a toast
+     that outlives the page. The page says which of the four situations this is now; see
+     pages/report/why-you-cannot-see-this.ts. */
   get: (id: string) =>
-    apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true } as any).then(r => r.data),
+    apiClient.get<Ground>(`/grounds/${id}`, { skipNotFoundToast: true, skipForbiddenToast: true } as any).then(r => r.data),
 
   /**
    * Whether the parties can see each other at all - who else is here, and how each is doing.

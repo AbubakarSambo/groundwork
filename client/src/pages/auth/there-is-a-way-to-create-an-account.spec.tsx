@@ -105,6 +105,8 @@ describe('the create-account door', () => {
     await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith(
       'sam@acme.test',
       { payload: { firstName: 'Sam Taylor', orgName: 'Acme Ltd' } },
+      /* The honeypot, empty: a person never meets the field. */
+      '',
     ))
   })
 
@@ -114,7 +116,9 @@ describe('the create-account door', () => {
     fireEvent.change(screen.getByLabelText(/Your name/i), { target: { value: 'Sam' } })
     fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: 'sam@acme.test' } })
     fireEvent.click(screen.getByRole('button', { name: /Create my account/ }))
-    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }))
+    /* The third argument is the honeypot — empty for a person who never sees the field. See
+       components/gw/a-field-nobody-can-see.tsx. */
+    await waitFor(() => expect(authApi.entrySave).toHaveBeenCalledWith('sam@acme.test', { payload: { firstName: 'Sam' } }, ''))
   })
 })
 

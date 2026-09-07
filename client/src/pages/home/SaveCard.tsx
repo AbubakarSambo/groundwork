@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { entryStorage } from '@/api/entry'
 import type { EntryMode } from '@/api/entry'
+import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
 type Variant = 'admin' | 'participant'
 
@@ -48,8 +49,11 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
 
   const inviteUrl = `${APP_URL}/invite?token=${inviteToken}`
 
+  /* The honeypot the API has always accepted and no form has ever rendered. */
+  const trap = useTheTrap()
+
   const saveSession = useMutation({
-    mutationFn: (emailVal: string) => authApi.entrySave(emailVal),
+    mutationFn: (emailVal: string) => authApi.entrySave(emailVal, undefined, trap.filled),
     onSuccess: () => {
       const trimmed = email.trim()
       sessionStorage.setItem('gw_magic_type', 'entry')
@@ -100,6 +104,8 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         </div>
         <div style={{ padding: '16px' }}>
           <form onSubmit={save}>
+          {trap.field}
+            {trap.field}
             <div className="gw-fld">
               <label className="gw-label">Your email</label>
               <input

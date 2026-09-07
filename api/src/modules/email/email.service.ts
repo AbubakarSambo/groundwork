@@ -7,6 +7,7 @@ import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turne
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
+import { howLongInWords } from '../auth/how-long-a-link-lasts';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -203,7 +204,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link expires in 24 hours.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
     }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
@@ -212,7 +213,7 @@ export class EmailService {
     const devUrl = await this.sendEmail({
       to: email,
       subject: 'Your Groundwork sign-in link',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>Click the link below to sign in to Groundwork. No password needed.</p><p><a href="${url}">Sign in</a></p><p>This link expires in 24 hours and can only be used once.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Click the link below to sign in to Groundwork. No password needed.</p><p><a href="${url}">Sign in</a></p><p>This link lasts ${howLongInWords('verify an address')} and can only be used once.</p>`),
     }, undefined, 'sendSignInLinkEmail');
     return { devUrl };
   }
@@ -222,7 +223,18 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: 'Set a password for Groundwork',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>Set a password to sign in without Google.</p><p><a href="${url}">Set password</a></p>`),
+      /*
+       * TWO SENTENCES AND NO IDEA WHAT GROUNDWORK IS. The audit found this one both nameless and
+       * silent about its own window: somebody holding a dead link could not tell whether they were
+       * an hour or a week late. The window comes from how-long-a-link-lasts.ts rather than being
+       * typed here, so it cannot drift from the row the token was written with.
+       */
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>Groundwork is where you and the people you work with each give your own account of a piece of work, and get one shared record of it. Setting a password means you can sign in without Google.</p>` +
+        `<p><a href="${url}">Set password</a></p>` +
+        `<p style="color:#888;font-size:12px;">This link lasts ${howLongInWords('set a password from an email')} and can only be used once. If it has expired, ask for a new one from the sign-in page.</p>`,
+      ),
     }, undefined, 'sendAddPasswordEmail');
   }
 
@@ -231,7 +243,7 @@ export class EmailService {
     const devUrl = await this.sendEmail({
       to: email,
       subject: 'Reset your Groundwork password',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>Reset your password (link expires in 1 hour).</p><p><a href="${url}">Reset password</a></p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>Reset your password. The link lasts ${howLongInWords('reset a password')}.</p><p><a href="${url}">Reset password</a></p>`),
     }, undefined, 'sendPasswordResetEmail');
     return { devUrl };
   }

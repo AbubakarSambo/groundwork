@@ -30,6 +30,7 @@ import {
 import { TokenType } from '@prisma/client';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { theFirstAdminHoldsIt } from '../users/the-person-who-set-this-up';
+import { whatToSayAboutADeadLink, expiresAtFor, howLongInWords } from './how-long-a-link-lasts';
 
 type UserWithOrg = {
   id: string;
@@ -131,7 +132,7 @@ export class AuthService {
         /* The person's own name, never their employer's domain, when none was typed. */
         orgName: dto.organizationName?.trim() || null,
         passwordHash,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expiresAt: expiresAtFor('verify an address'),
       },
       update: {
         token,
@@ -139,7 +140,7 @@ export class AuthService {
         lastName: dto.lastName,
         orgName: dto.organizationName?.trim() || null,
         passwordHash,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expiresAt: expiresAtFor('verify an address'),
       },
     });
 
@@ -173,7 +174,7 @@ export class AuthService {
       firstName,
       lastName,
       orgName: dto.organizationName?.trim() || null,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      expiresAt: expiresAtFor('verify an address'),
     };
     await this.prisma.pendingSignup.upsert({
       where: { email: dto.email.toLowerCase() },
@@ -199,7 +200,7 @@ export class AuthService {
       if (user.googleId) {
         const token = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
-          data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+          data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
         });
         this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
           this.logger.error(`Failed to send add-password email to ${user.email}: ${err.message}`),
@@ -210,7 +211,7 @@ export class AuthService {
       // link so they can get back in without needing to contact anyone.
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
       });
       this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
         this.logger.error(`Failed to send password setup email to ${user.email}: ${err.message}`),
@@ -255,7 +256,7 @@ export class AuthService {
         const freshToken = crypto.randomBytes(32).toString('hex');
         await this.prisma.pendingSignup.update({
           where: { id: pending.id },
-          data: { token: freshToken, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+          data: { token: freshToken, expiresAt: expiresAtFor('verify an address') },
         });
         await this.emailService
           .sendMagicLinkEmail(pending.email, pending.firstName, freshToken)
@@ -494,7 +495,7 @@ export class AuthService {
           payload: (draft?.payload ?? {}) as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          expiresAt: expiresAtFor('verify an address'),
         },
         /**
          * A SECOND SAVE WITHOUT A DRAFT MUST NOT ERASE THE FIRST ONE'S WORK.
@@ -524,7 +525,7 @@ export class AuthService {
          */
         update: {
           token,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          expiresAt: expiresAtFor('verify an address'),
           ...(draft
             ? {
                 firstName,
@@ -571,7 +572,7 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
@@ -622,7 +623,7 @@ export class AuthService {
         if (!inviterOrganizationId) await theFirstAdminHoldsIt(tx, organizationId, u.id);
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
-          data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+          data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from a team invitation') },
         });
         return { firstName, token };
       });
@@ -667,7 +668,7 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
@@ -693,7 +694,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
     });
 
     const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
@@ -710,7 +711,9 @@ export class AuthService {
     });
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+      /* A fifth window (24h) sat here, distinct from the other three PASSWORD_SETUP ones for no
+         stated reason. It is an emailed setup link like the others, so it uses their window. */
+      data: { userId, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
     });
     return { token };
   }
@@ -727,7 +730,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.PASSWORD_RESET, expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
+      data: { userId: user.id, token, type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
     });
 
     const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
@@ -907,8 +910,10 @@ export class AuthService {
         userId,
         token,
         type: TokenType.PASSWORD_SETUP,
-        /** Short: this is handed straight to the screen in front of them, not emailed. */
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        /** Short: this is handed straight to the screen in front of them, not emailed. Named in
+            how-long-a-link-lasts.ts so the difference from the emailed one is a decision on
+            record rather than two literals that look like a mistake. */
+        expiresAt: expiresAtFor('set a password on the screen you are already on'),
       },
     });
     return { ...res, passwordSetupToken: token };
@@ -1052,13 +1057,30 @@ export class AuthService {
     const NOT_A_LINK_WE_KNOW =
       'This link did not work. Password links are single use and they expire - open the most recent one from your inbox, or ask for a new one from the sign-in page.';
     if (!tokenRecord) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
+
+    /*
+     * THE WRONG KIND OF LINK IS NOT A CLAIM ABOUT WHAT IT DID.
+     *
+     * The type was checked LAST, after the used and expired branches had already told the person
+     * what the link had accomplished. So a verification link opened at the password screen was
+     * answered "your password is set", which is a fact about a different kind of link and sends
+     * somebody looking for a password they never chose. Type first: if this is not the kind of
+     * link this route consumes, say only that.
+     */
+    if (tokenRecord.type !== expectedType) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
+
+    /*
+     * AND THE SENTENCE IS DERIVED FROM THE TYPE. See how-long-a-link-lasts.ts. `usedAt` is still
+     * read before expiry — for a password link, "your password is set" remains the more useful
+     * answer even when the row has since gone stale — but the wording now depends on what the
+     * link was for rather than assuming every link sets a password.
+     */
     if (tokenRecord.usedAt) {
       throw new BadRequestException(
-        'This link has already been used, so your password is set. Sign in with it - or use "Forgot your password?" if you cannot remember it.',
+        whatToSayAboutADeadLink({ type: tokenRecord.type, used: true, expired: tokenRecord.expiresAt < new Date() }),
       );
     }
     if (tokenRecord.expiresAt < new Date()) throw new BadRequestException(opts.allowExpiredMessage);
-    if (tokenRecord.type !== expectedType) throw new BadRequestException(NOT_A_LINK_WE_KNOW);
     return tokenRecord;
   }
 
