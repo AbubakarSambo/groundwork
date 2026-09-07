@@ -152,6 +152,67 @@ In order. (1) is the blocker.
    right. If a customer ever needs us to look at their record, that should be an explicit,
    time-boxed grant they make — not a capability we hold quietly.
 
+## What the encryption work costs
+
+Measured against this codebase on 7 September 2026, not estimated in the abstract.
+
+**It is one seam, not a sweep.** 101 call sites read or write the content tables
+(78 reads, 23 writes across `ConversationTurn`, `AssistantTurn`, `RecordEntry`, `Report`,
+`GroundDocument`, `LeadContextNote`). None of them has to change. Prisma is on 5.22, which supports
+client extensions, so encryption goes in `PrismaService` as a query extension over a named list of
+model-and-field pairs: encrypt on create/update, decrypt on read. One file, one list, and adding a
+new content column later is a line in that list rather than an audit.
+
+**Three queries break, and both of them are cheap to fix.** Only three places ask the database to
+search a content column, all of them `contains` on `RecordEntry.text`:
+
+- `patterns/patterns.service.ts:578` — looks for a name fragment in record entries
+- `conversation/context.service.ts:435` and `:436` — name variants and operational words
+
+An encrypted column cannot be searched with `contains`, so this is the real design question. It
+happens to have an easy answer here: **both queries already scope by ground or organisation before
+the text filter**, so the row set is small before the search matters. Drop the `contains` from SQL,
+load the scoped rows, filter in application code after decryption. No blind index, no HMAC token
+table, no searchable-encryption scheme. Loading a few hundred rows instead of a few is nothing next
+to the Gemini call in the same request.
+
+**Runtime cost: negligible, with one trap.** AES-GCM over a few kilobytes is microseconds against a
+model call measured in seconds. The trap is calling KMS per row: unwrap the data key once per
+process and cache it, and the cost is arithmetic. Per-row unwrapping would add a network round trip
+to every read, which would be felt.
+
+**Operational cost: a key becomes a thing you can lose.**
+
+- A KMS key to create, hold and rotate. Rotation needs a key id stored beside each ciphertext, or
+  re-encryption on rotation — the first is cheaper and should be decided at the start.
+- **Backups stop being readable without the key.** That is the point of the exercise and it is also
+  the risk: losing the key loses every check-in, and no support process recovers it.
+- Support changes shape. Staff can no longer read the database to work out what happened, which is
+  the goal — so the break-glass path (audit item 2) becomes necessary rather than nice, and it
+  should be built in the same piece of work rather than after somebody needs it at 2am.
+- `prisma:studio` stops showing content. Correct, and worth saying out loud to whoever uses it.
+
+**What it buys:** claim 1 becomes true at the infrastructure level rather than enforced only by the
+product. A database dump stops being a transcript. The backup exposure closes at source.
+
+**What it does NOT buy, and this belongs in the same sentence as the claim:** the application
+decrypts in order to work, so anybody with access to a running app server or its memory can still
+read content. This defeats database dumps, backups, stolen snapshots and casual internal access. It
+does not defeat a compromised application host. Saying otherwise would be the same mistake as the
+copy this audit already corrected.
+
+**Scope, honestly:** the extension and its key handling, three query rewrites, a backfill migration,
+a break-glass read path, and tests that a content column never leaves the database in plaintext.
+Call it a few focused days rather than a project — the estimate is small *because* the codebase
+routes every content read through Prisma and searches content in only three places, and that is a
+fact about this repository rather than a general truth.
+
+**The cost rises steeply with delay, which is the argument for doing it now.** Backfilling
+ciphertext across today's data is a single migration on a dev-sized database with no paying
+customers. Across five hundred organisations with live check-ins it is a migration project with a
+maintenance window, a rollback plan and a customer conversation. The work is the same; the risk is
+not.
+
 ## What claim 3 needs when Groundwork's own models get built
 
 Decide these before the first training job, not after:
