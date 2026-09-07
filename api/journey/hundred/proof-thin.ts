@@ -46,6 +46,14 @@ async function signUp(local: string) {
       console.log(`\ncoverage: ${cov}`);
       console.log(`picture (${String(rep.data.sharedPicture).length} chars): ${String(rep.data.sharedPicture).slice(0, 220)}`);
       console.log(`agreements: ${(rep.data.agreements ?? []).length} | divergences: ${(rep.data.divergences ?? []).length}`);
+      console.log(`thinNotice: ${JSON.stringify(rep.data.thinNotice ?? null)}`);
+      /* The second party's completion triggers a second synthesis. Read again after it lands. */
+      await settle(45000);
+      const again = await call('GET', `/grounds/${gid}/report`, undefined, lead.token);
+      console.log(`\nAFTER the second synthesis:`);
+      console.log(`coverage: ${(again.data?.engagement as any)?.coverage}`);
+      console.log(`picture (${String(again.data?.sharedPicture ?? '').length} chars): ${String(again.data?.sharedPicture ?? '').slice(0, 300)}`);
+      console.log(`thinNotice: ${JSON.stringify(again.data?.thinNotice ?? null)}`);
       return;
     }
     await settle(5000);

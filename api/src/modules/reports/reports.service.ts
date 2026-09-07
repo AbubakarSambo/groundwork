@@ -40,6 +40,7 @@ import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
+import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -719,31 +720,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .join(', ')}. Reflect this as an absence; do not infer their views.\n\n`
       : '';
 
-    // DETERMINISTIC ROSTER: the corpus below only contains text from parties
-    // who produced record entries. Without an explicit roster, the model has
-    // to guess how many other parties exist and what their roles are from
-    // context alone - and it will invent wrong counts and role names. This
-    // roster is the ONLY source of truth for "who is on this ground."
-    const recordEntryCountByParty = new Map<string, number>();
-    for (const r of records) {
-      recordEntryCountByParty.set(r.participant.id, (recordEntryCountByParty.get(r.participant.id) ?? 0) + 1);
-    }
-    const rosterLines = parties.map((p) => {
-      const label = labelById.get(p.id) ?? 'a party';
-      const entryCount = recordEntryCountByParty.get(p.id) ?? 0;
-      // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
-      // match: they open with "where one party leads another", and a roster of
-      // anonymous labels never says that anyone does. In a live 12-session run
-      // with textbook abdication in the record, zero gaps were found for
-      // exactly this reason - the rule was correct and the input was silent.
-      const leadNote =
-        p.partyType === PartyType.INITIATOR
-          ? ' [leads this ground and the other parties on it]'
-          : '';
-      return `- ${label}${leadNote}: ${entryCount > 0 ? `contributed ${entryCount} record entr${entryCount === 1 ? 'y' : 'ies'} (shown below)` : 'checked in but has no record entries with text - do not describe their views, role, or affiliation beyond this exact label'}`;
-    });
-    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
-
     // THIN-RECORD NOTICE: compute turn counts per participant to detect parties
     // whose record is much thinner than others, and warn the synthesis accordingly.
     const participantsWithTurns = await this.prisma.groundParticipant.findMany({
@@ -765,6 +741,36 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const charCount = personTurns.reduce((sum, t) => sum + (t.content?.length ?? 0), 0);
       return { label: labelById.get(p.id) ?? p.partyType, turns: personTurns.length, charCount };
     });
+    // DETERMINISTIC ROSTER: the corpus below only contains text from parties
+    // who produced record entries. Without an explicit roster, the model has
+    // to guess how many other parties exist and what their roles are from
+    // context alone - and it will invent wrong counts and role names. This
+    // roster is the ONLY source of truth for "who is on this ground."
+    const recordEntryCountByParty = new Map<string, number>();
+    for (const r of records) {
+      recordEntryCountByParty.set(r.participant.id, (recordEntryCountByParty.get(r.participant.id) ?? 0) + 1);
+    }
+    const saidByLabel = new Map(turnCounts.map((t) => [t.label, t.charCount]));
+    const rosterLines = parties.map((p) => {
+      const label = labelById.get(p.id) ?? 'a party';
+      // WHO LEADS WHOM. Without this the leadership-gap rules have nothing to
+      // match: they open with "where one party leads another", and a roster of
+      // anonymous labels never says that anyone does. In a live 12-session run
+      // with textbook abdication in the record, zero gaps were found for
+      // exactly this reason - the rule was correct and the input was silent.
+      //
+      // And what the line says about a party with no record entries is decided in
+      // a-party-who-spoke-is-not-absent.ts, because it had been telling somebody
+      // who answered that their record was not present.
+      return whatTheRosterSaysAbout({
+        label,
+        leads: p.partyType === PartyType.INITIATOR,
+        recordEntries: recordEntryCountByParty.get(p.id) ?? 0,
+        charsSaid: saidByLabel.get(label) ?? 0,
+      });
+    });
+    const roster = `PARTY ROSTER (exhaustive - there are exactly ${parties.length} parties on this ground, no others exist):\n${rosterLines.join('\n')}\n\n`;
+
     const maxChars = Math.max(...turnCounts.map((p) => p.charCount), 1);
     const thinParties = turnCounts.filter((p) => p.charCount < maxChars * 0.15);
     const relativeThinNotice =
