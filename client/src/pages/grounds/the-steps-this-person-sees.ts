@@ -53,28 +53,34 @@ export interface WhoIsSettingUp {
   billingSettledAndFree: boolean
 }
 
+/**
+ * THE FLOW IS THE PICKER AND THEN A CONVERSATION.
+ *
+ * Her words, over the screen showing "Step 5 of 5 - The brief": "this page should not really exist
+ * based on the conversation we have been having. the entry chat and the wizard should be similar,
+ * right?" - and before that, repeatedly: "the entry chat flow is better and having a report at the
+ * end is nice", "the in platform still has multiple steps".
+ *
+ * She is right, and the reason is not that forms are unfashionable. The six screens after the picker
+ * asked for exactly what the setup conversation already asks for and extracts - what this is about,
+ * who is in it, why now, how long, how often, the brief - and asked for them worse: a textarea
+ * cannot say "you have said what, but not who", cannot press on a vague answer, and cannot tell a
+ * new hire's setup from a contract renewal's. Then it ended on an admin board rather than on the
+ * person's own check-in and a report, so most people who set one up never gave an account at all.
+ *
+ * WHAT IS LEFT HERE: the picker, and the billing screen when it is actually blocking. Everything
+ * else moved to the conversation at /start, which the picker now hands to with the situation already
+ * chosen. The other stages stay in the enum because grounds created before this still reference them
+ * and because the billing check reads STAGE.plan.
+ */
 export function stepsThisPersonSees(who: WhoIsSettingUp): number[] {
   return [
     STAGE.situation,
     ...(who.onAPaidPlan ? [STAGE.coach] : []),
     ...(who.describingOwnSituation ? [STAGE.describe] : []),
+    /* Still in the list, and still only when it is refusing. A person must never be walked past a
+       refusal that had not arrived yet, and that is as true of a two-screen flow as an eight. */
     ...(who.billingSettledAndFree ? [] : [STAGE.plan]),
-    STAGE.timeline,
-    STAGE.people,
-    /*
-     * THE BRIEF IS BACK FOR EVERYBODY, because the person it was skipped for no longer exists.
-     * It came out for "Someone else sets the context" - asking a setter to write a brief about a
-     * situation they had just said was not theirs. That answer is gone, so everybody on this step
-     * is writing their own context and the brief is theirs to write.
-     */
-    STAGE.brief,
-    /*
-     * LAST, AND IT IS THE LAST THING ON PURPOSE. Whether this person also checks in is a question
-     * about what happens NEXT, and it can only be answered well once they know what they have set
-     * up. Asked first, it was a question about org structure put to somebody who had not yet said
-     * what any of this was about.
-     */
-    STAGE.who,
   ]
 }
 

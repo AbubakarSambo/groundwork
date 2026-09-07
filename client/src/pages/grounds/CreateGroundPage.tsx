@@ -847,6 +847,21 @@ export function CreateGroundPage() {
     }
   }
 
+  /**
+   * HAND THE REST TO THE CONVERSATION.
+   *
+   * Everything the removed screens collected is what the setup conversation already gathers and
+   * extracts, and it gathers it better. The scenario travels so the conversation opens on that
+   * situation's own first question rather than asking what has just been chosen.
+   */
+  function handOverToTheConversation() {
+    if (!scenario) return
+    forget(DRAFT_KEY)
+    const q = new URLSearchParams({ scenario })
+    if (moment) q.set('mode', moment === 'STARTING' ? 'new' : 'underway')
+    navigate(`/start?${q.toString()}`)
+  }
+
   const create = useMutation({
     mutationFn: async () => {
       const ground = await groundsApi.create({
@@ -1686,13 +1701,33 @@ export function CreateGroundPage() {
                           contract - so this used to leave somebody exactly where they were with no
                           message. That is live now rather than theoretical: "who checks in" moved
                           to the end, so this bar IS the last screen. */}
+                      {/*
+                        * THE END OF THIS FLOW IS THE CONVERSATION, NOT A CREATED CHECK-IN.
+                        *
+                        * The picker used to be screen two of eight, and the last of them called
+                        * `create.mutate()`. The screens in between asked for exactly what the setup
+                        * conversation already asks for and extracts - what this is about, who is in
+                        * it, why now, how long, how often, the brief - and asked for them worse: a
+                        * textarea cannot press on a vague answer or tell a new hire's setup from a
+                        * contract renewal's. Then it ended on an admin board rather than on this
+                        * person's own check-in and a report, so most people who set one up never
+                        * gave an account at all.
+                        *
+                        * Her words, over "Step 5 of 5 - The brief": "this page should not really
+                        * exist... the entry chat and the wizard should be similar, right?"
+                        *
+                        * So picking a situation hands over, with the situation already chosen so
+                        * nobody is asked to pick it twice. Nothing is created here any more: the
+                        * ground is created when the conversation is saved, by the same commit the
+                        * entry chat has always used.
+                        */}
                       <button
                         className="gw-btn"
-                        disabled={blocked || create.isPending}
-                        onClick={() => (next === step ? create.mutate() : setStep(next))}
+                        disabled={blocked}
+                        onClick={() => (next === step ? handOverToTheConversation() : setStep(next))}
                         style={{ margin: 0 }}
                       >
-                        {next === step ? (create.isPending ? 'Opening…' : 'Open the check-in') : 'Continue'}
+                        {next === step ? 'Continue →' : 'Continue'}
                       </button>
                       {blocked ? (
                         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>{why}</div>

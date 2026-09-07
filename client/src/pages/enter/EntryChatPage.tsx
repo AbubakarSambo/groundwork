@@ -1077,10 +1077,21 @@ export function EntryChatPage() {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Seed ground name
+  /*
+   * SEED THE NAME FROM THE SITUATION'S NAME, NOT FROM ITS KEY.
+   *
+   * This did `scenario.replace(/\+/g, ' ')`, which turns "A+new+hire" from an old marketing link
+   * into something readable and turns "NEW_HIRE" into "NEW_HIRE". That was tolerable while the
+   * parameter only arrived from those links; it is not now that /grounds/new hands over with the
+   * scenario key in the query string, and it was the first thing on screen: NEW_HIRE in the rail,
+   * NEW_HIRE on the header, on the ordinary signed-in path.
+   *
+   * The catalogue already has the name a person reads. An unrecognised value falls back to the old
+   * behaviour, which is right for a link we did not write.
+   */
   useEffect(() => {
-    const defaultName = scenario ? scenario.replace(/\+/g, ' ') : ''
-    setGroundName(defaultName)
+    const known = SITUATION_CARDS.find((c) => c.scenario === scenario)
+    setGroundName(known ? known.label : scenario ? scenario.replace(/\+/g, ' ') : '')
     setSessions(1)
   }, [])
 
@@ -1134,13 +1145,57 @@ export function EntryChatPage() {
       setShowNewScenarioConflict(true)
     } else {
       clearEntrySession()
-      if (urlInitial || scenario) {
-        const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
+      /*
+       * THE SCENARIO KEY IS NOT A DESCRIPTION OF ANYTHING.
+       *
+       * `initial` is what this check-in is about, in the person's words, and it is what the check-in
+       * gets NAMED from. Seeding it with the raw parameter put "NEW_HIRE" in the rail and on the
+       * header - photographed the moment /grounds/new started handing over with the scenario in the
+       * query string, which is now the ordinary signed-in path rather than a rare marketing link.
+       *
+       * Only a description somebody actually wrote is seeded. A bare scenario says which situation
+       * it is and nothing about theirs, and the conversation is about to ask.
+       */
+      if (urlInitial) {
+        const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial }
         setOnboardingSelections(sels)
         persistOnboarding([], sels, 1)
       }
+      /*
+       * ARRIVING WITH THE SITUATION ALREADY PICKED, WHICH IS HOW THE SIGNED-IN DOOR NOW WORKS.
+       *
+       * `/grounds/new` is the picker and nothing else: pick a card there and it hands the rest to
+       * this conversation. Without this the person would be shown the picker a second time and
+       * asked to choose the thing they had just chosen - which is the "click went nowhere" bug in
+       * its most literal form.
+       *
+       * Only when the scenario names a real card. A `?scenario=` from an old marketing link that
+       * matches nothing still lands on the picker, which is the right place for somebody whose
+       * situation we do not know.
+       */
+      const already = SITUATION_CARDS.find((c) => c.scenario === scenario)
+      if (already) {
+        setPickedSituation(already.label)
+        setPickedScenario(already.scenario)
+        theyArrivedHavingPicked.current = already.message
+      }
     }
   }, [])
+
+  /**
+   * SENT ONCE, AFTER THE FIRST PAINT, RATHER THAN INSIDE THE EFFECT ABOVE.
+   *
+   * `sendOnboarding` reads state the mount effect is still setting, so calling it from in there
+   * posts a history that does not yet contain what was just chosen. A ref carries the message out
+   * and this fires it on the next tick, when the picked situation is actually in state.
+   */
+  const theyArrivedHavingPicked = useRef<string | null>(null)
+  useEffect(() => {
+    const said = theyArrivedHavingPicked.current
+    if (!said) return
+    theyArrivedHavingPicked.current = null
+    sendOnboarding(said)
+  }, [pickedScenario])
 
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
     saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
