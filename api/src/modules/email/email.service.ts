@@ -357,6 +357,46 @@ export class EmailService {
   }
 
   /** Report released. Sent to BOTH parties at the same time. */
+  /**
+   * NOBODY WAS TOLD THEIR INTEGRATION HAD STOPPED RECEIVING.
+   *
+   * Seven attempts over about twenty-one hours and then the delivery is DEAD, with a warning in our
+   * own logs. The customer's first sign was a gap in their own data, found later, by them.
+   *
+   * Deliberately not alarming and deliberately specific: what we could not reach, what we were
+   * trying to send, and that we have stopped trying for that one. Classified in
+   * `nothing-goes-out-that-was-turned-off.ts` as something we decided to send.
+   */
+  async sendWebhookEndpointDying(
+    email: string,
+    firstName: string | null,
+    /* NOT named `...Url`, deliberately. `a-link-in-an-email-has-to-resolve.spec.ts` requires that a
+       URL handed to an email be offered as a link, which is the right rule — and this is the
+       customer's OWN endpoint address, quoted back so they know which one we cannot reach. It is an
+       identifier, not somewhere for them to go, and making it clickable would send an admin's
+       browser at their own webhook receiver. */
+    endpointAddress: string,
+    eventType: string,
+    attempts: number,
+  ): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject: 'Groundwork could not reach your webhook endpoint',
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>` +
+        `<p>We have not been able to deliver events to <b>${endpointAddress}</b>. The last one — a <code>${eventType}</code> — was tried ${attempts} times over about a day and we have now stopped trying for that event.</p>` +
+        `<p>Anything sent while the endpoint is unreachable is queued and retried the same way, so this is worth looking at rather than waiting out. Nothing has been lost on our side: every attempt and its response is in your delivery log.</p>` +
+        `<p><a href="${this.frontendUrl}/org/integrations">Open your integrations</a></p>` +
+        `<p style="color:#888;font-size:12px;">You are getting this because you are an admin on this organisation. One notice a day per endpoint, however many events are affected.</p>`,
+      ),
+    }, undefined, 'sendWebhookEndpointDying');
+  }
+
+  /** The base the product's own links are built from, for callers that need to make one. */
+  frontendUrlForLinks(): string {
+    return this.frontendUrl;
+  }
+
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,

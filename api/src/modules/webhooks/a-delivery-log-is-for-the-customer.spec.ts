@@ -14,6 +14,9 @@ function svc(rows: { endpoints?: any[]; deliveries?: any[] } = {}) {
   const deliveries = rows.deliveries ?? [];
   const prisma: any = {
     webhookEndpoint: {
+      /* `remove` is a soft delete now — the delivery log is the only record of what we sent a
+         customer, and a hard delete cascaded it away. */
+      updateMany: jest.fn(async (a: any) => ({ count: (endpoints ?? []).filter((e: any) => e.organizationId === a.where.organizationId && e.id === a.where.id).length })),
       create: jest.fn(async ({ data }: any) => { const e = { id: 'ep1', ...data }; endpoints.push(e); return e; }),
       /* HONOURS `select`, because Prisma does. Ignoring it made the fake return the signing secret
          from a list the real endpoint has never included it in - so the test failed on a bug that
@@ -43,7 +46,11 @@ function svc(rows: { endpoints?: any[]; deliveries?: any[] } = {}) {
       update: jest.fn(async ({ data }: any) => data),
     },
   };
-  return { service: new WebhooksService(prisma), endpoints, deliveries, prisma };
+  /* The notifier and the mailer: a dead delivery has to reach a person now, and these tests are
+  not about that — see `tellThemItIsDying`. Doubles that do nothing keep them honest. */
+  const quiet = { tell: async () => [] } as any;
+  const mailer = { sendWebhookEndpointDying: async () => undefined, frontendUrlForLinks: () => 'http://localhost:5173' } as any;
+  return { service: new WebhooksService(prisma, quiet, mailer), endpoints, deliveries, prisma };
 }
 
 describe('registering an endpoint', () => {

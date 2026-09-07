@@ -18,6 +18,7 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
+import { TheReveal } from './the-reveal-is-both-sides-at-once'
 
 type ViewTab = 'shared' | 'own'
 
@@ -812,13 +813,33 @@ export function ReportBody({
    */
   const [reportIsStale, setReportIsStale] = useState(false)
 
+  /*
+   * A REPORT BEING WRITTEN IS WORTH WAITING FOR, SO THE PAGE WAITS.
+   *
+   * The server now says which of three situations a missing report is in, and one of them —
+   * "everybody has answered and it is being written" — resolves on its own in under a minute. The
+   * page said so and then did nothing, so the person who had just finished sat looking at a
+   * sentence that never changed and had to guess that a reload was the move. Fifty-six of the
+   * hundred audited journeys waited through this; the audit's runner polled, which is exactly what
+   * a person cannot do.
+   *
+   * Only for that one message. A report nobody has answered for is not coming in a minute, and
+   * polling it would be a spinner with no end.
+   */
+  const [waitingForItToBeWritten, setWaitingForItToBeWritten] = useState(false)
+
   const { data: report, isLoading: rl, error: reportError } = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsApi.get(id!),
     enabled: !!id && reportExists !== false,
     retry: false,
-    refetchInterval: reportIsStale ? 5000 : false,
+    refetchInterval: reportIsStale || waitingForItToBeWritten ? 5000 : false,
   })
+
+  useEffect(() => {
+    const said = (reportError as any)?.response?.data?.message
+    setWaitingForItToBeWritten(typeof said === 'string' && /being written/i.test(said))
+  }, [reportError])
 
   // Someone finished a check-in after this report was written, so what is on
   // screen predates their account.
@@ -903,6 +924,22 @@ export function ReportBody({
     )
   }
 
+  /*
+   * WAITING ON THEM, NOT ON EVERYBODY ELSE.
+   *
+   * `activated: false` means the report exists and this party has not agreed to the exchange yet.
+   * Without this branch the page fell through below and said the report "appears once everybody has
+   * checked in" — untrue at that point, and nothing they could act on. See
+   * the-reveal-is-both-sides-at-once.tsx.
+   */
+  if (report && (report as any).activated === false) {
+    return (
+      <div style={{ ...PAGE_STYLE, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <TheReveal groundId={id!} />
+      </div>
+    )
+  }
+
   if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -924,6 +961,13 @@ export function ReportBody({
             ? whatWentWrong(reportError).message
             : 'The shared report appears once everybody has checked in. Your own record is on your check-in page in the meantime.'}
         </div>
+        {waitingForItToBeWritten && (
+          /* Not decoration: without it the sentence above is indistinguishable from a page that
+             has given up, which is what sends somebody looking for the reload button. */
+          <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+            Checking again every few seconds — this page will show it the moment it is there.
+          </div>
+        )}
         <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
       </div>
     )

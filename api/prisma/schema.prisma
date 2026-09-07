@@ -1855,6 +1855,22 @@ model WebhookEndpoint {
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now()) @map("created_at")
 
+  /// WHEN SOMEBODY REMOVED IT, rather than the row being deleted.
+  ///
+  /// `remove` was a hard delete, and deliveries cascade off this row — so removing an endpoint
+  /// took the entire delivery log with it. That log is the only record of what we sent a customer
+  /// and whether it arrived, and it is exactly what somebody asks for after an incident: "did you
+  /// send us the event or not". Removing an endpoint is a decision about the FUTURE, so it stops
+  /// deliveries and keeps the history.
+  removedAt      DateTime? @map("removed_at")
+
+  /// When we last told this customer that deliveries to this endpoint are dying.
+  ///
+  /// Seven attempts over about twenty-one hours and then DEAD, with a warning in our own logs and
+  /// nothing that reaches the customer. Their integration silently stops receiving. One notice per
+  /// endpoint per day, because a broken endpoint produces a dead delivery for every event.
+  deadNoticeAt   DateTime? @map("dead_notice_at")
+
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   deliveries   WebhookDelivery[]
 
