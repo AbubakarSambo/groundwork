@@ -640,7 +640,6 @@ export function CreateGroundPage() {
    * administer. It is a one-line question and it changes who is measured.
    */
   const [alsoAParty, setAlsoAParty] = useState<boolean | null>(null)
-  const [myRemit, setMyRemit] = useState('')
   /**
    * Does someone ELSE run this ground?
    *
@@ -695,7 +694,6 @@ export function CreateGroundPage() {
     if (typeof d.groundName === 'string') setGroundName(d.groundName)
     if (typeof d.brief === 'string') setBrief(d.brief)
     if (typeof d.ownDescription === 'string') setOwnDescription(d.ownDescription)
-    if (typeof d.myRemit === 'string') setMyRemit(d.myRemit)
     if (typeof d.leadEmail === 'string') setLeadEmail(d.leadEmail)
     if (typeof d.leadName === 'string') setLeadName(d.leadName)
     if (typeof d.leadRemit === 'string') setLeadRemit(d.leadRemit)
@@ -714,10 +712,10 @@ export function CreateGroundPage() {
       || participants.length > 0 || bulkText.trim() || leadEmail.trim()
     if (!anything) return
     keep(DRAFT_KEY, {
-      groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit,
+      groundName, brief, ownDescription, leadEmail, leadName, leadRemit,
       startsOn, bulkText, timelineDays, participants,
     })
-  }, [groundName, brief, ownDescription, myRemit, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
+  }, [groundName, brief, ownDescription, leadEmail, leadName, leadRemit, startsOn, bulkText, timelineDays, participants])
 
   // Billing step state
   const [billingChecked, setBillingChecked] = useState(false)
@@ -1287,33 +1285,22 @@ export function CreateGroundPage() {
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
                 </div>
               ))}
-              {alsoAParty === true && !runByOther && (
-                /*
-                 * A LABEL, BECAUSE A PLACEHOLDER IS NOT ONE.
-                 *
-                 * This was a bare box under three radio options, carrying its only explanation
-                 * inside itself - so it read as a fourth option somebody had half-filled, and the
-                 * explanation vanished the moment anybody typed. Reported as confusing, and the
-                 * question is a fair one to be confused by: "what are you responsible for here"
-                 * on a screen about who writes the objective could plausibly mean the check-in,
-                 * the situation, or the work. It means the work.
-                 */
-                <div style={{ marginTop: 10 }}>
-                  <label className="gw-label" htmlFor="my-remit">Your part in the work (optional)</label>
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 5, lineHeight: 1.5 }}>
-                    What you are responsible for in the work this check-in is about - not your job
-                    title. It goes on the record beside everyone else's, so the report can tell whose
-                    part is whose.
-                  </div>
-                  <input
-                    id="my-remit"
-                    className="gw-input"
-                    placeholder="e.g. the pricing model and the launch date"
-                    value={myRemit}
-                    onChange={(e) => setMyRemit(e.target.value)}
-                  />
-                </div>
-              )}
+              {/*
+                * "YOUR PART IN THE WORK" IS GONE, AND IT WAS NEVER GOING ANYWHERE.
+                *
+                * Her call: the chat asks this anyway, and there are too many places asking you for
+                * things. Both true - the check-in asks it in these words: "What are you bringing to
+                * this, what are you responsible for, and what does your contribution look like over
+                * the next period? Not the vision. The work."
+                *
+                * And it was worse than redundant. Traced before removing it: `myRemit` was held in
+                * component state, written into the saved draft, and sent to the server by NEITHER
+                * create path. It asked a question on the way in and threw the answer away, so the
+                * only thing it ever did was make the screen longer.
+                *
+                * `leadRemit` on the other branch is kept: that one is sent at creation, and it is
+                * about somebody who is not here to be asked yet.
+                */}
               {runByOther && (
                 <div style={{ marginTop: 4 }}>
                   <input className="gw-input" type="email" aria-label="The lead's email address"
