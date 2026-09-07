@@ -410,6 +410,53 @@ export function TheAssistantAsACustomerSeesIt() {
     }
   }
 
+  const fileInput = useRef<HTMLInputElement | null>(null)
+
+  /**
+   * ATTACH SOMETHING, THE WAY A CUSTOMER'S PANEL WOULD.
+   *
+   * Reported as: why is there no document uploader for context in the chat. The answer was that
+   * the API had no route to take one - so this panel could not offer it, and neither could anybody
+   * building their own. `POST check-ins/:id/documents` exists now, and this is the same fetch as
+   * every other call here: no session, no app client, bearer token only.
+   *
+   * ONLY INSIDE A CHECK-IN, and that is the product's shape rather than a shortcut. A document
+   * here is evidence attached to a record: read against the thing being discussed, assessed, and
+   * visible under that record's rules. Attached to nothing it would have no scope, no reader, and
+   * no rule about who may see it.
+   */
+  async function attach(file: File) {
+    if (!ready || !session || !inCheckIn) return
+    setBusy(true)
+    setSaid((s) => [...s, { from: 'us', text: `Attaching ${file.name}…` }])
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${ready.baseUrl}/api/org/v1/check-ins/${inCheckIn}/documents`, {
+        method: 'POST',
+        credentials: 'omit',
+        headers: { Authorization: `Bearer ${session}` },
+        body: form,
+      })
+      const body = await res.json().catch(() => null)
+      setSaid((s) => [
+        ...s,
+        {
+          from: 'them',
+          text: res.ok
+            ? `${file.name} is attached to this check-in.`
+            : /* The server's own sentence: it is the one that says which rule was hit - a slide
+                 format it cannot read, a transcript nobody has consented to, a file too large. */
+              (body?.message ?? body?.data?.message ?? 'That did not attach, and nothing was saved.'),
+        },
+      ])
+    } catch {
+      setSaid((s) => [...s, { from: 'them', text: 'That did not attach, and nothing was saved.' }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function send(asked?: string) {
     const message = (asked ?? typing).trim()
     if (!message || !ready || !session) return
@@ -783,6 +830,31 @@ export function TheAssistantAsACustomerSeesIt() {
         }}
         style={{ display: 'flex', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--gw-border)' }}
       >
+        {/* Offered only where it can work. A button that explains why it is greyed out on every
+            other screen is a worse answer than a button that is not there. */}
+        {inCheckIn && (
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) void attach(f)
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              className="gw-btn-sm"
+              disabled={!session || busy}
+              onClick={() => fileInput.current?.click()}
+              title="Attach a document to this check-in"
+            >
+              + Doc
+            </button>
+          </>
+        )}
         <input
           value={typing}
           onChange={(e) => setTyping(e.target.value)}

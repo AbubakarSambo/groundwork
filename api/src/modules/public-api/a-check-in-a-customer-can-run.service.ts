@@ -243,4 +243,39 @@ export class ACheckInACustomerCanRunService {
   async transcript(organizationId: string, personId: string, checkInId: string) {
     return this.conversation.getTranscript(checkInId, await this.actingAs(organizationId, personId));
   }
+
+  /**
+   * ATTACH SOMETHING TO A CHECK-IN, FROM SOMEBODY ELSE'S PAGE.
+   *
+   * The panel could say things and not show anything. Reported as: why is there no document
+   * uploader for context in the chat - and the answer was that the API had no way to take one, so
+   * a customer building their own panel had no way either. Everything the product does with an
+   * attachment - reading it, refusing a transcript nobody has consented to, assessing it, keeping
+   * it to the party who attached it - is DocumentsService, and this is the same call with the
+   * person resolved to their account.
+   *
+   * A DOCUMENT NEEDS A CHECK-IN TO BE ABOUT. There is no floating file store here on purpose: a
+   * document in this product is evidence attached to a record, read against the thing being
+   * discussed, and visible under the rules of that record. A file uploaded to nothing would have
+   * none of that - no scope, no reader, and no rule saying who may see it.
+   */
+  async attach(
+    organizationId: string,
+    personId: string,
+    checkInId: string,
+    file: Express.Multer.File,
+    consentConfirmed: boolean,
+    uploaderNote?: string,
+  ) {
+    const userId = await this.actingAs(organizationId, personId);
+    /* The check-in is named by id; the document belongs to its ground. Resolved here rather than
+       asking the caller for both, because a caller holding a check-in has no reason to know the
+       ground's id and asking for it invites the two arriving mismatched. */
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: { groundId: true },
+    });
+    if (!checkIn) throw new NotFoundException('We cannot see that check-in.');
+    return this.documents.upload(checkIn.groundId, userId, file, consentConfirmed, uploaderNote);
+  }
 }
