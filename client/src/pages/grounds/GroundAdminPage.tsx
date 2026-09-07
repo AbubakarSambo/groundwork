@@ -1546,7 +1546,24 @@ export function GroundAdminPage() {
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
-                            const isMine = p.userId === user?.id && !done
+                            /*
+                             * YOUR OWN FINISHED SESSION IS WHERE YOUR REPORT IS, AND IT WAS THE ONE
+                             * CELL YOU COULD NOT CLICK.
+                             *
+                             * `&& !done` made a completed session of your own unclickable, so the
+                             * private report you read the moment you finished had no way back to it:
+                             * "I cannot find the report that popped up after I was done with my
+                             * first check-in, once it closes I have no idea where it went."
+                             *
+                             * It is not in the Report tab and never was - that tab holds the SHARED
+                             * report, which does not exist until everyone has checked in. The
+                             * private one lives on the session itself, and /checkin/:id renders it
+                             * for a completed check-in already. Nothing linked there.
+                             *
+                             * Somebody else's session stays unclickable, done or not. That is the
+                             * wall, and it is the reason this condition existed at all.
+                             */
+                            const isMine = p.userId === user?.id
                             return (
                               <button
                                 key={ci.id}
@@ -1554,7 +1571,7 @@ export function GroundAdminPage() {
                                 onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
                                   state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
                                 }) : undefined}
-                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? ' - yours, open it' : ''}`}
+                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ''}`}
                                 style={{
                                   fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', minWidth: 22,
                                   padding: '2px 6px', borderRadius: 4, cursor: isMine ? 'pointer' : 'default',
@@ -2236,6 +2253,55 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/*
+            * ADDING SOMEBODY TO THE CHECK-IN, ON THE SCREEN CALLED SETUP.
+            *
+            * Reported plainly: "the setup page has no way for me to add another party to the
+            * check-in." It did not. The control existed on the Sessions tab, beside the roster,
+            * which is where somebody goes to see how a run is going rather than to change who is in
+            * it - and Setup held the timeline, the cadence, the name, the visibility and how to
+            * close the whole thing, but not the one setting people look for first.
+            *
+            * MY OWN LINK POINTED HERE, which is how it got worse. Two turns ago the check-in
+            * conversation gained an "Add people" link straight to this tab, on the grounds that a
+            * tab nobody is told about is a tab nobody uses. It sent people to a screen without the
+            * control. A link to the wrong place teaches somebody the product cannot do the thing.
+            *
+            * Same control, same mutation as the Sessions tab: this is one queue with two entrances,
+            * not a second way of adding anybody.
+            */}
+          {isInitiator && (
+            <div className="gw-card" style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
+                They give their own account of the same work. You cannot see what they write until the report releases.
+              </div>
+              <input
+                type="email" placeholder="name@company.com" aria-label="Their email address"
+                value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+              />
+              <input
+                type="text" placeholder="What do you want them to account for? (optional)" aria-label="What they are accountable for"
+                value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
+              />
+              <button
+                onClick={() => addParticipantMut.mutate()}
+                disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+              >
+                {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
+              </button>
+              {lastInvitedEmail && (
+                <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
+                  {lastInviteWaits
+                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                    : `Invite sent to ${lastInvitedEmail}`}
+                </div>
+              )}
+            </div>
+          )}
           {/**
             * WHAT IS TRUE ABOUT YOU, FOR A LEAD WHO IS ALSO IN IT.
             *

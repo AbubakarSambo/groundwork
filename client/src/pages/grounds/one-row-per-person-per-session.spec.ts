@@ -67,8 +67,24 @@ describe('one row per person, one cell per session', () => {
    * Only your own unfinished session is openable from here. Somebody else's check-in is not yours to
    * walk into, and a finished one is not reopened by clicking a cell.
    */
-  it('only your own open session is clickable', () => {
-    expect(CODE).toMatch(/const isMine = p\.userId === user\?\.id && !done/)
+  it('only your own sessions are clickable, and now the finished ones too', () => {
+    /*
+     * IT USED TO BE `&& !done`, which made your own COMPLETED session the one cell you could not
+     * click - and that is where your private report lives. Reported as "I cannot find the report
+     * that popped up after I was done with my first check-in, once it closes I have no idea where
+     * it went." It is not in the Report tab and never was: that tab holds the SHARED report, which
+     * does not exist until everyone has checked in.
+     *
+     * The wall is unchanged and is what the condition is actually for: somebody else's session is
+     * never clickable, finished or not.
+     */
+    expect(CODE).toMatch(/const isMine = p\.userId === user\?\.id\b(?!\s*&&\s*!done)/)
+    expect(CODE).not.toMatch(/const isMine = p\.userId === user\?\.id && !done/)
+  })
+
+  it('and says what opening a finished one gives you', () => {
+    /* A cell that becomes clickable without saying why is a cell people do not click. */
+    expect(CODE).toContain('yours, open it to read your report')
   })
 
   /** The expectation state on the row - and the words themselves live on Context, not here. */

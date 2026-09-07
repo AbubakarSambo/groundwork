@@ -31,9 +31,17 @@ describe('an invite that waits says so', () => {
     expect(ADMIN).toMatch(/setLastInviteWaits\(!\(added as \{ invitedAt\?: string \| null \}\)\.invitedAt\)/)
   })
 
-  it('and says what actually happened, in both places it reports it', () => {
+  it('and says what actually happened, everywhere it reports it', () => {
+    /*
+     * THREE PLACES NOW, NOT TWO. The Setup tab gained its own add-a-person control, because the
+     * screen called Setup had no way to add a party to the check-in - and the check-in
+     * conversation's "Add people" link pointed straight at it.
+     *
+     * Counted rather than listed: what matters is that every place which reports an invite tells
+     * the truth about whether one was sent, and a new entrance that forgets to is the whole bug.
+     */
     const said = ADMIN.match(/is on the check-in\. Their invitation goes out on the start date\./g) ?? []
-    expect(said.length).toBe(2)
+    expect(said.length).toBe(3)
   })
 
   it('never claims an invite was sent when the row says it was not', () => {

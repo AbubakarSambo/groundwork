@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
 import { conversationApi } from '@/api/conversation'
 import type { Report } from '@/types'
@@ -328,6 +331,13 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
   const [soloArtifact, setSoloArtifact] = useState<{ summary: string; whatToCarry?: string } | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const [sessionTag, setSessionTag] = useState('')
+  const navigate = useNavigate()
+  /** The same call the report page and the ground chat make: a fresh session, in correction mode. */
+  const correct = useMutation({
+    mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
+    onSuccess: (res: { checkInId: string }) => navigate(`/checkin/${res.checkInId}`),
+    onError: () => toast.error('Could not open a correction. Try again.'),
+  })
 
   async function fetchState() {
     try {
@@ -424,6 +434,37 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
           isInitiator
             ? <AdminCrossRef report={report} closed={state === 'closed'} />
             : <ParticipantCrossRef report={report} closed={state === 'closed'} />
+        )}
+
+        {/*
+          * A REPORT YOU CANNOT ARGUE WITH IS A REPORT YOU STOP TRUSTING.
+          *
+          * Reported plainly: "I also see nowhere to correct the report." There was nowhere on this
+          * card, which is the one place a person reads it - immediately after finishing, while what
+          * it got wrong is still fresh.
+          *
+          * THE MACHINERY ALREADY EXISTED AND WAS ON THE WRONG SCREENS. `startSelfCorrection` opens a
+          * fresh session in correction mode against a prior one, and it was wired into the report
+          * PAGE and the ground chat - both of which somebody reaches later, if at all. The entry
+          * chat has its own "what did we get wrong?" for the same reason and this path had nothing.
+          *
+          * Not offered on a closed check-in: the resolution record is the end of the argument, and a
+          * control that exists to be refused is worse than no control.
+          */}
+        {state !== 'closed' && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
+            <button
+              onClick={() => correct.mutate()}
+              disabled={correct.isPending}
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            >
+              {correct.isPending ? 'Opening…' : 'Something here is wrong - correct it'}
+            </button>
+            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, marginTop: 4 }}>
+              This opens a short session to correct or add to what you said. Nothing is overwritten -
+              the change is shown alongside the original.
+            </div>
+          </div>
         )}
 
       </div>
