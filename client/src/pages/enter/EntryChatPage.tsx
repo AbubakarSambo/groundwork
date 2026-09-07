@@ -3222,11 +3222,22 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                         {/*
                           W5. TWO PLACES TO ADD PEOPLE, NEITHER SAYING SO.
-                          This list and the invite screen below are the same
-                          queue with two entrances, which nobody could tell from
-                          either one. Both now say which queue they are.
+                          This list and the invite screen below are the same queue with two
+                          entrances, which nobody could tell from either one. Both say which queue
+                          they are.
+
+                          THE WORDS WERE THE PLUMBING RATHER THAN THE POINT. "Adding one puts them
+                          on the same invite list as the screen below, so you will not send twice"
+                          explains our data model to somebody who is deciding whether to invite a
+                          colleague. Read back as "a bit off", and it is: the sentence answers a
+                          question nobody asked and leaves the one they did ask - what happens to
+                          this person if I add them - unanswered.
+
+                          What it says now is what adding somebody DOES. The not-sending-twice
+                          reassurance stays, because two entrances to one queue is a real thing to
+                          wonder about, but it goes second and in half the words.
                         */}
-                        These people came up in this check-in. Adding one puts them on the same invite list as the screen below, so you will not send twice.
+                        You named these people while you were talking. Add anyone who should give their own account of this, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.
                       </div>
                       {sessionReport.mentionedPeople.map((p, i) => {
                         const key = `men-${i}-${p.name}`
