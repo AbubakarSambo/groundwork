@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
 import { Toaster } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
-import { MARKETING_URL } from '@/lib/marketing'
+import { MARKETING_URL, MARKETING_URL_WAS_CONFIGURED, thisIsTheProductionApp } from '@/lib/marketing'
 import { useSessionTimeout } from '@/lib/useSessionTimeout'
 import { useWhoTheServerSaysYouAre } from '@/lib/who-the-server-says-you-are'
 import { AuthPage } from '@/pages/auth/AuthPage'
@@ -188,6 +188,46 @@ function RequireOrgSetup({ children }: { children: JSX.Element }) {
   return children
 }
 
+/**
+ * WHAT THE ROOT SHOWS WHEN THERE IS NO MARKETING SITE TO SEND SOMEBODY TO.
+ *
+ * Deliberately not a copy of the marketing page. It is the two things somebody at the root of a
+ * non-production build actually wants - sign in, or start a check-in without an account - plus the
+ * one sentence that stops them mistaking it for the live product.
+ */
+function AFrontDoorOfItsOwn() {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 420 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, color: 'var(--gw-navy)', marginBottom: 12 }}>
+          GROUNDWORK
+        </div>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 8px', letterSpacing: '-.02em' }}>
+          This is not the live site.
+        </h1>
+        <p style={{ fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>
+          It is a test build of the product, with its own database. An account from the live site does
+          not work here.
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <a
+            href="/start"
+            style={{ display: 'inline-block', background: 'var(--gw-navy)', color: 'white', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+          >
+            Start a check-in
+          </a>
+          <a
+            href="/auth"
+            style={{ display: 'inline-block', border: '1px solid var(--gw-border)', color: 'var(--gw-text)', padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}
+          >
+            Sign in
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function RootRoute() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const user = useAuthStore(s => s.user)
@@ -205,6 +245,22 @@ function RootRoute() {
      * deliberate and load-bearing: an env var set to an empty string is the case that produced a
      * `href=""` logo, which looked like a working link and reloaded the page.
      */
+    /**
+     * AND NOT ACROSS ENVIRONMENTS.
+     *
+     * `MARKETING_URL` defaults to the production domain when nothing sets it, and nothing sets it on
+     * staging - there is no staging marketing site to set it to. So the root of staging threw people
+     * onto the LIVE site, where they would sign in against production data believing they were
+     * testing. Reported as "staging.myground.work is a blank white page": the white was this
+     * component drawing nothing, and the part after the white was worse than the white.
+     *
+     * A build that has not been told where its own marketing site is does not guess. It shows its own
+     * front door instead - sign in, or start a check-in, which is the whole product from a standing
+     * start - and says plainly that it is not the live site.
+     */
+    if (!MARKETING_URL_WAS_CONFIGURED && !thisIsTheProductionApp()) {
+      return <AFrontDoorOfItsOwn />
+    }
     window.location.replace(MARKETING_URL)
     /*
      * NOT `null`, WHICH IS A WHITE PAGE.

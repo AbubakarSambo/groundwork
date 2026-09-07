@@ -58,20 +58,6 @@ export interface AddParticipantBody {
   startsAt?: string
 }
 
-export interface CreateGroundForLeadBody {
-  leadEmail: string
-  /** What the lead is responsible for. Without it the lead is the one person the board cannot read. */
-  leadRemit?: string
-  leadName?: string
-  label: string
-  scenario: GroundScenario
-  moment: GroundMoment
-  timelineDays?: number
-  cadence?: GroundCadence
-  cadenceAnchorDay?: number
-  brief?: string
-  participants?: { email: string; roleAsDescribed?: string }[]
-}
 
 export interface OrgRosterEntry {
   id: string
@@ -130,9 +116,18 @@ export const groundsApi = {
   create: (body: CreateGroundBody) =>
     apiClient.post<Ground>('/grounds', body).then(r => r.data),
 
-  createForLead: (body: CreateGroundForLeadBody) =>
-    apiClient.post<Ground>('/grounds/for-lead', body).then(r => r.data),
-
+  /*
+   * `createForLead` USED TO SIT HERE, and it went with the answer that reached it.
+   *
+   * The set-up wizard's third answer - "Someone else sets the context" - posted to /grounds/for-lead
+   * so a named lead could be invited to confirm a context somebody else had written. Her call
+   * removed that answer, so nothing in this app creates a for-lead check-in any more and an
+   * uncalled client method is exactly what every-endpoint-has-a-caller.spec.ts is for.
+   *
+   * THE SERVER ROUTE STAYS, and that is not an oversight: the public API still opens check-ins for
+   * a named lead (grounds-by-api.service.ts). A customer's server naming somebody is a different
+   * act from a person in the room handing their own situation away - there is no room.
+   */
   confirmLead: (groundId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) =>
     apiClient.post<{ groundId: string; checkInId: string | null }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
 

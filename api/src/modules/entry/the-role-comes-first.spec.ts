@@ -39,22 +39,31 @@ describe('the way in', () => {
     expect(situation).toBeGreaterThan(role);
   });
 
-  it('names all three answers, because the third one is the useful one for an admin', () => {
-    // The third answer is the honest path for somebody told to set this up who has no situation of
-    // their own, and it was once reachable only by reading to the end of a different question.
-    //
-    // The three are worded in terms of who writes the objective and who is measured against it,
-    // rather than "are you part of this", which asked where somebody sits rather than what is being
-    // decided. The setup screen asks it the same way; these three pins are what stop the two
-    // drifting apart again.
+  it('names both answers, in terms of who writes the objective and who is measured against it', () => {
+    // Not "are you part of this", which asks where somebody sits rather than what is being decided.
+    // The setup screen asks it the same way; these pins are what stop the two drifting apart.
     expect(SRC).toMatch(/you set the context and objective, and you check in against it too/i);
     expect(SRC).toMatch(/other people check in against it/i);
-    // Whitespace-tolerant: the prompt is wrapped prose, so a phrase can straddle a line break.
-    expect(SRC).toMatch(/somebody else sets the context/i);
+  });
+
+  it('and no longer offers a third, because handing the context over is gone', () => {
+    /*
+     * THERE WERE THREE, and the third was "somebody else sets the context, you are only setting the
+     * check-in up and inviting them". Her call removed it: it produced a check-in belonging to
+     * nobody in the room, since the lead was emailed to confirm a context they had not written and
+     * could not read until they accepted.
+     *
+     * The phrase still appears in the prompt - it has to, so the model knows what NOT to offer -
+     * so this asserts on the instruction rather than on the words being absent, which a bare
+     * not.toMatch would get wrong in both directions.
+     */
+    expect(SRC).toMatch(/THERE USED TO BE A THIRD ANSWER/);
+    expect(SRC).toMatch(/do NOT offer to hand it over/);
+    expect(SRC).toMatch(/whoever knows what this is about should\s+be the one setting it up/i);
   });
 
   it('captures it as a field rather than reading it out of prose', () => {
-    expect(SRC).toMatch(/yourRole: \{ type: 'string', enum: \['a_party', 'setting_up_for_others', 'someone_else_runs_it'\] \}/);
+    expect(SRC).toMatch(/yourRole: \{ type: 'string', enum: \['a_party', 'setting_up_for_others'\] \}/);
   });
 
   it('and forbids inferring it from how they describe the situation', () => {

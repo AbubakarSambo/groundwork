@@ -658,6 +658,48 @@ export class PublicApiController {
   }
 
   /**
+   * OPEN A CHECK-IN FROM THE PANEL.
+   *
+   * The panel could answer in a check-in and never start one, so somebody with nothing waiting had
+   * nowhere to go: every sentence fell to the assistant's router, which is a different thing in the
+   * same box. Her words - it is meant to act exactly like the check-ins on our system, with more.
+   *
+   * The acting person comes from the SESSION and cannot be sent in the body, which is the whole
+   * difference between this and the machine route beside it. A customer's server naming any person
+   * it likes is a credential doing its job; a browser widget doing it is somebody opening a record
+   * in a colleague's name.
+   */
+  @Post('check-ins')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Open a check-in as the person this panel session belongs to' })
+  async openCheckInFromPanel(
+    @Req() req: { panel: PanelCaller },
+    @Body() dto: { label?: string; scenario?: string; moment?: string; timelineDays?: number; cadence?: string; participants?: { personExternalId: string; roleAsDescribed?: string }[] },
+  ) {
+    return this.checkIns.openACheckIn(req.panel.organizationId, req.panel.personId, dto);
+  }
+
+  /**
+   * ADD SOMEBODY TO THE ORGANISATION, FROM THE PANEL.
+   *
+   * Her call, knowing what it means: a panel session can register a person the way a directory sync
+   * does. The thing that makes it safe is the queue built earlier today - a person added this way is
+   * a directory entry, and the moment they accept an invitation to a check-in they are queued for an
+   * admin rather than becoming a member. So this creates somebody to invite, not somebody who is in.
+   */
+  @Post('people')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything.' })
+  async addPersonFromPanel(
+    @Req() req: { panel: PanelCaller },
+    @Body() dto: { email?: string; displayName?: string; externalId?: string },
+  ) {
+    return this.checkIns.addAPerson(req.panel.organizationId, req.panel.personId, dto);
+  }
+
+  /**
    * ATTACH SOMETHING TO IT.
    *
    * Same shape as the product's own upload - multipart, one file, ten megabytes - because it is

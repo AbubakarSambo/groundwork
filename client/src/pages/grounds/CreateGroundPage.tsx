@@ -681,12 +681,11 @@ export function CreateGroundPage() {
   const [routing, setRouting] = useState(false)
   const [routedTo, setRoutedTo] = useState<GroundScenario | null>(null)
   const [routeFailed, setRouteFailed] = useState(false)
-  const [runByOther, setRunByOther] = useState(false)
   const [leadEmail, setLeadEmail] = useState('')
   const [leadName, setLeadName] = useState('')
   /* The words for step 2 depend on whose situation it is - "someone else sets the context" makes
      every "you" on that step point at the wrong person. See whose-situation-is-it.ts. */
-  const theWords = theWordsForPickingASituation(runByOther, leadName)
+  const theWords = theWordsForPickingASituation()
   const [leadRemit, setLeadRemit] = useState('')
   const [groundName, setGroundName] = useState('')
 
@@ -836,34 +835,6 @@ export function CreateGroundPage() {
 
   const create = useMutation({
     mutationFn: async () => {
-      // Handing the ground to a lead is a different creation call, but it is the
-      // same set of answers - so it is the same flow, not a second form that
-      // happens to be missing half the fields.
-      if (runByOther) {
-        const ground = await groundsApi.createForLead({
-          leadEmail: leadEmail.trim(),
-          leadName: leadName.trim() || undefined,
-          leadRemit: leadRemit.trim() || undefined,
-          label: groundName.trim() || groundNameFallback(SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario),
-          scenario: scenario!,
-          moment: moment!,
-          timelineDays,
-          cadence,
-          ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
-          brief: (brief.trim() || ownDescription.trim()) || undefined,
-        /**
-         * Sent at CREATE now, not only afterwards. The follow-up confirmLead call below still runs
-         * for the flows where it applies, but it throws "already been confirmed" on a ground an
-         * admin created for themselves - into a silent catch - so this choice was being dropped
-         * every time. The server applies it at creation and skips the creator's own check-in.
-         */
-        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
-          participants: participants.length
-            ? participants.map((p) => ({ email: p.email, roleAsDescribed: p.role || undefined }))
-            : undefined,
-        })
-        return { ground, failed: [] as { email: string; because: string }[] }
-      }
       const ground = await groundsApi.create({
         label: groundName.trim() || groundNameFallback(SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario),
         scenario: scenario!,
@@ -1007,7 +978,6 @@ export function CreateGroundPage() {
     onAPaidPlan,
     describingOwnSituation: selectedCard === 'DESCRIBE_OWN',
     billingSettledAndFree: billingChecked && billingFree,
-    somebodyElseLeads: runByOther,
   })
 
   function back() {
@@ -1282,22 +1252,38 @@ export function CreateGroundPage() {
               {[
                 { v: true, label: 'I set the context and objective, and I check in too', sub: 'You write what this is about and what good looks like. You check in against it alongside everyone else.', other: false },
                 { v: false, label: 'I set the context and objective, others check in', sub: 'You write what this is about and what good looks like. They check in against it. Nothing asks you to check in, and nothing measures you.', other: false },
-                { v: false, label: 'Someone else sets the context', sub: 'You are setting the check-in up and inviting them. They write what it is about, check in themselves, and see the results.', other: true },
+                /*
+                 * THE THIRD ANSWER IS GONE. HER CALL, AND HER REASON.
+                 *
+                 * "I think we should remove the whole org admin setting a context and handing it
+                 * over to a lead. It seems like it is confusing. maybe you set context but you can
+                 * add someone to have oversight."
+                 *
+                 * It was the one answer that produced a check-in belonging to somebody who was not
+                 * in the room: this person filled in a situation, a timeline and a roster, and then
+                 * a lead was emailed to confirm a context they had not written and could not see
+                 * until they accepted. Two people half-owned it and neither could finish it alone.
+                 *
+                 * What is left is the real distinction: you write what good looks like, and either
+                 * you check in against it or you read what comes back. Anybody who needs to watch
+                 * without writing it is added as oversight in the check-in's own settings, after it
+                 * exists - which is where every other "who else should see this" question is asked.
+                 */
               ].map((o) => (
                 <div
                   key={o.label}
                   role="radio"
-                  tabIndex={(alsoAParty === o.v && runByOther === o.other) || (alsoAParty === null && o.v) ? 0 : -1}
-                  aria-checked={alsoAParty === o.v && runByOther === o.other}
+                  tabIndex={alsoAParty === o.v || (alsoAParty === null && o.v) ? 0 : -1}
+                  aria-checked={alsoAParty === o.v}
                   aria-label={`${o.label}. ${o.sub}`}
-                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v); setRunByOther(o.other) } }}
-                  onClick={() => { setAlsoAParty(o.v); setRunByOther(o.other) }}
-                  className={`cg-sit-card${alsoAParty === o.v && runByOther === o.other ? ' selected' : ''}`}
+                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v) } }}
+                  onClick={() => { setAlsoAParty(o.v) }}
+                  className={`cg-sit-card${alsoAParty === o.v ? ' selected' : ''}`}
                   style={{ marginBottom: 6 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v && runByOther === o.other ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v && runByOther === o.other ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
                 </div>
@@ -1318,24 +1304,6 @@ export function CreateGroundPage() {
                 * `leadRemit` on the other branch is kept: that one is sent at creation, and it is
                 * about somebody who is not here to be asked yet.
                 */}
-              {runByOther && (
-                <div style={{ marginTop: 4 }}>
-                  <input className="gw-input" type="email" aria-label="The lead's email address"
-                    placeholder="Their email address" value={leadEmail}
-                    onChange={(e) => setLeadEmail(e.target.value)} />
-                  <input className="gw-input" aria-label="The lead's name"
-                    placeholder="Their name (optional)" value={leadName}
-                    onChange={(e) => setLeadName(e.target.value)} style={{ marginTop: 6 }} />
-                  {/* Without this the lead is the one person on the ground with no
-                      stated remit, and the only person the board cannot read. */}
-                  <input className="gw-input" aria-label="What the lead is responsible for"
-                    placeholder="What are they responsible for? (optional, they can set this themselves)"
-                    value={leadRemit} onChange={(e) => setLeadRemit(e.target.value)} style={{ marginTop: 6 }} />
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5 }}>
-                    They get an invitation to lead this check-in. Until they accept it, nobody is asked to check in.
-                  </div>
-                </div>
-              )}
             </div>
 
             </>)}
@@ -2080,7 +2048,7 @@ export function CreateGroundPage() {
               */}
             <button
               className="gw-btn"
-              disabled={participants.length === 0 || (runByOther && !leadEmail.includes('@')) || create.isPending}
+              disabled={participants.length === 0 || create.isPending}
               onClick={() => {
                 const next = stepAfter(visibleSteps, STAGE.people)
                 if (next === STAGE.people) create.mutate()
@@ -2108,10 +2076,6 @@ export function CreateGroundPage() {
               <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
                 Add at least one person to continue. A check-in needs somebody to check in.
               </div>
-            ) : runByOther && !leadEmail.includes('@') ? (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
-                Add the email address of the person who will lead this check-in.
-              </div>
             ) : null}
             {/*
               * THIS SKIPPED TO THE NEXT STEP, AND FOR A SETTER THERE IS NO NEXT STEP.
@@ -2123,9 +2087,9 @@ export function CreateGroundPage() {
               *
               * It starts the check-in in that case, which is what "skip" means on the last screen.
               */}
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) || create.isPending ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) || create.isPending ? 0.45 : 1 }}
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: create.isPending ? 'not-allowed' : 'pointer', opacity: create.isPending ? 0.45 : 1 }}
               onClick={() => {
-                if ((runByOther && !leadEmail.includes('@')) || create.isPending) return
+                if (create.isPending) return
                 const next = stepAfter(visibleSteps, step)
                 if (next === step) create.mutate()
                 else setStep(next)

@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { WhatIsTrueService } from '../assistant/what-is-true.service';
+import { GroundsByApiService } from './grounds-by-api.service';
+import { ScimService } from '../people/scim.service';
 import { DocumentsService } from '../documents/documents.service';
 import { askWhoItIsFor } from '../assistant/a-document-is-private-until-you-say-otherwise';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
@@ -32,6 +34,8 @@ export class ACheckInACustomerCanRunService {
     private readonly grounds: GroundsService,
     private readonly truth: WhatIsTrueService,
     private readonly documents: DocumentsService,
+    private readonly groundsByApi: GroundsByApiService,
+    private readonly scim: ScimService,
   ) {}
 
   /**
@@ -242,6 +246,93 @@ export class ACheckInACustomerCanRunService {
 
   async transcript(organizationId: string, personId: string, checkInId: string) {
     return this.conversation.getTranscript(checkInId, await this.actingAs(organizationId, personId));
+  }
+
+  /**
+   * OPEN A CHECK-IN FROM THE PANEL, AS YOURSELF.
+   *
+   * The panel could answer in a check-in and never start one, so a person with nothing waiting had
+   * nowhere to go and every sentence they typed fell to the assistant's router - which is a
+   * different thing wearing the same box, and reads as one. Her words: it is meant to act exactly
+   * like the check-ins on our system, with more.
+   *
+   * THE SAME SERVICE THE MACHINE ROUTE USES, with one difference that is the whole safety property:
+   * `actingPersonExternalId` is taken from the SESSION and cannot be sent by the caller. A panel
+   * session is one person's session, so it can open a check-in as that person and as nobody else.
+   * A customer's server naming any person it likes is a machine credential doing machine things;
+   * a widget in a browser doing it would be somebody opening a record in a colleague's name.
+   */
+  async openACheckIn(
+    organizationId: string,
+    personId: string,
+    dto: {
+      label?: string;
+      scenario?: string;
+      moment?: string;
+      timelineDays?: number;
+      cadence?: string;
+      participants?: { personExternalId: string; roleAsDescribed?: string }[];
+    },
+  ) {
+    const me = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { externalId: true },
+    });
+    if (!me?.externalId) throw new NotFoundException('We cannot see you in your organisation.');
+
+    return this.groundsByApi.open(organizationId, {
+      /* Not from the body. See above. */
+      actingPersonExternalId: me.externalId,
+      label: dto?.label ?? '',
+      scenario: dto?.scenario ?? '',
+      /* STARTING, not AT_THE_START. The vocabulary is a closed set and I guessed at it - the API's
+         own refusal named the three, which is what that error message is for. */
+      moment: dto?.moment ?? 'STARTING',
+      timelineDays: dto?.timelineDays,
+      cadence: dto?.cadence,
+      participants: dto?.participants,
+    });
+  }
+
+  /**
+   * ADD SOMEBODY TO THE ORGANISATION, FROM THE PANEL.
+   *
+   * Decided knowing what it means: a person's panel session can register a person, the way the
+   * customer's directory sync does. What makes that safe is the queue - a person registered here is
+   * a DIRECTORY ENTRY, not an account and not a member. They become neither until they accept an
+   * invitation to something, and at that moment `participants.service.ts` queues them for an admin
+   * of the organisation. So this creates somebody who can be invited, never somebody who is in.
+   *
+   * SCIM, not a second way of making people. The same upsert the directory push uses, keyed on the
+   * same externalId, so a person added from the panel and the same person arriving later from the
+   * customer's HR system are one row rather than two.
+   */
+  async addAPerson(
+    organizationId: string,
+    personId: string,
+    dto: { email?: string; displayName?: string; externalId?: string },
+  ) {
+    /* Refuses for the same reason every other panel route does: a session that cannot be resolved
+       to a person is a session that may not act in this organisation at all. */
+    await this.actingAs(organizationId, personId);
+
+    const email = dto?.email?.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('An email address is needed. It is how they are invited and how they sign in.');
+    }
+    const name = dto?.displayName?.trim() || email.split('@')[0];
+    const [givenName, ...rest] = name.split(/\s+/);
+
+    return this.scim.upsert(organizationId, 'panel', {
+      /* Their address is the id when the caller has no id of their own to give - a person added by
+         somebody typing an email has no directory key yet, and inventing a random one would make
+         them a different person from the one the HR system pushes tomorrow. */
+      externalId: dto?.externalId?.trim() || email,
+      userName: email,
+      name: { givenName, familyName: rest.join(' ') || undefined },
+      emails: [{ value: email, primary: true }],
+      active: true,
+    } as never);
   }
 
   /**
