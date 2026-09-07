@@ -543,7 +543,14 @@ export function OrgMembersPage() {
                     <span style={{
                       fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
                       background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)', border: '1px solid var(--gw-blue-b)',
-                    }}>{iAmTheOwner ? 'You, and you hold this account' : 'You'}</span>
+                    /*
+                     * "You, and you hold this account" was reported as a strange way to frame it,
+                     * and it is: two facts bolted together with a comma, one of them phrased as
+                     * though holding the account were a second identity. The other row already
+                     * says "Holds this account" about somebody else, so this only needs to say the
+                     * same thing about you.
+                     */
+                    }}>{iAmTheOwner ? 'You · account holder' : 'You'}</span>
                   ) : m.id === ownerId ? null : (
                     <select
                       value={m.role}

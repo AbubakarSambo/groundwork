@@ -16,8 +16,28 @@ export const HOW_TO_STEPS = [
     body: 'The product is most powerful when used early. A new hire starting, a project beginning, a cofounder agreement forming. The record built before the conversation is the one you can stand on.',
   },
   {
-    title: 'Set a resolution state before the check-in starts',
-    body: 'Before the first check-in, everybody agrees on what a successful outcome looks like. Alignment confirmed. Promotion recommended. Brief revised. Agreeing on the end state before you start changes the quality of every session.',
+    /*
+     * THIS STEP DESCRIBED A SCREEN THAT NO LONGER EXISTS.
+     *
+     * It said "Set a resolution state before the check-in starts - before the first check-in,
+     * everybody agrees on what a successful outcome looks like", and asked. Nothing in the product
+     * does that. `resolutionState` is still on the ground and its schema comment still calls it a
+     * "pre-agreed intended outcome set at creation", but the set-up step that offered the end
+     * states is gone - the stale numbering comment in CreateGroundPage still listed it as step 4 -
+     * and `END_STATES` is now imported by nothing except the spec that mirrors it. End states are
+     * chosen at the CLOSE, on the report.
+     *
+     * What actually happens is better than what it claimed, and it happens per person: the brief
+     * asks what needs to be true at the end, and the check-in asks each person "what does success
+     * look like from where you sit - your version of what good looks like here, not the job
+     * description". The gap between those answers is most of what the report is for.
+     *
+     * The three-word list that followed - "Alignment confirmed. Promotion recommended. Brief
+     * revised." - is out on her instruction, and it was doing nothing: three outcomes from three
+     * different scenarios, offered to somebody who has not been told what a scenario is.
+     */
+    title: 'Say what you want to be true at the end',
+    body: 'The brief asks what this is about and what needs to be true when it is finished. Each person is then asked for their own version of what good looks like here. Where those answers differ is most of what the report is for, so it is worth being plain about yours.',
   },
   {
     title: 'Check in independently. Be specific.',

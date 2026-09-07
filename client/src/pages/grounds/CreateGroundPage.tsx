@@ -471,8 +471,11 @@ export function scenarioFromParam(param: string | null): GroundScenario | null {
 /** Every value the picker can produce. Derived from the map, so it cannot fall behind it. */
 const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
 
-// Step numbering: 1=scenario, 1.5=billing (stored as step=2 internally), 2=timeframe (step=3), 3=participants (step=4), 4=resolution (step=5), 5=brief (step=6)
-// We use integer steps internally: 1,2,3,4,5,6
+// The old numbering comment lived here and described a flow that has not existed for some time -
+// including a "4=resolution" step that offered the end states. It is gone, `END_STATES` is imported
+// by nothing but the spec that mirrors it, and end states are chosen at the CLOSE now. The stale
+// comment is what kept the guide claiming you set a resolution state before a check-in starts.
+// STAGE below is the ordering; the-steps-this-person-sees.ts decides who is shown what.
 /**
  * THE STEPS HAVE NAMES NOW, AND THE NUMBERS ARE DERIVED FROM THEM.
  *
@@ -733,7 +736,7 @@ export function CreateGroundPage() {
   const sessionTotal = sessionsFor(timelineDays, cadence) ?? 1
 
   const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
-  const briefShort = briefWords > 0 && briefWords < 20
+  const briefShort = briefWords > 0 && briefWords < 20 /* BRIEF_WORDS_WORTH_READING, declared below with the other two */
   /**
    * MUST MATCH GroundsService.MEANS_SOMETHING (api/src/modules/grounds/grounds.service.ts).
    *
@@ -745,8 +748,25 @@ export function CreateGroundPage() {
    * Matching the real gate here means the button itself is honest about what
    * "Continue" is actually going to do.
    */
-  const BRIEF_MEANS_SOMETHING = 40
-  const briefTooShortToInvite = participants.length > 0 && brief.trim().length < BRIEF_MEANS_SOMETHING
+  /**
+   * TWO LIMITS ON THIS BOX, IN TWO DIFFERENT UNITS, NEITHER OF THEM STATED.
+   *
+   * The counter under the box reads "N words". The rule that actually blocked inviting anybody
+   * counted CHARACTERS - 40 of them - so you could watch a number climb while the thing stopping
+   * you was measuring something else, and nothing anywhere said either figure. Reported as: we need
+   * to be clear about the word count limit on this page.
+   *
+   * Both are words now, and both are printed. The floor is the same intent as the old
+   * forty characters: enough that the first person invited is told something.
+   *
+   * And the ceiling is real and was also unmentioned: the server accepts 4,000 characters
+   * (@MaxLength on CreateGroundDto.brief) and would refuse the request beyond it. Nothing on the
+   * page said so, so a long brief could be typed and lost on submit.
+   */
+  const BRIEF_WORDS_TO_INVITE = 8
+  const BRIEF_WORDS_WORTH_READING = 20
+  const BRIEF_CHARS_MAX = 4000
+  const briefTooShortToInvite = participants.length > 0 && briefWords < BRIEF_WORDS_TO_INVITE
 
   // When entering step 2 (billing), auto-check
   useEffect(() => {
@@ -2089,12 +2109,30 @@ export function CreateGroundPage() {
                 Add the email address of the person who will lead this check-in.
               </div>
             ) : null}
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) ? 0.45 : 1 }}
-              onClick={() => { if (!(runByOther && !leadEmail.includes('@'))) setStep(stepAfter(visibleSteps, step)) }}>
-              Skip - add participants after
+            {/*
+              * THIS SKIPPED TO THE NEXT STEP, AND FOR A SETTER THERE IS NO NEXT STEP.
+              *
+              * `setStep(stepAfter(...))` returns the SAME step when there is nothing after it - the
+              * documented contract of stepAfter - so once the brief was skipped for somebody
+              * setting a check-in up for a lead, this control did nothing at all. Pressing it left
+              * you exactly where you were, with no message. My own doing, from removing that step.
+              *
+              * It starts the check-in in that case, which is what "skip" means on the last screen.
+              */}
+            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: (runByOther && !leadEmail.includes('@')) || create.isPending ? 'not-allowed' : 'pointer', opacity: (runByOther && !leadEmail.includes('@')) || create.isPending ? 0.45 : 1 }}
+              onClick={() => {
+                if ((runByOther && !leadEmail.includes('@')) || create.isPending) return
+                const next = stepAfter(visibleSteps, step)
+                if (next === step) create.mutate()
+                else setStep(next)
+              }}>
+              {stepAfter(visibleSteps, step) === step ? 'Skip - start it and add people after' : 'Skip - add participants after'}
             </div>
+            {/* WHERE, because "after" on its own is not an instruction. Reported as: if you skip at
+                the start, how do you add them later? */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
-              The shared report cannot generate until at least one other person has checked in.
+              You add people on the check-in's own page afterwards, under Add someone. The shared
+              report cannot be built until at least one other person has checked in.
             </div>
           </div>
         )}
@@ -2131,20 +2169,32 @@ export function CreateGroundPage() {
               <textarea
                 rows={6}
                 value={brief}
+                /* Capped where the server caps it, so a long brief is stopped as it is typed rather
+                   than refused after somebody has written it. */
+                maxLength={BRIEF_CHARS_MAX}
                 onChange={e => setBrief(e.target.value)}
                 placeholder="What is this about? What needs to be true at the end?"
                 style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', lineHeight: 1.65, boxSizing: 'border-box' }}
               />
-              <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>{briefWords} words</div>
+              {/* The count, and what it is counting towards - a bare number tells you nothing about
+                  whether you have enough. */}
+              <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>
+                {briefWords} {briefWords === 1 ? 'word' : 'words'}
+                {briefTooShortToInvite
+                  ? ` · ${BRIEF_WORDS_TO_INVITE - briefWords} more to invite anyone`
+                  : briefShort
+                    ? ` · ${BRIEF_WORDS_WORTH_READING} is where these start to work`
+                    : ''}
+              </div>
             </div>
 
             {briefTooShortToInvite ? (
               <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
-                A little more before you can invite anyone: with nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about - a few more words closes this.
+                A little more before you can invite anyone: {BRIEF_WORDS_TO_INVITE} words is the floor and you have {briefWords}. With nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about.
               </div>
             ) : briefShort && (
               <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
-                A brief this short will produce weaker first sessions. The questions are shaped by what you write here. Add more context.
+                A brief this short will produce weaker first sessions - around {BRIEF_WORDS_WORTH_READING} words is where these start to work, and you have {briefWords}. The questions each person is asked are shaped by what you write here. You can write up to {BRIEF_CHARS_MAX.toLocaleString()} characters.
               </div>
             )}
 
