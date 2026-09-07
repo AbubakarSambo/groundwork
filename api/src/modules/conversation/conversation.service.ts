@@ -2,6 +2,7 @@ import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestEx
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { isThisTheSameAnswerAgain, STILL_ON_YOUR_LAST_ANSWER } from './a-second-press-is-not-a-second-answer';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -4349,12 +4350,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async loadOwnedCheckIn(checkInId: string, requestingUserId: string) {
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
-      include: { participant: true },
+      /**
+       * The participant's own account comes back with them, for the door check below. One query
+       * rather than two: the flag is a boolean on a row this query is already joining to, and the
+       * alternative was a second findUnique on every message anybody sends.
+       */
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
     if (checkIn.participant.userId !== requestingUserId) {
       // Never let one party read another party's conversation.
       throw new ForbiddenException('This check-in does not belong to you');
+    }
+    /**
+     * AND NOT YET, IF THEY ARE STILL WAITING TO BE LET INTO THE ORGANISATION.
+     *
+     * HERE rather than on `open`, because five call sites share this loader - open, send a message,
+     * complete, attach a document, correct a record - and a gate that covers one of them is a gate
+     * somebody walks around by pressing the next button. Driven: answering without opening returns
+     * 403 only because the check is at this level.
+     *
+     * See participants/nobody-joins-your-company-by-being-invited-to-a-check-in.ts.
+     */
+    if (checkIn.participant.user?.awaitingOrgApproval) {
+      throw new ForbiddenException(CANNOT_CHECK_IN_YET);
     }
     return checkIn;
   }

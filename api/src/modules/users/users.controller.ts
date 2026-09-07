@@ -3,6 +3,7 @@ import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
+import { WhoIsWaitingAtTheDoorService } from '../participants/who-is-waiting-at-the-door.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { IsString, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser, CurrentUserData, Roles, Role, PaginationDto } from '../../common';
@@ -22,7 +23,49 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly myRecord: MyOwnRecordService,
+    private readonly door: WhoIsWaitingAtTheDoorService,
   ) {}
+
+  /**
+   * WHO IS WAITING TO BE LET INTO THIS ORGANISATION, AND THE ANSWER.
+   *
+   * On the users controller because this is the People page's own question - the list of who is in
+   * your organisation and the list of who is asking to be are the same subject, and putting the
+   * queue somewhere else is how it ends up on a screen nobody opens.
+   *
+   * ADMIN ONLY, and the service checks the organisation again rather than trusting this decorator:
+   * a request id is a guessable-looking string and an admin of one company must not be able to
+   * answer another company's queue by holding one.
+   */
+  @Get('waiting')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Who is waiting to be let into this organisation' })
+  async waiting(@CurrentUser('organizationId') organizationId: string) {
+    return this.door.waiting(organizationId);
+  }
+
+  @Post('waiting/:id/approve')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Let somebody into the organisation. They can check in, and they hold a seat.' })
+  async approveWaiting(
+    @Param('id') id: string,
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') adminUserId: string,
+  ) {
+    return this.door.approve(organizationId, id, adminUserId);
+  }
+
+  @Post('waiting/:id/decline')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Do not let somebody in. Their account stays; they cannot check in here.' })
+  async declineWaiting(
+    @Param('id') id: string,
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') adminUserId: string,
+    @Body() dto: { reason?: string },
+  ) {
+    return this.door.decline(organizationId, id, adminUserId, dto?.reason);
+  }
 
   @Patch('organization')
   @Roles(Role.ADMIN)

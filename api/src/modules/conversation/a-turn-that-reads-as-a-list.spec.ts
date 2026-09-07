@@ -29,7 +29,15 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const library = readFileSync(join(__dirname, 'prompt-library.ts'), 'utf8');
+/*
+ * COMMENTS STRIPPED, and the meta-guard was right to insist. This file asserts that a RULE the
+ * model is handed says certain things - and prompt-library.ts explains its own rules in long
+ * comments right beside them, so every assertion here could have passed on an explanation of the
+ * rule rather than the rule itself. That is the whole failure mode a-guard-that-a-comment-
+ * satisfies-is-not-a-guard.spec.ts exists to catch, and it caught mine.
+ */
+const library = readFileSync(join(__dirname, 'prompt-library.ts'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
 
 describe('the one-question rule', () => {
   it('still says one question', () => {

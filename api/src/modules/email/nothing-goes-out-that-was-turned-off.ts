@@ -104,6 +104,11 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendReportReady: 'asked for',
   sendGroundApproved: 'asked for',
   sendGroundDeclined: 'asked for',
+  /* Both are answers to something the person or their lead set in motion, so neither is a mail we
+     decided to send - and the way-back-in class is for account recovery, which this is not. */
+  sendYouAreInNow: 'asked for',
+  sendTheyWereNotLetIn: 'asked for',
+  sendSomebodyIsWaiting: 'asked for',
   sendGroundActivated: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',

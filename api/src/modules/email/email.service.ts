@@ -116,6 +116,59 @@ export class EmailService {
    * about their own check-in has a different way out), and never throws: a failure to build the
    * footer must not be the reason somebody's invitation does not arrive.
    */
+  /**
+   * SOMEBODY IS WAITING TO BE LET INTO YOUR ORGANISATION.
+   *
+   * To the admins, because they are the only people who can answer it, and adding a person to the
+   * organisation is now their decision rather than a side effect of somebody else's invitation.
+   */
+  async sendSomebodyIsWaiting(to: string, adminFirstName: string, who: string, addedBy: string, checkInLabel: string | null): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `${who} is waiting to be let into your organisation`,
+      html: this.layout(
+        `<p>${greeting(adminFirstName)}</p>
+         <p><strong>${who}</strong> was invited to check in${checkInLabel ? ` on <strong>${checkInLabel}</strong>` : ''} by ${addedBy}, and they are not in your organisation yet.</p>
+         <p>They have an account and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
+      ),
+    }, undefined, 'sendSomebodyIsWaiting');
+  }
+
+  /** And the answer, to the person who was waiting. */
+  async sendYouAreInNow(to: string, organizationName: string): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `You can start your check-in now`,
+      html: this.layout(
+        `<p>${greeting(null)}</p>
+         <p>An admin at <strong>${organizationName}</strong> has approved you joining, so the check-in you were invited to is open.</p>
+         <p><a href="${this.frontendUrl.replace(/\/$/, '')}/grounds" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open my check-in →</a></p>`,
+      ),
+    }, undefined, 'sendYouAreInNow');
+  }
+
+  /**
+   * A decline goes to whoever did the inviting, NOT to the person declined.
+   *
+   * "A company you were invited to has refused you" is a message with nothing in it a person can
+   * act on, from an organisation they have no relationship with. The lead who invited them is the
+   * one who can say something useful, and the one who needs to know their check-in is short a
+   * person.
+   */
+  async sendTheyWereNotLetIn(to: string, firstName: string, who: string, reason: string | null): Promise<void> {
+    await this.sendEmail({
+      to,
+      subject: `${who} was not added to your organisation`,
+      html: this.layout(
+        `<p>${greeting(firstName)}</p>
+         <p>An admin has decided not to add <strong>${who}</strong> to your organisation, so they cannot check in on it.</p>
+         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${reason}</p>` : ''}
+         <p>They have not been told. If they should hear anything about it, that is yours to say.</p>`,
+      ),
+    }, undefined, 'sendTheyWereNotLetIn');
+  }
+
   private async theWayToStopBeingChased(participantId?: string): Promise<string | null> {
     if (!participantId) return null;
     try {

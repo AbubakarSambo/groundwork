@@ -364,6 +364,7 @@ enum WorkspaceKind {
 }
 
 model Organization {
+  membershipRequests MembershipRequest[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -481,6 +482,14 @@ model User {
   jobTitle           String?  @map("job_title")
   role               UserRole @default(MEMBER)
   isActive           Boolean  @default(true) @map("is_active")
+  /// WAITING TO BE LET INTO THE ORGANISATION THEY WERE ADDED TO.
+  ///
+  /// True from the moment somebody accepts a check-in invitation to an organisation they were not
+  /// already in, until an admin approves them. While it is true they hold NO SEAT - see
+  /// common/seats.ts, which is the one definition every price and every cap reads - and they
+  /// cannot open or answer a check-in. The audit trail is MembershipRequest; this is the flag the
+  /// hot paths read, because a seat count cannot afford a join and a gate must not be able to miss.
+  awaitingOrgApproval Boolean @default(false) @map("awaiting_org_approval")
   isEmailVerified    Boolean  @default(false) @map("is_email_verified")
   isPlatformAdmin    Boolean  @default(false) @map("is_platform_admin")
   googleId           String?  @unique @map("google_id")
@@ -493,6 +502,7 @@ model User {
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  membershipRequests MembershipRequest[]
   deletedAt DateTime? @map("deleted_at")
 
   organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
@@ -4070,6 +4080,53 @@ model ParticipantNote {
 /// The role is per membership. Somebody can administer their own company and be an
 /// ordinary member of a client's organisation, and flattening that to one role would
 /// either over-grant or under-grant in one of them.
+/// WHO IS WAITING TO BE LET INTO AN ORGANISATION, AND WHO DECIDED.
+///
+/// Adding an address to a check-in used to make that address a MEMBER of your organisation the
+/// moment they accepted: `participants.service.ts` accept() created the User inside the same
+/// transaction, verified, with no approval and nobody asked. Two consequences nobody chose - a
+/// stranger became a member of your company, and because a seat is any active user (common/seats.ts)
+/// they went onto your bill at the same time.
+///
+/// So an address that is not already in the organisation is QUEUED here instead. The account is
+/// still created, because they need one to write their own account of things and because the
+/// alternative is holding their words in a second place - but it holds no seat and cannot check in
+/// until an admin says yes. See `nobody-joins-your-company-by-being-invited-to-a-check-in.ts`.
+model MembershipRequest {
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  userId         String @map("user_id")
+  /// Kept beside the user because an admin reading the queue is reading addresses, and because a
+  /// declined request may outlive the account it was for.
+  email          String
+
+  /// Who added them, and to what. Both optional: a request can outlive either.
+  requestedByUserId String? @map("requested_by_user_id")
+  groundId          String? @map("ground_id")
+
+  status     MembershipRequestStatus @default(PENDING)
+  /// Set when somebody decided. Never written by anything automatic.
+  decidedByUserId String?   @map("decided_by_user_id")
+  decidedAt       DateTime? @map("decided_at")
+  /// Why it was declined, in the admin's words.
+  reason          String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, status])
+  @@map("membership_requests")
+}
+
+enum MembershipRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 model OrganizationMembership {
   id             String   @id @default(uuid())
   userId         String   @map("user_id")

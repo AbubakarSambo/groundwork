@@ -140,7 +140,17 @@ describe('there is one definition of a seat, not a copy per call site', () => {
   ];
 
   it('the predicate itself is what we say it is', () => {
-    expect(SEAT_WHERE).toEqual({ isActive: true, deletedAt: null });
+    /*
+     * The third key arrived with the door queue. Accepting a check-in invitation to an organisation
+     * you were not already in creates your account there and queues you for an admin - until they
+     * answer you cannot open a check-in at all, so charging for you would be charging for somebody
+     * who can do nothing. It would also make the queue pointless: the reason it exists is that
+     * adding an address to a check-in was quietly adding a person to a bill.
+     *
+     * Pinned by value on purpose. A seat predicate that can gain a key without a test failing is
+     * how the two screens came apart the first time.
+     */
+    expect(SEAT_WHERE).toEqual({ isActive: true, deletedAt: null, awaitingOrgApproval: false });
   });
 
   it('no seat site counts users without going through it', () => {

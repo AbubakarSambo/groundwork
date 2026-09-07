@@ -17,6 +17,16 @@ export interface MagicLinkBody {
   lastName?: string
 }
 
+export interface WaitingAtTheDoor {
+  id: string
+  email: string
+  name: string | null
+  waitingSince: string
+  /** Who added them. Named, because "somebody added them" is not something an admin can act on. */
+  addedBy: string | null
+  forCheckIn: string | null
+}
+
 export const authApi = {
   requestMagicLink: (body: MagicLinkBody) =>
     apiClient.post<MagicLinkResponse>('/auth/register-magic-link', body).then(r => r.data),
@@ -88,6 +98,23 @@ export const authApi = {
    */
   renameOrganization: (name: string) =>
     apiClient.patch<{ id: string; name: string }>('/users/organization', { name }).then(r => r.data),
+
+  /**
+   * WHO IS WAITING TO BE LET INTO THIS ORGANISATION.
+   *
+   * Adding an address to a check-in used to make it a member here the moment they accepted, with
+   * no approval and nobody asked - and because a seat is any active user, on the bill at the same
+   * time. Somebody from outside is queued now, holds no seat, and cannot check in until an admin
+   * answers. This is that queue, and the answer.
+   */
+  whoIsWaiting: () =>
+    apiClient.get<WaitingAtTheDoor[]>('/users/waiting').then(r => r.data),
+
+  letThemIn: (id: string) =>
+    apiClient.post<{ approved: boolean; email: string }>(`/users/waiting/${id}/approve`, {}).then(r => r.data),
+
+  doNotLetThemIn: (id: string, reason?: string) =>
+    apiClient.post<{ declined: boolean; email: string }>(`/users/waiting/${id}/decline`, { reason }).then(r => r.data),
 
   /**
    * Which sign-in methods this deployment can actually complete.

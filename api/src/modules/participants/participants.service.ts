@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
+import { needsApproval } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
@@ -123,10 +124,42 @@ export class ParticipantsService {
     const [firstName, lastName] = this.resolveName(email, names);
 
     let existingAccount = false;
+    /* Set inside the transaction, read after it, so the caller can tell somebody they are waiting
+       rather than dropping them on a check-in that will refuse them. */
+    let queuedForApproval = false;
     const user = await this.prisma.$transaction(async (tx) => {
       // Reuse an existing account for this email, else create one in the
       // ground's organization. Email is globally unique.
       let user = await tx.user.findUnique({ where: { email } });
+      const brandNew = !user;
+      /*
+       * WHETHER THIS PERSON IS JOINING AN ORGANISATION, AND WHETHER ANYBODY SAID THEY COULD.
+       *
+       * Worked out BEFORE the account is created, because once it exists its own organisationId
+       * answers "is this their org?" with yes and the question can no longer be asked. That is
+       * exactly how this went unnoticed: by the time anything looked, the person was a member.
+       */
+      const alreadyAMemberHere = user
+        ? user.organizationId === ground.organizationId ||
+          (await tx.organizationMembership.findUnique({
+            where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+            select: { id: true },
+          })) !== null
+        : false;
+      const inviter = await tx.user.findUnique({
+        where: { id: ground.initiatorId },
+        select: { role: true, organizationId: true },
+      });
+      const wait = needsApproval({
+        groundOrganizationId: ground.organizationId,
+        theirHomeOrganizationId: user?.organizationId ?? null,
+        alreadyAMemberHere,
+        /* An admin of this organisation adding somebody IS the approval - asking them to approve
+           their own action is a queue with one item in it that they put there. */
+        addedByAnAdminOfThisOrg:
+          inviter?.role === 'ADMIN' && inviter?.organizationId === ground.organizationId,
+      });
+
       if (!user) {
         user = await tx.user.create({
           data: {
@@ -137,6 +170,8 @@ export class ParticipantsService {
             role: 'MEMBER',
             isEmailVerified: true, // they arrived via an emailed link
             passwordHash: null,
+            /* Holds no seat and cannot check in until somebody says yes. */
+            awaitingOrgApproval: wait,
           },
         });
       } else {
@@ -165,6 +200,30 @@ export class ParticipantsService {
         });
       }
 
+      /*
+       * THE QUEUE. One row per (organisation, person), so a second invitation to the same company
+       * joins the request that is already waiting rather than making another one.
+       */
+      if (wait) {
+        queuedForApproval = true;
+        if (!brandNew) {
+          await tx.user.update({ where: { id: user.id }, data: { awaitingOrgApproval: true } });
+        }
+        await tx.membershipRequest.upsert({
+          where: { organizationId_userId: { organizationId: ground.organizationId, userId: user.id } },
+          create: {
+            organizationId: ground.organizationId,
+            userId: user.id,
+            email,
+            requestedByUserId: ground.initiatorId,
+            groundId: ground.id,
+          },
+          /* A request already decided is not reopened by another invitation, and a pending one is
+             left exactly as it is - the admin is looking at a list, not a moving target. */
+          update: {},
+        });
+      }
+
       await tx.groundParticipant.update({
         where: { id: participant.id },
         /**
@@ -178,6 +237,18 @@ export class ParticipantsService {
 
       return user;
     });
+
+    /*
+     * AND TELL THE PEOPLE WHO CAN ANSWER IT.
+     *
+     * After the transaction and never inside it: a mail provider being slow must not roll back
+     * somebody's acceptance, and a mail failing must not either. Swallowed for the same reason -
+     * the queue is visible on the People page whether or not this arrives.
+     */
+    if (queuedForApproval) {
+      this.tellTheAdminsSomebodyIsWaiting(ground.organizationId, ground.id, ground.initiatorId, email)
+        .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
+    }
 
     // Send a password setup link so the participant can return after their
     // initial session without being locked out. Only send when no password
@@ -386,6 +457,31 @@ export class ParticipantsService {
   // an empty name as absent and falls back to roleAsDescribed / "a teammate".
   // A capitalized email local-part ("Hjumare") is not a name; it just looks
   // like one, which is worse than showing nothing.
+  /** Every admin of the organisation, because one of them has to decide and any of them may. */
+  private async tellTheAdminsSomebodyIsWaiting(
+    organizationId: string,
+    groundId: string,
+    inviterId: string,
+    who: string,
+  ): Promise<void> {
+    const [admins, inviter, ground] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { organizationId, role: 'ADMIN', isActive: true, deletedAt: null },
+        select: { email: true, firstName: true },
+      }),
+      this.prisma.user.findUnique({ where: { id: inviterId }, select: { firstName: true, lastName: true, email: true } }),
+      this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true } }),
+    ]);
+    const addedBy = inviter
+      ? [inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email
+      : 'somebody on your team';
+    for (const admin of admins) {
+      await this.email
+        .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null)
+        .catch((err: any) => this.logger.warn(`Waiting-notice to ${admin.email} failed: ${err.message}`));
+    }
+  }
+
   private resolveName(email: string, names?: { firstName?: string; lastName?: string }): [string, string] {
     if (names?.firstName) return [names.firstName, names.lastName ?? ''];
     return ['', ''];
