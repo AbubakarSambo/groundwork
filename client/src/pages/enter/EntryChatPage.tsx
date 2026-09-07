@@ -270,38 +270,42 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
 
 
 /**
- * THE SENTENCE THE PRODUCT WROTE IS NOBODY'S ACCOUNT.
+ * THE SENTENCE THE PRODUCT WROTE IS NOBODY'S ACCOUNT - AND REMOVING IT LEFT NOTHING TO ANSWER.
  *
- * Setup opens with a first-person sentence taken from whichever situation card was clicked - "I want
- * one honest read from everyone on my team this week..." - which nobody typed. It is a topic they
- * picked off a list, and the extractor was lifting goals out of it as though they had said them.
+ * Setup opens with a first-person sentence lifted from whichever situation card was clicked - "I want
+ * one honest read from everyone on my team this week..." - which nobody typed. The extractor was
+ * lifting goals out of it as though they had said them: driven against the live endpoint, somebody
+ * who said only "I am the ops admin, I do not really know the details" came back with one goal, the
+ * canned sentence almost verbatim. An instruction not to do that was tried first and did not hold -
+ * the model stopped taking `initial` and `decision` from it and kept taking `goals` - so the sentence
+ * was cut from what the extractor sees. It cannot lift what it cannot see.
  *
- * That was not theoretical: driven against the live endpoint, somebody who said only "I am the ops
- * admin, I do not really know the details" came back with a `goals` array whose single entry was the
- * canned sentence, almost word for word.
+ * THEN CUTTING IT ENTIRELY BROKE THE FIRST TURN, AND THAT IS WHY THIS REPLACES RATHER THAN REMOVES.
  *
- * AN INSTRUCTION WAS TRIED FIRST AND DID NOT HOLD. The prompt was told, in those words, not to
- * extract goals or a situation from that opener. It stopped taking `initial` and `decision` from it
- * and kept taking `goals`. So the sentence is removed from what the extractor is shown instead - it
- * cannot lift what it cannot see. Structural, not instructional.
+ * The cut was conditional on `yourRole` while it existed. Setup stopped asking the role, so the cut
+ * became unconditional - and on the first turn after a click that sentence is the ONLY user message.
+ * Removing it left the model a lone assistant greeting and nothing to reply to, so it wrote a user
+ * line for itself and answered that: somebody who clicked "a quick recurring check-in with my team"
+ * was answered with "I want one honest read from everyone on my team this week. Who is on the team?"
+ * - a different card's sentence, spoken back to them as though they had said it. Photographed twice.
  *
- * IT USED TO DO THIS ONLY FOR NON-PARTIES, AND NOW IT DOES IT FOR EVERYONE.
+ * So the turn stays and its CONTENT changes: a flat third-person note saying which card was clicked.
+ * The model knows what happened; there is no first-person sentence to mistake for an account; and
+ * `initial`, `decision` and `goals` still have to come from something the person actually typed.
  *
- * The condition was `yourRole` - a party's opener was near enough to what they meant, so it stayed.
- * Two things killed that. Setup no longer ASKS the role (it is asked at the end, by the screen), so
- * `yourRole` is usually null and the strip would simply never run - the leak would be back, quietly,
- * for everybody. And the reasoning was thin anyway: "near enough to what they meant" is exactly the
- * kind of judgement that put a sentence nobody typed into a goals array in the first place.
- *
- * Everything the person actually typed still goes, untouched. Only the one canned opener is removed.
+ * ONLY WHAT IS SENT. The transcript on screen is untouched - a person still sees the sentence their
+ * click posted, because that is what it looked like when they clicked it.
  */
 export function withoutPickedOpener(
   history: { role: string; content: string }[],
 ): { role: string; content: string }[] {
-  const picked = new Set(SITUATION_CARDS.map((c) => c.message));
   const first = history.findIndex((t) => t.role === 'user');
-  if (first === -1 || !picked.has(history[first].content)) return history;
-  return history.filter((_, i) => i !== first);
+  if (first === -1) return history;
+  const card = SITUATION_CARDS.find((c) => c.message === history[first].content);
+  if (!card) return history;
+  return history.map((t, i) =>
+    i === first ? { ...t, content: `[Situation picked from the list: ${card.label}]` } : t,
+  );
 }
 
 
@@ -655,7 +659,11 @@ export const SITUATION_CARDS = [
     scenario: 'PULSE_CHECK',
     label: SCENARIO_LABELS.PULSE_CHECK,
     detail: 'A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.',
-    message: 'I want a quick recurring check-in with my team on what is moving, what is stuck and what has changed.',
+    /* "QUICK" AND NO LENGTH AT ALL. It read as a one-off favour rather than the thing you run over a
+       team for as long as you are managing them - "I have a sales team and I want to monitor them for
+       a year, this should be the one, but it is not from the entry chat." Each check-in is quick; the
+       run is not, and only one of those belongs in the sentence. */
+    message: 'I want an ongoing read from my team on what is moving, what is stuck and what has changed, for as long as this runs.',
     timelineHint: 'typically ongoing',
     examples: [
       'A weekly pulse across a delivery team instead of a status meeting.',
@@ -667,7 +675,10 @@ export const SITUATION_CARDS = [
     scenario: 'SNAPSHOT',
     label: SCENARIO_LABELS.SNAPSHOT,
     detail: 'One honest read from everyone, once. No setup, no target, and no follow-up: five minutes each on what is going well, what is stuck and what has changed.',
-    message: 'I want one honest read from everyone on my team this week about what is going well and what is stuck. Just once, not on a schedule.',
+    /* "This week" was doing the work of "once" and doing it badly: it reads as a deadline rather than
+       as the whole extent of the thing, and it is the phrase that made this card and the recurring
+       one hard to tell apart. */
+    message: 'I want one honest read from everyone on my team about what is going well and what is stuck. Once only, not on a schedule.',
     timelineHint: 'one check-in, no follow-up',
     examples: [
       'You want to know how people are actually doing this week, without booking a meeting.',
@@ -1185,7 +1196,16 @@ export function EntryChatPage() {
       return entryApi.chat([{
         role: 'user',
         content: `I have completed the onboarding. Here is my context. ${ctx}. Please ask me your first specific check-in question based on what I told you. Reference my situation and what I said I need. Do not open generically. Do not ask what my role is. Ask one direct specific question drawn from what I have shared.`,
-      }], scenario || undefined, groundName || undefined)
+      /*
+       * THE SITUATION THEY PICKED, NOT ONLY A URL PARAMETER.
+       *
+       * This sent `scenario`, which is `params.get('scenario')` - set when somebody arrives from a
+       * marketing link and empty for everybody who lands on /start and picks a card. So the CHECK-IN
+       * fell to the server's default of NEW_PROJECT for the ordinary path: a person who had just
+       * spent four turns setting up a new hire was interviewed as though they were starting a
+       * project. All the work making SETUP situation-aware stopped at the setup.
+       */
+      }], onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
       const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you about your side of this.' }
@@ -1199,7 +1219,9 @@ export function EntryChatPage() {
   })
 
   const sendMut = useMutation({
-    mutationFn: (msgs: Turn[]) => entryApi.chat(msgs, scenario || undefined, groundName || undefined),
+    /* Same situation for every turn after the first, and for the same reason - a check-in that
+       opens on the right question and continues on a generic one is the same bug, one turn later. */
+    mutationFn: (msgs: Turn[]) => entryApi.chat(msgs, onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined),
     onSuccess: (res, msgs) => {
       const newTurn: Turn = { role: 'assistant', content: res.reply }
       const updated = [...msgs, newTurn]

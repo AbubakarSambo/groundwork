@@ -135,7 +135,16 @@ export function SituationCard({
             held it, on the grounds that a bare duration reads as a commitment the product has not
             made. This card said "Runs for 90 days" flatly. Now that one card serves both doors the
             stricter of the two rules is the one that survives; it costs a word. */}
-        <div><dt>Usually runs for</dt><dd>{facts?.timelineDays === 1 ? 'One check-in' : `${facts?.timelineDays} days`}</dd></div>
+        <div>
+          <dt>Usually runs for</dt>
+          <dd>
+            {facts?.ongoing
+              ? 'As long as you need'
+              : facts?.timelineDays === 1
+                ? 'One check-in'
+                : `${facts?.timelineDays} days`}
+          </dd>
+        </div>
         <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
       </dl>
     </div>
