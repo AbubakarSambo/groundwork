@@ -44,8 +44,8 @@ describe('the five things', () => {
     /* "enablement" and "coverage" are field names. What a person recognises is what they did or did
        not say, in the second person, which is what the labels are. */
     const shown = code(FIVE)
-    expect(shown).toContain('You said what you needed from others')
-    expect(shown).toContain('You covered the hard parts, not just what went well')
+    expect(shown).toContain('Say what you were waiting on from someone else')
+    expect(shown).toContain('Say what went badly, not only what went well')
   })
 
   it('collapse four stored levels to met or not', () => {
@@ -57,9 +57,20 @@ describe('the five things', () => {
     expect(wasItThere(undefined)).toBe(false)
   })
 
-  it('say what is missing rather than how badly', () => {
-    expect(code(FIVE)).toContain('No dates, numbers or documents yet')
-    expect(code(FIVE)).toContain('worth a sentence in your next session')
+  it('say what to do next time, not what the engine failed to find', () => {
+    /*
+     * They were negative findings - "No dates, numbers or documents yet", "Nothing on record about
+     * what you were waiting on" - which read back as "I have no idea what this means, you speak
+     * english like a robot". Five sentences about absence, with no verb anybody could act on.
+     *
+     * Each is an instruction when it is missing and the same fact in the past tense when it is
+     * there. What must not come back is the list of absences.
+     */
+    expect(code(FIVE)).toContain('Add a date, a number or a document')
+    expect(code(FIVE)).not.toContain('No dates, numbers or documents yet')
+    expect(code(FIVE)).not.toContain('Nothing on record about')
+    /* And it must say which session it is about, in the heading rather than a buried sub-line. */
+    expect(code(FIVE)).toContain('How checkable session ${sessionNumber} was')
   })
 
   it('and show nothing at all before a session has been read', () => {
@@ -86,12 +97,26 @@ describe('what the record can support', () => {
     expect(SUPPORT).toContain('done.length >= 3')
   })
 
-  it('counts the whole run, not the rows that happen to exist', () => {
+  it('is a bar per session, labelled with the session number', () => {
+    /*
+     * THE BAR CAME BACK. "The specificity bar etc was good, simple and visual." It was removed for
+     * a different fault - a row of coloured bars with no session numbers and no scale said nothing
+     * about which session was which - and that is a labelling problem, not a reason to go back to
+     * words only. So: numbered underneath, and a sentence saying what the height means.
+     *
+     * The count of finished sessions is gone with it. "1 of 4 done" is progress through a calendar,
+     * and this row is about how much each session can support.
+     */
+    expect(SUPPORT).toContain('checkable')
+    expect(SUPPORT).toContain('Taller means that session was easier for someone else to check')
+    expect(code(SUPPORT)).not.toContain('of {dots.length} done')
+  })
+
+  it('and covers the whole run, not the rows that happen to exist', () => {
     /* It read "Session 1 of 2" under a header saying "Session 2 of 4", because a check-in row only
        exists once a session has been opened. Two counters disagreeing about one run is worse than
        having neither. */
     expect(SUPPORT).toContain('Math.max(totalSessions ?? 0, sessions.length)')
-    expect(SUPPORT).toContain('{done.length} of {dots.length} done')
   })
 
   it('and still says out loud that nobody else sees it', () => {

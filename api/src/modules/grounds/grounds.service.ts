@@ -3994,12 +3994,18 @@ export class GroundsService {
       const undated = read.filter(r => !/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|last week|this week|yesterday|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2})\b/i.test(r.text)).length;
       const unnumbered = read.filter(r => !/\d/.test(r.text)).length;
       const vague = read.filter(r => r.vagueLanguage.length > 0).length;
+      /*
+       * PLAIN, AND SHORT. These were three sentences each, written from the engine's side: "one
+       * figure makes an account checkable that otherwise rests on memory". Read back on the screen
+       * that shows them: "you speak english like a robot". They are the one line somebody is meant
+       * to act on, so they say the thing and stop.
+       */
       if (unnumbered > entries.length / 2) {
-        whatWouldHelp = 'Most of your answers so far have no number in them. How many, how long, how often - one figure makes an account checkable that otherwise rests on memory.';
+        whatWouldHelp = 'Most of your answers have no number in them. How many? How long? How often? One number changes a lot.';
       } else if (undated > entries.length / 2) {
-        whatWouldHelp = 'Most of your answers so far do not say when. A week, a date, "before the handover" - anything that places it in time lets the other accounts line up against it.';
+        whatWouldHelp = 'Most of your answers do not say when. A date, a week, even "before the handover" is enough.';
       } else if (vague > entries.length / 3) {
-        whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Naming what actually happened instead carries further than describing it.`;
+        whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Saying what actually happened lands harder.`;
       }
       const best = read.filter(r => r.specificity >= 0.5).sort((a, b) => b.specificity - a.specificity)[0];
       if (best) strongest = best.text.slice(0, 220);

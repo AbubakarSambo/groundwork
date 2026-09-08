@@ -1142,6 +1142,10 @@ export function GroundAdminPage() {
       state: (c.status === 'COMPLETED'
         ? (c.isSelfCorrection ? 'corrected' : 'done')
         : 'todo') as 'done' | 'corrected' | 'todo',
+      /* `specificityHistory` is one score per finished session, in order, so the nth score belongs
+         to the nth session. The bar is what she asked for back - "simple and visual" - and the
+         session number under it is the thing the old one was missing. */
+      checkable: ((mySpecificity?.scores ?? []) as number[])[(c.sessionNumber ?? 1) - 1] ?? null,
     }))
   /**
    * How many people have finished the round that is currently open. The round is
@@ -1704,7 +1708,7 @@ export function GroundAdminPage() {
               mySessions={mySessions}
               /* Per-session specificity, so each row can say how checkable that account was. The
                  same read the trend card uses; it just belongs on the session it is about. */
-              specificityBySession={Object.fromEntries(((mySpecificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
+              onGoToReport={() => goTab('report' as Tab)}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord

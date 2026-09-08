@@ -301,6 +301,10 @@ export function GroundParticipantPage() {
       state: (c.status === 'COMPLETED'
         ? (c.isSelfCorrection ? 'corrected' : 'done')
         : 'todo') as 'done' | 'corrected' | 'todo',
+      /* `specificityHistory` is one score per finished session, in order, so the nth score belongs
+         to the nth session. The bar is what she asked for back - "simple and visual" - and the
+         session number under it is the thing the old one was missing. */
+      checkable: ((specificity?.scores ?? []) as number[])[(c.sessionNumber ?? 1) - 1] ?? null,
     }))
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
@@ -624,9 +628,7 @@ export function GroundParticipantPage() {
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
               mySessions={myFinishedSessions}
-              /* Per-session specificity, so each row can say how checkable that account was. The
-                 same read the trend card uses; it just belongs on the session it is about. */
-              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
+              onGoToReport={() => goTab('report')}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
@@ -653,6 +655,9 @@ export function GroundParticipantPage() {
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
               onGoToMyRecord={() => goTab('record')}
+              /* Per-session specificity on the row it is about. Same read as the bars above it on
+                 My record; here it is the words, because a row is a line of text. */
+              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
               viewerUserId={user?.id}
             />
           </div>

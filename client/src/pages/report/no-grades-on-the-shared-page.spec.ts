@@ -72,7 +72,12 @@ describe('no grades on the shared page', () => {
       'utf8',
     )
     expect(FIVE).toContain('whatWouldHelp')
-    const PRIVATE_REPORT = readFileSync(join(__dirname, '../../components/gw/MyPrivateReport.tsx'), 'utf8')
-    expect(PRIVATE_REPORT).toContain('specific enough to check')
+    /* The per-session phrase moved to its own file when the session list moved to the Report tab
+       and two surfaces needed the same reading. */
+    const PHRASE = readFileSync(
+      join(__dirname, '..', '..', 'components', 'gw', 'how-checkable-was-that-session.ts'),
+      'utf8',
+    )
+    expect(PHRASE).toContain('specific enough to check')
   })
 })

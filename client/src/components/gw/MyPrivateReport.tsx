@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sec } from './kit'
@@ -51,21 +50,8 @@ export interface MyPrivateReportProps {
    * showing a row of bars with no dates on them, next to a separate list of the same sessions with
    * dates and no bars. Two lists of one thing.
    */
-  specificityBySession?: Record<number, number>
-}
-
-/**
- * WHAT A SESSION'S SPECIFICITY SCORE MEANS, said on the row.
- *
- * The thresholds are the ones the bars used, so nothing about the reading changed - only that it
- * is now a phrase rather than a colour, on the session it belongs to. Undefined for a session that
- * has not been read yet, and then the row says nothing rather than guessing.
- */
-function howCheckable(score: number | undefined): string {
-  if (score == null) return ''
-  if (score >= 0.65) return ' · specific enough to check'
-  if (score >= 0.35) return ' · specific in places'
-  return ' · little in it that can be checked'
+  /** Where the session list lives now. The page owns tab names, so it is handed a callback. */
+  onGoToReport?: () => void
 }
 
 export function MyPrivateReport({
@@ -76,10 +62,9 @@ export function MyPrivateReport({
   otherParties,
   mySessions = [],
   walkInGuide = null,
-  specificityBySession,
+  onGoToReport,
 }: MyPrivateReportProps) {
   const qc = useQueryClient()
-  const navigate = useNavigate()
   const [showShareConfirm, setShowShareConfirm] = useState(false)
 
   const setSoloSharedMut = useMutation({
@@ -120,47 +105,34 @@ export function MyPrivateReport({
             the report a person actually read when they finished their session lived nowhere they
             could reach. One session, one report, and it does not change afterwards.
           */}
+          {/*
+            THE SESSION LIST MOVED TO REPORT, WHICH IS WHERE ITS NAME SAYS IT GOES.
+
+            It was here and on the Report tab, byte-for-byte the same rows. I removed the Report
+            copy first and removed the wrong one: "your sessions on the report page should go to
+            reports." A session's report is a report; My record is what you wrote and what it
+            amounts to.
+
+            A link rather than nothing, because somebody who has just read what was missing from
+            session 1 is exactly the person who wants to open it.
+          */}
           {mySessions.length > 0 && (
-            <>
-              {/*
-                "ONE PER SESSION, EXACTLY AS YOU READ IT AT THE END" WAS HALF TRUE, AND I WROTE IT.
-                Only the entry chat stores the full report a person read when they finished; a
-                session run inside the app ends on the card, and opening it later shows that card.
-                Both ARE what that person read at the end of that session, which is the promise
-                worth making - so the wording is now the one that holds for both, rather than the
-                one that implies a single kept artifact for every session.
-              */}
-              <Sec title="Your session reports" src="what you read when you finished each one" />
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
-                {mySessions.map((ci, i) => (
-                  <button
-                    key={ci.id}
-                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
-                    style={{
-                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
-                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
-                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
-                    <span>
-                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
-                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt ? `Finished ${new Date(ci.completedAt).toLocaleDateString()}` : 'Finished'}
-                        {/*
-                          AND HOW CHECKABLE THAT ONE WAS, on the session it is about.
-                          Said in words rather than as a bar: a bar with no scale is a mark out of
-                          something a person cannot see, and the whole point of this read is that
-                          it is actionable - "how many, how long, how often" - not a grade.
-                        */}
-                        {howCheckable(specificityBySession?.[ci.sessionNumber])}
-                      </span>
-                    </span>
-                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
-                  </button>
-                ))}
-              </div>
-            </>
+            <button
+              onClick={() => onGoToReport?.()}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10,
+                padding: '12px 14px', marginBottom: 14, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              }}
+            >
+              <span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Your session reports</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+                  {mySessions.length} finished. They are on the Report tab.
+                </span>
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+            </button>
           )}
 
           {/*

@@ -27,31 +27,45 @@ export function wasItThere(level: Level | undefined): boolean {
   return level === 'specific' || level === 'directional'
 }
 
+/**
+ * SAID AS SOMETHING TO DO, NOT AS A FINDING ABOUT WHAT WAS ABSENT.
+ *
+ * The first version read: "Mostly the situation, not your part in it. No dates, numbers or
+ * documents yet. Nothing on record about what you were waiting on." Read back: "I have no idea what
+ * this means, you speak english like a robot."
+ *
+ * Fair. Every line was a negative sentence with no verb a person could act on, written from the
+ * engine's side of the screen - a list of what it failed to find rather than a list of what to say
+ * next time. And a row of five of them reads as five accusations.
+ *
+ * So each is a plain instruction when it is missing, and the same thing in the past tense when it
+ * is there. Same five facts, in words somebody would actually use.
+ */
 const THE_FIVE: { key: string; met: string; missing: string }[] = [
   {
     key: 'delivery',
-    met: 'You said what you actually did',
-    missing: 'Mostly the situation, not your part in it',
+    met: 'You said what you did',
+    missing: 'Say what you did, not just what was going on around you',
   },
   {
     key: 'evidence',
-    met: 'You pointed at something checkable',
-    missing: 'No dates, numbers or documents yet',
+    met: 'You gave a date, a number or a document',
+    missing: 'Add a date, a number or a document',
   },
   {
     key: 'enablement',
-    met: 'You said what you needed from others',
-    missing: 'Nothing on record about what you were waiting on',
+    met: 'You said what you needed from other people',
+    missing: 'Say what you were waiting on from someone else',
   },
   {
     key: 'coverage',
-    met: 'You covered the hard parts, not just what went well',
-    missing: 'Only the parts that went well are on record',
+    met: 'You talked about the hard parts too',
+    missing: 'Say what went badly, not only what went well',
   },
   {
     key: 'commitment',
-    met: 'You said what happens next, and by when',
-    missing: 'Nothing named with an owner and a date',
+    met: 'You said what happens next, who does it and when',
+    missing: 'Say what happens next, who does it and by when',
   },
 ]
 
@@ -76,12 +90,17 @@ export function TheFiveThingsThatMakeItCheckable({
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '15px 17px' }}>
+      {/*
+        THE HEADING NAMES THE SESSION, because nobody knew this was about one.
+        "What was in what you said" over a list of absences, with the session number buried in a
+        sub-line, left a person reading a permanent judgement instead of a note about session 1.
+      */}
       <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
-        What was in what you said
+        {sessionNumber ? `How checkable session ${sessionNumber} was` : 'How checkable your answers were'}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
-        {sessionNumber ? `From session ${sessionNumber}. ` : ''}
-        These are the five things that let somebody else check an account.
+        Five things make an answer easy for someone else to check. Here is what
+        {sessionNumber ? ` session ${sessionNumber}` : ' it'} had, and what to add next time.
       </div>
 
       <div style={{ display: 'grid', gap: 7 }}>
@@ -113,7 +132,9 @@ export function TheFiveThingsThatMakeItCheckable({
       {shortBy > 0 && (
         /* A next action rather than a total. The count is only here to make the sentence true. */
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 11, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
-          {shortBy === 1 ? 'That one is' : `Those ${shortBy} are`} worth a sentence in your next session.
+          {shortBy === 1
+            ? 'One sentence next time covers it.'
+            : 'You do not need all of them. Even one or two next time makes a difference.'}
         </div>
       )}
 

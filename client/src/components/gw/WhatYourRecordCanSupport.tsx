@@ -29,6 +29,8 @@ export type RecordStrength = { score?: number; label?: string; description?: str
 export interface SessionDot {
   sessionNumber: number
   state: 'done' | 'corrected' | 'todo'
+  /** 0-1, how checkable that session's answers were. Absent until the session has been read. */
+  checkable?: number | null
 }
 
 /**
@@ -115,25 +117,51 @@ export function WhatYourRecordCanSupport({
       </div>
 
       {dots.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {dots.map(s => (
-              <span
-                key={s.sessionNumber}
-                title={`Session ${s.sessionNumber}`}
-                style={{
-                  width: 9, height: 9, borderRadius: '50%',
-                  background: s.state === 'done' ? 'var(--gw-navy)' : s.state === 'corrected' ? 'var(--gw-amber-t)' : 'transparent',
-                  border: s.state === 'todo' ? '1px solid var(--gw-border)' : 'none',
-                  display: 'inline-block',
-                }}
-              />
-            ))}
+        <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
+          {/*
+            THE BAR CAME BACK, WITH THE THING IT WAS MISSING.
+
+            "The specificity bar etc was good, simple and visual." It was, and it was removed for a
+            different fault: a row of coloured bars with no session numbers and no scale said nothing
+            about which session was which, so nobody could act on it. That is a labelling problem, not
+            a reason to go back to words only.
+
+            So: one bar per session of the run, numbered underneath, empty for the ones not held yet,
+            and a plain sentence saying what the height means. A count of finished sessions was the
+            wrong thing to put here anyway - "1 of 4 done" is progress through a calendar, and this
+            row is about how much each session can support.
+          */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 34 }}>
+            {dots.map(d => {
+              const held = d.state !== 'todo'
+              const level = Math.max(0, Math.min(1, d.checkable ?? 0))
+              return (
+                <div key={d.sessionNumber} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  <div
+                    title={held ? `Session ${d.sessionNumber}` : `Session ${d.sessionNumber} - not yet`}
+                    style={{
+                      width: '100%', height: 22, borderRadius: 3, position: 'relative',
+                      background: held ? 'var(--gw-paper-2)' : 'transparent',
+                      border: held ? 'none' : '1px dashed var(--gw-border)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {held && (
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: 0, right: 0,
+                        height: `${Math.round(Math.max(level, 0.08) * 100)}%`,
+                        background: level >= 0.6 ? 'var(--gw-green-t)' : level >= 0.35 ? 'var(--gw-amber-t)' : 'var(--gw-clay)',
+                      }} />
+                    )}
+                  </div>
+                  <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontVariantNumeric: 'tabular-nums' }}>{d.sessionNumber}</div>
+                </div>
+              )
+            })}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-            {/* "Session 1 of 4" reads as WHICH session, beside a header already saying you are on
-                session 2. This counts what is finished, which is what the dots show. */}
-            {done.length} of {dots.length} done
+          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
+            Taller means that session was easier for someone else to check. Dotted ones have not
+            happened yet.
           </div>
         </div>
       )}
