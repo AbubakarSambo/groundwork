@@ -1033,7 +1033,7 @@ export function ContextPage({
                 difference that has to be expressed as one flag on one component rather than as two
                 pages that happen to differ.
               */
-              <ContextStrength read={contextStrength} closedNote={!isLead} />
+              <ContextStrength read={contextStrength} closedNote={!isLead} chatBelow={contextEnabled && isLead} />
             )}
             {/*
               THE HONESTY LINE SURVIVES THE FLAG BEING OFF, because that is when it matters most.

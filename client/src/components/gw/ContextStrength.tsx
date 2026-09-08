@@ -32,7 +32,7 @@ import type { ContextStrengthRead } from '@/lib/contextStrength'
 export const LEAD_HOLDS_MORE =
   'The lead may hold context for this check-in that is not shown here. That is by design, and it never includes anything you have said.'
 
-export function ContextStrength({ read, closedNote }: {
+export function ContextStrength({ read, closedNote, chatBelow }: {
   read: ContextStrengthRead
   /**
    * Shown to somebody who is not the lead. G26's "visibly absent": a participant
@@ -40,6 +40,12 @@ export function ContextStrength({ read, closedNote }: {
    * are looking at everything.
    */
   closedNote?: boolean
+  /**
+   * Whether the conversation that can take these is actually below this on THIS reader's page.
+   * It is the lead's, and only when context is on - so for everybody else the sentence pointing at
+   * it would be pointing at nothing.
+   */
+  chatBelow?: boolean
 }) {
   /**
    * REWRITTEN, BECAUSE IT READ AS GENERATED FILLER.
@@ -71,8 +77,20 @@ export function ContextStrength({ read, closedNote }: {
 
       {read.cannot.length > 0 && (
         <div>
+          {/*
+            AND WHAT THE LIST IS FOR, WHICH IT NEVER SAID.
+
+            "I don't get what this long text on the context chat is for." Fair: it stated what the
+            check-in cannot answer and then stopped, so it read as the product listing its own
+            shortcomings at somebody. Every line names a thing that would fix it, and as of the
+            same pass the conversation directly below can take any of them - a change, more of what
+            success looks like, a goal, a document. Saying so is the difference between a list of
+            faults and a list of next moves.
+          */}
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
-            It cannot do these yet, and each one names what is missing:
+            {chatBelow
+              ? 'It cannot do these yet. Each one names what is missing, and the conversation below takes any of them:'
+              : 'It cannot do these yet, and each one names what is missing:'}
           </div>
           <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
             {read.cannot.map((line, i) => <li key={i}>{line}</li>)}
