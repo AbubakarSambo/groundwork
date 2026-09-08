@@ -82,9 +82,44 @@ export interface ChatTurn {
  * normalize every AI response at the output boundary. This text is shown to
  * customers in check-ins and reports.
  */
+/**
+ * A CONDITIONAL WITH NOTHING IN FRONT OF IT.
+ *
+ * The engine has a template it uses often and well: "Does the new hire know that is how you see the
+ * role? And if so, how did you describe it to them?" - two halves of one fact, which the ONE
+ * QUESTION RULE explicitly allows.
+ *
+ * About one time in four it drops the first half. Read on a real setup:
+ *
+ *   "That third one, the behavioural change, is often the hardest and the most important.
+ *    And if so, how was that communicated?"
+ *
+ * "And if so" refers to nothing. The person is left working out what they were asked, in the one
+ * exchange where the product is supposed to be the clearest thing in the room. Counted across 1,901
+ * AI turns: three well-formed, one orphaned.
+ *
+ * The connective is dropped rather than the question repaired - inventing the missing half would be
+ * writing somebody a question nobody asked. "How was that communicated?" is complete and loses
+ * nothing. Only when there is no question before it in the same turn: where the first half IS
+ * there, this leaves it exactly alone.
+ */
+export function noDanglingConditional(text: string): string {
+  if (!text) return text;
+  return text.replace(
+    /(^|[.!?]\s+)(And |But |So )?[Ii]f so,\s*(\w)/g,
+    (whole, before: string, _connective: string, firstLetter: string, at: number) => {
+      /* A question mark anywhere before this is the other half doing its job. */
+      if (text.slice(0, at + before.length).includes('?')) return whole;
+      /* The word that followed "if so," now starts the sentence, so it is capitalised - otherwise
+         dropping the connective leaves "That is the hardest one. how was that communicated?" */
+      return before + firstLetter.toUpperCase();
+    },
+  );
+}
+
 export function houseStyle(text: string): string {
   if (!text) return text;
-  return text
+  return noDanglingConditional(text)
     .replace(/[—–]/g, '-') // em/en dash -> hyphen
     .replace(/[“”]/g, '"') // curly double quotes -> straight
     .replace(/[‘’]/g, "'") // curly single quotes/apostrophes -> straight
