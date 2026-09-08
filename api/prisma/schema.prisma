@@ -1001,6 +1001,19 @@ model GroundParticipant {
   // Rolling specificity scores (Agent 1) used for trust calibration / tone.
   specificityHistory         Float[]        @default([]) @map("specificity_history")
   lastNudgedAt               DateTime?      @map("last_nudged_at") // throttles reminder emails (B1)
+  /// ADDED, BUT WAITING FOR A SEAT BEFORE ANYBODY WRITES TO THEM.
+  ///
+  /// Every plan is priced by team size, and adding somebody to a check-in used to be refused
+  /// outright the moment the account was full - which stops the lead's work for a reason the lead
+  /// usually cannot fix, since the person who can upgrade is somebody else. Walked on a real org,
+  /// the opposite also happened: the org-level cap was never checked on this path at all, so seven
+  /// people ended up on a plan the product said covered five.
+  ///
+  /// So a person over the cap is ADDED and not written to. The row exists, the lead can see who is
+  /// on the check-in and that they are waiting, and the invitation goes out the moment an admin
+  /// makes room. Nothing reaches the person until then: an invitation to a check-in they cannot
+  /// open is worse than silence.
+  awaitingSeat               Boolean        @default(false) @map("awaiting_seat")
   /// THE WAY OUT OF BEING CHASED. The invitation tells somebody they can simply ignore it, and
   /// then the reminders arrive anyway - so the mail carries a link that needs no login and this
   /// is where it lands. Deliberately NOT a decision about taking part: their invitation still

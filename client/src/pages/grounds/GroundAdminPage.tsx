@@ -256,6 +256,8 @@ export function GroundAdminPage() {
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
   /** Whether the last person added is waiting for the start date rather than having been emailed. */
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
+  /** The server's own reason when an invitation is held for something other than the start date. */
+  const [whyItWaits, setWhyItWaits] = useState<string | null>(null)
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
   /** Deleting a test check-in: the confirm step, and whatever the server refused with. */
@@ -798,6 +800,18 @@ export function GroundAdminPage() {
        * worse than either.
        */
       setLastInviteWaits(!(added as { invitedAt?: string | null }).invitedAt)
+      /*
+       * AND WHY IT WAITS, WHEN THE SERVER KNOWS A BETTER REASON THAN THE DATE.
+       *
+       * There are two reasons an invitation is held: the check-in starts in the future, or the
+       * account has no seat for this person. This screen only knew the first, so somebody added
+       * over the cap was told their invitation "goes out on the start date" - a date that has
+       * nothing to do with it and may already have passed.
+       *
+       * The server sends the sentence when the reason is seats, because it is the side that knows
+       * what the plan covers and who has to act. See added-but-waiting-for-a-seat.ts.
+       */
+      setWhyItWaits((added as { saying?: string }).saying ?? null)
       setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')
@@ -982,10 +996,14 @@ export function GroundAdminPage() {
           {lastInvitedEmail && (
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+                {whyItWaits
+                  ? `${lastInvitedEmail} is on the check-in.`
+                  : lastInviteWaits
+                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                    : `Invite sent to ${lastInvitedEmail}`}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 2 }}>
-                They check in on their own, and nothing is shown to them until the report is ready.
+              <div style={{ fontSize: 12, color: whyItWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginTop: 2, lineHeight: 1.55 }}>
+                {whyItWaits ?? 'They check in on their own, and nothing is shown to them until the report is ready.'}
               </div>
             </div>
           )}
@@ -1807,6 +1825,23 @@ export function GroundAdminPage() {
                           </button>
                         ) : !p.userId && p.inviteDeliveryStatus === 'COMPLAINED' ? (
                           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px' }} title="They marked the invite as spam">Marked as spam</span>
+                        ) : p.awaitingSeat ? (
+                          /*
+                            ON THE CHECK-IN, NOT WRITTEN TO.
+
+                            Adding somebody when the account is full no longer refuses the lead -
+                            the person is added and the invitation is held until an admin makes
+                            room. Without a row saying so it reads as "Invite pending", which is a
+                            lie in the direction that matters: the lead waits for a reply to a mail
+                            that was never sent, and chases the person instead of the admin.
+                          */
+                          <button
+                            onClick={() => navigate('/org/members')}
+                            title="Your plan has no seat for them yet - an admin here has to make room"
+                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Waiting for a seat
+                          </button>
                         ) : !p.userId ? (
                           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }} title={p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered to their inbox' : 'Invite sent'}>
                             {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}

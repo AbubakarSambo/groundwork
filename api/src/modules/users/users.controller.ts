@@ -1,4 +1,5 @@
-import { Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Inject, forwardRef, Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { GroundsService } from '../grounds/grounds.service';
 import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -24,6 +25,9 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly myRecord: MyOwnRecordService,
     private readonly door: WhoIsWaitingAtTheDoorService,
+    /* Releasing a held invitation is the grounds service's job - it owns the participant row and
+       the invite. This controller only decides who may ask for it. */
+    @Inject(forwardRef(() => GroundsService)) private readonly grounds: GroundsService,
   ) {}
 
   /**
@@ -42,6 +46,25 @@ export class UsersController {
   @ApiOperation({ summary: 'Who is waiting to be let into this organisation' })
   async waiting(@CurrentUser('organizationId') organizationId: string) {
     return this.door.waiting(organizationId);
+  }
+
+  /**
+   * The other queue at the same door: people a lead has added to a check-in with no seat for them.
+   * Kept a separate route rather than folded into the list above, because the two need different
+   * answers - one is a judgement about a person, the other is a purchase.
+   */
+  @Get('waiting/seats')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'People on a check-in whose invitation is waiting for a seat' })
+  async waitingForASeat(@CurrentUser('organizationId') organizationId: string) {
+    return this.door.waitingForASeat(organizationId);
+  }
+
+  @Post('waiting/seats/release')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Send the invitations that were waiting for a seat, as far as there is room' })
+  async releaseSeats(@CurrentUser('organizationId') organizationId: string) {
+    return this.grounds.releaseAnyoneWaitingForASeat(organizationId);
   }
 
   @Post('waiting/:id/approve')

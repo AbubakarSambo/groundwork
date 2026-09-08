@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { SEAT_WHERE } from '../../common/seats';
+import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
 import { whatTheDocumentsSay, stillNeedsSomethingInWriting } from './what-the-documents-say';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from '../conversation/a-prompt-that-ran-out-of-room-says-so';
 import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-starts';
@@ -212,6 +214,10 @@ export const SAFE_PARTICIPANT_SELECT = {
   roleAsDescribed: true,
   invitedAt: true,
   notifiedAt: true,
+  /* On the check-in with nothing sent to them, waiting on a seat. Without this the roster reads
+     "Invite pending" about a mail that was never sent, and the lead chases the person instead of
+     the admin. See added-but-waiting-for-a-seat.ts. */
+  awaitingSeat: true,
   inviteDeliveryStatus: true, // SENT | DELIVERED | BOUNCED | COMPLAINED (Resend webhook mirror)
   soloArtifactAt: true, // timestamp only - never the artifact content
   soloArtifactShared: true, // whether participant chose to share; content fetched separately via get()
@@ -2468,6 +2474,29 @@ export class GroundsService {
       }
     }
 
+    /**
+     * IS THERE A SEAT FOR THIS PERSON, AND WHAT HAPPENS IF NOT.
+     *
+     * Not a refusal. See added-but-waiting-for-a-seat.ts: over the cap, the person is still added
+     * and simply not written to, because refusing stops the lead's work for a reason only somebody
+     * else can fix, and because the org-level cap was not being checked on this path at all - which
+     * is how a real organisation ended up with seven active people on a plan covering five.
+     *
+     * Only asked about somebody who would NEED a seat. An existing member of this organisation
+     * already holds one, and adding them to a second check-in costs nothing.
+     */
+    const alreadyHereWithASeat = await this.prisma.user.count({
+      where: { email: dto.email.toLowerCase(), organizationId, ...SEAT_WHERE },
+    });
+    let waitingForASeat: SeatAnswer = { room: true };
+    if (!alreadyHereWithASeat) {
+      const [seatsTaken, seatsIncluded] = await Promise.all([
+        this.prisma.user.count({ where: { organizationId, ...SEAT_WHERE } }),
+        this.billing.seatsIncludedFor(organizationId),
+      ]);
+      waitingForASeat = whetherThereIsRoomForOneMore({ seatsTaken, seatsIncluded });
+    }
+
     // SEQUENTIAL cadence: the lead's own session 1 must complete before a newly
     // added participant's session 1 opens - otherwise the team could check in
     // ahead of the lead, defeating the "lead goes first" point of this cadence.
@@ -2507,6 +2536,8 @@ export class GroundsService {
           email: dto.email.toLowerCase(),
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
+          /* Over the cap: on the check-in, not written to, until an admin makes room. */
+          awaitingSeat: !waitingForASeat.room,
           /**
            * NOT INVITED YET IF THEY HAVE NOT STARTED.
            *
@@ -2517,7 +2548,11 @@ export class GroundsService {
            * The token is still generated now, so the link in that later email is the same one the lead
            * can already see and copy if they need to hand it over another way.
            */
-          invitedAt: startsInFuture ? null : new Date(),
+          /* Null while the mail is held, for either reason. A row that says invited while nothing
+             was sent is the worst of the three outcomes: the lead believes they can still change
+             their mind about somebody who has in fact never heard from us - and here, the reverse,
+             believes somebody has been written to when they have not. */
+          invitedAt: startsInFuture || !waitingForASeat.room ? null : new Date(),
           startsAt: startsAt ?? null,
           inviteToken: token,
           inviteTokenExpiresAt,
@@ -2573,7 +2608,9 @@ export class GroundsService {
      * `grounds.cron.ts` sends it on the day. Until then the ground shows the person as named and not
      * yet invited, which is exactly what is true.
      */
-    if (!startsInFuture) {
+    /* `waitingForASeat` holds the mail for the same reason `startsInFuture` does, and the row says
+       so the same way: `invitedAt` stays null, so nothing believes they have been written to. */
+    if (!startsInFuture && waitingForASeat.room) {
     try {
       emailResult = await this.email.sendParticipantInvite(
         dto.email.toLowerCase(),
@@ -2626,7 +2663,7 @@ export class GroundsService {
        * been added - Rule 3, nobody added silently - so stamping it for a deferred invite would claim
        * something that has not happened, and the cron would have nothing to look for.
        */
-      data: { notifiedAt: startsInFuture ? null : new Date() },
+      data: { notifiedAt: startsInFuture || !waitingForASeat.room ? null : new Date() },
     });
 
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
@@ -2635,7 +2672,15 @@ export class GroundsService {
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
     // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
     const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
-    return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt, devUrl: emailResult?.devUrl, emailFailed };
+    return {
+      id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt,
+      devUrl: emailResult?.devUrl,
+      emailFailed,
+      /* On the check-in, not written to, until an admin makes room. The lead is told exactly that -
+         see added-but-waiting-for-a-seat.ts for why this is a sentence and not a refusal. */
+      awaitingSeat: !waitingForASeat.room,
+      ...(waitingForASeat.room ? {} : { saying: waitingForASeat.saying }),
+    };
   }
 
   /**
@@ -2959,6 +3004,56 @@ export class GroundsService {
    * A declined invitation does not count as an account: somebody saying no is not a record to
    * protect, and a check-in everybody declined is precisely the sort somebody wants rid of.
    */
+  /**
+   * SENDING THE INVITATIONS THAT WERE WAITING FOR A SEAT.
+   *
+   * Called whenever an organisation gains room - a larger plan, somebody deactivated, somebody
+   * removed. Oldest first, because a queue answered out of order is not a queue, and only as many
+   * as there is actually room for: releasing six people into four seats would put the account
+   * straight back over its cap and undo the point of holding them.
+   *
+   * Best-effort per person. One address that bounces must not strand the rest of the queue behind
+   * it, and a row that stays `awaitingSeat` is simply picked up next time.
+   */
+  async releaseAnyoneWaitingForASeat(organizationId: string): Promise<{ sent: number; stillWaiting: number }> {
+    const waiting = await this.prisma.groundParticipant.findMany({
+      where: { awaitingSeat: true, ground: { organizationId } },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true, email: true, inviteToken: true, groundId: true,
+        ground: { select: { label: true, initiator: { select: { firstName: true } } } },
+      },
+    });
+    if (!waiting.length) return { sent: 0, stillWaiting: 0 };
+
+    const room = await this.billing.seatsLeft(organizationId);
+    /* Null is uncapped: everybody goes. */
+    const canSend = room === null ? waiting.length : Math.max(0, room);
+    let sent = 0;
+
+    for (const w of waiting.slice(0, canSend)) {
+      try {
+        await this.email.sendParticipantInvite(
+          w.email,
+          w.ground?.initiator?.firstName ?? 'A founder',
+          w.ground?.label ?? 'a check-in',
+          w.inviteToken ?? '',
+          undefined,
+          /* So the "you can ignore this" line resolves to this person, as it does on a first send. */
+          { kind: 'PARTICIPANT_INVITE', participantId: w.id, groundId: w.groundId },
+        );
+        await this.prisma.groundParticipant.update({
+          where: { id: w.id },
+          data: { awaitingSeat: false, invitedAt: new Date() },
+        });
+        sent += 1;
+      } catch (e: any) {
+        this.logger.warn(`Could not send the held invitation to ${w.email}: ${e?.message ?? e}`);
+      }
+    }
+    return { sent, stillWaiting: waiting.length - sent };
+  }
+
   async deleteWhileItIsStillATest(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },

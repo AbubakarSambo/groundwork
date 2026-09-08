@@ -61,7 +61,9 @@ describe('a failed mail does not un-add somebody', () => {
 
   it('tells the caller the mail did not go, so no screen can claim it did', () => {
     expect(SENDING).toMatch(/emailFailed = err\?\.message/);
-    expect(SERVICE).toMatch(/createdAt, devUrl: emailResult\?\.devUrl, emailFailed/);
+    /* The return became multi-line when it grew `awaitingSeat` and its sentence - see
+       added-but-waiting-for-a-seat.ts. What this pins is that the failure still travels with it. */
+    expect(SERVICE).toMatch(/devUrl: emailResult\?\.devUrl,\s*\n\s*emailFailed,/);
   });
 
   it('and leaves a log naming the person and the way to recover', () => {

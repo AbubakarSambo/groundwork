@@ -107,6 +107,27 @@ export function OrgMembersPage() {
     enabled: isAdmin,
   })
 
+  const seatQueue = useQuery({
+    queryKey: ['waiting-for-a-seat'],
+    queryFn: authApi.waitingForASeat,
+    enabled: isAdmin,
+  })
+
+  /* Sends as many as there is room for. Saying how many went, and how many did not, is the whole
+     answer: "sent 2, 3 still waiting" tells an admin they have not finished. */
+  const sendHeld = useMutation({
+    mutationFn: authApi.sendTheHeldInvitations,
+    onSuccess: (r) => {
+      if (r.sent === 0) toast.error('There is still no room. Free a seat or move to a larger plan, then try again.')
+      else if (r.stillWaiting > 0) toast.success(`${r.sent} sent. ${r.stillWaiting} still waiting on a seat.`)
+      else toast.success(r.sent === 1 ? 'Their invitation is on its way' : `${r.sent} invitations are on their way`)
+      qc.invalidateQueries({ queryKey: ['waiting-for-a-seat'] })
+    },
+    /* What became of the work: they are all still on their check-ins and nobody has been emailed,
+       so pressing this again is safe and nothing is half-done. */
+    onError: () => toast.error('Those could not be sent just now. Nobody has been emailed and they are all still waiting.'),
+  })
+
   const answerWaiting = useMutation({
     /* One mutation for both answers: they invalidate the same two lists and fail the same way, and
        two mutations would be two places to keep that agreeing. The return types differ by a word,
@@ -244,6 +265,50 @@ export function OrgMembersPage() {
 
       {/* THE QUEUE. Shown only when there is one - an empty "nobody is waiting" panel on every
           visit is a box that teaches you to stop reading this part of the page. */}
+      {/*
+        PEOPLE ON A CHECK-IN WITH NO SEAT FOR THEM.
+
+        Adding somebody when the account is full no longer refuses the lead - the person is added
+        and nothing is sent to them. This is where that lands, because the lead cannot fix a seat cap
+        and the admin can. Kept separate from the queue below: one is a decision about a person, this
+        is a decision about the plan, and answering them the same way would be the wrong question
+        twice.
+      */}
+      {isAdmin && (seatQueue.data?.length ?? 0) > 0 && (
+        <div style={{ border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 3 }}>
+            {seatQueue.data!.length === 1
+              ? 'Somebody is on a check-in with no seat for them'
+              : `${seatQueue.data!.length} people are on check-ins with no seat for them`}
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+            A lead added them and your plan is full, so nothing has been sent to them. Free a seat or
+            move to a larger plan, then send the invitations. They have not been told any of this.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+            {seatQueue.data!.map(person => (
+              <div key={person.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{person.email}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5 }}>
+                  Added by {person.addedBy ?? 'a lead'}{person.forCheckIn ? ` for “${person.forCheckIn}”` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => sendHeld.mutate()}
+              disabled={sendHeld.isPending}
+              style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: sendHeld.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+            >{sendHeld.isPending ? 'Sending…' : 'Send their invitations'}</button>
+            <button
+              onClick={() => navigate('/pricing')}
+              style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >See plans</button>
+          </div>
+        </div>
+      )}
+
       {isAdmin && (waiting.data?.length ?? 0) > 0 && (
         <div style={{ border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 3 }}>

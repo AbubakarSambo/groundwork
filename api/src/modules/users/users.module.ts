@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { GroundsModule } from '../grounds/grounds.module';
 import { UsersService } from './users.service';
 import { MyOwnRecordService } from '../people/my-own-record.service';
 import { UsersController } from './users.controller';
@@ -13,7 +14,9 @@ import { EmailModule } from '../email/email.module';
    * the one implementation of "invite somebody" that lives in AuthService rather than a second
    * copy of it here. A second copy is how the invitation email and the seat gate drift apart.
    */
-  imports: [BillingModule, forwardRef(() => AuthModule), EmailModule],
+  /* GroundsModule for releasing a held invitation - it owns the participant row and the invite.
+     Circular by nature (grounds reads users), so both ends use forwardRef. */
+  imports: [BillingModule, forwardRef(() => AuthModule), EmailModule, forwardRef(() => GroundsModule)],
   controllers: [UsersController],
   /* The door service is registered here rather than exported from a participants module: it is
      used by this controller only, and the accept path writes the queue itself. */
