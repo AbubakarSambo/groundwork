@@ -255,6 +255,20 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
                   ) : (
                     <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6 }}>{s.saying}</div>
                   )}
+                  {/*
+                    HOW TO READ THE SECTION, WHERE ITS SHAPE COULD MISLEAD.
+
+                    Risks and concerns groups by entry type, so it fills up with whoever names
+                    problems out loud. On a real cohort five of six items were one hire's - the one
+                    being honest about not reaching her number - while the one who had closed
+                    nothing all quarter barely appeared. The server decides when to say this and
+                    sends the sentence; usually there is none.
+                  */}
+                  {(s as any).note && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 7, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
+                      {(s as any).note}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -55,8 +55,12 @@ describe('the brief', () => {
   });
 
   it('and is composed from their own answers', () => {
+    /* Bounded by the function's own end, not by a character count. It was `at + 600`, and adding a
+       comment inside the composer pushed the last field past it - a spec failing on code that had
+       not changed, which is the same trap `a-page-you-cannot-change-says-so` already wrote down. */
     const at = client.indexOf('export function composeLeadBrief');
-    const body = client.slice(at, at + 600);
+    const end = client.indexOf('\n}', at);
+    const body = client.slice(at, end > at ? end : at + 600);
     for (const own of ['sels.initial', 'sels.whoInvolved', 'sels.decision', 'sels.goals', 'sels.brief']) {
       expect(body).toContain(own);
     }

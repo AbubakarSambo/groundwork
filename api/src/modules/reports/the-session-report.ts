@@ -40,6 +40,8 @@ export interface SaidThing {
 }
 
 export interface SessionReportSection {
+  /** A line about how to read the section, where the shape of it could mislead. Usually null. */
+  note?: string | null;
   /** The heading, in the order the promise makes. */
   title: string;
   /** What this section is, in one line. */
@@ -221,6 +223,20 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       about: 'what people said they are worried about, and where two accounts pull against each other',
       items: ofTypes(input.entries, [RecordEntryType.WORRY, RecordEntryType.TENSION]),
       saying: 'Nobody named a risk or a concern this session.',
+      /*
+       * WHO FILLS THIS SECTION IS NOT WHO IS CAUSING THE TROUBLE.
+       *
+       * It groups by entry type, so it fills up with whoever NAMES problems. On a real cohort, five
+       * of six items were one person's - the hire who said plainly that her list was dead and she
+       * would not hit eight - while the person who had closed nothing all quarter while saying
+       * things were "very close" barely appeared here at all. A lead skimming the section reads the
+       * honest one as the risk.
+       *
+       * Not reweighted, because the entries are true and hiding somebody's own words to balance a
+       * column would be worse than the skim. Named instead: the effect is stated where it happens,
+       * once, and only when one person actually dominates.
+       */
+      note: whoseConcernsTheseAre(ofTypes(input.entries, [RecordEntryType.WORRY, RecordEntryType.TENSION])),
     },
     {
       title: 'Asks',
@@ -378,6 +394,22 @@ export function aNumberWasSaid(input: Pick<SessionReportInputs, 'entries'>): boo
       (e.type === RecordEntryType.SUCCESS_DEFINITION || e.type === RecordEntryType.INTENT)
       && (/\d/.test(e.text) || A_NUMBER_IN_WORDS.test(e.text)),
   );
+}
+
+/**
+ * A LINE FOR WHEN ONE PERSON'S CONCERNS ARE MOST OF A SECTION.
+ *
+ * Two thirds and at least three items, which is where a column stops reading as "the risks" and
+ * starts reading as "this person". Below that it is just a short list.
+ */
+export function whoseConcernsTheseAre(items: SaidThing[]): string | null {
+  if (items.length < 3) return null;
+  const byPerson = new Map<string, number>();
+  for (const i of items) if (i.who) byPerson.set(i.who, (byPerson.get(i.who) ?? 0) + 1);
+  const [who, count] = [...byPerson.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+  if (!who || count / items.length < 2 / 3) return null;
+  return `Most of this is ${who}'s - which says they name problems out loud, not that they are the problem. `
+    + 'Whoever is not here has not said there is nothing wrong; they have said nothing.';
 }
 
 function whatChanged(input: SessionReportInputs): SaidThing[] {

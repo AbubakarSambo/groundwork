@@ -122,3 +122,43 @@ describe('the Moving? read when a number has been said but nothing tracks it', (
     expect(g.value).toBe('+2');
   });
 });
+
+/**
+ * AND THE PERSON WHO NAMES PROBLEMS FILLED THE RISKS COLUMN.
+ *
+ * The section groups by entry type, so it collects whoever says things are wrong. On a real cohort,
+ * five of six items were one hire's - the one who said plainly that her list was dead and she would
+ * not reach eight - while the hire who had closed nothing all quarter while calling things "very
+ * close" barely appeared. A lead skimming reads the honest one as the risk.
+ *
+ * Not reweighted: the entries are true, and hiding somebody's own words to balance a column is
+ * worse than the skim. Named, once, and only where one person genuinely dominates.
+ */
+describe('when one person fills the risks section', () => {
+  const worry = (who: string, text: string) => ({ type: RecordEntryType.WORRY, text, who, recallBased: true, threadKey: null });
+  const note = (entries: SessionReportInputs['entries']) =>
+    theSessionReport(base({ entries })).sections.find((s) => s.title === 'Risks and concerns')!.note;
+
+  it('says so when most of it is one person', () => {
+    const n = note([
+      worry('Lola', 'The list is dead.'), worry('Lola', 'No answer from Tunde.'),
+      worry('Lola', 'I will not hit eight.'), worry('Tunde', 'Seyi has closed nothing.'),
+    ]);
+    expect(n).toContain("Most of this is Lola's");
+    expect(n).toContain('not that they are the problem');
+  });
+
+  /** The silence is the other half, and it is the half a lead does not see. */
+  it('and points at who is not in it', () => {
+    const n = note([worry('Lola', 'a'), worry('Lola', 'b'), worry('Lola', 'c')]);
+    expect(n).toContain('has not said there is nothing wrong; they have said nothing');
+  });
+
+  it('and stays quiet on a short list', () => {
+    expect(note([worry('Lola', 'a'), worry('Lola', 'b')])).toBeNull();
+  });
+
+  it('and stays quiet when the concerns are spread', () => {
+    expect(note([worry('Lola', 'a'), worry('Tunde', 'b'), worry('Kwame', 'c')])).toBeNull();
+  });
+});
