@@ -60,6 +60,14 @@ interface Row { can: boolean; says: string; because?: string }
  * The rows, in the order somebody would ask them: what is mine, what is ours, what holds up, what is
  * backed, what has changed.
  */
+/**
+ * `headline` IS STILL RETURNED AND NOTHING RENDERS IT.
+ *
+ * It read "It can say what you said. It cannot compare anything until one more person answers" -
+ * the bars restated in prose, immediately under the bars. Kept on the return because its specs are
+ * the readable statement of what each state means, and because a caller that wants one sentence
+ * rather than a row of bars is a real thing to want. Nothing on this page wants it.
+ */
 export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string } {
   const others = Math.max(0, f.parties - 1)
   const outstanding = Math.max(0, f.parties - f.answered)
@@ -112,7 +120,7 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
 }
 
 export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
-  const { rows, headline } = whatItCanSay(facts)
+  const { rows } = whatItCanSay(facts)
   const have = rows.filter(r => r.can).length
 
   return (
@@ -127,7 +135,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
         <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)' }}>
-          What the report can say so far
+          How much the report has to go on
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
           {have} of {rows.length}
@@ -154,12 +162,21 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         ))}
       </div>
 
-      {/* One sentence on what a filled bar is, then the state in one more. */}
+      {/*
+        ONE SENTENCE, AND THE HEADLINE IS GONE.
+
+        "It can say what you said. It cannot compare anything until one more person answers" was the
+        bars restated in prose directly under the bars. The count says how many, the sentence says
+        what each one is, and a dashed bar names its own reason on hover. A third telling was the
+        thing this card was built to stop.
+
+        "Account" is out of the list too - it is the login word, and here it meant somebody's side
+        of what happened, which is what it says instead.
+      */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
-        Each bar is one thing a full report says: your account, where you differ, what lines up, what
-        a document backs, and what has changed. Dashed ones it cannot say yet.
+        Each bar is one thing a full report says: what you said, where you differ, what lines up,
+        what a document backs, and what has changed. Dashed ones it cannot say yet.
       </div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 6 }}>{headline}</div>
     </div>
   )
 }

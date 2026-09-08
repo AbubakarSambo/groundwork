@@ -61,7 +61,7 @@ describe('GroundParticipantPage: no dead end where a forming report used to be a
     const COVERAGE = readFileSync(
       join(here, '../../components/gw/WhatTheReportCanSayYet.tsx'), 'utf8',
     )
-    expect(COVERAGE).toContain('What the report can say so far')
+    expect(COVERAGE).toContain('How much the report has to go on')
     expect(COVERAGE).toContain('Dashed ones it cannot say yet')
   })
 })

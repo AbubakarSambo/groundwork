@@ -139,8 +139,13 @@ describe('what the record can support', () => {
     expect(SUPPORT).toContain('Math.max(totalSessions ?? 0, sessions.length)')
   })
 
-  it('and still says out loud that nobody else sees it', () => {
-    expect(SUPPORT).toContain('Only you see this')
+  it('and does not say a second time that nobody else sees it', () => {
+    /*
+     * The check-in header says it on every tab of this page: "Just yours - only you see this until
+     * the report releases." A card repeating it is the same absence stated twice, close together -
+     * the pattern this page has now been cleared of three times.
+     */
+    expect(code(SUPPORT)).not.toContain('Only you see this')
   })
 })
 

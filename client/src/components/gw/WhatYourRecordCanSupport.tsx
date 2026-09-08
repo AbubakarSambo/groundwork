@@ -173,9 +173,16 @@ export function WhatYourRecordCanSupport({
             })}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
-            {/* They fill upward inside a fixed box, so "taller" described nothing. */}
-            Fuller means that session was easier for someone else to check. Dotted ones have not
-            happened yet.
+            {/*
+              IT HAS TO SAY WHAT MAKES A BAR FULLER, OR IT IS A SCORE WITH NO SCALE.
+
+              "Fuller means that session was easier for someone else to check" is true and tells
+              nobody what to do differently. The three things that actually move it are the three
+              named here, and they are the same three the card below asks for - so a person reading
+              a short bar can see what a taller one would have taken.
+            */}
+            How specific each session was. A bar fills with dates, numbers, and saying who you were
+            waiting on. Dashed ones have not happened yet.
           </div>
         </div>
       )}
@@ -197,12 +204,14 @@ export function WhatYourRecordCanSupport({
           </div>
         </div>
       )}
+      {/*
+        "ONLY YOU SEE THIS" IS GONE.
 
-      {/* Kept from the card this replaces. Somebody reading a read of their own writing assumes
-          their lead is reading it too unless told otherwise. */}
-      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
-        Only you see this. It is never shown to the lead or to anybody else in this check-in.
-      </div>
+        It was kept from the card this replaced, on the argument that somebody reading a read of
+        their own writing assumes their lead is reading it too. The tab says it: "Just yours - only
+        you see this until the report releases", in the check-in header on every tab of this page.
+        Twice on one screen is the pattern this page has been cleared of three times over.
+      */}
     </div>
   )
 }

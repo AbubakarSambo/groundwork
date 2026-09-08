@@ -161,10 +161,11 @@ export function SharedReportForAParty({
               </div>
             </>
           )}
-
-          {(!report || (report as any).withheldUntilYouAnswer || !report.releasedAt || !report.activated) && (
-            <Sec title="Shared report" />
-          )}
+          {/*
+            THE HEADING GOES. The tab is called Report, the row above it opens the board, and the
+            only thing under it now is the reveal - which announces itself. A heading naming the tab
+            you are on is the page talking about itself.
+          */}
 
           {!report ? (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
