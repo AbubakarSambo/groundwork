@@ -171,7 +171,25 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    */
   const threadsNow = new Set(input.entries.map((e) => e.threadKey).filter(Boolean) as string[]);
   const lastSessionCommitments = input.previousEntries.filter((e) => e.type === RecordEntryType.COMMITMENT);
-  const notSpokenTo = lastSessionCommitments.filter((c) => !c.threadKey || !threadsNow.has(c.threadKey));
+  /**
+   * AND WHETHER THE RECORD CAN ANSWER THE QUESTION AT ALL.
+   *
+   * Everything above depends on `dimensionThreadKey`, and one path writes it: the operating-
+   * difference extraction, which only runs where the company has written its own process down.
+   * Most have not. Counted on a real twelve-session cohort: 227 entries, 0 thread keys.
+   *
+   * With none, `!c.threadKey` is true of every previous commitment, so the section listed EVERY
+   * commitment from last session as "not mentioned again" - beside the same commitments, unchanged,
+   * in the list above. The lead read each of them twice, once as a commitment and once as abandoned.
+   *
+   * A read that cannot be made must say so rather than assert its default. `canFollowThreads` is
+   * the honest test: without a thread on either side there is nothing to compare, and "nobody
+   * returned to anything" is a claim about people rather than a fact about the record.
+   */
+  const canFollowThreads = threadsNow.size > 0 || input.previousEntries.some((e) => !!e.threadKey);
+  const notSpokenTo = canFollowThreads
+    ? lastSessionCommitments.filter((c) => !c.threadKey || !threadsNow.has(c.threadKey))
+    : [];
 
   const sections: SessionReportSection[] = [
     {
@@ -193,7 +211,9 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       ],
       saying:
         lastSessionCommitments.length > 0
-          ? 'No new commitments, and every commitment from last session was returned to.'
+          ? canFollowThreads
+            ? 'No new commitments, and every commitment from last session was returned to.'
+            : 'No new commitments this session. Whether last session\'s were returned to is not something this record can tell you.'
           : 'Nobody committed to anything specific this session.',
     },
     {
@@ -215,7 +235,12 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       saying:
         input.sessionNumber <= 1
           ? 'This is the first session, so there is nothing before it to compare with.'
-          : 'Nothing in this session contradicts or moves what was said last time.',
+          : canFollowThreads
+            ? 'Nothing in this session contradicts or moves what was said last time.'
+            /* The same limit as the commitments band above: with nothing threading the sessions
+               together, "nothing moved" is a claim this cannot support. Said on all twelve sessions
+               of a real cohort in which plenty moved. */
+            : 'This record does not thread across sessions, so what moved since last time cannot be read from it. What each person said this session is above.',
     },
     {
       title: 'What changed since the beginning',
@@ -249,10 +274,30 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     },
     {
       label: 'Moving?',
+      /*
+       * "NO TARGETS SET" WAS TRUE AND USELESS.
+       *
+       * Read on a real twelve-session cohort whose entire purpose was who reaches eight closed
+       * deals: the lead said "each of them at eight closed deals" in EVERY session, and this tile
+       * read "no targets set / nothing here carries a number yet" for the whole quarter. Both
+       * halves true about the target table, and the quarter's number was sitting in the transcript
+       * the tile is printed beside.
+       *
+       * It is deliberately not turned into a target automatically. Reading a number out of a
+       * sentence and making it the thing somebody is measured against is exactly the inference this
+       * product refuses everywhere else - the lead sets the yardstick, on purpose, in one place.
+       *
+       * What changes is that the tile stops reporting an empty table and starts naming the gap: a
+       * number has been said, nothing is tracking it, and one person can fix that in a minute.
+       */
       value: input.movedOnTargets == null
-        ? 'no targets set'
+        ? aNumberWasSaid(input) ? 'a number was said' : 'no targets set'
         : input.movedOnTargets > 0 ? `+${input.movedOnTargets}` : 'no change',
-      sub: input.movedOnTargets == null ? 'nothing here carries a number yet' : 'across targets this session',
+      sub: input.movedOnTargets == null
+        ? aNumberWasSaid(input)
+          ? 'somebody named a number and nothing is tracking it'
+          : 'nothing here carries a number yet'
+        : 'across targets this session',
     },
     {
       label: 'Stuck?',
@@ -312,6 +357,29 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
  * A theme spoken to this session that was also spoken to last session, where the words differ, is
  * a change worth reading. A theme that is new is new. Nothing is inferred about WHY.
  */
+/**
+ * WHETHER ANYBODY HAS PUT A NUMBER ON WHAT THEY ARE AIMING AT.
+ *
+ * Not a target - a target is something the lead sets deliberately, and inferring one from a
+ * sentence is the move this product does not make. This only asks whether the quarter's number is
+ * sitting in the record while the target table is empty, which is a different and very common
+ * state: on a real cohort the lead said "eight closed deals" twelve times and the board read "no
+ * targets set" throughout.
+ *
+ * Deliberately narrow. A date is not a target and neither is a session count, so plain digits
+ * attached to a stated aim are what counts - written as a figure or as a word, because people say
+ * both and "eight closed deals" is the same claim as "8 closed deals".
+ */
+const A_NUMBER_IN_WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|fifty|hundred)\b/i;
+
+export function aNumberWasSaid(input: Pick<SessionReportInputs, 'entries'>): boolean {
+  return input.entries.some(
+    (e) =>
+      (e.type === RecordEntryType.SUCCESS_DEFINITION || e.type === RecordEntryType.INTENT)
+      && (/\d/.test(e.text) || A_NUMBER_IN_WORDS.test(e.text)),
+  );
+}
+
 function whatChanged(input: SessionReportInputs): SaidThing[] {
   if (input.sessionNumber <= 1) return [];
   const before = new Map<string, string>();

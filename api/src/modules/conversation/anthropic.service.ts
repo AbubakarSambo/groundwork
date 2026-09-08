@@ -366,6 +366,22 @@ export class AnthropicService {
   }
 
   private convertTool(tool: { name: string; description: string; input_schema: any }) {
+    /*
+     * A TOOL WITH NO NAME IS A CALL THAT CAN NEVER SUCCEED.
+     *
+     * Gemini answers `tools[0].function_declarations[0].name: [REQUIRED_FIELD_MISSING]` and the
+     * whole extraction fails - every time, for as long as that caller exists. Seen repeatedly in a
+     * real run's logs, where the only trace was the provider's own error and nothing said which of
+     * the twenty-six extractions it belonged to.
+     *
+     * Thrown here rather than sent, with the description in the message, because the failure then
+     * names its own caller instead of arriving as an anonymous 400 from somebody else's API.
+     */
+    if (!tool?.name?.trim()) {
+      throw new Error(
+        `extract() was given a tool with no name, so the call could never succeed. Description: "${tool?.description ?? '(none)'}".`,
+      );
+    }
     return {
       name: tool.name,
       description: tool.description,

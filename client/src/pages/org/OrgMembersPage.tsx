@@ -107,6 +107,14 @@ export function OrgMembersPage() {
     enabled: isAdmin,
   })
 
+  /* What the org's own setting is, so the sentence above can say it instead of "if your settings
+     allow it" - which is the answer nobody needs at the moment they are adding somebody. */
+  const howCheckInsWork = useQuery({
+    queryKey: ['how-check-ins-work'],
+    queryFn: () => apiClient.get<{ whoMayOpen: string; needsApproval: boolean }>('/users/organization/check-ins').then(r => r.data),
+    enabled: isAdmin,
+  })
+
   const seatQueue = useQuery({
     queryKey: ['waiting-for-a-seat'],
     queryFn: authApi.waitingForASeat,
@@ -365,6 +373,28 @@ export function OrgMembersPage() {
         approve check-ins when your organisation asks for that.{' '}
         <strong style={{ color: 'var(--gw-text)' }}>Everybody else</strong> takes part in the
         check-ins they are added to, and can open their own if your settings allow it.{' '}
+        {/*
+          AND WHAT THAT SETTING CURRENTLY IS, WHERE PEOPLE ARE BEING ADDED.
+
+          "if your settings allow it" is true and answers nothing at the moment somebody needs it.
+          Walked on a real org: the admin added two managers, told them to set up their own
+          check-ins, and both were refused - the default is "only people I name", nothing on this
+          page said so, and the managers could not act on the refusal either. It is one clause and
+          a link, on the page where the people are added.
+        */}
+        {howCheckInsWork.data && (
+          <>
+            Right now,{' '}
+            {howCheckInsWork.data.whoMayOpen === 'EVERYONE'
+              ? 'anybody here can open one'
+              : 'only people you name can open one'}
+            .{' '}
+            <button
+              onClick={() => navigate('/settings')}
+              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+            >Change that</button>.{' '}
+          </>
+        )}
         <strong style={{ color: 'var(--gw-text)' }}>Guests</strong> come from another organisation:
         they take part in what they are added to, and never open one here.
       </p>
