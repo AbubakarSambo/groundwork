@@ -95,9 +95,12 @@ describe('the directive when the burden has been uneven', () => {
 
 describe('counting across the check-in', () => {
   it('separates this person from everybody else', () => {
+    /* Stamps, not text: see countWhatWasAsked for why this never reads a turn. */
     const t = countWhatWasAsked([
-      { participantId: 'fay', aiTurns: ['Is there anything written down that proves it?', 'How many PRs are waiting?'] },
-      { participantId: 'eli', aiTurns: ['What did you do, or not do, that got us here?'] },
+      { participantId: 'fay', askedFor: 'evidence' },
+      { participantId: 'fay', askedFor: 'evidence' },
+      { participantId: 'eli', askedFor: 'reflection' },
+      { participantId: 'eli', askedFor: null },
     ], 'fay');
     expect(t.thisPerson).toEqual({ evidence: 2, reflection: 0 });
     expect(t.theOthers).toEqual({ evidence: 0, reflection: 1 });
@@ -108,13 +111,28 @@ describe('and it reaches the assembled prompt', () => {
   const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  it('counts across the whole check-in, not one session', () => {
-    expect(SRC).toMatch(/where: \{ role: TurnRole\.AI, checkIn: \{ groundId: checkIn\.groundId \} \}/);
+  /**
+   * NEVER READS ANOTHER PERSON'S TURNS. An AI turn carries the person's own words reflected back,
+   * so loading Fay's while answering Eli is loading Fay's account into Eli's session - which an
+   * existing guard refuses, correctly. The count comes from a stamp written at the time.
+   */
+  it('counts with a groupBy, which cannot return content at all', () => {
+    const q = SRC.slice(SRC.indexOf('const burden ='), SRC.indexOf('const toPut ='));
+    expect(q).toMatch(/conversationTurn\.groupBy\(\{/);
+    expect(q).toMatch(/by: \['checkInId', 'askedFor'\]/);
+    /* The point of the groupBy: there is no shape of it that returns a turn's words, so this cannot
+       be widened into a leak later without being rewritten into something else entirely. */
+    expect(q).not.toMatch(/findMany/);
+    expect(q).not.toMatch(/content/);
+  });
+
+  it('and stamps every AI turn as it is written', () => {
+    expect((SRC.match(/askedFor: stampWhatItAskedFor\(/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });
 
   /** On a solo check-in there is no other side to be uneven with, and no query worth running. */
   it('and only where there is another side', () => {
-    expect(SRC).toMatch(/ground\.participants\.length > 1/);
+    expect(SRC).toMatch(/\(ground\.participants\?\.length \?\? 0\) > 1/);
   });
 
   it('and is joined into the prompt rather than merely computed', () => {

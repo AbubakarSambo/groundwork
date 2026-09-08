@@ -1,7 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
-import { aDirectiveAboutTheBurden, countWhatWasAsked } from './the-same-burden-on-both-sides';
+import { aDirectiveAboutTheBurden, countWhatWasAsked, stampWhatItAskedFor } from './the-same-burden-on-both-sides';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
@@ -672,7 +672,12 @@ export class ConversationService {
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
     const aiTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: forHumans(reply) },
+      data: {
+        checkInId: checkIn.id, role: TurnRole.AI, content: forHumans(reply),
+        /* Stamped as it is written, so the two-party balance can be counted without ever reading
+           one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
+        askedFor: stampWhatItAskedFor(forHumans(reply)),
+      },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
@@ -907,7 +912,10 @@ export class ConversationService {
       }
       hadCloseMarker = stripped.hadMarker;
       aiTurn = await this.prisma.conversationTurn.create({
-        data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
+        data: {
+          checkInId: checkIn.id, role: TurnRole.AI, content: reply,
+          askedFor: stampWhatItAskedFor(reply),
+        },
       });
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
@@ -1160,7 +1168,9 @@ export class ConversationService {
         );
       }
 
-      await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
+      await this.prisma.conversationTurn.create({
+        data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
+      });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
@@ -1940,23 +1950,47 @@ export class ConversationService {
      *
      * Only where there IS another side: on a solo check-in there is nothing to be uneven with.
      */
-    const everyAiTurn = ground.participants.length > 1
-      ? await this.prisma.conversationTurn.findMany({
-        where: { role: TurnRole.AI, checkIn: { groundId: checkIn.groundId } },
-        select: { content: true, checkIn: { select: { participantId: true } } },
-      })
-      : [];
-    const askedOfEach = new Map<string, string[]>();
-    for (const t of everyAiTurn) {
-      const pid = t.checkIn?.participantId;
-      if (!pid) continue;
-      askedOfEach.set(pid, [...(askedOfEach.get(pid) ?? []), t.content]);
-    }
-    const burden = everyAiTurn.length
-      ? aDirectiveAboutTheBurden(countWhatWasAsked(
-        [...askedOfEach].map(([participantId, aiTurns]) => ({ participantId, aiTurns })),
-        checkIn.participantId,
-      ))
+    /* `?? 0`: a ground read that did not select participants cannot tell one side from another, so
+       there is nothing to compare and no query worth running. */
+    /*
+     * COUNTED FROM STAMPS, NOT FROM TEXT. Each AI turn records what it asked for when it is written
+     * - see the-same-burden-on-both-sides.ts - so this reads tallies across the check-in without
+     * ever loading one person's turns while answering another. The first version read the turns and
+     * an existing guard refused it, correctly: an AI turn carries the person's own words reflected
+     * back, and that must not cross between participants even in memory.
+     */
+    const burden = (ground.participants?.length ?? 0) > 1
+      ? await (async () => {
+        /*
+         * A groupBy, DELIBERATELY, AND NOT A findMany.
+         *
+         * The rule next door is that a content-bearing turn load stays scoped to one check-in - an
+         * AI turn carries the person's own words reflected back, so reading Fay's while answering
+         * Eli is reading Fay's account into Eli's session. My first version was a ground-scoped
+         * findMany and the guard refused it.
+         *
+         * A groupBy cannot return content: it returns the fields grouped on and a count, and there
+         * is no way to widen it into a leak later without rewriting it into something else. The
+         * participant is resolved from the check-ins already in hand rather than joined in.
+         */
+        const perCheckIn = await this.prisma.conversationTurn.groupBy({
+          by: ['checkInId', 'askedFor'],
+          where: { role: TurnRole.AI, askedFor: { not: null }, checkIn: { groundId: checkIn.groundId } },
+          _count: { _all: true },
+        });
+        const whose = new Map<string, string>();
+        for (const p of ground.participants ?? []) {
+          for (const c of ((p as any).checkIns ?? [])) whose.set(c.id, p.id);
+        }
+        whose.set(checkIn.id, checkIn.participantId);
+        const stamps: { participantId: string; askedFor: string | null }[] = [];
+        for (const row of perCheckIn) {
+          const pid = whose.get(row.checkInId);
+          if (!pid) continue;
+          for (let i = 0; i < row._count._all; i++) stamps.push({ participantId: pid, askedFor: row.askedFor });
+        }
+        return aDirectiveAboutTheBurden(countWhatWasAsked(stamps, checkIn.participantId));
+      })()
       : '';
 
     const toPut = latestMessage ? whatToPutToThem(latestMessage, shareableForThisTurn) : null;
@@ -4419,7 +4453,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);
 
     await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
     });
 
     return { reply };

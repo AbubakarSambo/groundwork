@@ -59,6 +59,12 @@ const ASKS_THEM_TO_REFLECT = [
   /\bwhat would you do differently\b/i,
 ];
 
+/** What to store on the row: the kind, or null where the turn asked for neither. */
+export function stampWhatItAskedFor(turn: string): string | null {
+  const kind = whatThisTurnAskedFor(turn);
+  return kind === 'neither' ? null : kind;
+}
+
 export function whatThisTurnAskedFor(turn: string): WhatItAskedFor {
   const said = turn ?? '';
   /* Reflection first: "what did you do or not do that got us here" also contains "do", and a turn
@@ -75,17 +81,27 @@ export interface HowEachSideHasBeenAsked {
   theOthers: { evidence: number; reflection: number };
 }
 
+/**
+ * COUNTED FROM STAMPS, NEVER FROM TEXT.
+ *
+ * The first version read every AI turn on the check-in and classified them here. An existing guard
+ * refused it, and was right: an AI turn carries the person's own words reflected back at them, so
+ * loading Fay's turns while answering Eli is loading Fay's account into Eli's session. That the
+ * text never reached the prompt is not the point - the rule is that content-bearing turn loads stay
+ * scoped to one check-in, precisely so a later change cannot quietly make it reach.
+ *
+ * Each turn is classified when it is written and the kind stored on the row. This takes the tallies
+ * and never sees a word.
+ */
 export function countWhatWasAsked(
-  turnsByParticipant: { participantId: string; aiTurns: string[] }[],
+  stamps: { participantId: string; askedFor: string | null }[],
   meParticipantId: string,
 ): HowEachSideHasBeenAsked {
   const tally = { thisPerson: { evidence: 0, reflection: 0 }, theOthers: { evidence: 0, reflection: 0 } };
-  for (const p of turnsByParticipant) {
-    const bucket = p.participantId === meParticipantId ? tally.thisPerson : tally.theOthers;
-    for (const t of p.aiTurns) {
-      const kind = whatThisTurnAskedFor(t);
-      if (kind !== 'neither') bucket[kind] += 1;
-    }
+  for (const row of stamps) {
+    if (row.askedFor !== 'evidence' && row.askedFor !== 'reflection') continue;
+    const bucket = row.participantId === meParticipantId ? tally.thisPerson : tally.theOthers;
+    bucket[row.askedFor] += 1;
   }
   return tally;
 }

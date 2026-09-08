@@ -1212,6 +1212,15 @@ model ConversationTurn {
   role      TurnRole
   content   String   @db.Text
   stage     String? // which conversation stage produced this turn
+  /// WHAT THIS TURN ASKED OF SOMEBODY: 'evidence', 'reflection', or null for neither.
+  ///
+  /// Stamped when the turn is written so the balance between two parties can be counted WITHOUT
+  /// ever reading one person's turns while answering another. That distinction is the whole reason
+  /// this column exists rather than a query: an AI turn carries the person's own words reflected
+  /// back at them, so loading Fay's turns into Eli's request is loading Fay's account into Eli's
+  /// session, and the guard on check-in-scoped turn loads is right to refuse it. A count is not
+  /// content; this makes the count available without the content.
+  askedFor  String?  @map("asked_for")
   createdAt DateTime @default(now()) @map("created_at")
 
   checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
