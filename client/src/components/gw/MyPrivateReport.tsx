@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sec } from './kit'
 import { SoloReportBody } from './SoloReportBody'
-import { WhatToWalkInWith } from './WhatToWalkInWith'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -40,8 +39,6 @@ export interface MyPrivateReportProps {
    * "I need my own report to be the same report on my record."
    */
   mySessions?: { id: string; sessionNumber: number; completedAt?: string | Date | null }[]
-  /** The three private lines for the conversation ahead. Null when there is no released report. */
-  walkInGuide?: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } | null
   /**
    * HOW SPECIFIC EACH SESSION WAS, by session number.
    *
@@ -61,7 +58,6 @@ export function MyPrivateReport({
   myParticipant,
   otherParties,
   mySessions = [],
-  walkInGuide = null,
   onGoToReport,
 }: MyPrivateReportProps) {
   const qc = useQueryClient()
@@ -89,15 +85,6 @@ export function MyPrivateReport({
 
   return (
     <>
-          {/*
-            FIRST, BECAUSE IT IS THE ONLY THING HERE ABOUT WHAT HAPPENS NEXT.
-
-            Everything else on this tab is a record of what was already said. This is three lines
-            for the conversation that has not happened yet, and it was buried in the middle of the
-            shared report - a private panel inside a document written for everybody, having to
-            announce that it was an exception to its own surroundings.
-          */}
-          {walkInGuide && <WhatToWalkInWith guide={walkInGuide} />}
           {/*
             THE REPORT YOU READ AT THE END OF EACH SESSION, WHICH IS WHAT THIS TAB IS FOR.
             "I need my own report to be the same report on my record." My record showed one thing

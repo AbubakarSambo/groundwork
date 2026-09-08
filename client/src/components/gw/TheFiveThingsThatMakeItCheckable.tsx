@@ -41,31 +41,43 @@ export function wasItThere(level: Level | undefined): boolean {
  * So each is a plain instruction when it is missing, and the same thing in the past tense when it
  * is there. Same five facts, in words somebody would actually use.
  */
+/**
+ * HER WORDS, NOT A PARAPHRASE OF THEM.
+ *
+ * She wrote the copy for this card out in full. I shipped a version of it with "Say" and "Add"
+ * bolted onto the front of every line, which turns a list of things to include into five
+ * instructions - the scolding tone she had just asked me to remove, in a different grammar.
+ *
+ * Noun phrases read as a list of what to bring. Verbs read as a list of what you failed to do.
+ *
+ * The past-tense forms are mine, because she only wrote the missing case; they are the same five
+ * facts said as things that were there.
+ */
 const THE_FIVE: { key: string; met: string; missing: string }[] = [
   {
     key: 'delivery',
-    met: 'You said what you did',
-    missing: 'Say what you did, not just what was going on around you',
+    met: 'What you did, not just what was happening',
+    missing: 'What you did, not just what was happening',
   },
   {
     key: 'evidence',
-    met: 'You gave a date, a number or a document',
-    missing: 'Add a date, a number or a document',
+    met: 'One date, number or document',
+    missing: 'One date, number or document',
   },
   {
     key: 'enablement',
-    met: 'You said what you needed from other people',
-    missing: 'Say what you were waiting on from someone else',
+    met: 'What you were waiting on, and from whom',
+    missing: 'What you were waiting on, and from whom',
   },
   {
     key: 'coverage',
-    met: 'You talked about the hard parts too',
-    missing: 'Say what went badly, not only what went well',
+    met: 'What went badly, not only what went well',
+    missing: 'What went badly, not only what went well',
   },
   {
     key: 'commitment',
-    met: 'You said what happens next, who does it and when',
-    missing: 'Say what happens next, who does it and by when',
+    met: 'What happens next, who does it, by when',
+    missing: 'What happens next, who does it, by when',
   },
 ]
 
@@ -105,7 +117,9 @@ export function TheFiveThingsThatMakeItCheckable({
           work out which. So the sentence says the thing instead of naming it.
         */}
         {sessionNumber ? `Session ${sessionNumber} was mostly about the situation around you. ` : ''}
-        Five things make it easy for someone else to check what happened. Add one or two next time.
+        {/* Her sentence, minus the one word she banned: "five things make an account something a
+            reader can check" - account means their account of what happened and reads as a login. */}
+        Five things make a check-in something a reader can check. Add one or two next time.
       </div>
 
       <div style={{ display: 'grid', gap: 7 }}>
@@ -124,9 +138,17 @@ export function TheFiveThingsThatMakeItCheckable({
             >
               {r.there ? '✓' : ''}
             </span>
+            {/*
+              THE SAME WORDS EITHER WAY, AND THE TICK CARRIES THE DIFFERENCE.
+
+              Two wordings meant the list changed shape as sessions went on, so a person could not
+              scan the same five things twice. One list, ticked where it was there - and a ticked
+              line reads as "you did this" without a sentence having to say so.
+            */}
             <span style={{
               fontSize: 12.5, lineHeight: 1.5,
               color: r.there ? 'var(--gw-text)' : 'var(--gw-sub)',
+              textDecoration: 'none',
             }}>
               {r.there ? r.met : r.missing}
             </span>
@@ -137,9 +159,7 @@ export function TheFiveThingsThatMakeItCheckable({
       {shortBy > 0 && (
         /* A next action rather than a total. The count is only here to make the sentence true. */
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 11, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
-          {shortBy === 1
-            ? 'One sentence next time covers it.'
-            : 'You do not need all of them. One or two next time makes a difference.'}
+          {shortBy === 1 ? 'One sentence next time covers it.' : 'Add one or two next time.'}
         </div>
       )}
 

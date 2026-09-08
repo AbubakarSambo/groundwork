@@ -76,7 +76,7 @@ describe('my record', () => {
    */
   it('keeps the part that IS about the run, and the part somebody can act on', () => {
     expect(SUPPORT).toContain('Your answers are getting more checkable than session')
-    expect(FIVE).toContain('One or two next time makes a difference')
+    expect(FIVE).toContain('Add one or two next time')
     expect(FIVE).toContain('whatWouldHelp')
   })
 

@@ -38,7 +38,11 @@ describe('the three things that had nowhere else to be', () => {
   it('the private lines for the conversation ahead are on My record', () => {
     expect(GUIDE).toContain('Before you talk to them')
     expect(GUIDE).toContain('Yours alone, and not part of the shared report')
-    expect(MY_RECORD).toContain('<WhatToWalkInWith')
+    /* Rendered by the page rather than inside MyPrivateReport now: her order puts it last, after
+       sign-off, because it is private prep for a conversation rather than part of reading your
+       record. Having it third pushed the reading down the page. */
+    const PARTY_PAGE = strip(read('../grounds/GroundParticipantPage.tsx'))
+    expect(PARTY_PAGE).toContain('<WhatToWalkInWith')
   })
 
   it('the inferred claims are on the page that already corrects the record', () => {

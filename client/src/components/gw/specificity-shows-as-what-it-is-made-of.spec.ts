@@ -44,8 +44,8 @@ describe('the five things', () => {
     /* "enablement" and "coverage" are field names. What a person recognises is what they did or did
        not say, in the second person, which is what the labels are. */
     const shown = code(FIVE)
-    expect(shown).toContain('Say what you were waiting on from someone else')
-    expect(shown).toContain('Say what went badly, not only what went well')
+    expect(shown).toContain('What you were waiting on, and from whom')
+    expect(shown).toContain('What went badly, not only what went well')
   })
 
   it('collapse four stored levels to met or not', () => {
@@ -66,9 +66,15 @@ describe('the five things', () => {
      * Each is an instruction when it is missing and the same fact in the past tense when it is
      * there. What must not come back is the list of absences.
      */
-    expect(code(FIVE)).toContain('Add a date, a number or a document')
+    /*
+     * NOUN PHRASES, NOT VERBS. It went from findings ("No dates, numbers or documents yet") to
+     * instructions ("Add a date, a number or a document"), and the second is the same scolding in a
+     * different grammar - five things you failed to do. A list of what to bring reads as a list.
+     */
+    expect(code(FIVE)).toContain('One date, number or document')
     expect(code(FIVE)).not.toContain('No dates, numbers or documents yet')
     expect(code(FIVE)).not.toContain('Nothing on record about')
+    expect(code(FIVE)).not.toMatch(/missing: 'Say /)
     /* And it must say which session it is about, in the heading rather than a buried sub-line. */
     /* The heading became her wording - "What would make your next check-in count for more" - and
        the session is named in the sentence under it. Same requirement: a person must be able to

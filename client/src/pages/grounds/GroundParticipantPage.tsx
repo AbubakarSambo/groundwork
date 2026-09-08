@@ -16,6 +16,7 @@ import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { MyParticipation } from '@/components/gw/MyParticipation'
@@ -642,10 +643,6 @@ export function GroundParticipantPage() {
 
             <MyPrivateReport
               groundId={id!}
-              /* The private, forward-looking panel that used to sit inside the shared report. See
-                 WhatToWalkInWith - it is three lines for one person about a conversation they have
-                 not had yet, and My record is the tab that is theirs. */
-              walkInGuide={(report as any)?.postReportGuide ?? null}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
               myParticipant={myParticipant}
@@ -666,6 +663,19 @@ export function GroundParticipantPage() {
                should not have to know either, so it asks and the page translates. */
             onGoToTab={(t) => goTab(t as any)}
             />
+
+            {/*
+              LAST, WHICH IS WHERE SHE PUT IT.
+
+              I had it third, on the argument that it is the only forward-looking thing here. Her
+              order settles it differently and better: the page runs from where the record stands,
+              to what to add next time, to what you are carrying, to signing off - and this is
+              private prep for a conversation, which is a different job from reading your record.
+              It is fine at the bottom, and putting it high pushed the reading down the page.
+            */}
+            {(report as any)?.postReportGuide && (
+              <WhatToWalkInWith guide={(report as any).postReportGuide} />
+            )}
           </div>
         )}
 
