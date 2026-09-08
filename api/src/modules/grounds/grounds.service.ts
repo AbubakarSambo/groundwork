@@ -220,7 +220,19 @@ export const SAFE_PARTICIPANT_SELECT = {
   // ONLY the display name of the linked user - so a participant can see WHO is here
   // by name when their email is hidden. Deliberately firstName/lastName only: no email,
   // no other user PII is pulled through this nested select.
-  user: { select: { firstName: true, lastName: true } },
+  /*
+   * `awaitingOrgApproval` because a lead chasing somebody needs to know it is not them.
+   *
+   * "When you add a participant that is one on the org, the org has to approve, and you see
+   * pending org approval and not pending check-in." The roster showed "Invite pending" for
+   * somebody whose invitation had actually gone out and who is blocked by an admin in the
+   * lead's OWN organisation - so the lead reads it as the person ignoring their email and
+   * chases the wrong thing.
+   *
+   * A boolean about whether they can act yet, not a fact about them: this is the same tier as
+   * `invitedAt` and `signedOffAt`, which every party already sees.
+   */
+  user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
 } as const;
 
 /**

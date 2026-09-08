@@ -33,7 +33,14 @@ describe('what the upload box promises is true', () => {
   })
 
   it('says it starts private, where somebody reads it before uploading', () => {
-    expect(PAGE).toMatch(/What you add starts private to you/)
+    /*
+     * SAID ONCE, IN THE HEADING OF THE BOX. It used to be said twice - in the heading and again in
+     * the paragraph below it - and the band was trimmed because it had become the loudest thing on
+     * the page: a heading, eight file types, and a three-line paragraph, for a control pressed
+     * once. The FACT is what this file protects and it is still stated above the button, still
+     * chosen by the flag, and still read before anybody uploads anything.
+     */
+    expect(PAGE).toMatch(/'A file, private to you until you open it'/)
   })
 
   /**
@@ -41,7 +48,9 @@ describe('what the upload box promises is true', () => {
    * would swap one false promise for another.
    */
   it('and tells the flag-off truth, which is a different truth', () => {
-    expect(PAGE).toMatch(/What you add stays yours\. It shapes the questions in your own check-in/)
+    /* With the flag off a document can never be opened, so the sentence cannot mention opening. */
+    expect(PAGE).toMatch(/'It shapes your own questions and reaches nobody else\.'/)
+    expect(PAGE).toMatch(/'A file, private to you'/)
   })
 
   /**
@@ -59,6 +68,9 @@ describe('what the upload box promises is true', () => {
   })
 
   it('the sentence is chosen by the flag, not printed regardless', () => {
-    expect(PAGE).toMatch(/\{contextEnabled\s*\?\s*'What you add starts private to you/)
+    /* Bound to the ternary itself rather than to the word appearing nearby: an earlier version of
+       this asserted `contextEnabled` was present within 700 characters, and replacing the condition
+       with `true` left it green because another `contextEnabled` sat a few lines down. */
+    expect(PAGE).toMatch(/\{contextEnabled\s*\?\s*'Everybody\\u2019s check-in reads it once you open it\.'/)
   })
 })

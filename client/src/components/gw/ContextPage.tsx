@@ -580,6 +580,8 @@ export function ContextPage({
                 opacity: uploadDoc.isPending ? 0.6 : 1,
               }}
               onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
+              /* The formats, where somebody asks the question: while choosing a file. */
+              title={WHAT_YOU_CAN_UPLOAD}
             >
               {/*
                 LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
@@ -599,7 +601,16 @@ export function ContextPage({
                   ? 'Uploading…'
                   : contextEnabled ? 'A file, private to you until you open it' : 'A file, private to you'}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{WHAT_YOU_CAN_UPLOAD}</div>
+              {/*
+                THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
+
+                "The Documents band is the loudest thing on the Context page." It was a large dashed
+                dropzone carrying a heading, a list of eight accepted file types, and a
+                three-line paragraph - about as much text as the brief, for a control that is
+                pressed once. Which formats are allowed is a question somebody has WHILE choosing a
+                file, which is where the file picker is, so it is on the control's tooltip and in
+                its `accept` - where the picker enforces it anyway.
+              */}
               {/*
                 THE PROMISE SITS IN THE BOX IT IS ABOUT. It used to be a second bordered panel
                 directly beneath this one, so an empty Documents band was two stacked boxes saying
@@ -608,12 +619,14 @@ export function ContextPage({
               {docs.length === 0 && (
                 /* Left-aligned: it inherits the dropzone's centring otherwise, and a three-line
                    paragraph set centred is harder to read than the same paragraph set flush. */
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 10, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
-                  The brief, the plan, the scope, the grant terms, or the message that started
-                  this.{' '}
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+                  {/* Three lines became one. The examples earn their place - people do not know
+                      what counts as context and do know what they emailed somebody - and the rest
+                      was the same promise the heading above already makes. */}
+                  The brief, the plan, the scope, or the message that started this.{' '}
                   {contextEnabled
-                    ? 'What you add starts private to you. Open it and everyone\u2019s check-in reads it before asking a question, so it shapes what they are asked.'
-                    : 'What you add stays yours. It shapes the questions in your own check-in, and reaches nobody else.'}
+                    ? 'Everybody\u2019s check-in reads it once you open it.'
+                    : 'It shapes your own questions and reaches nobody else.'}
                 </div>
               )}
               <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}

@@ -1745,6 +1745,25 @@ export function GroundAdminPage() {
                           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }} title={p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered to their inbox' : 'Invite sent'}>
                             {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
                           </span>
+                        ) : p.user?.awaitingOrgApproval ? (
+                          /*
+                            WAITING ON YOUR ORGANISATION, NOT ON THEM.
+
+                            "You see pending org approval and not pending check-in." This row said
+                            "Invite pending" for somebody whose invitation had gone out and who is
+                            held by an admin in the lead's OWN organisation - so the lead reads it
+                            as the person ignoring their email, and chases the wrong thing.
+
+                            It goes where the approval is, because a lead can do nothing about it
+                            from here and an admin can do it in two clicks.
+                          */
+                          <button
+                            onClick={() => navigate('/org/members')}
+                            title="An admin in your organisation has to let them in"
+                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Waiting on your organisation
+                          </button>
                         ) : null}
                         {/* Available for anyone who has not joined yet, whatever
                             the delivery status says - "delivered" only means the
@@ -2249,6 +2268,25 @@ export function GroundAdminPage() {
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
                 They give their own account of the same work. You cannot see what they write until the report releases.
+              </div>
+              {/*
+                THE APPROVAL RULE, SAID BEFORE SOMEBODY IS ADDED RATHER THAN DISCOVERED AFTERWARDS.
+
+                "When you add a participant that is one on the org, the org has to approve. Do
+                people know this when they add someone?" They did not: the rule fires on somebody
+                from OUTSIDE the organisation invited by a lead who is not an admin, and the first
+                anybody heard of it was a roster row that looked like the person ignoring an email.
+
+                SAID AS THE RULE, NOT AS A PREDICTION ABOUT THIS ADDRESS. Working out in advance
+                whether a particular person will need approval means looking up whether that email
+                already has an account and where it lives - which would let anybody test whether an
+                address is a Groundwork user by typing it into this box. The rule is true for
+                everybody and discloses nothing.
+              */}
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 7, padding: '8px 10px', marginBottom: 10, lineHeight: 1.55 }}>
+                Somebody from outside your organisation is invited straight away, and an admin here
+                has to let them in before they can check in. You will see that on their row, and
+                they are told the same thing.
               </div>
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
