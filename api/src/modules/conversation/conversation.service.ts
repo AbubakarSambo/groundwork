@@ -620,9 +620,29 @@ export class ConversationService {
     // The closing session must be NAMED in the opener - the system-context
     // instruction alone loses to the returning-user opener script, so the
     // begin turn (the most-attended instruction) carries it too.
+    /*
+     * AND A CORRECTION MUST BE NAMED HERE TOO, FOR THE REASON DIRECTLY ABOVE.
+     *
+     * The comment on the closing session says it exactly: the system-context instruction alone
+     * loses to the returning-user opener script, so the begin turn - the most-attended instruction
+     * - has to carry it. That lesson was learned for closing sessions and not applied to
+     * corrections, and corrections lost the same way.
+     *
+     * Reported as "the chat about Zainab is meant to clarify things about session 1 but it is
+     * acting like a new session". Removing the competing returning-session block was necessary and
+     * was not enough: driven immediately afterwards, the opener was still
+     * "In your first check-in you set the evidence baseline... what exists right now that counts
+     * toward it?" - a progress question, on a session whose whole purpose is to change what is
+     * already recorded.
+     */
+    const correctingSession = (checkIn as any).isSelfCorrection
+      ? (checkIn as any).selfCorrectionTargetSession
+      : null;
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
-      : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
+      : correctingSession != null
+        ? `<<BEGIN_CHECK_IN>> The person pressed "correct it" on session ${correctingSession}. This is NOT a new session and NOT a progress check. Do not ask what has happened since, do not ask what exists now, and do not ask how anything is going. Open in one sentence by saying you are back on session ${correctingSession} and asking what they want to change or add - then let them tell you, and only then probe for specifics. Their original answers are not deleted or edited; this is recorded alongside them.`
+        : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
     const reply = await this.anthropic.respond(fullSystem, [
       { role: 'user', content: beginMessage },
     ]);
@@ -1576,8 +1596,29 @@ export class ConversationService {
 
     // Returning user protocol: for session 2+, inject the most important unresolved
     // item from the prior session so the AI opens with it specifically.
+    /*
+     * NOT ON A CORRECTION, WHICH IS THE BUG SHE FOUND.
+     *
+     * "The chat about Zainab is one that is meant to clarify things about session 1, but it is
+     * acting like a new session." It was. She pressed Correct it on session 1 and the conversation
+     * opened with:
+     *
+     *   "In your first session, you set two standards for Zainab's first quarter... We're now in
+     *    week five. How does her record look against those two things?"
+     *
+     * That is the RETURNING-SESSION opener, and it is a good one - for a returning session. A
+     * correction is created at the next free session number, so it is always >= 2, so this block
+     * built and injected "open with the most important unresolved item from last time" alongside
+     * the self-correction block that says "open by naming that you are returning to session 1 and
+     * ask what they want to change". Two openers in one prompt, and this one is concatenated LAST,
+     * so it is the instruction the model acted on.
+     *
+     * The same guard already exists thirty lines further up, where the prior-entries replay is
+     * skipped for a correction because the full-turn replay covers it. This is that rule, applied
+     * to the other half.
+     */
     let returningUserContext = '';
-    if (checkIn.sessionNumber >= 2) {
+    if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
     }
 

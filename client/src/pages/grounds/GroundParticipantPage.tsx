@@ -407,7 +407,25 @@ export function GroundParticipantPage() {
               where the check-in has got to belongs up here, on both pages, once.
             */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span>Just yours - only you see this until the report releases.</span>
+              {/*
+                WHICH OF THE TWO VIEWS YOU ARE ON, SAID OUTRIGHT.
+
+                "I think there may be some chaos happening based on lead, participant or admin",
+                after landing here and reporting that the Sessions page had gone and the Context
+                page had vanished. Neither had: this is the party view, which has never had a
+                Sessions tab, and its Context tab is right there. But a lead who runs the check-in
+                AND gives their own account has two pages with the same name at the top, one tab
+                row that differs by two entries, and a line about privacy to tell them apart.
+
+                So the line says which page this is. For somebody who only takes part it reads the
+                same as it always did; for whoever runs it, it names the other page in the same
+                breath as the button that goes there.
+              */}
+              <span>
+                {canRunThisCheckIn
+                  ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
+                  : 'Just yours - only you see this until the report releases.'}
+              </span>
               {totalSessions != null && (
                 <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
               )}
