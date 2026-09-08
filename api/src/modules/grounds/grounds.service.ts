@@ -1680,8 +1680,27 @@ export class GroundsService {
      * architecture document read as its first N characters, saying so, beats one read silently in
      * part. See a-prompt-that-ran-out-of-room-says-so.ts.
      */
+    /*
+     * AND THE LEAD'S OWN FILES, NOT ONLY THE ONES ALREADY OPEN TO EVERYBODY.
+     *
+     * "Why can't a context chat pull our context from a doc that aligns with the scenario?"
+     *
+     * It could, and it does - but only for documents whose visibility is OPEN. A document starts
+     * private to whoever uploaded it, on purpose (G24 rule 3: a performance plan dropped into
+     * shared context in a hurried first week cannot be recalled). So somebody who uploaded the
+     * brief from inside this very conversation was then told by it that no document had been
+     * shared, and asked to go and find one.
+     *
+     * A person's own file is not behind a wall FROM THEM. The wall is other people reading it, and
+     * this conversation has exactly one reader: the lead, who is also the uploader. Nobody else's
+     * private document is included - `uploadedBy` is the requesting user, and OPEN is unchanged
+     * for everybody else's.
+     */
     const openDocuments = await this.prisma.groundDocument.findMany({
-      where: { groundId, visibility: 'OPEN' },
+      where: {
+        groundId,
+        OR: [{ visibility: 'OPEN' }, { participant: { userId: requestingUserId } }],
+      },
       select: { fileName: true, content: true, uploaderNote: true },
       orderBy: { createdAt: 'desc' },
     }).catch(() => [] as { fileName: string; content: string; uploaderNote: string | null }[]);

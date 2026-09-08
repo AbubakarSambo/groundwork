@@ -4,11 +4,9 @@ import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
-import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
-import { plannedSessionsFor } from '@/lib/sessionCount'
 import { Sec } from '@/components/gw/kit'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
-import { ContextStrength, LEAD_HOLDS_MORE } from '@/components/gw/ContextStrength'
+import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
 import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
@@ -215,29 +213,6 @@ export function ContextPage({
   const theBrief: string = ((ground as any).brief ?? '').trim()
   const objectives: any[] = (ground as any).objectives ?? []
 
-  const contextStrength = whatThisGroundCanTellYou({
-    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-    /**
-     * REAL VALUES, AT LAST. These three were `!!brief`, `0` and `false` - the last two hardcoded,
-     * because `GroundBaseline` had no writer, so two lines of the context read fired on every ground
-     * whatever the truth: a lead who HAD named conditions was still told the record would not be able
-     * to say whether they were met.
-     *
-     * `brief` is what the ground is ABOUT. `successLooksLike` is what doing well in it would look
-     * like. Only the second is a yardstick, so it is what this asks about.
-     */
-    hasSuccessDefinition: !!((ground as any).baseline?.successLooksLike?.trim() || (ground as any).brief?.trim()),
-    conditionCount: ((ground as any).baseline?.conditions ?? []).length,
-    hasBaseline: !!(ground as any).baseline,
-    perPersonObjectiveCount: objectives.length,
-    openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
-    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: plannedSessionsFor(
-      ground?.timelineDays,
-      (ground as any)?.cadence,
-      (ground as any)?.maxSessions ?? (ground as any)?.totalSessions,
-    ) ?? 1,
-  })
 
   return (
     <div>
@@ -1025,16 +1000,22 @@ export function ContextPage({
               between the expectations and the documents it broke the run of bands with a summary of
               things the reader had not seen yet.
             */}
-            {contextEnabled && contextStrength && (
-              /*
-                `closedNote` is the sentence saying the lead holds context this page does not show.
-                It is true only for somebody who is not the lead, and it was on the participant's
-                copy of this page and not the lead's - which is right, and is exactly the kind of
-                difference that has to be expressed as one flag on one component rather than as two
-                pages that happen to differ.
-              */
-              <ContextStrength read={contextStrength} closedNote={!isLead} chatBelow={contextEnabled && isLead} />
-            )}
+              {/*
+                "WHAT THIS CHECK-IN CAN TELL YOU" IS GONE. "This has to go."
+
+                It listed what the check-in could answer and then five things it could not, each
+                with the reason - no conditions named, no record of where this stood, no document
+                shared. All true, and all of it landing on somebody who had come to the page to do
+                one thing. It was rewritten twice: once to strip the green-promise-over-amber-
+                counter treatment, once to say what its list was for. Neither made it wanted, which
+                is the answer - a panel that has to keep being justified is a panel nobody asked
+                for.
+
+                Nothing it said is lost that anybody needs. What a check-in still needs is named
+                where it can be acted on: the conversation below asks for exactly these things, in
+                the order that matters, and now takes them. The read was the same list without the
+                asking.
+              */}
             {/*
               THE HONESTY LINE SURVIVES THE FLAG BEING OFF, because that is when it matters most.
 
