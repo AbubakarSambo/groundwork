@@ -96,11 +96,16 @@ export function TheFiveThingsThatMakeItCheckable({
         sub-line, left a person reading a permanent judgement instead of a note about session 1.
       */}
       <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
-        {sessionNumber ? `How checkable session ${sessionNumber} was` : 'How checkable your answers were'}
+        What would make your next check-in count for more
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
-        Five things make an answer easy for someone else to check. Here is what
-        {sessionNumber ? ` session ${sessionNumber}` : ' it'} had, and what to add next time.
+        {/*
+          "ACCOUNT" IS THE ROBOT WORD, and it was still in here after being banned once. It means
+          somebody's account of what happened; in an app it reads as a login, and nobody stops to
+          work out which. So the sentence says the thing instead of naming it.
+        */}
+        {sessionNumber ? `Session ${sessionNumber} was mostly about the situation around you. ` : ''}
+        Five things make it easy for someone else to check what happened. Add one or two next time.
       </div>
 
       <div style={{ display: 'grid', gap: 7 }}>
@@ -134,13 +139,16 @@ export function TheFiveThingsThatMakeItCheckable({
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 11, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
           {shortBy === 1
             ? 'One sentence next time covers it.'
-            : 'You do not need all of them. Even one or two next time makes a difference.'}
+            : 'You do not need all of them. One or two next time makes a difference.'}
         </div>
       )}
 
       {/* Nobody can act on a word like "low"; everybody can act on "none of your answers say when". */}
+      {/* THE ONE THAT WOULD MOVE THEM MOST, marked as such. Five equal suggestions is a list to
+          skim; one named as the most useful is a thing to do. */}
       {whatWouldHelp && (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
+          <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>Most useful for you. </span>
           {whatWouldHelp}
         </div>
       )}

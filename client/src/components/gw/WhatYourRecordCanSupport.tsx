@@ -23,6 +23,8 @@
  * dressed as an observation.
  */
 
+import { WhatTheReportCanSayYet, type CoverageFacts } from './WhatTheReportCanSayYet'
+
 export type RecordStrength = { score?: number; label?: string; description?: string } | null | undefined
 
 /** done: finished. corrected: finished and later corrected. Anything beyond is still to come. */
@@ -75,6 +77,8 @@ export function WhatYourRecordCanSupport({
   trend,
   sessions,
   totalSessions,
+  coverage,
+  alsoNoticed,
 }: {
   strength: RecordStrength
   trend?: 'rising' | 'steady' | 'falling' | 'new'
@@ -87,6 +91,15 @@ export function WhatYourRecordCanSupport({
    * counters on one screen disagreeing about the same run is worse than having neither.
    */
   totalSessions?: number | null
+  /**
+   * THE SECOND AXIS, WHICH THE PAGE NEVER HAD. Her diagnosis: three cards, three vocabularies, one
+   * verdict, all of them about the person. This one is about the report - what it can and cannot
+   * say yet, and why not. It sits inside this card rather than beside it because the reason the
+   * picture is thin usually belongs next to the sentence claiming it is thin.
+   */
+  coverage?: CoverageFacts | null
+  /** Patterns the engine noticed. A line here rather than a card - it was the fourth restatement. */
+  alsoNoticed?: string[]
 }) {
   const read = howMuchItSupports(strength?.score)
   const done = sessions.filter(s => s.state !== 'todo')
@@ -162,6 +175,30 @@ export function WhatYourRecordCanSupport({
           <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
             Taller means that session was easier for someone else to check. Dotted ones have not
             happened yet.
+          </div>
+        </div>
+      )}
+
+      {coverage && <WhatTheReportCanSayYet facts={coverage} />}
+
+      {/*
+        AND WHAT THE ENGINE NOTICED, FOLDED IN RATHER THAN GIVEN A CARD.
+
+        "Observations from your record" was a card of its own at the foot of the page, and it was the
+        fourth thing saying the same thing in a fourth vocabulary. Not dropped, though: these reach a
+        person on the board too, but only where the scenario renders one - a private alignment
+        check-in has no board, and dropping them would take them away from exactly the people with
+        nowhere else to read them.
+      */}
+      {(alsoNoticed?.length ?? 0) > 0 && (
+        <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 5 }}>
+            Also noticed
+          </div>
+          <div style={{ display: 'grid', gap: 5 }}>
+            {alsoNoticed!.map((t, i) => (
+              <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{t}</div>
+            ))}
           </div>
         </div>
       )}

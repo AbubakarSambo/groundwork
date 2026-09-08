@@ -60,8 +60,32 @@ describe('the setup tab is what is true about you, and nothing else', () => {
 })
 
 describe('but the yardstick still reaches a party, where it can be compared', () => {
-  it('on My record, which is the page beside her own sessions', () => {
-    expect(strip(MY_RECORD)).toContain('WhatSuccessLooksLikeFor')
+  /**
+   * AND "BESIDE HER OWN SESSIONS" IS NOT MY RECORD ANY MORE.
+   *
+   * This required the band on My record, because that was the page her sessions were on. They are
+   * on Report now - "your sessions on the report page should go to reports" - so the sentence this
+   * spec was written around no longer describes that page.
+   *
+   * Where it can actually be compared is where her own account is: `TheSessionsReport` renders it
+   * directly under her account on the session's own page, which is a closer reading of this rule
+   * than the card ever was. It is also on the board, and on Context where the same copy is
+   * published for everybody including her.
+   *
+   * What must not happen is it reaching only the lead. That is what is asserted.
+   */
+  it('under her own account, on the session it is read against', () => {
+    const SESSIONS_REPORT = readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'),
+      'utf8',
+    )
+    expect(strip(SESSIONS_REPORT)).toContain('<WhatSuccessLooksLike')
+  })
+
+  it('and on Context, where the same words are published for everybody', () => {
+    /* My record links there rather than holding a third copy that was usually empty. */
+    expect(strip(MY_RECORD)).toContain('What you are being read against')
+    expect(strip(MY_RECORD)).toContain("onGoToTab('docs')")
   })
 
   it('carrying what the lead stated, not only what she said herself', () => {

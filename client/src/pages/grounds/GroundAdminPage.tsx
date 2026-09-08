@@ -1689,6 +1689,25 @@ export function GroundAdminPage() {
               trend={mySpecificity?.trend}
               sessions={mySessionDots}
               totalSessions={plannedSessions ?? null}
+              coverage={{
+                iHaveCheckedIn: mySessionsDone > 0,
+                answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
+                parties: (ground as any)?.sessionProgress?.total
+                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+                /* The lead sees who is on their own check-in, so no fallback is needed here. */
+                waitingOn: (ground.participants ?? [])
+                  .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
+                  .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
+                  .map((p: any) => personLabel(p)),
+                /* The lead's page does not fetch the shared report, and these two rows are about
+                   what it can say. Left null, so they read as not-yet rather than as absent. */
+                corroborated: null,
+                documentBackedPct: null,
+                roundsFinished: mySessionsDone,
+              }}
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
             />
             <TheFiveThingsThatMakeItCheckable
               dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
@@ -1715,7 +1734,6 @@ export function GroundAdminPage() {
             groundId={id}
             ground={ground}
             myRecord={myRecord}
-            viewerUserId={user?.id}
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
             /* This page calls the material tab `docs`; the component asks to be sent and the page

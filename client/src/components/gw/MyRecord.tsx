@@ -1,6 +1,4 @@
-import { Sec } from './kit'
 import { ResolutionPanel } from './ResolutionPanel'
-import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 
 /**
  * SOMEBODY'S OWN ACCOUNT OF A CHECK-IN.
@@ -24,8 +22,6 @@ export interface MyRecordProps {
   ground: any
   /** This reader's record, from `/grounds/:id/my-record`. */
   myRecord: any
-  /** Who is reading, so their own objective can be found among the parties. */
-  viewerUserId?: string
   /** How many sessions this check-in plans, for the "near the end" rule. */
   totalSessions: number | null
   /** How many this reader has finished, for the same rule. */
@@ -49,7 +45,6 @@ export function MyRecord({
   groundId,
   ground,
   myRecord,
-  viewerUserId,
   totalSessions,
   completedCount,
   onGoToTab,
@@ -99,7 +94,14 @@ export function MyRecord({
           */}
           {groundId && (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              <WhatSuccessLooksLikeFor groundId={groundId} />
+              {/*
+                WHAT SUCCESS LOOKS LIKE MOVED TO CONTEXT, WHERE IT ALREADY LIVES FOR EVERYBODY.
+
+                It renders on the board and inside each session's report, and on this page it was
+                usually the same empty band saying nobody has set one - a third statement of an
+                absence on a page already saying two. Context is where the shared words are
+                published and where the row below already sends people.
+              */}
             </div>
           )}
 
@@ -150,26 +152,30 @@ export function MyRecord({
               belongs next to the sessions it is read against; the words belong where everybody
               reads the same copy.
             */}
-            {(() => {
-              const mine = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
-              const o = mine?.objective
-              return (
-                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
-                  <Sec title="What is expected of you" />
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-                    {!o?.text?.trim()
-                      ? 'Nothing yet. This comes out of the lead\u2019s own check-in, where they are asked what they expect of each person.'
-                      : o.text}
-                  </div>
-                  <button
-                    onClick={() => onGoToTab('docs')}
-                    style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}
-                  >
-                    {o?.text?.trim() ? 'See it in context, with everyone else\u2019s' : 'Open Context'}
-                  </button>
-                </div>
-              )
-            })()}
+            {/*
+              AND "WHAT IS EXPECTED OF YOU" WITH IT, FOR THE SAME REASON.
+
+              It was a card whose usual content was "Nothing yet", above a button that opened
+              Context - so the page carried a heading, an absence and a link, where the link alone
+              says all three. Both bands are published on Context for everybody including the person
+              they are about, which is the point of publishing them.
+            */}
+            <button
+              onClick={() => onGoToTab('docs')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10,
+                padding: '12px 14px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              }}
+            >
+              <span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>What you are being read against</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+                  What success looks like, and what is expected of you. On Context, where everyone reads the same copy.
+                </span>
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+            </button>
 
           {/* Session history summary - always visible */}
           {/*
@@ -210,21 +216,14 @@ export function MyRecord({
 
             The assurance that only they see this went with the card and is in the new one.
           */}
-          {/* Pattern observations - unlocked, diplomatic */}
-          {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              <Sec title="Observations from your record" />
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
-              </div>
-              {myRecord.patterns.map((p: any, i: number) => (
-                <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? '1px solid var(--gw-bg)' : '1px solid var(--gw-bg)', fontSize: 13, color: '#3A3630', lineHeight: 1.6 }}>
-                  {p.observation}
-                  {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>First noticed in Session {p.sessionNumber}</span>}
-                </div>
-              ))}
-            </div>
-          )}
+          {/*
+            OBSERVATIONS FOLDED INTO THE CARD AT THE TOP.
+
+            A card of its own here made it the fourth thing on the page saying the same thing in a
+            fourth vocabulary. Not dropped - they also reach a person on the board, but only where
+            the scenario renders one, so dropping them would take them from exactly the people with
+            nowhere else to read them. See WhatYourRecordCanSupport, "Also noticed".
+          */}
 
           {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, padding: '0 2px' }}>

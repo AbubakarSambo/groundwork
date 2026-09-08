@@ -601,6 +601,31 @@ export function GroundParticipantPage() {
               trend={specificity?.trend}
               sessions={mySessionDots}
               totalSessions={totalSessions ?? null}
+              /*
+                WHAT THE REPORT CAN SAY, which nothing on this page ever told anybody. Every field
+                is already on the payloads this page holds; the reason the picture is thin is
+                usually that somebody else has not answered, and only this says so.
+              */
+              coverage={{
+                iHaveCheckedIn: completedCheckIns.length > 0,
+                answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
+                parties: (ground as any)?.sessionProgress?.total
+                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+                /* Empty where peers are hidden, and the component says "one person" instead. A page
+                   being private to its reader does not make somebody else's name theirs to know. */
+                waitingOn: (ground as any)?.peersVisibleEffective === false
+                  ? []
+                  : (ground.participants ?? [])
+                      .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
+                      .filter((p: any) => !((p.checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
+                      .map((p: any) => participantLabel(p)),
+                corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
+                documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
+                roundsFinished: completedCheckIns.length,
+              }}
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
             />
 
             {/*
@@ -635,7 +660,6 @@ export function GroundParticipantPage() {
             groundId={id}
             ground={ground}
             myRecord={myRecord}
-            viewerUserId={user?.id}
             totalSessions={totalSessions ?? null}
             completedCount={completedCheckIns.length}
             /* This page calls the material tab `docs`; the other calls it `context`. The component

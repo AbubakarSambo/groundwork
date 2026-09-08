@@ -76,14 +76,14 @@ describe('my record', () => {
    */
   it('keeps the part that IS about the run, and the part somebody can act on', () => {
     expect(SUPPORT).toContain('Your answers are getting more checkable than session')
-    expect(FIVE).toContain('Even one or two next time makes a difference')
+    expect(FIVE).toContain('One or two next time makes a difference')
     expect(FIVE).toContain('whatWouldHelp')
   })
 
   it('and confidence says which of the two reads it is', () => {
     /* One reads the whole record; the other names the single session it read. */
     expect(SUPPORT).toContain('What your record can support')
-    expect(FIVE).toMatch(/How checkable session \$\{sessionNumber\} was/)
+    expect(FIVE).toMatch(/Session \$\{sessionNumber\} was mostly about the situation around you/)
   })
 
   it('and neither is a bar or a grade word', () => {

@@ -70,7 +70,11 @@ describe('the five things', () => {
     expect(code(FIVE)).not.toContain('No dates, numbers or documents yet')
     expect(code(FIVE)).not.toContain('Nothing on record about')
     /* And it must say which session it is about, in the heading rather than a buried sub-line. */
-    expect(code(FIVE)).toContain('How checkable session ${sessionNumber} was')
+    /* The heading became her wording - "What would make your next check-in count for more" - and
+       the session is named in the sentence under it. Same requirement: a person must be able to
+       tell this is about one session rather than a standing judgement. */
+    expect(code(FIVE)).toContain('What would make your next check-in count for more')
+    expect(code(FIVE)).toContain('Session ${sessionNumber} was mostly about the situation around you')
   })
 
   it('and show nothing at all before a session has been read', () => {

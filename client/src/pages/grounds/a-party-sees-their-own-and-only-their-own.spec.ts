@@ -52,7 +52,15 @@ describe('a party sees their own and only their own', () => {
   })
 
   it('and they can read what is expected of them', () => {
-    expect(PARTY).toContain('What is expected of you')
+    /*
+     * IT WAS A CARD WHOSE USUAL CONTENT WAS "Nothing yet", above a button that opened Context - a
+     * heading, an absence and a link, where the link alone says all three. The words are published
+     * on Context for everybody including the person they are about, which is the point of
+     * publishing them.
+     *
+     * The rule is unchanged and is what is asserted: a party can reach what they are read against.
+     */
+    expect(PARTY).toContain('What you are being read against')
   })
 
   /** The words live in one published place; this points there rather than keeping a second copy. */
