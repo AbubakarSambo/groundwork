@@ -63,8 +63,46 @@ export class WhoIsWaitingAtTheDoorService {
         /* Named, because "somebody added them" is not something an admin can act on. */
         addedBy: asker ? ([asker.firstName, asker.lastName].filter(Boolean).join(' ') || asker.email) : null,
         forCheckIn: r.groundId ? (groundById.get(r.groundId)?.label ?? null) : null,
+        /* Two things wait at this door now. See `waitingForASeat` below. */
+        kind: 'MEMBERSHIP' as const,
       };
     });
+  }
+
+  /**
+   * AND THE OTHER QUEUE AT THE SAME DOOR: PEOPLE ADDED TO A CHECK-IN WITH NO SEAT FOR THEM.
+   *
+   * Adding somebody when the account is full no longer refuses the lead - the person is added and
+   * simply not written to, because the lead usually cannot fix a seat cap and the person who can is
+   * somebody else. This is that somebody else's list.
+   *
+   * They are NOT membership requests and are deliberately not folded into that table. A membership
+   * request is a person from outside asking to join; these are people the lead has already decided
+   * on, waiting only on room. The difference matters to the admin answering: one is a judgement
+   * about a person, the other is a purchase.
+   */
+  async waitingForASeat(organizationId: string) {
+    const rows = await this.prisma.groundParticipant.findMany({
+      where: { awaitingSeat: true, ground: { organizationId } },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true, email: true, createdAt: true,
+        ground: { select: { label: true, initiator: { select: { firstName: true, lastName: true, email: true } } } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      email: r.email,
+      name: null,
+      waitingSince: r.createdAt,
+      addedBy: r.ground?.initiator
+        ? ([r.ground.initiator.firstName, r.ground.initiator.lastName].filter(Boolean).join(' ') || r.ground.initiator.email)
+        : null,
+      forCheckIn: r.ground?.label ?? null,
+      kind: 'SEAT' as const,
+      /* The one line an admin needs to know what pressing the button does. */
+      saying: 'On the check-in and not yet written to. Their invitation goes out when there is a seat.',
+    }));
   }
 
   /**

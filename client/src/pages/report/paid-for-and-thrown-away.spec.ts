@@ -22,12 +22,30 @@ import { describe, it, expect } from 'vitest'
  *
  * Rendered rather than switched off: it is already computed, already paid for, and already sanitised.
  */
-const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8')
+/*
+ * THE PANEL MOVED TO MY RECORD, AND EVERY ASSERTION BELOW IS UNCHANGED.
+ *
+ * It was declared inside `ReportPage.tsx` and rendered inside the shared report body. That body is
+ * gone - every part of it now has one home instead of being a fourth place to read the same
+ * findings - so the panel is its own file and My record renders it. My record is the tab whose
+ * whole promise is that it is yours, which is what this panel had to say about itself in prose
+ * because its surroundings implied otherwise.
+ *
+ * Both files are read and joined, so what is asserted is that the guide reaches its person - not
+ * which file happens to hold the markup.
+ */
+const SRC = [
+  readFileSync(join(__dirname, '../../components/gw/WhatToWalkInWith.tsx'), 'utf8'),
+  readFileSync(join(__dirname, '../../components/gw/MyPrivateReport.tsx'), 'utf8'),
+  readFileSync(join(__dirname, '../grounds/GroundParticipantPage.tsx'), 'utf8'),
+].join('\n')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the guide reaches the person it was written for', () => {
   it('the page reads it off the report', () => {
-    expect(CODE).toMatch(/\(report as any\)\.postReportGuide &&/)
+    /* The page reads it off the report and hands it down; the panel renders it. Optional chaining
+       because the report is fetched only where one exists - the guide is on it or it is not. */
+    expect(CODE).toMatch(/\(report as any\)\??\.postReportGuide/)
     expect(CODE).toContain('<WhatToWalkInWith')
   })
 

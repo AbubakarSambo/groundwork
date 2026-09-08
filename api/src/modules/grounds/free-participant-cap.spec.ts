@@ -44,7 +44,10 @@ function makeService(ground: any, existingParticipantCount: number, org: any = {
      */
     groundDocument: { count: jest.fn(async () => 0) },
     leadContextNote: { count: jest.fn(async () => 0) },
-    user: { findUnique: jest.fn(async () => ({ id: 'admin', firstName: 'Admin' })) },
+    /* Adding somebody now asks whether the account has a seat for them - over the cap they are
+       added and simply not written to, rather than the lead being refused. See
+       added-but-waiting-for-a-seat.ts. These fixtures have room. */
+    user: { findUnique: jest.fn(async () => ({ id: 'admin', firstName: 'Admin' })), count: jest.fn(async () => 0) },
     organization: { findUnique: jest.fn(async () => org) },
     groundParticipant: {
       findFirst: jest.fn(async () => null), // no existing participant with this email
@@ -57,7 +60,7 @@ function makeService(ground: any, existingParticipantCount: number, org: any = {
   };
   const email: any = { sendParticipantInvite: jest.fn(async () => ({})) };
   const usage: any = { emit: () => Promise.resolve() };
-  return new GroundsService(prisma, email, {} as any, { emit: () => Promise.resolve() } as any, usage, {} as any,
+  return new GroundsService(prisma, email, { /* the seat read: these fixtures have room - see added-but-waiting-for-a-seat.ts */ seatsIncludedFor: async () => null } as any, { emit: () => Promise.resolve() } as any, usage, {} as any,
       // 7th dep: the model, for the context chat (G37/G23). Unused here.
       { respond: async () => '' } as any,
     );

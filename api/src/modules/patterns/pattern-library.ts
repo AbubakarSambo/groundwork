@@ -22,6 +22,11 @@ export const POSITIVE_CODES: PatternCode[] = [
     code: 'R3',
     name: 'Named Collaborator',
     signal: 'A person names another person positively in their check-in with specific evidence of that person\'s contribution.',
+    /* The only POSITIVE code, and it had no probe - so the one pattern that is good news reached a
+       board saying nothing about what to do with it. Somebody has been credited by a colleague, in
+       a record that colleague believed was private. The useful move is making sure it is not the
+       only place it is ever said. */
+    probe: 'Somebody credited this person specifically. Does that show up anywhere they would see it?',
   },
 ];
 
@@ -54,21 +59,21 @@ export const BAD_FAITH_CODES: PatternCode[] = [
   { code: 'B11', name: 'Blame Shifting', signal: 'Failures consistently attributed to external factors.', probe: 'What was within your control in this situation?' },
   { code: 'B12', name: 'Stage Mismatch', signal: 'Enterprise processes in startup context or vice versa.', probe: 'Is this structure helping the company move faster or slower?' },
 
-  { code: 'K1', name: 'Sales Documentation Avoidance', signal: 'Decks and proposals instead of named conversations with named decision-makers.' },
-  { code: 'K2', name: 'Passive Finance Leadership', signal: 'Spending tracked, waste unchallenged, no intervention.' },
-  { code: 'K3', name: 'Reporting Without Intervention', signal: 'Issues flagged repeatedly without resolution or action.' },
-  { code: 'K4', name: 'Tactical Busyness', signal: 'Inbox and admin dominate over strategic priorities.' },
-  { code: 'K5', name: 'Activity Without Outcome Logic', signal: 'Tasks described without connection to goals.' },
+  { code: 'K1', name: 'Sales Documentation Avoidance', signal: 'Decks and proposals instead of named conversations with named decision-makers.', probe: 'Which named person, with the authority to say yes, has actually had this conversation?' },
+  { code: 'K2', name: 'Passive Finance Leadership', signal: 'Spending tracked, waste unchallenged, no intervention.', probe: 'This spend has been reported every period and never questioned. What would have to be true for you to challenge it?' },
+  { code: 'K3', name: 'Reporting Without Intervention', signal: 'Issues flagged repeatedly without resolution or action.', probe: 'This has been raised more than once and nothing has changed. Who is supposed to act on it, and have they been asked directly?' },
+  { code: 'K4', name: 'Tactical Busyness', signal: 'Inbox and admin dominate over strategic priorities.', probe: 'Of everything you did this period, which part moved the thing you are measured on?' },
+  { code: 'K5', name: 'Activity Without Outcome Logic', signal: 'Tasks described without connection to goals.', probe: 'Which goal does this work serve, and how would somebody tell it had moved?' },
 
-  { code: 'E1', name: 'Equity Without Contribution', signal: 'Equity held, delivery absent across multiple periods.' },
-  { code: 'E2', name: 'Intro Evasion', signal: 'Repeated future-tense promises without completions.' },
-  { code: 'E3', name: 'Selective Presence', signal: 'Visible in high-status moments, absent in execution.' },
+  { code: 'E1', name: 'Equity Without Contribution', signal: 'Equity held, delivery absent across multiple periods.', probe: 'What has been delivered this period that would not exist otherwise?' },
+  { code: 'E2', name: 'Intro Evasion', signal: 'Repeated future-tense promises without completions.', probe: 'This was promised last period and the one before. What is it actually waiting on, and what would unblock it this week?' },
+  { code: 'E3', name: 'Selective Presence', signal: 'Visible in high-status moments, absent in execution.', probe: 'Who did the work in the parts of this that nobody watches?' },
   { code: 'E4', name: 'Founder Burden Imbalance', signal: 'One founder consistently absorbs operational load for the other.' },
-  { code: 'E5', name: 'Extractive Behaviour', signal: 'Repeated asks for upside without matching contribution.' },
+  { code: 'E5', name: 'Extractive Behaviour', signal: 'Repeated asks for upside without matching contribution.', probe: 'What has gone the other way this period - what have you put in?' },
 
-  { code: 'R1', name: 'Dependency Bottleneck', signal: 'Multiple people name this person as a blocker without resolution.' },
-  { code: 'R2', name: 'Ambiguity Generator', signal: 'Work from this person consistently creates confusion for others.' },
-  { code: 'R4', name: 'Relationship Drift', signal: 'Two people who previously corroborated each other stop appearing in each other\'s check-ins.' },
+  { code: 'R1', name: 'Dependency Bottleneck', signal: 'Multiple people name this person as a blocker without resolution.', probe: 'More than one person says they are waiting on you. Which of those do you know about, and what would let you clear them?' },
+  { code: 'R2', name: 'Ambiguity Generator', signal: 'Work from this person consistently creates confusion for others.', probe: 'What did people come back to ask you about, and what would have stopped them needing to?' },
+  { code: 'R4', name: 'Relationship Drift', signal: 'Two people who previously corroborated each other stop appearing in each other\'s check-ins.', probe: "You two used to come up in each other's accounts and no longer do. What changed in how you work together?" },
 
   { code: 'F1', name: 'Insight Without Operation', signal: 'High thinking language, low output language. Ideas are genuinely good - a role mismatch, not dishonesty.', probe: 'What exists now - a document, a decision acted on, a process running - that would not exist if you had not been here this period?' },
   { code: 'F2', name: 'Vision Execution Gap', signal: 'Senior person describes strategy with confidence; team check-ins show no trace of it; team describes working to their own priorities.', probe: 'Your record describes direction-setting. The team\'s record describes working independently. Help me understand that gap.' },
@@ -170,8 +175,41 @@ export const PATTERN_NAME_BY_CODE = new Map<string, string>(
 );
 export const isKnownPatternCode = (code: string) => PATTERN_NAME_BY_CODE.has(code);
 
+/**
+ * WHAT TO DO ABOUT A PATTERN, WHICH THE BOARD WAS NOT SAYING.
+ *
+ * Every entry in this library already carries a `probe` - the question to put to somebody once the
+ * pattern has been seen. It is the whole reason a pattern is worth naming. The board sent the
+ * observation and dropped it, so a lead read
+ *
+ *   "Direct questions about deliverables were met with unrelated statements about needs and
+ *    blockers."
+ *
+ * and had nothing to do with it. Her words: "i would expect a coaching line or an assessment after,
+ * what do i do with this". The line was written years before she asked; it just never left this
+ * file.
+ *
+ * It is a QUESTION, deliberately, and stays one on the board. A pattern is a thing the record has
+ * noticed happening more than once - it is not a verdict, and the useful next move is asking the
+ * person about it, not telling them what it means.
+ *
+ * READ FROM `PATTERN_PROBE_BY_CODE` AND NOT REBUILT. My first attempt built a second map over every
+ * code that has a `probe` string, which would have put F5's onto a board: that string is a routing
+ * instruction - "Surface to alignment feed only. Never name to either person directly." - and the
+ * existing map excludes it on purpose. A code with no entry in that allowlist has no safe question
+ * form, and this returns null for it by construction rather than by anybody remembering.
+ */
+export function whatToAskAbout(code: string): string | null {
+  if (ALIGNMENT_FEED_ONLY_CODES.has(code)) return null;
+  return PATTERN_PROBE_BY_CODE.get(code) ?? null;
+}
+/* POSITIVE_CODES too. The map was built from BAD_FAITH_CODES alone, so the one pattern that is good
+   news - somebody crediting a colleague - reached the board with nothing to do about it. The F5
+   exclusion above still stands and is the reason this is an allowlist. */
 export const PATTERN_PROBE_BY_CODE = new Map<string, string>(
-  BAD_FAITH_CODES.filter((c) => c.probe && c.code !== 'F5').map((c) => [c.code, c.probe as string]),
+  [...POSITIVE_CODES, ...BAD_FAITH_CODES]
+    .filter((c) => c.probe && c.code !== 'F5')
+    .map((c) => [c.code, c.probe as string]),
 );
 
 // The prompt that drives detection over one party's period (transcript + record).

@@ -183,6 +183,21 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     'checkInGrid', 'contribution', 'patterns',
   ],
   [BoardFamily.ONBOARDING]: [
+    /*
+     * `quickRead` BELONGS HERE TOO, AND ITS ABSENCE HAD NO REASON WRITTEN DOWN.
+     *
+     * Reported as "the board is sparse", on a new-hire check-in. Delivery, cohort, retention and
+     * snapshot all carry the four reads - open differences, movement on targets, what is blocked,
+     * how much is document-backed - and they are the four the product's own front page shows when
+     * it shows a report. Onboarding was the family that did not, with a comment explaining why
+     * waiting-on was ADDED and nothing at all about this.
+     *
+     * They are reads about the WORK, not about the person: whether two accounts differ, whether a
+     * number moved, whether somebody is blocked, whether anything is written down. Evaluation
+     * still does not get them, and that one IS deliberate - a "how are they doing at a glance"
+     * strip on a board about whether somebody keeps their job is a scoreboard on a person.
+     */
+    'quickRead',
     // WAITING-ON BELONGS HERE. Someone settling into a role is more dependent on
     // other people than they will ever be again - the sign-off, the access, the
     // decision their manager owes them. A live run recorded two real handoffs on

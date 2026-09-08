@@ -1328,8 +1328,29 @@ STRICT RULES:
       };
     }
 
-    // Use the AI's own summary as the ground brief so it's visible before participants arrive.
-    const brief = dto.report?.whatGroundworkSaw ?? undefined;
+    /**
+     * THE BRIEF IS WHAT THEY SAID, NOT WHAT WE MADE OF IT.
+     *
+     * This was `dto.report?.whatGroundworkSaw` - the report's own observation, which is written in
+     * the second person because it is addressed to the person who gave the account:
+     *
+     *   "You have two standards for Zainab's first quarter. One you told her in week one; the
+     *    other you have never written down and doubt she knows about."
+     *
+     * Reported as "the check-in brief is wrong - that is not a brief about the check-in", and it is
+     * two faults rather than one. It is not a brief: a brief is what the lead tells the people
+     * checking in, and the Context page labels it exactly that, "the lead's own words about the
+     * situation". And it publishes a READ OF A PRIVATE ACCOUNT to everybody on the check-in
+     * without the person whose account it was choosing to share it - which is the one thing this
+     * product is not allowed to do, and it was doing it by default on every check-in made through
+     * the front door.
+     *
+     * `dto.brief` is composed on the client from their own extracted answers - what this is for,
+     * who is in it, why now, what they want from it - and has always existed. There is no
+     * fallback: a check-in with no brief says so, which is true and fixable by the lead, rather
+     * than filling the space with something they did not write.
+     */
+    const brief = dto.brief?.trim() || undefined;
 
     // Broadcast grounds (no named contributors) default to a higher participant cap.
     const isBroadcast = dto.contributors.length === 0;

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
 import { Sec } from './kit'
+import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 
 /**
  * ONE SESSION'S SHARED REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -121,10 +122,84 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </>
       )}
 
+      {/*
+        THE FOUR READS, ABOVE EVERYTHING ELSE.
+
+        "The report where we have people's names and where they are and also risk, similar to what
+        is in the home page, and how aligned and specific things are, is completely absent."
+
+        They existed on the BOARD and not on the report, which is the thing a person opens. Same
+        four, computed from the same rows, so the two surfaces cannot disagree about how many
+        differences are open. Each one says plainly when it cannot be computed - "no targets set"
+        and "no change" are different facts, and a zero standing for the first reads as the second.
+      */}
+      {data.atAGlance?.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 8, marginBottom: 16 }}>
+          {data.atAGlance.map((r) => (
+            <div key={r.label} style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '11px 13px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.03em', marginBottom: 3 }}>{r.label}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.25 }}>{r.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.45 }}>{r.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/*
+        WHAT EACH PERSON SAID THEY DID, under their own name.
+
+        The front page's "show what each of the eight said they did", which the product did not
+        have anywhere. Each person's own lines, nobody describing anybody else - and whose lines
+        reach this reader was decided on the server, by the same rule that decides whose NAME they
+        may see.
+
+        Somebody who answered and named nothing specific keeps their row and says so. That is the
+        single most useful line on the page for whoever runs the check-in, and dropping the row
+        would hide it.
+      */}
+      {data.whatEachPersonSaid?.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <Sec title="What each person said they did" src="their own words, and nobody describing anybody else" />
+          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', overflow: 'hidden' }}>
+            {data.whatEachPersonSaid.map((p, i) => (
+              <div key={`${p.who}-${i}`} style={{ padding: '11px 14px', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>
+                  {p.isYou ? `${p.who} (you)` : p.who}
+                </div>
+                {p.lines.length > 0 ? (
+                  <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.7 }}>
+                    {p.lines.map((line, k) => <li key={k}>{line}</li>)}
+                  </ul>
+                ) : (
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6 }}>{p.saying}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Sec title="Where things stand" />
       <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 14 }}>
         {data.whereThingsStand.saying}
       </div>
+
+      {/*
+        AGAINST WHAT WAS NAMED, right under where things stand, because the two are one thought:
+        this is where things are, and this is the thing they were supposed to be. It sat nowhere
+        before - the platform asked for a definition of success on Setup and then never mentioned it
+        on any report or board again.
+      */}
+      {(data as any).againstSuccess && (
+        <div style={{ marginBottom: 16 }}>
+          {/* The report already knows which line is the reader's own; the band uses it only to
+              say "You" instead of printing their name back at them. */}
+          <WhatSuccessLooksLike
+            data={(data as any).againstSuccess}
+            yourName={(data as any).counting?.find((c: any) => c.isYou)?.who ?? null}
+          />
+        </div>
+      )}
 
       {data.sharedPicture && (
         <>
@@ -179,6 +254,20 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
                     </ul>
                   ) : (
                     <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6 }}>{s.saying}</div>
+                  )}
+                  {/*
+                    HOW TO READ THE SECTION, WHERE ITS SHAPE COULD MISLEAD.
+
+                    Risks and concerns groups by entry type, so it fills up with whoever names
+                    problems out loud. On a real cohort five of six items were one hire's - the one
+                    being honest about not reaching her number - while the one who had closed
+                    nothing all quarter barely appeared. The server decides when to say this and
+                    sends the sentence; usually there is none.
+                  */}
+                  {(s as any).note && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 7, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
+                      {(s as any).note}
+                    </div>
                   )}
                 </div>
               ))}

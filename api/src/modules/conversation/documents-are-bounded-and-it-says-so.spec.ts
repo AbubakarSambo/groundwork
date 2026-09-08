@@ -28,7 +28,9 @@ describe('documents are bounded and the session is told', () => {
   });
 
   it('reads the newest first, because that is the one they are about to talk about', () => {
-    expect(BLOCK).toContain('[...uploadedDocs].reverse()');
+    /* `withProvenance` is `uploadedDocs` with a line attached to each saying who provided it and
+       who can read it - see where-this-document-came-from.ts. What this pins is the REVERSE. */
+    expect(BLOCK).toContain('[...withProvenance].reverse()');
   });
 
   it('tells the session what did not fit', () => {

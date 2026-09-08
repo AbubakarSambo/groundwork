@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sec } from './kit'
 import { SoloReportBody } from './SoloReportBody'
+import { WhatToWalkInWith } from './WhatToWalkInWith'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -40,6 +41,8 @@ export interface MyPrivateReportProps {
    * "I need my own report to be the same report on my record."
    */
   mySessions?: { id: string; sessionNumber: number; completedAt?: string | Date | null }[]
+  /** The three private lines for the conversation ahead. Null when there is no released report. */
+  walkInGuide?: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } | null
   /**
    * HOW SPECIFIC EACH SESSION WAS, by session number.
    *
@@ -72,6 +75,7 @@ export function MyPrivateReport({
   myParticipant,
   otherParties,
   mySessions = [],
+  walkInGuide = null,
   specificityBySession,
 }: MyPrivateReportProps) {
   const qc = useQueryClient()
@@ -100,6 +104,15 @@ export function MyPrivateReport({
 
   return (
     <>
+          {/*
+            FIRST, BECAUSE IT IS THE ONLY THING HERE ABOUT WHAT HAPPENS NEXT.
+
+            Everything else on this tab is a record of what was already said. This is three lines
+            for the conversation that has not happened yet, and it was buried in the middle of the
+            shared report - a private panel inside a document written for everybody, having to
+            announce that it was an exception to its own surroundings.
+          */}
+          {walkInGuide && <WhatToWalkInWith guide={walkInGuide} />}
           {/*
             THE REPORT YOU READ AT THE END OF EACH SESSION, WHICH IS WHAT THIS TAB IS FOR.
             "I need my own report to be the same report on my record." My record showed one thing
@@ -185,8 +198,9 @@ export function MyPrivateReport({
             </div>
           ) : (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Your private report is not ready yet.</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>It generates once you complete your check-in.</div>
+              {/* One line, not two. The second was a restatement of the first, and the box below
+                  this one was restating both again. */}
+              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>This appears once you finish your first check-in.</div>
             </div>
           )}
 

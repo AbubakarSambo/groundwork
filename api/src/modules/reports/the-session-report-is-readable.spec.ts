@@ -33,6 +33,11 @@ const base = {
   specificityLevel: null,
   recallConfidence: null,
   centralQuestion: null,
+  /* The three the four reads need. Null targets is "none set", which must never read as "nothing
+     moved" - the difference is asserted below. */
+  movedOnTargets: null,
+  blocked: 0,
+  answeredThisSession: [],
 };
 
 describe('the read that feeds it', () => {
@@ -50,6 +55,77 @@ describe('the read that feeds it', () => {
     const call = service.slice(at, at + 1800);
     expect(call).toContain('text: cleanText(e.text)');
     expect(call).not.toMatch(/text: e\.text,/);
+  });
+});
+
+describe('the four reads', () => {
+  /**
+   * "THE REPORT WHERE WE HAVE PEOPLE'S NAMES AND WHERE THEY ARE AND ALSO RISK, SIMILAR TO WHAT IS
+   * IN THE HOME PAGE, AND HOW ALIGNED AND SPECIFIC THINGS ARE, IS COMPLETELY ABSENT."
+   *
+   * They were not missing from the product - they were on the BOARD, as `quickRead`, and the
+   * report had none of them. Same four, computed the same way from the same rows, because two
+   * surfaces disagreeing about how many differences are open is worse than one not saying.
+   */
+  const read = (out: ReturnType<typeof theSessionReport>, label: string) =>
+    out.atAGlance.find((r) => r.label === label)!;
+
+  it('says all four, always', () => {
+    const out = theSessionReport(base);
+    expect(out.atAGlance.map((r) => r.label)).toEqual(['Aligned?', 'Moving?', 'Stuck?', 'Solid?']);
+  });
+
+  it('never lets "no targets set" read as "nothing moved"', () => {
+    /* The difference between a run with nothing to measure and a run that did not move. A zero
+       standing for the first is read as the second, and that is a false finding. */
+    expect(read(theSessionReport(base), 'Moving?').value).toBe('no targets set');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Moving?').value).toBe('no change');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Moving?').value).toBe('+14');
+  });
+
+  it('and does not call one account "no gaps open"', () => {
+    /* Nothing to compare with is not agreement. */
+    expect(read(theSessionReport(base), 'Aligned?').value).toBe('nothing to compare yet');
+    expect(read(theSessionReport({ ...base, divergences: [{}, {}] }), 'Aligned?').value).toBe('2 open');
+  });
+
+  it('counts what is document-backed rather than describing it', () => {
+    const out = theSessionReport({
+      ...base,
+      entries: [
+        { ...entry(RecordEntryType.COMMITMENT, 'From the brief'), recallBased: false },
+        entry(RecordEntryType.COMMITMENT, 'From memory'),
+      ],
+    });
+    expect(read(out, 'Solid?').value).toBe('50% backed');
+    expect(read(theSessionReport(base), 'Solid?').value).toBe('nothing on record yet');
+  });
+});
+
+describe('what each person said they did', () => {
+  it('gives everybody who answered a row, under their own name', () => {
+    const out = theSessionReport({
+      ...base,
+      answeredThisSession: [{ who: 'Ada', isYou: false }, { who: 'Demo', isYou: true }],
+      entries: [
+        { ...entry(RecordEntryType.INTENT, 'Closed Microdot Inc.'), who: 'Ada' },
+        entry(RecordEntryType.INTENT, 'Wrote the objection sheet'),
+      ],
+    });
+    expect(out.whatEachPersonSaid.map((p) => p.who)).toEqual(['Ada', 'Demo']);
+    expect(out.whatEachPersonSaid[0].lines).toEqual(['Closed Microdot Inc.']);
+    /* The reader's own lines carry no name on them, which is how they are told apart. */
+    expect(out.whatEachPersonSaid[1].lines).toEqual(['Wrote the objection sheet']);
+  });
+
+  it('keeps the row of somebody who answered and named nothing, and says so', () => {
+    /* Dropping the row would hide the single most useful line on the page for whoever runs it. */
+    const out = theSessionReport({
+      ...base,
+      answeredThisSession: [{ who: 'Ellie', isYou: false }],
+    });
+    expect(out.whatEachPersonSaid[0].lines).toEqual([]);
+    expect(out.whatEachPersonSaid[0].saying).toContain('nothing specific enough to record');
   });
 });
 

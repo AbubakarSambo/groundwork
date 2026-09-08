@@ -34,16 +34,21 @@ describe('adding somebody who has not started', () => {
   });
 
   it('leaves them uninvited when their start date is ahead', () => {
-    expect(SERVICE).toMatch(/invitedAt: startsInFuture \? null : new Date\(\)/);
+    /* A second reason now holds the same mail - no seat on the account - and the row has to say
+       uninvited for either of them. See added-but-waiting-for-a-seat.ts. */
+    expect(SERVICE).toMatch(/invitedAt: startsInFuture \|\| !waitingForASeat\.room \? null : new Date\(\)/);
   });
 
   it('and sends no email either, so the row and the mailbox agree', () => {
-    expect(SERVICE).toMatch(/if \(!startsInFuture\) \{/);
+    /* A second reason now holds the same mail: somebody added when the account has no seat for them
+       is on the check-in and not written to until an admin makes room. Both conditions guard the
+       one send, so the row and the mailbox still agree either way. */
+    expect(SERVICE).toMatch(/if \(!startsInFuture && waitingForASeat\.room\) \{/);
   });
 
   it('and does not claim they were notified', () => {
     // notifiedAt is the record that somebody was told they had been added. Nobody added silently.
-    expect(SERVICE).toMatch(/notifiedAt: startsInFuture \? null : new Date\(\)/);
+    expect(SERVICE).toMatch(/notifiedAt: startsInFuture \|\| !waitingForASeat\.room \? null : new Date\(\)/);
   });
 
   it('stores the start date so the timeline can use it', () => {

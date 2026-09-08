@@ -18,7 +18,6 @@ const read = (...p: string[]) => strip(readFileSync(join(__dirname, ...p), 'utf8
 
 const ADMIN = read('GroundAdminPage.tsx')
 const PARTY = read('..', '..', 'components', 'gw', 'MyParticipation.tsx')
-const CTX = read('..', '..', 'components', 'gw', 'ContextStrength.tsx')
 
 describe('waiting for the others', () => {
   it('never says the report waits for everybody', () => {
@@ -53,11 +52,20 @@ describe('the things that were said too often, or too loudly', () => {
     expect(band).toContain('Or share an access code instead')
   })
 
-  it('the context read is not a green promise over an amber counter', () => {
-    expect(CTX).not.toContain('It will be able to')
-    expect(CTX).not.toContain('What would make it stronger')
-    expect(CTX).not.toContain('<details>')
-    expect(CTX).toContain('What this check-in can tell you')
+  it('the context read is gone entirely, which is the end of that thread', () => {
+    /*
+     * This asserted the read had been rewritten - no green "It will be able to" over an amber
+     * "What would make it stronger (5)". It was rewritten twice, and then removed: "this has to
+     * go". A panel that has to keep being justified is a panel nobody asked for.
+     *
+     * What it listed is still asked for, by the conversation that can now take it. The one thing
+     * it exported that had to survive is the promise to a participant that the lead may hold
+     * context they cannot read - that is `the-lead-holds-more.ts`, guarded on its own.
+     */
+    const PAGE = read('..', '..', 'components', 'gw', 'ContextPage.tsx')
+    expect(PAGE).not.toContain('<ContextStrength')
+    expect(PAGE).not.toContain('It will be able to')
+    expect(PAGE).toContain('LEAD_HOLDS_MORE')
   })
 
   it('and a roster does not call three different people "a teammate"', () => {

@@ -21,10 +21,21 @@
  * drift. A constant shared between two client pages solves half the problem; the half that caused
  * this is the gap across the two packages.
  */
-export const WHAT_YOU_CAN_UPLOAD = 'PDF, Word, Excel, CSV, text or code, and photos (JPEG, PNG, HEIC)'
+/*
+ * POWERPOINT WAS THE SIXTH ANSWER, AND THE API HAD ACCEPTED IT ALL ALONG.
+ *
+ * "I should be able to add ppt." The server has parsed `.pptx` for a long time - it unzips the
+ * deck and reads every run of text off the slides, and it even tells somebody holding an older
+ * `.ppt` to save it as `.pptx` and try again. Neither the sentence nor the file picker mentioned
+ * it, which is the exact failure this file was written to end: a format the product supports,
+ * refused by an attribute on the way in.
+ *
+ * A deck is often the only written thing that exists at the start of a piece of work.
+ */
+export const WHAT_YOU_CAN_UPLOAD = 'PDF, Word, PowerPoint, Excel, CSV, text or code, and photos (JPEG, PNG, HEIC)'
 
 /** The same thing said shorter, for places with one line to spend. */
-export const WHAT_YOU_CAN_UPLOAD_SHORT = 'PDF, Word, Excel, text, or a photo'
+export const WHAT_YOU_CAN_UPLOAD_SHORT = 'PDF, Word, PowerPoint, Excel, text, or a photo'
 
 /**
  * THE LIST THE FILE PICKER ITSELF ENFORCES, and the one that actually stopped people.
@@ -38,4 +49,4 @@ export const WHAT_YOU_CAN_UPLOAD_SHORT = 'PDF, Word, Excel, text, or a photo'
  * while the server had accepted it all along.
  */
 export const UPLOAD_ACCEPT_ATTR =
-  '.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.md,.html,.json,.xml,.jpeg,.jpg,.png,.heic'
+  '.pdf,.doc,.docx,.pptx,.xls,.xlsx,.csv,.txt,.md,.html,.json,.xml,.jpeg,.jpg,.png,.heic'

@@ -127,6 +127,10 @@ function serviceFor(scenario: GroundScenario, peopleWorkTogether: boolean | null
   };
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground) },
+    /* The board reads the viewer's row to work out whether they are an admin of THIS organisation -
+       for the door, and for the rule that hides parties from each other. See
+       the-board-keeps-the-same-wall.ts. Not an admin here, so these fixtures are unaffected by it. */
+    user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'other-org' })) },
     checkIn: {
       findMany: jest.fn(async () =>
         [1, 2, 3, 4, 5, 6].map((n) => ({ participantId: 'quiet', sessionNumber: n, status: 'COMPLETED' })),

@@ -11,6 +11,7 @@ import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-no
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
+import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
 import { theSessionReport } from './the-session-report';
 import { cleanText } from './what-the-record-actually-holds';
 import {
@@ -36,7 +37,7 @@ import { WorkspaceNotifierService } from '../workspace/workspace-notifier.servic
 import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -49,6 +50,7 @@ import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-reco
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
+import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -1167,6 +1169,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
       result.agreements = cleanedAgreements.kept as any;
     }
 
+    /* The model has been seen writing "atStake:" and its whole value INTO the topic, so the heading
+       printed the field name at the reader and repeated the consequence. Split it back apart before
+       fillAtStake runs - otherwise that pass sees an atStake that is already populated (by the
+       duplicate) and leaves the mangled topic standing. See a-field-name-is-not-a-heading.ts. */
+    result.divergences = everyDivergenceReadable(result.divergences) as any;
+
     await this.fillAtStake(result.divergences);
 
     // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict -
@@ -1722,6 +1730,98 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * filtered to the reader unless the shared report has released, at which point the accounts are
    * comparable by design and the labels are the same ones the report uses.
    */
+  /**
+   * WHERE PEOPLE ARE AGAINST WHAT SUCCESS WAS SAID TO BE, on its own, for the surfaces that are not
+   * a session report - a party's own record, and the board.
+   *
+   * The session report carries the same read inline, because a reader who has the report open
+   * should not have to go and fetch the thing it is measuring against. This is the same computation
+   * behind the same wall, for the pages that show it without a session.
+   */
+  async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        organizationId: true,
+        initiatorId: true,
+        participants: {
+          select: {
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+        report: { select: { releasedAt: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
+    const isOrgAdmin = !isInitiator && !me && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    /* NotFound, not Forbidden. GW-PRI-04: a 403 tells a stranger the check-in is real. */
+    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
+
+    const viewerIsLead = isInitiator || isOrgAdmin;
+    const released = !!ground.report?.releasedAt;
+    const readableParticipantIds = released || viewerIsLead
+      ? ground.participants.map((p) => p.id)
+      : me ? [me.id] : [];
+
+    const labels = labelsForParties(ground.participants as any);
+    /*
+     * A PARTICIPANT ID, NOT A USER ID, WHICH IS WHAT I PASSED.
+     *
+     * `namesVisibleTo` finds the viewer by `p.id` - their row on this check-in - to work out
+     * whether they are the lead and therefore entitled to everybody's name. Handed a USER id it
+     * finds nobody, decides the reader is not the lead, and resolves only the lead's name and the
+     * reader's own. Everyone else falls through to the email fallback.
+     *
+     * Seen on the board: the success band listed "Amara" three times and then
+     * "nadia.hr@northwindlog.test" for the fourth line - one list, two kinds of identity, on a
+     * check-in whose lead is plainly entitled to her name and is shown it on the next tab along.
+     * The session report two hundred lines below passes `me?.id` and has always been right.
+     */
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
+    const whoOf = (participantId: string | null) => {
+      if (!participantId) return null;
+      const label = labels.get(participantId) ?? null;
+      const named = label ? nameByLabel.get(label) : undefined;
+      if (named) return named;
+      const p = ground.participants.find((x) => x.id === participantId);
+      if (viewerIsLead && p?.email) return p.email;
+      return label;
+    };
+
+    const [baseline, entries] = await Promise.all([
+      this.prisma.groundBaseline.findFirst({
+        where: { groundId },
+        orderBy: { version: 'desc' },
+        select: { successLooksLike: true, version: true, conditions: true },
+      }),
+      this.prisma.recordEntry.findMany({
+        where: { participantId: { in: readableParticipantIds } },
+        orderBy: { createdAt: 'asc' },
+        select: { type: true, text: true, participantId: true },
+      }),
+    ]);
+
+    return whereYouAreAgainstWhatYouNamed({
+      /* What this read was allowed to look at, so its words can say "you have not" rather than
+         "nobody" when it only ever saw one person's rows. */
+      counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
+      stated: baseline?.successLooksLike ?? null,
+      /* Whether the LEAD has said it in their own check-in, which is not the same as having set it
+         on Setup - see the note on `leadHasSaidIt`. */
+      leadHasSaidIt: entries.some(
+        (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
+          && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
+      ),
+      version: baseline?.version ?? null,
+      conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
+      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: whoOf(e.participantId) })),
+    });
+  }
+
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -1794,7 +1894,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.prisma.groundBaseline.findFirst({
         where: { groundId },
         orderBy: { version: 'desc' },
-        select: { successLooksLike: true },
+        /* `version` and `conditions` for the read that places people against what was named -
+           the table has carried conditions since it was created and nothing had ever read them. */
+        select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.groundBaselineEntry.findFirst({
         where: { groundId },
@@ -1846,6 +1948,34 @@ Close the report by framing - neutrally, without recommending one - the choice n
       return label;
     };
 
+    /*
+     * WHO ANSWERED THIS SESSION, READ BEFORE ANYTHING USES IT.
+     *
+     * This sat with the reveal rows further down, and the per-person section built above it reads
+     * the same set - so the assembled report threw "Cannot access 'answeredIds' before
+     * initialization" on every request. TypeScript cannot see it: a `const` used before its line
+     * is a runtime temporal-dead-zone error, not a type error, and every unit test passed because
+     * they call the pure assembler rather than this read. Found by opening the page.
+     */
+    const answered = await this.prisma.checkIn.findMany({
+      where: { groundId, sessionNumber, status: 'COMPLETED' },
+      select: { participantId: true },
+    });
+    const answeredIds = new Set(answered.map((c) => c.participantId));
+
+    /*
+     * MOVEMENT AND BLOCKERS, read from the rows the board reads. `objectives` carries the count
+     * and the count as it stood at the previous session; `dependencies` carries what somebody said
+     * they are waiting on and whether it is still hard-blocking.
+     */
+    const [targets, blockedCount] = await Promise.all([
+      this.prisma.groundObjective.findMany({
+        where: { groundId, target: { not: null } },
+        select: { count: true, prevCount: true },
+      }),
+      this.prisma.groundDependency.count({ where: { groundId, status: 'BLOCKING' } }),
+    ]);
+
     const shape = theSessionReport({
       sessionNumber,
       closed: !!snapshot,
@@ -1880,6 +2010,27 @@ Close the report by framing - neutrally, without recommending one - the choice n
       specificityLevel: checkIn?.specificityLevel ?? null,
       recallConfidence: checkIn?.recallConfidence ?? null,
       centralQuestion: snapshot?.centralQuestion ?? ground.report?.centralQuestion ?? null,
+      /*
+       * THE THREE THE FOUR READS NEED THAT THE ENTRIES DO NOT CARRY. Read the same way the board
+       * reads them, from the same rows, so the two surfaces cannot disagree about how many things
+       * are blocked - which is worse than one of them not saying.
+       */
+      movedOnTargets: targets.length
+        ? targets.reduce((sum, o) => sum + (o.count - o.prevCount), 0)
+        : null,
+      blocked: blockedCount,
+      answeredThisSession: ground.participants
+        .filter((p) => !p.managingOnly && answeredIds.has(p.id))
+        .map((p, i) => ({
+          who: (() => {
+            const label = labels.get(p.id);
+            const named = label ? nameByLabel.get(label) : undefined;
+            if (named) return named;
+            if (viewerIsLead && p.email) return p.email;
+            return label || `Party ${i + 1}`;
+          })(),
+          isYou: !!me && p.id === me.id,
+        })),
     });
 
     /**
@@ -1894,11 +2045,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * party who has never recorded a name still occupies a row, because losing the row would lose
      * the fact that somebody has not answered, which is the point of it.
      */
-    const answered = await this.prisma.checkIn.findMany({
-      where: { groundId, sessionNumber, status: 'COMPLETED' },
-      select: { participantId: true },
-    });
-    const answeredIds = new Set(answered.map((c) => c.participantId));
     const activations = await this.prisma.reportActivation.findMany({
       where: { groundId },
       select: { participantId: true, status: true },
@@ -1934,6 +2080,38 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * is unreliable; a control that says "corrections closed on the 8th" is the same fact,
      * delivered where they can act on it.
      */
+    /**
+     * WHERE PEOPLE ARE AGAINST WHAT WAS NAMED, which is the question the product asked and then
+     * never answered. Every entry so far rather than this session's, because a condition somebody
+     * committed to in session two is not unspoken in session three, and each person's own account
+     * of what success is was given once and stands until they change it.
+     *
+     * Same reader wall as everything else on this page: `readableParticipantIds` is their own row
+     * until the report releases. Before release a party sees their own definition beside the
+     * lead's stated one, which is the comparison that is theirs to make; the rest arrives with
+     * the report.
+     */
+    const everyEntrySoFar = await this.prisma.recordEntry.findMany({
+      where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, text: true, participantId: true },
+    });
+    const againstSuccess = whereYouAreAgainstWhatYouNamed({
+      counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
+      stated: baseline?.successLooksLike ?? null,
+      leadHasSaidIt: everyEntrySoFar.some(
+        (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
+          && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
+      ),
+      version: baseline?.version ?? null,
+      conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
+      entries: everyEntrySoFar.map((e) => ({
+        type: e.type,
+        text: cleanText(e.text),
+        who: whoOf(e.participantId),
+      })),
+    });
+
     const window = await this.correctionWindowDays();
     const canCorrect = whetherItCanStillBeCorrected({
       releasedAt: (ground.report?.releasedAt as Date | null) ?? null,
@@ -1942,6 +2120,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     return {
       ...shape,
+      againstSuccess,
       correctable: canCorrect.allowed,
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
       counting,
@@ -2704,6 +2883,41 @@ happened, and what is in the way.`;
       const soloArtifact = participant?.soloArtifact
         ? (() => { try { return JSON.parse(participant.soloArtifact!); } catch { return null; } })()
         : null;
+      /**
+       * A PARTY WHO HAS NOT ANSWERED YET DOES NOT READ THE FORMING PICTURE.
+       *
+       * Walked as a real participant on a real check-in. Zainab, invited and not yet checked in,
+       * opened her Report tab and read:
+       *
+       *   "Only Demo has checked in so far... Demo's account describes two standards for a
+       *    successful first quarter: one that was communicated, and another that was not."
+       *
+       * That is her manager's private account of her, summarised, handed to her before she writes
+       * a word. Whatever she says next is an answer to it. The entire claim of this product is
+       * that the accounts are independent - "nobody else sees your answers" - and the site says
+       * plainly that the shared report appears once everyone has checked in.
+       *
+       * So: the forming picture is for whoever is WAITING on it - the lead, an org admin, and any
+       * party who has already given their account this round. A party who has not is told what is
+       * happening and why they cannot read it yet, which is a fact about the method rather than a
+       * refusal.
+       *
+       * Not `!participant` - an org admin has no participant row and must still see it. The test
+       * is having a row and being in this round's missing list.
+       */
+      if (participant && requestingUserIsMissing && !isInitiator && !isOrgAdmin) {
+        return {
+          activated: true,
+          forming: true,
+          withheldUntilYouAnswer: true,
+          saying:
+            'A picture is forming from the accounts that are in. You will be able to read it as soon as you have given yours - reading somebody else\'s account first would make yours an answer to theirs, and the whole point is that they are independent.',
+          soloArtifact,
+          sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+          declined: await this.declinedThisRound(groundId, ground.participants as any),
+        };
+      }
+
       return {
         ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
@@ -2729,11 +2943,45 @@ happened, and what is in the way.`;
         where: { groundId_participantId: { groundId, participantId: participant.id } },
       });
       if (!activation || activation.status !== ReportActivationStatus.ACTIVATED) {
-        // Return a pre-activation stub - client shows the "Reveal" button.
+        /*
+         * AND WHO IT IS WAITING ON, WHICH THE STUB DID NOT SAY.
+         *
+         * The report releases, everybody is emailed "your shared record is ready", everybody clicks
+         * through and meets a button. The screen explains the mechanism - each of you shows your
+         * own - and names nobody, so two people can sit either side of it each believing the other
+         * has stalled. Read on a real new-hire check-in: released, both notified, neither activated,
+         * and nothing anywhere saying who the other party was or that they had been told the same.
+         *
+         * Names only where this reader is entitled to them, through the same resolver as
+         * everything else here.
+         */
+        const labels = labelsForParties(ground.participants as any);
+        const nameByLabel = namesVisibleTo(participant?.id ?? null, ground.participants as any);
+        const activationsNow = await this.prisma.reportActivation.findMany({
+          where: { groundId },
+          select: { participantId: true, status: true },
+        });
+        const shownIds = new Set(
+          activationsNow.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
+        );
+        const stillToShow = ground.participants
+          .filter((x: any) => !x.managingOnly && x.id !== participant?.id && !shownIds.has(x.id))
+          .map((x: any, i: number) => {
+            const label = labels.get(x.id);
+            return (label ? nameByLabel.get(label) : undefined) ?? label ?? `Party ${i + 1}`;
+          });
         return {
           id: ground.report.id,
           groundId,
+          /* Named, and the fact they were told too - so nobody chases somebody who is waiting on
+             them for the same reason. */
+          waitingToShow: stillToShow,
+          everyoneWasTold: true,
           createdAt: ground.report.createdAt,
+          /* When it was last WRITTEN. The page compares this against the newest completed check-in
+             to decide whether somebody is reading a stale version; against `createdAt` that was
+             permanently true after any regeneration. */
+          updatedAt: (ground.report as any).updatedAt,
           releasedAt: ground.report.releasedAt,
           activated: false,
         };

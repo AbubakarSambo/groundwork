@@ -169,7 +169,20 @@ export function InvitePage() {
 
         {preview.roleAsDescribed && (
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            Your role as described: <strong>{preview.roleAsDescribed}</strong>
+            {/*
+              NOT "YOUR ROLE AS DESCRIBED", because of who wrote the words underneath it.
+
+              That string comes from the entry flow's people list, where the assistant describes
+              each person TO THE LEAD - "Nadia - Your new HR assistant and the subject of this
+              check-in". Handed to Nadia under "Your role as described", it reads as her own role
+              written in somebody else's second person: whose new HR assistant?
+
+              Attributed instead. The words are unchanged and the reader can now tell they are
+              somebody else's account of why they were added, which is exactly what they are - and
+              the invitation already says, two paragraphs down, that she is not expected to agree
+              with any of it.
+            */}
+            Why you were added, in their words: <strong>{preview.roleAsDescribed}</strong>
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { Sec } from './kit'
 import { ResolutionPanel } from './ResolutionPanel'
+import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 
 /**
  * SOMEBODY'S OWN ACCOUNT OF A CHECK-IN.
@@ -83,6 +84,20 @@ export function MyRecord({
             <ResolutionPanel groundId={groundId} />
           )}
 
+          {/*
+            WHAT SUCCESS WAS SAID TO BE, AND WHERE THE ACCOUNTS PUT IT.
+
+            This is where a party meets it now. It used to be on her Setup tab, as a read-only panel
+            under a paragraph apologising for being read-only - a disclosure, not a comparison, and
+            on the one tab where nothing is hers. Here it sits beside her own sessions, next to her
+            own account of the same question, which is the only place the two can be read together.
+          */}
+          {groundId && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <WhatSuccessLooksLikeFor groundId={groundId} />
+            </div>
+          )}
+
           {/* The empty state, and NO price.
               `insightsLocked` does not mean "unpaid" - it means "no completed
               session yet", and the server says so: the first session of every
@@ -95,10 +110,25 @@ export function MyRecord({
               was scaffolding. */}
           {myRecord?.insightsLocked !== false && (
             <div style={{ background: 'var(--gw-navy)', borderRadius: 10, padding: '18px 20px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
+              {/*
+                THE SECOND TIME THE SAME EMPTY STATE WAS SAID.
+
+                Two inches above this, the private-report card already says "Your private report is
+                not ready yet - it generates once you complete your check-in." This box then said
+                "Complete your first check-in to start building your record", which is the same
+                sentence in a louder colour. The pattern she has named twice: the same absence
+                stated twice, close together.
+
+                What this box is actually for is the question a party cannot otherwise answer -
+                where does she see how specific she has been? She has no Sessions tab; the lead's
+                view of everyone's state is not hers. The answer is this tab, in two places, and now
+                it says so instead of restating the precondition.
+              */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>What this page will hold</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
-                Complete your first check-in to start building your record. Your specificity trend,
-                confidence score, and observations across sessions appear here as you go.
+                A line per session, each with how specific that account was, and a trend across all
+                of them once there is more than one. Both appear here - this is the page where you
+                see how you are being read.
               </div>
             </div>
           )}

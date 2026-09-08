@@ -23,7 +23,19 @@ import { ReportsService } from '../reports/reports.service';
 
 const D1_OBSERVATION = 'The record describes completion without downstream confirmation.';
 const D1_PROBE = 'Has the team depending on this confirmed it works for them?';
-const K1_OBSERVATION = 'Decks and proposals appear in place of named conversations with named decision-makers.';
+/*
+ * A CODE THAT GENUINELY HAS NO SAFE QUESTION FORM.
+ *
+ * This used K1 - Sales Documentation Avoidance - as its probe-less example. K1 has a probe now:
+ * thirteen of the thirty-eight patterns had none, including the two that actually fired on a real
+ * twelve-session cohort, so a lead read an observation on the board with nothing to do about it.
+ *
+ * The RULE this file protects is unchanged and still needs an example: a code with no authored
+ * probe must produce no live output at all rather than being forced into one. F5 is the permanent
+ * case - its `probe` string is a routing instruction ("Surface to alignment feed only. Never name
+ * to either person directly."), which is exactly why the map is an allowlist.
+ */
+const F5_OBSERVATION = 'One cofounder absorbs the operational load while the other narrates strategy.';
 
 function makeConversationPrisma(patternRows: { code: string }[]) {
   return {
@@ -146,19 +158,19 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
     ]);
   });
 
-  it('guard: a surfaced code with no authored probe (K1) produces no live output at all - report-only, not forced', async () => {
-    const livePrompt = await captureLivePrompt([{ code: 'K1' }]);
+  it('guard: a surfaced code with no authored probe (F5) produces no live output at all - report-only, not forced', async () => {
+    const livePrompt = await captureLivePrompt([{ code: 'F5' }]);
     expect(livePrompt).not.toContain('# Sharpen these questions');
-    expect(livePrompt).not.toContain(K1_OBSERVATION);
-    expect(livePrompt).not.toContain('K1');
+    expect(livePrompt).not.toContain(F5_OBSERVATION);
+    expect(livePrompt).not.toContain('F5');
   });
 
   it('guard: multiple surfaced codes together - only the ones with a probe appear, in probe form, never as observations', async () => {
     const livePrompt = await captureLivePrompt([{ code: 'D1' }, { code: 'K1' }, { code: 'B4' }]);
     expect(livePrompt).toContain(D1_PROBE);
     expect(livePrompt).toContain('What happened when you were not available to intervene?'); // B4's authored probe
-    expect(livePrompt).not.toContain(K1_OBSERVATION);
-    expect(livePrompt).not.toContain('K1');
+    expect(livePrompt).not.toContain(F5_OBSERVATION);
+    expect(livePrompt).not.toContain('F5');
     // No verdict-style code names anywhere in the live prompt.
     expect(livePrompt).not.toMatch(/\bB4\b/);
     expect(livePrompt).not.toMatch(/\bD1\b/);

@@ -2,14 +2,18 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
-import { LEAD_HOLDS_MORE } from './ContextStrength'
+import { LEAD_HOLDS_MORE } from './the-lead-holds-more'
 
 /**
  * A PARTICIPANT IS TOLD THEY ARE NOT SEEING EVERYTHING.
  *
  * G26's "visibly absent": somebody should know the lead holds context they cannot read, rather than
  * believing they are looking at all of it. The sentence existed and was rendered inside
- * `ContextStrength`, which is gated on CONTEXT_ENABLED.
+ * `ContextStrength`, which was gated on CONTEXT_ENABLED.
+ *
+ * IT LIVES IN ITS OWN MODULE NOW, because `ContextStrength` - the "what this check-in can tell you"
+ * read - was deleted on her instruction, and a promise made to a person must not be deleted as a
+ * side effect of removing the panel it happened to be exported from.
  *
  * SO IT VANISHED IN THE STATE WHERE IT IS MOST TRUE. With the flag off, `canSeeDocument` returns
  * `isMine` and ignores the visibility column entirely - every document is private to whoever uploaded

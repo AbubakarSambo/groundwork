@@ -217,9 +217,51 @@ export function standardsAndWhatTouchedThem(
   };
 }
 
-/** The verifiability marker is machinery and must never reach a reader. */
+/**
+ * THE MARKERS ARE MACHINERY AND MUST NEVER REACH A READER.
+ *
+ * `[VERIFIABILITY:HIGH]` was the one this was written for. Running a real check-in end to end
+ * turned up a second: an entry in the Risks band read
+ *
+ *   "I have said it to Nadia but I have not told Tunde or Priya that hiring goes through her now.
+ *    [INFERRED: Nadia is being asked to enforce a rule Tunde and Priya do not know exists]"
+ *
+ * on the shared report both people read. The extraction marks an inference so the record can tell
+ * what somebody SAID from what was worked out about it - which is exactly the distinction this
+ * product exists to keep - and then the marker was printed at the reader as though it were part of
+ * their own sentence.
+ *
+ * Matched as a family rather than one by one: `[WORD:` or `[WORD ...]` in shouting caps at the end
+ * of an entry is machinery in every case, and the next marker somebody adds will be caught by the
+ * same rule instead of shipping to a reader and being found the same way.
+ */
+const A_MACHINE_MARKER = /\s*\[[A-Z][A-Z_]{2,}(?::|\s)[^\]]*\]/g;
+
+/**
+ * AND THE EXTRACTION'S OWN EDITORIAL ADDITIONS, WHICH ARE NOT MACHINERY BUT ARE NOT THEIRS EITHER.
+ *
+ * Extraction sometimes finishes somebody's sentence for them inside square brackets, so the record
+ * holds words they did not say:
+ *
+ *   "Nobody has said [what I am supposed to have learned by when]"
+ *   "Hit eight [deals]"
+ *
+ * Helpful in intent and wrong in a product whose entire claim is that it holds what people
+ * actually said. The bracket goes and the sentence stays as they left it - a little blunter, and
+ * theirs. Where the insertion is the whole entry there is nothing of theirs to keep, so it is left
+ * alone rather than emptied.
+ *
+ * Lower-case or mixed-case inside the brackets, deliberately: the SHOUTING form above is machinery
+ * and already handled, and telling them apart is what stops this eating "[Q3]" or "[draft]".
+ */
+const AN_EDITORIAL_INSERTION = /\s*\[(?=[^\]]*[a-z])[^\]]{6,}\]/g;
+
 export function cleanText(text: string): string {
-  return (text ?? '').replace(VERIFIABILITY, '').trim();
+  const withoutMarkers = (text ?? '').replace(VERIFIABILITY, '').replace(A_MACHINE_MARKER, '');
+  const withoutEditorial = withoutMarkers.replace(AN_EDITORIAL_INSERTION, '');
+  /* Never hand back nothing: an entry that was ONLY an insertion keeps its original text, because
+     an empty line on a report is worse than a clumsy one. */
+  return (withoutEditorial.trim() || withoutMarkers.trim());
 }
 
 /** The kinds G10 will weigh, as they are spelled in the database. */

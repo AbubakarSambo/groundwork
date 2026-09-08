@@ -38,6 +38,10 @@ function serviceFor(ground: any = GROUND) {
   const none = { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) };
   const prisma: any = {
     ground: { findUnique: jest.fn(async () => ground) },
+    /* The board reads the viewer's row to work out whether they are an admin of THIS organisation -
+       for the door, and for the rule that hides parties from each other. See
+       the-board-keeps-the-same-wall.ts. Not an admin here, so these fixtures are unaffected by it. */
+    user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'other-org' })) },
     recordEntry: none,
     workMention: none,
     checkIn: none,

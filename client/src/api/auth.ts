@@ -110,6 +110,17 @@ export const authApi = {
   whoIsWaiting: () =>
     apiClient.get<WaitingAtTheDoor[]>('/users/waiting').then(r => r.data),
 
+  /**
+   * THE OTHER QUEUE AT THE SAME DOOR: people a lead has added to a check-in with no seat for them.
+   * Separate from the one above on purpose - a membership request is a judgement about a person,
+   * this is a purchase - and answered by making room rather than by saying yes.
+   */
+  waitingForASeat: () =>
+    apiClient.get<{ id: string; email: string; addedBy: string | null; forCheckIn: string | null; waitingSince: string; saying: string }[]>('/users/waiting/seats').then(r => r.data),
+
+  sendTheHeldInvitations: () =>
+    apiClient.post<{ sent: number; stillWaiting: number }>('/users/waiting/seats/release', {}).then(r => r.data),
+
   letThemIn: (id: string) =>
     apiClient.post<{ approved: boolean; email: string }>(`/users/waiting/${id}/approve`, {}).then(r => r.data),
 
