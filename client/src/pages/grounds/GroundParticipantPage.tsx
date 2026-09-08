@@ -365,19 +365,6 @@ export function GroundParticipantPage() {
     /* This page is somebody's own account of the check-in. Running it is the other view's job. */
     canRunThisCheckIn: false,
     isAParty: true,
-  }).map(t => {
-    /**
-     * This page's own keys predate the shared list and are not worth churning: `checkin` for the
-     * conversation, `docs` for the material. Mapped explicitly rather than cast, because the cast is
-     * what let the first version of this ship with `chat` as a key this page never matches - the
-     * conversation tab would have highlighted nothing and shown nothing. Caught by reading it, not
-     * by the typechecker, which a cast had silenced.
-     */
-    const mine: Record<string, Tab> = {
-      chat: 'checkin', report: 'report', record: 'record',
-      context: 'docs', settings: 'settings',
-    }
-    return { key: mine[t.key] ?? 'checkin', label: t.label }
   })
 
 
@@ -464,13 +451,27 @@ export function GroundParticipantPage() {
 
         {/* Tab bar */}
           <GroundTabRow
-            tabs={tabs.map(t => ({ key: t.key as any, label: t.label }))}
-            active={tab}
+            tabs={tabs}
+            active={TO_TAB_KEY[tab] ?? 'chat'}
             /*
               The `k === 'board'` branch that used to sit here was dead: `groundTabs()` stopped
               returning a board key when the board left the tab row, so nothing could ever take it.
               Dead, and worse than dead - it was the only navigate() to the board left in the app, so
               it kept a "does anything link here?" check green while the board was unreachable.
+            */
+            /*
+              TRANSLATED ONCE, AND IN THE SAME PLACE THE LEAD'S VIEW TRANSLATES.
+
+              This page used to translate TWICE: the list it handed the row was already mapped into
+              this page's own keys, and then `onPick` ran those keys back through `FROM_TAB_KEY`,
+              which takes the SHARED ones. `docs` and `checkin` are in neither direction of that
+              map, so both fell through to the default. Three of the five keys spell the same in
+              both vocabularies, which is why Report, My record and Setup worked and Context was the
+              single tab that sent you back to the conversation. Reported as "her context page
+              doesnt seem to exist" - it existed; the tab could not reach it.
+
+              So the row is given the shared keys, exactly as the lead's view gives them, and the
+              only translation on this page happens here and in `active`.
             */
             onPick={k => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
           />
