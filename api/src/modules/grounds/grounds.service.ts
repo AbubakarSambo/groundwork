@@ -1645,6 +1645,18 @@ export class GroundsService {
       // the link without duplicating the scenario-family table. The server owns
       // that routing; the client just reads the answer.
       boardRenders: boardRendersFor(ground.scenario),
+      /*
+       * WHETHER A PERSON ACTUALLY CHOSE THE RHYTHM, WHICH ONLY THE GAPS READ KNEW.
+       *
+       * `cadence` cannot be empty - it defaults to FORTNIGHTLY - so the column alone cannot tell a
+       * chosen fortnightly from a fortnightly nobody was asked about. `cadenceStated` has recorded
+       * the difference all along and the gaps builder uses it, but the ground payload every screen
+       * reads did not carry it, so no screen could ask.
+       *
+       * Reported by a lead after a first session: "it didn't tell me how I should set my sessions
+       * cadence". The check-in was running fortnightly on a default.
+       */
+      cadenceChosen: (ground as any).cadenceStated ?? false,
     };
   }
 

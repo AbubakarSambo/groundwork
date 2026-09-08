@@ -143,12 +143,26 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 
   return (
     <div>
+      {/*
+        A HEADING OVER NOTHING READS AS A PAGE THAT FAILED TO LOAD.
+
+        Reported as "my private report didn't render". It had: the card drew, the status drew, "Too
+        little to say / 0 areas settled" drew. What was blank was this band - a heading promising a
+        summary with an empty paragraph under it, because `sharedPicture` is empty until enough has
+        been said to make one.
+
+        Both places print it, and both now say why it is empty instead of leaving the space. The
+        reason is never a fault in the product and is worth saying plainly: one person has spoken,
+        and a picture across the accounts needs more than one account.
+      */}
       {/* What we heard */}
       <div style={{ background: 'var(--gw-dark)', color: '#fff', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
           {closed ? 'What we heard across the check-in' : 'What we heard from you'}
         </div>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.sharedPicture}</p>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: report.sharedPicture ? 'rgba(255,255,255,.93)' : 'rgba(255,255,255,.62)' }}>
+          {report.sharedPicture || 'Not enough has been said yet to draw one. It fills in as people check in.'}
+        </p>
       </div>
 
       {/* Alignment status */}
@@ -259,8 +273,8 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
         </div>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>
           {closed
-            ? `Over ${report.agreements?.length ?? 0} agreed area${(report.agreements?.length ?? 0) !== 1 ? 's' : ''}, your account turned assumptions into written agreements. That record is yours.`
-            : report.sharedPicture}
+            ? `Over ${report.agreements?.length ?? 0} agreed area${(report.agreements?.length ?? 0) !== 1 ? 's' : ''}, what you wrote turned assumptions into written agreements. That record is yours.`
+            : report.sharedPicture || 'Not enough has been said yet to draw one. It fills in as people check in.'}
         </p>
       </div>
 

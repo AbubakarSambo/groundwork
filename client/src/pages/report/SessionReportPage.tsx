@@ -1,12 +1,15 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
+import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
+import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
@@ -26,6 +29,8 @@ import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd
 export default function SessionReportPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const viewerUserId = useAuthStore(st => st.user?.id)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['session-report', checkInId],
@@ -54,6 +59,33 @@ export default function SessionReportPage() {
    * putting the record right is now in one place, rather than split between a shared document and
    * a private one.
    */
+  /*
+    THE CHECK-IN ITSELF, FOR THE TWO SETUP ANSWERS THE END OF A SESSION IS THE RIGHT MOMENT TO ASK.
+    See WhatThisCheckInStillNeeds. `cadenceChosen` is false when FORTNIGHTLY is a default nobody
+    picked, which the ground payload could not say until now.
+  */
+  const { data: ground } = useQuery({
+    queryKey: ['ground', data?.groundId],
+    queryFn: () => groundsApi.get(data!.groundId as string),
+    enabled: !!data?.groundId,
+    retry: false,
+  })
+
+  /* Only the person who runs the check-in is offered these: a party cannot change either, and
+     telling somebody about a setting they have no access to is worse than not mentioning it. */
+  const amTheInitiator = ((ground as any)?.participants ?? []).some(
+    (p: any) => p.userId === viewerUserId && p.partyType === 'INITIATOR',
+  )
+
+  const setCadence = useMutation({
+    mutationFn: (cadence: string) => groundsApi.update(data!.groundId as string, { cadence } as any),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ground', data?.groundId] })
+      toast.success('Saved. That is how often this runs now.')
+    },
+    onError: () => toast.error('That did not save. Nothing has changed - try again.'),
+  })
+
   const { data: groundReport } = useQuery({
     queryKey: ['report', data?.groundId],
     queryFn: () => reportsApi.get(data!.groundId as string),
@@ -144,7 +176,23 @@ export default function SessionReportPage() {
 
       {data?.report && (
         <>
-          <TheReportYouSawAtTheEnd report={data.report} onRecordLine="On record: your account." />
+          <TheReportYouSawAtTheEnd
+            report={data.report}
+            onRecordLine="On record: your account."
+            stillNeeded={
+              (ground as any) && (ground as any).cadenceChosen === false && amTheInitiator ? (
+                <WhatThisCheckInStillNeeds
+                  cadenceUnset
+                  cadence={(ground as any).cadence ?? 'FORTNIGHTLY'}
+                  onPickCadence={(c) => setCadence.mutate(c)}
+                  /* The board already says the standard is unset and links to Setup; what was
+                     missing was any route to Setup from here at all. */
+                  standardUnset={((ground as any).objectives ?? []).length === 0}
+                  onGoToSetup={() => navigate(`/grounds/${data.groundId}?tab=settings`)}
+                />
+              ) : null
+            }
+          />
           {/*
             THE CORRECTION CONTROL SAYS WHETHER IT IS STILL OPEN, BEFORE IT IS PRESSED.
 

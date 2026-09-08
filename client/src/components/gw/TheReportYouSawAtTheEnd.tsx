@@ -34,6 +34,23 @@ export interface TheReportYouSawAtTheEndProps {
   renderAdd?: (key: string, label: string) => ReactNode
   /** The line under "Where this leaves you" saying what is on record. */
   onRecordLine?: ReactNode
+  /**
+   * WHAT THE CHECK-IN STILL NEEDS FROM THE PERSON WHO SET IT UP.
+   *
+   * Reported after a lead finished their first session: "the report only showed me where to add the
+   * two people I listed, not more. It didn't point me to the setup. It also didn't tell me how I
+   * should set my sessions cadence."
+   *
+   * Both true. This screen answers exactly one question - who else should be in this - and stops the
+   * moment it is answered. Meanwhile the check-in is running on a fortnightly rhythm nobody chose
+   * (`Ground.cadence` defaults to FORTNIGHTLY and `cadenceStated` records that nobody picked it),
+   * and the board is separately complaining that no standard was set for what success looks like.
+   *
+   * The end of a first session is the one moment where somebody has just been thinking about the
+   * work and has not yet been handed a dashboard. A slot rather than markup, because what is missing
+   * differs by caller and only the caller can answer it - the same reason `renderAdd` is a slot.
+   */
+  stillNeeded?: ReactNode
 }
 
 // Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
@@ -54,6 +71,7 @@ export function TheReportYouSawAtTheEnd({
   correctedNote,
   renderAdd,
   onRecordLine,
+  stillNeeded,
 }: TheReportYouSawAtTheEndProps) {
   return (
     <>
@@ -240,6 +258,9 @@ export function TheReportYouSawAtTheEnd({
             {onRecordLine}
           </div>
         </div>
+
+        {/* Last, because it is about the check-in rather than about the session just finished. */}
+        {stillNeeded}
     </>
   )
 }

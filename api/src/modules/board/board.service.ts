@@ -507,10 +507,50 @@ export class BoardService {
       const movedTotal = ground.objectives.reduce((s, o) => s + (o.count - o.prevCount), 0);
       const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
       out.quickRead = [
-        { label: 'Aligned?', value: divCount ? `${divCount} open` : 'no gaps open', sub: 'differences between accounts', tone: divCount ? 'warn' : 'good' },
-        { label: 'Moving?', value: movedTotal > 0 ? `+${movedTotal}` : 'no change', sub: 'across targets this session', tone: movedTotal > 0 ? 'good' : 'flat' },
-        { label: 'Stuck?', value: blockers ? `${blockers} blocked` : 'clear', sub: blockers ? 'hard blockers' : 'nothing hard-blocked', tone: blockers ? 'bad' : 'good' },
-        { label: 'Solid?', value: eng.coverage ?? 'unknown', sub: eng.documentBackedPct != null ? `${eng.documentBackedPct}% document-backed` : 'how much is backed by evidence', tone: eng.coverage === 'thin' ? 'warn' : 'good' },
+        /*
+         * THE LABELS WERE QUESTIONS AND THE VALUES DID NOT ANSWER THEM.
+         *
+         * Read off a live board: "ALIGNED? 1 open". "MOVING? no change". "STUCK? clear". "SOLID?
+         * moderate". Reported as "board and report have aligned, moving etc, but it is not clear
+         * what it means, 1 misalignment etc" - and it is not clear, because none of the four is an
+         * answer to the question above it. "1 open" does not say whether anybody is aligned. "clear"
+         * against "Stuck?" reads as confirming that they are. "moderate" answers nothing at all.
+         *
+         * A question-mark label also forces the value to be a verdict, and this board is explicitly
+         * not a verdict - its own panel says so three lines above. So the label is a plain noun for
+         * the thing being counted, the value is the count, and the sub-line is a whole clause saying
+         * what the count is of. Nothing has to be decoded and nothing is judged.
+         */
+        {
+          label: 'Differences',
+          value: divCount ? `${divCount}` : 'None',
+          sub: divCount
+            ? `still open between the accounts`
+            : 'the accounts do not disagree anywhere yet',
+          tone: divCount ? 'warn' : 'good',
+        },
+        {
+          label: 'Movement',
+          value: movedTotal > 0 ? `+${movedTotal}` : 'None',
+          sub: movedTotal > 0 ? 'targets moved this session' : 'no target moved this session',
+          tone: movedTotal > 0 ? 'good' : 'flat',
+        },
+        {
+          label: 'Blockers',
+          value: blockers ? `${blockers}` : 'None',
+          sub: blockers ? 'named as holding work up' : 'nobody named anything holding work up',
+          tone: blockers ? 'bad' : 'good',
+        },
+        {
+          /* Two different things used to share this tile: a word for how much was said, and a
+             percentage for how much of it had a document behind it. The label named neither. */
+          label: 'How much was said',
+          value: eng.coverage ?? 'unknown',
+          sub: eng.documentBackedPct != null
+            ? `${eng.documentBackedPct}% of it is backed by a document`
+            : 'nothing yet says how much is backed by a document',
+          tone: eng.coverage === 'thin' ? 'warn' : 'good',
+        },
       ];
     }
 

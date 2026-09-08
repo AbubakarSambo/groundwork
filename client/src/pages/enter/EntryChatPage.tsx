@@ -23,6 +23,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
+import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
@@ -3153,6 +3154,26 @@ export function EntryChatPage() {
               <TheReportYouSawAtTheEnd
                 report={sessionReport}
                 correctedNote={reportWasCorrected && !generatingReport}
+                /*
+                  HOW OFTEN THIS RUNS, ASKED WHERE SOMEBODY IS STILL THINKING ABOUT THE WORK.
+
+                  `cadenceChosen` already exists on this page for exactly this distinction - it was
+                  added because "a value nobody had chosen was indistinguishable" from one somebody
+                  picked. Until now nothing acted on it: the unchosen FORTNIGHTLY went into the
+                  commit payload as though it had been decided.
+
+                  The standard half is not offered here. There is no Setup tab yet - the check-in is
+                  not saved - so a link to it would be a link to nothing.
+                */
+                stillNeeded={
+                  <WhatThisCheckInStillNeeds
+                    cadenceUnset={!cadenceChosen}
+                    cadence={cadence}
+                    onPickCadence={(c) => { setCadence(c as typeof cadence); setCadenceChosen(true) }}
+                    standardUnset={false}
+                    onGoToSetup={() => { /* no ground yet on this path */ }}
+                  />
+                }
                 onRecordLine={
                   uploadedDoc
                     ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
