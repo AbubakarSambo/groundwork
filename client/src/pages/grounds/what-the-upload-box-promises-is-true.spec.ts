@@ -32,45 +32,51 @@ describe('what the upload box promises is true', () => {
     expect(PAGE).not.toMatch(/read by every check-in before it asks a/i)
   })
 
-  it('says it starts private, where somebody reads it before uploading', () => {
+  it('states the privacy default where somebody reads it before uploading', () => {
     /*
-     * SAID ONCE, IN THE HEADING OF THE BOX. It used to be said twice - in the heading and again in
-     * the paragraph below it - and the band was trimmed because it had become the loudest thing on
-     * the page: a heading, eight file types, and a three-line paragraph, for a control pressed
-     * once. The FACT is what this file protects and it is still stated above the button, still
-     * chosen by the flag, and still read before anybody uploads anything.
+     * THE FACT, NOT THE SENTENCE IT WAS ONCE WRITTEN IN.
+     *
+     * This used to pin the heading verbatim - "A file, private to you until you open it". The
+     * heading is now what the box is FOR, in her words: "upload file to use as proof or context of
+     * work in the checkin, it is private to you unless you decide to make it visible to everyone."
+     * The privacy half moved to the line under the control.
+     *
+     * What must not change is WHERE it is read: above the button, before anything is uploaded, and
+     * not inside the empty-state branch. Put in the empty state it disappeared as soon as the list
+     * held one document - the page telling the truth only after the upload it had already talked
+     * somebody into, which is the bug this file exists for.
      */
-    expect(PAGE).toMatch(/'A file, private to you until you open it'/)
+    expect(PAGE).toMatch(/It is private to you unless you decide to make it visible to everyone\./)
+  })
+
+  /** And it is not conditional on the list being empty. */
+  it('and keeps stating it once documents exist', () => {
+    const box = PAGE.slice(PAGE.indexOf('Upload a file as proof or context'), PAGE.indexOf('id="ga-doc-upload"'))
+    const privacyAt = box.indexOf('It is private to you')
+    const emptyBranchAt = box.indexOf('docs.length === 0')
+    expect(privacyAt).toBeGreaterThan(-1)
+    expect(emptyBranchAt).toBeGreaterThan(-1)
+    expect(privacyAt).toBeLessThan(emptyBranchAt)
   })
 
   /**
-   * With the flag off a document can never be opened, so offering "open it and everyone reads it"
-   * would swap one false promise for another.
+   * With the flag off a document can never be opened - `canSeeDocument` returns `isMine` and
+   * ignores the column - so offering "everyone reads it once you open it" would swap one false
+   * promise for another.
    */
   it('and tells the flag-off truth, which is a different truth', () => {
-    /* With the flag off a document can never be opened, so the sentence cannot mention opening. */
-    expect(PAGE).toMatch(/'It shapes your own questions and reaches nobody else\.'/)
-    expect(PAGE).toMatch(/'A file, private to you'/)
-  })
-
-  /**
-   * BOUND TO THE TERNARY ITSELF, not to the word appearing somewhere nearby. The first version of
-   * this asserted `contextEnabled` was present within 700 characters, and a mutation replacing the
-   * condition with `true` left it green - another `contextEnabled` a few lines down satisfied it.
-   */
-  /**
-   * The heading has to agree with the sentence beneath it. "Private to you until you open it" is a
-   * promise of an action that does not exist with the flag off, and it sat directly above a sentence
-   * correctly saying the file reaches nobody.
-   */
-  it('the heading does not offer an action the flag has turned off', () => {
-    expect(PAGE).toMatch(/contextEnabled \? 'A file, private to you until you open it' : 'A file, private to you'/)
+    expect(PAGE).toMatch(/'It is private to you\. It shapes your own questions and reaches nobody else\.'/)
   })
 
   it('the sentence is chosen by the flag, not printed regardless', () => {
     /* Bound to the ternary itself rather than to the word appearing nearby: an earlier version of
        this asserted `contextEnabled` was present within 700 characters, and replacing the condition
        with `true` left it green because another `contextEnabled` sat a few lines down. */
-    expect(PAGE).toMatch(/\{contextEnabled\s*\?\s*'Everybody\\u2019s check-in reads it once you open it\.'/)
+    expect(PAGE).toMatch(/\{contextEnabled\s*\?\s*'It is private to you unless you decide to make it visible to everyone\./)
+  })
+
+  /** Her third sentence, and the one nobody knew: the file is not storage, it is read against you. */
+  it('says the check-in reads it against what you have said', () => {
+    expect(PAGE).toMatch(/says where it does not match what you have told it/)
   })
 })

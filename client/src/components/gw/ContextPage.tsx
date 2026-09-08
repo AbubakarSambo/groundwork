@@ -574,7 +574,7 @@ export function ContextPage({
                 */}
                 {uploadDoc.isPending
                   ? 'Uploading…'
-                  : contextEnabled ? 'A file, private to you until you open it' : 'A file, private to you'}
+                  : 'Upload a file as proof or context for this check-in'}
               </div>
               {/*
                 THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
@@ -591,25 +591,41 @@ export function ContextPage({
                 directly beneath this one, so an empty Documents band was two stacked boxes saying
                 two halves of one thing - what you may upload, then what happens to it. One box.
               */}
+              {/*
+                THE PRIVACY DEFAULT IS STATED BEFORE ANYBODY UPLOADS, ALWAYS.
+                
+                This lived in the heading, and the heading is now what the box is FOR - her words:
+                "upload file to use as proof or context of work in the checkin, it is private to
+                you unless you decide to make it visible to everyone." So the privacy half moved
+                down here, and it is NOT inside the empty-state branch: put there, the box stopped
+                stating the default the moment the list had one document in it, which is the exact
+                shape of the bug that spec was written for - the page telling the truth only after
+                the upload it had already talked somebody into.
+                
+                Flag-aware, because with CONTEXT_ENABLED off a document can never be opened at all
+                (`canSeeDocument` returns `isMine` and ignores the column), so promising that
+                everyone reads it once you open it would swap one false sentence for another.
+              */}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+                {contextEnabled
+                  ? 'It is private to you unless you decide to make it visible to everyone. Either way the check-in reads it, and says where it does not match what you have told it.'
+                  : 'It is private to you. It shapes your own questions and reaches nobody else.'}
+              </div>
               {docs.length === 0 && (
-                /* Left-aligned: it inherits the dropzone's centring otherwise, and a three-line
-                   paragraph set centred is harder to read than the same paragraph set flush. */
+                /* Left-aligned: it inherits the dropzone's centring otherwise, and a paragraph set
+                   centred is harder to read than the same paragraph set flush. */
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
-                  {/* Three lines became one. The examples earn their place - people do not know
-                      what counts as context and do know what they emailed somebody - and the rest
-                      was the same promise the heading above already makes. */}
-                  The brief, the plan, the scope, or the message that started this{' '}
-                  {/* AND WHAT HAS HAPPENED SINCE, WHICH NOBODY WAS TELLING THEM TO UPLOAD.
-                      Every example here was a document from BEFORE the work started, so people
-                      uploaded a scope and stopped. The record of what was actually done or said -
-                      meeting notes, a Gemini or Otter transcript, a photo of a whiteboard - is the
-                      thing a check-in most wants to read, and it is the thing people already have
-                      sitting in their inbox. */}
-                  – and what has happened since: meeting notes, a transcript from Gemini or
-                  another notetaker, or a photo of what was agreed.{' '}
-                  {contextEnabled
-                    ? 'Everybody\u2019s check-in reads it once you open it.'
-                    : 'It shapes your own questions and reaches nobody else.'}
+                  {/*
+                    AND WHAT COUNTS, WHICH ONLY THE FIRST-TIME READER NEEDS.
+
+                    Every example here used to be a document from BEFORE the work started, so people
+                    uploaded a scope and stopped. The record of what was actually done or said -
+                    meeting notes, a Gemini or other transcript, a photo of a whiteboard - is what a
+                    check-in most wants to read, and it is already sitting in somebody's inbox.
+                  */}
+                  Proof or context for what has happened: meeting notes, a transcript from Gemini or
+                  another notetaker, a photo of what was agreed - or the brief, plan or scope this
+                  work was set against.
                 </div>
               )}
               <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
@@ -690,7 +706,11 @@ export function ContextPage({
                 to open is a deliberate act: a performance plan dropped into
                 shared context in a hurried first week cannot be undone, because
                 the others have already read it. */}
-            {contextEnabled && docs.length > 0 && (
+            {/* Once, on the first document, not standing over the list forever. Three sentences
+                about three states, above a row whose control already spells all three out, is the
+                bulk she keeps naming - and the reader has already made the choice by their second
+                upload. */}
+            {contextEnabled && docs.length === 1 && (
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
                 {/*
                   THE WORDS HERE ARE THE WORDS ON THE CONTROL, which they were not: this sentence
@@ -703,10 +723,30 @@ export function ContextPage({
               </div>
             )}
             {docs.map(doc => (
-              <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
+              <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ minWidth: 0, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
+                  {/*
+                    WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
+
+                    Every upload is read and assessed - two to four things the document suggests,
+                    and what will be done with it - and the result has been stored on the row and
+                    rendered by nothing since it was built. So the card was a filename, a date and
+                    two controls: a file locker, which is not what this is. A person cannot tell
+                    that the thing they uploaded was read at all, let alone that it is read against
+                    what they say in the chat.
+
+                    Two lines, not the whole assessment: the point is to show the document landed
+                    and was understood, not to reprint it. The rest reaches them in the check-in,
+                    which is where it can actually be compared with what they said.
+                  */}
+                  {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
+                      <span style={{ color: 'var(--gw-muted)' }}>Read from it: </span>
+                      {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {/* WHO CAN READ THIS, stated on the row rather than in a

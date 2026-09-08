@@ -1723,7 +1723,9 @@ export class GroundsService {
        */
       timelineDays: ground.timelineStated ? ground.timelineDays : null,
       cadence: ground.cadenceStated ? ground.cadence : null,
-      brief: ground.brief,
+      /* The success gap reads the baseline, not the brief - they are two different things and
+         sharing one column broke both. See `ContextGaps.successLooksLike`. */
+      successLooksLike: await this.statedSuccessFor(ground.id),
       partyCount: ground.participants.filter((p) => !p.managingOnly).length,
       /**
        * THE WRONG TABLE. `ground.objectives` is `GroundObjective` - one objective for the whole ground,
@@ -1901,7 +1903,9 @@ export class GroundsService {
        */
       timelineDays: ground.timelineStated ? ground.timelineDays : null,
       cadence: ground.cadenceStated ? ground.cadence : null,
-      brief: ground.brief,
+      /* The success gap reads the baseline, not the brief - they are two different things and
+         sharing one column broke both. See `ContextGaps.successLooksLike`. */
+      successLooksLike: await this.statedSuccessFor(ground.id),
       partyCount: ground.participants.filter(p => !p.managingOnly).length,
       /**
        * THE WRONG TABLE. `ground.objectives` is `GroundObjective` - one objective for the whole ground,
@@ -1963,7 +1967,36 @@ export class GroundsService {
       return { changed: 'expectation', say: proposal.say };
     }
 
-    await this.prisma.ground.update({ where: { id: groundId }, data: { brief: proposal.text } });
+    /*
+     * WHAT DOING WELL LOOKS LIKE GOES WHERE WHAT DOING WELL LOOKS LIKE LIVES.
+     *
+     * This wrote `ground.brief`. The chat says "I will record that as what doing well looks like"
+     * and then overwrote the description of the work with it - so the brief every party reads at
+     * the top of their check-in became a success statement, and `GroundBaseline.successLooksLike`,
+     * which is the column the report and the board actually read, was never written from the chat
+     * at all. Seen on a real check-in: a brief that read "You have two standards for Zainab's first
+     * quarter. One you told her in week one; the other you have never written down and doubt she
+     * knows about" - the lead's own private account, published to the team as the brief.
+     *
+     * A NEW VERSION RATHER THAN AN EDIT, which is the table's own rule and the reason it has
+     * versions: a changed goal is a new chapter with a marked transition, never an erasure, so
+     * effort toward the old one stays real and nobody is retroactively behind. Conditions carry
+     * forward untouched - restating the goal is not a claim about them.
+     */
+    const latestBaseline = await this.prisma.groundBaseline.findFirst({
+      where: { groundId },
+      orderBy: { version: 'desc' },
+      select: { version: true, conditions: true },
+    });
+    await this.prisma.groundBaseline.create({
+      data: {
+        groundId,
+        version: (latestBaseline?.version ?? 0) + 1,
+        successLooksLike: proposal.text,
+        conditions: (latestBaseline?.conditions ?? undefined) as any,
+        changeReason: latestBaseline ? 'Restated in the context conversation.' : null,
+      },
+    });
     return { changed: 'success', say: proposal.say };
   }
 
@@ -2816,6 +2849,20 @@ export class GroundsService {
    * Writes an audit entry to groundAuditLog (Json[] appended) so changes are
    * traceable without a separate audit table.
    */
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AS STATED, AT THE VERSION IN FORCE. Its own read because the
+   * context conversation and the report both need it and neither should have to know that the
+   * table is versioned.
+   */
+  private async statedSuccessFor(groundId: string): Promise<string | null> {
+    const b = await this.prisma.groundBaseline.findFirst({
+      where: { groundId },
+      orderBy: { version: 'desc' },
+      select: { successLooksLike: true },
+    });
+    return b?.successLooksLike?.trim() || null;
+  }
+
   async updateTimeline(
     groundId: string,
     requestingUserId: string,

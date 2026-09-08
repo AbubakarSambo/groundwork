@@ -447,7 +447,19 @@ export class DocumentsService {
         { participantId: participant.id, isLead: ground?.initiatorId === userId },
         this.config.get<boolean>('app.contextEnabled') === true,
       ) as any,
-      select: { id: true, fileName: true, mimeType: true, createdAt: true, visibility: true, participantId: true },
+      /*
+       * `assessment` TOO, WHICH THE LIST HAS NEVER ASKED FOR.
+       *
+       * Every upload is read and assessed, the result is stored on the row, and the upload RESPONSE
+       * carries it - so the person who has just attached a file sees what was read from it, and
+       * then it disappears the moment the page reloads, because the list that draws the same cards
+       * never selected the column. `toDocShape` omits what was not selected rather than guessing,
+       * so nothing broke and nothing said anything: the card became a filename and a date, and a
+       * person could not tell their document had been read at all.
+       *
+       * Found by putting the read on the card and watching it not appear.
+       */
+      select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
       orderBy: { createdAt: 'asc' },
     });
     return docs.map((d) => toDocShape(d, participant.id));

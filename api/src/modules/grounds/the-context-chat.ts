@@ -37,8 +37,26 @@ export interface ContextGaps {
   timelineDays: number | null;
   /** No rhythm means the same. */
   cadence: string | null;
-  /** What doing well looks like. Without it the report cannot say "on track". */
-  brief: string | null;
+  /**
+   * WHAT DOING WELL LOOKS LIKE, AND IT WAS READING THE WRONG COLUMN.
+   *
+   * This was `brief`, and the whole success gap ran on it: it asked the question only when the
+   * BRIEF was empty, and accepting the answer wrote the answer INTO the brief. Two different things
+   * sharing one column, and each one breaking the other.
+   *
+   * The brief is what this check-in is for, in the lead's words, shown to everybody at the top of
+   * their check-in. What doing well looks like is the standard people are read against - it lives
+   * in `GroundBaseline`, versioned, with a reason when it changes, because a moved goal must never
+   * be able to erase a record. Writing a success statement over the brief destroyed the first and
+   * never recorded the second.
+   *
+   * What it produced, seen on a real check-in: a brief reading "You have two standards for Zainab's
+   * first quarter. One you told her in week one; the other you have never written down and doubt
+   * she knows about" - a statement about the lead's own private account, published to the team as
+   * the description of the work. And a lead who had written a brief was never asked what success
+   * looks like at all, because the gap thought the question was already answered.
+   */
+  successLooksLike: string | null;
   /** How many people are on it. One is a record, not a comparison. */
   partyCount: number;
   /** Whether anybody has said what each person is individually trying to achieve. */
@@ -93,7 +111,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
     });
   }
 
-  if (!g.brief?.trim()) {
+  if (!g.successLooksLike?.trim()) {
     gaps.push({
       key: 'success',
       ask: 'What does doing well look like here? Not a target for one person - what would make you say, at the end, that this went the way it should have.',

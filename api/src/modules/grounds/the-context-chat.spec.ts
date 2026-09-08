@@ -15,7 +15,7 @@ import { contextGaps, contextChatPrompt } from './the-context-chat';
 const FULL = {
   timelineDays: 90,
   cadence: 'FORTNIGHTLY',
-  brief: 'the scope is agreed and delivery is on the dates we set',
+  successLooksLike: 'the scope is agreed and delivery is on the dates we set',
   partyCount: 3,
   perPersonObjectiveCount: 3,
   openDocumentCount: 2,
@@ -30,7 +30,7 @@ describe('what is missing', () => {
     // The real failure: a duration with no rhythm, no success definition, one party,
     // no objectives and nothing in writing.
     const gaps = contextGaps({
-      timelineDays: null, cadence: null, brief: null,
+      timelineDays: null, cadence: null, successLooksLike: null,
       partyCount: 1, perPersonObjectiveCount: 0, openDocumentCount: 0,
     });
     expect(gaps.map(g => g.key)).toEqual(['timeline', 'cadence', 'success', 'parties', 'objectives', 'documents']);
@@ -57,7 +57,7 @@ describe('what is missing', () => {
 
 describe('what the chat is told it must not do', () => {
   const prompt = contextChatPrompt('Partner delivery', 'NEW_PROJECT', contextGaps({
-    timelineDays: null, cadence: null, brief: null,
+    timelineDays: null, cadence: null, successLooksLike: null,
     partyCount: 1, perPersonObjectiveCount: 0, openDocumentCount: 0,
   }));
 
