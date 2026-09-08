@@ -556,6 +556,9 @@ export function GroundParticipantPage() {
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
               mySessions={myFinishedSessions}
+              /* Per-session specificity, so each row can say how checkable that account was. The
+                 same read the trend card uses; it just belongs on the session it is about. */
+              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord

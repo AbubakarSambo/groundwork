@@ -45,7 +45,18 @@ describe('no grades on the shared page', () => {
   })
 
   it('and the person still gets their own specificity, privately', () => {
-    /* If this ever goes, the grade was not moved anywhere - it was just deleted. */
-    expect(MY_RECORD).toContain('Specificity across sessions')
+    /*
+     * If this ever goes, the grade was not moved anywhere - it was just deleted.
+     *
+     * It moved twice. First off the shared page and onto the person's own record, which is what
+     * this file is about. Then off a card of its own and onto the session it describes: specificity
+     * is a fact about ONE session, and a row of coloured bars with no dates said nothing about
+     * which session was which. What is left under a heading here is the part that IS about the run
+     * - the trend, and the one thing that would make the next session land harder.
+     */
+    expect(MY_RECORD).toContain('How your answers are going')
+    expect(MY_RECORD).toContain('What would make the next one land harder')
+    const PRIVATE_REPORT = readFileSync(join(__dirname, '../../components/gw/MyPrivateReport.tsx'), 'utf8')
+    expect(PRIVATE_REPORT).toContain('specific enough to check')
   })
 })

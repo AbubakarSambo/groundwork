@@ -2777,7 +2777,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2857,6 +2857,42 @@ export class GroundsService {
       );
     }
 
+    /**
+     * THE START DATE, WHICH COULD BE SET AT CREATION AND NEVER AFTERWARDS.
+     *
+     * It drives two real things: an invitation for somebody added before the start is held and
+     * sent by the cron on that day, and session 1 carries it as `availableFrom`. So a new hire
+     * whose start moves by a week left a check-in that opens on the wrong day and invitations that
+     * go out on the wrong day, with nothing anywhere to change it.
+     *
+     * ONLY WHILE NOTHING HAS BEEN ANSWERED. Once somebody has completed a session, moving the day
+     * the run began would rewrite the frame their account was given - the cadence maths, the
+     * overdue reads and the session gates all measure from it. Refused with the reason rather than
+     * silently ignored, and refused for everybody including the lead.
+     *
+     * The gate is the same one the schedule uses, because changing when it starts IS changing the
+     * schedule.
+     */
+    if (dto.startsAt !== undefined) {
+      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+        throw new ForbiddenException(
+          'Only the lead of this check-in, or an admin in your organisation, can change when it starts.',
+        );
+      }
+      const answered = await this.prisma.checkIn.count({
+        where: { groundId, status: CheckInStatus.COMPLETED },
+      });
+      if (answered > 0) {
+        throw new BadRequestException(
+          'Somebody has already checked in, so the start date is fixed. It is the point everything else is measured from. Change how long it runs instead.',
+        );
+      }
+      const when = dto.startsAt ? new Date(dto.startsAt) : null;
+      if (dto.startsAt && Number.isNaN(when!.getTime())) {
+        throw new BadRequestException('That is not a date we can read. Pick one from the calendar.');
+      }
+    }
+
     // Normalize and validate cadence if provided.
     if (dto.cadence) {
       (dto as any).cadence = (dto.cadence as string).toUpperCase();
@@ -2917,6 +2953,22 @@ export class GroundsService {
       auditData.contextNotes.push(dto.contextNote.trim());
     }
 
+    /*
+     * AND THE SESSION GATE MOVES WITH IT.
+     *
+     * Session 1 carries the start date as `availableFrom` - that is how a check-in set up in
+     * advance stays shut until the day. Writing the new date on the check-in and leaving the gate
+     * on the old one would give a person a check-in that says it opens on the 22nd and lets them
+     * in on the 15th, or the reverse. Only sessions nobody has started, which is all of them here:
+     * the guard above refuses a change once anything is answered.
+     */
+    if (dto.startsAt !== undefined) {
+      await this.prisma.checkIn.updateMany({
+        where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        data: { availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+      });
+    }
+
     return this.prisma.ground.update({
       where: { id: groundId },
       data: {
@@ -2931,6 +2983,19 @@ export class GroundsService {
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         ...(requestedLabel !== undefined && { label: requestedLabel }),
+        /*
+         * AND THE END MOVES WITH THE START, or the run keeps its old finish line and quietly gets
+         * shorter. `endsAt` is what "89 days remaining" counts down to and what the stall cron
+         * reads, so leaving it behind would make a check-in that starts a week later end a week
+         * sooner without saying so. Days come from the request when it carries one, else the
+         * check-in's own length.
+         */
+        ...(dto.startsAt !== undefined && {
+          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          endsAt: dto.startsAt
+            ? new Date(new Date(dto.startsAt).getTime() + (requestedDays ?? ground.timelineDays ?? 90) * 24 * 60 * 60 * 1000)
+            : null,
+        }),
         groundAuditLog: auditData,
       },
     });

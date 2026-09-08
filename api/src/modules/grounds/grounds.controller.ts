@@ -62,6 +62,19 @@ class UpdateTimelineDto {
   @Min(1)
   timelineWeeks?: number;
 
+  /**
+   * WHEN THE FIRST CHECK-IN OPENS, which could be set at creation and never afterwards.
+   *
+   * "There is no start date on setup. Where does it exist." It exists on the check-in, it drives
+   * two real things - a deferred invitation goes out on that day, and session 1 is gated behind it
+   * - and there was no way to change it once the check-in existed. A new hire's start date moving
+   * by a week is the most ordinary thing that can happen to a new-hire check-in.
+   */
+  @ApiPropertyOptional({ example: '2026-09-15', description: 'When the first check-in opens' })
+  @IsOptional()
+  @IsString()
+  startsAt?: string;
+
   @ApiPropertyOptional({ enum: Cadence, description: 'Check-in cadence' })
   @IsOptional()
   @IsEnum(Cadence)
