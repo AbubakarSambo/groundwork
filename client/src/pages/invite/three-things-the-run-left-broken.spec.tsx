@@ -106,7 +106,9 @@ describe('an invited person reads the disclosure before they commit, once', () =
   })
 
   it('and accepting stamps the acknowledgement so the chat opens on the first question', () => {
-    const onSuccess = INVITE.slice(INVITE.indexOf('onSuccess: (res)'))
+    /* `onSuccess: async (res)` since the resumed branch refreshes the user before navigating - see
+       InvitePage. Matched on the handler rather than on whether it happens to be async. */
+    const onSuccess = INVITE.slice(INVITE.search(/onSuccess: (?:async )?\(res\)/))
     expect(onSuccess).toMatch(/localStorage\.setItem\('gw_privacy_seen', '1'\)/)
   })
 

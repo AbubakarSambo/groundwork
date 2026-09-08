@@ -164,7 +164,16 @@ export function MagicVerifyPage() {
     // paint "Link invalid" over the success screen and double-fire the commit.
     let flow = verifyFlows.get(token)
     if (!flow) {
-      const fromParam = params.get('from')
+      /*
+        `next` AS WELL AS `from`, BECAUSE THE INVITE MAIL SENDS `next`.
+        
+        This page has always honoured a destination on the URL - under the name `from`. The sign-in
+        link an invite sends carried no destination at all, so somebody who clicked a link to one
+        check-in, got mailed a way back, and signed in, landed on the list of everything. The mail
+        carries it now, and `next` is the name the rest of this flow already uses for the same
+        thing - see `passwordStep` below, which appends `next=` to the password detour.
+      */
+      const fromParam = params.get('from') ?? params.get('next')
       flow = (async (): Promise<VerifyOutcome> => {
         let res: Awaited<ReturnType<typeof authApi.verifyEmail>>
         try {

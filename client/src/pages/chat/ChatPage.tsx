@@ -131,6 +131,10 @@ export function ChatPage() {
    * Empty is a fact you have to have looked to know. This is the looking.
    */
   const [knowWhatIsHere, setKnowWhatIsHere] = useState(false)
+  /** An assistant bubble with nothing in it yet, however it was minted. */
+  const isWaiting = (m: { id: string; role: string; content: string }) =>
+    m.id === 'loading' || (m.role === 'AI' && m.content.trim() === '…')
+
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
   const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
   /** The session this one is correcting, when it is a correction rather than a new session. */
@@ -881,6 +885,18 @@ export function ChatPage() {
               </div>
             </div>
           )}
+          {/*
+            THE WAITING TREATMENT EXISTED AND THE BUBBLE THAT NEEDED IT DID NOT QUALIFY FOR IT.
+
+            "As a participant I type and I don't know if my chat landed until seconds later." The
+            message does appear at once, and so does an assistant bubble - carrying a literal "…",
+            because the bouncing dots and the after-a-few-seconds explanation below are gated on
+            `m.id === 'loading'` and the optimistic bubble is minted with its own id. So the one
+            path a person actually takes got a static ellipsis, which reads as a rendering glitch,
+            while the treatment written for exactly this sat one condition away.
+
+            Matched on what the bubble IS rather than on which id it happens to carry.
+          */}
           {displayedMsgs.map(m => (
             m.docAssessment ? (
               <AssessmentCard
@@ -905,11 +921,11 @@ export function ChatPage() {
                 fontSize: 14,
                 lineHeight: 1.6,
                 whiteSpace: 'pre-wrap',
-                opacity: m.id === 'loading' ? 0.5 : 1,
+                opacity: isWaiting(m) ? 0.5 : 1,
                 boxShadow: m.role === 'AI' ? '0 1px 3px rgba(0,0,0,.05)' : 'none',
               }}
             >
-              {m.id === 'loading' ? (
+              {isWaiting(m) ? (
                 /*
                  * THE DOTS, AND AFTER A FEW SECONDS WHAT THEY MEAN.
                  *

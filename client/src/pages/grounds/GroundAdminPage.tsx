@@ -814,6 +814,18 @@ export function GroundAdminPage() {
        * what the plan covers and who has to act. See added-but-waiting-for-a-seat.ts.
        */
       setWhyItWaits((added as { saying?: string }).saying ?? null)
+      /*
+        AND WHETHER THEY BELONG SOMEWHERE ELSE, WHICH NOBODY WAS TOLD.
+
+        "She wasn't told that I was not part of her org when I was added." The join works - they get
+        a guest membership and every org-scoped read still refuses them - so the person adding is
+        the only one left in the dark, and they are the one who will wonder later why this person
+        cannot see the rest of the workspace.
+      */
+      const guestFrom = (added as { guestFrom?: string }).guestFrom
+      if (guestFrom) {
+        toast.info(`${newParticipantEmail.trim()} is at ${guestFrom}, not here. They join this check-in as a guest and see nothing else in your workspace.`)
+      }
       setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')

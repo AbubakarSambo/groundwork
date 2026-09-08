@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
@@ -42,7 +43,7 @@ export function InvitePage() {
 
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       /**
        * They have just read it on this page, so the chat must not open with it again.
        * Same key ChatPage reads; private mode simply shows the explainer once more, which
@@ -65,6 +66,28 @@ export function InvitePage() {
        * whoever received it, without the link ever being worthless to its owner.
        */
       if ((res as any).resumed) {
+        /*
+          REFRESH WHO THEY ARE BEFORE SENDING THEM ON.
+
+          "If I am added and already have an org on Groundwork, the check-in link does not take me
+          to my check-in, it asks me to add an org still."
+
+          `mustSetUpOrganisation` is computed on the server as "an admin of an organisation with no
+          contact email, who belongs nowhere else" - and being added to somebody else's check-in
+          writes the membership that makes the last clause false. The flag is only recomputed when
+          somebody signs in or calls /auth/me, and this path does neither: the browser already holds
+          a session, so it carries whatever was true the last time it looked. An admin of a
+          half-finished organisation of their own is therefore still flagged, and RequireOrgSetup
+          bounces them to org setup instead of the check-in they clicked.
+
+          One call, on the path where the membership has just changed. Failure is not fatal - the
+          worst case is the state they were already in.
+        */
+        try {
+          const fresh = await authApi.me()
+          const token = localStorage.getItem('token')
+          if (token) setAuth(fresh, token)
+        } catch { /* leaves them exactly as they were */ }
         const checkInId = (res as any).checkInId as string | null
         const groundId = (res as any).groundId as string
         navigate(checkInId ? `/checkin/${checkInId}` : `/grounds/${groundId}/p`, { replace: true })

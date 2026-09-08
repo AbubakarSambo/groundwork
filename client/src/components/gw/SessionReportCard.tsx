@@ -410,7 +410,15 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
   if (state === 'loading') return null
 
   const headerBg = isInitiator ? 'var(--gw-navy)' : 'var(--gw-green-t)'
-  const headerLabel = isInitiator ? 'Admin report' : 'Participant report'
+  /*
+    IT IS THIS PERSON'S REPORT, SO IT SAYS SO.
+
+    "Admin report" and "Participant report" name the reader's ROLE on a document that is theirs
+    alone - the subtitle directly under it says "the report you read when you finished, nobody else
+    can see it". Being told you are the participant, on your own private page, is the product
+    describing its own data model at somebody.
+  */
+  const headerLabel = 'My report'
   const closingLabel = isInitiator ? 'Resolution record' : 'Resolution record'
 
   return (

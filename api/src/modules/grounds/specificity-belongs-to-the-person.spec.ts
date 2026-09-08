@@ -120,11 +120,16 @@ describe('and the page shows it once, with the actionable half', () => {
     expect(PAGE).toMatch(/This one of yours was easy to check/);
   });
 
-  it('and the page says out loud that nobody else sees it', () => {
-    /**
-     * The reason this is safe to show at all is that it goes nowhere else. A person reading
-     * feedback on their own writing will assume their lead is reading it too unless told.
+  it('and the page does not say a second time that nobody else sees it', () => {
+    /*
+     * THE REASON IT WAS SAFE TO SHOW IS UNCHANGED; THE SENTENCE IS NOT NEEDED TWICE.
+     *
+     * The check-in header carries it on every tab of this page - "Just yours - only you see this
+     * until the report releases" - and a card repeating it three inches lower is the same statement
+     * twice, which is the pattern this page has been cleared of several times over. What matters is
+     * that the assurance is on screen, not that this component is the one making it.
      */
-    expect(PAGE).toMatch(/never shown to the lead/);
+    const HEADER = readFileSync(join(CLIENT, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8');
+    expect(HEADER).toMatch(/only you see this until the report releases/i);
   });
 });

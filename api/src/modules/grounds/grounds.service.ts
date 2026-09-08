@@ -2684,6 +2684,24 @@ export class GroundsService {
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
     // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
     const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
+
+    /**
+     * WHETHER THE PERSON JUST ADDED BELONGS TO SOMEBODY ELSE'S ORGANISATION.
+     *
+     * Reported from the other side: "she wasn't told that I was not part of her org when I was
+     * added." The join itself is handled - `isASecondOrganisation` writes a GUEST membership, and
+     * every org-scoped read still refuses them - so nothing leaks. What was missing is that the
+     * person doing the adding had no idea, and typed an address believing it was a colleague's.
+     *
+     * It changes nothing about what happens. It is said because being a guest in another company's
+     * check-in is a real fact about this person, and the lead is the one who has to know it - they
+     * are the one who will wonder why this person cannot see the rest of the workspace.
+     */
+    const theirHome = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { organizationId: true, organization: { select: { name: true } } },
+    });
+    const fromAnotherOrg = !!theirHome && theirHome.organizationId !== organizationId;
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt,
       devUrl: emailResult?.devUrl,
@@ -2692,6 +2710,11 @@ export class GroundsService {
          see added-but-waiting-for-a-seat.ts for why this is a sentence and not a refusal. */
       awaitingSeat: !waitingForASeat.room,
       ...(waitingForASeat.room ? {} : { saying: waitingForASeat.saying }),
+      /* Named, because "somebody from another organisation" is not something a lead can act on and
+         a company name is. Never the person's other colleagues, only where they belong. */
+      ...(fromAnotherOrg
+        ? { guestFrom: theirHome!.organization?.name ?? 'another organisation' }
+        : {}),
     };
   }
 
