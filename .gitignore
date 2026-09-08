@@ -56,3 +56,6 @@ api/journey/org-sim/out-verify/
 # It was tracked, so every typecheck showed up as a file change in every diff.
 *.tsbuildinfo
 .vercel
+
+# Journey drivers written to run a whole setup end to end. Scratch, not product.
+api/journey/

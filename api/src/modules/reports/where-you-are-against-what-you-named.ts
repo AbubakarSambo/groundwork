@@ -165,6 +165,16 @@ export interface WhereAgainstSuccessInputs {
   /** See `counting` on the result: whether this read could see every account or only the reader's. */
   counting: 'everyone' | 'only-yours';
   stated: string | null;
+  /**
+   * WHETHER THE LEAD HAS SAID IT IN THEIR OWN CHECK-IN, which is not the same as having set it.
+   *
+   * `stated` is the Setup field. With it empty, this read used to say "The person running this has
+   * not stated theirs, so there is nothing to read them against" - and on a real cohort board that
+   * sentence sat directly above "Tunde Alabi - What I want by the end of the quarter is each of
+   * them at eight closed deals", which he had said in every session for twelve weeks. The sentence
+   * was true about the field and false about the man, and the list underneath it proved so.
+   */
+  leadHasSaidIt?: boolean;
   version: number | null;
   conditions: string[];
   /** Every entry that could speak to a condition, across every session so far. */
@@ -253,7 +263,12 @@ export function whereYouAreAgainstWhatYouNamed(
             ? 'What success looks like is stated. Your own account of it appears here once you have checked in; everybody else\'s arrives with the report.'
             : 'What success looks like is stated, but nobody has given their own account of it yet. It fills in as people check in.'
           : sides === 'only-the-parties'
-            ? 'People have said what they think success is. The person running this has not stated theirs, so there is nothing to read them against.'
+            ? input.leadHasSaidIt
+              /* Said in a check-in but never set as the yardstick. Naming that difference is the
+                 useful thing: the words are right there, they are simply not what anybody is being
+                 read against, and one person can change it in a minute. */
+              ? 'The person running this has said what success looks like in their own check-in - it is in the list below - but has not set it as the standard, so nothing is being read against it. They can state it on the Setup tab.'
+              : 'People have said what they think success is. The person running this has not stated theirs, so there is nothing to read them against.'
             : null,
   };
 }

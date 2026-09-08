@@ -37,7 +37,7 @@ import { WorkspaceNotifierService } from '../workspace/workspace-notifier.servic
 import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -1761,7 +1761,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
       : me ? [me.id] : [];
 
     const labels = labelsForParties(ground.participants as any);
-    const nameByLabel = namesVisibleTo(requestingUserId, ground.participants as any);
+    /*
+     * A PARTICIPANT ID, NOT A USER ID, WHICH IS WHAT I PASSED.
+     *
+     * `namesVisibleTo` finds the viewer by `p.id` - their row on this check-in - to work out
+     * whether they are the lead and therefore entitled to everybody's name. Handed a USER id it
+     * finds nobody, decides the reader is not the lead, and resolves only the lead's name and the
+     * reader's own. Everyone else falls through to the email fallback.
+     *
+     * Seen on the board: the success band listed "Amara" three times and then
+     * "nadia.hr@northwindlog.test" for the fourth line - one list, two kinds of identity, on a
+     * check-in whose lead is plainly entitled to her name and is shown it on the next tab along.
+     * The session report two hundred lines below passes `me?.id` and has always been right.
+     */
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
     const whoOf = (participantId: string | null) => {
       if (!participantId) return null;
       const label = labels.get(participantId) ?? null;
@@ -1790,6 +1803,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
          "nobody" when it only ever saw one person's rows. */
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
       stated: baseline?.successLooksLike ?? null,
+      /* Whether the LEAD has said it in their own check-in, which is not the same as having set it
+         on Setup - see the note on `leadHasSaidIt`. */
+      leadHasSaidIt: entries.some(
+        (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
+          && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
+      ),
       version: baseline?.version ?? null,
       conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
       entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: whoOf(e.participantId) })),
@@ -2073,6 +2092,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const againstSuccess = whereYouAreAgainstWhatYouNamed({
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
       stated: baseline?.successLooksLike ?? null,
+      leadHasSaidIt: everyEntrySoFar.some(
+        (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
+          && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
+      ),
       version: baseline?.version ?? null,
       conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
       entries: everyEntrySoFar.map((e) => ({

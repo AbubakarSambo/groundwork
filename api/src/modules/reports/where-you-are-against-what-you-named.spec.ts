@@ -169,6 +169,26 @@ describe('where you are against what you named', () => {
     expect(r.definitions).toEqual([{ who: null, text: 'Fifteen meetings a month' }]);
   });
 
+  it('does not tell a lead they have not stated it when they have said it in their check-in', () => {
+    /* Seen on a real cohort board after twelve sessions: "The person running this has not stated
+       theirs, so there is nothing to read them against" - directly above "Tunde Alabi - What I want
+       by the end of the quarter is each of them at eight closed deals", which he had said every
+       week for twelve weeks. True about the Setup field, false about the man, and the list
+       underneath it proved so. */
+    const said = whereYouAreAgainstWhatYouNamed({ ...base,
+      stated: null, version: null, conditions: [], leadHasSaidIt: true,
+      entries: [entry(RecordEntryType.SUCCESS_DEFINITION, 'Each of them at eight closed deals.', 'Tunde')],
+    });
+    expect(said.saying).toContain('has said what success looks like in their own check-in');
+    expect(said.saying).not.toContain('has not stated theirs');
+    /* And where the lead genuinely has not, the original sentence stands. */
+    const notSaid = whereYouAreAgainstWhatYouNamed({ ...base,
+      stated: null, version: null, conditions: [], leadHasSaidIt: false,
+      entries: [entry(RecordEntryType.SUCCESS_DEFINITION, 'Getting to quota.', 'Kwame')],
+    });
+    expect(notSaid.saying).toContain('has not stated theirs');
+  });
+
   it('names which sides have answered, and never judges whether they agree', () => {
     const onlyLead = whereYouAreAgainstWhatYouNamed({ ...base, stated: 'x', version: 1, conditions: [], entries: [] });
     expect(onlyLead.sides).toBe('only-the-lead');
