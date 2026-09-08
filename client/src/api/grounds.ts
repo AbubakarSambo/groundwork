@@ -76,7 +76,7 @@ export interface OrgRosterEntry {
 
 export const groundsApi = {
   list: () =>
-    apiClient.get<Ground[]>('/grounds').then(r => r.data),
+    apiClient.get<Ground[]>('/grounds').then(r => (Array.isArray(r.data) ? r.data : [])),
 
   /**
    * `skipNotFoundToast`: THE PAGE ALREADY SAYS THIS. W8-66.
