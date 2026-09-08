@@ -107,9 +107,23 @@ export function AdminFirstRun() {
         * same sentence three centimetres below it - the panel introducing itself by quoting the
         * thing it was about to show. Seen on the rendered page; it reads fine in the code.
         */}
+      {/*
+        AND WHOSE JOB IT IS DEPENDS ON WHETHER ANYBODY HAS DONE ANY OF IT.
+
+        "Your job as the admin here" is the right sentence for the person who set the organisation
+        up, and the wrong one for the SECOND admin - who arrives at an org where three of these are
+        already ticked, one of them ticked BY HER OWN EXISTENCE ("give somebody else the keys"), and
+        is told the whole list is her job. Walked as a second admin of a real organisation: the
+        largest thing on her dashboard was a to-do list for work somebody else had finished.
+
+        Nothing on this panel knows who did which step, and inventing that would mean a new record.
+        What it does know is whether any of it is done - so it stops assigning the list to the
+        reader once it is somebody's shared progress rather than a fresh org's first run.
+      */}
       <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>
-        Your job as the admin here. Each one is ticked by the thing actually happening, not by
-        visiting the page.
+        {done === 0
+          ? 'Your job as the admin here. Each one is ticked by the thing actually happening, not by visiting the page.'
+          : `Where ${orgName || 'this organisation'} has got to. Each one is ticked by the thing actually happening, not by visiting the page - and any admin's work ticks it, not only yours.`}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(215px, 1fr))', gap: 10 }}>

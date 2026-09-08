@@ -21,8 +21,24 @@ const PAGE = strip(readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8'))
 
 describe('signing off a setup question', () => {
   it('is reached by opening it', () => {
+    /* Still gated on `open`: a tick beside a heading nobody has read is a tick pressed unread. */
     expect(PAGE).toContain('{open && onCheck && (')
-    expect(PAGE).toContain('I have checked this')
+    expect(PAGE).toContain('I have read this - sign it off')
+  })
+
+  /**
+   * AND IT IS THE LAST THING IN THE QUESTION, NOT THE FIRST.
+   *
+   * "the setup check but that says i have checked this is hidden and not very visible." It sat
+   * directly under the fold's header, ABOVE the content - passed on the way in, before there was
+   * anything to sign off, and reading as a caption on the heading. It is below the answer now, on
+   * its own bar, which is where somebody arrives having read it.
+   */
+  it('and sits after the content rather than above it', () => {
+    const content = PAGE.indexOf("{open && <div style={{ padding: '2px 14px 14px'")
+    const signOff = PAGE.indexOf('{open && onCheck && (')
+    expect(content).toBeGreaterThan(-1)
+    expect(signOff).toBeGreaterThan(content)
   })
 
   it('replaces the number rather than sitting beside it', () => {

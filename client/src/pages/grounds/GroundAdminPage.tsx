@@ -159,34 +159,44 @@ function Fold({
         </span>
         <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
       </button>
+      {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
       {/*
-        SIGNING IT OFF, INSIDE THE OPEN QUESTION.
+        SIGNING IT OFF, AT THE BOTTOM OF THE QUESTION YOU HAVE JUST READ.
 
-        Not on the closed row: a tick beside a heading somebody has not read is a tick they can
-        press without reading, which is the opposite of the point. It is reached by opening the
-        question, which means the answer was on screen when it was pressed.
+        STILL NOT ON THE CLOSED ROW, and that half of the original reasoning holds: a tick beside a
+        heading nobody has opened is a tick somebody can press without reading, which is the
+        opposite of the point. Opening the question is what puts the answer on screen.
+
+        WHAT WAS WRONG WITH WHERE IT WAS. "the setup check but that says i have checked this is
+        hidden and not very visible." It sat directly under the fold's own header, above the content
+        - so it was passed on the way IN, before there was anything to sign off, as a bare line of
+        text with a 15px box. Read as a caption on the heading, and missed.
+
+        It is the last thing in the question now, on its own bar, which is where somebody arrives
+        having actually read the answer. The closed row still turns its number into a tick, so the
+        state is visible with everything shut; this is the act.
       */}
       {open && onCheck && (
-        <div style={{ padding: '0 14px 12px', marginTop: -4 }}>
+        <div style={{ borderTop: '1px solid var(--gw-border)', background: checked ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)' }}>
           <button
             onClick={onCheck}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7, background: 'none', border: 'none',
-              padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5,
+              display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px',
+              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 12.5, fontWeight: 600, textAlign: 'left',
               color: checked ? 'var(--gw-green-t)' : 'var(--gw-sub)',
             }}
           >
             <span style={{
-              width: 15, height: 15, borderRadius: 4, flexShrink: 0,
-              border: `1px solid ${checked ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+              width: 17, height: 17, borderRadius: 4, flexShrink: 0,
+              border: `1.5px solid ${checked ? 'var(--gw-green-b)' : 'var(--gw-muted)'}`,
               background: checked ? 'var(--gw-green-b)' : 'white', color: 'white',
-              fontSize: 10, lineHeight: '14px', textAlign: 'center', fontWeight: 700,
+              fontSize: 11, lineHeight: '15px', textAlign: 'center', fontWeight: 700,
             }}>{checked ? '\u2713' : ''}</span>
-            {checked ? 'You have signed this off' : 'I have checked this'}
+            {checked ? 'You have signed this off' : 'I have read this - sign it off'}
           </button>
         </div>
       )}
-      {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
     </div>
   )
 }
@@ -2148,8 +2158,21 @@ export function GroundAdminPage() {
           band orders for the same tab, a stray heading in one of them, and a button pointing at a
           chat the other page does not have. See ContextPage for the order and why it is that order.
         */}
+        {/*
+          THE LEAD AND AN ADMIN ARE NOT THE SAME READER HERE.
+
+          This passed 'lead' for both, so an org admin got the lead's private steers - the band
+          headed "Only you see this", notes promised never to be quoted - along with the lead's
+          running log, standing note and context conversation. See the note on ContextPage's
+          `role`. The brief stays rewritable for both, because that is the shared description of
+          the work rather than one person's framing.
+        */}
         {tab === 'docs' && (
-          <ContextPage ground={ground} role={canRunThisGround ? 'lead' : 'party'} viewerUserId={user?.id} />
+          <ContextPage
+            ground={ground}
+            role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'}
+            viewerUserId={user?.id}
+          />
         )}
 
         {/* REPORT */}
@@ -2536,12 +2559,27 @@ export function GroundAdminPage() {
               * mounts the same component with `canState` false.
               */}
             <Fold {...foldProps(setupBand())} title="What good looks like" src="the yardstick, and where this stood at the start" summary={'stated by the lead, read by everybody'}>
-            <BaselinePanel groundId={id!} canState={isInitiator || isOrgAdmin} />
+            {/*
+              THE YARDSTICK IS THE LEAD'S, EVEN FOR AN ADMIN.
+
+              "as an admin i still see setup changes i can make on a page that is not mine." Walked
+              as a second admin, these were the only two controls on the whole Setup tab that
+              changed the check-in - and they change the standard somebody else is being read
+              against, on a check-in an admin is not running and has not been part of a single
+              session of. The product's own rule is that the person being read does not set the
+              measure; a third party restating it without the lead is the same problem wearing a
+              different hat.
+
+              An admin still sees all of it, and the banner at the top of the page says exactly what
+              is theirs to decide: releasing the report and closing the check-in are the lead's,
+              and now so is this.
+            */}
+            <BaselinePanel groundId={id!} canState={isInitiator} />
             {/**
               * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
               * yardstick and the starting point together are what let a report say something moved.
               */}
-            <StartingPointPanel groundId={id!} canRecord={isInitiator || isOrgAdmin} />
+            <StartingPointPanel groundId={id!} canRecord={isInitiator} />
             </Fold>
 
             {settingsChangeCount > 0 && (

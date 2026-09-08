@@ -49,12 +49,32 @@ export function ContextPage({
 }: {
   ground: any
   /** 'lead' is whoever runs this check-in, including an org admin reading with their eyes. */
-  role: 'lead' | 'party'
+  /**
+   * THREE READERS, NOT TWO, AND THIS WAS A SWITCH WITH TWO POSITIONS.
+   *
+   * `'lead' | 'party'` was fine until an admin of the organisation opened the page. The view that
+   * runs a check-in passed `'lead'` for both the lead and an admin, so an admin got the whole of
+   * the lead's authoring surface - including the band headed "Only you see this", which is the
+   * lead's private steers: the notes that shape what everybody is asked and are promised never to
+   * be quoted. Her words: "i still somehow see context setting when i should see some parts of what
+   * a lead does on the context page."
+   *
+   * So the two questions are asked separately, because their answers differ for an admin:
+   *   - WHO RUNS THIS CHECK-IN decides the brief, which is the shared description of the work. An
+   *     admin may rewrite it - "she should rewrite".
+   *   - WHOSE CHECK-IN IT IS decides the private steers, the running log, the standing note and the
+   *     context conversation. Those are one person's own framing and one person's own private
+   *     notes, and an admin reading over them is not the same as an admin running the place.
+   */
+  role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
-  const isLead = role === 'lead'
+  /** Whoever runs this check-in: its lead, or an admin of the organisation. */
+  const isLead = role === 'lead' || role === 'admin'
+  /** Its lead alone. See the note on `role` for why these are two questions. */
+  const isTheLead = role === 'lead'
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
@@ -433,7 +453,7 @@ export function ContextPage({
               groundId={id}
               parties={(ground.participants ?? []) as any[]}
               viewerUserId={viewerUserId}
-              hasChat={isLead && contextEnabled}
+              hasChat={isTheLead && contextEnabled}
             />
 
             {/*
@@ -862,7 +882,7 @@ export function ContextPage({
               the block was shut. In the design this is a band of its own, and each steer carries the
               promise that limits it.
             */}
-            {isLead && privateSteers.length > 0 && (
+            {isTheLead && privateSteers.length > 0 && (
               <>
                 <Sec n={band()} title="Only you see this" src="steers what gets asked &middot; never quoted" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
@@ -913,7 +933,7 @@ export function ContextPage({
               * lifetimes. Making them one control would have meant dropping one of them on my own
               * judgement. What they needed was to stop looking the same, which is a line each.
               */}
-            {isLead && (
+            {isTheLead && (
             <div style={{ marginTop: 16 }}>
               <Sec n={band()} title="What has changed since setup" src="a running log &middot; everyone here reads it" />
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: 620 }}>
@@ -953,7 +973,7 @@ export function ContextPage({
               and that difference lived in the small print above each rather than in the heading. So
               this one leads with the readership and the private one below leads with its promise.
             */}
-            {isLead && (
+            {isTheLead && (
               <div style={{ marginTop: 20 }}>
                 <Sec n={band()} title="What everyone here reads" src="your framing, never quoted as a finding" />
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
@@ -1079,7 +1099,8 @@ export function ContextPage({
             )}
 
             <div id="gw-context-chat">
-              {contextEnabled && isLead && <ContextChat groundId={id!} />}
+              {/* The lead's own conversation about their own check-in. An admin reads the page. */}
+              {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
             </div>
     </div>
   )
