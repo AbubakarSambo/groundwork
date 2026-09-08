@@ -54,7 +54,18 @@ describe('the resolution panel', () => {
   })
 
   it('appears when the check-in is at or near its last session', () => {
-    expect(BLOCK).toMatch(/done >= total - 1/)
+    expect(BLOCK).toMatch(/done >= planned - 1/)
+  })
+
+  it('and counts the PLANNED sessions, not the ones that happen to have rows', () => {
+    /*
+     * Driven on a check-in at session 1 of 6 and the exit appeared. `phaseSpine.sessions` lists
+     * only the session numbers check-in rows exist for - two, at that point - so the arithmetic
+     * read 1 >= 1 and called it the end of the run. The run's length is the check-in's timeline
+     * and cadence, which is what its own header counts.
+     */
+    expect(BLOCK).toContain('plannedSessionsFor(')
+    expect(BLOCK).not.toMatch(/const total = sessions\.length/)
   })
 
   it('and stays visible once a check-in is already mid-decision', () => {

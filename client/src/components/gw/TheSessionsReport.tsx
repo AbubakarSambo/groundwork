@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
 import { Sec } from './kit'
 
@@ -30,6 +31,23 @@ const THE_THREE_GROUPS: { heading: string; titles: string[] }[] = [
 ]
 
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
+  const qc = useQueryClient()
+  /**
+   * SHOWING YOUR OWN REPORT TO THE OTHERS. Came across with the button, for the reason in the
+   * comment above it - the only other copy of this is on the party page, which a lead never opens.
+   */
+  const showMine = useMutation({
+    mutationFn: () => reportsApi.activate(groundId),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['session-shaped-report', groundId] })
+      qc.invalidateQueries({ queryKey: ['report', groundId] })
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      if (res?.allActivated) toast.success('Everyone has shown theirs. You can all read them now.')
+      else toast.success('Noted. Yours becomes visible when everyone has done the same.')
+    },
+    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
+  })
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['session-shaped-report', groundId, sessionNumber],
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
@@ -186,6 +204,37 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
             {data.theConversationWorthHaving}
           </div>
         </>
+      )}
+
+      {/*
+        SHOWING YOURS, ON THE REPORT IT OPENS.
+
+        The mutual reveal used to live in two places - the lead's report tab and the party page -
+        and when the report tab became a list of sessions the action went with the body. A lead who
+        is also a party to their own check-in, which is nearly always, was left with no way to show
+        their own report to their team at all.
+
+        One place now, and it is the report the reveal is about, so a lead and a party reach it the
+        same way. It appears only when there is something to decide: the shared report is out and
+        this reader has not shown theirs yet.
+      */}
+      {data.released && !data.iHaveShownMine && (
+        <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 10, padding: '13px 15px', marginBottom: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+            Your own report is still private
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6, marginBottom: 10 }}>
+            Each of you shows your own when you are ready. Once everybody has, you can all read them
+            at the same moment. This cannot be undone.
+          </div>
+          <button
+            onClick={() => showMine.mutate()}
+            disabled={showMine.isPending}
+            style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: showMine.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+          >
+            {showMine.isPending ? 'Confirming…' : 'Show mine'}
+          </button>
+        </div>
       )}
 
       {!data.showsEverybody && (

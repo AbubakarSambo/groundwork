@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
+import { groundsApi } from '@/api/grounds'
+import { plannedSessionsFor } from '@/lib/sessionCount'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
@@ -50,6 +53,20 @@ export function BoardPage() {
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
   const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) !== 'closed')
+
+  /*
+   * THE CHECK-IN ITSELF, for one fact the board does not carry: whether the person reading is the
+   * one running it. The alignment feed below is theirs alone - see the comment on it - and the
+   * board's payload is deliberately identical for everybody, so the distinction has to come from
+   * the check-in. Cached under the key the check-in page already uses, so this is usually free.
+   */
+  const { data: groundForSignals } = useQuery({
+    queryKey: ['ground', id],
+    queryFn: () => groundsApi.get(id!),
+    enabled: !!id,
+  })
+  const user = useAuthStore((st) => st.user)
+  const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['board', id, variant],
@@ -954,6 +971,42 @@ export function BoardPage() {
         )}
 
         {/*
+          THE ALIGNMENT FEED, ON THE BOARD RATHER THAN ON THE SESSIONS TAB.
+
+          "The alignment feed should be in the reports and board, not here." It was on Sessions -
+          the tab about who has answered and when - where it competed with the session grid and had
+          nothing to do with it. What it actually is: convergences and divergences accumulating
+          across the run, which is the board's subject exactly.
+        */}
+                {viewerRunsThisCheckIn && (((groundForSignals as any)?.signals ?? [])).length > 0 && (() => {
+                  const sigs = ((groundForSignals as any)?.signals ?? [])
+                  const convergences = sigs.filter((s: any) => s.type === 'Convergence').length
+                  const divergences = sigs.filter((s: any) => s.type === 'Divergence').length
+                  const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
+                  const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
+                  const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {sigs.map((sig: any) => (
+                          <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
+                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+        {/*
           THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
 
           The board read only the CURRENT working copy of the report plus the record entries, so a
@@ -995,9 +1048,22 @@ export function BoardPage() {
           */
           const spine = (data as any)?.phaseSpine
           const sessions = (spine?.sessions ?? []) as { state: string }[]
-          const total = sessions.length
+          /*
+           * PLANNED sessions, not the ones that happen to have rows yet.
+           *
+           * Driven on a check-in at session 1 of 6, and the exit appeared. `phaseSpine.sessions`
+           * lists only the session numbers check-in rows exist for - two of them, at that point -
+           * so "done >= total - 1" was 1 >= 1 and read as the end of the run. The run's length
+           * comes from the check-in's own timeline and cadence, which is what the header counts
+           * to say "Session 1 of 6".
+           */
+          const planned = plannedSessionsFor(
+            (groundForSignals as any)?.timelineDays,
+            (groundForSignals as any)?.cadence,
+            (groundForSignals as any)?.plannedSessions,
+          )
           const done = sessions.filter((x) => x.state === 'done').length
-          const nearTheEnd = total > 0 && done >= total - 1
+          const nearTheEnd = planned != null && planned > 0 && done >= planned - 1
           return (
             <div style={{ marginTop: 14 }}>
               <ResolutionPanel groundId={id!} nearTheEnd={nearTheEnd} />

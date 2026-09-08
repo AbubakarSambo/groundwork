@@ -75,6 +75,9 @@ export interface SessionShapedReport {
   /** Everybody the report is counting for this session, named, with what each has done. */
   counting: { who: string; isYou: boolean; answered: boolean; hasShownTheirs: boolean }[]
   everybodyHasShownTheirs: boolean
+  /** Whether the shared report has gone out, and whether this reader has shown their own. */
+  released: boolean
+  iHaveShownMine: boolean
   sharedPicture: string | null
   takenAt: string | null
   amendedAt: string | null

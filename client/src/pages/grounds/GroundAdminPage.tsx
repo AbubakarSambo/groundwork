@@ -1939,123 +1939,51 @@ export function GroundAdminPage() {
               </div>
             )}
 
-            {(ground.signals ?? []).length > 0 && (() => {
-              const sigs = ground.signals ?? []
-              const convergences = sigs.filter(s => s.type === 'Convergence').length
-              const divergences = sigs.filter(s => s.type === 'Divergence').length
-              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
-              const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
-              const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
-              return (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {sigs.map(sig => (
-                      <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
-                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })()}
 
-            {/* Add contributor */}
-            <div style={{ marginTop: 20 }}>
-              {lastInvitedEmail ? (
-                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginBottom: 6 }}>
-                    {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+            {/*
+              WHAT IS LEFT HERE IS THE CLOSING SESSION, WHICH IS ABOUT SESSIONS.
+
+              This was the "Add contributor" block: a seat-limit notice, an add-a-person button, the
+              add form, an "invite another" confirmation and the closing-session control, all in one
+              container on the tab about how the run is going. Adding people moved to Setup band 1,
+              beside the access code and the broadcast link, because all three answer one question -
+              how somebody gets into this check-in. The form went with the button rather than being
+              left behind: nothing here could open it any more, and an unreachable form is worse
+              than a missing one because it still has to be maintained.
+
+              The seat notice went with them. It is a fact about adding somebody, and it belongs
+              where somebody is added - which is also where it can be said BEFORE an address is
+              typed rather than after the button is pressed.
+            */}
+            {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+              <div style={{ marginTop: 20 }}>
+                {confirmClosing ? (
+                  <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
+                      Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
+                      <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.6, marginBottom: 10 }}>
-                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
-                  </div>
-                  <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-green-b)', color: 'var(--gw-green-t)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Invite another
+                ) : (
+                  <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Begin the closing session →
                   </button>
-                </div>
-              ) : !addingParticipant ? (
-                <>
-                  {(() => {
-                    const seats = billingStatus?.people
-                    const cap = seats?.cap
-                    if (cap != null && seats != null && seats.count >= cap) {
-                      /**
-                       * The count includes the person reading this, which is why it is said out
-                       * loud: "5 people" reads as "5 I can invite" and it is not.
-                       */
-                      return (
-                        <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
-                          Your plan covers {cap} people, including you, and all {cap} are taken. Move to a larger plan to add more.
-                          <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-                            View plans
-                          </button>
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
-                  {/* Running the ground is the lead's job. Every party was being
-                      shown these, so someone being evaluated on this ground could
-                      invite people to it or declare the closing session. */}
-                  {isInitiator && (
-                    <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a person
-                    </button>
-                  )}
-                  {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
-                    confirmClosing ? (
-                      <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
-                          Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
-                          <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
-                        Begin the closing session →
-                      </button>
-                    )
-                  )}
-                </>
-              ) : (
-                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a person</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>They will get an email invitation. You cannot see what they write in their check-in.</div>
-                  <input type="email" placeholder="name@company.com" value={newParticipantEmail} onChange={e => setNewParticipantEmail(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }} />
-                  <input type="text" placeholder="What do you want them to account for? (optional)" value={newParticipantNote} onChange={e => setNewParticipantNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setAddingParticipant(false); setNewParticipantEmail(''); setNewParticipantNote('') }}
-                      style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    <button onClick={() => addParticipantMut.mutate()} disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}>
-                      {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* The server withholds the token from non-initiators; this is the
-                second lock, so a future change to either one alone cannot put a
-                shareable link to someone's record back on a participant's page. */}
-            {isInitiator && ground.joinToken && (
-              <ShareSection joinToken={ground.joinToken} />
+                )}
+              </div>
             )}
+
+            {/*
+              THE BROADCAST LINK AND ITS QR CODE MOVED TO SETUP, beside the access code and the
+              add-a-person control - all three answer one question, which is how somebody gets into
+              this check-in. On this tab they sat under the session grid, which is about how the run
+              is going. Both locks come with them: the server withholds the token from
+              non-initiators and the render is gated on `isInitiator`, so neither change alone can
+              put a shareable link to somebody's record on a participant's page.
+            */}
 
             {/*
               NO TAB SETS A TARGET. The four editing panels that stood here are gone.
@@ -2233,6 +2161,30 @@ export function GroundAdminPage() {
             <>
             <Fold {...foldProps(setupBand())} title="Who is in it" src="adding somebody sends them an invitation" summary={`${(ground.participants ?? []).length} on this check-in`}>
             <div className="gw-card" style={{ padding: '14px 16px' }}>
+              {/*
+                THE SEAT LIMIT, SAID BEFORE AN ADDRESS IS TYPED RATHER THAN AFTER.
+
+                It came across with the add-a-person control from the Sessions tab, and this is the
+                better place for it in a way that matters: on that tab it sat above a button, and
+                the refusal itself still arrives from the server after somebody has typed a
+                colleague's address and pressed add. Said here, it is read before the typing.
+
+                The count includes the person reading it, which is why that is said out loud -
+                "5 people" reads as "5 I can invite" and it is not.
+              */}
+              {(() => {
+                const seats = billingStatus?.people
+                const cap = seats?.cap
+                if (cap == null || seats?.count == null || seats.count < cap) return null
+                return (
+                  <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 13px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
+                    Your plan covers {cap} people, including you, and all {cap} are taken. Move to a larger plan to add more.
+                    <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                      View plans
+                    </button>
+                  </div>
+                )
+              })()}
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
                 They give their own account of the same work. You cannot see what they write until the report releases.
@@ -2339,6 +2291,11 @@ export function GroundAdminPage() {
             >
               Or share an access code instead
             </button>
+            {isInitiator && ground.joinToken && (
+              <div style={{ marginTop: 12 }}>
+                <ShareSection joinToken={ground.joinToken} />
+              </div>
+            )}
             </Fold>
             </>
           )}

@@ -1946,6 +1946,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
       counting,
       everybodyHasShownTheirs: counting.every((c) => c.hasShownTheirs),
+      /*
+       * WHETHER THE SHARED REPORT HAS GONE OUT, AND WHETHER THIS READER HAS SHOWN THEIRS.
+       *
+       * The mutual reveal - each person choosing to show their own report, and the comparison
+       * opening only once everybody has - lived on the lead's report tab and on the party page.
+       * The report tab became a list of sessions, and the action went with the body: so a LEAD who
+       * is also a party to their own check-in, which is almost always, lost the only way to show
+       * their report to their team. Nobody caught it because the call still existed in the party
+       * component, which a lead never sees.
+       *
+       * It belongs on the report it gates rather than on either page, so both readers get it from
+       * the same place. These two flags are all a screen needs to offer it.
+       */
+      released: !!ground.report?.releasedAt,
+      iHaveShownMine: !!me && shown.has(me.id),
       sharedPicture: snapshot?.sharedPicture ?? null,
       takenAt: snapshot?.takenAt ?? null,
       amendedAt: snapshot?.amendedAt ?? null,

@@ -171,7 +171,7 @@ export function SharedReportForAParty({
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
                   {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
                 </div>
-                <div style={{ fontSize: 12, color: '#4A6A9A', lineHeight: 1.6, marginBottom: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6, marginBottom: 0 }}>
                   {(report as any)?.forming
                     ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
                     : 'Your report will be available once it is released.'}
