@@ -112,32 +112,73 @@ export function theLineWorthPuttingToThem(
 }
 
 /**
- * The directive, for this turn only. It carries the sentence, so the session has nothing to
- * remember, work out, or weigh against a rule about inventing dates - the words are in front of it.
+ * THE FACT IS PUT BY THE PRODUCT; THE QUESTION IS THE SESSION'S.
+ *
+ * Everything before this - the attribution, the instructions, the computed overlap, an exception
+ * written into both of the rules that were suppressing it, the block moved to the end of the
+ * prompt - got the session as far as "Which is right? A plan can be out of date" and, at its best,
+ * "There's a document called handover-plan". It named the file. It would not say the date.
+ *
+ * The cause is real and is not the model being lazy: two absolutes in its own prompt forbid stating
+ * a date the person did not give, both of them right, and the citation worth making is almost
+ * always a date. More prose loses to an absolute; that route is measured and finished.
+ *
+ * So the sentence stops being something the model is asked to produce. The quotation is written
+ * here, from the document, and put to the person BEFORE the model's turn - deterministic, always
+ * exactly what the file says, and impossible to decline. The session is then told the difference
+ * has already been shown and asked only to do the thing it is good at: put the question.
+ *
+ * That is the same split the rest of this product runs on - code owns what is true, the model owns
+ * what to ask about it - and it is why this is the last version of this fix rather than the fourth
+ * attempt at wording.
  */
-export function aDirectiveAboutWhatTheDocumentSays(
-  said: string,
-  docs: SharedDocumentLine[],
-): string {
+export interface PutThisToThem {
+  /** Written by us, from the document, and shown to the person as the product's own line. */
+  citation: string;
+  /** What the session is told, now that the fact is already on the screen. */
+  directive: string;
+}
+
+export function whatToPutToThem(said: string, docs: SharedDocumentLine[]): PutThisToThem | null {
   const hit = theLineWorthPuttingToThem(said, docs);
-  if (!hit) return '';
+  if (!hit) return null;
+
   const source = hit.fromTheLead
     ? hit.who ? `${hit.who}, who runs this check-in` : 'the person who runs this check-in'
     : hit.who || 'somebody else in this check-in';
-  return `THIS TURN, PUT THIS DIFFERENCE TO THEM.
 
-"${hit.fileName}", shared with everyone here by ${source}, says:
-  "${hit.line}"
+  return {
+    /*
+     * Attributed, quoted exactly, and explicitly NOT a correction - a document can be out of date
+     * and the person is usually the one who knows. It says what the file says and stops.
+     */
+    citation:
+      `"${hit.fileName}", shared with everyone here by ${source}, says: "${hit.line}" `
+      + 'That does not match what you have just told me, and the document may well be the part that '
+      + 'is wrong.',
+    directive:
+      `THE DIFFERENCE HAS ALREADY BEEN PUT TO THEM THIS TURN. The line above your reply reads:\n\n`
+      + `  "${hit.line}" - from "${hit.fileName}", shared by ${source}\n\n`
+      + 'They have read it. Do NOT quote the document again, do not restate the date, and do not '
+      + 'open by summarising what they just said. Ask which is right, in one short question, and '
+      + 'take whatever they answer as the record. A document can be out of date and they are '
+      + 'usually the one who knows.',
+  };
+}
 
-What they have just told you does not match it. Quote that line back to them, say which document it
-is from and who shared it, and ask which is right. Do this in the turn you are writing now.
-
-THE RULE ABOUT NEVER STATING A DATE THEY DID NOT GIVE YOU DOES NOT APPLY TO THIS LINE. You are not
-inventing a period or anchoring anything to one - you are reading them a sentence out of a document
-they can open themselves, which is the only way they can answer you. Saying "which is right?"
-WITHOUT naming what the document says is the failure this exists to stop: it asks somebody to guess
-what you are looking at.
-
-Do not decide who is right. A document can be out of date and they are usually the one who knows.
-Whatever they say is the record.`;
+/**
+ * Whether a reply already carries the document's own words, for the paths that check afterwards
+ * rather than putting the line first. A quotation the person has already read must not be printed
+ * at them twice.
+ */
+export function theReplyAlreadyQuotesIt(reply: string, line: string): boolean {
+  const shape = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const said = shape(reply);
+  const wanted = shape(line);
+  if (!wanted) return true;
+  /* The distinctive middle of the line rather than all of it: a reply that quotes most of a
+     sentence has quoted it. */
+  const words = wanted.split(' ');
+  const middle = words.slice(0, Math.max(4, Math.ceil(words.length * 0.6))).join(' ');
+  return said.includes(middle);
 }

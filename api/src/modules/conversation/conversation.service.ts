@@ -1,6 +1,6 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
-import { aDirectiveAboutWhatTheDocumentSays } from './the-line-that-touches-what-they-said';
+import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
@@ -859,6 +859,21 @@ export class ConversationService {
       reply = screened.text || ASK_AGAIN;
 
       /*
+       * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
+       *
+       * See the-line-that-touches-what-they-said.ts. Where what they just said contradicts a
+       * document everybody on this check-in can read, the quotation is written by us from the file
+       * and put first - because four attempts at getting the model to say it, including exceptions
+       * written into both of the prompt rules suppressing it, got as far as naming the file and
+       * never the line.
+       *
+       * Skipped if the reply already carries it: on the odd turn where the model does quote the
+       * document, printing it twice is worse than not printing it at all.
+       */
+      const owed = this.takeCitationFor(checkIn.id);
+      if (owed && !theReplyAlreadyQuotesIt(reply, owed)) reply = `${owed}\n\n${reply}`;
+
+      /*
        * AND THE ONES SUBSTITUTION CANNOT REACH ARE AT LEAST WRITTEN DOWN.
        *
        * A mangled name has one of hers underneath it and gets put back. A name invented WHOLE -
@@ -1039,10 +1054,29 @@ export class ConversationService {
         .map((t) => t.content ?? '')
         .concat(message);
       const gate = new SentenceGate(streamPersonWords);
+      let shown = '';
+
+      /*
+       * THE DOCUMENT'S OWN WORDS GO FIRST, BEFORE A SINGLE DELTA.
+       *
+       * See the-line-that-touches-what-they-said.ts. On this path the quotation cannot be added
+       * afterwards - the person has already read the reply, and there is no un-sending a delta. So
+       * it is emitted before the model starts, which is also where it reads best: the fact, then
+       * the question.
+       *
+       * It is not passed through the gate. The gate exists to catch words the MODEL invented; this
+       * sentence was written here, from the file, and checking our own quotation against the
+       * person's vocabulary would drop it for not sounding like them.
+       */
+      const owedUpFront = this.takeCitationFor(checkIn.id);
+      if (owedUpFront) {
+        shown += `${owedUpFront}\n\n`;
+        yield { type: 'delta', text: `${owedUpFront}\n\n` };
+      }
+
       let emitted = 0;
       /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
       let cleanEmitted = 0;
-      let shown = '';
 
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
@@ -1206,6 +1240,34 @@ export class ConversationService {
     await this.prisma.checkIn
       .update({ where: { id: checkIn.id }, data: { saidWhy: said.kind } })
       .catch((err: any) => this.logger?.warn?.(`Recording why for check-in ${checkIn.id} failed: ${err?.message}`));
+  }
+
+  /**
+   * THE QUOTATION THIS TURN OWES THE PERSON, from `composeSystemPrompt` to whoever is replying.
+   *
+   * See the-line-that-touches-what-they-said.ts: where somebody's account contradicts a document
+   * everybody on the check-in can read, the product puts the document's own words on the screen
+   * rather than asking the model to. Written when the prompt is composed and taken by the reply
+   * path in the same request.
+   */
+  private _citationForThisTurn?: Map<string, { citation: string; directive: string }>;
+
+  /**
+   * Made on first use rather than as a field initialiser. Several specs build this service by
+   * hand - `Object.create(prototype)` and friends - so class fields never run for them, and a map
+   * that only exists when the constructor did would be undefined in exactly the tests that
+   * exercise the prompt.
+   */
+  private get citationForThisTurn(): Map<string, { citation: string; directive: string }> {
+    if (!this._citationForThisTurn) this._citationForThisTurn = new Map();
+    return this._citationForThisTurn;
+  }
+
+  /** Takes it and clears it: a citation belongs to one turn and must never appear on the next. */
+  private takeCitationFor(checkInId: string): string | null {
+    const held = this.citationForThisTurn.get(checkInId);
+    this.citationForThisTurn.delete(checkInId);
+    return held?.citation ?? null;
   }
 
   private async composeSystemPrompt(
@@ -1859,9 +1921,22 @@ export class ConversationService {
         who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
         fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
       }));
-    const putThisToThem = latestMessage
-      ? aDirectiveAboutWhatTheDocumentSays(latestMessage, shareableForThisTurn)
-      : '';
+    /*
+     * THE FACT IS OURS TO PUT; THE QUESTION IS THE SESSION'S.
+     *
+     * See the-line-that-touches-what-they-said.ts. The quotation is written from the document and
+     * shown to the person before the model's turn, because four attempts at making the model say it
+     * - including exceptions written into both of the rules suppressing it - got as far as naming
+     * the file and no further. The session is told the difference is already on the screen.
+     */
+    const toPut = latestMessage ? whatToPutToThem(latestMessage, shareableForThisTurn) : null;
+    const putThisToThem = toPut?.directive ?? '';
+    /* Handed to the caller for this turn only. `composeSystemPrompt` returns a string and has three
+       call sites; threading a second return value through all of them to carry one optional
+       sentence would be a worse change than a keyed handoff that is written and read in the same
+       request. Cleared by the reader. */
+    if (toPut) this.citationForThisTurn.set(checkIn.id, toPut);
+    else this.citationForThisTurn.delete(checkIn.id);
 
     // See between-session-notes.ts for why the wording is the mechanism. Kept in
     // its own file so the assembled text can be tested as text rather than as the

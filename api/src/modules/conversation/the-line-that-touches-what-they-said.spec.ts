@@ -1,4 +1,4 @@
-import { theLineWorthPuttingToThem, aDirectiveAboutWhatTheDocumentSays } from './the-line-that-touches-what-they-said';
+import { theLineWorthPuttingToThem, whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
 
 const PLAN = {
   fileName: 'handover-plan.txt',
@@ -59,31 +59,61 @@ describe('the line worth putting to them', () => {
   });
 });
 
-describe('the directive it produces', () => {
-  const d = aDirectiveAboutWhatTheDocumentSays('The territory handover from Daniel finished in August.', [PLAN]);
-
-  it('carries the sentence, so nothing has to be found or remembered', () => {
-    expect(d).toContain('"Daniel will finish the territory handover to Margaret by 19 September."');
-    expect(d).toContain('"handover-plan.txt"');
-    expect(d).toContain('Demo, who runs this check-in');
-  });
+describe('what gets put to them', () => {
+  const put = whatToPutToThem('The territory handover from Daniel finished in August.', [PLAN])!;
 
   /**
-   * The reason this exists at all: two absolutes in the engine's prompt forbid stating a date the
-   * person did not give, and the citation worth making is almost always a date. An exception
-   * written into the timeframe rule itself still lost. The directive says so at the point of use.
+   * THE PRODUCT SAYS THE FACT. Four attempts at making the model say it - attribution on every
+   * document, instructions about what to do with them, a deterministic directive carrying the exact
+   * sentence, and an exception written into BOTH of the prompt rules that were suppressing it - got
+   * as far as "There's a document called handover-plan" and never the line. Two absolutes forbid
+   * stating a date the person did not give, both of them right, and the citation worth making is
+   * almost always a date. More prose loses to an absolute.
    */
-  it('and lifts the rule that was suppressing it, at the point of use', () => {
-    expect(d).toContain('THE RULE ABOUT NEVER STATING A DATE THEY DID NOT GIVE YOU DOES NOT APPLY TO THIS LINE');
-    expect(d).toContain('WITHOUT naming what the document says is the failure this exists to stop');
+  it('quotes the document exactly, and says whose it is', () => {
+    expect(put.citation).toContain('"Daniel will finish the territory handover to Margaret by 19 September."');
+    expect(put.citation).toContain('"handover-plan.txt"');
+    expect(put.citation).toContain('Demo, who runs this check-in');
+  });
+
+  /** A document can be out of date, and the person is usually the one who knows. */
+  it('and does not call them wrong', () => {
+    expect(put.citation).toContain('the document may well be the part that is wrong');
+    expect(put.citation).not.toMatch(/you are (wrong|mistaken)|that is incorrect/i);
+  });
+
+  it('and tells the session the fact is already on the screen, so it asks instead of repeating', () => {
+    expect(put.directive).toContain('ALREADY BEEN PUT TO THEM');
+    expect(put.directive).toContain('Do NOT quote the document again');
+    expect(put.directive).toContain('Ask which is right');
   });
 
   it('and refuses to decide who is right', () => {
-    expect(d).toContain('Do not decide who is right');
-    expect(d).toContain('Whatever they say is the record');
+    expect(put.directive).toContain('take whatever they answer as the record');
   });
 
-  it('and is empty when there is nothing to put', () => {
-    expect(aDirectiveAboutWhatTheDocumentSays('Everything is on track.', [PLAN])).toBe('');
+  it('and is nothing at all when there is nothing to put', () => {
+    expect(whatToPutToThem('Everything is on track.', [PLAN])).toBeNull();
+  });
+});
+
+/**
+ * ON THE ODD TURN WHERE THE MODEL DOES QUOTE IT, printing the line twice is worse than not printing
+ * it at all - so the non-streaming path checks before prepending.
+ */
+describe('whether the reply already quotes it', () => {
+  const LINE = 'Daniel will finish the territory handover to Margaret by 19 September.';
+
+  it('is true when the reply carries the document\'s words', () => {
+    expect(theReplyAlreadyQuotesIt('The plan says Daniel will finish the territory handover to Margaret by 19 September. Which is right?', LINE)).toBe(true);
+  });
+
+  it('and true for a near-quote, since the person has still read it', () => {
+    expect(theReplyAlreadyQuotesIt('It says "daniel will finish the territory handover to margaret" - which is right?', LINE)).toBe(true);
+  });
+
+  it('and false for the reply this whole thing exists for', () => {
+    expect(theReplyAlreadyQuotesIt('Which is right? A plan can be out of date.', LINE)).toBe(false);
+    expect(theReplyAlreadyQuotesIt("There's a document called handover-plan. Which is right?", LINE)).toBe(false);
   });
 });
