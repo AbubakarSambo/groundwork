@@ -18,6 +18,8 @@
  * because putting their word back is strictly better than losing the sentence. Only what cannot be
  * repaired - a name with nothing of theirs underneath it - reaches this.
  */
+
+import { OneQuestionPerTurn } from './one-question-per-turn';
 import { namesWorthReporting, restoreTheirWords } from './the-record-holds-what-was-said';
 
 /**
@@ -95,9 +97,17 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
   const repaired = restoreTheirWords(reply, personSaid);
   const dropped: string[] = [];
   const kept: string[] = [];
+  /* One per reply, never shared between them. See one-question-per-turn.ts. */
+  const questions = new OneQuestionPerTurn();
 
   for (const sentence of intoSentences(repaired)) {
     if (namesWorthReporting(sentence, personSaid).length || callsTheReaderByName(sentence, readerName)) {
+      dropped.push(sentence);
+      continue;
+    }
+    /* A second question standing on its own. The person answers the last thing they were asked, so
+       the first ask is what gets lost - and a turn that reads as a list is answered as a list. */
+    if (questions.isASecondQuestion(sentence)) {
       dropped.push(sentence);
       continue;
     }
@@ -123,6 +133,8 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
 export class SentenceGate {
   private buffer = '';
   private readonly droppedSentences: string[] = [];
+  /* Stateful across the whole stream, because each sentence is judged with no view of the rest. */
+  private readonly questions = new OneQuestionPerTurn();
 
   constructor(
     private readonly personSaid: string[],
@@ -163,6 +175,10 @@ export class SentenceGate {
     for (const s of sentences) {
       const repaired = restoreTheirWords(s, this.personSaid);
       if (namesWorthReporting(repaired, this.personSaid).length || callsTheReaderByName(repaired, this.readerName)) {
+        this.droppedSentences.push(s);
+        continue;
+      }
+      if (this.questions.isASecondQuestion(repaired)) {
         this.droppedSentences.push(s);
         continue;
       }

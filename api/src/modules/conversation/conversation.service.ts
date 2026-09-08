@@ -294,7 +294,29 @@ export class ConversationService {
     });
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: { label: true, scenario: true },
+      select: {
+        label: true,
+        scenario: true,
+        /*
+         * WHAT THE CHECK-IN IS ABOUT, WHICH ONLY EVER ARRIVED ONCE.
+         *
+         * `open()` returns the brief, and the client stores it in that response handler and nowhere
+         * else. So the band that says what this check-in is about renders on the single load that
+         * OPENS the session, and never again - come back, refresh, or land on a session already
+         * open and it is gone.
+         *
+         * Reported by somebody who did a whole check-in and only saw what it was about afterwards.
+         * The band's own comment on the client says why that is the wrong behaviour: "it stays
+         * visible rather than appearing once, because a target you saw at the top of a ten-minute
+         * conversation is a target you are no longer looking at by the time it matters." It was
+         * describing what the code was supposed to do.
+         *
+         * The transcript is what every later load reads, so the brief travels on it too. Same
+         * `briefFor`, same shared-facts-only rule: the subject, what the lead wrote, the objectives.
+         */
+        brief: true,
+        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+      },
     });
 
     // Reopen (#3): when this is a self-correction session, surface the prior
@@ -384,6 +406,7 @@ export class ConversationService {
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
+      brief: this.briefFor(ground),
       turns: turns.map(asRead),
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,

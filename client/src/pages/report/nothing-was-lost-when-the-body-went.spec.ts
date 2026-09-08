@@ -65,10 +65,29 @@ describe('and the body they came out of is really gone', () => {
     expect(PARTY).toContain('activateMutation.mutate()')
   })
 
-  it('and offers somewhere real to go in both states', () => {
-    /* Forming and released. A message with nothing to open is the dead end that
+  it('offers somewhere real to go while the report is still forming', () => {
+    /* A message saying "a picture is forming" with nothing to open is the dead end that
        GroundParticipantPage.formingReport.spec was written for. */
     expect(PARTY).toContain('See what has emerged so far')
-    expect(PARTY).toContain('Read it on the board')
+  })
+
+  it('and once everyone has shown theirs, says nothing at all', () => {
+    /*
+     * IT BRIEFLY SAID WHERE EVERYTHING HAD GONE, AND THAT WAS ALSO WRONG.
+     *
+     * Replacing the deleted body, this section carried three sentences of directions - "Where the
+     * accounts agree and where they differ... is on the team board. Your own account of each
+     * session... on My record" - over two buttons to those places. Read back: "remove".
+     *
+     * Right. The tab already opens with a door to the board and a door to your sessions. A
+     * paragraph naming the same two rooms is a third and fourth door to them, and it reads as an
+     * apology for the page not holding what it used to.
+     */
+    expect(PARTY).not.toContain('Read it on the board')
+    /* The heading and the directions under it. Not the phrase itself - the toast fired when the
+       last person reveals still says "Everyone has shown theirs", which is the right words in the
+       right place: a thing that just happened, said once, rather than a standing signpost. */
+    expect(PARTY).not.toContain('is on the team board')
+    expect(PARTY).not.toMatch(/fontWeight: 700, marginBottom: 5 \}\}>Everyone has shown theirs/)
   })
 })

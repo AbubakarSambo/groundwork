@@ -171,7 +171,9 @@ export function SharedReportForAParty({
             yours is an act with a consequence that cannot be undone, and it belongs on the tab a
             person opens expecting the report, not buried on a page about one session.
           */}
-          <Sec title="Shared report" />
+          {(!report || (report as any).withheldUntilYouAnswer || !report.releasedAt || !report.activated) && (
+            <Sec title="Shared report" />
+          )}
 
           {!report ? (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
@@ -279,28 +281,21 @@ export function SharedReportForAParty({
               </button>
             </div>
           ) : (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>Everyone has shown theirs</div>
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 12 }}>
-                Where the accounts agree and where they differ, with each person's own position under
-                it, is on the team board. Your own account of each session, and the claims worked out
-                rather than said, are on My record.
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => onOpenBoard()}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Read it on the board
-                </button>
-                <button
-                  onClick={() => onGoToMyRecord()}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  My record
-                </button>
-              </div>
-            </div>
+            /*
+              ONCE EVERYONE HAS SHOWN THEIRS, THIS SECTION HAS NOTHING TO DO.
+
+              An hour ago it held three sentences saying where the report had gone - "Where the
+              accounts agree and where they differ... is on the team board. Your own account of each
+              session... on My record" - over two buttons to those places. Read back: "remove". Fair.
+              It was a paragraph of directions standing where a document used to be, and the tab
+              already has a door to the board and a door to My record at the top of it. Saying it
+              again in prose is a third and fourth door to two rooms.
+
+              So the section renders nothing here, and the heading above renders only when there IS
+              something. What is left on the tab is the board, your sessions, and - before everyone
+              has shown theirs - the one thing that is an act rather than a reading: the reveal.
+            */
+            null
           )}
     </>
   )

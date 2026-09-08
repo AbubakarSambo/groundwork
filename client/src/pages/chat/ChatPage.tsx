@@ -401,6 +401,15 @@ export function ChatPage() {
           if (t.priorRecordEntries && t.priorRecordEntries.length > 0) {
             setPriorRecordEntries(t.priorRecordEntries)
           }
+          /*
+            WHAT THIS CHECK-IN IS ABOUT, ON EVERY LOAD.
+
+            `brief` was set in exactly one place - `openSession.onSuccess` - so the band appeared on
+            the single load that opened the session and never again. Somebody did an entire check-in
+            and only found out what it was about afterwards. Outside the turns check on purpose: a
+            session with no turns yet still has a subject, and that is the load where it matters most.
+          */
+          if (t.brief) setBrief(t.brief)
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
@@ -787,7 +796,9 @@ export function ChatPage() {
             ten-minute conversation is a target you are no longer looking at by the time it matters.
             Only shared facts: the subject and the stated objectives, never another party's words.
           */}
-          {brief && (brief.subject || brief.objectives.length > 0) && (
+          {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
+              description but which has no objectives and no label showed nothing at all. */}
+          {brief && (brief.subject || (brief as any).says || brief.objectives.length > 0) && (
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
                 What this check-in is about
