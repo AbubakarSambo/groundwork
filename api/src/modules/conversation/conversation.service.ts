@@ -856,7 +856,10 @@ export class ConversationService {
        * difference between them is only WHEN it can be caught - here the whole reply is in hand, so
        * the screen runs once over all of it rather than sentence by sentence.
        */
-      const screened = screen(stripped.text, personWords);
+      /* Who is reading, so their own name cannot come back at them in the third person. Their
+         first name is on the row this method already loaded. */
+      const readerName = (checkIn as any).participant?.user?.firstName ?? null;
+      const screened = screen(stripped.text, personWords, readerName);
       if (screened.dropped.length) {
         this.logger.warn(
           `Dropped ${screened.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
@@ -1062,7 +1065,10 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      const gate = new SentenceGate(streamPersonWords);
+      const gate = new SentenceGate(
+        streamPersonWords,
+        (checkIn as any).participant?.user?.firstName ?? null,
+      );
       let shown = '';
 
       /*
@@ -4730,7 +4736,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * rather than two: the flag is a boolean on a row this query is already joining to, and the
        * alternative was a second findUnique on every message anybody sends.
        */
-      include: { participant: { include: { user: { select: { awaitingOrgApproval: true } } } } },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
     if (checkIn.participant.userId !== requestingUserId) {

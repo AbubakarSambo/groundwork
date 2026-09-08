@@ -42,16 +42,32 @@ describe('the report that opens is the report they read', () => {
   })
 
   it('is where a finished session links, from every list of sessions', () => {
-    /* Three lists now, and all three go to the report rather than the transcript: the party's own
-       report view, the session list that replaced the lead's report tab, and My record. */
+    /*
+     * TWO LISTS, NOT THREE, AND THE PROMISE IS UNCHANGED.
+     *
+     * This used to name three: the party's report view, the session list that replaced the lead's
+     * report tab, and My record. The first two were the same rows twice - the party's was
+     * byte-for-byte My record's block, two tabs apart - which is part of what "the participant
+     * seems to be looking at too many reports" turned out to be. The party's copy is gone; its tab
+     * points at My record, where the richer of the two lives.
+     *
+     * What this file protects is that a finished session opens the REPORT and not the transcript.
+     * That still holds for every list there is. The count was never the point.
+     */
     const LIST = read('..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx')
     const MINE = read('..', '..', 'components', 'gw', 'MyPrivateReport.tsx')
-    expect(PARTY).toContain('/report`)')
     expect(LIST).toContain('/report`)')
     expect(MINE).toContain('/report`)')
     for (const src of [PARTY, LIST, MINE]) {
       expect(src).not.toMatch(/navigate\(`\/checkin\/\$\{(ci|r)\.id\}`\)/)
     }
+  })
+
+  it('and the party view does not grow a second copy of that list', () => {
+    /* The duplicate arrived once by being convenient. A row per session here means the same rows in
+       two tabs again, with nothing on either screen saying they are the same. */
+    expect(PARTY).not.toMatch(/mySessions\.map\(/)
+    expect(PARTY).toContain('onGoToMyRecord()')
   })
 
   it('and the end of a signed-in session offers it directly', () => {

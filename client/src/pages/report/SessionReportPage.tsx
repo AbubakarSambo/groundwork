@@ -168,6 +168,33 @@ export default function SessionReportPage() {
       )}
 
       {/*
+        AND THIS SESSION'S SHARED REPORT, UNDER YOUR OWN.
+        Two reports, one session, and they answer different questions: the one above is what you
+        said and what it meant, and it does not change. This one is what the accounts together
+        show for this session - forming while people are still answering, final once the round
+        closed. They belong on one page because that is how a person reads them: mine, then ours.
+      */}
+      {data?.groundId && data?.sessionNumber && (
+        <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What the accounts show for this session</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
+            Everybody's accounts together. It never quotes anyone.
+          </div>
+          <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
+        </div>
+      )}
+      {/*
+        AND "WHAT NOW?" AFTER BOTH OF THEM, NOT BETWEEN THEM.
+
+        It sat in the middle: your own report, then a heading saying "What now?" with two buttons
+        and a closing sentence, then - below all of that - this session's shared report. So the
+        page offered you somewhere to go before it had finished showing you the thing you came for,
+        and the half that says what everybody's accounts show together was under a call to action.
+
+        The order the page's own note argues for - mine, then ours - is unchanged. Only the buttons
+        moved, to after the reading rather than into the middle of it.
+      */}
+      {/*
         WHAT NOW? SOMETHING TO PRESS.
 
         Two buttons that came with the report body when it moved here. They were three paragraphs
@@ -205,22 +232,6 @@ export default function SessionReportPage() {
         </div>
       </div>
 
-      {/*
-        AND THIS SESSION'S SHARED REPORT, UNDER YOUR OWN.
-        Two reports, one session, and they answer different questions: the one above is what you
-        said and what it meant, and it does not change. This one is what the accounts together
-        show for this session - forming while people are still answering, final once the round
-        closed. They belong on one page because that is how a person reads them: mine, then ours.
-      */}
-      {data?.groundId && data?.sessionNumber && (
-        <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What the accounts show for this session</div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            Everybody's accounts together. It never quotes anyone.
-          </div>
-          <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
-        </div>
-      )}
     </div>
   )
 }

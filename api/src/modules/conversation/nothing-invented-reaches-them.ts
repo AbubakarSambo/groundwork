@@ -60,13 +60,44 @@ export type Screened = {
  * handle it - which is the point. A screen that quietly passes something through rather than
  * returning nothing is how "completely" turns back into "usually".
  */
-export function screen(reply: string, personSaid: string[]): Screened {
+
+/**
+ * THE READER'S OWN NAME, SAID BACK AT THEM IN THE THIRD PERSON.
+ *
+ * Read on a live check-in: "Does she face the same choice?" - asked of the person it was about, who
+ * was the only person in the conversation. The model has the party labels in its context and does
+ * not reliably know which of them is the one reading, so it writes about the reader as though they
+ * were being discussed rather than addressed.
+ *
+ * The prompt already forbids it - "address them directly as you and your, never by name" - and the
+ * prompt is not where this belongs. An instruction is a request; this is a check at the door.
+ *
+ * NOT PART OF THE INVENTED-NAME RULE, deliberately. That rule asks whether a name appears in what
+ * the person said, and the reader's own name usually does - they sign off with it, they quote a
+ * message that has it in. So it passes that test every time. This one does not consult what was
+ * said at all: their name is wrong in a reply written TO them regardless of who typed it.
+ *
+ * WHAT IT DOES NOT CATCH is the bare pronoun in "does SHE face the same choice", because a reply
+ * may legitimately be about another party in the check-in and no test on the sentence alone tells
+ * the two apart. Only the name, which is unambiguous.
+ */
+function callsTheReaderByName(sentence: string, readerName?: string | null): boolean {
+  const name = (readerName ?? '').trim();
+  /* A first name only, and never a short one: "Al" or "Jo" collide with ordinary words, and a
+     dropped sentence costs the person a question. */
+  const first = name.split(/\s+/)[0] ?? '';
+  if (first.length < 3) return false;
+  /* Case-sensitive on the capital, so a person called Grace does not lose "handled with grace". */
+  return new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(sentence);
+}
+
+export function screen(reply: string, personSaid: string[], readerName?: string | null): Screened {
   const repaired = restoreTheirWords(reply, personSaid);
   const dropped: string[] = [];
   const kept: string[] = [];
 
   for (const sentence of intoSentences(repaired)) {
-    if (namesWorthReporting(sentence, personSaid).length) {
+    if (namesWorthReporting(sentence, personSaid).length || callsTheReaderByName(sentence, readerName)) {
       dropped.push(sentence);
       continue;
     }
@@ -93,7 +124,11 @@ export class SentenceGate {
   private buffer = '';
   private readonly droppedSentences: string[] = [];
 
-  constructor(private readonly personSaid: string[]) {}
+  constructor(
+    private readonly personSaid: string[],
+    /** Who is reading. See callsTheReaderByName - their own name never belongs in a reply to them. */
+    private readonly readerName?: string | null,
+  ) {}
 
   /** Feed a delta. Returns whatever complete, checked sentences are now safe to send. */
   push(delta: string): string {
@@ -127,7 +162,7 @@ export class SentenceGate {
     const out: string[] = [];
     for (const s of sentences) {
       const repaired = restoreTheirWords(s, this.personSaid);
-      if (namesWorthReporting(repaired, this.personSaid).length) {
+      if (namesWorthReporting(repaired, this.personSaid).length || callsTheReaderByName(repaired, this.readerName)) {
         this.droppedSentences.push(s);
         continue;
       }

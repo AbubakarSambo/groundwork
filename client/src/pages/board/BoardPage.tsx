@@ -533,6 +533,36 @@ export function BoardPage() {
                         <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
                       </div>
                       {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      {/*
+                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
+
+                        This section carried a headline and then a line of italics: "This is the
+                        summary. Your own report holds the detail of what each account said." So the
+                        one question the board exists to answer - what do the two of you each think
+                        is going on - was the one thing you had to leave it to find out.
+
+                        The data was already here. `divergence.items` is the report's own divergence
+                        objects, sent whole, and every string in them has been through `named()` on
+                        the way out - the same masking the rest of the board gets, so a reader who
+                        may not see who somebody is does not learn it here. Rendering it is a read
+                        of what was already on the wire, not a new disclosure.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {d.positions.map((pos: any, j: number) => (
+                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
+                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
+                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {d.atStake && (
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-muted)' }}>Why it matters </span>
+                          {d.atStake}
+                        </div>
+                      )}
                     </Row>
                   ))}
                   {b.divergence.agreements.map((a: any, i: number) => (
@@ -552,16 +582,14 @@ export function BoardPage() {
                 </>
               )}
               {/*
-                THE POINTER STAYS; THE LINK BACK DOES NOT. You came from there.
-                
-                The board is opened from the foot of the report now, so offering "Open your report →"
-                sends somebody back where they just were - and it was the third leg of a ring, board
-                pointing at report pointing at the report page. The sentence still says where the
-                substance is, which is the useful half.
+                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
+
+                It read "This is the summary. Your own report holds the detail of what each account
+                said." That sentence was the only reason a fourth report surface had to exist: the
+                board named the disagreement and then sent you to another page to find out what it
+                was. Each account is now printed above, so the sentence would be sending people away
+                from the thing they are already looking at.
               */}
-              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4 }}>
-                {b.divergence.pointer}
-              </div>
             </Card>
           </>
         )}

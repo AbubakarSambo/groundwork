@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Sec } from './kit'
 import { reportsApi } from '@/api/reports'
@@ -29,6 +28,8 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
+  /** Where the session list lives now. The page owns tab names, so it is handed a callback. */
+  onGoToMyRecord: () => void
   /** Who is reading, so their own finished sessions can be listed and nobody else's. */
   viewerUserId?: string | null
 }
@@ -38,9 +39,9 @@ export function SharedReportForAParty({
   report,
   ground,
   onOpenBoard,
+  onGoToMyRecord,
   viewerUserId,
 }: SharedReportForAPartyProps) {
-  const navigate = useNavigate()
   const qc = useQueryClient()
   /**
    * SHOWING YOUR REPORT TO THE OTHERS, which came across with the button that does it.
@@ -118,36 +119,38 @@ export function SharedReportForAParty({
               <span style={{ fontSize: 13 }}>&rarr;</span>
             </button>
           )}
+          {/*
+            THE SESSION LIST IS ON MY RECORD, AND WAS ON BOTH.
+
+            This block was byte-for-byte the block in `MyPrivateReport` - the same rows, the same
+            `navigate('/checkin/:id/report')` - so a person with three finished sessions had two
+            identical lists two tabs apart and no way to tell whether one held something the other
+            did not. Asked about it: "the participant seems to be looking at too many reports".
+
+            My record's copy is the one that stays. It is where a quoted decision put it - "I need
+            my own report to be the same report on my record" - and it says something this one did
+            not: how checkable each account was, on the session it is about. Deleting the richer of
+            two identical lists to keep the plainer one would have been the wrong way round.
+          */}
           {mySessions.length > 0 && (
-            <>
-              <Sec n={1} title="Your sessions" src="each one has its own private report" />
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 4 }}>
-                {mySessions.map((ci, i) => (
-                  <button
-                    key={ci.id}
-                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
-                    style={{
-                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
-                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
-                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
-                    <span>
-                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
-                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt
-                          ? `Finished ${new Date(ci.completedAt).toLocaleDateString()} · your private report, and where to correct it`
-                          : 'Finished · your private report, and where to correct it'}
-                      </span>
-                    </span>
-                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
-                  </button>
-                ))}
-              </div>
-            </>
+            <button
+              onClick={() => onGoToMyRecord()}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10,
+                padding: '12px 14px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              }}
+            >
+              <span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Your sessions</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+                  {mySessions.length} finished. Each one has its own report, on My record.
+                </span>
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+            </button>
           )}
-          <Sec n={mySessions.length > 0 ? 2 : undefined} title="Shared report" />
+          <Sec title="Shared report" />
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
             Shows where your account and the other party's account agree or differ. It does not quote anyone.
           </div>

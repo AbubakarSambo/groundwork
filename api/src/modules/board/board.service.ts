@@ -399,13 +399,23 @@ export class BoardService {
     }
 
     if (has('divergence') && reportSafe) {
-      // The board shows the SUMMARY. The report holds the substance - so this
-      // deliberately carries a pointer back rather than the full detail.
+      /*
+       * THE BOARD HOLDS THE SUBSTANCE NOW.
+       *
+       * It used to send a `pointer` - "This is the summary. Your own report holds the detail of
+       * what each account said." - and the client printed it under the list. That sentence was the
+       * only reason a separate shared-report surface had to exist: the board named a disagreement
+       * and then sent the reader elsewhere to learn what it was.
+       *
+       * Nothing about the payload changes. `divergences` was always the report's own objects, sent
+       * whole, with `positions` and `atStake` on them, and every string in them goes through
+       * `named()` below so a reader who may not see who somebody is still does not. The client was
+       * simply not rendering the fields it already had.
+       */
       out.divergence = {
         items: Array.isArray(reportSafe.divergences) ? reportSafe.divergences : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
         centralQuestion: reportSafe.centralQuestion ?? null,
-        pointer: 'This is the summary. Your own report holds the detail of what each account said.',
       };
     }
 
