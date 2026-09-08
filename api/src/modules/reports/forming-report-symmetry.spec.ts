@@ -43,6 +43,7 @@ function makeService(overrides: any = {}) {
   };
   const grounds: any = {
     getSessionProgress: jest.fn(async () => ({ completed: 1, total: 2, missingParticipantIds: ['p-part'], declinedParticipantIds: [] })),
+    ...overrides.grounds,
   };
   const service = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, grounds, { tell: async () => [] } as any);
   return { service };
@@ -57,18 +58,52 @@ describe('forming report: the initiator gets the same pre-release content a part
     expect(res.nextStep).toBe('release');
   });
 
-  it('participant: unchanged - still gets the forming picture', async () => {
-    const { service } = makeService();
+  it('a participant who has ALREADY answered gets the same forming picture', async () => {
+    /*
+     * THE SYMMETRY THAT SURVIVES, AND THE ONE THAT DID NOT.
+     *
+     * This file was written because the LEAD was short-changed: their branch returned a bare stub
+     * while a participant's returned the forming picture, on a page whose button was gated on the
+     * flag the stub did not carry. That lesson is intact and is the test above.
+     *
+     * What was wrong with "both roles see the same thing" is the axis. Walked as a real
+     * participant: Zainab, invited and not yet checked in, opened her Report tab and read a summary
+     * of her manager's account of her - "two standards... one that was communicated, and another
+     * that was not" - before writing a word. Whatever she said next was an answer to it.
+     *
+     * The gate is not the role. It is whether you have given your own account this round.
+     */
+    const { service } = makeService({
+      grounds: {
+        getSessionProgress: jest.fn(async () => ({
+          completed: 2, total: 2, missingParticipantIds: [], declinedParticipantIds: [],
+        })),
+      },
+    });
     const res: any = await service.get('g1', 'part-user');
     expect(res.forming).toBe(true);
     expect(res.sharedPicture).toBe(unreleasedReport.sharedPicture);
+    expect(res.withheldUntilYouAnswer).toBeUndefined();
   });
 
-  it('both roles see the SAME sharedPicture content pre-release (symmetric)', async () => {
+  it('and a participant who has not is told why, rather than shown it', async () => {
     const { service } = makeService();
-    const initRes: any = await service.get('g1', 'init-user');
-    const partRes: any = await service.get('g1', 'part-user');
-    expect(initRes.sharedPicture).toBe(partRes.sharedPicture);
-    expect(initRes.forming).toBe(partRes.forming);
+    const res: any = await service.get('g1', 'part-user');
+    expect(res.withheldUntilYouAnswer).toBe(true);
+    expect(res.sharedPicture).toBeUndefined();
+    /* A fact about the method, not a refusal - and it says when it lifts. */
+    expect(res.saying).toContain('as soon as you have given yours');
+    expect(res.saying).toContain('independent');
+    /* Their own record is still theirs while they wait. */
+    expect(res).toHaveProperty('soloArtifact');
+  });
+
+  it('while the lead reads it whether or not they have answered', async () => {
+    /* Somebody who runs a check-in and gives no account of their own - managing-only - would
+       otherwise never see the picture they are running. */
+    const { service } = makeService();
+    const res: any = await service.get('g1', 'init-user');
+    expect(res.sharedPicture).toBe(unreleasedReport.sharedPicture);
+    expect(res.withheldUntilYouAnswer).toBeUndefined();
   });
 });

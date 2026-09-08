@@ -46,8 +46,24 @@ describe('you are told the tabs exist', () => {
     expect(ADMIN).toMatch(/settings: 'settings'/)
   })
 
-  it('and shows them only when there is a check-in to open', () => {
+  it('and shows them only to somebody who can actually use them', () => {
+    /*
+     * BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS BEING OFFERED THEM.
+     *
+     * The complaint this file records - "you are not told you can set context on a tab" - came
+     * from a LEAD, and the fix was written for everybody. Walked as a participant afterwards:
+     * "Set the context" goes to a Context page that tells her "you cannot change this here", and
+     * "Add people" goes to a Setup page that opens with "Nothing on this page is yours to change".
+     * Two offers, two refusals, and she has to go and find out.
+     *
+     * A tab nobody is told about is a tab nobody uses. A tab somebody is told about and then
+     * refused at is worse.
+     */
+    expect(PAGE).toMatch(/\{groundId && isInitiator && \(\s*<span/)
+  })
+
+  it('and only when there is a check-in to open', () => {
     /* No groundId means the entry flow, where neither tab exists yet. */
-    expect(PAGE).toMatch(/\{groundId && \(\s*<span/)
+    expect(PAGE).toMatch(/\{groundId && isInitiator/)
   })
 })

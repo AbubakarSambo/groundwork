@@ -165,6 +165,23 @@ export function SharedReportForAParty({
                   : 'The report generates once all parties have checked in.'}
               </div>
             </div>
+          ) : (report as any).withheldUntilYouAnswer ? (
+            /*
+              WAITING ON YOUR OWN ACCOUNT, NOT ON SOMEBODY ELSE'S.
+
+              Walked as a real participant: Zainab, invited and not yet checked in, opened this tab
+              and read a summary of her manager's account of her before writing a word. The server
+              withholds it now; this says why, and it is a fact about the method rather than a
+              refusal - reading somebody else's account first makes yours an answer to theirs.
+            */
+            <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+                A picture is forming, and you have not given your account yet
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6 }}>
+                {(report as any).saying}
+              </div>
+            </div>
           ) : !report.releasedAt ? (
             <>
               <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>

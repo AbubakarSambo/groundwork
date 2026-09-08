@@ -1181,7 +1181,19 @@ export function ChatPage() {
               * it would fire whenever the model felt like it, and this is true on every turn of
               * every session. Quiet, always there, and it goes to the tab rather than describing it.
               */}
-            {groundId && (
+            {/*
+              BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
+
+              Walked as a participant: her chat carries "Set the context" and "Add people". The
+              first goes to a Context page that tells her "you cannot change this here"; the second
+              goes to Setup, which opens with "Nothing on this page is yours to change". Two
+              controls offered to somebody, both leading to a page that refuses them - which is
+              worse than not offering, because she has to go and find out.
+
+              A participant is not short of things to do here: the one thing that IS hers is her
+              own record, and it is already a tab.
+            */}
+            {groundId && isInitiator && (
               <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
                 <button
                   onClick={() => navigate(`/grounds/${groundId}?tab=context`)}

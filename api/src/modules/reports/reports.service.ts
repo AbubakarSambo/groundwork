@@ -2748,6 +2748,41 @@ happened, and what is in the way.`;
       const soloArtifact = participant?.soloArtifact
         ? (() => { try { return JSON.parse(participant.soloArtifact!); } catch { return null; } })()
         : null;
+      /**
+       * A PARTY WHO HAS NOT ANSWERED YET DOES NOT READ THE FORMING PICTURE.
+       *
+       * Walked as a real participant on a real check-in. Zainab, invited and not yet checked in,
+       * opened her Report tab and read:
+       *
+       *   "Only Demo has checked in so far... Demo's account describes two standards for a
+       *    successful first quarter: one that was communicated, and another that was not."
+       *
+       * That is her manager's private account of her, summarised, handed to her before she writes
+       * a word. Whatever she says next is an answer to it. The entire claim of this product is
+       * that the accounts are independent - "nobody else sees your answers" - and the site says
+       * plainly that the shared report appears once everyone has checked in.
+       *
+       * So: the forming picture is for whoever is WAITING on it - the lead, an org admin, and any
+       * party who has already given their account this round. A party who has not is told what is
+       * happening and why they cannot read it yet, which is a fact about the method rather than a
+       * refusal.
+       *
+       * Not `!participant` - an org admin has no participant row and must still see it. The test
+       * is having a row and being in this round's missing list.
+       */
+      if (participant && requestingUserIsMissing && !isInitiator && !isOrgAdmin) {
+        return {
+          activated: true,
+          forming: true,
+          withheldUntilYouAnswer: true,
+          saying:
+            'A picture is forming from the accounts that are in. You will be able to read it as soon as you have given yours - reading somebody else\'s account first would make yours an answer to theirs, and the whole point is that they are independent.',
+          soloArtifact,
+          sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+          declined: await this.declinedThisRound(groundId, ground.participants as any),
+        };
+      }
+
       return {
         ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
