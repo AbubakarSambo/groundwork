@@ -8,6 +8,7 @@ The core unit is an **alignment ground**: one situation, two parties, working to
 
 This repo mirrors the architecture and conventions of the `kulode` codebase, adapted to Groundwork's domain and with an **AI conversation engine** (Anthropic Claude) and **Stripe (USD)** billing.
 
+
 ## Monorepo layout
 
 ```
