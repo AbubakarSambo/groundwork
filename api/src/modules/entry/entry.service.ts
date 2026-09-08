@@ -1364,15 +1364,6 @@ STRICT RULES:
       },
     });
 
-    /*
-     * A ground made through the entry chat can be a round of one - the person who created it is
-     * often the only party at this point - and a round of one closes the moment they finish. This
-     * path writes COMPLETED directly rather than going through the conversation's completion, so
-     * without this call the very first round of the flow most people meet would never be recorded
-     * as closed.
-     */
-    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
-
     /**
      * KEEP THE DOCUMENTS THE PERSON ATTACHED.
      *
@@ -1415,11 +1406,19 @@ STRICT RULES:
       .ensureNextSession(ground.id, participant.id, 1)
       .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
-    // Extract structured record entries for the initiator so report synthesis can read them.
+    /*
+     * Extract structured record entries for the initiator so report synthesis can read them.
+     * AWAITED, because the synthesis two dozen lines down reads exactly these rows - the normal
+     * completion path awaits it for the same reason. The summary it builds afterwards is not
+     * awaited: nothing downstream reads that, and a model failure there must not fail a commit.
+     */
     if (dto.history.length > 0) {
-      this.conversation.extractRecordEntries(checkIn.id, participant.id)
-        .then(() => this.conversation.buildSoloArtifact(participant.id, ground.id))
+      await this.conversation
+        .extractRecordEntries(checkIn.id, participant.id)
         .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
+      this.conversation
+        .buildSoloArtifact(participant.id, ground.id)
+        .catch((err) => this.logger.error(`commit: summary failed for initiator: ${err.message}`));
     }
 
     /*
@@ -1440,6 +1439,36 @@ STRICT RULES:
         data: { sessionReport: dto.report as object },
       });
     }
+
+    /**
+     * AND SAY THAT A SESSION FINISHED, which nothing here ever did.
+     *
+     * "We should have a forming report, why do you have this here" - and there was no forming
+     * report, on any check-in that came through the entry chat. This method imported
+     * `CheckInCompletedEvent` and `GroundworkEvents` and never emitted either: the check-in was
+     * completed with a direct `update`, so every listener on completion was skipped. Four things
+     * that are supposed to happen on a finished session did not:
+     *
+     *   - the report synthesis, which builds the shared picture AS SOON AS ANYBODY checks in and
+     *     is the whole reason a forming report exists. No event, no synthesis, no report row - so
+     *     the Report tab honestly had nothing to show, and the lead's own end-of-session card fell
+     *     back to a two-line summary. That is "where did the shared report go".
+     *   - the release, once everybody is through. People still holding an unopened invitation keep
+     *     the round open, so this cannot release early.
+     *   - the email telling the lead somebody checked in.
+     *   - the usage event billing reads.
+     *
+     * Emitted after the record has been extracted and the report stored, and before the
+     * invitations go out. The order matters: the synthesis reads record entries, so the normal
+     * completion path awaits the extraction before announcing - this one fired it and forgot,
+     * which would hand the synthesis an empty record. The listener catches its own errors.
+     */
+    this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
+      checkInId: checkIn.id,
+      groundId: ground.id,
+      participantId: participant.id,
+      sessionNumber: 1,
+    } satisfies CheckInCompletedEvent);
 
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
@@ -1486,6 +1515,27 @@ STRICT RULES:
         whyInvitesFailed.push({ email: c.email, because: err?.message ?? 'The invite did not send.' });
       }
     }
+
+    /*
+     * NOW THAT EVERYBODY IS ON IT, ASK WHETHER ROUND 1 IS ACTUALLY CLOSED.
+     *
+     * This call used to sit right after the check-in was marked COMPLETED - about a hundred and
+     * thirty lines above, and crucially BEFORE the contributors were added. So the rule counted
+     * the participants that existed at that moment (one: the person who had just written it),
+     * found them all done, and wrote a `RoundCompletion` row with `participantCount: 1`. The row
+     * is unique per round and the writer is idempotent by the database, so the round stayed
+     * closed at a count of one for the life of the check-in, however many people joined a second
+     * later.
+     *
+     * What that looked like: the Report tab's header said "report ready - you release it" while
+     * the body of the same screen said "A picture is forming, 1 of 2 have checked in". The header
+     * reads `roundCompletions`; the body counts people.
+     *
+     * A round of one is still a real thing - somebody who starts alone deliberately - and it
+     * still records, because with zero contributors the count is the same either way. The only
+     * change is that the question is asked once the party is known.
+     */
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
 
     // Zero contributors = a deliberate solo/broadcast start: the initiator
     // completing session 1 is the whole party, so the ground goes ACTIVE.

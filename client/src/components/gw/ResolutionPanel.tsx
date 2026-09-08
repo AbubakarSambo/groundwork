@@ -18,7 +18,22 @@ import { toast } from 'sonner'
  * to pick the SAME end state, and changing the proposal clears the earlier
  * confirmations so nobody is counted as agreeing to something they never saw.
  */
-export function ResolutionPanel({ groundId }: { groundId: string }) {
+export function ResolutionPanel({ groundId, nearTheEnd }: {
+  groundId: string
+  /**
+   * HOW A CHECK-IN ENDS IS NOT THE FIRST THING YOU SEE ABOUT IT.
+   *
+   * Rendered unconditionally, this panel is four buttons including "Stop the project" on a
+   * check-in that started yesterday - `the-exit-belongs-at-the-exit`. The caller says whether the
+   * run is at or near its last session; this decides the other half of the same rule, because
+   * somebody who has already started resolving must not lose the panel to arithmetic saying it is
+   * early, and only this component knows whether anybody has picked.
+   *
+   * Undefined means "the caller has not gated it" and the panel shows, which is right for a
+   * caller that only mounts it at the end anyway.
+   */
+  nearTheEnd?: boolean
+}) {
   const qc = useQueryClient()
   const [picked, setPicked] = useState<string | null>(null)
 
@@ -53,6 +68,11 @@ export function ResolutionPanel({ groundId }: { groundId: string }) {
   const canChoose = !leadDecides || viewerIsLead
 
   if (isLoading || error || !data) return null
+
+  /* The exit, at the exit. Or wherever a decision is already under way. */
+  const decisionUnderWay =
+    !!data.resolution?.closedAt || (data.confirmations ?? []).some((c) => c.confirmed)
+  if (nearTheEnd === false && !decisionUnderWay) return null
 
   const { options, confirmations, confirmedCount, totalActive, resolution } = data
   const closed = !!resolution?.closedAt

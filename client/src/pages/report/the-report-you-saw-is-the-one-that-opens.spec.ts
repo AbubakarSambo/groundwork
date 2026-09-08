@@ -20,7 +20,6 @@ const read = (...p: string[]) => strip(readFileSync(join(__dirname, ...p), 'utf8
 const PAGE = read('SessionReportPage.tsx')
 const ENTRY = read('..', 'enter', 'EntryChatPage.tsx')
 const PARTY = read('..', '..', 'components', 'gw', 'SharedReportForAParty.tsx')
-const ADMIN = read('..', 'grounds', 'GroundAdminPage.tsx')
 const CHAT = read('..', 'chat', 'ChatPage.tsx')
 
 describe('the report that opens is the report they read', () => {
@@ -42,11 +41,16 @@ describe('the report that opens is the report they read', () => {
     expect(PAGE).toContain('startSelfCorrection')
   })
 
-  it('is where a finished session links, on both report views', () => {
+  it('is where a finished session links, from every list of sessions', () => {
+    /* Three lists now, and all three go to the report rather than the transcript: the party's own
+       report view, the session list that replaced the lead's report tab, and My record. */
+    const LIST = read('..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx')
+    const MINE = read('..', '..', 'components', 'gw', 'MyPrivateReport.tsx')
     expect(PARTY).toContain('/report`)')
-    expect(ADMIN).toContain('${ci.id}/report`)')
-    for (const src of [PARTY, ADMIN]) {
-      expect(src).not.toMatch(/navigate\(`\/checkin\/\$\{ci\.id\}`\)/)
+    expect(LIST).toContain('/report`)')
+    expect(MINE).toContain('/report`)')
+    for (const src of [PARTY, LIST, MINE]) {
+      expect(src).not.toMatch(/navigate\(`\/checkin\/\$\{(ci|r)\.id\}`\)/)
     }
   })
 

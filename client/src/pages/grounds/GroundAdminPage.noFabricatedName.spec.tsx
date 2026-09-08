@@ -17,21 +17,35 @@ const src = readFileSync(
 )
 
 describe('GroundAdminPage: roster and shared-report label use participantLabel, not a raw email', () => {
-  it('imports participantLabel', () => {
+  it('imports a labelling helper rather than hand-rolling one', () => {
     /**
-     * Loosened from the exact import line to the identifier: `personLabel` now sits alongside it in
-     * the same statement (the lead's own view may fall back to an address; a party's view may not),
-     * and pinning the literal line would make adding a second helper look like removing this one.
+     * Loosened once from the exact import line to the identifier, because `personLabel` came to sit
+     * alongside it. Loosened again to either, because `participantLabel` is no longer used on this
+     * page at all: the two places that called it - the roster row and the private-report heading -
+     * both belong to the LEAD, who typed these addresses themselves, and both now use
+     * `personLabel`. The rule that matters is below and unchanged: no name is ever built out of an
+     * address on this page.
      */
-    expect(src).toMatch(/import \{[^}]*\bparticipantLabel\b[^}]*\} from '@\/lib\/utils'/)
+    expect(src).toMatch(/import \{[^}]*\b(personLabel|participantLabel)\b[^}]*\} from '@\/lib\/utils'/)
   })
 
-  it('the roster row name uses participantLabel(p), not the raw email', () => {
-    expect(src).toMatch(/\{participantLabel\(p\)\}/)
+  it('the roster row name comes from a helper, never a hand-rolled address', () => {
+    /**
+     * NOW `personLabel`, AND FOR THE REASON THIS GUARD EXISTS.
+     *
+     * The prohibition is on a fabricated name - an email LOCAL-PART wearing the position of a
+     * name - and it still holds below. What this row must not do is leave people
+     * indistinguishable: a lead who invited three colleagues saw three rows all reading "a
+     * teammate", which is `participantLabel`'s fallback and correct BETWEEN PARTIES, where an
+     * address may be hidden. On the lead's own roster they typed those addresses themselves, so
+     * `personLabel` - the same family of helper, address as an explicit last resort - is the one
+     * that belongs here. See the note above `personLabel` in lib/utils.ts.
+     */
+    expect(src).toMatch(/\{personLabel\(p\)\}/)
   })
 
-  it('the shared-report label uses participantLabel(p), not email.split', () => {
-    expect(src).toMatch(/\{participantLabel\(p\)\}'s private report/)
+  it('and neither surface builds a name out of an address', () => {
+    expect(src).toMatch(/\{personLabel\(p\)\}'s private report/)
     expect(src).not.toMatch(/p\.email\.split\('@'\)\[0\]/)
   })
 })

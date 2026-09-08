@@ -15,6 +15,12 @@ import path from 'path'
  *
  * The page's content is now a component the tab renders. The route redirects to it. The summary is
  * DELETED rather than kept alongside, because a summary nobody can tell is a summary was the defect.
+ *
+ * AND THE LEAD'S TAB NO LONGER RENDERS A REPORT AT ALL. It is a list of sessions, because a run is
+ * six or twelve of them and one page cannot be all of their reports at once. That does not weaken
+ * this rule, it satisfies it in the strongest way available: there is no second document about a
+ * check-in on the lead's page to be a click apart from the first. The party view still embeds
+ * `ReportBody`, and each session's own page renders the per-session report and nothing else.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -28,12 +34,13 @@ describe('one report, not two', () => {
     expect(REPORT).toMatch(/export function ReportBody\(/)
   })
 
-  it('and the tab renders it', () => {
+  it('and the party view renders it, while the lead page carries no report body at all', () => {
     /* Matched on the call, not its full attribute list. It gained `reportExists` so a caller that
        already knows there is no report can stop the client asking for one - see
        no-report-yet-is-not-an-error.spec.ts. What this protects is that ONE component renders a
        report, which is unchanged by what is passed to it. */
-    expect(ADMIN).toMatch(/<ReportBody groundId=\{id!\} embedded\b/)
+    expect(PARTY_REPORT).toMatch(/<ReportBody groundId=\{groundId\} embedded\b/)
+    expect(ADMIN).not.toContain('<ReportBody')
   })
 
   /**

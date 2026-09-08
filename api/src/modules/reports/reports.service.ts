@@ -11,6 +11,8 @@ import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-no
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
+import { theSessionReport } from './the-session-report';
+import { cleanText } from './what-the-record-actually-holds';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
@@ -1688,6 +1690,218 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * back an unreleased round here would be a way round that, so the gate is asked once, at the top,
    * exactly as `get` asks it.
    */
+  /**
+   * ONE SESSION'S REPORT, IN THE PROMISED SHAPE.
+   *
+   * "I need the forming sessions report(s) to take the same shape we promised the client for each
+   * session." The assembly and the reasoning are in `the-session-report.ts`; this reads the rows.
+   *
+   * WHO MAY READ IT. A party reads their own session and the shared counts. A lead reads the
+   * check-in they run. Nobody reads another party's account through here - the entries are
+   * filtered to the reader unless the shared report has released, at which point the accounts are
+   * comparable by design and the labels are the same ones the report uses.
+   */
+  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        organizationId: true,
+        initiatorId: true,
+        /* `partyType` and the user's name because `namesVisibleTo` decides from both which
+           labels this reader may resolve; `email` as the last resort a lead is entitled to. */
+        participants: {
+          select: {
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
+    const isOrgAdmin = !isInitiator && !me && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    /*
+     * NOT FOUND, NOT FORBIDDEN. GW-PRI-04.
+     *
+     * A 403 answers "this check-in exists, it is just not yours", and a 404 answers nothing - so
+     * a 403 here lets somebody with a list of guessed ids tell real check-ins from imaginary
+     * ones. `get()` has always thrown NotFound for both cases for exactly this reason, and the
+     * privacy suite pins it. I wrote this one as Forbidden.
+     */
+    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
+    const viewerIsLead = isInitiator || isOrgAdmin;
+    const released = !!ground.report?.releasedAt;
+
+    /* The snapshot, when this round closed. Its presence IS what makes the report final. */
+    const snapshot = await this.prisma.reportRound.findUnique({
+      where: { groundId_round: { groundId, round: sessionNumber } },
+      select: { sharedPicture: true, agreements: true, divergences: true, centralQuestion: true, takenAt: true, amendedAt: true, amendedNote: true },
+    });
+
+    const previousSnapshot = sessionNumber > 1
+      ? await this.prisma.reportRound.findUnique({
+        where: { groundId_round: { groundId, round: sessionNumber - 1 } },
+        select: { sharedPicture: true },
+      })
+      : null;
+
+    const labels = labelsForParties(ground.participants as any);
+    /*
+     * WHOSE WORDS THIS READER MAY SEE. Before release, their own only - that is the wall the whole
+     * product rests on. After release the accounts are comparable and carry the report's own
+     * labels, never names, because this is not the surface that decides who may be named.
+     */
+    const readableParticipantIds = released || viewerIsLead
+      ? ground.participants.map((p) => p.id)
+      : me ? [me.id] : [];
+    const mine = new Set(me ? [me.id] : []);
+
+    const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
+      this.prisma.recordEntry.findMany({
+        where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
+        select: { type: true, text: true, recallBased: true, dimensionThreadKey: true, participantId: true },
+      }),
+      sessionNumber > 1
+        ? this.prisma.recordEntry.findMany({
+          where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
+          select: { type: true, text: true, dimensionThreadKey: true },
+        })
+        : Promise.resolve([]),
+      this.prisma.groundBaseline.findFirst({
+        where: { groundId },
+        orderBy: { version: 'desc' },
+        select: { successLooksLike: true },
+      }),
+      this.prisma.groundBaselineEntry.findFirst({
+        where: { groundId },
+        orderBy: { capturedAtSession: 'asc' },
+        select: { text: true },
+      }),
+      me
+        ? this.prisma.checkIn.findFirst({
+          where: { groundId, participantId: me.id, sessionNumber },
+          select: { specificityLevel: true, recallConfidence: true },
+        })
+        : Promise.resolve(null),
+    ]);
+
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { groundId, participantId: { in: readableParticipantIds } },
+      select: { fileName: true, participantId: true },
+    });
+
+    const whoOf = (participantId: string) =>
+      mine.has(participantId) ? null : (labels.get(participantId) ?? null);
+
+    const shape = theSessionReport({
+      sessionNumber,
+      closed: !!snapshot,
+      agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
+      divergences: (snapshot?.divergences ?? ground.report?.divergences ?? []) as unknown[],
+      /*
+       * `cleanText` STRIPS THE ENGINE'S OWN MARKERS BEFORE ANYBODY READS THEM.
+       *
+       * Record entries are stored with the extraction's verifiability tier stamped on the front -
+       * `[VERIFIABILITY:HIGH] Fifteen qualified meetings a month`. Driven live, the promised
+       * per-session report rendered every line with that prefix showing: machinery on the one
+       * screen whose claim is that it holds what a person said. The helper already existed for
+       * exactly this reason and this is the read that has to call it.
+       */
+      entries: entries.map((e) => ({
+        type: e.type,
+        text: cleanText(e.text),
+        who: whoOf(e.participantId),
+        recallBased: e.recallBased,
+        threadKey: e.dimensionThreadKey ?? null,
+      })),
+      previousEntries: previousEntries.map((e) => ({
+        type: e.type,
+        text: cleanText(e.text),
+        threadKey: e.dimensionThreadKey ?? null,
+      })),
+      baselineSuccess: baseline?.successLooksLike ?? null,
+      startingPoint: startingPoint?.text ?? null,
+      previousSharedPicture: previousSnapshot?.sharedPicture ?? null,
+      /* A document with no participant belongs to the check-in rather than to a person. */
+      evidence: docs.map((d) => ({ text: d.fileName, who: d.participantId ? whoOf(d.participantId) : null })),
+      specificityLevel: checkIn?.specificityLevel ?? null,
+      recallConfidence: checkIn?.recallConfidence ?? null,
+      centralQuestion: snapshot?.centralQuestion ?? ground.report?.centralQuestion ?? null,
+    });
+
+    /**
+     * WHO THIS REPORT IS COUNTING, AND WHO HAS SHOWN THEIRS.
+     *
+     * "You see who's checked in, the report is counting." Two different questions, and both were
+     * answered somewhere other than on the report: the count lived on the tab above it, and the
+     * reveal state lived in a row that named people by position - "not yet, Party 2" - which
+     * tells a lead nothing they can act on.
+     *
+     * Both come with the report now, carrying the report's own labels rather than an index. A
+     * party who has never recorded a name still occupies a row, because losing the row would lose
+     * the fact that somebody has not answered, which is the point of it.
+     */
+    const answered = await this.prisma.checkIn.findMany({
+      where: { groundId, sessionNumber, status: 'COMPLETED' },
+      select: { participantId: true },
+    });
+    const answeredIds = new Set(answered.map((c) => c.participantId));
+    const activations = await this.prisma.reportActivation.findMany({
+      where: { groundId },
+      select: { participantId: true, status: true },
+    });
+    const shown = new Set(
+      activations.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
+    );
+    /*
+     * NAMED WHERE THIS READER IS ALLOWED TO SEE A NAME, and labelled where they are not.
+     *
+     * The report is generated in labels - "participant A", "participant B" - precisely so it can
+     * never carry a name across the wall, and `namesVisibleTo` decides which of them this reader
+     * may resolve: their own, the lead's, and everybody's if they ARE the lead. Driven live as a
+     * lead, this row read "participant A (you)" and "participant B", which is the same defect as
+     * a roster calling three colleagues "a teammate" - and the rule that fixes it is the one the
+     * report body already uses, not a second guess at it.
+     */
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
+    const counting = ground.participants
+      .filter((p) => !p.managingOnly)
+      .map((p, i) => ({
+        who: (() => {
+          const label = labels.get(p.id);
+          const named = label ? nameByLabel.get(label) : undefined;
+          if (named) return named;
+          /*
+           * Somebody who has not joined yet has no name of their own, so `displayName` returns
+           * null by design. To a PEER the label is the right answer and the address is not
+           * theirs to see; to the LEAD, who typed that address, "participant B" is useless -
+           * they cannot tell which invitation is outstanding. That distinction is already
+           * written down above `displayName`; this is the read that needed it.
+           */
+          if (viewerIsLead && p.email) return p.email;
+          return label || `Party ${i + 1}`;
+        })(),
+        isYou: !!me && p.id === me.id,
+        answered: answeredIds.has(p.id),
+        hasShownTheirs: shown.has(p.id),
+      }));
+
+    return {
+      ...shape,
+      counting,
+      everybodyHasShownTheirs: counting.every((c) => c.hasShownTheirs),
+      sharedPicture: snapshot?.sharedPicture ?? null,
+      takenAt: snapshot?.takenAt ?? null,
+      amendedAt: snapshot?.amendedAt ?? null,
+      amendedNote: snapshot?.amendedNote ?? null,
+      /* Before release a party sees the counts and their own words, and is told so plainly. */
+      showsEverybody: released || viewerIsLead,
+    };
+  }
+
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -1703,7 +1917,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
     const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
-    if (!isParty && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
+    /* NotFound, not Forbidden, for the reason in `sessionReport` above: a 403 confirms the
+       check-in exists. This endpoint has had the leak since it was written. GW-PRI-04. */
+    if (!isParty && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
 
     /* Nothing has been revealed yet, so there is nothing anybody may read. */
     if (!ground.report?.releasedAt) return { rounds: [] };

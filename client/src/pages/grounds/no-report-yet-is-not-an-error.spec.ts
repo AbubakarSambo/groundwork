@@ -36,11 +36,22 @@ describe('no report yet is not an error', () => {
     for (const src of [ADMIN, PARTY, SHARED]) expect(src.length).toBeGreaterThan(500)
   })
 
-  it('neither view asks for a report the check-in says does not exist', () => {
-    for (const src of [ADMIN, PARTY]) {
-      const query = src.slice(src.indexOf("queryKey: ['report'"))
-      expect(query.slice(0, 400)).toMatch(/enabled:[^\n]*\?\.report/)
-    }
+  it('the view that asks for a report gates on the check-in saying there is one', () => {
+    /* The LEAD page no longer asks at all - its report tab is a list of sessions, and each
+       session's report is fetched by the page that shows it. The party view still reads the
+       check-in's own report, so the gate has to be there. */
+    const query = PARTY.slice(PARTY.indexOf("queryKey: ['report'"))
+    expect(query.slice(0, 400)).toMatch(/enabled:[^\n]*\?\.report/)
+    expect(ADMIN).not.toContain("queryKey: ['report', id],")
+  })
+
+  it('and the per-session call cannot make the same noise, because it does not 404', () => {
+    /* `GET /report/session/:n` answers with the promised shape and zero counts when nothing has
+       been synthesised yet - there is no "no report" error to swallow. The existence rule is kept
+       a different way: a stranger gets NotFound, pinned in the API's privacy suite. */
+    const SESSION = read('../../components/gw/TheSessionsReport.tsx')
+    expect(SESSION).toContain("queryKey: ['session-shaped-report'")
+    expect(SESSION).not.toContain('skipNotFoundToast')
   })
 
   it('THE COUPLING: everything that creates a report refreshes the ground as well', () => {

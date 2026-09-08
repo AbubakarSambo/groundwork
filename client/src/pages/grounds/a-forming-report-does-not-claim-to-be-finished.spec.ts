@@ -18,35 +18,35 @@ import { describe, it, expect } from 'vitest'
  *
  * Releasing early is still allowed - a lead may want to close a round short. Claiming the round
  * finished is not.
+ *
+ * WHERE THIS LESSON LIVES NOW. The release panel and its two branches are gone with the report
+ * body: the report tab is a list of sessions, each row carrying its own count and whether it is
+ * final. So the false sentence cannot be rendered by a branch, because there is no branch and no
+ * sentence - and releasing is one line that describes itself accurately, which is the same lesson
+ * with nothing left to get wrong. Asserted as the absence of the claim plus the honest naming.
  */
 const PAGE = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 const CODE = PAGE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
+const LIST = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx'), 'utf8')
+
 describe('what the lead is told before everyone has answered', () => {
-  it('reads the forming flag the API already sends', () => {
-    expect(CODE).toMatch(/\(report as any\)\?\.forming \?/)
+  it('never claims everybody finished', () => {
+    expect(CODE).not.toContain('Everybody has completed their sessions')
   })
 
-  it('says how many are still out, from sessionProgress', () => {
-    expect(CODE).toMatch(/sessionProgress\.completed/)
-    expect(CODE).toMatch(/sessionProgress\.total/)
+  it('says releasing happens by itself, and names the early one for what it does', () => {
+    expect(CODE).toContain('the report goes out to everybody on its own')
+    expect(CODE).toContain('Close this round now and publish what there is')
+    expect(CODE).toContain('anybody who has not answered loses their turn')
   })
 
-  /**
-   * The exact regression: the finished-round sentence must be reachable only when it is true.
-   * Asserted structurally - the sentence has to sit AFTER the forming test and after the
-   * forming branch's own heading, which is what puts it in the else.
-   */
-  it('only claims everybody finished on the not-forming branch', () => {
-    const test = CODE.indexOf('?.forming ?')
-    const formingHeading = CODE.indexOf('A picture is forming')
-    const claim = CODE.indexOf('Everybody has completed their sessions')
-    expect(test).toBeGreaterThan(-1)
-    expect(formingHeading).toBeGreaterThan(test)
-    expect(claim).toBeGreaterThan(formingHeading)
+  it('and every session row says how many answered, and whether it is final', () => {
+    expect(LIST).toContain('{r.answered} of {r.total} answered')
+    expect(LIST).toContain("{r.closed ? 'Final' : 'Forming'}")
   })
 
-  it('and names the release honestly while it is still forming', () => {
-    expect(CODE).toContain('Release it as it stands')
+  it('and names who is still being waited on, rather than a number alone', () => {
+    expect(LIST).toContain('waiting on')
   })
 })

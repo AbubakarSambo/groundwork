@@ -16,6 +16,14 @@ import { join } from 'path'
  * people were still out, and offered to release it - without rendering a line of it. So a lead was
  * asked to decide whether to show the whole team something they had not been allowed to read.
  *
+ * AND THEN THE TAB BECAME THE LIST. All three findings above were about a tab that carried a
+ * report AND a list AND a board AND a release control: "the report page is annoying and carries
+ * too much - it is just meant to show a list of sessions and then you click and get the report".
+ * So the board is still first, the sessions are still all listed newest-first, and the forming
+ * picture is still shown - on the session it belongs to, where it can say which session it is
+ * forming FOR. Every session, not only yours, because a lead needs the row to know who it is
+ * waiting on; the reports behind the rows are still walled.
+ *
  * THE EARLIER SESSIONS had nowhere to be read from. A run is six or twelve sessions and each ends in
  * a private report; this tab showed the current round and nothing else. The reports were not deleted
  * - /checkin/:id renders one for any completed check-in of yours - but nothing listed them.
@@ -30,39 +38,44 @@ const TAB = (() => {
   return PAGE.slice(start, end > start ? end : undefined)
 })()
 
-describe('the report tab shows the reports', () => {
+const LIST = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx'), 'utf8')
+const SESSION_VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
+
+describe('the report tab is a list of sessions', () => {
   it('opens with the team board', () => {
-    const board = TAB.indexOf('Open the team board')
+    const board = LIST.indexOf('Open the team board')
     expect(board).toBeGreaterThan(-1)
-    /* Before the report body, which is the whole of "first item on the page". */
-    expect(board).toBeLessThan(TAB.indexOf('<ReportBody'))
+    /* Before the rows, which is the whole of "first item on the page". */
+    expect(board).toBeLessThan(LIST.indexOf('Session {r.sessionNumber}'))
   })
 
-  it('renders the picture that is forming, not only the offer to release it', () => {
-    const forming = TAB.indexOf('A picture is forming')
-    expect(forming).toBeGreaterThan(-1)
-    /* A ReportBody after the forming heading: the same body a released report uses, because it is
-       the same row - the API writes it as soon as anybody finishes and marks it forming. */
-    expect(TAB.indexOf('<ReportBody', forming)).toBeGreaterThan(forming)
+  it('and carries nothing else - no report body, no picker, no resolution', () => {
+    for (const gone of ['<ReportBody', 'A picture is forming', '<ResolutionPanel', '<HowThisHasMoved']) {
+      expect(TAB).not.toContain(gone)
+    }
   })
 
-  it('lists every session of yours that has finished', () => {
-    expect(TAB).toContain('Your sessions')
-    expect(TAB).toMatch(/mySessions\.map/)
-    /* And it opens the REPORT, not the conversation. Listing them was not enough: the link went
-       to /checkin/:id, which is the transcript with a different, shorter summary under it, so the
-       click read as "it sends me back to the chat and the report looks nothing like what I got at
-       the end". See the-report-you-saw-is-the-one-that-opens.spec.ts. */
-    expect(TAB).toMatch(/navigate\(`\/checkin\/\$\{ci\.id\}\/report`\)/)
+  it('lists the sessions, newest first, and each row opens that session', () => {
+    expect(TAB).toContain('rows={sessionRows}')
+    expect(LIST).toContain('Session {r.sessionNumber}')
+    expect(LIST).toMatch(/navigate\(`\/checkin\/\$\{r\.myCheckInId\}\/report`\)/)
+    expect(PAGE).toMatch(/\(a, b\) => b - a/)
   })
 
-  it('and only yours, which is the wall rather than a simplification', () => {
-    /* Another person's session is theirs until the shared report releases. The same rule the
-       session grid keeps, and the reason this filters on userId at all. */
-    expect(PAGE).toMatch(/p\.id === c\.participantId && p\.userId === user\?\.id/)
+  it('and every row says who it is counting, before you click', () => {
+    expect(LIST).toContain('{r.answered} of {r.total} answered')
+    expect(LIST).toContain('waiting on')
   })
 
-  it('newest first, because the one you just finished is the one you are looking for', () => {
-    expect(PAGE).toMatch(/\(b\.sessionNumber \?\? 0\) - \(a\.sessionNumber \?\? 0\)/)
+  it('the forming picture is still shown, on the session it is forming for', () => {
+    expect(SESSION_VIEW).toContain('still forming')
+    expect(SESSION_VIEW).toContain('Where things stand')
+  })
+
+  it('and your own report stays yours, which is the wall rather than a simplification', () => {
+    /* A row is visible to a lead so they know who to chase. The REPORT behind it is owner-scoped
+       on the server, and the row only carries a check-in id when the session is your own. */
+    expect(PAGE).toMatch(/p\.userId === user\?\.id/)
+    expect(LIST).toContain('myCheckInId')
   })
 })

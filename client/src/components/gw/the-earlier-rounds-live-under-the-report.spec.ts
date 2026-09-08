@@ -3,24 +3,29 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 /**
- * WHERE THE EARLIER ROUNDS LIVE.
+ * WHERE THE EARLIER ROUNDS LIVE: THE BOARD.
  *
- * Under the report, not on a page of their own. They are the same report at earlier moments, so
- * somebody looking for them is already on that tab - and below the current picture, because you
- * read what is true now first and the earlier ones are context for it.
+ * They used to sit under the report tab's current picture, on the grounds that somebody looking
+ * for the earlier moments of a report is already on the tab that shows it. That stopped being
+ * true when the report tab became a LIST of sessions: there is no current picture on it any more
+ * to put history underneath, and each session's report is its own page.
+ *
+ * "I need the board to carry the entire history in one place." The board is the one screen whose
+ * job is the whole run, so the round history is part of it rather than a footnote under a report.
+ * Still no route of its own - it is a panel on a page that already exists.
  */
 const PANEL = readFileSync(join(__dirname, 'HowThisHasMoved.tsx'), 'utf8')
+const BOARD = readFileSync(join(__dirname, '..', '..', 'pages', 'board', 'BoardPage.tsx'), 'utf8')
 const PAGE = readFileSync(join(__dirname, '..', '..', 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8')
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
 
 describe('where it sits', () => {
-  it('inside the report tab, and nowhere else', () => {
-    const code = strip(PAGE)
-    const report = code.indexOf("tab === 'report'")
-    const settings = code.indexOf("tab === 'settings'")
-    const panel = code.indexOf('<HowThisHasMoved')
-    expect(panel).toBeGreaterThan(report)
-    expect(panel).toBeLessThan(settings)
+  it('on the board, which is the screen about the whole run', () => {
+    expect(strip(BOARD)).toContain('<HowThisHasMoved')
+  })
+
+  it('and not back on the check-in page, which is now a list of sessions', () => {
+    expect(strip(PAGE)).not.toContain('<HowThisHasMoved')
   })
 
   it('and no route of its own was added for it', () => {

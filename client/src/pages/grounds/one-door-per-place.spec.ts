@@ -29,6 +29,10 @@ const ADMIN = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const BOARD = readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+/* The report tab became a list of sessions, and the board is the first row of that list. Same
+   entrance, one file over. */
+const LIST = readFileSync(join(__dirname, '../../components/gw/TheReportIsAListOfSessions.tsx'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the board still exists and is still reachable', () => {
   /** Not in the tab row: every other tab stays on the page and this one never did. */
@@ -36,14 +40,15 @@ describe('the board still exists and is still reachable', () => {
     expect(groundTabs({ contextEnabled: true, canRunThisCheckIn: true, isAParty: true }).map(t => t.key)).not.toContain('board')
   })
 
-  it('and the report is what opens it', () => {
-    expect(ADMIN).toContain('Open the team board')
-    expect(ADMIN).toMatch(/navigate\(`\/grounds\/\$\{id\}\/board`\)/)
+  it('and the report is what opens it - the first row of the session list', () => {
+    expect(LIST).toContain('Open the team board')
+    expect(ADMIN).toMatch(/onOpenBoard=\{\(\) => navigate\(`\/grounds\/\$\{ground\.id\}\/board`\)\}/)
   })
 
   /** Only where the server says there is one to open. */
   it('only when the server says there is a board', () => {
-    expect(ADMIN).toMatch(/\{!!\(ground as any\)\.boardRenders && \(/)
+    expect(LIST).toContain('{boardRenders && (')
+    expect(ADMIN).toMatch(/boardRenders=\{!!\(ground as any\)\.boardRenders\}/)
   })
 })
 
@@ -53,7 +58,9 @@ describe('but only once', () => {
      * The tripwire is the COUNT, not the absence. One link is the tab handler above; a second is
      * the pill that was removed, or any future re-addition of it.
      */
-    expect((ADMIN.match(/\/grounds\/\$\{id\}\/board/g) ?? [])).toHaveLength(1)
+    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(1)
+    /* The prop, its type and its one use. What matters is that the component renders ONE button. */
+    expect((LIST.match(/Open the team board/g) ?? [])).toHaveLength(1)
     expect(ADMIN).not.toContain('Team board →')
   })
 })

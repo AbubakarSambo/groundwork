@@ -14,9 +14,15 @@ import path from 'path'
  * that matters and agree who owns it - is not a button and never could be: it is work between people.
  * It stays as one sentence, and it sits BELOW the controls so the page leads with what it can offer
  * rather than with what it cannot.
+ *
+ * IT MOVED WITH THE REPORT. The lead's report tab is a list of sessions now, and these two actions
+ * belong beside a report rather than beside a list - so they are on the session's own page, which
+ * is the page a person is on when they have just read one. The copy-link button gained a line
+ * saying what the link is not: a session report is owner-scoped, so the link is a way back to it
+ * and never a way to share it.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const CODE = readFileSync(path.join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+const CODE = readFileSync(path.join(__dirname, '..', 'report', 'SessionReportPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 
@@ -28,8 +34,14 @@ const BLOCK = (() => {
 
 describe('what now is buttons', () => {
   it('offers the link to the report, from the page that is the report', () => {
-    expect(BLOCK).toContain('Copy the link to this report')
-    expect(BLOCK).toContain('?tab=report')
+    expect(BLOCK).toContain('Copy the link to this session')
+    expect(BLOCK).toMatch(/\/checkin\/\$\{checkInId\}\/report/)
+  })
+
+  it('and says what that link is not', () => {
+    /* Owner-scoped. Offering "copy the link" beside a private report without saying so invites
+       somebody to send it to a colleague who will be told the record does not exist. */
+    expect(BLOCK).toContain('only opens for people already entitled to read this')
   })
 
   it('and offers the follow-up check-in', () => {
@@ -53,6 +65,8 @@ describe('what now is buttons', () => {
 
   /** A copy that silently fails is worse than no button: the person walks away with nothing. */
   it('says so if the copy fails', () => {
-    expect(BLOCK).toMatch(/catch \{[\s\S]{0,120}toast\.error/)
+    /* Either shape of catch - the block form, or `.catch()` on the clipboard promise. What is
+       being protected is that a failure is SAID, not which syntax says it. */
+    expect(BLOCK).toMatch(/(catch \{|\.catch\()[\s\S]{0,120}toast\.error/)
   })
 })

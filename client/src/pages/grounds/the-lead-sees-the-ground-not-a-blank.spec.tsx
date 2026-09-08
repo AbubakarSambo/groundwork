@@ -153,7 +153,7 @@ describe('the four things mounting it exposed', () => {
 
   /** A person's row is labelled from their own record, which is stronger than resolving an id. */
   it('and a row is labelled from the participant it belongs to', () => {
-    expect(CODE).toContain('{participantLabel(p)}')
+    expect(CODE).toContain('{personLabel(p)}')
   })
 
   /**

@@ -36,9 +36,12 @@ describe('what is true about you comes first', () => {
   })
 
   it('and each keeps its own place in the column', () => {
-    // Three sections, three distinct order values, none of them merged.
+    /* Distinct order values, none of them merged. Two of them now, not three: the privacy
+       reminder that carried the third was removed - "you are over doing it with the privacy
+       reminders", and it was the loudest block on a page about a person's own standing. The
+       structure this guards is unchanged; there is one less thing in it. */
     const orders = [...COMPONENT.matchAll(/order:\s*(\d+)/g)].map(m => Number(m[1]))
-    expect(orders.length).toBeGreaterThanOrEqual(3)
+    expect(orders.length).toBeGreaterThanOrEqual(2)
     expect(new Set(orders).size).toBe(orders.length)
   })
 

@@ -17,6 +17,9 @@ interface OrgMember {
   createdAt: string
   /** Where this person actually got to. Computed server side - see users.service findAll. */
   state?: 'invited' | 'signed in' | 'checked in'
+  /** How many check-ins they are on, and how many of those they have given an account on. */
+  checkInsOn?: number
+  checkInsAnswered?: number
 }
 
 /** What happened, or would happen, to one pasted address. */
@@ -513,9 +516,21 @@ export function OrgMembersPage() {
                     color: m.state === 'checked in' ? 'var(--gw-green-t)' : m.state === 'invited' ? 'var(--gw-amber-t)' : 'var(--gw-sub)',
                     border: `1px solid ${m.state === 'checked in' ? 'var(--gw-green-b)' : m.state === 'invited' ? 'var(--gw-amber-b-soft)' : 'var(--gw-border)'}`,
                   }}>
-                    {m.state === 'checked in' ? 'Checked in'
+                    {/*
+                      "CHECKED IN" MEANT "ONCE, SOMEWHERE".
+                      Somebody on five check-ins who had answered on one wore the same green badge
+                      as somebody who is fully up to date - "checked in next to people's name being
+                      a bit off if they are on multiple check-ins". When a person is on more than
+                      one, the badge says which.
+                    */}
+                    {m.state === 'checked in'
+                      ? ((m.checkInsOn ?? 1) > 1
+                        ? `Answered on ${m.checkInsAnswered ?? 1} of ${m.checkInsOn}`
+                        : 'Checked in')
                       : m.state === 'invited' ? 'Invited, not opened'
-                        : 'Signed in, not checked in'}
+                        : (m.checkInsOn ?? 0) > 0
+                          ? `On ${m.checkInsOn}, answered none`
+                          : 'Signed in, not on a check-in'}
                   </span>
                   {/*
                     * SUB-ADMINS. A select rather than a badge, because "add my team as sub admins"

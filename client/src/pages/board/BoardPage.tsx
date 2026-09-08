@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
 import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost } from '@/components/gw/kit'
+import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
+import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 
 /**
  * The delivery board.
@@ -950,6 +952,58 @@ export function BoardPage() {
             </Card>
           </>
         )}
+
+        {/*
+          THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
+
+          The board read only the CURRENT working copy of the report plus the record entries, so a
+          six-session run showed its latest state and nothing about how it got there - while the
+          per-round snapshots sat in `report_rounds`, immutable, one row per closed round, read by
+          a component that lived on the report tab.
+
+          Both come here: what the report said at the end of each round, and where the run finished
+          if it has. This is now the only screen that carries the arc, which is why the report tab
+          could become a list of sessions.
+        */}
+        <div style={{ marginTop: 26 }}>
+          <HowThisHasMoved groundId={id!} />
+        </div>
+        {/*
+          AND HOW IT ENDS, BUT ONLY NEAR THE END.
+
+          The gate came across with the panel and it has to: unconditionally rendered, this is
+          four buttons including "Stop the project" on the board of a check-in that started
+          yesterday, which is the exact defect `the-exit-belongs-at-the-exit` was written for. I
+          moved the panel here without it, which put that defect back.
+
+          The board's own spine says which session the run is on and how many there are, so the
+          condition is read from what the board already has rather than from a second request.
+        */}
+
+        {(() => {
+          /*
+            AT OR PAST THE LAST SESSION, counted from sessions everybody has finished.
+
+            NOT `phaseSpine.currentSession`, which is the highest session NUMBER any check-in row
+            carries - and rows for the next session are created the moment one completes, so it
+            runs ahead of the run. Using it would offer the exit while somebody is four rounds
+            behind, which is the optimism that once closed a check-in over a missing account.
+
+            A spine session is 'done' only when every check-in for it completed, so counting those
+            is the min-across-people rule. The other half of the gate - a decision already under
+            way - is the panel's own, because only it knows whether anybody has picked.
+          */
+          const spine = (data as any)?.phaseSpine
+          const sessions = (spine?.sessions ?? []) as { state: string }[]
+          const total = sessions.length
+          const done = sessions.filter((x) => x.state === 'done').length
+          const nearTheEnd = total > 0 && done >= total - 1
+          return (
+            <div style={{ marginTop: 14 }}>
+              <ResolutionPanel groundId={id!} nearTheEnd={nearTheEnd} />
+            </div>
+          )
+        })()}
 
         <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 28, lineHeight: 1.6 }}>
           Groundwork board · confidential · generated from the check-in.<br />
