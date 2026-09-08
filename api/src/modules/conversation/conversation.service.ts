@@ -3493,6 +3493,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return;
     }
 
+    /*
+     * THE LEAD'S OWN PROMISES, WHICH NOTHING WROTE DOWN.
+     *
+     * This branched: a participant's session went to `writeTheirOwnPromises`, a lead's went to
+     * `EXPECTATION_PROMPT` - and that prompt's rules forbid the speaker writing anything about
+     * themselves, correctly, because its job is what they expect OF OTHERS.
+     *
+     * So the one person whose own next step nobody recorded was the person running the check-in.
+     * Read back from a real session: the lead said "I have not told him, and that is on me", the
+     * conversation agreed it was the most important fact established, and it went into the record as
+     * an observation about the situation rather than as anything he owed. Session two had nothing of
+     * his to test.
+     *
+     * BOTH NOW, NOT INSTEAD. Expectations of others and promises of your own are different things
+     * about different people, they are stored differently, and a lead has both. The two prompts do
+     * not overlap: one is explicitly barred from self-statements and the other reads nothing else.
+     */
+    await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+
     const result = await this.anthropic.extract<{
       groundAims: string[];
       expectations: {
