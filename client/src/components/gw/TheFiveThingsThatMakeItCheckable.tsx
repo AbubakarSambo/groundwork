@@ -110,7 +110,6 @@ export function TheFiveThingsThatMakeItCheckable({
        they could add is one they already did says nothing. */
     mostUseful: !!mostUseful && mostUseful.dimension === d.key && !wasItThere(dimensions[d.key]),
   }))
-  const shortBy = rows.filter(r => !r.there).length
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '15px 17px' }}>
@@ -176,20 +175,22 @@ export function TheFiveThingsThatMakeItCheckable({
         ))}
       </div>
 
-      {shortBy > 0 && (
-        /* A next action rather than a total. The count is only here to make the sentence true. */
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 11, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
-          {shortBy === 1 ? 'One sentence next time covers it.' : 'Add one or two next time.'}
-        </div>
-      )}
+      {/* "Add one or two next time" was here AND in the sentence above the list, twenty lines
+          apart, saying the same thing. The intro keeps it. */}
 
       {/* Nobody can act on a word like "low"; everybody can act on "none of your answers say when". */}
       {/* Her line, under the list the mark is in. Five equal suggestions is something to skim; one
           named as the most useful is a thing to do. */}
+      {/*
+        THE BADGE SAYS WHICH ONE. THIS SAYS WHY. THEY USED TO SAY BOTH TWICE.
+
+        The row carried "MOST USEFUL" and the line under it opened "Most useful for you:" - the same
+        statement in two places, one of them redundant the moment the other exists. The badge is the
+        mark she asked for; this keeps only the half the badge cannot carry, which is the reason.
+      */}
       {mostUseful && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
-          <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>Most useful for you: </span>
-          {mostUseful.says}
+        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 10, paddingTop: 9, borderTop: '1px solid var(--gw-border)' }}>
+          {mostUseful.says.charAt(0).toUpperCase() + mostUseful.says.slice(1)}
         </div>
       )}
 

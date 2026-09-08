@@ -18,6 +18,8 @@ import { MyRecord } from '@/components/gw/MyRecord'
 import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
+import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
+import { WhatTheReportCanSayYet } from '@/components/gw/WhatTheReportCanSayYet'
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
@@ -39,6 +41,19 @@ type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 const FROM_TAB_KEY: Record<string, Tab> = {
   chat: 'checkin', report: 'report', record: 'record', context: 'docs', settings: 'settings',
 }
+/**
+ * A PLAIN BLOCK, NOT A CARD.
+ *
+ * My record had six things wearing identical card chrome - a one-line link and a five-item block
+ * with the same border, padding and radius - so nothing on the page was primary. The top block keeps
+ * the card; everything under it is a section separated by a rule.
+ */
+function Section({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ paddingTop: 14, marginTop: 2, borderTop: '1px solid var(--gw-border)' }}>{children}</div>
+  )
+}
+
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
   checkin: 'chat', report: 'report', record: 'record', docs: 'context', settings: 'settings',
 }
@@ -590,6 +605,22 @@ export function GroundParticipantPage() {
               use, rather than a second axis to learn.
             */}
             {/*
+              THE SUMMARY IS THE FIRST THING ON THE PAGE. Her call.
+
+              It is the one block that says, in prose, what this person's record actually contains -
+              everything below it is a read OF that. It was fourth, under three cards assessing it,
+              so a person met three judgements before meeting the thing being judged.
+
+              It travels with "what to carry" and Share because they are one object: the summary is
+              the first half of the card the next session opens from.
+            */}
+            <WhatYouAreCarryingForward
+              groundId={id!}
+              mySoloReport={mySoloReport}
+              refetchSoloReport={refetchSoloReport}
+            />
+
+            {/*
               THE TWO THINGS AT A GLANCE, ABOVE EVERYTHING THEY SUMMARISE.
 
               "What your record can support" was a five-segment bar with a one-word label, three
@@ -602,12 +633,18 @@ export function GroundParticipantPage() {
               trend={specificity?.trend}
               sessions={mySessionDots}
               totalSessions={totalSessions ?? null}
-              /*
-                WHAT THE REPORT CAN SAY, which nothing on this page ever told anybody. Every field
-                is already on the payloads this page holds; the reason the picture is thin is
-                usually that somebody else has not answered, and only this says so.
-              */
-              coverage={{
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
+            />
+
+            {/*
+              ITS OWN SECTION, DIRECTLY UNDER. Four session bars and a five-segment meter in one box
+              were two measurement systems counting different subjects, and the coverage rows were
+              visually identical to the advice list two cards down.
+            */}
+            <Section>
+              <WhatTheReportCanSayYet facts={{
                 iHaveCheckedIn: completedCheckIns.length > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
                 parties: (ground as any)?.sessionProgress?.total
@@ -623,11 +660,8 @@ export function GroundParticipantPage() {
                 corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
                 documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
                 roundsFinished: completedCheckIns.length,
-              }}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
+              }} />
+            </Section>
 
             {/*
               AND SPECIFICITY AS THE FIVE THINGS IT IS MADE OF, WHICH THE ENGINE HAS ALWAYS STORED

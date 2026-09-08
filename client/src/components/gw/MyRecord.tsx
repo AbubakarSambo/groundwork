@@ -85,25 +85,13 @@ export function MyRecord({
           )}
 
           {/*
-            WHAT SUCCESS WAS SAID TO BE, AND WHERE THE ACCOUNTS PUT IT.
+            AND THE EMPTY CARD IT LEFT BEHIND.
 
-            This is where a party meets it now. It used to be on her Setup tab, as a read-only panel
-            under a paragraph apologising for being read-only - a disclosure, not a comparison, and
-            on the one tab where nothing is hers. Here it sits beside her own sessions, next to her
-            own account of the same question, which is the only place the two can be read together.
+            Moving "what success looks like" to Context emptied this wrapper and left the wrapper
+            rendering: a white box with a border, a radius and nothing inside it, floating between
+            sign-off and the Context link. Visible in a screenshot before it was visible to me,
+            which is the argument for looking at the page rather than at the diff.
           */}
-          {groundId && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              {/*
-                WHAT SUCCESS LOOKS LIKE MOVED TO CONTEXT, WHERE IT ALREADY LIVES FOR EVERYBODY.
-
-                It renders on the board and inside each session's report, and on this page it was
-                usually the same empty band saying nobody has set one - a third statement of an
-                absence on a page already saying two. Context is where the shared words are
-                published and where the row below already sends people.
-              */}
-            </div>
-          )}
 
           {/* The empty state, and NO price.
               `insightsLocked` does not mean "unpaid" - it means "no completed
@@ -160,21 +148,16 @@ export function MyRecord({
               says all three. Both bands are published on Context for everybody including the person
               they are about, which is the point of publishing them.
             */}
+            {/* A line, not a card, for the same reason. */}
             <button
               onClick={() => onGoToTab('docs')}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10,
-                padding: '12px 14px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none',
+                padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 12.5, color: 'var(--gw-navy)', fontWeight: 600,
               }}
             >
-              <span>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>What you are being read against</span>
-                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
-                  What success looks like, and what is expected of you. On Context, where everyone reads the same copy.
-                </span>
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+              Success and expectations live on Context &rarr;
             </button>
 
           {/* Session history summary - always visible */}

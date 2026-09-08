@@ -23,8 +23,6 @@
  * dressed as an observation.
  */
 
-import { WhatTheReportCanSayYet, type CoverageFacts } from './WhatTheReportCanSayYet'
-
 export type RecordStrength = { score?: number; label?: string; description?: string } | null | undefined
 
 /** done: finished. corrected: finished and later corrected. Anything beyond is still to come. */
@@ -41,26 +39,22 @@ export interface SessionDot {
  * Collapsed from five because a person cannot act on the difference between a 2 and a 3, and the
  * thing they can act on is listed underneath either way.
  */
-function howMuchItSupports(score?: number): { face: string; says: string; tone: string } {
+/*
+ * THE FACE IS GONE.
+ *
+ * It was the only emoji on the page, and a sad one, and it was pointed at the person reading it.
+ * The argument for it - that it describes the record and not the writer - held right up until it
+ * was the single most prominent thing on a page about somebody's own work. A sentence says the
+ * same and cannot be read as a mood.
+ */
+function howMuchItSupports(score?: number): { says: string } {
   if (score != null && score >= 4) {
-    return {
-      face: '🙂',
-      says: 'A fair amount. Someone reading only this would know what happened.',
-      tone: 'var(--gw-green-t)',
-    }
+    return { says: 'A fair amount. Someone reading only this would know what happened.' }
   }
   if (score != null && score >= 2) {
-    return {
-      face: '😐',
-      says: 'Some of it. You have said what you did; there is not much yet to check it against.',
-      tone: 'var(--gw-amber-t)',
-    }
+    return { says: 'Some of it. You have said what you did; there is not much yet to check it against.' }
   }
-  return {
-    face: '🙁',
-    says: 'Not much yet. Most of this is general, so a reader could not tell what actually happened.',
-    tone: 'var(--gw-clay)',
-  }
+  return { says: 'Not much yet. Most of this is general, so a reader could not tell what actually happened.' }
 }
 
 /** The direction, as a sentence that names what it is comparing against. */
@@ -77,7 +71,6 @@ export function WhatYourRecordCanSupport({
   trend,
   sessions,
   totalSessions,
-  coverage,
   alsoNoticed,
 }: {
   strength: RecordStrength
@@ -91,13 +84,8 @@ export function WhatYourRecordCanSupport({
    * counters on one screen disagreeing about the same run is worse than having neither.
    */
   totalSessions?: number | null
-  /**
-   * THE SECOND AXIS, WHICH THE PAGE NEVER HAD. Her diagnosis: three cards, three vocabularies, one
-   * verdict, all of them about the person. This one is about the report - what it can and cannot
-   * say yet, and why not. It sits inside this card rather than beside it because the reason the
-   * picture is thin usually belongs next to the sentence claiming it is thin.
-   */
-  coverage?: CoverageFacts | null
+  /* Coverage is its own card now, directly under this one: four bars and five segments in one box
+     were two measurement systems counting different subjects. */
   /** Patterns the engine noticed. A line here rather than a card - it was the fourth restatement. */
   alsoNoticed?: string[]
 }) {
@@ -116,17 +104,14 @@ export function WhatYourRecordCanSupport({
 
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '15px 17px' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 26, lineHeight: 1 }} aria-hidden>{read.face}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
-            What your record can support
-          </div>
-          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--gw-text)' }}>{read.says}</div>
-          {going && (
-            <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--gw-sub)', marginTop: 5 }}>{going}</div>
-          )}
+      <div>
+        <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
+          Where your record stands
         </div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--gw-text)' }}>{read.says}</div>
+        {going && (
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--gw-sub)', marginTop: 5 }}>{going}</div>
+        )}
       </div>
 
       {dots.length > 0 && (
@@ -163,7 +148,11 @@ export function WhatYourRecordCanSupport({
                       <div style={{
                         position: 'absolute', bottom: 0, left: 0, right: 0,
                         height: `${Math.round(Math.max(level, 0.08) * 100)}%`,
-                        background: level >= 0.6 ? 'var(--gw-green-t)' : level >= 0.35 ? 'var(--gw-amber-t)' : 'var(--gw-clay)',
+                        /* A LOW SCORE IS NOT AN ERROR. Brown-red at 40% read as something broken
+                           rather than as a thin session, on a page that refuses to give verdicts.
+                           One ink, and the height carries the reading. */
+                        background: 'var(--gw-navy)',
+                        opacity: level >= 0.6 ? 1 : level >= 0.35 ? 0.6 : 0.32,
                       }} />
                     )}
                   </div>
@@ -173,23 +162,16 @@ export function WhatYourRecordCanSupport({
             })}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
-            Taller means that session was easier for someone else to check. Dotted ones have not
+            {/* They fill upward inside a fixed box, so "taller" described nothing. */}
+            Fuller means that session was easier for someone else to check. Dotted ones have not
             happened yet.
           </div>
         </div>
       )}
 
-      {coverage && <WhatTheReportCanSayYet facts={coverage} />}
-
-      {/*
-        AND WHAT THE ENGINE NOTICED, FOLDED IN RATHER THAN GIVEN A CARD.
-
-        "Observations from your record" was a card of its own at the foot of the page, and it was the
-        fourth thing saying the same thing in a fourth vocabulary. Not dropped, though: these reach a
-        person on the board too, but only where the scenario renders one - a private alignment
-        check-in has no board, and dropping them would take them away from exactly the people with
-        nowhere else to read them.
-      */}
+      {/* Folded in rather than given a card of its own - it was the fourth restatement. Kept
+          rather than dropped: these also reach a person on the board, but only where the scenario
+          renders one, and a private alignment check-in has none. */}
       {(alsoNoticed?.length ?? 0) > 0 && (
         <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
           <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 5 }}>

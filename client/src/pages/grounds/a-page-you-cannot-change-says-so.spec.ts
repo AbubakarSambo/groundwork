@@ -84,7 +84,8 @@ describe('but the yardstick still reaches a party, where it can be compared', ()
 
   it('and on Context, where the same words are published for everybody', () => {
     /* My record links there rather than holding a third copy that was usually empty. */
-    expect(strip(MY_RECORD)).toContain('What you are being read against')
+    /* A line rather than a card - it had the chrome of a five-item block for one signpost. */
+    expect(strip(MY_RECORD)).toContain('Success and expectations live on Context')
     expect(strip(MY_RECORD)).toContain("onGoToTab('docs')")
   })
 

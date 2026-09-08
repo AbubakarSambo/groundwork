@@ -60,7 +60,7 @@ describe('a party sees their own and only their own', () => {
      *
      * The rule is unchanged and is what is asserted: a party can reach what they are read against.
      */
-    expect(PARTY).toContain('What you are being read against')
+    expect(PARTY).toContain('Success and expectations live on Context')
   })
 
   /** The words live in one published place; this points there rather than keeping a second copy. */

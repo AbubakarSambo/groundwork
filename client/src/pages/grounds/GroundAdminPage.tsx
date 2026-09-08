@@ -29,6 +29,8 @@ import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
+import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
+import { WhatTheReportCanSayYet } from '@/components/gw/WhatTheReportCanSayYet'
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
@@ -1683,13 +1685,25 @@ export function GroundAdminPage() {
               yours, so it sits here rather than above the shared report - which otherwise made that
               tab mean two things at once.
             */}
-            {/* The same two cards the party's view opens My record with. */}
+            {/* The summary first, then the reads of it. The two views move together. */}
+            <WhatYouAreCarryingForward
+              groundId={id!}
+              mySoloReport={mySoloReport}
+              refetchSoloReport={refetchSoloReport}
+            />
+
+            {/* The same cards the party's view opens My record with. */}
             <WhatYourRecordCanSupport
               strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
               trend={mySpecificity?.trend}
               sessions={mySessionDots}
               totalSessions={plannedSessions ?? null}
-              coverage={{
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
+            />
+            <div style={{ paddingTop: 14, marginTop: 2, borderTop: '1px solid var(--gw-border)' }}>
+              <WhatTheReportCanSayYet facts={{
                 iHaveCheckedIn: mySessionsDone > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
                 parties: (ground as any)?.sessionProgress?.total
@@ -1704,11 +1718,8 @@ export function GroundAdminPage() {
                 corroborated: null,
                 documentBackedPct: null,
                 roundsFinished: mySessionsDone,
-              }}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
+              }} />
+            </div>
             <TheFiveThingsThatMakeItCheckable
               dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
               sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}

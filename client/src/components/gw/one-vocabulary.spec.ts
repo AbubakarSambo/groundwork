@@ -224,7 +224,7 @@ describe('the same solo report reads the same to everybody', () => {
    */
   const PARTICIPANT = strip(readFileSync(join(SRC, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'))
   const LEAD = strip(readFileSync(join(SRC, 'pages/grounds/GroundAdminPage.tsx'), 'utf8'))
-  const PRIVATE_REPORT = strip(readFileSync(join(SRC, 'components/gw/MyPrivateReport.tsx'), 'utf8'))
+  const CARRY_FORWARD = strip(readFileSync(join(SRC, 'components/gw/WhatYouAreCarryingForward.tsx'), 'utf8'))
 
   it('both pages render it through one component', () => {
     /* The party view reaches it through `MyPrivateReport` now - the solo report and the whole
@@ -234,7 +234,10 @@ describe('the same solo report reads the same to everybody', () => {
     /* NAMED, NOT FILTERED. My first rewrite collected whichever files happened to render it and
        asserted the list was non-empty - which passes while one of them quietly stops. Each route to
        a solo report is named here, so losing any one of them fails. */
-    for (const src of [LEAD, PRIVATE_REPORT]) {
+    /* Moved again, to the top of My record: "summary should be the item at the very top" - it is
+       the one block saying what the record holds, and it was fourth, under three cards assessing
+       it. Renamed with it, so the route is named here rather than filtered for. */
+    for (const src of [LEAD, CARRY_FORWARD]) {
       expect(src).toMatch(/import \{ SoloReportBody \}/)
       expect(src).toMatch(/<SoloReportBody report=/)
     }

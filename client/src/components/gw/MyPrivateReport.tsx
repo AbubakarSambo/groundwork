@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Sec } from './kit'
-import { SoloReportBody } from './SoloReportBody'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -103,66 +101,32 @@ export function MyPrivateReport({
             A link rather than nothing, because somebody who has just read what was missing from
             session 1 is exactly the person who wants to open it.
           */}
+          {/*
+            A LINE, NOT A CARD. It had the same border, padding and radius as a five-item block, so
+            a one-line signpost carried the same weight as the reading above it and nothing on the
+            page was primary.
+          */}
           {mySessions.length > 0 && (
             <button
               onClick={() => onGoToReport?.()}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10,
-                padding: '12px 14px', marginBottom: 14, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none',
+                padding: '2px 0', marginBottom: 14, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 12.5, color: 'var(--gw-navy)', fontWeight: 600,
               }}
             >
-              <span>
-                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Your session reports</span>
-                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
-                  {mySessions.length} finished. They are on the Report tab.
-                </span>
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+              Your session reports are on Report &rarr;
             </button>
           )}
 
           {/*
-            AND THE ONE-LINE CARRY-FORWARD, WHICH IS NOT A SECOND REPORT.
-            It is what the next session opens from, and it is the thing that can be shared with
-            the others - a sentence, deliberately, because sharing your whole account with the
-            people you are being compared against is a different act.
-          */}
-          <Sec title="What you are carrying forward" src="the line the next session opens from" />
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
-            From your own check-in only. Only you can see it unless you choose to share it.
-          </div>
-          {mySoloReport?.report ? (
-            <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
-              <SoloReportBody report={mySoloReport.report as Record<string, unknown>} />
-              <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                {/*
-                  SAID ONCE. The band above this card already says "From your own check-in only.
-                  Only you can see it unless you choose to share it", so the private state was the
-                  same sentence twice, two inches apart - the pattern she called overdoing it. The
-                  SHARED state is not a repeat of anything and stays: it is a change of state, and
-                  a person needs to see that it took effect.
-                */}
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
-                  {mySoloReport.shared ? 'Shared with everyone in this check-in' : ''}
-                </div>
-                <button
-                  onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
-                  disabled={setSoloSharedMut.isPending}
-                  style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.08)', color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  {mySoloReport.shared ? 'Stop sharing' : 'Share with everyone'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-              {/* One line, not two. The second was a restatement of the first, and the box below
-                  this one was restating both again. */}
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>This appears once you finish your first check-in.</div>
-            </div>
-          )}
+            THE CARRY-FORWARD MOVED TO THE TOP OF THE PAGE. Her call: "summary should be the item at
+            the very top."
 
+            It is the one block that says in prose what this person's record actually holds, and
+            everything else on the page is a read OF it - so it sat fourth, under three cards
+            assessing a thing the reader had not been shown yet. See WhatYouAreCarryingForward.
+          */}
           {/* Sign-off: the deadline for corrections, in place of a timer.
               Does not block later corrections - it just flags any that come
               after as "updated after sign-off" on the shared report. */}
@@ -176,8 +140,7 @@ export function MyPrivateReport({
               ) : (
                 <>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 8 }}>
-                    Confirm your account is accurate. This isn't a lock - you can still correct it later - but any correction after sign-off is flagged on the shared report.
-                  </div>
+                Any correction after this is flagged on the shared report.</div>
                   <button
                     onClick={() => signOffMut.mutate()}
                     disabled={signOffMut.isPending}

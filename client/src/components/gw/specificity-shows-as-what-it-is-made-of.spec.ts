@@ -90,8 +90,14 @@ describe('the five things', () => {
 })
 
 describe('what the record can support', () => {
-  it('is a face on the record and a sentence, not a bar', () => {
-    expect(code(SUPPORT)).toContain('What your record can support')
+  it('is a sentence, and no longer a face', () => {
+    /*
+     * THE FACE IS GONE. It was the only emoji on the page, and a sad one, and it was the single most
+     * prominent thing on a page about somebody's own work. The argument that it described the record
+     * rather than the writer held right up until it was that big.
+     */
+    expect(code(SUPPORT)).toContain('Where your record stands')
+    expect(code(SUPPORT)).not.toMatch(/🙂|😐|🙁/)
     expect(code(SUPPORT)).not.toMatch(/\[1,2,3,4,5\]\.map/)
   })
 
@@ -118,7 +124,11 @@ describe('what the record can support', () => {
      * and this row is about how much each session can support.
      */
     expect(SUPPORT).toContain('checkable')
-    expect(SUPPORT).toContain('Taller means that session was easier for someone else to check')
+    expect(SUPPORT).toContain('Fuller means that session was easier for someone else to check')
+    /* They fill upward inside a fixed box, so "taller" described nothing on the screen. */
+    expect(code(SUPPORT)).not.toContain('Taller means')
+    /* And a low score is not an error: brown-red at 40% read as broken rather than thin. */
+    expect(code(SUPPORT)).not.toContain("'var(--gw-clay)'")
     expect(code(SUPPORT)).not.toContain('of {dots.length} done')
   })
 

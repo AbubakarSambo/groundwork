@@ -110,8 +110,10 @@ describe('and the page shows it once, with the actionable half', () => {
      * the row and under it.
      */
     expect(PAGE).toMatch(/mostUseful/);
-    expect(PAGE).toMatch(/Most useful for you: /);
+    /* The badge marks WHICH one; the line under the list says why. They both used to open "Most
+       useful for you", which is the same statement twice, so the line keeps only the reason. */
     expect(PAGE).toMatch(/most useful<\/span>/);
+    expect(PAGE).toMatch(/\{mostUseful\.says/);
   });
 
   it('their own strongest answer is rendered', () => {

@@ -99,32 +99,56 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
 
 export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
   const { rows, headline } = whatItCanSay(facts)
+  const have = rows.filter(r => r.can).length
+
   return (
-    <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
-      <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 4 }}>
-        What the shared report can say so far
+    <section>
+      {/*
+        A METER, NOT A CHECKLIST.
+
+        This shipped as five rows with an empty circle each - the same object, twenty pixels above a
+        card that is also five rows with an empty circle each. Nothing told the eye that one is the
+        state of the report and the other is advice to the person, and an empty circle in a product
+        means a checkbox somebody has not ticked, so both read as things they had failed to do. Two
+        of them counted different subjects with the same glyph.
+
+        So the circles belong to exactly one card on this page, and it is the one where a person can
+        actually do something. This is a filled bar and a count. Nothing here is anybody's to tick:
+        it fills as people check in.
+      */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+        <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)' }}>
+          What the report can say so far
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          {have} of {rows.length}
+        </div>
       </div>
-      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 9 }}>{headline}</div>
-      <div style={{ display: 'grid', gap: 5 }}>
+
+      <div style={{ display: 'flex', gap: 3, marginBottom: 9 }}>
         {rows.map((r, i) => (
-          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-            <span
-              aria-hidden
-              style={{
-                flex: '0 0 auto', width: 13, height: 13, borderRadius: '50%', marginTop: 1,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800,
-                background: r.can ? 'var(--gw-green-bg)' : 'transparent',
-                color: 'var(--gw-green-t)',
-                border: '1px solid ' + (r.can ? 'var(--gw-green-b)' : 'var(--gw-border)'),
-              }}
-            >{r.can ? '✓' : ''}</span>
-            <span style={{ fontSize: 12, lineHeight: 1.5, color: r.can ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
-              {r.says}
-              {!r.can && r.because && <span style={{ color: 'var(--gw-muted)' }}> — {r.because}</span>}
-            </span>
+          <div
+            key={i}
+            title={r.can ? r.says : `${r.says} - ${r.because ?? 'not yet'}`}
+            style={{
+              flex: 1, height: 6, borderRadius: 3,
+              background: r.can ? 'var(--gw-navy)' : 'var(--gw-border)',
+            }}
+          />
+        ))}
+      </div>
+
+      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 9 }}>{headline}</div>
+
+      {/* Labels under the meter, in its order, so a segment can be read rather than only counted. */}
+      <div style={{ display: 'grid', gap: 4 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ fontSize: 12, lineHeight: 1.5, color: r.can ? 'var(--gw-text)' : 'var(--gw-muted)' }}>
+            {r.says}
+            {!r.can && r.because && <span> — {r.because}</span>}
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }
