@@ -87,6 +87,37 @@ export function SharedReportForAParty({
 
   return (
     <>
+          {/*
+            * THE BOARD IS THE FIRST DOOR ON THIS VIEW, AS IT IS ON THE LEAD'S.
+            *
+            * It was inside the branch that only renders once the report is RELEASED and ACTIVATED,
+            * so a party who had checked in and was waiting - which is most of the time, and all of
+            * the time for a new hire in their first weeks - never saw it at all. Reported as "the
+            * new hire person doesn't see the team board", and it is the same finding as "the team
+            * board no longer exists" from before, one branch deeper.
+            *
+            * Gated only on `boardRenders`, the same as the lead's: whether this SITUATION draws a
+            * board is a fact about the check-in, and it does not become more or less true because
+            * somebody else has not answered yet. The board's own page handles being early.
+            */}
+          {!!(ground as any).boardRenders && (
+            <button
+              onClick={() => onOpenBoard()}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                background: 'var(--gw-dark)', color: 'white', border: 'none',
+                borderRadius: 10, padding: '14px 18px', marginBottom: 8, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <span style={{ textAlign: 'left' }}>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Open the team board</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
+                  The same picture for everyone, built from the accounts. Never a verdict.
+                </span>
+              </span>
+              <span style={{ fontSize: 13 }}>&rarr;</span>
+            </button>
+          )}
           {mySessions.length > 0 && (
             <>
               <Sec n={1} title="Your sessions" src="each one has its own private report" />
@@ -172,40 +203,6 @@ export function SharedReportForAParty({
           ) : (
             <>
               <ReportBody groundId={groundId} embedded reportExists={!!(ground as any)?.report} />
-
-              {/*
-                THE WAY INTO THE TEAM BOARD, WHICH A PARTICIPANT DID NOT HAVE.
-
-                The board stopped being a tab for a good reason - it leaves the page rather than
-                changing what is under the tab row - and the lead got a replacement door at the
-                foot of their report. A participant got nothing. The route stayed live, the board
-                still rendered, and for everybody who is not the lead it simply ceased to exist.
-
-                Hafsah found it the only way it could be found: "the team board no longer exists."
-
-                Same gate as the lead's, because a board with nothing to draw is a worse door than
-                no door, and same place - the board is the shared picture you talk over once you
-                have read what the accounts said.
-              */}
-              {!!(ground as any).boardRenders && (
-                <button
-                  onClick={() => onOpenBoard()}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                    background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)',
-                    borderRadius: 10, padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  <span style={{ textAlign: 'left' }}>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Team board</span>
-                    <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
-                      The same check-in side by side, so you can see where the accounts meet. Opens full screen.
-                    </span>
-                  </span>
-                  <span style={{ fontSize: 13 }}>&rarr;</span>
-                </button>
-              )}
-
               {/*
                 FIVE SECTIONS THAT NEVER RENDERED, REMOVED.
 

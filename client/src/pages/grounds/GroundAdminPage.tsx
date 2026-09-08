@@ -925,6 +925,16 @@ export function GroundAdminPage() {
    * moment two people were invited: a session I had completed the night before, reported as not
    * done, on the panel that is explicitly about me.
    */
+  /**
+   * THE NUMBER EACH SETUP BAND GETS, COUNTED AS THE TAB IS DRAWN.
+   *
+   * Same reasoning as the Context page: several of these sections only render for an initiator, so
+   * a hand-written number would leave gaps for everybody else - and a reader who sees 2 then 4
+   * concludes something failed to load rather than that it was never theirs to see.
+   */
+  let setupBands = 0
+  const setupBand = () => ++setupBands
+
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
     (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
   ).length
@@ -2446,7 +2456,21 @@ export function GroundAdminPage() {
             * Same control, same mutation as the Sessions tab: this is one queue with two entrances,
             * not a second way of adding anybody.
             */}
+          {/*
+            * THE SETUP TAB WAS EIGHT LOOSE FIELDS WITH NOTHING GROUPING THEM.
+            *
+            * "The setup page should get the same treatment you just gave the context page." It was
+            * add-a-person, then a card about you, then who-works-together, then a timeframe, then a
+            * name, then a scenario, then two privacy toggles, then closing and an access code - each
+            * one a bare label, all the same weight, in the order they happened to be built.
+            *
+            * The questions themselves fall into four: who is in it, how it runs, what it is, and how
+            * it ends. Nothing moved; they are named and numbered, which is the difference between a
+            * form and a settings page.
+            */}
           {isInitiator && (
+            <>
+            <Sec n={setupBand()} title="Who is in it" src="adding somebody sends them an invitation" />
             <div className="gw-card" style={{ padding: '14px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
@@ -2543,6 +2567,7 @@ export function GroundAdminPage() {
                 </div>
               )}
             </div>
+            </>
           )}
           {/**
             * WHAT IS TRUE ABOUT YOU, FOR A LEAD WHO IS ALSO IN IT.
@@ -2587,6 +2612,8 @@ export function GroundAdminPage() {
                 treating it as work going missing is how a competent person gets
                 reported as absent on a ground that decides their job. */}
             {isInitiator && (
+              <>
+              <Sec n={setupBand()} title="How it runs" src="the shape of the run, and who can corroborate whom" />
               <div className="gw-fld">
                 <label className="gw-label">Do these people work together?</label>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
@@ -2626,6 +2653,7 @@ export function GroundAdminPage() {
                   </div>
                 )}
               </div>
+              </>
             )}
             {/**
               * WHAT WAS CHANGED, AND WHEN. W14-3.
@@ -2706,6 +2734,7 @@ export function GroundAdminPage() {
                 </button>
               </div>
             )}
+            <Sec n={setupBand()} title="What it is" src="what it is called, and which situation it runs as" />
             <div className="gw-fld">
               <label className="gw-label">Name</label>
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
@@ -2770,8 +2799,8 @@ export function GroundAdminPage() {
               * ("this matters again if you turn the setting above on"), which is a card admitting
               * it should not be a separate card.
               */}
+            <Sec n={setupBand()} title="Who can see whom" src="two settings, one question" />
             <div className="gw-fld">
-              <label className="gw-label">Who can see whom</label>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: '8px 8px 0 0' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
@@ -2837,6 +2866,7 @@ export function GroundAdminPage() {
             >
               <span>Share code</span><span style={{ color: 'var(--gw-sub)' }}>↗</span>
             </button>
+            <Sec n={setupBand()} title="Ending it" src="closing is not reversible" />
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>

@@ -1893,6 +1893,19 @@ export function EntryChatPage() {
       clearEntryHandover()
       sayWhoWasNotInvited(res)
       navigate(`/grounds/${res.groundId}`, { replace: true })
+      /*
+       * WHERE THE PANEL THAT JUST VANISHED WENT.
+       *
+       * The save-and-invite card is the last thing a lead sees: their report, and the controls for
+       * cadence, dates and who is on this. It commits and is gone, and nothing has ever said where
+       * any of it went - reported as "that pop up where you set the team or cadence, no longer able
+       * to be seen".
+       *
+       * All of it still exists. The report is on Report under Your sessions; the settings are on
+       * Setup, which now names them. This is the sentence saying so, at the one moment somebody is
+       * looking for them, and it is fired AFTER the navigate so it lands on the page it describes.
+       */
+      toast.info('Cadence, dates and who is on this are on Setup. Your report is on Report, under Your sessions.')
     } catch (err: any) {
       setSavingAsUser(false)
       /*
