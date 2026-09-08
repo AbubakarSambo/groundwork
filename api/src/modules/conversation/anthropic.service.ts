@@ -20,6 +20,50 @@ import * as path from 'path';
  * what happened, says it is not their fault, and says their answers are safe -
  * which is the thing they will actually worry about.
  */
+/**
+ * A RATE LIMIT IS NOT AN OUTAGE, AND WAS BEING TREATED AS ONE.
+ *
+ * Driven through a twelve-session cohort with four people, the provider answered 429
+ * RESOURCE_EXHAUSTED under sustained load and the session simply stopped: the person was told "The
+ * conversation could not be reached just now", mid-check-in, and two of the four never finished
+ * their remaining sessions. Nothing was broken and nothing was retried.
+ *
+ * A 429 says "not this second", which is the one error worth waiting out. Two retries with a short
+ * backoff cover the burst that a team checking in on the same morning actually produces. Anything
+ * else - a bad request, a missing key, a malformed tool - is not going to improve by being sent
+ * again, and retrying it would turn one clear failure into three slow ones.
+ */
+export function worthWaitingOut(err: any): boolean {
+  const status = err?.status ?? err?.code ?? err?.response?.status;
+  if (status === 429 || status === 503) return true;
+  const said = String(err?.message ?? '');
+  /* Space OR underscore: the provider sends the status as RESOURCE_EXHAUSTED and the human message
+     as "Resource exhausted. Please try again later." - the underscore form alone missed the real
+     one, which is the message this whole thing exists for. Caught by the spec, not by reading it. */
+  return /resource[ _]exhausted|rate limit|too many requests|overloaded|unavailable/i.test(said);
+}
+
+/** Short, and short enough that nobody is left staring at a composer. */
+export const BACKOFF_MS = [800, 2500];
+
+export async function tryAgainIfItIsJustBusy<T>(
+  attempt: () => Promise<T>,
+  onRetry?: (n: number, err: any) => void,
+): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i <= BACKOFF_MS.length; i++) {
+    try {
+      return await attempt();
+    } catch (err: any) {
+      lastErr = err;
+      if (i === BACKOFF_MS.length || !worthWaitingOut(err)) break;
+      onRetry?.(i + 1, err);
+      await new Promise((r) => setTimeout(r, BACKOFF_MS[i]));
+    }
+  }
+  throw lastErr;
+}
+
 export function engineUnavailable(err: any): ServiceUnavailableException {
   return new ServiceUnavailableException(
     'The conversation could not be reached just now, so this session cannot continue this minute. Nothing you have already said has been lost. Please try again shortly, and if it keeps happening tell the person who set this ground up - it is a problem on our side, not anything you did.',
@@ -38,9 +82,44 @@ export interface ChatTurn {
  * normalize every AI response at the output boundary. This text is shown to
  * customers in check-ins and reports.
  */
+/**
+ * A CONDITIONAL WITH NOTHING IN FRONT OF IT.
+ *
+ * The engine has a template it uses often and well: "Does the new hire know that is how you see the
+ * role? And if so, how did you describe it to them?" - two halves of one fact, which the ONE
+ * QUESTION RULE explicitly allows.
+ *
+ * About one time in four it drops the first half. Read on a real setup:
+ *
+ *   "That third one, the behavioural change, is often the hardest and the most important.
+ *    And if so, how was that communicated?"
+ *
+ * "And if so" refers to nothing. The person is left working out what they were asked, in the one
+ * exchange where the product is supposed to be the clearest thing in the room. Counted across 1,901
+ * AI turns: three well-formed, one orphaned.
+ *
+ * The connective is dropped rather than the question repaired - inventing the missing half would be
+ * writing somebody a question nobody asked. "How was that communicated?" is complete and loses
+ * nothing. Only when there is no question before it in the same turn: where the first half IS
+ * there, this leaves it exactly alone.
+ */
+export function noDanglingConditional(text: string): string {
+  if (!text) return text;
+  return text.replace(
+    /(^|[.!?]\s+)(And |But |So )?[Ii]f so,\s*(\w)/g,
+    (whole, before: string, _connective: string, firstLetter: string, at: number) => {
+      /* A question mark anywhere before this is the other half doing its job. */
+      if (text.slice(0, at + before.length).includes('?')) return whole;
+      /* The word that followed "if so," now starts the sentence, so it is capitalised - otherwise
+         dropping the connective leaves "That is the hardest one. how was that communicated?" */
+      return before + firstLetter.toUpperCase();
+    },
+  );
+}
+
 export function houseStyle(text: string): string {
   if (!text) return text;
-  return text
+  return noDanglingConditional(text)
     .replace(/[—–]/g, '-') // em/en dash -> hyphen
     .replace(/[“”]/g, '"') // curly double quotes -> straight
     .replace(/[‘’]/g, "'") // curly single quotes/apostrophes -> straight
@@ -218,16 +297,22 @@ export class AnthropicService {
 
     const TIMEOUT_MS = 90_000;
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
+    /* A 429 under load is "not this second", not an outage - see tryAgainIfItIsJustBusy. */
     try {
-      const call = this.client.models.generateContent({
-        model: this.model,
-        contents,
-        config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
-      });
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
+      res = await tryAgainIfItIsJustBusy(
+        () => {
+          const call = this.client.models.generateContent({
+            model: this.model,
+            contents,
+            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
+          });
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
+          );
+          return Promise.race([call, timeout]);
+        },
+        (n, err) => this.logger.warn(`respond() busy (${err?.message ?? err}); retry ${n}`),
       );
-      res = await Promise.race([call, timeout]);
       this.noteSuccess();
     } catch (err: any) {
       this.logger.error(`respond() Gemini call failed: ${err.message}`);
@@ -283,8 +368,9 @@ export class AnthropicService {
     }));
 
     let res: Awaited<ReturnType<typeof this.client.models.generateContent>>;
+    /* Same treatment as respond(): an extraction lost to a burst is a report built from less. */
     try {
-      res = await this.client.models.generateContent({
+      res = await tryAgainIfItIsJustBusy(() => this.client.models.generateContent({
         model: this.model,
         contents,
         config: {
@@ -298,7 +384,7 @@ export class AnthropicService {
             },
           },
         },
-      });
+      }), (n, err) => this.logger.warn(`extract() busy (${err?.message ?? err}); retry ${n}`));
     } catch (err: any) {
       this.logger.error(`extract() Gemini call failed: ${err.message}`);
       this.noteFailure('extract', err);
@@ -366,6 +452,22 @@ export class AnthropicService {
   }
 
   private convertTool(tool: { name: string; description: string; input_schema: any }) {
+    /*
+     * A TOOL WITH NO NAME IS A CALL THAT CAN NEVER SUCCEED.
+     *
+     * Gemini answers `tools[0].function_declarations[0].name: [REQUIRED_FIELD_MISSING]` and the
+     * whole extraction fails - every time, for as long as that caller exists. Seen repeatedly in a
+     * real run's logs, where the only trace was the provider's own error and nothing said which of
+     * the twenty-six extractions it belonged to.
+     *
+     * Thrown here rather than sent, with the description in the message, because the failure then
+     * names its own caller instead of arriving as an anonymous 400 from somebody else's API.
+     */
+    if (!tool?.name?.trim()) {
+      throw new Error(
+        `extract() was given a tool with no name, so the call could never succeed. Description: "${tool?.description ?? '(none)'}".`,
+      );
+    }
     return {
       name: tool.name,
       description: tool.description,

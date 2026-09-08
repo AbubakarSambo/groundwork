@@ -165,11 +165,42 @@ export function theSetupPackFor(
       ? 'Who are you onboarding, and what are they all starting?'
       : q.ask;
 
+  /**
+   * AND WHETHER THE CARD ALREADY ANSWERED "IS THIS A ONE OFF OR DOES IT COME BACK ROUND".
+   *
+   * Driven live on "A new hire starting", the setup chat asked that question three times in six
+   * turns - once, again after an answer about something else, and a third time after the person
+   * stopped to ask what it even meant ("is this about me or someone else"). Two passes of
+   * instruction did not stop it, which is the signal to stop instructing: the card ALREADY carries
+   * the answer. Somebody who clicked "A new hire starting" has said this is something starting,
+   * exactly as they said what the situation is by clicking - and the pack's next line already
+   * forbids asking THAT back for the same reason.
+   *
+   * So the question is removed rather than rationed, and how often people check in keeps the
+   * scenario's default, which is on the Setup tab where it can be changed. A loop that cannot be
+   * entered needs no rule about how many times to go round it.
+   */
+  const momentIsKnown = !!moment;
+  const momentSaid: Record<string, string> = {
+    STARTING: 'something that is just starting',
+    UNDERWAY: 'something already underway',
+    HAPPENED: 'something that has already happened',
+    RECURRING: 'a read they want to repeat',
+  };
+
   return [
     'THE SITUATION THEY PICKED, AND THE FIRST QUESTION IT DESERVES.',
     '',
     `They chose this situation from a list, so you already know what this is. Do NOT ask them what the situation is about - they have answered that, and asking it back is the single thing that makes this feel like the click went nowhere.`,
     '',
+    ...(momentIsKnown
+      ? [
+        `AND THE SAME GOES FOR WHEN. The card says this is ${momentSaid[String(moment)] ?? 'already placed in time'}, so that is settled: NEVER ask whether this is a one off, whether they will be checking in regularly, or whether it is something that comes back round. It was asked three times in one live run and read as not listening.`,
+        '',
+        'AND NEVER ASK HOW LONG IT RUNS OR HOW OFTEN PEOPLE CHECK IN. Both already have a value from the situation they picked, the screen shows it while they talk, and both are changed on the Setup tab in two clicks afterwards. Asked here they are two more questions before anybody has said anything real, and the answer is a guess about a person who has not started yet. Driven live, this was the question that would not stop coming: banned as the moment, it came back as "how long should this run for, and how often would you like to check in with Margaret".',
+        '',
+      ]
+      : []),
     /*
      * "AFTER THE ONE ABOUT WHO WRITES THE OBJECTIVE" USED TO BE HERE, AND IT KEPT THAT QUESTION ALIVE.
      *

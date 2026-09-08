@@ -29,6 +29,11 @@ export const reportsApi = {
     apiClient.get(`/grounds/${groundId}/report/session/${sessionNumber}`, { skipNotFoundToast: true } as any)
       .then(r => r.data as SessionShapedReport),
 
+  /** What success was said to be, and where the accounts put each condition under it. */
+  againstSuccess: (groundId: string) =>
+    apiClient.get(`/grounds/${groundId}/report/against-success`, { skipNotFoundToast: true } as any)
+      .then(r => r.data),
+
   rounds: (groundId: string) =>
     apiClient
       .get<{ rounds: any[]; moved: { round: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
@@ -69,9 +74,19 @@ export interface SessionShapedReport {
   }[]
   howClearThisWas: { level: string | null; recall: string | null; saying: string }
   theConversationWorthHaving: string | null
+  /** The four reads the front page shows when it shows a report. */
+  atAGlance: { label: string; value: string; sub: string }[]
+  /** Each person's own lines this session, under their own name. */
+  whatEachPersonSaid: { who: string; isYou: boolean; lines: string[]; saying?: string }[]
+  /** Whether this session's account can still be corrected, and the sentence if it cannot. */
+  correctable: boolean
+  whyNotCorrectable: string | null
   /** Everybody the report is counting for this session, named, with what each has done. */
   counting: { who: string; isYou: boolean; answered: boolean; hasShownTheirs: boolean }[]
   everybodyHasShownTheirs: boolean
+  /** Whether the shared report has gone out, and whether this reader has shown their own. */
+  released: boolean
+  iHaveShownMine: boolean
   sharedPicture: string | null
   takenAt: string | null
   amendedAt: string | null

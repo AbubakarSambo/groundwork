@@ -76,6 +76,10 @@
   --gw-red-b: #F09595;
   --gw-blue-bg: #EEF4FB;
   --gw-blue-t: #0C447C;
+  /* Body text on the pale blue ground. It was typed twice, once in each place that needed it, and
+     a colour on more than one surface is a decision - so it has a name. Lighter than --gw-blue-t
+     on purpose: that one is for the heading above it. */
+  --gw-blue-body: #4A6A9A;
   --gw-blue-b: #B5D4F4;
   --gw-border: #E2E0DB;
   /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.

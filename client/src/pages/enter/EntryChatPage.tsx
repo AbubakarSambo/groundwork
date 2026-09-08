@@ -261,14 +261,38 @@ export function isCorrectionTurn(t: { role: string; content: string }): boolean 
 // lead path. The coordinator has no session transcript, so the brief is the
 // only context the lead inherits - it must carry everything the onboarding
 // gathered, honestly labelled as the coordinator's framing.
+/**
+ * ONE SENTENCE, THEN THE REST - NOT A LABELLED DUMP WITH DOUBLE FULL STOPS.
+ *
+ * Two things were wrong with this, and both were only visible on the rendered page.
+ *
+ * It joined with `'. '` over fragments that mostly already end in a full stop, so a real brief read
+ * "...before she gets buried in it.. Who is part of this: ...run their own check-ins separately..
+ * Why now: ..." - two doubled stops in one paragraph.
+ *
+ * And it opened with "What this check-in is for:", printed directly underneath a band heading
+ * reading WHAT THIS CHECK-IN IS FOR. The label was said twice and the person's own first sentence
+ * was buried behind it.
+ *
+ * The situation now leads, unlabelled and in their words, because that is what a brief is. The rest
+ * still travels - on the coordinator path this is the only context a lead inherits, and dropping it
+ * would lose the handover - but as sentences rather than a form, and punctuated once.
+ */
 export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string }): string {
+  /* Ends every fragment exactly once, whatever the person typed. */
+  const sentence = (t?: string) => {
+    const trimmed = (t ?? '').trim()
+    if (!trimmed) return ''
+    return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
+  }
   return [
-    sels.initial ? `What this check-in is for: ${sels.initial}` : '',
-    sels.whoInvolved ? `Who is part of this: ${sels.whoInvolved}` : '',
-    sels.decision ? `Why now: ${sels.decision}` : '',
-    sels.goals?.length ? `Goals: ${sels.goals.join(', ')}` : '',
-    sels.brief ? `Focus: ${sels.brief}` : '',
-  ].filter(Boolean).join('. ')
+    /* Unlabelled and first: the band above it already says what this is. */
+    sentence(sels.initial),
+    sels.whoInvolved ? sentence(`Who is part of this: ${sels.whoInvolved}`) : '',
+    sels.decision ? sentence(`Why now: ${sels.decision}`) : '',
+    sels.goals?.length ? sentence(`What it is aiming at: ${sels.goals.join(', ')}`) : '',
+    sels.brief ? sentence(`Focus: ${sels.brief}`) : '',
+  ].filter(Boolean).join(' ')
 }
 
 
@@ -354,8 +378,21 @@ export function summariseSetup(
   const missing: string[] = []
 
   if (sels.initial?.trim()) have.push({ label: 'What this is about', value: sels.initial.trim() })
+  /*
+   * NAMED, NOT ADDED - AND THE LABEL USED TO SAY OTHERWISE.
+   *
+   * `peopleNamed` is every person the extraction heard in the conversation. Nobody is on the
+   * check-in until they are added on the report below, which is opt-in per person and deliberately
+   * so. Labelled "Who is in it", this asserted membership for all of them.
+   *
+   * Read on a real setup: the lead said "Just Nadia and me for this one. My two managers, Tunde and
+   * Priya, will run their own check-ins separately", the assistant answered "Perfect, so this one
+   * is just between you and Nadia", and the summary two turns later read "Who is in it: Nadia,
+   * Tunde, Priya". Contradicting its own confirmation, about the one thing the lead had been
+   * explicit about.
+   */
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
-  if (people.length) have.push({ label: 'Who is in it', value: people.join(', ') })
+  if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
   if (sels.decision?.trim()) have.push({ label: 'Why now', value: sels.decision.trim() })
   if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.join('; ') })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
@@ -818,6 +855,29 @@ const QUICK_ACTIONS = [
  * use it: the classified scenario if the engine reached one, otherwise the first
  * thing the person typed, trimmed to something an inbox can show.
  */
+/**
+ * WHETHER THE ASSISTANT HAS JUST ASKED SOMETHING.
+ *
+ * The close prompt fires on the backend's completion signal, and that signal can arrive on a turn
+ * that also asks a question. Read on a real setup, in one reply:
+ *
+ *   "...You've said you'll handle that. What is the first thing you will do towards that, and when?"
+ *   [ This session has reached a natural close. Would you like to end and see your report? ]
+ *
+ * Answer it and the banner is stale; end the session and the question goes unanswered - and it was
+ * the commitment question, the one the record most needs. A session where something has just been
+ * asked has not reached a natural close: answering is the close.
+ *
+ * Only the LAST sentence counts. A turn that gives examples mid-paragraph and lands on a statement
+ * is finished; one that ends on a question is waiting.
+ */
+export function itIsStillAskingSomething(reply: string): boolean {
+  const said = (reply ?? '').trim()
+  if (!said) return false
+  const lastSentence = said.split(/(?<=[.!?])\s+/).filter(Boolean).pop() ?? said
+  return lastSentence.trim().endsWith('?')
+}
+
 export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
   const fromScenario = (classifiedScenario ?? '')
     .trim()
@@ -1280,13 +1340,10 @@ export function EntryChatPage() {
   // Start first check-in question (AI-generated) after onboarding
   const startCheckin = useMutation({
     mutationFn: () => {
-      const ctx = [
-        onboardingSelections.initial ? `What this check-in is for: ${onboardingSelections.initial}` : '',
-        onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
-        onboardingSelections.decision ? `What made them open this record today: ${onboardingSelections.decision}` : '',
-        onboardingSelections.goals?.length ? `What they want this check-in to get right: ${onboardingSelections.goals.join(', ')}` : '',
-        onboardingSelections.brief ? `What to focus on or probe: ${onboardingSelections.brief}` : '',
-      ].filter(Boolean).join('. ')
+      /* One composer, one shape - see composeLeadBrief. This built the same string a second way,
+         with the same doubled full stops and the same duplicated label. */
+      const ctx = composeLeadBrief(onboardingSelections)
+
       return entryApi.chat([{
         role: 'user',
         content: `I have completed the onboarding. Here is my context. ${ctx}. Please ask me your first specific check-in question based on what I told you. Reference my situation and what I said I need. Do not open generically. Do not ask what my role is. Ask one direct specific question drawn from what I have shared.`,
@@ -1324,7 +1381,10 @@ export function EntryChatPage() {
       // Consume the backend's completion signal (previously ignored: the client
       // re-derived its own phrase-match and threw res.sessionComplete away). The reply
       // phrase-match stays as a backstop for phrasings the backend's own matcher misses.
-      if (sessionHasClosed(res) && !closed && !endPromptDismissed) {
+      /* Not while it is still asking. See itIsStillAskingSomething: the completion signal can
+         arrive on a turn that ends in a question, and offering to close over the top of one loses
+         the answer. The signal comes again on the next turn. */
+      if (sessionHasClosed(res) && !closed && !endPromptDismissed && !itIsStillAskingSomething(res.reply)) {
         setShowEndPrompt(true)
       }
       persistCheckin(updated)
@@ -1786,9 +1846,27 @@ export function EntryChatPage() {
          * The BRIEF travels for the same reason it always did: they gave no account, so the
          * onboarding is the only context the people who do check in have to work from.
          */
-        ...(flowPath === 'lead'
-          ? { managingOnly: true, brief: composeLeadBrief(onboardingSelections) || undefined }
+        /*
+         * AND THE BRIEF TRAVELS ON BOTH PATHS NOW, WHICH IS THE FIX FOR "THE BRIEF IS WRONG".
+         *
+         * It used to be sent only when the person was NOT checking in themselves. On every other
+         * commit the server filled the brief with the report's own observation instead - the AI's
+         * read of what this person had just said, in the second person:
+         *
+         *   "You have two standards for Zainab's first quarter. One you told her in week one; the
+         *    other you have never written down and doubt she knows about."
+         *
+         * That is a finding about them, published to their team under a heading that says "the
+         * lead's own words about the situation". Two things wrong at once: it is not a brief, and
+         * it takes a read of somebody's private account and shares it without them choosing to.
+         *
+         * `composeLeadBrief` is their own answers, in their own words, and it always was - it was
+         * simply not being sent unless they had opted out of checking in.
+         */
+        ...(composeLeadBrief(onboardingSelections)
+          ? { brief: composeLeadBrief(onboardingSelections) }
           : {}),
+        ...(flowPath === 'lead' ? { managingOnly: true } : {}),
       }
   }
 

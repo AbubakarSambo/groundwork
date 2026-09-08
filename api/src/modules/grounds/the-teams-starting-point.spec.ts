@@ -87,18 +87,29 @@ describe('and the reads that were guessing now have the answer', () => {
     expect(CODE).toMatch(/groundBaseline\.findFirst\(\{\s*where: \{ groundId: id \}/);
   });
 
-  it('the page stops passing literals into the context read', () => {
-    // The context read moved with the rest of the Context tab into the one ContextPage the lead
-    // and participant views both render. The rule is about where its inputs come from, not about
-    // which file holds the call.
+  it('the page passes no literals into a context read, because it makes none', () => {
+    /*
+     * THE STRONGEST VERSION OF THIS RULE, ARRIVED AT BY DELETION RATHER THAN BY CARE.
+     *
+     * The defect was a page handing hardcoded zeros to the "what this check-in can tell you" read
+     * - `conditionCount: 0`, `hasBaseline: false` - so two of its lines fired on every check-in
+     * whatever the truth. It was fixed by wiring the real values in, and this pinned them.
+     *
+     * The read itself is now gone: "this has to go", after two rewrites that did not make it
+     * wanted. So the page cannot pass a literal into it, correct or otherwise. What the check-in
+     * is still missing is asked for by the context conversation, which computes its own gaps from
+     * the check-in's rows on the server - the place they were always true.
+     */
     const PAGE = readFileSync(
       join(__dirname, '../../../../client/src/components/gw/ContextPage.tsx'),
       'utf8',
     ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(PAGE).not.toMatch(/conditionCount: 0,/);
-    expect(PAGE).not.toMatch(/hasBaseline: false,/);
-    expect(PAGE).toMatch(/conditionCount: \(\(ground as any\)\.baseline\?\.conditions \?\? \[\]\)\.length/);
-    expect(PAGE).toMatch(/hasBaseline: !!\(ground as any\)\.baseline/);
+    expect(PAGE).not.toMatch(/conditionCount:/);
+    expect(PAGE).not.toMatch(/hasBaseline:/);
+    expect(PAGE).not.toMatch(/whatThisGroundCanTellYou/);
+    /* And the gaps the conversation asks about are computed from rows, not passed in. */
+    const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8');
+    expect(SERVICE).toMatch(/contextGaps\(\{/);
   });
 
   it('and the report puts the stated baseline before the scraped prose', () => {

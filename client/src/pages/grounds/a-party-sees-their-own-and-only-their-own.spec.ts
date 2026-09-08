@@ -40,7 +40,14 @@ const PARTY = [
 
 describe('a party sees their own and only their own', () => {
   it('their sessions come from their own record, not the whole roster', () => {
-    expect(PARTY).toMatch(/\(myRecord\?\.sessions \?\? \[\]\)/)
+    /*
+     * THE LIST MOVED AND THE RULE DID NOT. `MyRecord` had a sessions list and `MyPrivateReport`
+     * had another one - the same sessions, the same dates, one of them with a way into each
+     * session's report. Two lists of one thing on one page, which is what "my record page is
+     * doing too much" was about. The one that survives is the one you can act from, and it is
+     * still filtered to the reader's OWN participant row rather than drawn from the roster.
+     */
+    expect(PARTY).toMatch(/p\.userId === user\?\.id/)
     expect(PARTY).not.toMatch(/ground\.checkIns\s*\?\?\s*\[\]\)\s*\.map/)
   })
 

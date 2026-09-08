@@ -305,6 +305,25 @@ export class BillingService {
     return Math.max(0, cap - (org._count.users ?? 0));
   }
 
+  /**
+   * WHAT THE PLAN COVERS, as a number, for anything that has to SAY it rather than just obey it.
+   *
+   * `seatsLeft` answers "is there room" and is the right read for a gate. Telling somebody their
+   * plan covers five people needs the five, and working it back out from what is left plus what is
+   * taken is the kind of arithmetic that drifts. Same two sources, same order, one answer.
+   */
+  async seatsIncludedFor(organizationId: string): Promise<number | null> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { subscriptionPlan: true, subscriptionStatus: true },
+    });
+    if (!org) return null;
+    const cap = isSubscribed(org)
+      ? await this.pricing.memberCapFor(org.subscriptionPlan)
+      : await this.pricing.getFreeMemberLimit();
+    return cap ?? null;
+  }
+
   async canInviteMember(organizationId: string): Promise<{ allowed: boolean; reason?: string }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },

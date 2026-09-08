@@ -4,11 +4,9 @@ import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
-import { whatThisGroundCanTellYou } from '@/lib/contextStrength'
-import { plannedSessionsFor } from '@/lib/sessionCount'
 import { Sec } from '@/components/gw/kit'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
-import { ContextStrength, LEAD_HOLDS_MORE } from '@/components/gw/ContextStrength'
+import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
 import { DeliveredPanel } from '@/components/gw/DeliveredPanel'
@@ -51,12 +49,32 @@ export function ContextPage({
 }: {
   ground: any
   /** 'lead' is whoever runs this check-in, including an org admin reading with their eyes. */
-  role: 'lead' | 'party'
+  /**
+   * THREE READERS, NOT TWO, AND THIS WAS A SWITCH WITH TWO POSITIONS.
+   *
+   * `'lead' | 'party'` was fine until an admin of the organisation opened the page. The view that
+   * runs a check-in passed `'lead'` for both the lead and an admin, so an admin got the whole of
+   * the lead's authoring surface - including the band headed "Only you see this", which is the
+   * lead's private steers: the notes that shape what everybody is asked and are promised never to
+   * be quoted. Her words: "i still somehow see context setting when i should see some parts of what
+   * a lead does on the context page."
+   *
+   * So the two questions are asked separately, because their answers differ for an admin:
+   *   - WHO RUNS THIS CHECK-IN decides the brief, which is the shared description of the work. An
+   *     admin may rewrite it - "she should rewrite".
+   *   - WHOSE CHECK-IN IT IS decides the private steers, the running log, the standing note and the
+   *     context conversation. Those are one person's own framing and one person's own private
+   *     notes, and an admin reading over them is not the same as an admin running the place.
+   */
+  role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
 }) {
   const id: string = ground.id
   const qc = useQueryClient()
-  const isLead = role === 'lead'
+  /** Whoever runs this check-in: its lead, or an admin of the organisation. */
+  const isLead = role === 'lead' || role === 'admin'
+  /** Its lead alone. See the note on `role` for why these are two questions. */
+  const isTheLead = role === 'lead'
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
@@ -90,6 +108,28 @@ export function ContextPage({
    */
   const [askingWhatToLookFor, setAskingWhatToLookFor] = useState<{ file: File; consented: boolean } | null>(null)
   const [whatToLookFor, setWhatToLookFor] = useState('')
+
+  /**
+   * WRITING OR REWRITING THE BRIEF.
+   *
+   * It could be written when a check-in was created and never again - so a lead who wanted to tell
+   * their team what this is for afterwards had no way to, and a check-in carrying the WRONG brief
+   * was stuck with it. Every check-in made through the entry chat before today has one: the
+   * report's read of the lead's own account, in the second person, published to everybody.
+   *
+   * Blank clears it on purpose. Somebody who wants a brief they did not write GONE should not have
+   * to replace it with something they do not mean.
+   */
+  const [briefDraft, setBriefDraft] = useState<string | null>(null)
+  const saveBrief = useMutation({
+    mutationFn: (text: string) => groundsApi.update(id, { brief: text }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ground", id] })
+      setBriefDraft(null)
+      toast.success('Everyone here reads this now')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
+  })
 
   const uploadDoc = useMutation({
     mutationFn: ({ file, consented, note }: { file: File; consented: boolean; note?: string }) =>
@@ -193,29 +233,6 @@ export function ContextPage({
   const theBrief: string = ((ground as any).brief ?? '').trim()
   const objectives: any[] = (ground as any).objectives ?? []
 
-  const contextStrength = whatThisGroundCanTellYou({
-    partyCount: (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-    /**
-     * REAL VALUES, AT LAST. These three were `!!brief`, `0` and `false` - the last two hardcoded,
-     * because `GroundBaseline` had no writer, so two lines of the context read fired on every ground
-     * whatever the truth: a lead who HAD named conditions was still told the record would not be able
-     * to say whether they were met.
-     *
-     * `brief` is what the ground is ABOUT. `successLooksLike` is what doing well in it would look
-     * like. Only the second is a yardstick, so it is what this asks about.
-     */
-    hasSuccessDefinition: !!((ground as any).baseline?.successLooksLike?.trim() || (ground as any).brief?.trim()),
-    conditionCount: ((ground as any).baseline?.conditions ?? []).length,
-    hasBaseline: !!(ground as any).baseline,
-    perPersonObjectiveCount: objectives.length,
-    openDocumentCount: docs.filter((d: any) => d.visibility === 'OPEN').length,
-    peopleWorkTogether: (ground as any).peopleWorkTogether !== false,
-    plannedSessions: plannedSessionsFor(
-      ground?.timelineDays,
-      (ground as any)?.cadence,
-      (ground as any)?.maxSessions ?? (ground as any)?.totalSessions,
-    ) ?? 1,
-  })
 
   return (
     <div>
@@ -274,6 +291,71 @@ export function ContextPage({
                   the brief
                 </span>
                 <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{theBrief}</div>
+                {isLead && briefDraft === null && (
+                  <button
+                    onClick={() => setBriefDraft(theBrief)}
+                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Rewrite this
+                  </button>
+                )}
+              </div>
+            )}
+            {/*
+              AN EMPTY BRIEF SAYS WHAT A BRIEF IS, rather than nothing at all.
+
+              It could not be empty before, because it was filled with the report's read of the
+              lead's own account - "You have two standards for Zainab's first quarter..." - which
+              is not a brief and was not theirs to publish. With that gone, a check-in whose lead
+              has not written one shows the space and what belongs in it, which somebody can act
+              on. See the comment in entry.service.ts on `const brief`.
+            */}
+            {!theBrief && briefDraft === null && (
+              <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  Nobody has written a brief yet. It is a few lines from whoever runs this saying
+                  what the check-in is for and what they want out of it, in their own words -
+                  everybody here reads it before they answer.
+                </div>
+                {isLead && (
+                  <button
+                    onClick={() => setBriefDraft('')}
+                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Write the brief
+                  </button>
+                )}
+              </div>
+            )}
+            {isLead && briefDraft !== null && (
+              <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
+                <textarea
+                  className="gw-ta"
+                  autoFocus
+                  value={briefDraft}
+                  onChange={(e) => setBriefDraft(e.target.value)}
+                  rows={4}
+                  maxLength={4000}
+                  placeholder="What this check-in is for, and what you want out of it. Everybody here reads this before they answer."
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => saveBrief.mutate(briefDraft)}
+                    disabled={saveBrief.isPending || briefDraft === theBrief}
+                    style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: briefDraft === theBrief ? 0.4 : 1 }}
+                  >
+                    {saveBrief.isPending ? 'Saving…' : 'Everyone here reads this'}
+                  </button>
+                  <button
+                    onClick={() => setBriefDraft(null)}
+                    style={{ padding: '8px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Cancel
+                  </button>
+                  {theBrief && briefDraft.trim() === '' && (
+                    <span style={{ fontSize: 11.5, color: 'var(--gw-amber-t)' }}>Saving it empty removes the brief.</span>
+                  )}
+                </div>
               </div>
             )}
             {objectives.length > 0 ? (
@@ -371,7 +453,7 @@ export function ContextPage({
               groundId={id}
               parties={(ground.participants ?? []) as any[]}
               viewerUserId={viewerUserId}
-              hasChat={isLead && contextEnabled}
+              hasChat={isTheLead && contextEnabled}
             />
 
             {/*
@@ -493,6 +575,8 @@ export function ContextPage({
                 opacity: uploadDoc.isPending ? 0.6 : 1,
               }}
               onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
+              /* The formats, where somebody asks the question: while choosing a file. */
+              title={WHAT_YOU_CAN_UPLOAD}
             >
               {/*
                 LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
@@ -510,23 +594,58 @@ export function ContextPage({
                 */}
                 {uploadDoc.isPending
                   ? 'Uploading…'
-                  : contextEnabled ? 'A file, private to you until you open it' : 'A file, private to you'}
+                  : 'Upload a file as proof or context for this check-in'}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{WHAT_YOU_CAN_UPLOAD}</div>
+              {/*
+                THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
+
+                "The Documents band is the loudest thing on the Context page." It was a large dashed
+                dropzone carrying a heading, a list of eight accepted file types, and a
+                three-line paragraph - about as much text as the brief, for a control that is
+                pressed once. Which formats are allowed is a question somebody has WHILE choosing a
+                file, which is where the file picker is, so it is on the control's tooltip and in
+                its `accept` - where the picker enforces it anyway.
+              */}
               {/*
                 THE PROMISE SITS IN THE BOX IT IS ABOUT. It used to be a second bordered panel
                 directly beneath this one, so an empty Documents band was two stacked boxes saying
                 two halves of one thing - what you may upload, then what happens to it. One box.
               */}
+              {/*
+                THE PRIVACY DEFAULT IS STATED BEFORE ANYBODY UPLOADS, ALWAYS.
+                
+                This lived in the heading, and the heading is now what the box is FOR - her words:
+                "upload file to use as proof or context of work in the checkin, it is private to
+                you unless you decide to make it visible to everyone." So the privacy half moved
+                down here, and it is NOT inside the empty-state branch: put there, the box stopped
+                stating the default the moment the list had one document in it, which is the exact
+                shape of the bug that spec was written for - the page telling the truth only after
+                the upload it had already talked somebody into.
+                
+                Flag-aware, because with CONTEXT_ENABLED off a document can never be opened at all
+                (`canSeeDocument` returns `isMine` and ignores the column), so promising that
+                everyone reads it once you open it would swap one false sentence for another.
+              */}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+                {contextEnabled
+                  ? 'It is private to you unless you decide to make it visible to everyone. Either way the check-in reads it, and says where it does not match what you have told it.'
+                  : 'It is private to you. It shapes your own questions and reaches nobody else.'}
+              </div>
               {docs.length === 0 && (
-                /* Left-aligned: it inherits the dropzone's centring otherwise, and a three-line
-                   paragraph set centred is harder to read than the same paragraph set flush. */
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 10, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
-                  The brief, the plan, the scope, the grant terms, or the message that started
-                  this.{' '}
-                  {contextEnabled
-                    ? 'What you add starts private to you. Open it and everyone\u2019s check-in reads it before asking a question, so it shapes what they are asked.'
-                    : 'What you add stays yours. It shapes the questions in your own check-in, and reaches nobody else.'}
+                /* Left-aligned: it inherits the dropzone's centring otherwise, and a paragraph set
+                   centred is harder to read than the same paragraph set flush. */
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', textAlign: 'left' }}>
+                  {/*
+                    AND WHAT COUNTS, WHICH ONLY THE FIRST-TIME READER NEEDS.
+
+                    Every example here used to be a document from BEFORE the work started, so people
+                    uploaded a scope and stopped. The record of what was actually done or said -
+                    meeting notes, a Gemini or other transcript, a photo of a whiteboard - is what a
+                    check-in most wants to read, and it is already sitting in somebody's inbox.
+                  */}
+                  Proof or context for what has happened: meeting notes, a transcript from Gemini or
+                  another notetaker, a photo of what was agreed - or the brief, plan or scope this
+                  work was set against.
                 </div>
               )}
               <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
@@ -607,7 +726,11 @@ export function ContextPage({
                 to open is a deliberate act: a performance plan dropped into
                 shared context in a hurried first week cannot be undone, because
                 the others have already read it. */}
-            {contextEnabled && docs.length > 0 && (
+            {/* Once, on the first document, not standing over the list forever. Three sentences
+                about three states, above a row whose control already spells all three out, is the
+                bulk she keeps naming - and the reader has already made the choice by their second
+                upload. */}
+            {contextEnabled && docs.length === 1 && (
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
                 {/*
                   THE WORDS HERE ARE THE WORDS ON THE CONTROL, which they were not: this sentence
@@ -620,10 +743,30 @@ export function ContextPage({
               </div>
             )}
             {docs.map(doc => (
-              <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
+              <div key={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 14px', marginBottom: 8, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ minWidth: 0, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{doc.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{new Date(doc.uploadedAt).toLocaleDateString()}</div>
+                  {/*
+                    WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
+
+                    Every upload is read and assessed - two to four things the document suggests,
+                    and what will be done with it - and the result has been stored on the row and
+                    rendered by nothing since it was built. So the card was a filename, a date and
+                    two controls: a file locker, which is not what this is. A person cannot tell
+                    that the thing they uploaded was read at all, let alone that it is read against
+                    what they say in the chat.
+
+                    Two lines, not the whole assessment: the point is to show the document landed
+                    and was understood, not to reprint it. The rest reaches them in the check-in,
+                    which is where it can actually be compared with what they said.
+                  */}
+                  {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
+                      <span style={{ color: 'var(--gw-muted)' }}>Read from it: </span>
+                      {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {/* WHO CAN READ THIS, stated on the row rather than in a
@@ -739,7 +882,7 @@ export function ContextPage({
               the block was shut. In the design this is a band of its own, and each steer carries the
               promise that limits it.
             */}
-            {isLead && privateSteers.length > 0 && (
+            {isTheLead && privateSteers.length > 0 && (
               <>
                 <Sec n={band()} title="Only you see this" src="steers what gets asked &middot; never quoted" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
@@ -790,7 +933,7 @@ export function ContextPage({
               * lifetimes. Making them one control would have meant dropping one of them on my own
               * judgement. What they needed was to stop looking the same, which is a line each.
               */}
-            {isLead && (
+            {isTheLead && (
             <div style={{ marginTop: 16 }}>
               <Sec n={band()} title="What has changed since setup" src="a running log &middot; everyone here reads it" />
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: 620 }}>
@@ -830,7 +973,7 @@ export function ContextPage({
               and that difference lived in the small print above each rather than in the heading. So
               this one leads with the readership and the private one below leads with its promise.
             */}
-            {isLead && (
+            {isTheLead && (
               <div style={{ marginTop: 20 }}>
                 <Sec n={band()} title="What everyone here reads" src="your framing, never quoted as a finding" />
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
@@ -853,6 +996,27 @@ export function ContextPage({
                     {addSharedNoteMut.isPending ? 'Saving…' : 'Share this with everyone'}
                   </button>
                   {sharedNoteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Everyone here can read this now</span>}
+                </div>
+
+                {/*
+                  THE LINE WHERE THE PAGE STOPS BEING SHARED.
+
+                  "Put a line between the private steer section and everything above, so we say
+                  everything below can't be seen by your team, only the items above."
+
+                  Until here, every band on this page is read by everybody on the check-in - that
+                  is the point of it. From here down it is the lead's alone. The two were separated
+                  only by a heading in the same weight as every other heading, on a page whose
+                  whole job is telling people who reads what.
+                */}
+                <div style={{ borderTop: '2px solid var(--gw-border)', marginTop: 26, paddingTop: 14, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-clay)', marginBottom: 4 }}>
+                    From here down, only you
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    Everything above this line is read by everybody on this check-in. Nothing below
+                    it is: not by them, and not by anybody else in your organisation.
+                  </div>
                 </div>
 
                 {/* 4 - ONLY YOU SEE THIS. Steers what a session looks at; never quoted, never shown. */}
@@ -904,16 +1068,22 @@ export function ContextPage({
               between the expectations and the documents it broke the run of bands with a summary of
               things the reader had not seen yet.
             */}
-            {contextEnabled && contextStrength && (
-              /*
-                `closedNote` is the sentence saying the lead holds context this page does not show.
-                It is true only for somebody who is not the lead, and it was on the participant's
-                copy of this page and not the lead's - which is right, and is exactly the kind of
-                difference that has to be expressed as one flag on one component rather than as two
-                pages that happen to differ.
-              */
-              <ContextStrength read={contextStrength} closedNote={!isLead} />
-            )}
+              {/*
+                "WHAT THIS CHECK-IN CAN TELL YOU" IS GONE. "This has to go."
+
+                It listed what the check-in could answer and then five things it could not, each
+                with the reason - no conditions named, no record of where this stood, no document
+                shared. All true, and all of it landing on somebody who had come to the page to do
+                one thing. It was rewritten twice: once to strip the green-promise-over-amber-
+                counter treatment, once to say what its list was for. Neither made it wanted, which
+                is the answer - a panel that has to keep being justified is a panel nobody asked
+                for.
+
+                Nothing it said is lost that anybody needs. What a check-in still needs is named
+                where it can be acted on: the conversation below asks for exactly these things, in
+                the order that matters, and now takes them. The read was the same list without the
+                asking.
+              */}
             {/*
               THE HONESTY LINE SURVIVES THE FLAG BEING OFF, because that is when it matters most.
 
@@ -929,7 +1099,8 @@ export function ContextPage({
             )}
 
             <div id="gw-context-chat">
-              {contextEnabled && isLead && <ContextChat groundId={id!} />}
+              {/* The lead's own conversation about their own check-in. An admin reads the page. */}
+              {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
             </div>
     </div>
   )

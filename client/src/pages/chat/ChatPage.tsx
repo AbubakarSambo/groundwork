@@ -133,6 +133,8 @@ export function ChatPage() {
   const [knowWhatIsHere, setKnowWhatIsHere] = useState(false)
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
   const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
+  /** The session this one is correcting, when it is a correction rather than a new session. */
+  const [correctingSession, setCorrectingSession] = useState<number | null>(null)
   // #3: a normal returning session (not self-correction) gets a read-only
   // recap of the person's own prior record entries - the same data the
   // model's PRIOR_SESSION prompt block already reads, but shown to the
@@ -384,6 +386,17 @@ export function ChatPage() {
           if (t.priorTurns && t.priorTurns.length > 0) {
             setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             setPriorSessionNumber(t.priorSessionNumber ?? null)
+            /*
+             * AND THAT THIS IS A CORRECTION, which the header had no way to know.
+             *
+             * A correction is created at the next free session number, so the page called it
+             * "Session 3" while the person had pressed Correct it on session 1. The check-in row
+             * has said so all along; the header was reading `sessionNumber` out of navigation
+             * state, which carries no such thing.
+             */
+            if ((t.checkIn as any)?.isSelfCorrection) {
+              setCorrectingSession((t.checkIn as any).selfCorrectionTargetSession ?? t.priorSessionNumber ?? null)
+            }
           }
           if (t.priorRecordEntries && t.priorRecordEntries.length > 0) {
             setPriorRecordEntries(t.priorRecordEntries)
@@ -584,7 +597,9 @@ export function ChatPage() {
 
   const privacyLabel = isFinalSession
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
-    : `Session ${sessionNumber} · Your words are private until everyone activates the report.`
+    : correctingSession != null
+      ? `Correcting session ${correctingSession} · nothing is overwritten - this is recorded alongside what you said then.`
+      : `Session ${sessionNumber} · Your words are private until everyone activates the report.`
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
@@ -649,7 +664,9 @@ export function ChatPage() {
         <div className="gw-hdr">
           <div>
             <div className="gw-logo">{groundLabel || 'Before you start'}</div>
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sessionNumber}</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
+              {correctingSession != null ? `Correcting session ${correctingSession}` : `Session ${sessionNumber}`}
+            </div>
           </div>
         </div>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
@@ -712,7 +729,11 @@ export function ChatPage() {
           <div style={{ minWidth: 0 }}>
             <div className="gw-logo" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{groundLabel || user?.firstName || 'Your session'}</div>
             <div style={{ fontSize: 11, color: isFinalSession ? 'var(--gw-amber-t)' : 'var(--gw-muted)', fontWeight: isFinalSession ? 700 : 400 }}>
-              {isFinalSession ? `Closing session ${sessionNumber} · your final account` : `Session ${sessionNumber} · Private`}
+              {isFinalSession
+                ? `Closing session ${sessionNumber} · your final account`
+                : correctingSession != null
+                  ? `Correcting session ${correctingSession} · Private`
+                  : `Session ${sessionNumber} · Private`}
             </div>
           </div>
         </div>
@@ -772,8 +793,21 @@ export function ChatPage() {
                 What this check-in is about
               </div>
               {brief.subject && (
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: brief.objectives.length ? 7 : 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: 4 }}>
                   {brief.subject}
+                </div>
+              )}
+              {/*
+                AND WHAT IT IS ACTUALLY ABOUT.
+
+                The subject is the check-in's label, and on the picker path the label is the
+                scenario - so this band, headed "What this check-in is about", said "New hire" and
+                stopped. Read on a real invitation: the lead had written four sentences describing
+                the situation and the person being asked to account for it never saw a word of them.
+              */}
+              {(brief as any).says && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: brief.objectives.length ? 7 : 0 }}>
+                  {(brief as any).says}
                 </div>
               )}
               {brief.objectives.length > 0 && (
@@ -1160,7 +1194,19 @@ export function ChatPage() {
               * it would fire whenever the model felt like it, and this is true on every turn of
               * every session. Quiet, always there, and it goes to the tab rather than describing it.
               */}
-            {groundId && (
+            {/*
+              BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
+
+              Walked as a participant: her chat carries "Set the context" and "Add people". The
+              first goes to a Context page that tells her "you cannot change this here"; the second
+              goes to Setup, which opens with "Nothing on this page is yours to change". Two
+              controls offered to somebody, both leading to a page that refuses them - which is
+              worse than not offering, because she has to go and find out.
+
+              A participant is not short of things to do here: the one thing that IS hers is her
+              own record, and it is already a tab.
+            */}
+            {groundId && isInitiator && (
               <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
                 <button
                   onClick={() => navigate(`/grounds/${groundId}?tab=context`)}

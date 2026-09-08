@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
+import { groundsApi } from '@/api/grounds'
+import { plannedSessionsFor } from '@/lib/sessionCount'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
@@ -50,6 +54,20 @@ export function BoardPage() {
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
   const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) !== 'closed')
+
+  /*
+   * THE CHECK-IN ITSELF, for one fact the board does not carry: whether the person reading is the
+   * one running it. The alignment feed below is theirs alone - see the comment on it - and the
+   * board's payload is deliberately identical for everybody, so the distinction has to come from
+   * the check-in. Cached under the key the check-in page already uses, so this is usually free.
+   */
+  const { data: groundForSignals } = useQuery({
+    queryKey: ['ground', id],
+    queryFn: () => groundsApi.get(id!),
+    enabled: !!id,
+  })
+  const user = useAuthStore((st) => st.user)
+  const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['board', id, variant],
@@ -376,6 +394,23 @@ export function BoardPage() {
         {/* ---------------------------------------------- against the plan */}
         {(shown.objectives || shown.divergence) && <Zone label="Against the plan" />}
 
+        {/*
+          THE PLAN'S OWN TOP LINE, WHICH THIS ZONE WAS MISSING.
+
+          "Against the plan" opened on named targets and where accounts differ - both real, both
+          downstream of a thing the board never showed: what success was said to be in the first
+          place, and what each person independently says it is. The board is the shared picture, so
+          the definition everybody is being read against belongs at the top of this zone rather than
+          only on the Setup tab where one person typed it.
+        */}
+        {(shown.objectives || shown.divergence) && (
+          <Card>
+            <Row first>
+              <WhatSuccessLooksLikeFor groundId={id!} />
+            </Row>
+          </Card>
+        )}
+
         {shown.objectives && b.objectives && (
           <>
             <Sec title="What we are aiming for" src="the lead sets these" />
@@ -498,6 +533,36 @@ export function BoardPage() {
                         <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
                       </div>
                       {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      {/*
+                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
+
+                        This section carried a headline and then a line of italics: "This is the
+                        summary. Your own report holds the detail of what each account said." So the
+                        one question the board exists to answer - what do the two of you each think
+                        is going on - was the one thing you had to leave it to find out.
+
+                        The data was already here. `divergence.items` is the report's own divergence
+                        objects, sent whole, and every string in them has been through `named()` on
+                        the way out - the same masking the rest of the board gets, so a reader who
+                        may not see who somebody is does not learn it here. Rendering it is a read
+                        of what was already on the wire, not a new disclosure.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {d.positions.map((pos: any, j: number) => (
+                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
+                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
+                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {d.atStake && (
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-muted)' }}>Why it matters </span>
+                          {d.atStake}
+                        </div>
+                      )}
                     </Row>
                   ))}
                   {b.divergence.agreements.map((a: any, i: number) => (
@@ -517,16 +582,14 @@ export function BoardPage() {
                 </>
               )}
               {/*
-                THE POINTER STAYS; THE LINK BACK DOES NOT. You came from there.
-                
-                The board is opened from the foot of the report now, so offering "Open your report →"
-                sends somebody back where they just were - and it was the third leg of a ring, board
-                pointing at report pointing at the report page. The sentence still says where the
-                substance is, which is the useful half.
+                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
+
+                It read "This is the summary. Your own report holds the detail of what each account
+                said." That sentence was the only reason a fourth report surface had to exist: the
+                board named the disagreement and then sent you to another page to find out what it
+                was. Each account is now printed above, so the sentence would be sending people away
+                from the thing they are already looking at.
               */}
-              <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4 }}>
-                {b.divergence.pointer}
-              </div>
             </Card>
           </>
         )}
@@ -664,6 +727,24 @@ export function BoardPage() {
 
         {/* ---------------------------------------------- contribution and fairness */}
         {(shown.contribution || shown.coverage) && <Zone label="Contribution and fairness" />}
+
+        {/*
+          WHY THIS HALF OF THE BOARD IS SHORTER FOR SOME PEOPLE.
+
+          On an evaluation-family ground the parties give their accounts without seeing each other,
+          and the board now keeps that wall - a party gets their own row and nobody else's, where
+          before they got every colleague's name and the read on their quarter. Without a line
+          saying so, a board that has quietly lost most of itself reads as broken, or as though
+          nobody else is in the check-in.
+
+          The server decides and sends the sentence; this renders it. A rule the client worked out
+          for itself would be a second copy of the rule, and the wrong one to get wrong.
+        */}
+        {(b as any).whyYouOnlySeeYourself && (
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 10, maxWidth: 620 }}>
+            {(b as any).whyYouOnlySeeYourself}
+          </div>
+        )}
 
         {shown.contribution && b.contribution && (
           <>
@@ -858,8 +939,26 @@ export function BoardPage() {
                   <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
                     {p.label && <Pill tone="info">{p.label}</Pill>}
                     <span style={{ flex: 1, fontSize: 12.5 }}>{p.text}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>{p.periods} periods</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', flexShrink: 0 }}>{p.periods} periods</span>
                   </div>
+                  {/*
+                    AND WHAT TO DO ABOUT IT.
+
+                    "i would expect a coaching line or an assessment after, what do i do with this" -
+                    about "Direct questions about deliverables were met with unrelated statements
+                    about needs and blockers." An observation with no next move is a dead end on the
+                    one board somebody opens to decide something.
+
+                    The library has carried the question for every pattern since it was written; the
+                    server now sends it. A QUESTION and not a verdict, because a pattern is a thing
+                    the record has noticed more than once, and the next move is asking the person.
+                  */}
+                  {(p as any).askThem && (
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 6, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
+                      <span style={{ color: 'var(--gw-muted)' }}>Ask them: </span>
+                      {(p as any).askThem}
+                    </div>
+                  )}
                 </Row>
               ))}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
@@ -954,6 +1053,42 @@ export function BoardPage() {
         )}
 
         {/*
+          THE ALIGNMENT FEED, ON THE BOARD RATHER THAN ON THE SESSIONS TAB.
+
+          "The alignment feed should be in the reports and board, not here." It was on Sessions -
+          the tab about who has answered and when - where it competed with the session grid and had
+          nothing to do with it. What it actually is: convergences and divergences accumulating
+          across the run, which is the board's subject exactly.
+        */}
+                {viewerRunsThisCheckIn && (((groundForSignals as any)?.signals ?? [])).length > 0 && (() => {
+                  const sigs = ((groundForSignals as any)?.signals ?? [])
+                  const convergences = sigs.filter((s: any) => s.type === 'Convergence').length
+                  const divergences = sigs.filter((s: any) => s.type === 'Divergence').length
+                  const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
+                  const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
+                  const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {sigs.map((sig: any) => (
+                          <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
+                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+        {/*
           THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
 
           The board read only the CURRENT working copy of the report plus the record entries, so a
@@ -995,9 +1130,22 @@ export function BoardPage() {
           */
           const spine = (data as any)?.phaseSpine
           const sessions = (spine?.sessions ?? []) as { state: string }[]
-          const total = sessions.length
+          /*
+           * PLANNED sessions, not the ones that happen to have rows yet.
+           *
+           * Driven on a check-in at session 1 of 6, and the exit appeared. `phaseSpine.sessions`
+           * lists only the session numbers check-in rows exist for - two of them, at that point -
+           * so "done >= total - 1" was 1 >= 1 and read as the end of the run. The run's length
+           * comes from the check-in's own timeline and cadence, which is what the header counts
+           * to say "Session 1 of 6".
+           */
+          const planned = plannedSessionsFor(
+            (groundForSignals as any)?.timelineDays,
+            (groundForSignals as any)?.cadence,
+            (groundForSignals as any)?.plannedSessions,
+          )
           const done = sessions.filter((x) => x.state === 'done').length
-          const nearTheEnd = total > 0 && done >= total - 1
+          const nearTheEnd = planned != null && planned > 0 && done >= planned - 1
           return (
             <div style={{ marginTop: 14 }}>
               <ResolutionPanel groundId={id!} nearTheEnd={nearTheEnd} />
@@ -1005,7 +1153,37 @@ export function BoardPage() {
           )
         })()}
 
-        <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 28, lineHeight: 1.6 }}>
+        {/*
+          HOW THIS IS PUT TOGETHER, WHICH USED TO SIT ON THE SHARED REPORT.
+
+          A collapsed legend at the top of the report body explaining the method: what leads, what a
+          gap names, what an honest close is. The report body it explained has gone; the board is the
+          shared surface now and does the things the legend describes - it leads with what is open,
+          each gap names both positions and what is at stake, and it closes on the question the
+          check-in turns on.
+
+          Collapsed, and at the foot rather than the head. On the report it was the first thing on
+          the page, so everybody read an explanation of the method before reading anything the method
+          produced. It is for the person who wants to know where a line came from, and that person
+          goes looking after they have read it, not before.
+        */}
+        <details className="gw-legend" style={{ marginTop: 28 }}>
+          <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>How this board is put together</summary>
+          <div style={{ display: 'grid', gap: 12, marginTop: 10 }}>
+            {[
+              { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across all the accounts follows it.' },
+              { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own account's terms, and what is at stake if it holds. The most significant comes first." },
+              { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
+            ].map((cell, i) => (
+              <div key={i}>
+                <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{cell.p}</div>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 20, lineHeight: 1.6 }}>
           Groundwork board · confidential · generated from the check-in.<br />
           Everyone on this check-in sees the same board. It regenerates as people check in each session.<br />
           The mode is fixed at creation, so a private alignment check-in can never be read this way.

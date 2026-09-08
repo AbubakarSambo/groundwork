@@ -70,8 +70,12 @@ describe('GW-PRI-ACT-01 - get() returns stub before participant activates', () =
        that list exists to stop. */
     groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
+      /* `findMany` too: the pre-activation stub now says WHO it is waiting on, because the screen
+         explained the mechanism and named nobody - two people either side of one button, each
+         believing the other had stalled. */
       reportActivation: {
         findUnique: jest.fn(async () => ({ status: ReportActivationStatus.PENDING })),
+        findMany: jest.fn(async () => []),
       },
     };
     const service = makeService(prisma);
@@ -93,7 +97,7 @@ describe('GW-PRI-ACT-01 - get() returns stub before participant activates', () =
        that list exists to stop. */
     groundDocument: { findMany: jest.fn(async () => []) },
       ground: { findUnique: jest.fn(async () => ground) },
-      reportActivation: { findUnique: jest.fn(async () => null) },
+      reportActivation: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     };
     const service = makeService(prisma);
     const result = await service.get('g1', 'u1') as any;

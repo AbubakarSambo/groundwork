@@ -29,6 +29,8 @@ const API_DOCS = readFileSync(
 const PROMISED: { label: string; mime: string }[] = [
   { label: 'PDF', mime: 'application/pdf' },
   { label: 'Word', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  /* The API has unzipped and read `.pptx` decks for a long time; only the screens did not say so. */
+  { label: 'PowerPoint', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
   { label: 'Excel', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
   { label: 'CSV', mime: 'text/csv' },
   { label: 'JPEG', mime: 'image/jpeg' },
@@ -68,7 +70,7 @@ describe('what you can upload', () => {
   it('the file picker allows every format the screens promise', () => {
     const missing = PROMISED
       .filter(f => {
-        const ext = { PDF: '.pdf', Word: '.docx', Excel: '.xlsx', CSV: '.csv', JPEG: '.jpeg', PNG: '.png', HEIC: '.heic' }[f.label]!
+        const ext = { PDF: '.pdf', Word: '.docx', PowerPoint: '.pptx', Excel: '.xlsx', CSV: '.csv', JPEG: '.jpeg', PNG: '.png', HEIC: '.heic' }[f.label]!
         return !UPLOAD_ACCEPT_ATTR.includes(ext)
       })
       .map(f => f.label)

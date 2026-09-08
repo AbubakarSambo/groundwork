@@ -23,7 +23,10 @@ describe('setup says what it has', () => {
 
   it('lists what is on the record', () => {
     const { have } = summariseSetup(full, 'a_party', 1, false)
-    expect(have.find((h) => h.label === 'Who is in it')?.value).toBe('Priya, Tom, Dede')
+    /* "People you mentioned", not "Who is in it": nobody is on the check-in until they are added
+       on the report, one at a time. Labelled as membership, this contradicted the assistant's own
+       confirmation on a real setup - the lead had just said two of the three were not in it. */
+    expect(have.find((h) => h.label === 'People you mentioned')?.value).toBe('Priya, Tom, Dede')
     expect(have.find((h) => h.label === 'Sessions')?.value).toBe('One')
   })
 

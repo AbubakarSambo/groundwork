@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
+import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
@@ -117,7 +118,7 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
  * stay, because they are the order the questions were asked in when the check-in was set up.
  */
 function Fold({
-  n, title, src, summary, open, onToggle, children,
+  n, title, src, summary, open, onToggle, children, checked, onCheck,
 }: {
   n: number
   title: string
@@ -126,6 +127,9 @@ function Fold({
   open: boolean
   onToggle: () => void
   children: React.ReactNode
+  /** Whether the person has signed this question off. See the-setup-steps-you-have-checked.ts. */
+  checked?: boolean
+  onCheck?: () => void
 }) {
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
@@ -138,11 +142,17 @@ function Fold({
           fontFamily: 'inherit', textAlign: 'left',
         }}
       >
+        {/*
+          THE NUMBER, OR A TICK ONCE IT HAS BEEN SIGNED OFF.
+          The tick takes the number's place rather than sitting beside it: a row carrying both a
+          number and a tick is two marks for one thing, and the order is what the numbers are for.
+        */}
         <span style={{
-          flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: open ? 'var(--gw-navy)' : 'var(--gw-bg)',
-          color: open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+          background: checked ? 'var(--gw-green-b)' : open ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: checked ? 'white' : open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>{n}</span>
+        }}>{checked ? '\u2713' : n}</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
           <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{open ? src : summary}</span>
@@ -150,6 +160,43 @@ function Fold({
         <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
       </button>
       {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
+      {/*
+        SIGNING IT OFF, AT THE BOTTOM OF THE QUESTION YOU HAVE JUST READ.
+
+        STILL NOT ON THE CLOSED ROW, and that half of the original reasoning holds: a tick beside a
+        heading nobody has opened is a tick somebody can press without reading, which is the
+        opposite of the point. Opening the question is what puts the answer on screen.
+
+        WHAT WAS WRONG WITH WHERE IT WAS. "the setup check but that says i have checked this is
+        hidden and not very visible." It sat directly under the fold's own header, above the content
+        - so it was passed on the way IN, before there was anything to sign off, as a bare line of
+        text with a 15px box. Read as a caption on the heading, and missed.
+
+        It is the last thing in the question now, on its own bar, which is where somebody arrives
+        having actually read the answer. The closed row still turns its number into a tick, so the
+        state is visible with everything shut; this is the act.
+      */}
+      {open && onCheck && (
+        <div style={{ borderTop: '1px solid var(--gw-border)', background: checked ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)' }}>
+          <button
+            onClick={onCheck}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px',
+              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 12.5, fontWeight: 600, textAlign: 'left',
+              color: checked ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+            }}
+          >
+            <span style={{
+              width: 17, height: 17, borderRadius: 4, flexShrink: 0,
+              border: `1.5px solid ${checked ? 'var(--gw-green-b)' : 'var(--gw-muted)'}`,
+              background: checked ? 'var(--gw-green-b)' : 'white', color: 'white',
+              fontSize: 11, lineHeight: '15px', textAlign: 'center', fontWeight: 700,
+            }}>{checked ? '\u2713' : ''}</span>
+            {checked ? 'You have signed this off' : 'I have read this - sign it off'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -209,12 +256,32 @@ export function GroundAdminPage() {
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
   /** Whether the last person added is waiting for the start date rather than having been emailed. */
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
+  /** The server's own reason when an invitation is held for something other than the start date. */
+  const [whyItWaits, setWhyItWaits] = useState<string | null>(null)
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
+  /** Deleting a test check-in: the confirm step, and whatever the server refused with. */
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   /* Which setup question is open. One at a time; the first is open when the tab is reached.
      Declared up here with the rest: this component returns early for several ground states, and a
      hook below one of those returns is a hook that sometimes does not run. */
   const [openSetupBand, setOpenSetupBand] = useState<number>(1)
+  /* The start date as typed, against the one on record, so the save button knows if anything moved. */
+  const [startsAtDraft, setStartsAtDraft] = useState('')
+  /* Which setup questions this person has signed off. Kept in this browser - see the module. */
+  /**
+   * A SIGN-OFF IS A RECORD NOW, so it is read from the server rather than from this browser. See
+   * the-setup-steps-you-have-checked.ts for why it moved.
+   */
+  const { data: signedOff } = useQuery({
+    queryKey: ['setup-sign-offs', id],
+    queryFn: () => stepsYouHaveChecked(id!),
+    enabled: !!id,
+  })
+  /* Held locally as well so a press shows instantly and does not wait on a round trip for a tick. */
+  const [setupCheckedLocal, setSetupCheckedLocal] = useState<number[] | null>(null)
+  const setupChecked = setupCheckedLocal ?? signedOff ?? []
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -308,6 +375,20 @@ export function GroundAdminPage() {
     })
   })()
 
+  const removeGround = useMutation({
+    mutationFn: () => groundsApi.remove(id!),
+    onSuccess: (res) => {
+      toast.success(`“${res.label}” deleted.`)
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+      navigate('/grounds')
+    },
+    /* The server's sentence, which names who has answered. Anything else it says is worth showing
+       verbatim too - a delete that refuses without a reason is the thing this page is replacing. */
+    onError: (e: any) => setDeleteError(
+      e?.response?.data?.message ?? 'That could not be deleted. Nothing has changed.',
+    ),
+  })
+
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
     onSuccess: () => {
@@ -367,6 +448,13 @@ export function GroundAdminPage() {
     if (!p) return null
     return personLabel(p)
   }
+
+  /**
+   * The start date on record, as an `<input type="date">` wants it - the first ten characters of
+   * the ISO string, in UTC. Not `toLocaleDateString`, which would show a person west of UTC the
+   * day before and then save it back.
+   */
+  const startsAtOnRecord = (ground as any)?.startsAt ? String((ground as any).startsAt).slice(0, 10) : ''
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
 
@@ -712,6 +800,18 @@ export function GroundAdminPage() {
        * worse than either.
        */
       setLastInviteWaits(!(added as { invitedAt?: string | null }).invitedAt)
+      /*
+       * AND WHY IT WAITS, WHEN THE SERVER KNOWS A BETTER REASON THAN THE DATE.
+       *
+       * There are two reasons an invitation is held: the check-in starts in the future, or the
+       * account has no seat for this person. This screen only knew the first, so somebody added
+       * over the cap was told their invitation "goes out on the start date" - a date that has
+       * nothing to do with it and may already have passed.
+       *
+       * The server sends the sentence when the reason is seats, because it is the side that knows
+       * what the plan covers and who has to act. See added-but-waiting-for-a-seat.ts.
+       */
+      setWhyItWaits((added as { saying?: string }).saying ?? null)
       setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')
@@ -741,7 +841,10 @@ export function GroundAdminPage() {
     if (ground?.timelineDays) setTimelineDaysDraft(ground.timelineDays)
     if (ground?.cadence) setCadenceDraft(ground.cadence as GroundCadence)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
-  }, [ground?.label, ground?.scenario])
+    /* Seeded from the record for the same reason as the two above: an empty date control on a
+       check-in that HAS a start date would offer to clear it by pressing save. */
+    setStartsAtDraft(startsAtOnRecord)
+  }, [ground?.label, ground?.scenario, startsAtOnRecord])
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
   if (definitelyGone) return <Shell><GroundGone /></Shell>
@@ -893,10 +996,14 @@ export function GroundAdminPage() {
           {lastInvitedEmail && (
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+                {whyItWaits
+                  ? `${lastInvitedEmail} is on the check-in.`
+                  : lastInviteWaits
+                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                    : `Invite sent to ${lastInvitedEmail}`}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 2 }}>
-                They check in on their own, and nothing is shown to them until the report is ready.
+              <div style={{ fontSize: 12, color: whyItWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginTop: 2, lineHeight: 1.55 }}>
+                {whyItWaits ?? 'They check in on their own, and nothing is shown to them until the report is ready.'}
               </div>
             </div>
           )}
@@ -1009,6 +1116,15 @@ export function GroundAdminPage() {
     n,
     open: openSetupBand === n,
     onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
+    checked: setupChecked.includes(n),
+    onCheck: () =>
+      {
+        const taking = setupChecked.includes(n)
+        /* Shown at once, then reconciled with what the server says it holds. */
+        setSetupCheckedLocal(taking ? setupChecked.filter(x => x !== n) : [...setupChecked, n].sort((a, b) => a - b))
+        const call = taking ? forgetYouCheckedIt(id!, n) : rememberYouCheckedIt(id!, n)
+        call.then(steps => setSetupCheckedLocal(steps)).catch(() => setSetupCheckedLocal(null))
+      },
   })
 
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
@@ -1132,8 +1248,20 @@ export function GroundAdminPage() {
                 {/* Wraps. It was `nowrap` when the text was "running this check-in"; the longer
                     label that replaced it pushed a 375px page out to 403 and made the whole report
                     scroll sideways. Found by measuring the report on mobile, not by reading this. */}
+                {/*
+                  AND IT HAS TO BE TRUE OF WHOEVER IS READING IT.
+
+                  This page serves two people: the lead, who runs the check-in, and an admin of the
+                  organisation, who does not. It said "you are running this" to both - two inches
+                  above a banner that reads "You are looking at this as an admin, not as its lead".
+                  Seen on a real org's second admin: the header and the banner contradicting each
+                  other on the same screen.
+
+                  Both labels say the same thing about the view - it is everyone's state, not your
+                  own account - and differ only on the half that is about the reader.
+                */}
                 <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
-                  Everyone in it - you are running this
+                  {isInitiator ? 'Everyone in it - you are running this' : 'Everyone in it - you are an admin here'}
                 </span>
               </div>
             </div>
@@ -1448,7 +1576,21 @@ export function GroundAdminPage() {
                 */
               viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
               /* The same roster the participant view now shows. W13-5. */
-              peersHidden={(ground as any).peersVisibleEffective === false}
+              /*
+                PEERS ARE NOT HIDDEN FROM WHOEVER RUNS THE CHECK-IN.
+
+                `peersVisibleEffective` is the rule between the PARTIES - on an evaluation-family
+                ground they check in without seeing each other. Passed straight through, this view
+                showed a lead or an org admin the party sentence: "Your lead knows who is here; you
+                will not see the others or what they wrote, and they will not see you." Said to an
+                admin, on a page that lists both parties by name and email on the very next tab, and
+                whose own banner reads "You can see everything here, which is the point of being an
+                admin". Found walking a second admin of a real organisation.
+
+                The rule has not changed for anybody it applies to. This view is the one that runs
+                the check-in, so it is not one of them.
+              */
+              peersHidden={(ground as any).peersVisibleEffective === false && !canRunThisGround}
               parties={(ground.participants ?? [])
                 .filter((p: any) => !p.managingOnly)
                 .map((p: any) => {
@@ -1533,6 +1675,9 @@ export function GroundAdminPage() {
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
               mySessions={mySessions}
+              /* Per-session specificity, so each row can say how checkable that account was. The
+                 same read the trend card uses; it just belongs on the session it is about. */
+              specificityBySession={Object.fromEntries(((mySpecificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
@@ -1680,10 +1825,46 @@ export function GroundAdminPage() {
                           </button>
                         ) : !p.userId && p.inviteDeliveryStatus === 'COMPLAINED' ? (
                           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px' }} title="They marked the invite as spam">Marked as spam</span>
+                        ) : p.awaitingSeat ? (
+                          /*
+                            ON THE CHECK-IN, NOT WRITTEN TO.
+
+                            Adding somebody when the account is full no longer refuses the lead -
+                            the person is added and the invitation is held until an admin makes
+                            room. Without a row saying so it reads as "Invite pending", which is a
+                            lie in the direction that matters: the lead waits for a reply to a mail
+                            that was never sent, and chases the person instead of the admin.
+                          */
+                          <button
+                            onClick={() => navigate('/org/members')}
+                            title="Your plan has no seat for them yet - an admin here has to make room"
+                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Waiting for a seat
+                          </button>
                         ) : !p.userId ? (
                           <span style={{ fontSize: 11, color: 'var(--gw-muted)' }} title={p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered to their inbox' : 'Invite sent'}>
                             {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
                           </span>
+                        ) : p.user?.awaitingOrgApproval ? (
+                          /*
+                            WAITING ON YOUR ORGANISATION, NOT ON THEM.
+
+                            "You see pending org approval and not pending check-in." This row said
+                            "Invite pending" for somebody whose invitation had gone out and who is
+                            held by an admin in the lead's OWN organisation - so the lead reads it
+                            as the person ignoring their email, and chases the wrong thing.
+
+                            It goes where the approval is, because a lead can do nothing about it
+                            from here and an admin can do it in two clicks.
+                          */
+                          <button
+                            onClick={() => navigate('/org/members')}
+                            title="An admin in your organisation has to let them in"
+                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Waiting on your organisation
+                          </button>
                         ) : null}
                         {/* Available for anyone who has not joined yet, whatever
                             the delivery status says - "delivered" only means the
@@ -1939,123 +2120,51 @@ export function GroundAdminPage() {
               </div>
             )}
 
-            {(ground.signals ?? []).length > 0 && (() => {
-              const sigs = ground.signals ?? []
-              const convergences = sigs.filter(s => s.type === 'Convergence').length
-              const divergences = sigs.filter(s => s.type === 'Divergence').length
-              const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
-              const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
-              const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
-              return (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {sigs.map(sig => (
-                      <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
-                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })()}
 
-            {/* Add contributor */}
-            <div style={{ marginTop: 20 }}>
-              {lastInvitedEmail ? (
-                <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginBottom: 6 }}>
-                    {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+            {/*
+              WHAT IS LEFT HERE IS THE CLOSING SESSION, WHICH IS ABOUT SESSIONS.
+
+              This was the "Add contributor" block: a seat-limit notice, an add-a-person button, the
+              add form, an "invite another" confirmation and the closing-session control, all in one
+              container on the tab about how the run is going. Adding people moved to Setup band 1,
+              beside the access code and the broadcast link, because all three answer one question -
+              how somebody gets into this check-in. The form went with the button rather than being
+              left behind: nothing here could open it any more, and an unreachable form is worse
+              than a missing one because it still has to be maintained.
+
+              The seat notice went with them. It is a fact about adding somebody, and it belongs
+              where somebody is added - which is also where it can be said BEFORE an address is
+              typed rather than after the button is pressed.
+            */}
+            {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
+              <div style={{ marginTop: 20 }}>
+                {confirmClosing ? (
+                  <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
+                      Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
+                      <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.6, marginBottom: 10 }}>
-                    They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
-                  </div>
-                  <button onClick={() => { setLastInvitedEmail(null); setAddingParticipant(true) }}
-                    style={{ padding: '7px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-green-b)', color: 'var(--gw-green-t)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Invite another
+                ) : (
+                  <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Begin the closing session →
                   </button>
-                </div>
-              ) : !addingParticipant ? (
-                <>
-                  {(() => {
-                    const seats = billingStatus?.people
-                    const cap = seats?.cap
-                    if (cap != null && seats != null && seats.count >= cap) {
-                      /**
-                       * The count includes the person reading this, which is why it is said out
-                       * loud: "5 people" reads as "5 I can invite" and it is not.
-                       */
-                      return (
-                        <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid #F5C56A', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
-                          Your plan covers {cap} people, including you, and all {cap} are taken. Move to a larger plan to add more.
-                          <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-                            View plans
-                          </button>
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
-                  {/* Running the ground is the lead's job. Every party was being
-                      shown these, so someone being evaluated on this ground could
-                      invite people to it or declare the closing session. */}
-                  {isInitiator && (
-                    <button onClick={() => setAddingParticipant(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 300 }}>+</span> Add a person
-                    </button>
-                  )}
-                  {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
-                    confirmClosing ? (
-                      <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px', marginTop: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
-                          Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
-                          <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
-                        Begin the closing session →
-                      </button>
-                    )
-                  )}
-                </>
-              ) : (
-                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Add a person</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>They will get an email invitation. You cannot see what they write in their check-in.</div>
-                  <input type="email" placeholder="name@company.com" value={newParticipantEmail} onChange={e => setNewParticipantEmail(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }} />
-                  <input type="text" placeholder="What do you want them to account for? (optional)" value={newParticipantNote} onChange={e => setNewParticipantNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }} />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setAddingParticipant(false); setNewParticipantEmail(''); setNewParticipantNote('') }}
-                      style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    <button onClick={() => addParticipantMut.mutate()} disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}>
-                      {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* The server withholds the token from non-initiators; this is the
-                second lock, so a future change to either one alone cannot put a
-                shareable link to someone's record back on a participant's page. */}
-            {isInitiator && ground.joinToken && (
-              <ShareSection joinToken={ground.joinToken} />
+                )}
+              </div>
             )}
+
+            {/*
+              THE BROADCAST LINK AND ITS QR CODE MOVED TO SETUP, beside the access code and the
+              add-a-person control - all three answer one question, which is how somebody gets into
+              this check-in. On this tab they sat under the session grid, which is about how the run
+              is going. Both locks come with them: the server withholds the token from
+              non-initiators and the render is gated on `isInitiator`, so neither change alone can
+              put a shareable link to somebody's record on a participant's page.
+            */}
 
             {/*
               NO TAB SETS A TARGET. The four editing panels that stood here are gone.
@@ -2114,8 +2223,21 @@ export function GroundAdminPage() {
           band orders for the same tab, a stray heading in one of them, and a button pointing at a
           chat the other page does not have. See ContextPage for the order and why it is that order.
         */}
+        {/*
+          THE LEAD AND AN ADMIN ARE NOT THE SAME READER HERE.
+
+          This passed 'lead' for both, so an org admin got the lead's private steers - the band
+          headed "Only you see this", notes promised never to be quoted - along with the lead's
+          running log, standing note and context conversation. See the note on ContextPage's
+          `role`. The brief stays rewritable for both, because that is the shared description of
+          the work rather than one person's framing.
+        */}
         {tab === 'docs' && (
-          <ContextPage ground={ground} role={canRunThisGround ? 'lead' : 'party'} viewerUserId={user?.id} />
+          <ContextPage
+            ground={ground}
+            role={isInitiator ? 'lead' : canRunThisGround ? 'admin' : 'party'}
+            viewerUserId={user?.id}
+          />
         )}
 
         {/* REPORT */}
@@ -2233,9 +2355,52 @@ export function GroundAdminPage() {
             <>
             <Fold {...foldProps(setupBand())} title="Who is in it" src="adding somebody sends them an invitation" summary={`${(ground.participants ?? []).length} on this check-in`}>
             <div className="gw-card" style={{ padding: '14px 16px' }}>
+              {/*
+                THE SEAT LIMIT, SAID BEFORE AN ADDRESS IS TYPED RATHER THAN AFTER.
+
+                It came across with the add-a-person control from the Sessions tab, and this is the
+                better place for it in a way that matters: on that tab it sat above a button, and
+                the refusal itself still arrives from the server after somebody has typed a
+                colleague's address and pressed add. Said here, it is read before the typing.
+
+                The count includes the person reading it, which is why that is said out loud -
+                "5 people" reads as "5 I can invite" and it is not.
+              */}
+              {(() => {
+                const seats = billingStatus?.people
+                const cap = seats?.cap
+                if (cap == null || seats?.count == null || seats.count < cap) return null
+                return (
+                  <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 13px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
+                    Your plan covers {cap} people, including you, and all {cap} are taken. Move to a larger plan to add more.
+                    <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                      View plans
+                    </button>
+                  </div>
+                )
+              })()}
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
                 They give their own account of the same work. You cannot see what they write until the report releases.
+              </div>
+              {/*
+                THE APPROVAL RULE, SAID BEFORE SOMEBODY IS ADDED RATHER THAN DISCOVERED AFTERWARDS.
+
+                "When you add a participant that is one on the org, the org has to approve. Do
+                people know this when they add someone?" They did not: the rule fires on somebody
+                from OUTSIDE the organisation invited by a lead who is not an admin, and the first
+                anybody heard of it was a roster row that looked like the person ignoring an email.
+
+                SAID AS THE RULE, NOT AS A PREDICTION ABOUT THIS ADDRESS. Working out in advance
+                whether a particular person will need approval means looking up whether that email
+                already has an account and where it lives - which would let anybody test whether an
+                address is a Groundwork user by typing it into this box. The rule is true for
+                everybody and discloses nothing.
+              */}
+              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 7, padding: '8px 10px', marginBottom: 10, lineHeight: 1.55 }}>
+                Somebody from outside your organisation is invited straight away, and an admin here
+                has to let them in before they can check in. You will see that on their row, and
+                they are told the same thing.
               </div>
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
@@ -2339,6 +2504,11 @@ export function GroundAdminPage() {
             >
               Or share an access code instead
             </button>
+            {isInitiator && ground.joinToken && (
+              <div style={{ marginTop: 12 }}>
+                <ShareSection joinToken={ground.joinToken} />
+              </div>
+            )}
             </Fold>
             </>
           )}
@@ -2454,12 +2624,27 @@ export function GroundAdminPage() {
               * mounts the same component with `canState` false.
               */}
             <Fold {...foldProps(setupBand())} title="What good looks like" src="the yardstick, and where this stood at the start" summary={'stated by the lead, read by everybody'}>
-            <BaselinePanel groundId={id!} canState={isInitiator || isOrgAdmin} />
+            {/*
+              THE YARDSTICK IS THE LEAD'S, EVEN FOR AN ADMIN.
+
+              "as an admin i still see setup changes i can make on a page that is not mine." Walked
+              as a second admin, these were the only two controls on the whole Setup tab that
+              changed the check-in - and they change the standard somebody else is being read
+              against, on a check-in an admin is not running and has not been part of a single
+              session of. The product's own rule is that the person being read does not set the
+              measure; a third party restating it without the lead is the same problem wearing a
+              different hat.
+
+              An admin still sees all of it, and the banner at the top of the page says exactly what
+              is theirs to decide: releasing the report and closing the check-in are the lead's,
+              and now so is this.
+            */}
+            <BaselinePanel groundId={id!} canState={isInitiator} />
             {/**
               * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
               * yardstick and the starting point together are what let a report say something moved.
               */}
-            <StartingPointPanel groundId={id!} canRecord={isInitiator || isOrgAdmin} />
+            <StartingPointPanel groundId={id!} canRecord={isInitiator} />
             </Fold>
 
             {settingsChangeCount > 0 && (
@@ -2490,8 +2675,46 @@ export function GroundAdminPage() {
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
 
-            <Fold {...foldProps(setupBand())} title="How long this runs" src="the length of the run, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
-            {isInitiator && (
+            <Fold {...foldProps(setupBand())} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
+
+            {/*
+              WHEN IT STARTS, WHICH HAD NO CONTROL ANYWHERE.
+
+              "There is no start date on setup. Where does it exist." On the check-in, and it
+              decides two real things: an invitation for somebody added before the start is held
+              and sent on that day, and session 1 stays shut until then. It could be set when the
+              check-in was created and never again - so a new hire whose start moved by a week left
+              a check-in opening on the wrong day with no way to say so.
+
+              It disappears once somebody has answered rather than refusing on press: from that
+              point the start is the thing everything else is measured from, and the server says so
+              too, because a control being hidden is not a rule.
+            */}
+            {isInitiator && mySessionsDone === 0 && sessionRows.length === 0 && (
+              <div className="gw-fld">
+                <label className="gw-label" htmlFor="starts-at">When it starts</label>
+                <input
+                  id="starts-at"
+                  className="gw-input"
+                  type="date"
+                  value={startsAtDraft}
+                  onChange={(e) => setStartsAtDraft(e.target.value)}
+                />
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                  Session 1 opens on this day, and anybody you add before it is invited on it. Leave
+                  it empty to open the check-in as soon as people are added.
+                </div>
+                <button
+                  disabled={startsAtDraft === startsAtOnRecord}
+                  onClick={() => groundsApi.update(id!, { startsAt: startsAtDraft || undefined })
+                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
+                    .catch((e: any) => toast.error(e?.response?.data?.message ?? 'The start date did not change - try again.'))}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: startsAtDraft === startsAtOnRecord ? 0.4 : 1 }}
+                >
+                  Save start date
+                </button>
+              </div>
+            )}            {isInitiator && (
               <div className="gw-fld">
                 <label className="gw-label">How long this runs</label>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -2671,7 +2894,72 @@ export function GroundAdminPage() {
                 Close this check-in
               </button>
             </div>
+
+            {/*
+              AND THE OTHER THING PEOPLE ACTUALLY WANT, WHICH IS NOT CLOSING.
+
+              "they can clear any test chats/checkins they run. I suspect this is likely to happen
+              with new users." It is what happens: the first thing anybody does is try this on
+              something invented, and the only way to be rid of it was to email us - so a new
+              account fills up with "test" and "asdf" sitting in the rail beside a real check-in.
+
+              Deleting and closing are not degrees of the same act and are not offered as though
+              they were. Closing keeps everybody's record and ends the work; deleting is for a thing
+              that was never work. The server draws the line rather than this page: it refuses the
+              moment anybody else has given an account, and says who, so a check-in cannot be
+              cleared out from under somebody who wrote in confidence and is not being asked.
+            */}
+            {isInitiator && (
+              <div style={{ marginTop: 10, padding: 14, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Delete it, if it was only a test</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                  For the ones you started to see how this works. It goes completely - the
+                  conversation, the sessions and anything uploaded. If somebody else has already
+                  given their account, this refuses and tells you: that is a record, not a test, and
+                  closing is the thing to do with it.
+                </div>
+                {deleteError && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-red-t)', lineHeight: 1.6, marginBottom: 10, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 6, padding: '9px 11px' }}>
+                    {deleteError}
+                  </div>
+                )}
+                {confirmDelete ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>Delete “{ground.label}” for good?</span>
+                    <button
+                      onClick={() => removeGround.mutate()}
+                      disabled={removeGround.isPending}
+                      style={{ fontSize: 13, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', padding: '8px 14px', borderRadius: 6, cursor: removeGround.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                    >{removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}</button>
+                    <button
+                      onClick={() => { setConfirmDelete(false); setDeleteError(null) }}
+                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >Keep it</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setDeleteError(null); setConfirmDelete(true) }}
+                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >Delete this check-in</button>
+                )}
+              </div>
+            )}
             </Fold>
+            {/*
+              HOW FAR THROUGH SETUP SOMEBODY IS.
+
+              AFTER the questions rather than above them, and that is a fact about the count rather
+              than a design preference: `setupBand()` increments as each fold renders, so the total
+              does not exist until they have. Read before the first fold it would say zero of zero
+              on the first paint and correct itself on the second, which is worse than sitting at
+              the foot where it is right the first time - and a tally of what you have reviewed is
+              a footer anyway.
+            */}
+            {isInitiator && setupBands > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 14, lineHeight: 1.55 }}>
+                {howFarThroughSetup(setupChecked, setupBands)}
+              </div>
+            )}
           </div>
         )}
       </div>

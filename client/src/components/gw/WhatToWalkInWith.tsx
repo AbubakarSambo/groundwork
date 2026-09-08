@@ -1,0 +1,58 @@
+import { Sec } from './kit'
+
+
+/*
+ * AND WHY IT LIVES HERE NOW RATHER THAN ON THE SHARED REPORT.
+ *
+ * It was inside `ReportBody`, the block that got deleted - a private, forward-looking panel sitting
+ * in the middle of a shared, backward-looking document. Everything around it was a record of what
+ * had already been said by everybody; this is three lines for one person about a conversation they
+ * have not had yet, and the panel had to say so itself ("Yours alone... Nobody else is shown this")
+ * because its surroundings implied the opposite.
+ *
+ * My record is the tab whose whole promise is that it is yours. The panel no longer has to explain
+ * that it is an exception, because it no longer is one.
+ */
+/**
+ * THE GUIDE WE HAVE BEEN PAYING FOR AND THROWING AWAY.
+ *
+ * `postReportGuide` is three lines generated per participant per report release - an opening line, a
+ * question to carry, and one thing the other person said worth taking seriously. It is on the report
+ * payload, scoped to the person whose it is (`engagement.postReportGuides[participant.id]`), and no
+ * client file mentioned it. Found by diffing what the service returns against what the client reads.
+ *
+ * `POST_REPORT_GUIDE_ENABLED=true` sits in `.env.example` directly under its own comment saying "OFF
+ * by default so it does not spend a Gemini call per participant per release into a void. Set to
+ * 'true' only once a client surface shows each participant their guide." So we were spending the
+ * call, every release, per person, and discarding the result. The comment predicted it exactly.
+ *
+ * Rendering it rather than switching it off: it is already computed, already paid for, already
+ * sanitised - `guide-sanitiser.ts` drops any field that names a party or quotes them - and it goes to
+ * the one person it is about.
+ *
+ * NOT SHOWN TO THE LEAD ABOUT SOMEBODY ELSE. The server only ever fills it for the requesting
+ * participant, and this renders what it is given. A lead who is also a party gets their own.
+ */
+export function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } }) {
+  const rows = [
+    { h: 'A way to open', text: guide.openingLine },
+    { h: 'A question worth carrying in', text: guide.questionToCarry },
+    { h: 'Something they said that is worth taking seriously', text: guide.toAcknowledge },
+  ].filter(r => r.text?.trim())
+  /** A sanitiser that dropped all three leaves nothing to say, and an empty card says it badly. */
+  if (!rows.length) return null
+  return (
+    <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
+      <Sec title="Before you talk to them" />
+      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+        Yours alone, and not part of the shared report. Nobody else is shown this.
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ marginBottom: i === rows.length - 1 ? 0 : 11 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{r.h}</div>
+          <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>{r.text}</div>
+        </div>
+      ))}
+    </div>
+  )
+}

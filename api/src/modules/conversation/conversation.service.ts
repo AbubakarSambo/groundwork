@@ -1,4 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
+import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
+import { aDirectiveAboutTheBurden, countWhatWasAsked, stampWhatItAskedFor } from './the-same-burden-on-both-sides';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
@@ -42,6 +45,12 @@ import { mayCoach } from './participation-timeline';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
+import {
+  CORRECTION_WINDOW_KEY,
+  DEFAULT_CORRECTION_WINDOW_DAYS,
+  isAWindow,
+  refuseIfTheWindowHasClosed,
+} from './the-window-for-correcting-a-record';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
@@ -437,10 +446,27 @@ export class ConversationService {
    * participant's words to another would break the promise that makes the answers worth having.
    */
   private briefFor(
-    ground: { label: string | null; objectives: { name: string; target: number | null }[] } | null,
-  ): { subject: string | null; objectives: { name: string; target: number | null }[] } | null {
+    ground: { label: string | null; brief?: string | null; objectives: { name: string; target: number | null }[] } | null,
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[] } | null {
     if (!ground) return null;
-    return { subject: ground.label ?? null, objectives: ground.objectives ?? [] };
+    return {
+      subject: ground.label ?? null,
+      /*
+       * AND WHAT IT IS ACTUALLY ABOUT, WHICH THIS WAS NOT SAYING.
+       *
+       * The subject is the check-in's LABEL, and on the picker path the label is the scenario -
+       * "New hire". So a participant's first screen, under a heading reading "What this check-in is
+       * about", said "New hire" and nothing else. Read on a real invitation: the lead had written
+       * four sentences describing the situation, and the person being asked to account for it was
+       * shown a category name.
+       *
+       * The brief is already a shared fact - the Context page publishes it to everybody on the
+       * check-in, and the lead wrote it as the description of the work. The caution above is about
+       * one participant's ACCOUNT reaching another, which this is not.
+       */
+      says: ground.brief?.trim() || null,
+      objectives: ground.objectives ?? [],
+    };
   }
 
   async open(checkInId: string, requestingUserId: string) {
@@ -466,6 +492,8 @@ export class ConversationService {
         status: true,
         organizationId: true,
         label: true,
+        /* What the check-in is actually about, for the brief a participant reads first. */
+        brief: true,
         scenario: true,
         objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
       },
@@ -614,9 +642,29 @@ export class ConversationService {
     // The closing session must be NAMED in the opener - the system-context
     // instruction alone loses to the returning-user opener script, so the
     // begin turn (the most-attended instruction) carries it too.
+    /*
+     * AND A CORRECTION MUST BE NAMED HERE TOO, FOR THE REASON DIRECTLY ABOVE.
+     *
+     * The comment on the closing session says it exactly: the system-context instruction alone
+     * loses to the returning-user opener script, so the begin turn - the most-attended instruction
+     * - has to carry it. That lesson was learned for closing sessions and not applied to
+     * corrections, and corrections lost the same way.
+     *
+     * Reported as "the chat about Zainab is meant to clarify things about session 1 but it is
+     * acting like a new session". Removing the competing returning-session block was necessary and
+     * was not enough: driven immediately afterwards, the opener was still
+     * "In your first check-in you set the evidence baseline... what exists right now that counts
+     * toward it?" - a progress question, on a session whose whole purpose is to change what is
+     * already recorded.
+     */
+    const correctingSession = (checkIn as any).isSelfCorrection
+      ? (checkIn as any).selfCorrectionTargetSession
+      : null;
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
-      : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
+      : correctingSession != null
+        ? `<<BEGIN_CHECK_IN>> The person pressed "correct it" on session ${correctingSession}. This is NOT a new session and NOT a progress check. Do not ask what has happened since, do not ask what exists now, and do not ask how anything is going. Open in one sentence by saying you are back on session ${correctingSession} and asking what they want to change or add - then let them tell you, and only then probe for specifics. Their original answers are not deleted or edited; this is recorded alongside them.`
+        : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
     const reply = await this.anthropic.respond(fullSystem, [
       { role: 'user', content: beginMessage },
     ]);
@@ -624,7 +672,12 @@ export class ConversationService {
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
     const aiTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: forHumans(reply) },
+      data: {
+        checkInId: checkIn.id, role: TurnRole.AI, content: forHumans(reply),
+        /* Stamped as it is written, so the two-party balance can be counted without ever reading
+           one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
+        askedFor: stampWhatItAskedFor(forHumans(reply)),
+      },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     return { reply: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
@@ -803,13 +856,31 @@ export class ConversationService {
        * difference between them is only WHEN it can be caught - here the whole reply is in hand, so
        * the screen runs once over all of it rather than sentence by sentence.
        */
-      const screened = screen(stripped.text, personWords);
+      /* Who is reading, so their own name cannot come back at them in the third person. Their
+         first name is on the row this method already loaded. */
+      const readerName = (checkIn as any).participant?.user?.firstName ?? null;
+      const screened = screen(stripped.text, personWords, readerName);
       if (screened.dropped.length) {
         this.logger.warn(
           `Dropped ${screened.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
         );
       }
       reply = screened.text || ASK_AGAIN;
+
+      /*
+       * AND THE DOCUMENT'S OWN WORDS GO IN FRONT OF IT, WHERE THIS TURN OWES THEM.
+       *
+       * See the-line-that-touches-what-they-said.ts. Where what they just said contradicts a
+       * document everybody on this check-in can read, the quotation is written by us from the file
+       * and put first - because four attempts at getting the model to say it, including exceptions
+       * written into both of the prompt rules suppressing it, got as far as naming the file and
+       * never the line.
+       *
+       * Skipped if the reply already carries it: on the odd turn where the model does quote the
+       * document, printing it twice is worse than not printing it at all.
+       */
+      const owed = this.takeCitationFor(checkIn.id);
+      if (owed && !theReplyAlreadyQuotesIt(reply, owed)) reply = `${owed}\n\n${reply}`;
 
       /*
        * AND THE ONES SUBSTITUTION CANNOT REACH ARE AT LEAST WRITTEN DOWN.
@@ -844,7 +915,10 @@ export class ConversationService {
       }
       hadCloseMarker = stripped.hadMarker;
       aiTurn = await this.prisma.conversationTurn.create({
-        data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
+        data: {
+          checkInId: checkIn.id, role: TurnRole.AI, content: reply,
+          askedFor: stampWhatItAskedFor(reply),
+        },
       });
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
@@ -991,11 +1065,33 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      const gate = new SentenceGate(streamPersonWords);
+      const gate = new SentenceGate(
+        streamPersonWords,
+        (checkIn as any).participant?.user?.firstName ?? null,
+      );
+      let shown = '';
+
+      /*
+       * THE DOCUMENT'S OWN WORDS GO FIRST, BEFORE A SINGLE DELTA.
+       *
+       * See the-line-that-touches-what-they-said.ts. On this path the quotation cannot be added
+       * afterwards - the person has already read the reply, and there is no un-sending a delta. So
+       * it is emitted before the model starts, which is also where it reads best: the fact, then
+       * the question.
+       *
+       * It is not passed through the gate. The gate exists to catch words the MODEL invented; this
+       * sentence was written here, from the file, and checking our own quotation against the
+       * person's vocabulary would drop it for not sounding like them.
+       */
+      const owedUpFront = this.takeCitationFor(checkIn.id);
+      if (owedUpFront) {
+        shown += `${owedUpFront}\n\n`;
+        yield { type: 'delta', text: `${owedUpFront}\n\n` };
+      }
+
       let emitted = 0;
       /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
       let cleanEmitted = 0;
-      let shown = '';
 
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
@@ -1078,7 +1174,9 @@ export class ConversationService {
         );
       }
 
-      await this.prisma.conversationTurn.create({ data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply } });
+      await this.prisma.conversationTurn.create({
+        data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
+      });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
@@ -1159,6 +1257,34 @@ export class ConversationService {
     await this.prisma.checkIn
       .update({ where: { id: checkIn.id }, data: { saidWhy: said.kind } })
       .catch((err: any) => this.logger?.warn?.(`Recording why for check-in ${checkIn.id} failed: ${err?.message}`));
+  }
+
+  /**
+   * THE QUOTATION THIS TURN OWES THE PERSON, from `composeSystemPrompt` to whoever is replying.
+   *
+   * See the-line-that-touches-what-they-said.ts: where somebody's account contradicts a document
+   * everybody on the check-in can read, the product puts the document's own words on the screen
+   * rather than asking the model to. Written when the prompt is composed and taken by the reply
+   * path in the same request.
+   */
+  private _citationForThisTurn?: Map<string, { citation: string; directive: string }>;
+
+  /**
+   * Made on first use rather than as a field initialiser. Several specs build this service by
+   * hand - `Object.create(prototype)` and friends - so class fields never run for them, and a map
+   * that only exists when the constructor did would be undefined in exactly the tests that
+   * exercise the prompt.
+   */
+  private get citationForThisTurn(): Map<string, { citation: string; directive: string }> {
+    if (!this._citationForThisTurn) this._citationForThisTurn = new Map();
+    return this._citationForThisTurn;
+  }
+
+  /** Takes it and clears it: a citation belongs to one turn and must never appear on the next. */
+  private takeCitationFor(checkInId: string): string | null {
+    const held = this.citationForThisTurn.get(checkInId);
+    this.citationForThisTurn.delete(checkInId);
+    return held?.citation ?? null;
   }
 
   private async composeSystemPrompt(
@@ -1570,8 +1696,29 @@ export class ConversationService {
 
     // Returning user protocol: for session 2+, inject the most important unresolved
     // item from the prior session so the AI opens with it specifically.
+    /*
+     * NOT ON A CORRECTION, WHICH IS THE BUG SHE FOUND.
+     *
+     * "The chat about Zainab is one that is meant to clarify things about session 1, but it is
+     * acting like a new session." It was. She pressed Correct it on session 1 and the conversation
+     * opened with:
+     *
+     *   "In your first session, you set two standards for Zainab's first quarter... We're now in
+     *    week five. How does her record look against those two things?"
+     *
+     * That is the RETURNING-SESSION opener, and it is a good one - for a returning session. A
+     * correction is created at the next free session number, so it is always >= 2, so this block
+     * built and injected "open with the most important unresolved item from last time" alongside
+     * the self-correction block that says "open by naming that you are returning to session 1 and
+     * ask what they want to change". Two openers in one prompt, and this one is concatenated LAST,
+     * so it is the instruction the model acted on.
+     *
+     * The same guard already exists thirty lines further up, where the prior-entries replay is
+     * skipped for a correction because the full-turn replay covers it. This is that rule, applied
+     * to the other half.
+     */
     let returningUserContext = '';
-    if (checkIn.sessionNumber >= 2) {
+    if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {
       returningUserContext = await this.buildReturningUserContext(checkIn.participantId, checkIn.sessionNumber);
     }
 
@@ -1605,7 +1752,18 @@ export class ConversationService {
           { participantId: checkIn.participantId, isLead: ground.initiatorId === checkIn.participant.userId },
           this.config.get<boolean>('app.contextEnabled') === true,
         ) as any,
-        select: { fileName: true, content: true, uploaderNote: true },
+        /* `participant` too, so each document can say who provided it and whether everybody here
+           can read it. Without that the block went in under one heading claiming the person being
+           interviewed had written all of it - see where-this-document-came-from.ts. */
+        select: {
+          fileName: true, content: true, uploaderNote: true, visibility: true,
+          participant: {
+            select: {
+              userId: true, email: true,
+              user: { select: { firstName: true, lastName: true } },
+            },
+          },
+        },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON } }),
@@ -1724,14 +1882,131 @@ export class ConversationService {
      * about to talk about. This is not retrieval and does not pretend to be - chunking these
      * through the knowledge module is the real answer and a larger change than this one.
      */
-    const fitted = whatFitsInTheRoom([...uploadedDocs].reverse());
+    /*
+     * WHERE EACH DOCUMENT CAME FROM, attached before anything is measured for room, so a document
+     * that only half fits still says whose it is. The lead is resolved from the ground rather than
+     * asked for again.
+     */
+    const nameOf = (u: { firstName: string | null; lastName: string | null } | null | undefined) =>
+      [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || null;
+    const withProvenance = uploadedDocs.map((d: any) => ({
+      fileName: d.fileName,
+      content: d.content,
+      uploaderNote: d.uploaderNote,
+      provenance: whereThisCameFrom({
+        mine: d.participant?.userId === checkIn.participant.userId,
+        who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
+        fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
+        sharedWithEveryone: d.visibility === 'OPEN',
+      }),
+    }));
+    const fitted = whatFitsInTheRoom([...withProvenance].reverse());
     if (fitted.leftOut.length) {
       this.logger?.log?.(`Check-in ${checkIn.id}: documents that did not fit the prompt - ${fitted.leftOut.join(', ')}.`);
     }
+    /*
+     * THE HEADING WAS FALSE ABOUT MOST OF WHAT IT INTRODUCED.
+     *
+     * "uploaded by this party before the session" - said over the lead's brief, a grant's terms, an
+     * admin's policy, every OPEN document anybody in the check-in has shared. Each document says
+     * where it came from now, and the instructions say what to do with that.
+     */
     const docContext = fitted.block
-      ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' + fitted.block
+      ? 'DOCUMENTS THIS SESSION CAN READ:\n\n' + fitted.block
         + (fitted.leftOut.length ? `\n\n${tellThemWhatIsMissing(fitted.leftOut)}` : '')
+        + `\n\n${WHAT_TO_DO_WITH_THESE}`
       : '';
+
+    /*
+     * AND THE ONE LINE WORTH PUTTING TO THEM THIS TURN, COMPUTED RATHER THAN HOPED FOR.
+     *
+     * Driven live, the instructions above got the session as far as noticing a mismatch and no
+     * further: "Which is right? The plan could easily be out of date" - about a date it would not
+     * name. Two absolutes in its own prompt forbid stating a date the person did not give, both
+     * rightly, and the citation worth making is almost always a date. Writing an exception into the
+     * timeframe rule did not beat them either. So the overlap is worked out here and the sentence
+     * is handed over. See the-line-that-touches-what-they-said.ts.
+     *
+     * Only documents already marked shared with everyone: a private one is never quoted at anybody
+     * and this never sees one.
+     */
+    const shareableForThisTurn = (uploadedDocs as any[])
+      .filter((d) => d.visibility === 'OPEN')
+      .map((d) => ({
+        fileName: d.fileName,
+        content: d.content ?? '',
+        who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
+        fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
+      }));
+    /*
+     * THE FACT IS OURS TO PUT; THE QUESTION IS THE SESSION'S.
+     *
+     * See the-line-that-touches-what-they-said.ts. The quotation is written from the document and
+     * shown to the person before the model's turn, because four attempts at making the model say it
+     * - including exceptions written into both of the rules suppressing it - got as far as naming
+     * the file and no further. The session is told the difference is already on the screen.
+     */
+    /*
+     * AND WHETHER THE TWO SIDES HAVE BEEN ASKED THE SAME KIND OF THING.
+     *
+     * See the-same-burden-on-both-sides.ts. On a real two-party conflict one engineer was invited
+     * to examine his own part and the other was asked to prove herself three times - both correct
+     * turn by turn, and impartiality broken across the session. Neither could see it, because
+     * neither reads the other's check-in.
+     *
+     * Only where there IS another side: on a solo check-in there is nothing to be uneven with.
+     */
+    /* `?? 0`: a ground read that did not select participants cannot tell one side from another, so
+       there is nothing to compare and no query worth running. */
+    /*
+     * COUNTED FROM STAMPS, NOT FROM TEXT. Each AI turn records what it asked for when it is written
+     * - see the-same-burden-on-both-sides.ts - so this reads tallies across the check-in without
+     * ever loading one person's turns while answering another. The first version read the turns and
+     * an existing guard refused it, correctly: an AI turn carries the person's own words reflected
+     * back, and that must not cross between participants even in memory.
+     */
+    const burden = (ground.participants?.length ?? 0) > 1
+      ? await (async () => {
+        /*
+         * A groupBy, DELIBERATELY, AND NOT A findMany.
+         *
+         * The rule next door is that a content-bearing turn load stays scoped to one check-in - an
+         * AI turn carries the person's own words reflected back, so reading Fay's while answering
+         * Eli is reading Fay's account into Eli's session. My first version was a ground-scoped
+         * findMany and the guard refused it.
+         *
+         * A groupBy cannot return content: it returns the fields grouped on and a count, and there
+         * is no way to widen it into a leak later without rewriting it into something else. The
+         * participant is resolved from the check-ins already in hand rather than joined in.
+         */
+        const perCheckIn = await this.prisma.conversationTurn.groupBy({
+          by: ['checkInId', 'askedFor'],
+          where: { role: TurnRole.AI, askedFor: { not: null }, checkIn: { groundId: checkIn.groundId } },
+          _count: { _all: true },
+        });
+        const whose = new Map<string, string>();
+        for (const p of ground.participants ?? []) {
+          for (const c of ((p as any).checkIns ?? [])) whose.set(c.id, p.id);
+        }
+        whose.set(checkIn.id, checkIn.participantId);
+        const stamps: { participantId: string; askedFor: string | null }[] = [];
+        for (const row of perCheckIn) {
+          const pid = whose.get(row.checkInId);
+          if (!pid) continue;
+          for (let i = 0; i < row._count._all; i++) stamps.push({ participantId: pid, askedFor: row.askedFor });
+        }
+        return aDirectiveAboutTheBurden(countWhatWasAsked(stamps, checkIn.participantId));
+      })()
+      : '';
+
+    const toPut = latestMessage ? whatToPutToThem(latestMessage, shareableForThisTurn) : null;
+    const putThisToThem = toPut?.directive ?? '';
+    /* Handed to the caller for this turn only. `composeSystemPrompt` returns a string and has three
+       call sites; threading a second return value through all of them to carry one optional
+       sentence would be a worse change than a keyed handoff that is written and read in the same
+       request. Cleared by the reader. */
+    if (toPut) this.citationForThisTurn.set(checkIn.id, toPut);
+    else this.citationForThisTurn.delete(checkIn.id);
 
     // See between-session-notes.ts for why the wording is the mechanism. Kept in
     // its own file so the assembled text can be tested as text rather than as the
@@ -1890,7 +2165,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -4184,7 +4459,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);
 
     await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply },
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
     });
 
     return { reply };
@@ -4276,6 +4551,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * probes for the correction using the standard conversation prompts, rather
    * than the participant typing a free-text edit directly.
    */
+  /**
+   * HOW LONG A RELEASED REPORT STAYS CORRECTABLE, read from the platform setting.
+   *
+   * Never throws, and a bad row means the number we shipped with. Zero from a DELIBERATE row is
+   * honoured - "final the moment it is shared" is a real policy - but zero from a broken row would
+   * silently make every released report uncorrectable, so the guard is on the row's shape rather
+   * than on the value alone.
+   */
+  private async correctionWindowDays(): Promise<number> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: CORRECTION_WINDOW_KEY } });
+      if (isAWindow(row?.value)) return row!.value as number;
+    } catch (err: any) {
+      this.logger.warn(`Could not read the correction window, using the default: ${err?.message}`);
+    }
+    return DEFAULT_CORRECTION_WINDOW_DAYS;
+  }
+
   async startSelfCorrectionSession(requestingUserId: string, groundId: string, targetSessionNumber: number): Promise<{ checkInId: string }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
@@ -4306,6 +4599,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         `Session ${targetSessionNumber} can no longer be corrected - a later session has already started and is building on it.`,
       );
     }
+
+    /*
+     * AND THE REPORT ITSELF. The lock above is about SESSIONS building on each other; it says
+     * nothing about the report having gone out. So a round could close, the report reach
+     * everybody, and the account it was built from still be edited - which is the one case where
+     * a correction stops being a correction and becomes a rewrite of something people have read.
+     *
+     * See the-window-for-correcting-a-record.ts for why this is a window and not a lock.
+     */
+    const releasedReport = await this.prisma.report.findUnique({
+      where: { groundId },
+      select: { releasedAt: true },
+    });
+    refuseIfTheWindowHasClosed({
+      releasedAt: releasedReport?.releasedAt ?? null,
+      windowDays: await this.correctionWindowDays(),
+    });
 
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: participant.id },
@@ -4426,7 +4736,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * rather than two: the flag is a boolean on a row this query is already joining to, and the
        * alternative was a second findUnique on every message anybody sends.
        */
-      include: { participant: { include: { user: { select: { awaitingOrgApproval: true } } } } },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
     if (checkIn.participant.userId !== requestingUserId) {

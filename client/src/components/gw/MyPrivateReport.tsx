@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sec } from './kit'
 import { SoloReportBody } from './SoloReportBody'
+import { WhatToWalkInWith } from './WhatToWalkInWith'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -40,6 +41,31 @@ export interface MyPrivateReportProps {
    * "I need my own report to be the same report on my record."
    */
   mySessions?: { id: string; sessionNumber: number; completedAt?: string | Date | null }[]
+  /** The three private lines for the conversation ahead. Null when there is no released report. */
+  walkInGuide?: { openingLine?: string; questionToCarry?: string; toAcknowledge?: string } | null
+  /**
+   * HOW SPECIFIC EACH SESSION WAS, by session number.
+   *
+   * Specificity is a fact about ONE session - how checkable the account you gave that day is - so
+   * it belongs on that session's row. It used to be a card of its own further down the page,
+   * showing a row of bars with no dates on them, next to a separate list of the same sessions with
+   * dates and no bars. Two lists of one thing.
+   */
+  specificityBySession?: Record<number, number>
+}
+
+/**
+ * WHAT A SESSION'S SPECIFICITY SCORE MEANS, said on the row.
+ *
+ * The thresholds are the ones the bars used, so nothing about the reading changed - only that it
+ * is now a phrase rather than a colour, on the session it belongs to. Undefined for a session that
+ * has not been read yet, and then the row says nothing rather than guessing.
+ */
+function howCheckable(score: number | undefined): string {
+  if (score == null) return ''
+  if (score >= 0.65) return ' · specific enough to check'
+  if (score >= 0.35) return ' · specific in places'
+  return ' · little in it that can be checked'
 }
 
 export function MyPrivateReport({
@@ -49,6 +75,8 @@ export function MyPrivateReport({
   myParticipant,
   otherParties,
   mySessions = [],
+  walkInGuide = null,
+  specificityBySession,
 }: MyPrivateReportProps) {
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -77,6 +105,15 @@ export function MyPrivateReport({
   return (
     <>
           {/*
+            FIRST, BECAUSE IT IS THE ONLY THING HERE ABOUT WHAT HAPPENS NEXT.
+
+            Everything else on this tab is a record of what was already said. This is three lines
+            for the conversation that has not happened yet, and it was buried in the middle of the
+            shared report - a private panel inside a document written for everybody, having to
+            announce that it was an exception to its own surroundings.
+          */}
+          {walkInGuide && <WhatToWalkInWith guide={walkInGuide} />}
+          {/*
             THE REPORT YOU READ AT THE END OF EACH SESSION, WHICH IS WHAT THIS TAB IS FOR.
             "I need my own report to be the same report on my record." My record showed one thing
             called "your private report" - the two-line summary a background job writes - while
@@ -85,7 +122,15 @@ export function MyPrivateReport({
           */}
           {mySessions.length > 0 && (
             <>
-              <Sec title="Your session reports" src="one per session, exactly as you read it at the end" />
+              {/*
+                "ONE PER SESSION, EXACTLY AS YOU READ IT AT THE END" WAS HALF TRUE, AND I WROTE IT.
+                Only the entry chat stores the full report a person read when they finished; a
+                session run inside the app ends on the card, and opening it later shows that card.
+                Both ARE what that person read at the end of that session, which is the promise
+                worth making - so the wording is now the one that holds for both, rather than the
+                one that implies a single kept artifact for every session.
+              */}
+              <Sec title="Your session reports" src="what you read when you finished each one" />
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
                 {mySessions.map((ci, i) => (
                   <button
@@ -102,7 +147,13 @@ export function MyPrivateReport({
                       <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
                       <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
                         {ci.completedAt ? `Finished ${new Date(ci.completedAt).toLocaleDateString()}` : 'Finished'}
-                        {' · yours only, and it does not change'}
+                        {/*
+                          AND HOW CHECKABLE THAT ONE WAS, on the session it is about.
+                          Said in words rather than as a bar: a bar with no scale is a mark out of
+                          something a person cannot see, and the whole point of this read is that
+                          it is actionable - "how many, how long, how often" - not a grade.
+                        */}
+                        {howCheckable(specificityBySession?.[ci.sessionNumber])}
                       </span>
                     </span>
                     <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
@@ -126,10 +177,15 @@ export function MyPrivateReport({
             <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>
               <SoloReportBody report={mySoloReport.report as Record<string, unknown>} />
               <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                {/*
+                  SAID ONCE. The band above this card already says "From your own check-in only.
+                  Only you can see it unless you choose to share it", so the private state was the
+                  same sentence twice, two inches apart - the pattern she called overdoing it. The
+                  SHARED state is not a repeat of anything and stays: it is a change of state, and
+                  a person needs to see that it took effect.
+                */}
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
-                  {mySoloReport.shared
-                    ? 'Shared with everyone in this check-in'
-                    : 'Private - only you can see this'}
+                  {mySoloReport.shared ? 'Shared with everyone in this check-in' : ''}
                 </div>
                 <button
                   onClick={() => mySoloReport.shared ? setSoloSharedMut.mutate(false) : setShowShareConfirm(true)}
@@ -142,8 +198,9 @@ export function MyPrivateReport({
             </div>
           ) : (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Your private report is not ready yet.</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>It generates once you complete your check-in.</div>
+              {/* One line, not two. The second was a restatement of the first, and the box below
+                  this one was restating both again. */}
+              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>This appears once you finish your first check-in.</div>
             </div>
           )}
 

@@ -24,7 +24,7 @@ import {
   CoverageRead,
   classifyCoverageReason,
 } from './coverage';
-import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
+import { MIN_COACHING_CONFIDENCE, roleMapFor, priorFunctionFromRole } from './role-maps';
 
 // ---------------------------------------------------------------------------
 // Input shapes - plain data, no Prisma client, no ground object.
@@ -489,16 +489,65 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
           'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.',
         );
       }
-      if (!peopleWorkTogether && completed >= 3) {
+      /*
+       * AND ONLY WHERE THERE GENUINELY IS NO SECOND ACCOUNT.
+       *
+       * `peopleWorkTogether` is a SETTING - whether this kind of check-in assumes people see each
+       * other's work. `corroborations` is a COUNT of the times somebody actually named this
+       * person's work. They are different questions and both conditions could fire, so one
+       * paragraph on a real cohort board read:
+       *
+       *   "7 of these were independently named by someone else, which is worth more than the count
+       *    of what was said. Nobody else on this ground sees this person's work, so there is no
+       *    second account to check any of this against."
+       *
+       * Two sentences apart, contradicting each other, in the read a lead uses to decide whether
+       * somebody stays. The caveat is about an ABSENCE, and corroborations are the presence of the
+       * very thing it says is missing - so where they exist, the setting is simply wrong about this
+       * person and the evidence wins.
+       */
+      if (!peopleWorkTogether && completed >= 3 && corroborations === 0) {
         // The limitation itself, stated plainly. Someone who does the work and
         // describes it flatly looks identical to someone who did not do it, and
         // on this kind of ground there is no colleague who could tell them apart.
         reasonParts.push(
           'Nobody else on this ground sees this person\'s work, so there is no second account to check any of this against. Read it as one account, not as confirmed.',
         );
+      } else if (!peopleWorkTogether && completed >= 3) {
+        /* The setting says they work separately and somebody named their work anyway. That is worth
+           more than either fact alone, and hiding it would leave the read quieter than the record. */
+        reasonParts.push(
+          'This check-in does not assume people see each other\'s work, so what somebody else named here carries more than it would on a ground where everybody watches everybody.',
+        );
       }
       if (map) {
         reasonParts.push(`Read against ${map.label}: on track here means ${map.onTrackMeans.toLowerCase()}`);
+        /*
+         * AND WHERE THAT DISAGREES WITH THEIR STATED ROLE, SAY SO.
+         *
+         * `detectFunction` deliberately lets the ACCOUNT outrank the title - a title can be wrong
+         * and the record shows the real work - and it knocks confidence down when they clash. What
+         * it does not do is tell the reader.
+         *
+         * Seen on a real cohort: a hire whose role read "New sales hire, outbound" was read against
+         * "Support and customer-facing work" - "named customers unblocked, the repeated problem
+         * traced to a cause" - because her sessions were full of being blocked, while two
+         * colleagues with near-identical role text got "Sales and expansion". Her lead was deciding
+         * whether to keep her against the criteria for a different job, with nothing on the screen
+         * saying the yardstick had been swapped.
+         *
+         * The override stays. What changes is that the disagreement is visible, so a lead who knows
+         * the title is right can see the read is not.
+         */
+        const stated = priorFunctionFromRole(p.roleAsDescribed);
+        if (stated && stated.fn !== p.detectedFunction) {
+          const statedMap = roleMapFor(stated.fn as any);
+          reasonParts.push(
+            `Their stated role reads as ${(statedMap?.label ?? stated.fn.toLowerCase().replace(/_/g, ' '))}, and the account does not bear that out - `
+            + 'so they are being read against what the record shows rather than against the title. '
+            + 'If the title is right, that difference is the thing to look at first.',
+          );
+        }
         if (!fnConfident) reasonParts.push('This read of their function is still provisional.');
       }
 

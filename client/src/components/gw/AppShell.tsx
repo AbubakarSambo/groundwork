@@ -427,9 +427,22 @@ function FeedbackWidget() {
       {open && (
         <div
           onClick={e => { if (e.target === e.currentTarget) hidePanel() }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 0 }}
+          /*
+            IN THE MIDDLE OF THE SCREEN, WHICH IS WHERE IT WAS SUPPOSED TO BE.
+
+            `alignItems: 'flex-end'` with a top-only radius is a phone bottom sheet, and it was
+            being drawn that way on every screen - so on a laptop the feedback form arrived as a
+            card wedged against the bottom edge, half a screen away from the button that opened it
+            and from anything the person was reacting to. Reported twice.
+
+            Centred, with a radius on all four corners and a margin so it never touches the edge. A
+            bottom sheet is still the right shape on a phone, where reach matters and there is no
+            middle to speak of, so the narrow-screen rule below puts it back.
+          */
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          className="gw-fb-overlay"
         >
-          <div style={{ background: 'white', borderRadius: '12px 12px 0 0', padding: 20, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="gw-fb-panel" style={{ background: 'white', borderRadius: 12, padding: 20, width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 18px 48px rgba(10,22,40,.28)' }}>
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--gw-border)', marginBottom: 16 }}>
               {(['reaction', 'build', 'wrong'] as FbTab[]).map(t => (
@@ -1352,6 +1365,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .gw-sidebar-desktop { display: none !important; }
           .gw-sidebar-mobile  { display: flex !important; }
           .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+          /* A bottom sheet is the right shape on a phone - thumb reach, and there is no middle to
+             speak of. It was being drawn that way on every screen, which is the bug. */
+          .gw-fb-overlay      { align-items: flex-end !important; padding: 0 !important; }
+          .gw-fb-panel        { border-radius: 12px 12px 0 0 !important; max-height: 90vh !important; }
         }
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }

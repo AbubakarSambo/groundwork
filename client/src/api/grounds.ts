@@ -185,7 +185,9 @@ export const groundsApi = {
    * it - otherwise one failed rename produced two notifications, the useful one and "Something
    * went wrong".
    */
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }, opts?: { quiet?: boolean }) =>
+  /** `startsAt` is an ISO date; the server refuses it once anybody has answered. */
+  /** `brief` blank clears it; the server refuses both to anybody but the lead or an org admin. */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string; startsAt?: string; brief?: string }, opts?: { quiet?: boolean }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
       ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
       : undefined).then(r => r.data),
@@ -303,6 +305,13 @@ export const groundsApi = {
    * product makes are the distance between what people believed at the start and what turned out to be
    * true. Corrected, a baseline becomes a second description of the present and the arc disappears."
    */
+  /**
+   * Deleting a check-in that was only ever a test. Its lead alone, and only while nobody else has
+   * given an account - the server refuses with a sentence naming who, which the page shows.
+   */
+  remove: (groundId: string) =>
+    apiClient.delete<{ deleted: boolean; label: string }>(`/grounds/${groundId}`).then(r => r.data),
+
   stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
     apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
       `/grounds/${groundId}/baseline`, body,

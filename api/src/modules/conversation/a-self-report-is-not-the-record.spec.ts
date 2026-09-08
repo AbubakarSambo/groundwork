@@ -43,7 +43,10 @@ describe('where a claimed delivery is stored', () => {
   });
 
   it('reaches the assembled prompt', () => {
-    expect(CODE).toMatch(/notesBlock, deliveriesBlock\]/);
+    /* IN the joined array, not last in it. Pinning the tail made this fail the day a block was
+       appended after it, which is a change to a different rule entirely - the same trap the notes
+       spec next door already wrote down. */
+    expect(CODE).toMatch(/notesBlock, deliveriesBlock[,\]]/);
   });
 });
 

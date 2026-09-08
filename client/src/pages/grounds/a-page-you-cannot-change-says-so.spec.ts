@@ -4,31 +4,31 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 
 /**
- * A PAGE YOU CANNOT CHANGE SAYS SO, AND SAYS WHY.
+ * THE YARDSTICK REACHES A PARTY WHERE IT CAN BE COMPARED, NOT WHERE IT CAN ONLY BE DISCLOSED.
  *
- * Everything on a party's Setup tab is read-only - `canState={false}`, `canRecord={false}` - and each
- * panel knew it while the tab never said it. A screen full of things you cannot edit, with nothing
- * explaining why, reads as broken or as a permission you have somehow lost.
+ * WHAT THIS SPEC USED TO SAY. A party's Setup tab carried a paragraph - "Nothing on this page is
+ * yours to change... so that what you are read against is not something you set yourself" - and
+ * this file pinned every clause of it, plus the two read-only panels it was apologising for.
  *
- * THE REASON IS THE LOAD-BEARING PART. A party stating their own yardstick would be the person being
- * read setting their own measure, which is the one comparison this product exists to make. That is a
- * defensible rule and it becomes an arbitrary one the moment it goes unexplained.
+ * WHY IT CHANGED. Her instruction, naming the paragraph and both panels: "remove this part on the
+ * setup page for zainab". The reasoning in the old spec was sound and the placement was not. A
+ * settings tab was the one page where nothing was hers, and what she met there was a paragraph
+ * explaining a restriction, followed by two panels that said only that nothing had been set. Three
+ * statements about absence and permission before a single fact about her.
  *
- * AND IT NAMES THE WAY TO DISAGREE, because there is one: the chat, where a disagreement is probed
- * and recorded. Read-only is not the same as voiceless, and a page that implies it is would be
- * describing a different product.
+ * WHAT MUST STILL BE TRUE, AND IS WHAT THIS FILE NOW GUARDS. Somebody being read against a standard
+ * they cannot see is the thing this product is against. So the rule did not move - the surface did.
+ * What the lead says success is now reaches a party on My record, beside her own account of the
+ * same question, where the two can be read together rather than one being disclosed at her. Losing
+ * the paragraph must not be allowed to quietly become losing the yardstick.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PARTY = readFileSync(path.join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
+const MY_RECORD = readFileSync(path.join(__dirname, '../../components/gw/MyRecord.tsx'), 'utf8')
+const BAND = readFileSync(path.join(__dirname, '../../components/gw/WhatSuccessLooksLike.tsx'), 'utf8')
+const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-/**
- * The tab's own region, so nothing elsewhere on the page can satisfy these.
- *
- * WAS A FIXED 3,000 CHARACTERS, which is a length, not a region. Adding a comment inside the tab
- * pushed the panels it checks past the end and the assertion failed on code that had not changed -
- * the same trap as any other slice measured in characters. Bounded by the block's own braces now,
- * so it grows with what it is guarding.
- */
+/** The tab's own region, bounded by its braces so it grows with what it is guarding. */
 const SETTINGS = (() => {
   const i = PARTY.indexOf("{tab === 'settings' && (")
   expect(i).toBeGreaterThan(-1)
@@ -37,32 +37,48 @@ const SETTINGS = (() => {
     if (PARTY[j] === '{') depth++
     else if (PARTY[j] === '}') {
       depth--
-      if (depth === 0) return PARTY.slice(i, j + 1)
+      if (depth === 0) return strip(PARTY.slice(i, j + 1))
     }
   }
   throw new Error("the settings tab's block never closes")
 })()
 
-describe('a page you cannot change says so', () => {
-  it('says it plainly', () => {
-    expect(SETTINGS).toMatch(/Nothing on this page is yours to change/)
+describe('the setup tab is what is true about you, and nothing else', () => {
+  it('no longer opens with a paragraph about what is not yours', () => {
+    expect(SETTINGS).not.toMatch(/Nothing on this page is yours to change/)
+    expect(SETTINGS).not.toMatch(/not something you set yourself/)
   })
 
-  it('and gives the reason rather than just the rule', () => {
-    expect(SETTINGS).toMatch(/not something you set yourself/)
+  it('and the two panels that paragraph was apologising for are gone from it', () => {
+    expect(SETTINGS).not.toContain('BaselinePanel')
+    expect(SETTINGS).not.toContain('StartingPointPanel')
   })
 
-  /** Read-only is not voiceless. */
-  it('and names the way to disagree', () => {
-    expect(SETTINGS).toMatch(/say so in your check-in/)
+  it('found the region, so an empty slice cannot pass these', () => {
+    expect(SETTINGS).toContain('MyParticipation')
+  })
+})
+
+describe('but the yardstick still reaches a party, where it can be compared', () => {
+  it('on My record, which is the page beside her own sessions', () => {
+    expect(strip(MY_RECORD)).toContain('WhatSuccessLooksLikeFor')
+  })
+
+  it('carrying what the lead stated, not only what she said herself', () => {
+    const code = strip(BAND)
+    expect(code).toMatch(/data\.stated/)
+    expect(code).toMatch(/data\.definitions/)
   })
 
   /**
-   * The sentence has to stay true. If a panel here ever became editable for a party, the copy would
-   * be a lie - so the read-only props are pinned alongside it.
+   * The refusals are the design, and they are the first thing a later change would erode: a
+   * percentage looks like progress and is a verdict, and "met" is a judgement about the world that
+   * no entry in the record can carry - a commitment to do a thing is not the thing being done.
    */
-  it('and the panels it describes are still read-only', () => {
-    expect(SETTINGS).toContain('canState={false}')
-    expect(SETTINGS).toContain('canRecord={false}')
+  it('and still issues no verdict: no score, no percentage, no "met"', () => {
+    const code = strip(BAND)
+    expect(code).not.toMatch(/\bmet\b/i)
+    expect(code).not.toMatch(/toFixed|Math\.round\([^)]*100|%<|'%'|`%`/)
+    expect(code).not.toMatch(/\bscore\b/i)
   })
 })

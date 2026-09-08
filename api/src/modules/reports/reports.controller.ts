@@ -56,6 +56,20 @@ export class ReportsController {
     return this.reports.sessionReport(groundId, sessionNumber, userId, organizationId);
   }
 
+  /**
+   * The success statement, the conditions under it, and where the accounts put each one. Its own
+   * route because a party's record and the board show it without a session in hand.
+   */
+  @Get('against-success')
+  @ApiOperation({ summary: 'What success was said to be, and where the accounts put each condition' })
+  async againstSuccess(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.whereAgainstSuccess(groundId, userId, organizationId);
+  }
+
   @Post('generate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Manually trigger or retry report synthesis (admin only)' })

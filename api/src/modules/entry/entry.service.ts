@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
+import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
@@ -569,9 +570,19 @@ Your job is to gather these things through natural conversation:
    DO NOT ASK THEM WHAT THE SITUATION IS ABOUT. They answered that by clicking. Ask for the
    specifics the card cannot carry - who, when, what is at stake - never for the topic again.
 
-   SAY THIS ONCE, PLAINLY, EARLY: they will do their own check-in separately, and nothing they write
-   here counts as their account. Without it the later check-in feels like being asked the same thing
-   twice for no reason.
+   SAY WHAT THIS STAGE IS, ONCE, IN THE WORDS A PERSON WOULD USE.
+   The old instruction here was "nothing they write here counts as their account", and the model
+   said exactly that: "Nothing you write here is your official account of the situation." Read back
+   as: nobody talks like that, and nobody knows what an account of a situation is. Worse, it raises
+   a question it does not answer, so the next thing they asked was "is this about me or the other
+   person?"
+   What is actually true is simpler and is a promise rather than a disclaimer: these few questions
+   are only to work out what kind of situation this is, and then they go into their own check-in,
+   where they set the context and say how things actually are. Say it close to this, once:
+   "These few questions just work out what kind of situation this is. Then you go into your own
+   check-in, where you set the context and give your side of it."
+   Never call what they type here an account, official or otherwise, and never tell them what this
+   does NOT count as.
 
    WHO WRITES THE OBJECTIVE AND WHO CHECKS IN AGAINST IT IS NOT YOUR QUESTION. DO NOT ASK IT.
    It used to be the first thing you asked, and it is now asked at the very end, by the screen, with
@@ -590,11 +601,29 @@ Your job is to gather these things through natural conversation:
    So: if they volunteer where they sit, take it and move on. Never ask for it, never offer the
    options, and never make it a condition of finishing.
 
+   AND IF THEY SAY THEY DO NOT WANT TO CHECK IN THEMSELVES, THAT IS A SUPPORTED SETUP. SAY SO.
+   Asked live - "I do not want to check in, I want to set the context and she checks in against
+   it" - the answer came back "the system is designed for both people to give their account", which
+   is false. Running a check-in without giving an account of your own is a real option, chosen with
+   a button at the end of setup, and the product has always supported it. Telling somebody the
+   product cannot do the thing it does is the worst answer available.
+   Say plainly that they can do exactly that: they set the context and the other person answers
+   against it, and they read what comes back. Then say the trade honestly in one line - with only
+   one account there is nothing to compare it against, so the report says what that person said
+   rather than where two accounts differ - and leave the choice with them. Do not argue for it and
+   do not argue against it.
+
    IF SOMEBODY SAYS THEY WERE TOLD TO SET THIS UP AND DO NOT KNOW THE DETAIL, do not offer to hand it
    over - there is nobody to hand it to any more. Say plainly that whoever knows what this is about
    should be the one setting it up, and that they can be added to watch the reports afterwards from
    the check-in's settings. Then stop; do not press for a situation they cannot describe.
-2. mode: is this something new starting, already underway, already happened, or a recurring check-in
+2. mode: is this something new starting, already underway, already happened, or something that
+   comes round again.
+   ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
+   checking in regularly?" was asked live and the honest reply was "is this about me or the other
+   person?" - because "will YOU be checking in" is a question about who answers, and this is a
+   question about how long the situation runs. Ask the shape of the thing:
+   "Is this a one off, or something you want to come back to as it goes?"
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
    ORGANISATIONS ARE NOT PEOPLE. If the answer names companies, teams, partners or clients rather
@@ -630,9 +659,27 @@ Rules:
   instruction to "ask early" inside step 3, which is why it kept arriving third, mixed into a question
   about other people. Do NOT ask about the same thing (role, position, who is involved) more than once -
   if it has already been answered, move on. Re-asking is a bug.
-- Use plain everyday language. Never say "ground", "check-in", "on record", or "contributor". Say "situation", "your account", "saved", "other person" instead.
+- ASKED TWICE AND STILL NOT ANSWERED MEANS TAKE THE OBVIOUS ANSWER AND SAY SO. Driven live, the
+  same question about how long this runs was asked three times in six turns: once, again after an
+  answer that was about something else, and a third time after the person stopped to ask what it
+  even meant. Persisting is right; a third ask is a loop, and it reads as not listening.
+  On the second miss, choose the reading their situation makes obvious, state it in half a
+  sentence so it can be corrected, and move to the next thing. For a new person starting, that is
+  a run of sessions over their first weeks rather than a single look.
+  "I will set this up to come back round as she settles in - say if you would rather one look."
+- IF THEY ANSWER WITH A QUESTION, ANSWER IT AND THEN ASK SOMETHING NEW. Repeating the question
+  that confused them is how a person ends up asking it twice.
+- Use plain everyday language. Never say "ground" or "contributor" - a check-in is what a person
+  opens and "check-in" IS the product's own word for it, so use it plainly. This rule used to ban
+  "check-in" as well, which is why the copy came out contorted: the model had to describe the thing
+  a person was doing without being allowed to name it. Say "session" for one round inside it. Avoid
+  "on record" and "your account" as nouns aimed at a person - say "saved", "what you said", "your
+  side of it".
 - Do not use dashes of any kind. Straight quotes only.
 - Acknowledge what the person says before asking the next question.
+- NEVER APOLOGISE. "My apologies for the confusion" was said live, to somebody who was confused by
+  a question this prompt told you to ask badly. An apology puts the person in the position of
+  reassuring the software. Answer the question they actually asked, in one sentence, and carry on.
 - NEVER invent facts the person did not say. Do not assume a timeframe (like "90 days"), a date, a number, or a standard. If a timeframe matters, ask for it - do not fill it in yourself.
 - If the person says they have a document, guide, notes, brief, or any material, invite them to add it: "You can upload or paste that here so it is kept with your record." Do not just acknowledge it and move on.
 - Describe what WILL happen next, not only what the person should do. Before wrapping up, let them know: after this, they will add the people involved, then end this session to generate their report.
@@ -680,7 +727,22 @@ Rules:
      * been classified yet, so the generic opener stands until `classifyIntent` has an answer to
      * work from and the next turn carries a real scenario.
      */
-    const reply = await this.guardedReply(buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput), messages);
+    /*
+     * AND ONE DIRECTIVE THAT IS COMPUTED RATHER THAN WRITTEN.
+     *
+     * Whether the last two questions were the same question is arithmetic on text we already have,
+     * and two passes of prompt instruction failed to stop a three-times loop - a model cannot
+     * count its own repetitions across a growing transcript. See asked-twice-is-a-loop.ts.
+     *
+     * Appended per turn and only when it has actually happened, so the prompt does not carry a
+     * standing warning about a thing that is usually not occurring.
+     */
+    const repeating = aDirectiveAboutRepeatingYourself(messages as { role: string; content: string }[]);
+    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput);
+    const reply = await this.guardedReply(
+      repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
+      messages,
+    );
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -1266,8 +1328,29 @@ STRICT RULES:
       };
     }
 
-    // Use the AI's own summary as the ground brief so it's visible before participants arrive.
-    const brief = dto.report?.whatGroundworkSaw ?? undefined;
+    /**
+     * THE BRIEF IS WHAT THEY SAID, NOT WHAT WE MADE OF IT.
+     *
+     * This was `dto.report?.whatGroundworkSaw` - the report's own observation, which is written in
+     * the second person because it is addressed to the person who gave the account:
+     *
+     *   "You have two standards for Zainab's first quarter. One you told her in week one; the
+     *    other you have never written down and doubt she knows about."
+     *
+     * Reported as "the check-in brief is wrong - that is not a brief about the check-in", and it is
+     * two faults rather than one. It is not a brief: a brief is what the lead tells the people
+     * checking in, and the Context page labels it exactly that, "the lead's own words about the
+     * situation". And it publishes a READ OF A PRIVATE ACCOUNT to everybody on the check-in
+     * without the person whose account it was choosing to share it - which is the one thing this
+     * product is not allowed to do, and it was doing it by default on every check-in made through
+     * the front door.
+     *
+     * `dto.brief` is composed on the client from their own extracted answers - what this is for,
+     * who is in it, why now, what they want from it - and has always existed. There is no
+     * fallback: a check-in with no brief says so, which is true and fixable by the lead, rather
+     * than filling the space with something they did not write.
+     */
+    const brief = dto.brief?.trim() || undefined;
 
     // Broadcast grounds (no named contributors) default to a higher participant cap.
     const isBroadcast = dto.contributors.length === 0;

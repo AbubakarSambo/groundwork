@@ -15,6 +15,14 @@ import { BadRequestException } from '@nestjs/common';
 function makeService(laterStartedRow: any) {
   const prisma: any = {
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1', groundId: 'g1' })) },
+    /*
+     * The correction path now also asks whether the REPORT has gone out, and how long a released
+     * report stays correctable. Neither existed on this double, which is why it went red - the
+     * lock this file is about is unchanged. No report row means not released, which is the state
+     * every case in this file is in.
+     */
+    report: { findUnique: jest.fn(async () => null) },
+    platformSetting: { findUnique: jest.fn(async () => null) },
     checkIn: {
       // the target session being corrected - completed
       findUnique: jest.fn(async () => ({ id: 'ci-target', status: 'COMPLETED', sessionNumber: 1 })),

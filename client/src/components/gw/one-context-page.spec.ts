@@ -48,8 +48,28 @@ describe('there is one context page', () => {
    * the two views can differ without anybody choosing that.
    */
   it('takes a role, not a layout', () => {
-    expect(CONTEXT).toMatch(/role: 'lead' \| 'party'/)
+    /*
+     * THREE READERS, NOT TWO. This pinned `'lead' | 'party'`, and the view that runs a check-in
+     * passed 'lead' for the lead AND for an admin of the organisation - so an admin got the whole
+     * of the lead's authoring surface, including the band headed "Only you see this", which holds
+     * the lead's private steers. Found walking a second admin of a real organisation.
+     */
+    expect(CONTEXT).toMatch(/role: 'lead' \| 'admin' \| 'party'/)
     expect(CONTEXT).not.toMatch(/children/)
+  })
+
+  /**
+   * AND THE TWO QUESTIONS STAY SEPARATE, because their answers differ for exactly one reader.
+   * Who RUNS the check-in decides the brief - the shared description of the work, which an admin
+   * may rewrite. WHOSE check-in it is decides the private steers, the running log, the standing
+   * note and the context conversation: one person's own framing and one person's own private
+   * notes. Collapsing them back into one flag is how an admin gets the steers again.
+   */
+  it('and asks who runs it separately from whose it is', () => {
+    expect(CONTEXT).toMatch(/const isLead = role === 'lead' \|\| role === 'admin'/)
+    expect(CONTEXT).toMatch(/const isTheLead = role === 'lead'/)
+    /* The band that must never widen: the lead's own private steers. */
+    expect(CONTEXT).toMatch(/\{isTheLead && privateSteers\.length > 0 && \(/)
   })
 
   it('and both pages pass one', () => {
@@ -74,7 +94,8 @@ describe('the way in is on the page it points at', () => {
 
   it('and the page only claims to have one when it does', () => {
     // hasChat is true exactly where ContextChat is rendered: the lead, with context on.
-    expect(CONTEXT).toContain('hasChat={isLead && contextEnabled}')
-    expect(CONTEXT).toMatch(/\{contextEnabled && isLead && <ContextChat/)
+    /* `isTheLead`, not `isLead`: the conversation is the lead's own, and an admin reads the page. */
+    expect(CONTEXT).toContain('hasChat={isTheLead && contextEnabled}')
+    expect(CONTEXT).toMatch(/\{contextEnabled && isTheLead && <ContextChat/)
   })
 })

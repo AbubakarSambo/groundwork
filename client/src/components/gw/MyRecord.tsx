@@ -1,5 +1,6 @@
 import { Sec } from './kit'
 import { ResolutionPanel } from './ResolutionPanel'
+import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 
 /**
  * SOMEBODY'S OWN ACCOUNT OF A CHECK-IN.
@@ -83,6 +84,20 @@ export function MyRecord({
             <ResolutionPanel groundId={groundId} />
           )}
 
+          {/*
+            WHAT SUCCESS WAS SAID TO BE, AND WHERE THE ACCOUNTS PUT IT.
+
+            This is where a party meets it now. It used to be on her Setup tab, as a read-only panel
+            under a paragraph apologising for being read-only - a disclosure, not a comparison, and
+            on the one tab where nothing is hers. Here it sits beside her own sessions, next to her
+            own account of the same question, which is the only place the two can be read together.
+          */}
+          {groundId && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <WhatSuccessLooksLikeFor groundId={groundId} />
+            </div>
+          )}
+
           {/* The empty state, and NO price.
               `insightsLocked` does not mean "unpaid" - it means "no completed
               session yet", and the server says so: the first session of every
@@ -95,10 +110,25 @@ export function MyRecord({
               was scaffolding. */}
           {myRecord?.insightsLocked !== false && (
             <div style={{ background: 'var(--gw-navy)', borderRadius: 10, padding: '18px 20px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>Your record insights</div>
+              {/*
+                THE SECOND TIME THE SAME EMPTY STATE WAS SAID.
+
+                Two inches above this, the private-report card already says "Your private report is
+                not ready yet - it generates once you complete your check-in." This box then said
+                "Complete your first check-in to start building your record", which is the same
+                sentence in a louder colour. The pattern she has named twice: the same absence
+                stated twice, close together.
+
+                What this box is actually for is the question a party cannot otherwise answer -
+                where does she see how specific she has been? She has no Sessions tab; the lead's
+                view of everyone's state is not hers. The answer is this tab, in two places, and now
+                it says so instead of restating the precondition.
+              */}
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>What this page will hold</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
-                Complete your first check-in to start building your record. Your specificity trend,
-                confidence score, and observations across sessions appear here as you go.
+                A line per session, each with how specific that account was, and a trend across all
+                of them once there is more than one. Both appear here - this is the page where you
+                see how you are being read.
               </div>
             </div>
           )}
@@ -137,30 +167,33 @@ export function MyRecord({
             })()}
 
           {/* Session history summary - always visible */}
-          {(myRecord?.sessions ?? []).length > 0 && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              <Sec title="Sessions on record" />
-              {(myRecord?.sessions ?? []).map((s: any) => (
-                <div key={s.sessionNumber} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--gw-bg)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Session {s.sessionNumber}</div>
-                  <div style={{ fontSize: 11, color: s.status === 'COMPLETED' ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: s.status === 'COMPLETED' ? 700 : 500 }}>
-                    {s.status === 'COMPLETED' ? (s.completedAt ? new Date(s.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Complete') : 'In progress'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/*
+            THE SESSIONS LIST WAS HERE TWICE, AND THIS WAS THE COPY WITH LESS IN IT.
 
-          {/* Specificity trend - unlocked only */}
+            "My record page seems to be doing too much." Two lists of the same sessions sat a few
+            inches apart: this one - number, date, status - and the session-reports list above,
+            which is the same sessions with the same dates AND a way into each session's report.
+            Nothing is lost by keeping the one you can act from, and each row now also carries how
+            checkable that session's account was, which is what the card below used to say without
+            saying which session it meant.
+          */}
+          {/*
+            SPECIFICITY AND CONFIDENCE ARE TWO DIFFERENT READS, AND THEY READ AS ONE.
+
+            "Confidence is about the history and the read possible, and specificity is about how
+            well you have given information in each session."
+
+            So specificity is PER SESSION and now sits on the session it is about, in the list
+            above. What is left here is the part that is genuinely about the run: whether your
+            answers are getting more specific or less, and the one thing that would make the next
+            one land harder. The bar chart is gone - a row of coloured bars with no dates and no
+            scale is a mark out of something a person cannot see, and this read exists to be acted
+            on rather than scored.
+          */}
           {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              <Sec title="Specificity across sessions" />
-              <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                {myRecord.specificity.scores.map((s: any, i: number) => (
-                  <div key={i} title={`Session ${i + 1}`} style={{ flex: 1, height: 6, borderRadius: 3, background: s >= 0.65 ? 'var(--gw-green-b)' : s >= 0.35 ? 'var(--gw-amber-b)' : 'var(--gw-border)' }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <Sec title="How your answers are going" src="across the sessions so far" />
+              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
                 {specificity?.trend === 'rising'
                   ? 'Your answers are getting more specific as this goes on.'
                   : specificity?.trend === 'falling'
@@ -170,28 +203,30 @@ export function MyRecord({
                       : 'Too early to read a trend. This fills in as you check in.'}
               </div>
 
-              {/**
-                * The half that makes this worth showing anybody. Nobody can act on a word like
-                * "low"; everybody can act on "none of your answers say when".
-                */}
+              {/* Nobody can act on a word like "low"; everybody can act on "none of your answers
+                  say when". */}
               {specificity?.whatWouldHelp && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gw-bg)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 3 }}>What would make the next one land harder</div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>What would make the next one land harder. </span>
                   {specificity.whatWouldHelp}
                 </div>
               )}
 
-              {/**
-                * Their own best answer, quoted back. Showing what a checkable account looked like
-                * in their own words teaches what no description of specificity can.
-                */}
+              {/* Their own best answer, quoted back. What a checkable account looked like in their
+                  own words teaches what no description of specificity can. */}
               {specificity?.strongest && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 10 }}>
-                  <div style={{ fontWeight: 600, color: 'var(--gw-text)', marginBottom: 3 }}>This one of yours was easy to check</div>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>This one of yours was easy to check. </span>
                   <span style={{ fontStyle: 'italic' }}>"{specificity.strongest}"</span>
                 </div>
               )}
 
+              {/*
+                THE REASON THIS IS SAFE TO SHOW AT ALL IS THAT IT GOES NOWHERE ELSE, and I dropped
+                this line while tightening the card. A person reading feedback on their own writing
+                assumes their lead is reading it too unless told otherwise, so the assurance is part
+                of the feature rather than decoration around it.
+              */}
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
                 Only you see this. It is never shown to the lead or to anybody else in this check-in.
               </div>
@@ -202,7 +237,7 @@ export function MyRecord({
           {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Sec title="Record confidence" />
+                <Sec title="What your record can support" src="the whole history, not this session" />
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-navy)' }}>{myRecord.confidence.label}</div>
               </div>
               <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
@@ -231,8 +266,9 @@ export function MyRecord({
           )}
 
           {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
-            <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
-              No patterns have surfaced yet. Patterns appear after they have been observed across multiple sessions. This is intentional.
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, padding: '0 2px' }}>
+              No patterns have surfaced yet. They appear once the same thing has been seen across
+              several sessions, which is deliberate - one session is not a pattern.
             </div>
           )}
         </div>

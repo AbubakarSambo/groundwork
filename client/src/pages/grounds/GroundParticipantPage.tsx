@@ -10,8 +10,6 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { groundTabs } from './ground-tabs'
-import { BaselinePanel } from '@/components/gw/BaselinePanel'
-import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
@@ -118,7 +116,9 @@ export function GroundParticipantPage() {
   const { data: mySoloReport, refetch: refetchSoloReport } = useQuery({
     queryKey: ['my-solo-report', id],
     queryFn: () => groundsApi.getMySoloReport(id!),
-    enabled: !!id && tab === 'report',
+    /* MY RECORD, NOT REPORT. `MyPrivateReport` renders this and lives on the record tab, so the
+       carry-forward line only loaded for somebody who had happened to open Report first. */
+    enabled: !!id && tab === 'record',
     retry: false,
   })
 
@@ -365,19 +365,6 @@ export function GroundParticipantPage() {
     /* This page is somebody's own account of the check-in. Running it is the other view's job. */
     canRunThisCheckIn: false,
     isAParty: true,
-  }).map(t => {
-    /**
-     * This page's own keys predate the shared list and are not worth churning: `checkin` for the
-     * conversation, `docs` for the material. Mapped explicitly rather than cast, because the cast is
-     * what let the first version of this ship with `chat` as a key this page never matches - the
-     * conversation tab would have highlighted nothing and shown nothing. Caught by reading it, not
-     * by the typechecker, which a cast had silenced.
-     */
-    const mine: Record<string, Tab> = {
-      chat: 'checkin', report: 'report', record: 'record',
-      context: 'docs', settings: 'settings',
-    }
-    return { key: mine[t.key] ?? 'checkin', label: t.label }
   })
 
 
@@ -407,7 +394,25 @@ export function GroundParticipantPage() {
               where the check-in has got to belongs up here, on both pages, once.
             */}
             <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span>Just yours - only you see this until the report releases.</span>
+              {/*
+                WHICH OF THE TWO VIEWS YOU ARE ON, SAID OUTRIGHT.
+
+                "I think there may be some chaos happening based on lead, participant or admin",
+                after landing here and reporting that the Sessions page had gone and the Context
+                page had vanished. Neither had: this is the party view, which has never had a
+                Sessions tab, and its Context tab is right there. But a lead who runs the check-in
+                AND gives their own account has two pages with the same name at the top, one tab
+                row that differs by two entries, and a line about privacy to tell them apart.
+
+                So the line says which page this is. For somebody who only takes part it reads the
+                same as it always did; for whoever runs it, it names the other page in the same
+                breath as the button that goes there.
+              */}
+              <span>
+                {canRunThisCheckIn
+                  ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
+                  : 'Just yours - only you see this until the report releases.'}
+              </span>
               {totalSessions != null && (
                 <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
               )}
@@ -446,13 +451,27 @@ export function GroundParticipantPage() {
 
         {/* Tab bar */}
           <GroundTabRow
-            tabs={tabs.map(t => ({ key: t.key as any, label: t.label }))}
-            active={tab}
+            tabs={tabs}
+            active={TO_TAB_KEY[tab] ?? 'chat'}
             /*
               The `k === 'board'` branch that used to sit here was dead: `groundTabs()` stopped
               returning a board key when the board left the tab row, so nothing could ever take it.
               Dead, and worse than dead - it was the only navigate() to the board left in the app, so
               it kept a "does anything link here?" check green while the board was unreachable.
+            */
+            /*
+              TRANSLATED ONCE, AND IN THE SAME PLACE THE LEAD'S VIEW TRANSLATES.
+
+              This page used to translate TWICE: the list it handed the row was already mapped into
+              this page's own keys, and then `onPick` ran those keys back through `FROM_TAB_KEY`,
+              which takes the SHARED ones. `docs` and `checkin` are in neither direction of that
+              map, so both fell through to the default. Three of the five keys spell the same in
+              both vocabularies, which is why Report, My record and Setup worked and Context was the
+              single tab that sent you back to the conversation. Reported as "her context page
+              doesnt seem to exist" - it existed; the tab could not reach it.
+
+              So the row is given the shared keys, exactly as the lead's view gives them, and the
+              only translation on this page happens here and in `active`.
             */
             onPick={k => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
           />
@@ -549,6 +568,10 @@ export function GroundParticipantPage() {
             */}
             <MyPrivateReport
               groundId={id!}
+              /* The private, forward-looking panel that used to sit inside the shared report. See
+                 WhatToWalkInWith - it is three lines for one person about a conversation they have
+                 not had yet, and My record is the tab that is theirs. */
+              walkInGuide={(report as any)?.postReportGuide ?? null}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
               myParticipant={myParticipant}
@@ -556,6 +579,9 @@ export function GroundParticipantPage() {
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
               mySessions={myFinishedSessions}
+              /* Per-session specificity, so each row can say how checkable that account was. The
+                 same read the trend card uses; it just belongs on the session it is about. */
+              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
@@ -582,6 +608,7 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
+              onGoToMyRecord={() => goTab('record')}
               viewerUserId={user?.id}
             />
           </div>
@@ -600,53 +627,20 @@ export function GroundParticipantPage() {
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {/*
-              WHAT IS TRUE ABOUT YOU FIRST, WHAT SOMEBODY ELSE SET SECOND.
+              THE SETUP TAB IS WHAT IS TRUE ABOUT YOU, AND NOTHING ELSE.
 
-              This tab opened with a disclaimer and two empty panels that belong to the lead, so a
-              party's first sight of it was three statements about absence and permission before
-              anything that was actually about them. Counted on a real check-in: five sentences about
-              what is missing or not theirs, in a thousand characters.
+              It used to open with a paragraph saying nothing here was hers to change, then the two
+              panels that paragraph was apologising for - the yardstick and the starting point - both
+              of which said only that nothing had been set. Three statements about absence and
+              permission before a single fact about her.
 
-              Nothing is removed - the disclaimer is still the honest thing to say, and the panels
-              still show what the lead has set. They are ordered with `order` rather than moved,
-              because the parent is already a flex column and reordering the markup itself is how a
-              1,100-line page gets broken.
+              The paragraph is gone, and so are the panels. Not because a party should not see what
+              they are read against - that is exactly what this product is for - but because a
+              settings tab was the wrong place for it. What the lead says success is now reaches her
+              on My record, beside her own account of it, which is where it can be compared rather
+              than merely disclosed. See `WhatSuccessLooksLike`.
             */}
-            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
-            {/*
-              SAID OUTRIGHT, ONCE, AT THE TOP.
-              
-              Everything on this tab is read-only for a party, and each panel knew it - `canState` and
-              `canRecord` are both false - but the tab never said so. A screen full of things you
-              cannot change, with nothing explaining why, reads as either broken or as a permission
-              you have somehow lost.
-              
-              And the reason matters more than the fact: a party stating their own yardstick would be
-              the person being read setting their own measure, which is the one comparison the report
-              exists to make. So the sentence gives the reason and names the way to disagree, because
-              there is one and it is not a form.
-            */}
-            <div style={{ order: 3, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              Nothing on this page is yours to change. What doing well looks like, and where this
-              stood at the start, are set by the person running the check-in - so that what you are
-              read against is not something you set yourself. You can see all of it, and if you
-              think any of it is wrong, say so in your check-in: that goes on the record too.
-            </div>
-
-            {/**
-              * THE YARDSTICK, READ-ONLY. `canState` is false: stating what doing well looks like is
-              * the lead's, because a party stating it would be the person being read setting their own
-              * measure - the one thing the report exists to compare against something else.
-              *
-              * But they see it. If it changed mid-ground, they see that too, with the reason. Somebody
-              * being read against a standard they cannot see is the thing this product is against.
-              */}
-            <div style={{ order: 4 }}><BaselinePanel groundId={id!} canState={false} /></div>
-            {/**
-              * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
-              * yardstick and the starting point together are what let a report say something moved.
-              */}
-            <div style={{ order: 5 }}><StartingPointPanel groundId={id!} canRecord={false} /></div>
+            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Setup</div>
 
             {/* Profile summary */}
             <MyParticipation

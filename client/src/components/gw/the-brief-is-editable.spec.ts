@@ -1,0 +1,48 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+/**
+ * THE BRIEF COULD BE WRITTEN AT CREATION AND NEVER AGAIN.
+ *
+ * Two consequences, and the second is why this had to ship with the fix rather than after it. A
+ * lead who wanted to tell their team what this check-in is for, once it existed, had no way to. And
+ * every check-in made through the entry chat before today carries a brief nobody wrote - the
+ * report's read of the lead's own account, in the second person, published to everybody on it - so
+ * stopping the cause without giving anybody a way to clear the effect would have left the wrong
+ * brief on every existing check-in permanently.
+ *
+ * NOT MIGRATED, DELIBERATELY. Several paths write this column and one of them lets a lead type
+ * whatever they like, so there is no reliable way to tell a machine-written brief from a short
+ * human one after the fact. Clearing them by pattern would have deleted real briefs. The route out
+ * is a control, not a script.
+ */
+const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+const PAGE = strip(readFileSync(join(__dirname, 'ContextPage.tsx'), 'utf8'))
+
+describe('writing the brief', () => {
+  it('is offered on the brief itself, to whoever runs the check-in', () => {
+    expect(PAGE).toContain('Rewrite this')
+    expect(PAGE).toContain('{isLead && briefDraft === null && (')
+  })
+
+  it('and offered as a way in when there is none yet', () => {
+    expect(PAGE).toContain('Write the brief')
+    expect(PAGE).toContain('Nobody has written a brief yet')
+  })
+
+  it('says who reads it, on the button that saves it', () => {
+    /* The one fact that decides how somebody writes it. */
+    expect(PAGE).toContain("'Everyone here reads this'")
+  })
+
+  it('warns before an empty save clears it', () => {
+    /* Blank clearing the brief is deliberate - somebody who wants a brief they did not write GONE
+       should not have to replace it with something they do not mean - so it has to be said. */
+    expect(PAGE).toContain('Saving it empty removes the brief.')
+  })
+
+  it('and refreshes the check-in, so the page shows what was saved', () => {
+    expect(PAGE).toMatch(/saveBrief[\s\S]{0,400}invalidateQueries/)
+  })
+})

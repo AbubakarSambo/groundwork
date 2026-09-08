@@ -66,7 +66,7 @@ import { toast } from 'sonner'
  * first session too - a ground runs ninety days and "what was this for again" is a
  * question people have in week eight, not just week one.
  */
-function GroundTopic({ brief, parties, peersHidden, notOpenYet }: {
+function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }: {
   /**
    * NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
    *
@@ -96,6 +96,16 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet }: {
    */
   parties?: { name: string; done: boolean; isSelf: boolean }[]
   peersHidden?: boolean
+  /**
+   * WHETHER THE READER IS ONE OF THE PEOPLE THIS CARD IS TALKING ABOUT.
+   *
+   * The closing line said "What you say stays on your side until everyone has checked in" to
+   * everybody, including an admin of the organisation who is not in the check-in and says nothing
+   * in it. She has no side. Same class of thing as the peer sentence above: party copy shown to a
+   * reader the rule does not describe, and the only reason it reads as harmless is that the rest
+   * of it happens to be true for her too.
+   */
+  viewerIsParty?: boolean
 }) {
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
@@ -176,8 +186,9 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet }: {
         </div>
       )}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
-        What you say stays on your side until everyone has checked in. The report goes to
-        everybody at the same time, so nobody reads it before anybody else.
+        {viewerIsParty === false
+          ? 'Each account stays on its own side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'
+          : 'What you say stays on your side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'}
       </div>
     </div>
   )
@@ -562,6 +573,7 @@ export function GroundChat({
           parties={parties}
           peersHidden={peersHidden}
           notOpenYet={!openCheckInId && !!nextOpensAt}
+          viewerIsParty={isParty}
         />
 
         {/*

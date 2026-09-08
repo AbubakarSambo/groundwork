@@ -23,6 +23,12 @@ export interface Attached {
   fileName: string;
   content: string;
   uploaderNote?: string | null;
+  /**
+   * One line saying who provided it and who can read it - see where-this-document-came-from.ts.
+   * Optional so nothing that builds an `Attached` without it breaks; absent, the document goes in
+   * unattributed exactly as every document used to.
+   */
+  provenance?: string | null;
 }
 
 /**
@@ -53,7 +59,9 @@ export function whatFitsInTheRoom(docs: Attached[], room = ROOM_FOR_DOCUMENTS): 
     const asked = d.uploaderNote?.trim()
       ? `They asked for this to be read for: ${d.uploaderNote.trim()}\n`
       : '';
-    const head = `--- ${d.fileName} ---\n${asked}`;
+    /* Above the note, because who provided a document changes how its note reads. */
+    const from = d.provenance?.trim() ? `${d.provenance.trim()}\n` : '';
+    const head = `--- ${d.fileName} ---\n${from}${asked}`;
     const room_left = room - spent - head.length;
 
     if (room_left < TOO_SHORT_TO_BOTHER) {
