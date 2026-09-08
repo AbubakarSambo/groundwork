@@ -258,6 +258,9 @@ export function GroundAdminPage() {
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
+  /** Deleting a test check-in: the confirm step, and whatever the server refused with. */
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   /* Which setup question is open. One at a time; the first is open when the tab is reached.
      Declared up here with the rest: this component returns early for several ground states, and a
      hook below one of those returns is a hook that sometimes does not run. */
@@ -265,7 +268,18 @@ export function GroundAdminPage() {
   /* The start date as typed, against the one on record, so the save button knows if anything moved. */
   const [startsAtDraft, setStartsAtDraft] = useState('')
   /* Which setup questions this person has signed off. Kept in this browser - see the module. */
-  const [setupChecked, setSetupChecked] = useState<number[]>(() => (id ? stepsYouHaveChecked(id, user?.id) : []))
+  /**
+   * A SIGN-OFF IS A RECORD NOW, so it is read from the server rather than from this browser. See
+   * the-setup-steps-you-have-checked.ts for why it moved.
+   */
+  const { data: signedOff } = useQuery({
+    queryKey: ['setup-sign-offs', id],
+    queryFn: () => stepsYouHaveChecked(id!),
+    enabled: !!id,
+  })
+  /* Held locally as well so a press shows instantly and does not wait on a round trip for a tick. */
+  const [setupCheckedLocal, setSetupCheckedLocal] = useState<number[] | null>(null)
+  const setupChecked = setupCheckedLocal ?? signedOff ?? []
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -358,6 +372,20 @@ export function GroundAdminPage() {
       }
     })
   })()
+
+  const removeGround = useMutation({
+    mutationFn: () => groundsApi.remove(id!),
+    onSuccess: (res) => {
+      toast.success(`“${res.label}” deleted.`)
+      qc.invalidateQueries({ queryKey: ['grounds'] })
+      navigate('/grounds')
+    },
+    /* The server's sentence, which names who has answered. Anything else it says is worth showing
+       verbatim too - a delete that refuses without a reason is the thing this page is replacing. */
+    onError: (e: any) => setDeleteError(
+      e?.response?.data?.message ?? 'That could not be deleted. Nothing has changed.',
+    ),
+  })
 
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
@@ -1072,11 +1100,13 @@ export function GroundAdminPage() {
     onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
     checked: setupChecked.includes(n),
     onCheck: () =>
-      setSetupChecked(
-        setupChecked.includes(n)
-          ? forgetYouCheckedIt(id!, user?.id, n)
-          : rememberYouCheckedIt(id!, user?.id, n),
-      ),
+      {
+        const taking = setupChecked.includes(n)
+        /* Shown at once, then reconciled with what the server says it holds. */
+        setSetupCheckedLocal(taking ? setupChecked.filter(x => x !== n) : [...setupChecked, n].sort((a, b) => a - b))
+        const call = taking ? forgetYouCheckedIt(id!, n) : rememberYouCheckedIt(id!, n)
+        call.then(steps => setSetupCheckedLocal(steps)).catch(() => setSetupCheckedLocal(null))
+      },
   })
 
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
@@ -2829,6 +2859,56 @@ export function GroundAdminPage() {
                 Close this check-in
               </button>
             </div>
+
+            {/*
+              AND THE OTHER THING PEOPLE ACTUALLY WANT, WHICH IS NOT CLOSING.
+
+              "they can clear any test chats/checkins they run. I suspect this is likely to happen
+              with new users." It is what happens: the first thing anybody does is try this on
+              something invented, and the only way to be rid of it was to email us - so a new
+              account fills up with "test" and "asdf" sitting in the rail beside a real check-in.
+
+              Deleting and closing are not degrees of the same act and are not offered as though
+              they were. Closing keeps everybody's record and ends the work; deleting is for a thing
+              that was never work. The server draws the line rather than this page: it refuses the
+              moment anybody else has given an account, and says who, so a check-in cannot be
+              cleared out from under somebody who wrote in confidence and is not being asked.
+            */}
+            {isInitiator && (
+              <div style={{ marginTop: 10, padding: 14, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Delete it, if it was only a test</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                  For the ones you started to see how this works. It goes completely - the
+                  conversation, the sessions and anything uploaded. If somebody else has already
+                  given their account, this refuses and tells you: that is a record, not a test, and
+                  closing is the thing to do with it.
+                </div>
+                {deleteError && (
+                  <div style={{ fontSize: 12, color: 'var(--gw-red-t)', lineHeight: 1.6, marginBottom: 10, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 6, padding: '9px 11px' }}>
+                    {deleteError}
+                  </div>
+                )}
+                {confirmDelete ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>Delete “{ground.label}” for good?</span>
+                    <button
+                      onClick={() => removeGround.mutate()}
+                      disabled={removeGround.isPending}
+                      style={{ fontSize: 13, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', padding: '8px 14px', borderRadius: 6, cursor: removeGround.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                    >{removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}</button>
+                    <button
+                      onClick={() => { setConfirmDelete(false); setDeleteError(null) }}
+                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >Keep it</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setDeleteError(null); setConfirmDelete(true) }}
+                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >Delete this check-in</button>
+                )}
+              </div>
+            )}
             </Fold>
             {/*
               HOW FAR THROUGH SETUP SOMEBODY IS.

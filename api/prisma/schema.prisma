@@ -468,6 +468,7 @@ model Organization {
   callRequests       CallRequest[]
 
   workspaceNotifiers WorkspaceNotifier[]
+
   @@map("organizations")
 }
 
@@ -475,13 +476,13 @@ model User {
   id             String @id @default(uuid())
   organizationId String @map("organization_id")
 
-  email              String   @unique
-  passwordHash       String?  @map("password_hash")
-  firstName          String   @map("first_name")
-  lastName           String   @map("last_name")
-  jobTitle           String?  @map("job_title")
-  role               UserRole @default(MEMBER)
-  isActive           Boolean  @default(true) @map("is_active")
+  email               String   @unique
+  passwordHash        String?  @map("password_hash")
+  firstName           String   @map("first_name")
+  lastName            String   @map("last_name")
+  jobTitle            String?  @map("job_title")
+  role                UserRole @default(MEMBER)
+  isActive            Boolean  @default(true) @map("is_active")
   /// WAITING TO BE LET INTO THE ORGANISATION THEY WERE ADDED TO.
   ///
   /// True from the moment somebody accepts a check-in invitation to an organisation they were not
@@ -489,21 +490,21 @@ model User {
   /// common/seats.ts, which is the one definition every price and every cap reads - and they
   /// cannot open or answer a check-in. The audit trail is MembershipRequest; this is the flag the
   /// hot paths read, because a seat count cannot afford a join and a gate must not be able to miss.
-  awaitingOrgApproval Boolean @default(false) @map("awaiting_org_approval")
-  isEmailVerified    Boolean  @default(false) @map("is_email_verified")
-  isPlatformAdmin    Boolean  @default(false) @map("is_platform_admin")
-  googleId           String?  @unique @map("google_id")
-  emailNotifications Boolean  @default(true) @map("email_notifications")
+  awaitingOrgApproval Boolean  @default(false) @map("awaiting_org_approval")
+  isEmailVerified     Boolean  @default(false) @map("is_email_verified")
+  isPlatformAdmin     Boolean  @default(false) @map("is_platform_admin")
+  googleId            String?  @unique @map("google_id")
+  emailNotifications  Boolean  @default(true) @map("email_notifications")
   // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork
   // WhatsApp number serves everyone, so a phone number identifies exactly one
   // account, not one per org. Set by the user in Settings, or by an
   // admin/HR adding it on someone's behalf via the org roster.
-  phoneNumber        String?  @unique @map("phone_number")
+  phoneNumber         String?  @unique @map("phone_number")
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
   membershipRequests MembershipRequest[]
-  deletedAt DateTime? @map("deleted_at")
+  deletedAt          DateTime?           @map("deleted_at")
 
   organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   tokens           EmailVerificationToken[]
@@ -516,6 +517,7 @@ model User {
   entryDraft       EntryDraft?
   styleProfiles    PersonStyleProfile[]
   memberships      OrganizationMembership[]
+  setupSignOffs    GroundSetupSignOff[]
 
   @@index([organizationId])
   @@map("users")
@@ -777,10 +779,10 @@ model Ground {
   /// wants nobody nudged; `chasingStopped` is the same answer said explicitly, and
   /// both are honoured, because a lead who turned it off and got emails anyway is a
   /// lead who turns the product off.
-  chaseAfterDays  Int[]   @default([3, 7, 14]) @map("chase_after_days")
-  chasingStopped  Boolean @default(false) @map("chasing_stopped")
+  chaseAfterDays Int[]   @default([3, 7, 14]) @map("chase_after_days")
+  chasingStopped Boolean @default(false) @map("chasing_stopped")
   /// Whether the lead hears who has not started once the chasing is done with them.
-  tellTheLead     Boolean @default(true) @map("tell_the_lead")
+  tellTheLead    Boolean @default(true) @map("tell_the_lead")
 
   sessionsBalance            Int      @default(1) @map("sessions_balance")
   // When true (default), participants cannot see each other's email address - only
@@ -861,6 +863,7 @@ model Ground {
   documents                  GroundDocument[]
   personObjectives           PersonObjective[]
   baselineEntries            GroundBaselineEntry[]
+  setupSignOffs              GroundSetupSignOff[]
   leadContextNotes           LeadContextNote[]
   reportActivations          ReportActivation[]
   roundCompletions           RoundCompletion[]
@@ -880,19 +883,19 @@ model Ground {
   /// Why it was declined, in the admin's words. Shown to whoever created it.
   declineReason              String?                     @map("decline_reason") @db.Text
   deliveries                 Delivery[]
+  documentsElsewhere         DocumentElsewhere[]
+  reportedFigures            ReportedFigure[]
+  differences                Difference[]
+  agreements                 Agreement[]
+  assertions                 Assertion[]
+  parties                    GroundParty[]
+  obligations                Obligation[]
 
   @@index([organizationId])
   @@index([status])
   /// A ground SUMMONED against an imported objective. Declared here as well as created in SQL,
   /// because an index Prisma does not know about is one the next generated migration drops.
   @@index([organizationId, subjectExternalId])
-  documentsElsewhere DocumentElsewhere[]
-  reportedFigures ReportedFigure[]
-  differences     Difference[]
-  agreements      Agreement[]
-  assertions      Assertion[]
-  parties         GroundParty[]
-  obligations     Obligation[]
   @@map("grounds")
 }
 
@@ -1099,10 +1102,10 @@ model GroundParticipant {
   mentionsMade            WorkMention[]            @relation("MentionSource")
   mentionsAbout           WorkMention[]            @relation("MentionAbout")
   deliveries              Delivery[]
+  documentsElsewhere      DocumentElsewhere[]
 
   @@unique([groundId, email])
   @@index([groundId])
-  documentsElsewhere DocumentElsewhere[]
   @@map("ground_participants")
 }
 
@@ -1178,16 +1181,15 @@ model CheckIn {
   turns         ConversationTurn[]
   recordEntries RecordEntry[]
   workMentions  WorkMention[]
-
-  @@unique([participantId, sessionNumber])
-  @@index([groundId])
   /// WHEN THE LEAD WAS TOLD THIS ONE NEVER STARTED.
   ///
   /// Set once, after the chasing has finished with the person. Without it the
   /// lead hears the same names every morning, which is the chase moved one person
   /// along rather than an end to it.
-  leadToldAt DateTime? @map("lead_told_at")
+  leadToldAt    DateTime?          @map("lead_told_at")
 
+  @@unique([participantId, sessionNumber])
+  @@index([groundId])
   @@map("check_ins")
 }
 
@@ -1306,10 +1308,10 @@ model PersonStyleProfile {
 }
 
 model GroundObjective {
-  id             String   @id @default(uuid())
-  groundId       String   @map("ground_id")
-  name           String
-  target         Int? // null = a qualitative objective, tracked but not counted
+  id       String @id @default(uuid())
+  groundId String @map("ground_id")
+  name     String
+  target   Int? // null = a qualitative objective, tracked but not counted
 
   // Snapshot of the count at the previous session, so the board can show the
   // delta ("+2 this session") without recomputing history every read.
@@ -1786,13 +1788,13 @@ model EmbedConfig {
 /// anyone who can read the database, and a stored secret is a stored secret whatever it authorises.
 /// It is shown once at issue and never again, and the console offers rotation rather than recovery.
 model ApiCredential {
-  id               String   @id @default(uuid())
-  organizationId   String   @map("organization_id")
+  id               String @id @default(uuid())
+  organizationId   String @map("organization_id")
   /// What this pair is for, in the customer's words. Shown in the console beside its last use, so
   /// revoking is a decision somebody can actually make.
   name             String
-  clientId         String   @unique @map("client_id")
-  clientSecretHash String   @map("client_secret_hash")
+  clientId         String @unique @map("client_id")
+  clientSecretHash String @map("client_secret_hash")
   /// What it may do. Chosen at issue and never widened by a request - a token can only ever ask for
   /// a subset of what its credential already holds.
   /// THE SYSTEM THIS CREDENTIAL SPEAKS FOR, AND NOT THE CREDENTIAL ITSELF.
@@ -1802,7 +1804,7 @@ model ApiCredential {
   /// identity of every person in the organisation and the next sync duplicated the whole roster
   /// silently. Existing credentials keep their clientId here, because that is what their people
   /// were written under. See `people/whose-roster-is-this.ts`.
-  sourceSystem String @map("source_system")
+  sourceSystem     String @map("source_system")
 
   /// THE CREDENTIAL THAT TOOK OVER FROM THIS ONE.
   ///
@@ -1812,7 +1814,7 @@ model ApiCredential {
   /// months because nobody remembers which of the two the integration is actually using.
   replacedByClientId String? @map("replaced_by_client_id")
 
-  scopes           String[]
+  scopes String[]
 
   /// WHOSE WORK THIS CREDENTIAL MAY SEE, when it should not see all of it.
   ///
@@ -1897,14 +1899,14 @@ model WebhookEndpoint {
   /// and whether it arrived, and it is exactly what somebody asks for after an incident: "did you
   /// send us the event or not". Removing an endpoint is a decision about the FUTURE, so it stops
   /// deliveries and keeps the history.
-  removedAt      DateTime? @map("removed_at")
+  removedAt DateTime? @map("removed_at")
 
   /// When we last told this customer that deliveries to this endpoint are dying.
   ///
   /// Seven attempts over about twenty-one hours and then DEAD, with a warning in our own logs and
   /// nothing that reaches the customer. Their integration silently stops receiving. One notice per
   /// endpoint per day, because a broken endpoint produces a dead delivery for every event.
-  deadNoticeAt   DateTime? @map("dead_notice_at")
+  deadNoticeAt DateTime? @map("dead_notice_at")
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   deliveries   WebhookDelivery[]
@@ -3306,10 +3308,10 @@ model DocumentElsewhere {
 
   /// Scheme, host and path. NEVER the query string — sharing links carry tokens, and a token in a
   /// row the whole check-in can read hands the document to everybody who can see the link.
-  url    String
+  url     String
   /// Where it lives, in the words a person uses: "Google Docs", "Dropbox".
   livesIn String @map("lives_in")
-  title  String
+  title   String
 
   /// The same three answers an uploaded document has. It arrives OWN and is opened by saying so.
   visibility DocumentVisibility @default(OWN)
@@ -3470,7 +3472,7 @@ model AgreementVersion {
   state String @default("being put together")
 
   inForceFrom DateTime  @map("in_force_from") @db.Date
-  inForceTo   DateTime? @map("in_force_to")   @db.Date
+  inForceTo   DateTime? @map("in_force_to") @db.Date
 
   /// Who said this is what was signed, by name. Both sides, or it is not in force.
   agreedBy String[] @map("agreed_by")
@@ -3509,7 +3511,7 @@ model AgreementTerm {
   versionId String @map("version_id")
 
   /// What it is about, in the words people use: "revenue share", "payment terms".
-  says String
+  says  String
   /// The reading itself, as plain words. Never a formula this product then executes.
   reads String @db.Text
 
@@ -3545,14 +3547,14 @@ model ReportedFigure {
   groundId       String @map("ground_id")
 
   /// What it is a figure OF, in the words the person used: "revenue", "VAT declared".
-  says String
+  says       String
   /// Minor units. Integer, always.
   minorUnits Int    @map("minor_units")
   currency   String
 
   /// Inclusive calendar dates. A period is not a timestamp.
   periodFrom DateTime @map("period_from") @db.Date
-  periodTo   DateTime @map("period_to")   @db.Date
+  periodTo   DateTime @map("period_to") @db.Date
 
   /// Where it came from, and who is attached to it. A figure nobody is attached to cannot be
   /// asked about, and asking is the whole method.
@@ -3591,16 +3593,16 @@ model Difference {
 
   /// What was compared, in the words a person reads.
   between    String
-  minorUnits Int    @map("minor_units")
+  minorUnits Int      @map("minor_units")
   currency   String
   periodFrom DateTime @map("period_from") @db.Date
-  periodTo   DateTime @map("period_to")   @db.Date
+  periodTo   DateTime @map("period_to") @db.Date
 
   /// 'not explained yet' | 'explained' | 'explained before, not now' | 'no longer there'
   state String @default("not explained yet")
 
   /// The figures it was computed from, so the arithmetic can always be shown.
-  statedFigureId  String   @map("stated_figure_id")
+  statedFigureId   String   @map("stated_figure_id")
   countedFigureIds String[] @map("counted_figure_ids")
 
   /// Which candidate explanations a person has ruled out, in their own answers.
@@ -4119,12 +4121,12 @@ model MembershipRequest {
   requestedByUserId String? @map("requested_by_user_id")
   groundId          String? @map("ground_id")
 
-  status     MembershipRequestStatus @default(PENDING)
+  status          MembershipRequestStatus @default(PENDING)
   /// Set when somebody decided. Never written by anything automatic.
-  decidedByUserId String?   @map("decided_by_user_id")
-  decidedAt       DateTime? @map("decided_at")
+  decidedByUserId String?                 @map("decided_by_user_id")
+  decidedAt       DateTime?               @map("decided_at")
   /// Why it was declined, in the admin's words.
-  reason          String?   @db.Text
+  reason          String?                 @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -5768,16 +5770,16 @@ model OpsPhase {
   key     String @unique
   ordinal Int
 
-  name String
+  name   String
   /// What this phase is for, in the words it was agreed in.
   intent String @db.Text
 
   startsOn DateTime @map("starts_on") @db.Date
   endsOn   DateTime @map("ends_on") @db.Date
 
-  exitCondition String  @map("exit_condition") @db.Text
+  exitCondition String   @map("exit_condition") @db.Text
   /// A key in the metric registry, or null while the exit is not yet a number.
-  exitMetric    String? @map("exit_metric")
+  exitMetric    String?  @map("exit_metric")
   exitTarget    Decimal? @map("exit_target") @db.Decimal(14, 2)
 
   /// WHETHER WORK MAY BE JUSTIFIED AS MAKING THE COMPANY OPERABLE WHILE THIS
@@ -6275,4 +6277,38 @@ model OpsContributorAgreement {
   person OpsPerson @relation("OpsContributorAgreementHolder", fields: [personId], references: [id], onDelete: Cascade)
 
   @@map("ops_contributor_agreements")
+}
+
+/// WHICH SETUP QUESTIONS A PERSON HAS READ AND SIGNED OFF.
+///
+/// This lived in `localStorage`, keyed on the check-in, which made it two things it should not have
+/// been. It belonged to a BROWSER rather than to a person - a second admin opened Setup and found
+/// two questions already signed off by whoever had used that machine, under a row reading "You have
+/// signed this off". And it survived a reload but not a change of laptop, while the row it draws
+/// claims somebody reviewed something.
+///
+/// A sign-off is a small record and it is still a record: it says a named person read a named
+/// question on a named date. That is the kind of thing somebody points at later - "you signed this
+/// off on the 8th" - and it cannot be kept somewhere a cleared cache erases.
+///
+/// DELIBERATELY NOT PART OF THE CHECK-IN'S OWN STATE. It gates nothing, blocks nothing and appears
+/// in no report. It is one person's mark that they have looked, which is exactly what was asked for
+/// ("something to make a person review each setup step and sign off, like a mark-done check sign").
+model GroundSetupSignOff {
+  id       String @id @default(uuid())
+  groundId String @map("ground_id")
+  userId   String @map("user_id")
+
+  /// The setup question's number, as the page counts them.
+  step Int
+
+  signedAt DateTime @default(now()) @map("signed_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One mark per person per question. Pressing twice is not two sign-offs.
+  @@unique([groundId, userId, step])
+  @@index([groundId, userId])
+  @@map("ground_setup_sign_offs")
 }

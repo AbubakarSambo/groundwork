@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
 import { IsBoolean, MinLength } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, IsEnum, IsIn } from 'class-validator';
@@ -364,6 +364,46 @@ export class GroundsController {
   @ApiOperation({ summary: 'Return the requesting user\'s own check-in status for this ground' })
   async myCheckinStatus(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.grounds.getMyCheckinStatus(id, userId);
+  }
+
+  /**
+   * A person's own marks against the setup questions. Their own only: this never returns anybody
+   * else's, because it is a note about reading rather than a fact about the check-in.
+   */
+  @Get(':id/setup-sign-offs')
+  @ApiOperation({ summary: 'Which setup questions you have signed off' })
+  async setupSignOffs(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return { steps: await this.grounds.setupSignOffs(id, userId) };
+  }
+
+  @Post(':id/setup-sign-offs/:step')
+  @ApiOperation({ summary: 'Sign off one setup question' })
+  async signOffSetupStep(
+    @Param('id') id: string,
+    @Param('step', ParseIntPipe) step: number,
+    @CurrentUser('id') userId: string,
+  ) {
+    return { steps: await this.grounds.signOffSetupStep(id, userId, step) };
+  }
+
+  @Delete(':id/setup-sign-offs/:step')
+  @ApiOperation({ summary: 'Take back a sign-off' })
+  async takeBackSetupSignOff(
+    @Param('id') id: string,
+    @Param('step', ParseIntPipe) step: number,
+    @CurrentUser('id') userId: string,
+  ) {
+    return { steps: await this.grounds.takeBackSetupSignOff(id, userId, step) };
+  }
+
+  /**
+   * Deleting a check-in that was only ever a test. Its lead alone, and only while nobody else has
+   * given an account - see the service for why both halves are the rule rather than a permission.
+   */
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a check-in you started, while it is still only yours' })
+  async remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.deleteWhileItIsStillATest(id, userId);
   }
 
   @Post(':id/approve')

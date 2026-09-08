@@ -305,6 +305,13 @@ export const groundsApi = {
    * product makes are the distance between what people believed at the start and what turned out to be
    * true. Corrected, a baseline becomes a second description of the present and the arc disappears."
    */
+  /**
+   * Deleting a check-in that was only ever a test. Its lead alone, and only while nobody else has
+   * given an account - the server refuses with a sentence naming who, which the page shows.
+   */
+  remove: (groundId: string) =>
+    apiClient.delete<{ deleted: boolean; label: string }>(`/grounds/${groundId}`).then(r => r.data),
+
   stateBaseline: (groundId: string, body: { successLooksLike?: string; conditions?: string[]; changeReason?: string }) =>
     apiClient.post<{ version: number; successLooksLike: string | null; conditions: string[]; changeReason: string | null; effectiveFrom: string }>(
       `/grounds/${groundId}/baseline`, body,

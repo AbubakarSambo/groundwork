@@ -8,57 +8,40 @@
  * useful thing is not validation - a default is a real answer - it is a way for the person to say
  * "I have looked at this one" and see at a glance which ones they have not.
  *
- * WHERE IT IS KEPT, AND THE LIMIT OF THAT. In this browser, against this check-in, FOR THIS PERSON.
- * It is not a record about anybody and it changes nothing about the check-in, so it does not belong
- * in the database with the things that do - but it does mean somebody who reviews setup on their
- * laptop and opens it on their phone sees the ticks gone. Setting up a check-in is one sitting; that
- * trade is worth stating rather than discovering.
+ * WHERE IT IS KEPT, AND WHY IT MOVED. It was `localStorage`, keyed on the check-in, and that made
+ * it two things it should not have been.
  *
- * THE PERSON IS PART OF THE KEY, AND WAS NOT. It was keyed on the check-in alone, so the ticks
- * belonged to the BROWSER rather than to anybody - and the row they draw says "You have signed this
- * off", which is a claim about a person made from a store that had no idea which person. Walked as a
- * second admin of an organisation: her Setup tab opened with two questions already signed off,
- * because somebody else had signed them off in that browser. Anybody sharing a machine, or any
- * second account on one, inherited the first person's review of a check-in they had never opened.
+ * It belonged to a BROWSER rather than to a person: walked as a second admin of an organisation, her
+ * Setup tab opened with two questions already signed off, because somebody else had signed them off
+ * in that browser - under a row reading "You have signed this off", a claim about a person made from
+ * a store with no idea which person. And it survived a reload but not a change of laptop, while the
+ * row it draws asserts that somebody reviewed something.
  *
- * Every read and write is wrapped: a private window, cleared site data, or a browser set to refuse
- * storage all make this throw, and a tick nobody can save must never stop the page rendering.
+ * The reasoning for keeping it out of the database was that it is not a record. It is: it says a
+ * named person read a named question on a named date, which is the kind of thing somebody points at
+ * afterwards. So it is a table, one row per person per question, and this module is the calls.
+ *
+ * IT STILL GATES NOTHING. No report reads it, nothing is blocked by an unsigned question, and
+ * nobody sees anybody else's marks. It is one person's note that they have looked.
  */
-const KEY = (groundId: string, userId: string | null | undefined) =>
-  `gw.setup-reviewed.${userId ?? 'nobody'}.${groundId}`;
+import { apiClient } from '@/api/client';
 
-export function stepsYouHaveChecked(groundId: string, userId: string | null | undefined): number[] {
-  try {
-    const raw = localStorage.getItem(KEY(groundId, userId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((n) => typeof n === 'number') : [];
-  } catch {
-    return [];
-  }
+/** The questions this person has signed off on this check-in. Theirs alone. */
+export async function stepsYouHaveChecked(groundId: string): Promise<number[]> {
+  const r = await apiClient.get<{ steps: number[] }>(`/grounds/${groundId}/setup-sign-offs`);
+  return r.data.steps ?? [];
 }
 
-export function rememberYouCheckedIt(groundId: string, userId: string | null | undefined, step: number): number[] {
-  const next = [...new Set([...stepsYouHaveChecked(groundId, userId), step])].sort((a, b) => a - b);
-  try {
-    localStorage.setItem(KEY(groundId, userId), JSON.stringify(next));
-  } catch {
-    /* Nothing to do about it, and nothing worth telling somebody about a tick. */
-  }
-  return next;
+export async function rememberYouCheckedIt(groundId: string, step: number): Promise<number[]> {
+  const r = await apiClient.post<{ steps: number[] }>(`/grounds/${groundId}/setup-sign-offs/${step}`, {});
+  return r.data.steps ?? [];
 }
 
-export function forgetYouCheckedIt(groundId: string, userId: string | null | undefined, step: number): number[] {
-  const next = stepsYouHaveChecked(groundId, userId).filter((n) => n !== step);
-  try {
-    localStorage.setItem(KEY(groundId, userId), JSON.stringify(next));
-  } catch {
-    /* As above. */
-  }
-  return next;
+export async function forgetYouCheckedIt(groundId: string, step: number): Promise<number[]> {
+  const r = await apiClient.delete<{ steps: number[] }>(`/grounds/${groundId}/setup-sign-offs/${step}`);
+  return r.data.steps ?? [];
 }
 
-/** What the strip at the top of Setup says. Zero of nine is a state, not an error. */
 export function howFarThroughSetup(checked: number[], total: number): string {
   const done = checked.length;
   if (total === 0) return '';

@@ -353,7 +353,8 @@ export class DocumentsService {
          file everything except who is about to see it. */
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
     });
-    return toDocShape(updated);
+    /* Same flag, same reason: a corrected assessment must not come back relabelled private. */
+    return toDocShape(updated, updated.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
   }
 
   private xlsxToText(buffer: Buffer, fileName: string): string {
@@ -462,7 +463,21 @@ export class DocumentsService {
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
       orderBy: { createdAt: 'asc' },
     });
-    return docs.map((d) => toDocShape(d, participant.id));
+    /*
+     * THE FLAG, WHICH THE LIST HAS NEVER PASSED.
+     *
+     * `whoCanSeeIt` is the sentence a person reads beside their document, and with the flag absent
+     * it defaults to the flag-off truth: "Only you can see this. Nobody else on the check-in can
+     * open it." Said about an OPEN document - one the lead deliberately shared with everybody -
+     * which the same query had just handed to somebody who is not its uploader. So the row a
+     * participant reads told her a document her lead had shared with the whole check-in was private
+     * to her, and she would never think to mention it.
+     *
+     * The upload path has always passed it, so a document was described correctly at the moment it
+     * was attached and mislabelled on every page load after. The same shape as the assessment the
+     * list forgot to select, in the same function, found the same way.
+     */
+    return docs.map((d) => toDocShape(d, participant.id, this.config.get<boolean>('app.contextEnabled') === true));
   }
 
   /** Upload a document from a pre-auth participant identified by invite token. */

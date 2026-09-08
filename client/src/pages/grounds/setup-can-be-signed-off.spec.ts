@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -48,8 +48,8 @@ describe('signing off a setup question', () => {
   })
 
   it('can be taken back', () => {
-    expect(PAGE).toContain('forgetYouCheckedIt(id!, user?.id, n)')
-    expect(PAGE).toContain('rememberYouCheckedIt(id!, user?.id, n)')
+    expect(PAGE).toContain('forgetYouCheckedIt(id!, n)')
+    expect(PAGE).toContain('rememberYouCheckedIt(id!, n)')
   })
 
   it('and the tally sits where its total is actually known', () => {
@@ -79,43 +79,33 @@ describe('what the tally says', () => {
 /**
  * AND A TICK BELONGS TO A PERSON, NOT TO A BROWSER.
  *
- * The store was keyed on the check-in alone, so the ticks belonged to whichever browser made them -
- * while the row they draw reads "You have signed this off", a claim about a person made from a
- * store that had no idea which person. Walked as a second admin of an organisation: her Setup tab
- * opened with two questions already signed off, because somebody else had signed them off in that
- * browser. Any shared machine, or any second account on one, inherited the first person's review of
- * a check-in they had never opened.
+ * It was `localStorage` keyed on the check-in, so the marks belonged to whichever browser made
+ * them - a second admin opened Setup and found questions already signed off by whoever last used
+ * that machine, under a row reading "You have signed this off". Keying it by person fixed who owned
+ * them and left the other half: it survived a reload and not a change of laptop, while the row
+ * asserts that somebody reviewed something on a date.
+ *
+ * It is a table now, one row per person per question, and this module is the calls. What is pinned
+ * here is that nothing reaches for a browser store any more - that is the regression that would put
+ * the same claim back on top of the same sand.
  */
-describe('a sign-off belongs to the person who made it', () => {
-  const store: Record<string, string> = {}
-  beforeEach(() => {
-    for (const k of Object.keys(store)) delete store[k]
-    vi.stubGlobal('localStorage', {
-      getItem: (k: string) => store[k] ?? null,
-      setItem: (k: string, v: string) => { store[k] = v },
-      removeItem: (k: string) => { delete store[k] },
-    })
+describe('a sign-off is kept as a record, not in the browser', () => {
+  const MODULE = readFileSync(join(__dirname, 'the-setup-steps-you-have-checked.ts'), 'utf8')
+
+  it('goes to the server', () => {
+    expect(MODULE).toMatch(/apiClient\.get<\{ steps: number\[\] \}>\(`\/grounds\/\$\{groundId\}\/setup-sign-offs`\)/)
+    expect(MODULE).toMatch(/apiClient\.post<\{ steps: number\[\] \}>\(`\/grounds\/\$\{groundId\}\/setup-sign-offs\/\$\{step\}`/)
+    expect(MODULE).toMatch(/apiClient\.delete<\{ steps: number\[\] \}>\(`\/grounds\/\$\{groundId\}\/setup-sign-offs\/\$\{step\}`\)/)
   })
 
-  it('does not hand one person the ticks another made in the same browser', async () => {
-    const m = await import('./the-setup-steps-you-have-checked')
-    m.rememberYouCheckedIt('g1', 'demo-lead', 1)
-    m.rememberYouCheckedIt('g1', 'demo-lead', 2)
-    expect(m.stepsYouHaveChecked('g1', 'demo-lead')).toEqual([1, 2])
-    expect(m.stepsYouHaveChecked('g1', 'ada-the-admin')).toEqual([])
+  it('and nothing here touches a browser store any more', () => {
+    /* Comments stripped first: this module's own note explains where the marks USED to live, and a
+       guard that a comment can satisfy is not a guard - it would fail on its own history. */
+    expect(strip(MODULE)).not.toMatch(/localStorage|sessionStorage/)
   })
 
-  it('and keeps them apart per check-in as well', async () => {
-    const m = await import('./the-setup-steps-you-have-checked')
-    m.rememberYouCheckedIt('g1', 'ada', 3)
-    expect(m.stepsYouHaveChecked('g2', 'ada')).toEqual([])
-  })
-
-  /** Signed out, there is no person - and a tick must not then land in everybody's bucket. */
-  it('and a missing person is its own bucket rather than a shared one', async () => {
-    const m = await import('./the-setup-steps-you-have-checked')
-    m.rememberYouCheckedIt('g1', undefined, 4)
-    expect(m.stepsYouHaveChecked('g1', 'ada')).toEqual([])
-    expect(m.stepsYouHaveChecked('g1', undefined)).toEqual([4])
+  it('and the page reads it as a query rather than as start-up state', () => {
+    expect(PAGE).toMatch(/queryKey: \['setup-sign-offs', id\]/)
+    expect(PAGE).toMatch(/queryFn: \(\) => stepsYouHaveChecked\(id!\)/)
   })
 })

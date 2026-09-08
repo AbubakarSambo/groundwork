@@ -1,4 +1,6 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
+import { aDirectiveAboutWhatTheDocumentSays } from './the-line-that-touches-what-they-said';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
@@ -1652,7 +1654,18 @@ export class ConversationService {
           { participantId: checkIn.participantId, isLead: ground.initiatorId === checkIn.participant.userId },
           this.config.get<boolean>('app.contextEnabled') === true,
         ) as any,
-        select: { fileName: true, content: true, uploaderNote: true },
+        /* `participant` too, so each document can say who provided it and whether everybody here
+           can read it. Without that the block went in under one heading claiming the person being
+           interviewed had written all of it - see where-this-document-came-from.ts. */
+        select: {
+          fileName: true, content: true, uploaderNote: true, visibility: true,
+          participant: {
+            select: {
+              userId: true, email: true,
+              user: { select: { firstName: true, lastName: true } },
+            },
+          },
+        },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON } }),
@@ -1771,13 +1784,64 @@ export class ConversationService {
      * about to talk about. This is not retrieval and does not pretend to be - chunking these
      * through the knowledge module is the real answer and a larger change than this one.
      */
-    const fitted = whatFitsInTheRoom([...uploadedDocs].reverse());
+    /*
+     * WHERE EACH DOCUMENT CAME FROM, attached before anything is measured for room, so a document
+     * that only half fits still says whose it is. The lead is resolved from the ground rather than
+     * asked for again.
+     */
+    const nameOf = (u: { firstName: string | null; lastName: string | null } | null | undefined) =>
+      [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || null;
+    const withProvenance = uploadedDocs.map((d: any) => ({
+      fileName: d.fileName,
+      content: d.content,
+      uploaderNote: d.uploaderNote,
+      provenance: whereThisCameFrom({
+        mine: d.participant?.userId === checkIn.participant.userId,
+        who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
+        fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
+        sharedWithEveryone: d.visibility === 'OPEN',
+      }),
+    }));
+    const fitted = whatFitsInTheRoom([...withProvenance].reverse());
     if (fitted.leftOut.length) {
       this.logger?.log?.(`Check-in ${checkIn.id}: documents that did not fit the prompt - ${fitted.leftOut.join(', ')}.`);
     }
+    /*
+     * THE HEADING WAS FALSE ABOUT MOST OF WHAT IT INTRODUCED.
+     *
+     * "uploaded by this party before the session" - said over the lead's brief, a grant's terms, an
+     * admin's policy, every OPEN document anybody in the check-in has shared. Each document says
+     * where it came from now, and the instructions say what to do with that.
+     */
     const docContext = fitted.block
-      ? 'SUPPORTING DOCUMENTS (uploaded by this party before the session):\n\n' + fitted.block
+      ? 'DOCUMENTS THIS SESSION CAN READ:\n\n' + fitted.block
         + (fitted.leftOut.length ? `\n\n${tellThemWhatIsMissing(fitted.leftOut)}` : '')
+        + `\n\n${WHAT_TO_DO_WITH_THESE}`
+      : '';
+
+    /*
+     * AND THE ONE LINE WORTH PUTTING TO THEM THIS TURN, COMPUTED RATHER THAN HOPED FOR.
+     *
+     * Driven live, the instructions above got the session as far as noticing a mismatch and no
+     * further: "Which is right? The plan could easily be out of date" - about a date it would not
+     * name. Two absolutes in its own prompt forbid stating a date the person did not give, both
+     * rightly, and the citation worth making is almost always a date. Writing an exception into the
+     * timeframe rule did not beat them either. So the overlap is worked out here and the sentence
+     * is handed over. See the-line-that-touches-what-they-said.ts.
+     *
+     * Only documents already marked shared with everyone: a private one is never quoted at anybody
+     * and this never sees one.
+     */
+    const shareableForThisTurn = (uploadedDocs as any[])
+      .filter((d) => d.visibility === 'OPEN')
+      .map((d) => ({
+        fileName: d.fileName,
+        content: d.content ?? '',
+        who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
+        fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
+      }));
+    const putThisToThem = latestMessage
+      ? aDirectiveAboutWhatTheDocumentSays(latestMessage, shareableForThisTurn)
       : '';
 
     // See between-session-notes.ts for why the wording is the mechanism. Kept in
@@ -1937,7 +2001,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**

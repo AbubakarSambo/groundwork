@@ -2885,6 +2885,128 @@ export class GroundsService {
     return b?.successLooksLike?.trim() || null;
   }
 
+  /**
+   * WHICH SETUP QUESTIONS THIS PERSON HAS SIGNED OFF.
+   *
+   * Whoever may read the check-in may read and make their own marks. It gates nothing and appears
+   * in no report - it is one person's note that they have looked at a question - so the access rule
+   * is simply "can you see this check-in at all", answered the same way everything else here
+   * answers it: NotFound rather than Forbidden, so a stranger cannot tell a real id from a guess.
+   */
+  private async assertMaySeeGround(groundId: string, userId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }, select: { role: true, organizationId: true },
+    });
+    const maySee =
+      ground.initiatorId === userId ||
+      ground.participants.some((p) => p.userId === userId) ||
+      (user?.role === 'ADMIN' && user.organizationId === ground.organizationId);
+    if (!maySee) throw new NotFoundException('Check-in not found');
+    return ground;
+  }
+
+  async setupSignOffs(groundId: string, userId: string): Promise<number[]> {
+    await this.assertMaySeeGround(groundId, userId);
+    const rows = await this.prisma.groundSetupSignOff.findMany({
+      where: { groundId, userId },
+      orderBy: { step: 'asc' },
+      select: { step: true },
+    });
+    return rows.map((r) => r.step);
+  }
+
+  async signOffSetupStep(groundId: string, userId: string, step: number): Promise<number[]> {
+    await this.assertMaySeeGround(groundId, userId);
+    /* Idempotent by the unique index: pressing twice is one sign-off, and two admins racing on the
+       same question is not an error either. */
+    await this.prisma.groundSetupSignOff.upsert({
+      where: { groundId_userId_step: { groundId, userId, step } },
+      create: { groundId, userId, step },
+      update: {},
+    });
+    return this.setupSignOffs(groundId, userId);
+  }
+
+  async takeBackSetupSignOff(groundId: string, userId: string, step: number): Promise<number[]> {
+    await this.assertMaySeeGround(groundId, userId);
+    await this.prisma.groundSetupSignOff.deleteMany({ where: { groundId, userId, step } });
+    return this.setupSignOffs(groundId, userId);
+  }
+
+  /**
+   * DELETING A CHECK-IN THAT WAS ONLY EVER A TEST.
+   *
+   * "they can clear any test chats/checkins they run. I suspect this is likely to happen with new
+   * users." It is: the first thing somebody does with this product is try it on something invented,
+   * and until now the only way to get rid of that was to email us and ask. So new accounts
+   * accumulate a rail full of "test", "asdf" and a real check-in among them.
+   *
+   * WHO. Its lead alone. Not an org admin - an admin restating somebody else's yardstick was the
+   * complaint that came before this one, and deleting their check-in outright is the same act with
+   * nothing left to argue about afterwards.
+   *
+   * AND ONLY WHILE IT IS STILL ONLY YOURS. The moment anybody else has given an account, this stops
+   * being a test you are clearing and becomes somebody else's record that you are destroying - they
+   * wrote it in confidence, they cannot get it back, and they are not asked. So it refuses, and
+   * says who has answered. Closing the check-in is the thing to do with a real one, and the
+   * distinction the refusal draws is exactly the distinction between the two.
+   *
+   * A declined invitation does not count as an account: somebody saying no is not a record to
+   * protect, and a check-in everybody declined is precisely the sort somebody wants rid of.
+   */
+  async deleteWhileItIsStillATest(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        id: true, label: true, initiatorId: true,
+        participants: {
+          select: {
+            id: true, userId: true, email: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+    });
+    /* NotFound rather than Forbidden for a stranger, as everywhere else here. */
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== requestingUserId) {
+      const mine = ground.participants.some((p) => p.userId === requestingUserId);
+      if (!mine) throw new NotFoundException('Check-in not found');
+      throw new ForbiddenException(
+        'Only the person running this check-in can delete it. Your own account of it is yours, and deleting the whole thing would take everybody else\'s with it.',
+      );
+    }
+
+    const others = ground.participants.filter((p) => p.userId !== requestingUserId);
+    const answered = others.length
+      ? await this.prisma.checkIn.findMany({
+        where: { participantId: { in: others.map((p) => p.id) }, status: CheckInStatus.COMPLETED },
+        select: { participantId: true },
+      })
+      : [];
+    if (answered.length) {
+      const who = [...new Set(answered.map((a) => a.participantId))]
+        .map((pid) => {
+          const p = others.find((x) => x.id === pid);
+          const named = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
+          return named || p?.email || 'somebody';
+        });
+      throw new BadRequestException(
+        `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already given an account here, so this is not a test any more - deleting it would destroy what they wrote, and they cannot get it back. Close the check-in instead: everybody keeps their record.`,
+      );
+    }
+
+    /* Everything hanging off a ground cascades on the foreign key. */
+    await this.prisma.ground.delete({ where: { id: groundId } });
+    this.logger.log(`Check-in ${groundId} deleted by its lead ${requestingUserId}`);
+    return { deleted: true, label: ground.label };
+  }
+
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
