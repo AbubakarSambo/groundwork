@@ -1,4 +1,5 @@
 import { Inject, forwardRef, Controller, BadRequestException, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { HowCheckInsWorkDto } from './dto/how-check-ins-work.dto';
 import { GroundsService } from '../grounds/grounds.service';
 import { isASubject } from './what-a-call-is-about';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -118,7 +119,9 @@ export class UsersController {
   @ApiOperation({ summary: 'Change who may open a check-in, or whether one waits' })
   async setHowCheckInsWork(
     @CurrentUser('organizationId') organizationId: string,
-    @Body() body: { whoMayOpen?: string; needsApproval?: boolean },
+    /* A CLASS, not an inline type: Nest validates the former and silently accepts anything for the
+       latter. See HowCheckInsWorkDto - a one-word typo used to answer 200 and change nothing. */
+    @Body() body: HowCheckInsWorkDto,
   ) {
     return this.usersService.setHowCheckInsWork(organizationId, body);
   }

@@ -261,14 +261,38 @@ export function isCorrectionTurn(t: { role: string; content: string }): boolean 
 // lead path. The coordinator has no session transcript, so the brief is the
 // only context the lead inherits - it must carry everything the onboarding
 // gathered, honestly labelled as the coordinator's framing.
+/**
+ * ONE SENTENCE, THEN THE REST - NOT A LABELLED DUMP WITH DOUBLE FULL STOPS.
+ *
+ * Two things were wrong with this, and both were only visible on the rendered page.
+ *
+ * It joined with `'. '` over fragments that mostly already end in a full stop, so a real brief read
+ * "...before she gets buried in it.. Who is part of this: ...run their own check-ins separately..
+ * Why now: ..." - two doubled stops in one paragraph.
+ *
+ * And it opened with "What this check-in is for:", printed directly underneath a band heading
+ * reading WHAT THIS CHECK-IN IS FOR. The label was said twice and the person's own first sentence
+ * was buried behind it.
+ *
+ * The situation now leads, unlabelled and in their words, because that is what a brief is. The rest
+ * still travels - on the coordinator path this is the only context a lead inherits, and dropping it
+ * would lose the handover - but as sentences rather than a form, and punctuated once.
+ */
 export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string }): string {
+  /* Ends every fragment exactly once, whatever the person typed. */
+  const sentence = (t?: string) => {
+    const trimmed = (t ?? '').trim()
+    if (!trimmed) return ''
+    return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
+  }
   return [
-    sels.initial ? `What this check-in is for: ${sels.initial}` : '',
-    sels.whoInvolved ? `Who is part of this: ${sels.whoInvolved}` : '',
-    sels.decision ? `Why now: ${sels.decision}` : '',
-    sels.goals?.length ? `Goals: ${sels.goals.join(', ')}` : '',
-    sels.brief ? `Focus: ${sels.brief}` : '',
-  ].filter(Boolean).join('. ')
+    /* Unlabelled and first: the band above it already says what this is. */
+    sentence(sels.initial),
+    sels.whoInvolved ? sentence(`Who is part of this: ${sels.whoInvolved}`) : '',
+    sels.decision ? sentence(`Why now: ${sels.decision}`) : '',
+    sels.goals?.length ? sentence(`What it is aiming at: ${sels.goals.join(', ')}`) : '',
+    sels.brief ? sentence(`Focus: ${sels.brief}`) : '',
+  ].filter(Boolean).join(' ')
 }
 
 
@@ -1280,13 +1304,10 @@ export function EntryChatPage() {
   // Start first check-in question (AI-generated) after onboarding
   const startCheckin = useMutation({
     mutationFn: () => {
-      const ctx = [
-        onboardingSelections.initial ? `What this check-in is for: ${onboardingSelections.initial}` : '',
-        onboardingSelections.whoInvolved ? `Who is part of this: ${onboardingSelections.whoInvolved}` : '',
-        onboardingSelections.decision ? `What made them open this record today: ${onboardingSelections.decision}` : '',
-        onboardingSelections.goals?.length ? `What they want this check-in to get right: ${onboardingSelections.goals.join(', ')}` : '',
-        onboardingSelections.brief ? `What to focus on or probe: ${onboardingSelections.brief}` : '',
-      ].filter(Boolean).join('. ')
+      /* One composer, one shape - see composeLeadBrief. This built the same string a second way,
+         with the same doubled full stops and the same duplicated label. */
+      const ctx = composeLeadBrief(onboardingSelections)
+
       return entryApi.chat([{
         role: 'user',
         content: `I have completed the onboarding. Here is my context. ${ctx}. Please ask me your first specific check-in question based on what I told you. Reference my situation and what I said I need. Do not open generically. Do not ask what my role is. Ask one direct specific question drawn from what I have shared.`,

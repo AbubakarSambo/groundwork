@@ -793,8 +793,21 @@ export function ChatPage() {
                 What this check-in is about
               </div>
               {brief.subject && (
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: brief.objectives.length ? 7 : 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: 4 }}>
                   {brief.subject}
+                </div>
+              )}
+              {/*
+                AND WHAT IT IS ACTUALLY ABOUT.
+
+                The subject is the check-in's label, and on the picker path the label is the
+                scenario - so this band, headed "What this check-in is about", said "New hire" and
+                stopped. Read on a real invitation: the lead had written four sentences describing
+                the situation and the person being asked to account for it never saw a word of them.
+              */}
+              {(brief as any).says && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: brief.objectives.length ? 7 : 0 }}>
+                  {(brief as any).says}
                 </div>
               )}
               {brief.objectives.length > 0 && (

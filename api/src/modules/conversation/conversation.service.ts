@@ -445,10 +445,27 @@ export class ConversationService {
    * participant's words to another would break the promise that makes the answers worth having.
    */
   private briefFor(
-    ground: { label: string | null; objectives: { name: string; target: number | null }[] } | null,
-  ): { subject: string | null; objectives: { name: string; target: number | null }[] } | null {
+    ground: { label: string | null; brief?: string | null; objectives: { name: string; target: number | null }[] } | null,
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[] } | null {
     if (!ground) return null;
-    return { subject: ground.label ?? null, objectives: ground.objectives ?? [] };
+    return {
+      subject: ground.label ?? null,
+      /*
+       * AND WHAT IT IS ACTUALLY ABOUT, WHICH THIS WAS NOT SAYING.
+       *
+       * The subject is the check-in's LABEL, and on the picker path the label is the scenario -
+       * "New hire". So a participant's first screen, under a heading reading "What this check-in is
+       * about", said "New hire" and nothing else. Read on a real invitation: the lead had written
+       * four sentences describing the situation, and the person being asked to account for it was
+       * shown a category name.
+       *
+       * The brief is already a shared fact - the Context page publishes it to everybody on the
+       * check-in, and the lead wrote it as the description of the work. The caution above is about
+       * one participant's ACCOUNT reaching another, which this is not.
+       */
+      says: ground.brief?.trim() || null,
+      objectives: ground.objectives ?? [],
+    };
   }
 
   async open(checkInId: string, requestingUserId: string) {
@@ -474,6 +491,8 @@ export class ConversationService {
         status: true,
         organizationId: true,
         label: true,
+        /* What the check-in is actually about, for the brief a participant reads first. */
+        brief: true,
         scenario: true,
         objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
       },
