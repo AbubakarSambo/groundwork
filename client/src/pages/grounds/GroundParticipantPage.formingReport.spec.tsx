@@ -23,31 +23,45 @@ const here = dirname(fileURLToPath(import.meta.url))
 const src = [
   readFileSync(join(here, 'GroundParticipantPage.tsx'), 'utf8'),
   readFileSync(join(here, '../../components/gw/SharedReportForAParty.tsx'), 'utf8'),
-].join('\n')
+]
+  .join('\n')
+  /* COMMENTS STRIPPED. Both files now explain in prose what was removed, quoting the copy - so an
+     unstripped read fails on the explanation of the fix. The mirror of the trap
+     `a-guard-that-a-comment-satisfies-is-not-a-guard` names. */
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '')
 
-describe('GroundParticipantPage: offers a way into the forming report, not just "being prepared"', () => {
-  it('branches on report.forming before the unreleased-report message', () => {
-    expect(src).toMatch(/\(report as any\)\?\.forming \? 'A picture is forming'/)
+/**
+ * AND THEN THE BANNER ITSELF WENT, WHICH SETTLES THIS FILE'S QUESTION RATHER THAN LOSING IT.
+ *
+ * "Remove this: Shared report / A picture is forming / Not everyone has checked in yet... / See what
+ * has emerged so far / My sessions."
+ *
+ * This file existed because that message was a dead end - three sentences saying a picture was
+ * forming with nothing to open. The fix was to give it doors. The better fix is that the message is
+ * gone: it described a half-built report in prose on a tab whose first row is already a door to the
+ * board, and My record's coverage bars now say exactly what the report can and cannot say yet, in
+ * one row, on the page that is about that.
+ *
+ * A dead end cannot exist where there is no message. What is asserted now is that the two things
+ * that made it a dead end have not come back.
+ */
+describe('GroundParticipantPage: no dead end where a forming report used to be announced', () => {
+  it('does not announce a forming picture in prose', () => {
+    /* The banner's own sentences. Not the phrase in general: the withheld state next door still
+       says a picture is forming and that this reader has not answered, which is a different fact
+       said to somebody who can act on it - by checking in. */
+    expect(src).not.toContain('Not everyone has checked in yet, so this is not final')
+    expect(src).not.toContain('See what has emerged so far')
+    expect(src).not.toContain('Report is being prepared')
   })
-
-  it('gives the participant a real affordance into the forming report, not a dead link', () => {
-    expect(src).toMatch(/\{\(report as any\)\?\.forming && \(/)
-    /*
-     * THE WAY IN IS A DESTINATION NOW, NOT AN EMBED.
-     *
-     * It was `ReportBody` rendered underneath the message. That body has gone - it was a fourth
-     * place to read the same findings - and removing it turned this message straight back into the
-     * dead end this file exists to prevent, which is how the regression was caught.
-     *
-     * What matters is unchanged and is what is asserted: saying "a picture is forming" obliges the
-     * screen to offer something to open. Both destinations hold forming content - the board
-     * regenerates as people answer, and a session page shows that round's picture while it moves.
-     * The board is gated on the scenario having one, so the second button is unconditional.
-     */
-    expect(src).toContain('See what has emerged so far')
-    expect(src).toMatch(/onOpenBoard\(\)/)
-    expect(src).toMatch(/onGoToMyRecord\(\)/)
-    expect(src).not.toMatch(/View the forming picture/)
-    expect(src).not.toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
+  it('and what tells somebody how far off a report is now says it in one row', () => {
+    /* The coverage bars on My record: how many of the five things a full report says it can say
+       yet, and why not. A meter rather than a paragraph, on the page that is about the record. */
+    const COVERAGE = readFileSync(
+      join(here, '../../components/gw/WhatTheReportCanSayYet.tsx'), 'utf8',
+    )
+    expect(COVERAGE).toContain('What the report can say so far')
+    expect(COVERAGE).toContain('Dashed ones it cannot say yet')
   })
 })

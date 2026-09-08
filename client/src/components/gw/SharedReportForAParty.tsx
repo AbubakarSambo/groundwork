@@ -29,8 +29,6 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
-  /** Where the session list lives now. The page owns tab names, so it is handed a callback. */
-  onGoToMyRecord: () => void
   /** Per-session specificity, so a row can say how checkable that account was. */
   specificityBySession?: Record<number, number>
   /** Who is reading, so their own finished sessions can be listed and nobody else's. */
@@ -42,7 +40,6 @@ export function SharedReportForAParty({
   report,
   ground,
   onOpenBoard,
-  onGoToMyRecord,
   specificityBySession,
   viewerUserId,
 }: SharedReportForAPartyProps) {
@@ -193,56 +190,25 @@ export function SharedReportForAParty({
             */
             <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                A picture is forming, and you have not given your account yet
+                There is a picture forming, and you have not answered yet
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6 }}>
                 {(report as any).saying}
               </div>
             </div>
           ) : !report.releasedAt ? (
-            <>
-              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                  {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6, marginBottom: 0 }}>
-                  {(report as any)?.forming
-                    ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
-                    : 'Your report will be available once it is released.'}
-                </div>
-                {/*
-                  AND A WAY IN, WHICH IS THE WHOLE POINT OF SAYING IT IS FORMING.
+            /*
+              THE FORMING BANNER IS GONE.
 
-                  This message used to be followed by the report body embedded underneath. With the
-                  body gone the message would have been a dead end again - "a picture is forming"
-                  and nothing to open - which is the exact regression
-                  `GroundParticipantPage.formingReport.spec` was written for, and it caught it.
+              "A picture is forming. Not everyone has checked in yet, so this is not final - but you
+              can see what has emerged so far", over two buttons to the board and to My sessions.
+              Three sentences and two doors on a tab whose first row is already a door to the board.
 
-                  Both destinations hold forming content: the board is generated from the check-in
-                  and regenerates as people answer, and each session page shows that round's picture
-                  while it is still moving. The board is offered only where the scenario has one -
-                  a private alignment check-in renders none - so the second button is always there.
-                */}
-                {(report as any)?.forming && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 11 }}>
-                    {!!(ground as any).boardRenders && (
-                      <button
-                        onClick={() => onOpenBoard()}
-                        style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        See what has emerged so far
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onGoToMyRecord()}
-                      style={{ padding: '8px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      My sessions
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
+              And it said nothing the reader could not already see: My record's coverage bars say
+              what the report can and cannot say yet, in one row, on the page that is about exactly
+              that. Two screens describing the same half-built report, one of them in prose.
+            */
+            null
           ) : !report.activated ? (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
               <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>

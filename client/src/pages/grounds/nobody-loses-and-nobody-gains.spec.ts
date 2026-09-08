@@ -43,8 +43,8 @@ describe('nobody loses and nobody gains', () => {
       return src.slice(at, next > -1 ? at + 1 + next : src.length)
     }
     for (const [name, src] of [['runs it', RUNS_IT], ['party', PARTY]] as const) {
-      expect(src, `${name} must still render it`).toMatch(/<MyPrivateReport/)
-      expect(renderOf(src), `${name} must render it on My record`).toMatch(/<MyPrivateReport/)
+      expect(src, `${name} must still render it`).toMatch(/<WhatYouAreCarryingForward/)
+      expect(renderOf(src), `${name} must render it on My record`).toMatch(/<WhatYouAreCarryingForward/)
     }
   })
 
@@ -52,7 +52,7 @@ describe('nobody loses and nobody gains', () => {
     for (const src of [RUNS_IT, PARTY]) {
       const report = src.slice(src.indexOf("tab === 'report'"))
       const untilNext = report.slice(0, report.indexOf("tab === '", 20) + 1 || 2000)
-      expect(untilNext).not.toMatch(/<MyPrivateReport/)
+      expect(untilNext).not.toMatch(/<WhatYouAreCarryingForward/)
     }
   })
 

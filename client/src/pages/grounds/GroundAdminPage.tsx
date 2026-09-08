@@ -7,7 +7,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
-import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -30,7 +29,6 @@ import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
-import { WhatTheReportCanSayYet } from '@/components/gw/WhatTheReportCanSayYet'
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
@@ -1690,6 +1688,9 @@ export function GroundAdminPage() {
               groundId={id!}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
+              otherParties={(ground.participants ?? [])
+                .filter((p: any) => p.userId !== user?.id)
+                .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
             />
 
             {/* The same cards the party's view opens My record with. */}
@@ -1698,12 +1699,7 @@ export function GroundAdminPage() {
               trend={mySpecificity?.trend}
               sessions={mySessionDots}
               totalSessions={plannedSessions ?? null}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
-            <div style={{ paddingTop: 14, marginTop: 2, borderTop: '1px solid var(--gw-border)' }}>
-              <WhatTheReportCanSayYet facts={{
+              coverage={{
                 iHaveCheckedIn: mySessionsDone > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
                 parties: (ground as any)?.sessionProgress?.total
@@ -1718,28 +1714,20 @@ export function GroundAdminPage() {
                 corroborated: null,
                 documentBackedPct: null,
                 roundsFinished: mySessionsDone,
-              }} />
-            </div>
+              }}
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
+            />
             <TheFiveThingsThatMakeItCheckable
               dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
               sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}
               mostUseful={(myRecord as any)?.insightsLocked ? null : mySpecificity?.mostUseful}
               strongest={(myRecord as any)?.insightsLocked ? null : mySpecificity?.strongest}
             />
-
-            <MyPrivateReport
-              groundId={id!}
-              mySoloReport={mySoloReport}
-              refetchSoloReport={refetchSoloReport}
-              myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
-              otherParties={(ground.participants ?? [])
-                .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
-              mySessions={mySessions}
-              /* Per-session specificity, so each row can say how checkable that account was. The
-                 same read the trend card uses; it just belongs on the session it is about. */
-              onGoToReport={() => goTab('report' as Tab)}
-            />
+            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
+                list to Report, and sign-off and the two signposts were removed - what was left was an
+                empty grey box and a modal whose button had moved out from under it. */}
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
             groundId={id}
@@ -1747,9 +1735,6 @@ export function GroundAdminPage() {
             myRecord={myRecord}
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
-            /* This page calls the material tab `docs`; the component asks to be sent and the page
-               decides where that is. */
-            onGoToTab={(t) => goTab((FROM_TAB_KEY[t] ?? 'docs') as Tab)}
             />
           </div>
         )}

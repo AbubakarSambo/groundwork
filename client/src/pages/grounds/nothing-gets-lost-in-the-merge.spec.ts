@@ -53,7 +53,7 @@ const PAGES = [
   // own account and their own private report without sending them to a second page. This guard
   // fired for `setMySoloReportShared` and `signOff` the moment they moved, which is what it is for.
   '../../components/gw/MyRecord.tsx',
-  '../../components/gw/MyPrivateReport.tsx',
+  '../../components/gw/WhatYouAreCarryingForward.tsx',
   '../../components/gw/SharedReportForAParty.tsx',
   /*
    * And the surfaces the report tab became. It was one tab carrying a report, a list, a board
@@ -85,7 +85,17 @@ const OPERATIONS: Record<string, string[]> = {
   reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.activate(', 'reportsApi.sessionReport('],
   nudging: ['conversationApi.remind('],
   'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared(', 'getMyCheckinStatus('],
-  'my session': ['conversationApi.artifact(', 'startSelfCorrection(', 'signOff('],
+  /*
+   * `signOff(` is off this list because the control is gone, on her instruction. It was a
+   * confirmation step at the foot of My record on a page nobody had been asked to confirm anything
+   * on. The client method went with it rather than sitting declared and uncalled; the column and
+   * the server route stay, so a record corrected after a sign-off still reads correctly if the
+   * control ever comes back.
+   *
+   * This list is what a merge must not silently drop. A capability removed on purpose leaves it -
+   * quietly keeping the entry is how the list rots into a list of things that used to be true.
+   */
+  'my session': ['conversationApi.artifact(', 'startSelfCorrection('],
   /**
    * Money reaches a participant inside their own ground page, three ways, and
    * not on /billing. Moving it would break the paid path for the person who is
@@ -128,8 +138,10 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
      * If a real capability is added to these pages it belongs in the list above,
      * or the next merge loses it without anybody noticing.
      */
+    /* 43 until `signOff` was removed with the control that called it - a capability dropped on
+       purpose, which is the one reason this number is allowed to go down. */
     const total = Object.values(OPERATIONS).reduce((n, c) => n + c.length, 0)
-    expect(total).toBe(43)
+    expect(total).toBe(42)
   })
 })
 

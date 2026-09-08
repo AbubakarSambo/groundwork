@@ -37,7 +37,7 @@ describe('the three things that had nowhere else to be', () => {
   it('the private lines for the conversation ahead are on My record', () => {
     expect(GUIDE).toContain('Before you talk to them')
     expect(GUIDE).toContain('Yours alone, and not part of the shared report')
-    /* Rendered by the page rather than inside MyPrivateReport now: her order puts it last, after
+    /* Rendered by the page rather than inside WhatYouAreCarryingForward now: her order puts it last, after
        sign-off, because it is private prep for a conversation rather than part of reading your
        record. Having it third pushed the reading down the page. */
     const PARTY_PAGE = strip(read('../grounds/GroundParticipantPage.tsx'))
@@ -68,10 +68,16 @@ describe('and the body they came out of is really gone', () => {
     expect(PARTY).toContain('activateMutation.mutate()')
   })
 
-  it('offers somewhere real to go while the report is still forming', () => {
-    /* A message saying "a picture is forming" with nothing to open is the dead end that
-       GroundParticipantPage.formingReport.spec was written for. */
-    expect(PARTY).toContain('See what has emerged so far')
+  it('says nothing at all while the report is still forming', () => {
+    /*
+     * IT WENT FROM A DEAD END, TO A MESSAGE WITH DOORS, TO NOTHING - AND NOTHING IS RIGHT.
+     *
+     * Three sentences announcing that a picture was forming, over two buttons to the board and to
+     * My record, on a tab whose first row is already a door to the board. My record's coverage bars
+     * now say how far off a full report is, in one row, on the page that is about the record.
+     */
+    expect(PARTY).not.toContain('See what has emerged so far')
+    expect(PARTY).not.toContain('Not everyone has checked in yet, so this is not final')
   })
 
   it('and once everyone has shown theirs, says nothing at all', () => {

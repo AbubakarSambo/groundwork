@@ -30,21 +30,33 @@ describe('context holds what the link promises', () => {
     expect(CONTEXT).toContain("'What is expected of you'")
   })
 
-  it('and what success looks like, which it did not', () => {
-    expect(CONTEXT).toContain('<WhatSuccessLooksLikeFor')
+  it('and what success looks like, inside that same box', () => {
+    /* Not a section of its own and not a sentence under the panel - both read as a second subject.
+       It is the standard the expectations are measured against, so it is the last thing in the box
+       that holds them. */
+    const PANEL = strip(read('ExpectationsPanel.tsx'))
+    expect(PANEL).toContain('<WhatSuccessLooksLikeFor')
+    expect(PANEL).toContain('dense')
+    expect(CONTEXT).not.toContain('<WhatSuccessLooksLikeFor')
   })
 
   it('for a party, not only for whoever runs the check-in', () => {
-    /* Both bands sit outside the isLead branch. The band that was missing is the one a party could
-       otherwise only reach by opening the board. */
-    const at = CONTEXT.indexOf('<WhatSuccessLooksLikeFor')
+    /* The panel renders for both; the band it now carries is the one a party could otherwise only
+       reach by opening the board. */
+    const at = CONTEXT.indexOf('<ExpectationsPanel')
     const guard = CONTEXT.lastIndexOf('{isLead && (', at)
     const closed = CONTEXT.lastIndexOf(')}', at)
     expect(guard === -1 || closed > guard).toBe(true)
   })
 
-  it('and My record still points there rather than keeping a copy', () => {
-    expect(MY_RECORD).toContain('Success and expectations live on Context')
+  it('and My record keeps no copy of either', () => {
+    /*
+     * The signpost went too. "Success and expectations live on Context" was a line telling somebody
+     * about a tab three inches above it in the tab bar; a page that ends by naming its neighbours
+     * has run out of things to say about itself. What this file protects is that Context actually
+     * holds both, which is now the only place either is.
+     */
     expect(MY_RECORD).not.toContain('<WhatSuccessLooksLikeFor')
+    expect(MY_RECORD).not.toContain('What is expected of you')
   })
 })

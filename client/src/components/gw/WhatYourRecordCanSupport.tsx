@@ -23,6 +23,8 @@
  * dressed as an observation.
  */
 
+import { WhatTheReportCanSayYet, type CoverageFacts } from './WhatTheReportCanSayYet'
+
 export type RecordStrength = { score?: number; label?: string; description?: string } | null | undefined
 
 /** done: finished. corrected: finished and later corrected. Anything beyond is still to come. */
@@ -71,6 +73,7 @@ export function WhatYourRecordCanSupport({
   trend,
   sessions,
   totalSessions,
+  coverage,
   alsoNoticed,
 }: {
   strength: RecordStrength
@@ -84,8 +87,16 @@ export function WhatYourRecordCanSupport({
    * counters on one screen disagreeing about the same run is worse than having neither.
    */
   totalSessions?: number | null
-  /* Coverage is its own card now, directly under this one: four bars and five segments in one box
-     were two measurement systems counting different subjects. */
+  /**
+   * BACK INSIDE THIS CARD. "Where your record stands - one verdict line + specificity bars + a
+   * coverage strip."
+   *
+   * I had split it out on the argument that two bar rows in one box were two measurement systems.
+   * They are two measurements of one thing - how much this check-in can support - and they are read
+   * together. What made them fight was that one was a row of filling boxes and the other a thin
+   * segmented meter with a list under it. Same bars now, so the card holds one language.
+   */
+  coverage?: CoverageFacts | null
   /** Patterns the engine noticed. A line here rather than a card - it was the fourth restatement. */
   alsoNoticed?: string[]
 }) {
@@ -168,6 +179,8 @@ export function WhatYourRecordCanSupport({
           </div>
         </div>
       )}
+
+      {coverage && <WhatTheReportCanSayYet facts={coverage} />}
 
       {/* Folded in rather than given a card of its own - it was the fourth restatement. Kept
           rather than dropped: these also reach a person on the board, but only where the scenario

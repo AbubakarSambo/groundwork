@@ -116,19 +116,14 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
   const have = rows.filter(r => r.can).length
 
   return (
-    <section>
+    <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
       {/*
-        A METER, NOT A CHECKLIST.
+        THE SAME BARS AS THE ROW ABOVE IT.
 
-        This shipped as five rows with an empty circle each - the same object, twenty pixels above a
-        card that is also five rows with an empty circle each. Nothing told the eye that one is the
-        state of the report and the other is advice to the person, and an empty circle in a product
-        means a checkbox somebody has not ticked, so both read as things they had failed to do. Two
-        of them counted different subjects with the same glyph.
-
-        So the circles belong to exactly one card on this page, and it is the one where a person can
-        actually do something. This is a filled bar and a count. Nothing here is anybody's to tick:
-        it fills as people check in.
+        This was a thin segmented meter while the session row above was a set of filling boxes - two
+        bar languages in one card, for two things a person is meant to read together. Same boxes,
+        same height, filled or not, labelled underneath. The difference between the rows is what the
+        labels say, which is the only difference there should be.
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
         <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)' }}>
@@ -139,32 +134,32 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 3, marginBottom: 9 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 34 }}>
         {rows.map((r, i) => (
-          <div
-            key={i}
-            title={r.can ? r.says : `${r.says} - ${r.because ?? 'not yet'}`}
-            style={{
-              flex: 1, height: 6, borderRadius: 3,
-              background: r.can ? 'var(--gw-navy)' : 'var(--gw-border)',
-            }}
-          />
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <div
+              title={r.can ? r.says : `${r.says} - ${r.because ?? 'not yet'}`}
+              style={{
+                width: '100%', height: 22, borderRadius: 3, position: 'relative', overflow: 'hidden',
+                background: r.can ? 'var(--gw-paper-2)' : 'transparent',
+                border: r.can ? 'none' : '1px dashed var(--gw-border)',
+              }}
+            >
+              {r.can && (
+                <div style={{ position: 'absolute', inset: 0, background: 'var(--gw-navy)' }} />
+              )}
+            </div>
+            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</div>
+          </div>
         ))}
       </div>
 
-      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 9 }}>{headline}</div>
-
-      {/*
-        THE LIST UNDER THE METER IS GONE.
-
-        Five labelled rows under a five-segment bar is the meter said twice, and the second time as
-        the shape this page had just been cleared of - a column of rows, each with a grey clause
-        after a dash, sitting above another column of rows that means something different.
-
-        The bar carries the count and the headline carries the reason. Anything more granular is on
-        the segments themselves, where hovering one names it - available to whoever goes looking,
-        and not a second list for everybody who does not.
-      */}
-    </section>
+      {/* One sentence on what a filled bar is, then the state in one more. */}
+      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
+        Each bar is one thing a full report says: your account, where you differ, what lines up, what
+        a document backs, and what has changed. Dashed ones it cannot say yet.
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 6 }}>{headline}</div>
+    </div>
   )
 }

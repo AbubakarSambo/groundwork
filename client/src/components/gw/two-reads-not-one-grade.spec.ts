@@ -18,7 +18,6 @@ import { join } from 'path'
  */
 const read = (...p: string[]) => readFileSync(join(__dirname, ...p), 'utf8')
 const RECORD = read('MyRecord.tsx')
-const PRIVATE = read('MyPrivateReport.tsx')
 /* Both reads moved to the top of the page, above what they summarise. See the two its below. */
 const SUPPORT = read('WhatYourRecordCanSupport.tsx')
 const FIVE = read('TheFiveThingsThatMakeItCheckable.tsx')
@@ -40,10 +39,10 @@ describe('my record', () => {
   it('lists the sessions once, not twice', () => {
     expect(RECORD).not.toContain('<Sec title="Sessions on record" />')
     expect(REPORT_TAB).toContain('Your sessions')
-    expect(PRIVATE).not.toMatch(/mySessions\.map\(/)
-    /* And My record still gets you there, because somebody who has just read what session 1 was
-       missing is the person who wants to open it. */
-    expect(PRIVATE).toContain('onGoToReport')
+    /* And My record keeps none - not the list, and not a line pointing at it. The Report tab is in
+       the tab bar; a page does not need to name its neighbours. */
+    expect(RECORD).not.toMatch(/mySessions\.map\(/)
+    expect(RECORD).not.toContain('are on Report')
   })
 
   it('puts how checkable a session was on that session', () => {

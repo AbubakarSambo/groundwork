@@ -83,10 +83,16 @@ describe('but the yardstick still reaches a party, where it can be compared', ()
   })
 
   it('and on Context, where the same words are published for everybody', () => {
-    /* My record links there rather than holding a third copy that was usually empty. */
-    /* A line rather than a card - it had the chrome of a five-item block for one signpost. */
-    expect(strip(MY_RECORD)).toContain('Success and expectations live on Context')
-    expect(strip(MY_RECORD)).toContain("onGoToTab('docs')")
+    /*
+     * At the foot of what is expected of them, not as a band of its own: the two are one subject and
+     * a second heading said they were two. My record keeps no copy and no signpost - the Context tab
+     * is in the tab bar.
+     */
+    const PANEL = strip(readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'gw', 'ExpectationsPanel.tsx'), 'utf8',
+    ))
+    expect(PANEL).toContain('<WhatSuccessLooksLikeFor groundId={groundId} dense />')
+    expect(strip(MY_RECORD)).not.toContain('WhatSuccessLooksLikeFor')
   })
 
   it('carrying what the lead stated, not only what she said herself', () => {

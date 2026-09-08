@@ -36,7 +36,7 @@ import { describe, it, expect } from 'vitest'
  */
 const SRC = [
   readFileSync(join(__dirname, '../../components/gw/WhatToWalkInWith.tsx'), 'utf8'),
-  readFileSync(join(__dirname, '../../components/gw/MyPrivateReport.tsx'), 'utf8'),
+  readFileSync(join(__dirname, '../../components/gw/WhatYouAreCarryingForward.tsx'), 'utf8'),
   readFileSync(join(__dirname, '../grounds/GroundParticipantPage.tsx'), 'utf8'),
 ].join('\n')
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')

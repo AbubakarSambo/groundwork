@@ -15,11 +15,9 @@ import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
-import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
-import { WhatTheReportCanSayYet } from '@/components/gw/WhatTheReportCanSayYet'
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
@@ -41,19 +39,6 @@ type Tab = 'checkin' | 'record' | 'report' | 'docs' | 'settings'
 const FROM_TAB_KEY: Record<string, Tab> = {
   chat: 'checkin', report: 'report', record: 'record', context: 'docs', settings: 'settings',
 }
-/**
- * A PLAIN BLOCK, NOT A CARD.
- *
- * My record had six things wearing identical card chrome - a one-line link and a five-item block
- * with the same border, padding and radius - so nothing on the page was primary. The top block keeps
- * the card; everything under it is a section separated by a rule.
- */
-function Section({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ paddingTop: 14, marginTop: 2, borderTop: '1px solid var(--gw-border)' }}>{children}</div>
-  )
-}
-
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
   checkin: 'chat', report: 'report', record: 'record', docs: 'context', settings: 'settings',
 }
@@ -618,6 +603,9 @@ export function GroundParticipantPage() {
               groundId={id!}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
+              otherParties={(ground.participants ?? [])
+                .filter((p: any) => p.userId !== user?.id)
+                .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
             />
 
             {/*
@@ -633,18 +621,7 @@ export function GroundParticipantPage() {
               trend={specificity?.trend}
               sessions={mySessionDots}
               totalSessions={totalSessions ?? null}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
-
-            {/*
-              ITS OWN SECTION, DIRECTLY UNDER. Four session bars and a five-segment meter in one box
-              were two measurement systems counting different subjects, and the coverage rows were
-              visually identical to the advice list two cards down.
-            */}
-            <Section>
-              <WhatTheReportCanSayYet facts={{
+              coverage={{
                 iHaveCheckedIn: completedCheckIns.length > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
                 parties: (ground as any)?.sessionProgress?.total
@@ -660,8 +637,11 @@ export function GroundParticipantPage() {
                 corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
                 documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
                 roundsFinished: completedCheckIns.length,
-              }} />
-            </Section>
+              }}
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
+            />
 
             {/*
               AND SPECIFICITY AS THE FIVE THINGS IT IS MADE OF, WHICH THE ENGINE HAS ALWAYS STORED
@@ -674,18 +654,9 @@ export function GroundParticipantPage() {
               mostUseful={(myRecord as any)?.insightsLocked ? null : specificity?.mostUseful}
               strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
             />
-
-            <MyPrivateReport
-              groundId={id!}
-              mySoloReport={mySoloReport}
-              refetchSoloReport={refetchSoloReport}
-              myParticipant={myParticipant}
-              otherParties={(ground.participants ?? [])
-                .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
-              mySessions={myFinishedSessions}
-              onGoToReport={() => goTab('report')}
-            />
+            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
+                list to Report, and sign-off and the two signposts were removed - what was left was an
+                empty grey box and a modal whose button had moved out from under it. */}
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
             groundId={id}
@@ -693,9 +664,6 @@ export function GroundParticipantPage() {
             myRecord={myRecord}
             totalSessions={totalSessions ?? null}
             completedCount={completedCheckIns.length}
-            /* This page calls the material tab `docs`; the other calls it `context`. The component
-               should not have to know either, so it asks and the page translates. */
-            onGoToTab={(t) => goTab(t as any)}
             />
 
             {/*
@@ -722,7 +690,6 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
-              onGoToMyRecord={() => goTab('record')}
               /* Per-session specificity on the row it is about. Same read as the bars above it on
                  My record; here it is the words, because a row is a line of text. */
               specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}

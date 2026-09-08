@@ -38,7 +38,6 @@ export interface MyRecordProps {
    * Send the reader to another tab of the same check-in. A prop rather than a router call, because
    * the two pages that render this name their tabs differently and neither's names belong in here.
    */
-  onGoToTab: (tab: string) => void
 }
 
 export function MyRecord({
@@ -47,7 +46,6 @@ export function MyRecord({
   myRecord,
   totalSessions,
   completedCount,
-  onGoToTab,
 }: MyRecordProps) {
   return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -148,17 +146,9 @@ export function MyRecord({
               says all three. Both bands are published on Context for everybody including the person
               they are about, which is the point of publishing them.
             */}
-            {/* A line, not a card, for the same reason. */}
-            <button
-              onClick={() => onGoToTab('docs')}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none',
-                padding: '2px 0', cursor: 'pointer', fontFamily: 'inherit',
-                fontSize: 12.5, color: 'var(--gw-navy)', fontWeight: 600,
-              }}
-            >
-              Success and expectations live on Context &rarr;
-            </button>
+            {/* The Context signpost went with the Report one: a page that ends by naming its
+                neighbouring tabs, which are in the tab bar above it, has run out of things to say
+                about itself. */}
 
           {/* Session history summary - always visible */}
           {/*

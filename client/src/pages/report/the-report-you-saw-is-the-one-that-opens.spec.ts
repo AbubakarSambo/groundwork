@@ -54,7 +54,7 @@ describe('the report that opens is the report they read', () => {
      * were.
      */
     const LIST = read('..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx')
-    const MINE = read('..', '..', 'components', 'gw', 'MyPrivateReport.tsx')
+    const MINE = read('..', '..', 'components', 'gw', 'WhatYouAreCarryingForward.tsx')
     expect(LIST).toContain('/report`)')
     expect(PARTY).toContain('/report`)')
     for (const src of [PARTY, LIST, MINE]) {
@@ -66,9 +66,11 @@ describe('the report that opens is the report they read', () => {
     /* The duplicate came back once already by being convenient. Two identical lists two tabs apart,
        with nothing on either screen saying they are the same, is what "the participant seems to be
        looking at too many reports" partly was. */
-    const MINE = read('..', '..', 'components', 'gw', 'MyPrivateReport.tsx')
+    /* And no line pointing at it either: the Report tab is in the tab bar, and a page that ends by
+       naming its neighbours has run out of things to say about itself. */
+    const MINE = read('..', '..', 'components', 'gw', 'MyRecord.tsx')
     expect(MINE).not.toMatch(/mySessions\.map\(/)
-    expect(MINE).toContain('onGoToReport')
+    expect(MINE).not.toContain('are on Report')
   })
 
   it('and the end of a signed-in session offers it directly', () => {

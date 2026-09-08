@@ -227,7 +227,7 @@ describe('the same solo report reads the same to everybody', () => {
   const CARRY_FORWARD = strip(readFileSync(join(SRC, 'components/gw/WhatYouAreCarryingForward.tsx'), 'utf8'))
 
   it('both pages render it through one component', () => {
-    /* The party view reaches it through `MyPrivateReport` now - the solo report and the whole
+    /* The party view reaches it through `WhatYouAreCarryingForward` now - the solo report and the whole
        sharing decision moved there together so the page that runs a check-in can show a lead their
        own. What this protects is unchanged: ONE component renders a solo report, so it cannot read
        two ways. Asserted wherever it is rendered from. */
@@ -241,9 +241,9 @@ describe('the same solo report reads the same to everybody', () => {
       expect(src).toMatch(/import \{ SoloReportBody \}/)
       expect(src).toMatch(/<SoloReportBody report=/)
     }
-    /* The party view reaches it through `MyPrivateReport`, where the solo report and the whole
+    /* The party view reaches it through `WhatYouAreCarryingForward`, where the solo report and the whole
        sharing decision moved together. */
-    expect(PARTICIPANT).toMatch(/<MyPrivateReport/)
+    expect(PARTICIPANT).toMatch(/<WhatYouAreCarryingForward/)
   })
 
   it('and neither walks the report itself any more', () => {

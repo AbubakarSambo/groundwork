@@ -21,10 +21,20 @@ export function WhatYouAreCarryingForward({
   groundId,
   mySoloReport,
   refetchSoloReport,
+  otherParties = [],
 }: {
   groundId: string
   mySoloReport?: { report: Record<string, unknown> | null; shared: boolean }
   refetchSoloReport: () => void
+  /**
+   * WHO WOULD BE ABLE TO READ IT, NAMED BEFORE ANYBODY AGREES TO IT.
+   *
+   * The confirmation came here with the Share control. It lists people by name on purpose: "share
+   * with everyone" is an abstraction, and the decision is about specific colleagues reading
+   * specific words. It was in MyPrivateReport, which is gone - and it had already become
+   * unreachable there, because the button that opened it had moved into this file.
+   */
+  otherParties?: { id: string; name: string; email?: string | null }[]
 }) {
   const [showShareConfirm, setShowShareConfirm] = useState(false)
 
@@ -81,28 +91,43 @@ export function WhatYouAreCarryingForward({
             </div>
           )}
 
-      {showShareConfirm && (
-        <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 6 }}>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 9 }}>
-            Everyone on this check-in will be able to read this line. It cannot be unread.
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => setSoloSharedMut.mutate(true)}
-              disabled={setSoloSharedMut.isPending}
-              style={{ padding: '7px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
-            </button>
-            <button
-              onClick={() => setShowShareConfirm(false)}
-              style={{ padding: '7px 12px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Cancel
-            </button>
+    {showShareConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
+          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Share your private report?</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 6 }}>
+              Your private report will become visible to everyone else in this check-in:
+            </div>
+            <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
+              {otherParties.map((p) => (
+                <li key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 2 }}>
+                  {p.name}
+                  {p.email ? <span style={{ color: 'var(--gw-muted)' }}> · {p.email}</span> : null}
+                </li>
+              ))}
+            </ul>
+            <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 18, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '10px 12px' }}>
+              This is all or nothing. All sections of your private report become visible at once. You can stop sharing at any time.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setShowShareConfirm(false)}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setSoloSharedMut.mutate(true)}
+                disabled={setSoloSharedMut.isPending}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: setSoloSharedMut.isPending ? 0.6 : 1 }}
+              >
+                {setSoloSharedMut.isPending ? 'Sharing…' : 'Yes, share it'}
+              </button>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   )
 }

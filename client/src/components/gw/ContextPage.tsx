@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
-import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
@@ -471,9 +470,7 @@ export function ContextPage({
               condition and where the accounts put it, still renders where there is room to work in
               it: the board, and each session's report.
             */}
-            <div style={{ marginTop: 10 }}>
-              <WhatSuccessLooksLikeFor groundId={id} dense />
-            </div>
+
 
             {/*
               3 - AND WHAT YOU DID ABOUT IT, touching the words you are measured against.

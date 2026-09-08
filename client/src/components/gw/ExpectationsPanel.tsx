@@ -5,6 +5,7 @@ import { personLabel } from '@/lib/utils'
 import { scrollToId } from '@/lib/scroll-to'
 import { toast } from 'sonner'
 import { whereItStands } from './where-a-promise-stands'
+import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 
 /**
  * WHAT THIS CHECK-IN EXPECTS OF EACH PERSON, IN PLAIN VIEW. GW-EXP-2.
@@ -364,6 +365,14 @@ export function ExpectationsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mine?.id, mine?.objective?.seenBySubject])
 
+  /*
+    WHAT SUCCESS LOOKS LIKE GOES IN THIS BOX, NOT UNDER IT.
+    
+    It arrived on Context as its own numbered section, then as a sentence below this panel - both of
+    which read as a second subject. It is the same subject: the standard, and what each person is
+    expected to do against it. One box, and the standard is the last thing in it, which is where
+    somebody who has just read what is expected of them looks for what it is all aiming at.
+  */
   if (withExpectations.length === 0) {
     return (
       <div style={{ marginBottom: 22 }}>
@@ -371,6 +380,11 @@ export function ExpectationsPanel({
           Nothing yet. These come out of the lead's own check-in, where they are asked what this is
           aiming at and then what they expect of each person. Until that happens, everyone is working
           to their own read of it.
+          {groundId && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+              <WhatSuccessLooksLikeFor groundId={groundId} dense />
+            </div>
+          )}
         </div>
       </div>
     )
