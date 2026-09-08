@@ -69,6 +69,9 @@ export interface SessionShapedReport {
   }[]
   howClearThisWas: { level: string | null; recall: string | null; saying: string }
   theConversationWorthHaving: string | null
+  /** Whether this session's account can still be corrected, and the sentence if it cannot. */
+  correctable: boolean
+  whyNotCorrectable: string | null
   /** Everybody the report is counting for this session, named, with what each has done. */
   counting: { who: string; isYou: boolean; answered: boolean; hasShownTheirs: boolean }[]
   everybodyHasShownTheirs: boolean

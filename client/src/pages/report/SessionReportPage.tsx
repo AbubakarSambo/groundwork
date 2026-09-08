@@ -32,6 +32,14 @@ export default function SessionReportPage() {
     enabled: !!checkInId,
   })
 
+  /* The per-session shape, for the one fact the correction control needs: whether the window is
+     still open. The same query key the shared report below uses, so it is one request either way. */
+  const { data: shape } = useQuery({
+    queryKey: ['session-shaped-report', data?.groundId, data?.sessionNumber],
+    queryFn: () => reportsApi.sessionReport(data!.groundId as string, data!.sessionNumber as number),
+    enabled: !!data?.groundId && !!data?.sessionNumber,
+  })
+
   /**
    * CORRECTING IT, from the page that shows it.
    *
@@ -116,19 +124,39 @@ export default function SessionReportPage() {
       {data?.report && (
         <>
           <TheReportYouSawAtTheEnd report={data.report} onRecordLine="On record: your account." />
+          {/*
+            THE CORRECTION CONTROL SAYS WHETHER IT IS STILL OPEN, BEFORE IT IS PRESSED.
+
+            "It seems you can still correct a report when it's final." The server refuses it now -
+            a released report stays correctable for a short window and then stops - and a button
+            that offers something the server will refuse teaches a person the product is
+            unreliable. So the same fact arrives here, where they can act on it: what the window
+            was, when it closed, and where what they wanted to say can still go.
+
+            `shape` carries it because the report is what the window is about.
+          */}
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginTop: 6 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Something here is wrong?</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-              Correcting it is a short check-in of its own - it asks you what it got wrong. Nothing
-              is overwritten; the change is shown alongside the original.
-            </div>
-            <button
-              onClick={() => correct.mutate()}
-              disabled={correct.isPending || !data.groundId || !data.sessionNumber}
-              style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
-            >
-              {correct.isPending ? 'Starting...' : 'Correct it'}
-            </button>
+            {shape && shape.correctable === false ? (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                {shape.whyNotCorrectable}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                  Correcting it is a short check-in of its own - it asks you what it got wrong. Nothing
+                  is overwritten; the change is shown alongside the original, and it closes a short
+                  while after the shared report goes out.
+                </div>
+                <button
+                  onClick={() => correct.mutate()}
+                  disabled={correct.isPending || !data.groundId || !data.sessionNumber}
+                  style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                >
+                  {correct.isPending ? 'Starting...' : 'Correct it'}
+                </button>
+              </>
+            )}
           </div>
           <button
             onClick={() => navigate(`/checkin/${checkInId}`)}

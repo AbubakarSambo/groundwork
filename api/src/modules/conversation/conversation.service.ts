@@ -42,6 +42,12 @@ import { mayCoach } from './participation-timeline';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
+import {
+  CORRECTION_WINDOW_KEY,
+  DEFAULT_CORRECTION_WINDOW_DAYS,
+  isAWindow,
+  refuseIfTheWindowHasClosed,
+} from './the-window-for-correcting-a-record';
 import { evidenceBlock } from '../public-api/what-the-numbers-show';
 import { describePending, PENDING_RULE } from '../public-api/six-is-still-the-target';
 import { whenTheyMeant } from './when-words-mean-a-date';
@@ -4276,6 +4282,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * probes for the correction using the standard conversation prompts, rather
    * than the participant typing a free-text edit directly.
    */
+  /**
+   * HOW LONG A RELEASED REPORT STAYS CORRECTABLE, read from the platform setting.
+   *
+   * Never throws, and a bad row means the number we shipped with. Zero from a DELIBERATE row is
+   * honoured - "final the moment it is shared" is a real policy - but zero from a broken row would
+   * silently make every released report uncorrectable, so the guard is on the row's shape rather
+   * than on the value alone.
+   */
+  private async correctionWindowDays(): Promise<number> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: CORRECTION_WINDOW_KEY } });
+      if (isAWindow(row?.value)) return row!.value as number;
+    } catch (err: any) {
+      this.logger.warn(`Could not read the correction window, using the default: ${err?.message}`);
+    }
+    return DEFAULT_CORRECTION_WINDOW_DAYS;
+  }
+
   async startSelfCorrectionSession(requestingUserId: string, groundId: string, targetSessionNumber: number): Promise<{ checkInId: string }> {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
@@ -4306,6 +4330,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         `Session ${targetSessionNumber} can no longer be corrected - a later session has already started and is building on it.`,
       );
     }
+
+    /*
+     * AND THE REPORT ITSELF. The lock above is about SESSIONS building on each other; it says
+     * nothing about the report having gone out. So a round could close, the report reach
+     * everybody, and the account it was built from still be edited - which is the one case where
+     * a correction stops being a correction and becomes a rewrite of something people have read.
+     *
+     * See the-window-for-correcting-a-record.ts for why this is a window and not a lock.
+     */
+    const releasedReport = await this.prisma.report.findUnique({
+      where: { groundId },
+      select: { releasedAt: true },
+    });
+    refuseIfTheWindowHasClosed({
+      releasedAt: releasedReport?.releasedAt ?? null,
+      windowDays: await this.correctionWindowDays(),
+    });
 
     const lastCheckIn = await this.prisma.checkIn.findFirst({
       where: { participantId: participant.id },

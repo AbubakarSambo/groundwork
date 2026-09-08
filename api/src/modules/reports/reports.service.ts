@@ -13,6 +13,12 @@ import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './w
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { theSessionReport } from './the-session-report';
 import { cleanText } from './what-the-record-actually-holds';
+import {
+  CORRECTION_WINDOW_KEY,
+  DEFAULT_CORRECTION_WINDOW_DAYS,
+  isAWindow,
+  whetherItCanStillBeCorrected,
+} from '../conversation/the-window-for-correcting-a-record';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf } from './party-labels';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { tallyInReport } from './counts-accounts';
@@ -1691,6 +1697,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * exactly as `get` asks it.
    */
   /**
+   * The correction window, read the same way the conversation service reads it. Duplicated as a
+   * READ and not as a RULE: the arithmetic and the sentence live in one file, and this only
+   * fetches the number so a report can say what the rule will decide.
+   */
+  private async correctionWindowDays(): Promise<number> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: CORRECTION_WINDOW_KEY } });
+      if (isAWindow(row?.value)) return row!.value as number;
+    } catch (err: any) {
+      this.logger?.warn?.(`Could not read the correction window, using the default: ${err?.message}`);
+    }
+    return DEFAULT_CORRECTION_WINDOW_DAYS;
+  }
+
+  /**
    * ONE SESSION'S REPORT, IN THE PROMISED SHAPE.
    *
    * "I need the forming sessions report(s) to take the same shape we promised the client for each
@@ -1793,8 +1814,37 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: { fileName: true, participantId: true },
     });
 
-    const whoOf = (participantId: string) =>
-      mine.has(participantId) ? null : (labels.get(participantId) ?? null);
+    /*
+     * NAMED WHERE THIS READER IS ALLOWED TO SEE A NAME, and labelled where they are not.
+     *
+     * The report is generated in labels - "participant A", "participant B" - precisely so it can
+     * never carry a name across the wall, and `namesVisibleTo` decides which of them this reader
+     * may resolve: their own, the lead's, and everybody's if they ARE the lead. Driven live as a
+     * lead, this row read "participant A (you)" and "participant B", which is the same defect as
+     * a roster calling three colleagues "a teammate" - and the rule that fixes it is the one the
+     * report body already uses, not a second guess at it.
+     */
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
+    /*
+     * THE SAME NAMING RULE ON THE LINES AS ON THE ROWS.
+     *
+     * This returned the raw label - "participant B" - for anybody but the reader, so a lead
+     * entitled to every name on their own check-in read their colleague's own words attributed to
+     * a placeholder. `namesVisibleTo` is the rule that decides which labels THIS reader may
+     * resolve, and it is the rule the report body already uses; using it here too means the
+     * labels never reach a person who is allowed a name, and never leave one for a person who is
+     * not. Defined after `nameByLabel` for that reason.
+     */
+    const whoOf = (participantId: string) => {
+      if (mine.has(participantId)) return null;
+      const label = labels.get(participantId);
+      if (!label) return null;
+      const named = nameByLabel.get(label);
+      if (named) return named;
+      const p = ground.participants.find((x) => x.id === participantId);
+      if (viewerIsLead && p?.email) return p.email;
+      return label;
+    };
 
     const shape = theSessionReport({
       sessionNumber,
@@ -1856,17 +1906,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const shown = new Set(
       activations.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
     );
-    /*
-     * NAMED WHERE THIS READER IS ALLOWED TO SEE A NAME, and labelled where they are not.
-     *
-     * The report is generated in labels - "participant A", "participant B" - precisely so it can
-     * never carry a name across the wall, and `namesVisibleTo` decides which of them this reader
-     * may resolve: their own, the lead's, and everybody's if they ARE the lead. Driven live as a
-     * lead, this row read "participant A (you)" and "participant B", which is the same defect as
-     * a roster calling three colleagues "a teammate" - and the rule that fixes it is the one the
-     * report body already uses, not a second guess at it.
-     */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
     const counting = ground.participants
       .filter((p) => !p.managingOnly)
       .map((p, i) => ({
@@ -1889,8 +1928,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
         hasShownTheirs: shown.has(p.id),
       }));
 
+    /*
+     * AND WHETHER THIS IS STILL CORRECTABLE, said before somebody presses the button rather than
+     * after. A control that offers a correction and then refuses it teaches a person the product
+     * is unreliable; a control that says "corrections closed on the 8th" is the same fact,
+     * delivered where they can act on it.
+     */
+    const window = await this.correctionWindowDays();
+    const canCorrect = whetherItCanStillBeCorrected({
+      releasedAt: (ground.report?.releasedAt as Date | null) ?? null,
+      windowDays: window,
+    });
+
     return {
       ...shape,
+      correctable: canCorrect.allowed,
+      whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
       counting,
       everybodyHasShownTheirs: counting.every((c) => c.hasShownTheirs),
       sharedPicture: snapshot?.sharedPicture ?? null,
