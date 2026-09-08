@@ -40,9 +40,18 @@ describe('who the report is counting', () => {
   })
 
   it('takes the label from the report rather than joining a roster on the page', () => {
-    /* The old row read `participants.find(...)` and printed `Party ${i + 1}` when it missed. */
+    /* The old row read `participants.find(...)` and printed `Party ${i + 1}` when it missed. The
+       name comes from `namesVisibleTo`, which is the same rule the report body uses to decide
+       whose name this particular reader may resolve - not a second guess at that rule. */
     expect(strip(VIEW)).not.toMatch(/participants\s*\?\?\s*\[\]/)
-    expect(API).toContain('who: labels.get(p.id) ?? `Party ${i + 1}`')
+    expect(API).toContain('namesVisibleTo(me?.id ?? null, ground.participants as any)')
+    expect(API).toContain('nameByLabel.get(label)')
+  })
+
+  it('and a lead gets the address of somebody who has not joined, where a peer gets the label', () => {
+    /* `displayName` returns null for an unjoined invitee by design - the address is not a peer's
+       to see. To the lead who typed it, "participant B" cannot say which invitation is late. */
+    expect(API).toContain('if (viewerIsLead && p.email) return p.email;')
   })
 
   it('and still gives a nameless party a row rather than dropping them', () => {
