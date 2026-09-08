@@ -185,8 +185,9 @@ export function MyPrivateReport({
             </div>
           ) : (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, textAlign: 'center', marginBottom: 6 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Your private report is not ready yet.</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4 }}>It generates once you complete your check-in.</div>
+              {/* One line, not two. The second was a restatement of the first, and the box below
+                  this one was restating both again. */}
+              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>This appears once you finish your first check-in.</div>
             </div>
           )}
 

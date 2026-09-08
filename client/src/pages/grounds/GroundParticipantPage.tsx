@@ -634,7 +634,7 @@ export function GroundParticipantPage() {
               because the parent is already a flex column and reordering the markup itself is how a
               1,100-line page gets broken.
             */}
-            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Settings</div>
+            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Setup</div>
             {/*
               SAID OUTRIGHT, ONCE, AT THE TOP.
               

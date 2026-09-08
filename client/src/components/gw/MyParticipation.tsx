@@ -14,6 +14,8 @@
  * Lifted out of `GroundParticipantPage` so the view that runs a check-in can show a lead the same
  * facts about their own participation, rather than sending them to a second page for them.
  */
+import { whatThisStatusMeans } from './what-a-status-means-to-the-person-in-it'
+
 export interface MyParticipationProps {
   /** Who is reading: their name, initial and email. */
   viewer: { firstName?: string | null; lastName?: string | null; email?: string | null } | null | undefined
@@ -55,20 +57,30 @@ export function MyParticipation({
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Scenario</div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
             </div>
-            <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
-              {/*
-                THE FALLBACK SAID NOTHING. Every other row here carries a value - the check-in's
-                name, the scenario, ACTIVE, 0 of 8. This one fell back to "In this check-in",
-                which reads as a caption for the label above it rather than an answer, so the row
-                looked filled in while saying nothing at all. Only visible once the card moved to
-                the top of the tab and became the first thing a party reads about themselves.
-              */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant?.roleAsDescribed || 'Not recorded'}</div>
-            </div>
+            {/*
+              THE ROW IS ONLY THERE WHEN THERE IS A ROLE.
+
+              It used to fall back to "In this check-in", which read as a caption rather than an
+              answer, and then to "Not recorded", which is a row that costs a line and tells the
+              reader nothing they can do anything about - a party cannot record their own role here,
+              so naming its absence is just one more statement of absence on a tab that already had
+              too many. It appears when the lead has described the role, and otherwise it is not a
+              row at all.
+            */}
+            {myParticipant?.roleAsDescribed ? (
+              <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your role</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{myParticipant.roleAsDescribed}</div>
+              </div>
+            ) : null}
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Status</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.status}</div>
+              {/*
+                THE ENUM WAS BEING SHOWN TO A PERSON. "Status / AWAITING_PARTIES", in capitals, on
+                Zainab's own Setup tab - the database's word for the row, leaving her to guess which
+                parties and whether she was one of them.
+              */}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{whatThisStatusMeans(ground.status)}</div>
             </div>
             <div style={{ padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
