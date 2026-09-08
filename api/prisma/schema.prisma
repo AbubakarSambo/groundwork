@@ -1144,6 +1144,21 @@ model CheckIn {
   specificityLevel            String?       @map("specificity_level")
   specificityDimensions       Json?         @map("specificity_dimensions")
   recallConfidence            String?       @map("recall_confidence")
+  /// THE REPORT AS THE PERSON SAW IT WHEN THEY FINISHED.
+  ///
+  /// "I want the exact same forming report to be openable. I have not seen it anywhere, when I
+  /// click it sends me back to the chat and the report looks nothing like what I got at the end."
+  ///
+  /// It looked nothing like it because it was gone. The entry flow built a full report - what we
+  /// heard from you, how complete your account is, what is still open, where this leaves you - and
+  /// wrote it into `GroundParticipant.soloArtifact`, the column `buildSoloArtifact` owns and
+  /// overwrites about twenty seconds later with its own two-field summary. The screen the person
+  /// remembered was destroyed by a background job, and what they opened afterwards was the
+  /// replacement.
+  ///
+  /// So it gets its own home, on the session it belongs to. Whole and unedited, exactly the shape
+  /// the screen rendered, so opening it later renders the same thing rather than a near-miss.
+  sessionReport               Json?         @map("session_report")
   isClarification             Boolean       @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget         String?       @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection            Boolean       @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session

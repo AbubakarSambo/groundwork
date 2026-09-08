@@ -1422,14 +1422,22 @@ STRICT RULES:
         .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
     }
 
-    // Store the solo report on the participant record (soloArtifact lives there, not on CheckIn).
+    /*
+     * KEEP THE REPORT THEY JUST READ, ON THE SESSION THAT PRODUCED IT.
+     *
+     * This wrote it into `GroundParticipant.soloArtifact`. That column belongs to
+     * `buildSoloArtifact`, fired two dozen lines above and landing about twenty seconds later with
+     * its own `{summary, whatToCarry}` - so the full report was overwritten before the person had
+     * finished reading the page it was on, and every reader of that column expects the two-field
+     * shape and would not have rendered this one anyway.
+     *
+     * Reported four times as "the report looks nothing like what I got at the end". It looked
+     * nothing like it because it was not the same object.
+     */
     if (dto.report) {
-      await this.prisma.groundParticipant.update({
-        where: { id: participant.id },
-        data: {
-          soloArtifact: JSON.stringify(dto.report),
-          soloArtifactAt: new Date(),
-        },
+      await this.prisma.checkIn.update({
+        where: { id: checkIn.id },
+        data: { sessionReport: dto.report as object },
       });
     }
 

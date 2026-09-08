@@ -107,6 +107,56 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
 }
 type ReportSession = 's1' | 's2' | 'closing'
 
+
+/**
+ * ONE SETUP QUESTION AT A TIME.
+ *
+ * "The setup page is still messy and hard to go through" - said after the tab had already been cut
+ * into five named, numbered bands. Naming them was not the fix, because all five were still open
+ * at once: about five hundred lines of controls, so finding the timeframe meant scrolling past
+ * everybody's invitation and reading two privacy toggles on the way.
+ *
+ * Five rows now, each saying what it is currently set to. Open one and the rest close. The numbers
+ * stay, because they are the order the questions were asked in when the check-in was set up.
+ */
+function Fold({
+  n, title, src, summary, open, onToggle, children,
+}: {
+  n: number
+  title: string
+  src: string
+  summary: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '13px 14px',
+          background: open ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <span style={{
+          flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: open ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>{n}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{open ? src : summary}</span>
+        </span>
+        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
+      </button>
+      {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
+    </div>
+  )
+}
+
 export function GroundAdminPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -165,6 +215,10 @@ export function GroundAdminPage() {
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
+  /* Which setup question is open. One at a time; the first is open when the tab is reached.
+     Declared up here with the rest: this component returns early for several ground states, and a
+     hook below one of those returns is a hook that sometimes does not run. */
+  const [openSetupBand, setOpenSetupBand] = useState<number>(1)
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -934,6 +988,13 @@ export function GroundAdminPage() {
    */
   let setupBands = 0
   const setupBand = () => ++setupBands
+  /* Counted once, and out here, so the row's own label does not have to reach into the record. */
+  const settingsChangeCount = ((ground as any)?.settingsChanges?.length ?? 0) as number
+  const foldProps = (n: number) => ({
+    n,
+    open: openSetupBand === n,
+    onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
+  })
 
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
     (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
@@ -2387,7 +2448,7 @@ export function GroundAdminPage() {
                   {mySessions.map((ci: any, i: number) => (
                     <button
                       key={ci.id}
-                      onClick={() => navigate(`/checkin/${ci.id}`)}
+                      onClick={() => navigate(`/checkin/${ci.id}/report`)}
                       style={{
                         display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
                         gap: 10, padding: '11px 13px', background: 'white', border: 'none',
@@ -2470,7 +2531,7 @@ export function GroundAdminPage() {
             */}
           {isInitiator && (
             <>
-            <Sec n={setupBand()} title="Who is in it" src="adding somebody sends them an invitation" />
+            <Fold {...foldProps(setupBand())} title="Who is in it" src="adding somebody sends them an invitation" summary={`${(ground.participants ?? []).length} on this check-in`}>
             <div className="gw-card" style={{ padding: '14px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
@@ -2567,6 +2628,7 @@ export function GroundAdminPage() {
                 </div>
               )}
             </div>
+            </Fold>
             </>
           )}
           {/**
@@ -2581,7 +2643,12 @@ export function GroundAdminPage() {
             * simpler reason: it is about you and they are about the check-in.
             */}
           {viewerIsAParty && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            <Fold
+              {...foldProps(setupBand())}
+              title="You in this check-in"
+              src="your role, your standing, and what you have finished"
+              summary={`${mySessionsDone} of ${plannedSessions ?? '?'} of your sessions done`}
+            >
               <MyParticipation
                 viewer={user}
                 ground={ground}
@@ -2589,7 +2656,7 @@ export function GroundAdminPage() {
                 completedCount={mySessionsDone}
                 totalSessions={plannedSessions ?? null}
               />
-            </div>
+            </Fold>
           )}
             {/*
               THE DEFINING CHOICE GOES FIRST, AND SAYS WHAT IT DECIDES.
@@ -2602,9 +2669,6 @@ export function GroundAdminPage() {
               
               So it leads the tab, and the line under it says the thing it decides.
             */}
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: -6 }}>
-              This one decides whether people here can corroborate each other.
-            </div>
             {/* WHETHER THESE PEOPLE ACTUALLY SEE EACH OTHER'S WORK.
                 The scenario can only guess, and the guess decides whether the
                 board's fairness reads have anything to stand on. Where nobody can
@@ -2613,7 +2677,12 @@ export function GroundAdminPage() {
                 reported as absent on a ground that decides their job. */}
             {isInitiator && (
               <>
-              <Sec n={setupBand()} title="How it runs" src="the shape of the run, and who can corroborate whom" />
+            <Fold {...foldProps(setupBand())} title="Who can corroborate whom" src="whether these people can see each other's work" summary={ground.peopleWorkTogether == null ? 'Not answered - assumed from the kind of check-in' : ground.peopleWorkTogether ? 'They work together' : 'They work separately'}>
+            {/* The line that says what the first question here decides. It used to sit above the
+                band, outside it, so it read as a caption for the whole tab. */}
+            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 4 }}>
+              The first one decides whether people here can corroborate each other.
+            </div>
               <div className="gw-fld">
                 <label className="gw-label">Do these people work together?</label>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
@@ -2653,6 +2722,7 @@ export function GroundAdminPage() {
                   </div>
                 )}
               </div>
+            </Fold>
               </>
             )}
             {/**
@@ -2672,14 +2742,18 @@ export function GroundAdminPage() {
               * facts live. Stating it is the lead's; reading it is everybody's, so the party view
               * mounts the same component with `canState` false.
               */}
+            <Fold {...foldProps(setupBand())} title="What good looks like" src="the yardstick, and where this stood at the start" summary={'stated by the lead, read by everybody'}>
             <BaselinePanel groundId={id!} canState={isInitiator || isOrgAdmin} />
             {/**
               * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
               * yardstick and the starting point together are what let a report say something moved.
               */}
             <StartingPointPanel groundId={id!} canRecord={isInitiator || isOrgAdmin} />
+            </Fold>
 
-            {((ground as any).settingsChanges?.length ?? 0) > 0 && (
+            {settingsChangeCount > 0 && (
+            <Fold {...foldProps(setupBand())} title="What has changed here" src="every change to the length or the cadence, and who made it" summary={settingsChangeCount === 1 ? '1 change since setup' : `${settingsChangeCount} changes since setup`}>
+            <div style={{ display: 'contents' }}>
               <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What has been changed here</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -2694,8 +2768,9 @@ export function GroundAdminPage() {
                   ))}
                 </div>
               </div>
+            </div>
+            </Fold>
             )}
-
             {/* HOW LONG THIS RUNS, AND HOW OFTEN.
                 There was no way to change either after creation, anywhere in the
                 product. A ground created at the wrong length - which the old
@@ -2704,6 +2779,7 @@ export function GroundAdminPage() {
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
 
+            <Fold {...foldProps(setupBand())} title="How long this runs" src="the length of the run, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
             {isInitiator && (
               <div className="gw-fld">
                 <label className="gw-label">How long this runs</label>
@@ -2734,7 +2810,8 @@ export function GroundAdminPage() {
                 </button>
               </div>
             )}
-            <Sec n={setupBand()} title="What it is" src="what it is called, and which situation it runs as" />
+            </Fold>
+            <Fold {...foldProps(setupBand())} title="What it is" src="what it is called, and which situation it runs as" summary={ground.label}>
             <div className="gw-fld">
               <label className="gw-label">Name</label>
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
@@ -2776,6 +2853,7 @@ export function GroundAdminPage() {
                 Save scenario
               </button>
             </div>
+            </Fold>
             {/*
               THE THREE RULES THAT DECIDE WHAT PEOPLE SEE, IN ONE PLACE. W14-4.
 
@@ -2799,7 +2877,7 @@ export function GroundAdminPage() {
               * ("this matters again if you turn the setting above on"), which is a card admitting
               * it should not be a separate card.
               */}
-            <Sec n={setupBand()} title="Who can see whom" src="two settings, one question" />
+            <Fold {...foldProps(setupBand())} title="Who can see whom" src="two settings, one question" summary={peersVisible ? 'Everyone here sees who else is in it' : 'Each person sees only themselves'}>
             <div className="gw-fld">
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: '8px 8px 0 0' }}>
                 <div style={{ flex: 1 }}>
@@ -2856,6 +2934,8 @@ export function GroundAdminPage() {
                 </button>
               </div>
             </div>
+            </Fold>
+            <Fold {...foldProps(setupBand())} title="Codes and billing" src="let somebody in with a code, or change your seats" summary={'an access code, and your seats'}>
             <button onClick={() => navigate('/billing')}
               style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>Billing and seats</span><span style={{ color: 'var(--gw-sub)' }}>→</span>
@@ -2866,7 +2946,8 @@ export function GroundAdminPage() {
             >
               <span>Share code</span><span style={{ color: 'var(--gw-sub)' }}>↗</span>
             </button>
-            <Sec n={setupBand()} title="Ending it" src="closing is not reversible" />
+            </Fold>
+            <Fold {...foldProps(setupBand())} title="Ending it" src="closing is not reversible" summary={'archiving is done by hand for now'}>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -2882,6 +2963,7 @@ export function GroundAdminPage() {
                 Close this check-in
               </button>
             </div>
+            </Fold>
           </div>
         )}
       </div>

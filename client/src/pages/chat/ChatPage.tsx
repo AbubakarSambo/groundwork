@@ -1074,15 +1074,26 @@ export function ChatPage() {
                 * sentence saying which report is which, and that is what replaces the button.
                 */}
               <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
-                This report is yours and it stays on this session - open it again from Report, under
-                Your sessions. The shared report, where everybody's accounts sit side by side,
-                appears once the others have checked in.
+                This report is yours and it stays on this session - the button below opens it on
+                its own, and it is also under Report, in Your sessions. The shared report, where
+                everybody's accounts sit side by side, appears once the others have checked in.
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
                 {/* The check-in itself, where the people, the sessions and the setup all live.
                     Deliberately not deep-linked to a tab: the tab keys and their labels differ
                     ("settings" is shown as "Setup"), and a link that lands on the wrong one is
                     worse than a link that lands on the page and lets somebody look. */}
+                {/*
+                  THE REPORT, ON ITS OWN, WITH NOTHING ELSE ON THE PAGE.
+                  It is rendered above this block too - but above a screen's worth of transcript,
+                  which is why it kept reading as gone. This opens the same report by itself.
+                */}
+                <button
+                  onClick={() => navigate(`/checkin/${checkInId}/report`)}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Open my report
+                </button>
                 <button
                   onClick={() => navigate(`/grounds/${groundId}`)}
                   style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}

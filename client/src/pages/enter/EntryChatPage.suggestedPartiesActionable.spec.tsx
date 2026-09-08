@@ -10,9 +10,20 @@ import { dirname, join } from 'node:path'
  * see entry.service.ts commitInner), so they get a real "Add them" affordance
  * that queues the person into the same inviteAdded contributor list the
  * manual "Invite contributors" form below already uses - not a dead end.
+ *
+ * THE SCREEN MOVED AND THE CONTROLS DID NOT. The report is drawn by
+ * `TheReportYouSawAtTheEnd` now, so a page that opens a finished session later draws the same
+ * thing - it takes the invite control as a prop, because adding somebody belongs to the person
+ * still finishing rather than to the report. So the lists live there and the control lives here,
+ * and this checks both halves are still connected.
  */
 const src = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), 'EntryChatPage.tsx'),
+  'utf8',
+)
+
+const report = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'components', 'gw', 'TheReportYouSawAtTheEnd.tsx'),
   'utf8',
 )
 
@@ -23,14 +34,18 @@ describe('#1a recommended additions / mentioned people are actionable', () => {
     expect(fnBody).toMatch(/setInviteAdded/)
   })
 
-  it('renders an "Add them" control for each suggested party', () => {
-    const block = src.slice(src.indexOf('sessionReport.suggestedParties.map'), src.indexOf('Mentioned people'))
-    expect(block).toMatch(/\+ Add them/)
-    expect(block).toMatch(/queueSuggestedContributor/)
+  it('lists the suggested parties and the mentioned people, in the shared report screen', () => {
+    expect(report).toMatch(/report\.suggestedParties\.map/)
+    expect(report).toMatch(/report\.mentionedPeople\.map/)
+    /* And asks for the control rather than assuming there is one: a page that only SHOWS a
+       finished report passes nothing and renders the names without buttons. */
+    expect(report).toMatch(/renderAdd\?\.\(key, p\.reason\)/)
+    expect(report).toMatch(/renderAdd\?\.\(key, `\$\{p\.name\} - \$\{p\.context\}`\)/)
   })
 
-  it('renders an "Add them" control for each mentioned person', () => {
-    const block = src.slice(src.indexOf('sessionReport.mentionedPeople.map'))
+  it('and the entry page supplies the "Add them" control to it', () => {
+    const block = src.slice(src.indexOf('<TheReportYouSawAtTheEnd'))
+    expect(block).toMatch(/renderAdd=\{/)
     expect(block).toMatch(/\+ Add them/)
     expect(block).toMatch(/queueSuggestedContributor/)
   })

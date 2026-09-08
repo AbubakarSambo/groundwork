@@ -4105,6 +4105,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
   }
 
+  /**
+   * THE REPORT THIS SESSION ENDED ON, exactly as it was read.
+   *
+   * Owner-scoped, and returned untouched: the point of it is sameness. `null` when this session
+   * never produced one - sessions that ran before it was kept, and sessions still open.
+   */
+  async getSessionReport(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkIn.id },
+      select: {
+        sessionReport: true,
+        completedAt: true,
+        sessionNumber: true,
+        groundId: true,
+        /* Whether this session was the lead's own, so a page rendering it can label it as the
+           card under the transcript labels it rather than guessing. */
+        participant: { select: { partyType: true } },
+      },
+    });
+    return {
+      report: (row?.sessionReport ?? null) as Record<string, unknown> | null,
+      finishedAt: row?.completedAt ?? null,
+      sessionNumber: row?.sessionNumber ?? null,
+      groundId: row?.groundId ?? null,
+      isInitiator: row?.participant?.partyType === 'INITIATOR',
+    };
+  }
+
   /** Fetch this party's single-party artifact (B2, owner-scoped). */
   async getSoloArtifact(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);

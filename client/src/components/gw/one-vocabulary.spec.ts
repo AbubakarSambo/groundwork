@@ -275,8 +275,11 @@ describe('one uppercase label, including on a dark ground', () => {
      * Five more copies of the `.09em` label lived in the preview of the report - the screen whose
      * whole job is to promise what the real report will look like. They are the same component now.
      */
-    const ENTRY = strip(readFileSync(join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))
-    expect(ENTRY).toMatch(/import \{ Sec \} from '@\/components\/gw\/kit'/)
+    /* The preview became its own component, so that the report somebody read at the end of a
+       session is the same screen when they open it again later. The heading still comes from the
+       kit; it is just one file further along. */
+    const ENTRY = strip(readFileSync(join(SRC, 'components/gw/TheReportYouSawAtTheEnd.tsx'), 'utf8'))
+    expect(ENTRY).toMatch(/import \{ Sec \} from '\.\/kit'/)
     expect(ENTRY).not.toMatch(/letterSpacing: '\.09em'/)
   })
 })
