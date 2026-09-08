@@ -1,5 +1,6 @@
 import { Sec } from './kit'
 import { ResolutionPanel } from './ResolutionPanel'
+import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 
 /**
  * SOMEBODY'S OWN ACCOUNT OF A CHECK-IN.
@@ -81,6 +82,20 @@ export function MyRecord({
           */}
           {groundId && ((totalSessions != null && completedCount >= totalSessions - 1) || (ground as any).resolutionState) && (
             <ResolutionPanel groundId={groundId} />
+          )}
+
+          {/*
+            WHAT SUCCESS WAS SAID TO BE, AND WHERE THE ACCOUNTS PUT IT.
+
+            This is where a party meets it now. It used to be on her Setup tab, as a read-only panel
+            under a paragraph apologising for being read-only - a disclosure, not a comparison, and
+            on the one tab where nothing is hers. Here it sits beside her own sessions, next to her
+            own account of the same question, which is the only place the two can be read together.
+          */}
+          {groundId && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <WhatSuccessLooksLikeFor groundId={groundId} />
+            </div>
           )}
 
           {/* The empty state, and NO price.

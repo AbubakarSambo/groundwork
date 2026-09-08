@@ -598,7 +598,15 @@ export function ContextPage({
                   {/* Three lines became one. The examples earn their place - people do not know
                       what counts as context and do know what they emailed somebody - and the rest
                       was the same promise the heading above already makes. */}
-                  The brief, the plan, the scope, or the message that started this.{' '}
+                  The brief, the plan, the scope, or the message that started this{' '}
+                  {/* AND WHAT HAS HAPPENED SINCE, WHICH NOBODY WAS TELLING THEM TO UPLOAD.
+                      Every example here was a document from BEFORE the work started, so people
+                      uploaded a scope and stopped. The record of what was actually done or said -
+                      meeting notes, a Gemini or Otter transcript, a photo of a whiteboard - is the
+                      thing a check-in most wants to read, and it is the thing people already have
+                      sitting in their inbox. */}
+                  – and what has happened since: meeting notes, a transcript from Gemini or
+                  another notetaker, or a photo of what was agreed.{' '}
                   {contextEnabled
                     ? 'Everybody\u2019s check-in reads it once you open it.'
                     : 'It shapes your own questions and reaches nobody else.'}

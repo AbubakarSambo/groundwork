@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
@@ -392,6 +393,23 @@ export function BoardPage() {
 
         {/* ---------------------------------------------- against the plan */}
         {(shown.objectives || shown.divergence) && <Zone label="Against the plan" />}
+
+        {/*
+          THE PLAN'S OWN TOP LINE, WHICH THIS ZONE WAS MISSING.
+
+          "Against the plan" opened on named targets and where accounts differ - both real, both
+          downstream of a thing the board never showed: what success was said to be in the first
+          place, and what each person independently says it is. The board is the shared picture, so
+          the definition everybody is being read against belongs at the top of this zone rather than
+          only on the Setup tab where one person typed it.
+        */}
+        {(shown.objectives || shown.divergence) && (
+          <Card>
+            <Row first>
+              <WhatSuccessLooksLikeFor groundId={id!} />
+            </Row>
+          </Card>
+        )}
 
         {shown.objectives && b.objectives && (
           <>

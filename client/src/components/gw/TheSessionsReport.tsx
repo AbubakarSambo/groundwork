@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { reportsApi } from '@/api/reports'
 import { Sec } from './kit'
+import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 
 /**
  * ONE SESSION'S SHARED REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -182,6 +183,23 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 14 }}>
         {data.whereThingsStand.saying}
       </div>
+
+      {/*
+        AGAINST WHAT WAS NAMED, right under where things stand, because the two are one thought:
+        this is where things are, and this is the thing they were supposed to be. It sat nowhere
+        before - the platform asked for a definition of success on Setup and then never mentioned it
+        on any report or board again.
+      */}
+      {(data as any).againstSuccess && (
+        <div style={{ marginBottom: 16 }}>
+          {/* The report already knows which line is the reader's own; the band uses it only to
+              say "You" instead of printing their name back at them. */}
+          <WhatSuccessLooksLike
+            data={(data as any).againstSuccess}
+            yourName={(data as any).counting?.find((c: any) => c.isYou)?.who ?? null}
+          />
+        </div>
+      )}
 
       {data.sharedPicture && (
         <>

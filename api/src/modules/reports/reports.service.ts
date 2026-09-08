@@ -11,6 +11,7 @@ import { withoutWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-no
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
+import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
 import { theSessionReport } from './the-session-report';
 import { cleanText } from './what-the-record-actually-holds';
 import {
@@ -1722,6 +1723,79 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * filtered to the reader unless the shared report has released, at which point the accounts are
    * comparable by design and the labels are the same ones the report uses.
    */
+  /**
+   * WHERE PEOPLE ARE AGAINST WHAT SUCCESS WAS SAID TO BE, on its own, for the surfaces that are not
+   * a session report - a party's own record, and the board.
+   *
+   * The session report carries the same read inline, because a reader who has the report open
+   * should not have to go and fetch the thing it is measuring against. This is the same computation
+   * behind the same wall, for the pages that show it without a session.
+   */
+  async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        organizationId: true,
+        initiatorId: true,
+        participants: {
+          select: {
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
+        report: { select: { releasedAt: true } },
+      },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
+    const isOrgAdmin = !isInitiator && !me && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    /* NotFound, not Forbidden. GW-PRI-04: a 403 tells a stranger the check-in is real. */
+    if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
+
+    const viewerIsLead = isInitiator || isOrgAdmin;
+    const released = !!ground.report?.releasedAt;
+    const readableParticipantIds = released || viewerIsLead
+      ? ground.participants.map((p) => p.id)
+      : me ? [me.id] : [];
+
+    const labels = labelsForParties(ground.participants as any);
+    const nameByLabel = namesVisibleTo(requestingUserId, ground.participants as any);
+    const whoOf = (participantId: string | null) => {
+      if (!participantId) return null;
+      const label = labels.get(participantId) ?? null;
+      const named = label ? nameByLabel.get(label) : undefined;
+      if (named) return named;
+      const p = ground.participants.find((x) => x.id === participantId);
+      if (viewerIsLead && p?.email) return p.email;
+      return label;
+    };
+
+    const [baseline, entries] = await Promise.all([
+      this.prisma.groundBaseline.findFirst({
+        where: { groundId },
+        orderBy: { version: 'desc' },
+        select: { successLooksLike: true, version: true, conditions: true },
+      }),
+      this.prisma.recordEntry.findMany({
+        where: { participantId: { in: readableParticipantIds } },
+        orderBy: { createdAt: 'asc' },
+        select: { type: true, text: true, participantId: true },
+      }),
+    ]);
+
+    return whereYouAreAgainstWhatYouNamed({
+      /* What this read was allowed to look at, so its words can say "you have not" rather than
+         "nobody" when it only ever saw one person's rows. */
+      counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
+      stated: baseline?.successLooksLike ?? null,
+      version: baseline?.version ?? null,
+      conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
+      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: whoOf(e.participantId) })),
+    });
+  }
+
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -1794,7 +1868,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.prisma.groundBaseline.findFirst({
         where: { groundId },
         orderBy: { version: 'desc' },
-        select: { successLooksLike: true },
+        /* `version` and `conditions` for the read that places people against what was named -
+           the table has carried conditions since it was created and nothing had ever read them. */
+        select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.groundBaselineEntry.findFirst({
         where: { groundId },
@@ -1978,6 +2054,34 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * is unreliable; a control that says "corrections closed on the 8th" is the same fact,
      * delivered where they can act on it.
      */
+    /**
+     * WHERE PEOPLE ARE AGAINST WHAT WAS NAMED, which is the question the product asked and then
+     * never answered. Every entry so far rather than this session's, because a condition somebody
+     * committed to in session two is not unspoken in session three, and each person's own account
+     * of what success is was given once and stands until they change it.
+     *
+     * Same reader wall as everything else on this page: `readableParticipantIds` is their own row
+     * until the report releases. Before release a party sees their own definition beside the
+     * lead's stated one, which is the comparison that is theirs to make; the rest arrives with
+     * the report.
+     */
+    const everyEntrySoFar = await this.prisma.recordEntry.findMany({
+      where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      orderBy: { createdAt: 'asc' },
+      select: { type: true, text: true, participantId: true },
+    });
+    const againstSuccess = whereYouAreAgainstWhatYouNamed({
+      counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
+      stated: baseline?.successLooksLike ?? null,
+      version: baseline?.version ?? null,
+      conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
+      entries: everyEntrySoFar.map((e) => ({
+        type: e.type,
+        text: cleanText(e.text),
+        who: whoOf(e.participantId),
+      })),
+    });
+
     const window = await this.correctionWindowDays();
     const canCorrect = whetherItCanStillBeCorrected({
       releasedAt: (ground.report?.releasedAt as Date | null) ?? null,
@@ -1986,6 +2090,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     return {
       ...shape,
+      againstSuccess,
       correctable: canCorrect.allowed,
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
       counting,

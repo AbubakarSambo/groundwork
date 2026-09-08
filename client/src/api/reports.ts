@@ -29,6 +29,11 @@ export const reportsApi = {
     apiClient.get(`/grounds/${groundId}/report/session/${sessionNumber}`, { skipNotFoundToast: true } as any)
       .then(r => r.data as SessionShapedReport),
 
+  /** What success was said to be, and where the accounts put each condition under it. */
+  againstSuccess: (groundId: string) =>
+    apiClient.get(`/grounds/${groundId}/report/against-success`, { skipNotFoundToast: true } as any)
+      .then(r => r.data),
+
   rounds: (groundId: string) =>
     apiClient
       .get<{ rounds: any[]; moved: { round: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
