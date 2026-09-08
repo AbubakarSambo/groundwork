@@ -91,6 +91,28 @@ export function ContextPage({
   const [askingWhatToLookFor, setAskingWhatToLookFor] = useState<{ file: File; consented: boolean } | null>(null)
   const [whatToLookFor, setWhatToLookFor] = useState('')
 
+  /**
+   * WRITING OR REWRITING THE BRIEF.
+   *
+   * It could be written when a check-in was created and never again - so a lead who wanted to tell
+   * their team what this is for afterwards had no way to, and a check-in carrying the WRONG brief
+   * was stuck with it. Every check-in made through the entry chat before today has one: the
+   * report's read of the lead's own account, in the second person, published to everybody.
+   *
+   * Blank clears it on purpose. Somebody who wants a brief they did not write GONE should not have
+   * to replace it with something they do not mean.
+   */
+  const [briefDraft, setBriefDraft] = useState<string | null>(null)
+  const saveBrief = useMutation({
+    mutationFn: (text: string) => groundsApi.update(id, { brief: text }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ground", id] })
+      setBriefDraft(null)
+      toast.success('Everyone here reads this now')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
+  })
+
   const uploadDoc = useMutation({
     mutationFn: ({ file, consented, note }: { file: File; consented: boolean; note?: string }) =>
       documentsApi.upload(id, file, consented, note),
@@ -274,6 +296,71 @@ export function ContextPage({
                   the brief
                 </span>
                 <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{theBrief}</div>
+                {isLead && briefDraft === null && (
+                  <button
+                    onClick={() => setBriefDraft(theBrief)}
+                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Rewrite this
+                  </button>
+                )}
+              </div>
+            )}
+            {/*
+              AN EMPTY BRIEF SAYS WHAT A BRIEF IS, rather than nothing at all.
+
+              It could not be empty before, because it was filled with the report's read of the
+              lead's own account - "You have two standards for Zainab's first quarter..." - which
+              is not a brief and was not theirs to publish. With that gone, a check-in whose lead
+              has not written one shows the space and what belongs in it, which somebody can act
+              on. See the comment in entry.service.ts on `const brief`.
+            */}
+            {!theBrief && briefDraft === null && (
+              <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  Nobody has written a brief yet. It is a few lines from whoever runs this saying
+                  what the check-in is for and what they want out of it, in their own words -
+                  everybody here reads it before they answer.
+                </div>
+                {isLead && (
+                  <button
+                    onClick={() => setBriefDraft('')}
+                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Write the brief
+                  </button>
+                )}
+              </div>
+            )}
+            {isLead && briefDraft !== null && (
+              <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
+                <textarea
+                  className="gw-ta"
+                  autoFocus
+                  value={briefDraft}
+                  onChange={(e) => setBriefDraft(e.target.value)}
+                  rows={4}
+                  maxLength={4000}
+                  placeholder="What this check-in is for, and what you want out of it. Everybody here reads this before they answer."
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => saveBrief.mutate(briefDraft)}
+                    disabled={saveBrief.isPending || briefDraft === theBrief}
+                    style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: briefDraft === theBrief ? 0.4 : 1 }}
+                  >
+                    {saveBrief.isPending ? 'Saving…' : 'Everyone here reads this'}
+                  </button>
+                  <button
+                    onClick={() => setBriefDraft(null)}
+                    style={{ padding: '8px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    Cancel
+                  </button>
+                  {theBrief && briefDraft.trim() === '' && (
+                    <span style={{ fontSize: 11.5, color: 'var(--gw-amber-t)' }}>Saving it empty removes the brief.</span>
+                  )}
+                </div>
               </div>
             )}
             {objectives.length > 0 ? (
@@ -853,6 +940,27 @@ export function ContextPage({
                     {addSharedNoteMut.isPending ? 'Saving…' : 'Share this with everyone'}
                   </button>
                   {sharedNoteSaved && <span style={{ fontSize: 12, color: 'var(--gw-green-t)' }}>Everyone here can read this now</span>}
+                </div>
+
+                {/*
+                  THE LINE WHERE THE PAGE STOPS BEING SHARED.
+
+                  "Put a line between the private steer section and everything above, so we say
+                  everything below can't be seen by your team, only the items above."
+
+                  Until here, every band on this page is read by everybody on the check-in - that
+                  is the point of it. From here down it is the lead's alone. The two were separated
+                  only by a heading in the same weight as every other heading, on a page whose
+                  whole job is telling people who reads what.
+                */}
+                <div style={{ borderTop: '2px solid var(--gw-border)', marginTop: 26, paddingTop: 14, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-clay)', marginBottom: 4 }}>
+                    From here down, only you
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                    Everything above this line is read by everybody on this check-in. Nothing below
+                    it is: not by them, and not by anybody else in your organisation.
+                  </div>
                 </div>
 
                 {/* 4 - ONLY YOU SEE THIS. Steers what a session looks at; never quoted, never shown. */}

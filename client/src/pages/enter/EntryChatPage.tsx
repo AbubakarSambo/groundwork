@@ -1786,9 +1786,27 @@ export function EntryChatPage() {
          * The BRIEF travels for the same reason it always did: they gave no account, so the
          * onboarding is the only context the people who do check in have to work from.
          */
-        ...(flowPath === 'lead'
-          ? { managingOnly: true, brief: composeLeadBrief(onboardingSelections) || undefined }
+        /*
+         * AND THE BRIEF TRAVELS ON BOTH PATHS NOW, WHICH IS THE FIX FOR "THE BRIEF IS WRONG".
+         *
+         * It used to be sent only when the person was NOT checking in themselves. On every other
+         * commit the server filled the brief with the report's own observation instead - the AI's
+         * read of what this person had just said, in the second person:
+         *
+         *   "You have two standards for Zainab's first quarter. One you told her in week one; the
+         *    other you have never written down and doubt she knows about."
+         *
+         * That is a finding about them, published to their team under a heading that says "the
+         * lead's own words about the situation". Two things wrong at once: it is not a brief, and
+         * it takes a read of somebody's private account and shares it without them choosing to.
+         *
+         * `composeLeadBrief` is their own answers, in their own words, and it always was - it was
+         * simply not being sent unless they had opted out of checking in.
+         */
+        ...(composeLeadBrief(onboardingSelections)
+          ? { brief: composeLeadBrief(onboardingSelections) }
           : {}),
+        ...(flowPath === 'lead' ? { managingOnly: true } : {}),
       }
   }
 

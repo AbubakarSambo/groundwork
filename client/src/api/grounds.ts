@@ -186,7 +186,8 @@ export const groundsApi = {
    * went wrong".
    */
   /** `startsAt` is an ISO date; the server refuses it once anybody has answered. */
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string; startsAt?: string }, opts?: { quiet?: boolean }) =>
+  /** `brief` blank clears it; the server refuses both to anybody but the lead or an org admin. */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string; startsAt?: string; brief?: string }, opts?: { quiet?: boolean }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
       ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
       : undefined).then(r => r.data),

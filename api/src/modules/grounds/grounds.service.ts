@@ -1202,7 +1202,18 @@ export class GroundsService {
      * may see whose name is decided by the reports service with the viewer in hand, and this has no
      * viewer. A role label is the safe thing to show, and showing one is not a defect.
      */
-    const rawBrief = (ground as any).brief ?? (ground.report?.releasedAt ? (ground.report as any).sharedPicture ?? null : null);
+    /*
+     * AND NO FALLBACK TO THE SHARED PICTURE EITHER.
+     *
+     * Once a report released, an empty brief was filled with the report's `sharedPicture`. Same
+     * fault as the entry commit's: the brief is labelled "the lead's own words about the
+     * situation", and the shared picture is what the product made of everybody's accounts. It has
+     * its own home on the report, where it is named correctly.
+     *
+     * An empty brief is now empty, and the Context page says what a brief is and that nobody has
+     * written one - which somebody can act on.
+     */
+    const rawBrief = (ground as any).brief ?? null;
     const brief = typeof rawBrief === 'string' ? notTheWordParty(rawBrief) : rawBrief;
 
     const signals = (ground.patternDetections ?? [])
@@ -2777,7 +2788,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string; brief?: string },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2855,6 +2866,21 @@ export class GroundsService {
       throw new BadRequestException(
         'A check-in\'s mode cannot be changed. It is fixed when the check-in is created, because people check in on the understanding of what will and will not be shared.',
       );
+    }
+
+    /*
+     * THE BRIEF. Whoever runs the check-in writes it and can rewrite it; it is the words everybody
+     * reads before they answer, so it carries the same permission as renaming and the same audit
+     * entry. Blank clears it, deliberately: a lead who wants the wrong brief GONE - every entry-chat
+     * check-in before today had one written by the report rather than by them - should not have to
+     * replace it with something they do not mean.
+     */
+    if (dto.brief !== undefined) {
+      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
+        throw new ForbiddenException(
+          'Only the lead of this check-in, or an admin in your organisation, can change what it says it is for.',
+        );
+      }
     }
 
     /**
@@ -2983,6 +3009,7 @@ export class GroundsService {
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         ...(requestedLabel !== undefined && { label: requestedLabel }),
+        ...(dto.brief !== undefined && { brief: dto.brief.trim() || null }),
         /*
          * AND THE END MOVES WITH THE START, or the run keeps its old finish line and quietly gets
          * shorter. `endsAt` is what "89 days remaining" counts down to and what the stall cron

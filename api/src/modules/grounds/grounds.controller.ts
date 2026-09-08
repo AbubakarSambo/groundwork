@@ -70,6 +70,23 @@ class UpdateTimelineDto {
    * - and there was no way to change it once the check-in existed. A new hire's start date moving
    * by a week is the most ordinary thing that can happen to a new-hire check-in.
    */
+  /**
+   * THE BRIEF, WHICH COULD BE WRITTEN AT CREATION AND NEVER CHANGED.
+   *
+   * Two things follow from that. A lead who wanted to tell their team what this is for after the
+   * check-in existed had no way to; and a check-in carrying the WRONG brief - every one made
+   * through the entry chat before today, where the brief was filled with the report's read of the
+   * lead's own account - was stuck with it, published to everybody on it.
+   *
+   * Same permission and the same audit trail as renaming, because it is the same kind of act: the
+   * words everybody reads before they answer.
+   */
+  @ApiPropertyOptional({ description: "What the check-in is for, in the lead's own words" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  brief?: string;
+
   @ApiPropertyOptional({ example: '2026-09-15', description: 'When the first check-in opens' })
   @IsOptional()
   @IsString()

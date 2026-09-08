@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
+import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
@@ -117,7 +118,7 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
  * stay, because they are the order the questions were asked in when the check-in was set up.
  */
 function Fold({
-  n, title, src, summary, open, onToggle, children,
+  n, title, src, summary, open, onToggle, children, checked, onCheck,
 }: {
   n: number
   title: string
@@ -126,6 +127,9 @@ function Fold({
   open: boolean
   onToggle: () => void
   children: React.ReactNode
+  /** Whether the person has signed this question off. See the-setup-steps-you-have-checked.ts. */
+  checked?: boolean
+  onCheck?: () => void
 }) {
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
@@ -138,17 +142,50 @@ function Fold({
           fontFamily: 'inherit', textAlign: 'left',
         }}
       >
+        {/*
+          THE NUMBER, OR A TICK ONCE IT HAS BEEN SIGNED OFF.
+          The tick takes the number's place rather than sitting beside it: a row carrying both a
+          number and a tick is two marks for one thing, and the order is what the numbers are for.
+        */}
         <span style={{
-          flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: open ? 'var(--gw-navy)' : 'var(--gw-bg)',
-          color: open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+          background: checked ? 'var(--gw-green-b)' : open ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: checked ? 'white' : open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>{n}</span>
+        }}>{checked ? '\u2713' : n}</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
           <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{open ? src : summary}</span>
         </span>
         <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
       </button>
+      {/*
+        SIGNING IT OFF, INSIDE THE OPEN QUESTION.
+
+        Not on the closed row: a tick beside a heading somebody has not read is a tick they can
+        press without reading, which is the opposite of the point. It is reached by opening the
+        question, which means the answer was on screen when it was pressed.
+      */}
+      {open && onCheck && (
+        <div style={{ padding: '0 14px 12px', marginTop: -4 }}>
+          <button
+            onClick={onCheck}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, background: 'none', border: 'none',
+              padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5,
+              color: checked ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+            }}
+          >
+            <span style={{
+              width: 15, height: 15, borderRadius: 4, flexShrink: 0,
+              border: `1px solid ${checked ? 'var(--gw-green-b)' : 'var(--gw-border)'}`,
+              background: checked ? 'var(--gw-green-b)' : 'white', color: 'white',
+              fontSize: 10, lineHeight: '14px', textAlign: 'center', fontWeight: 700,
+            }}>{checked ? '\u2713' : ''}</span>
+            {checked ? 'You have signed this off' : 'I have checked this'}
+          </button>
+        </div>
+      )}
       {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
     </div>
   )
@@ -217,6 +254,8 @@ export function GroundAdminPage() {
   const [openSetupBand, setOpenSetupBand] = useState<number>(1)
   /* The start date as typed, against the one on record, so the save button knows if anything moved. */
   const [startsAtDraft, setStartsAtDraft] = useState('')
+  /* Which setup questions this person has signed off. Kept in this browser - see the module. */
+  const [setupChecked, setSetupChecked] = useState<number[]>(() => (id ? stepsYouHaveChecked(id) : []))
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -1021,6 +1060,13 @@ export function GroundAdminPage() {
     n,
     open: openSetupBand === n,
     onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
+    checked: setupChecked.includes(n),
+    onCheck: () =>
+      setSetupChecked(
+        setupChecked.includes(n)
+          ? forgetYouCheckedIt(id!, n)
+          : rememberYouCheckedIt(id!, n),
+      ),
   })
 
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
@@ -2682,6 +2728,21 @@ export function GroundAdminPage() {
               </button>
             </div>
             </Fold>
+            {/*
+              HOW FAR THROUGH SETUP SOMEBODY IS.
+
+              AFTER the questions rather than above them, and that is a fact about the count rather
+              than a design preference: `setupBand()` increments as each fold renders, so the total
+              does not exist until they have. Read before the first fold it would say zero of zero
+              on the first paint and correct itself on the second, which is worse than sitting at
+              the foot where it is right the first time - and a tally of what you have reviewed is
+              a footer anyway.
+            */}
+            {isInitiator && setupBands > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 14, lineHeight: 1.55 }}>
+                {howFarThroughSetup(setupChecked, setupBands)}
+              </div>
+            )}
           </div>
         )}
       </div>

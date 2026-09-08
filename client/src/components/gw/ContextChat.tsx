@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 
 /**
@@ -71,6 +72,29 @@ export function ContextChat({ groundId }: { groundId: string }) {
   useEffect(() => {
     rememberConversation(groundId, { history, proposal, done })
   }, [groundId, history, proposal, done])
+
+  /**
+   * ADDING A DOCUMENT FROM HERE.
+   *
+   * The same call the check-in chat makes, so the file lands in Documents with everything that
+   * comes with being a document there - who may read it, and its assessment. What this adds is
+   * only the way in, plus a line in the conversation saying it arrived: a file that uploads
+   * silently in a chat reads as a file that did not upload.
+   */
+  const fileInput = useRef<HTMLInputElement>(null)
+  const attach = useMutation({
+    mutationFn: (file: File) => documentsApi.upload(groundId, file),
+    onSuccess: (_res, file) => {
+      qc.invalidateQueries({ queryKey: ['documents', groundId] })
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      toast.success(`${file.name} is filed under Documents`)
+      setHistory((h) => [
+        ...h,
+        { role: 'assistant', content: `${file.name} is filed under this check-in's documents. Everyone's check-in reads it before asking a question, so it shapes what they are asked.` },
+      ])
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not upload. Try again.'),
+  })
 
   const send = useMutation({
     mutationFn: (next: { role: 'user' | 'assistant'; content: string }[]) =>
@@ -268,6 +292,35 @@ export function ContextChat({ groundId }: { groundId: string }) {
       */}
       {!(history.length === 0 && opening.data ? opening.data.done : done) && (
         <div style={{ display: 'flex', gap: 8 }}>
+          {/*
+            A DOCUMENT, LIKE EVERY OTHER CHAT IN THE PRODUCT.
+
+            "The context chat should allow you to add another doc, just like every other chat. And
+            it gets filed under your documents."
+
+            The check-in chat has had a "+ Doc" button for a long time. This conversation
+            recommends documents by name in nearly every turn - "the brief you sent them", "the
+            grant terms" - and had no way to accept one, so the only route was to leave it, scroll
+            to the Documents band, upload, and come back to a conversation that had moved on.
+          */}
+          <input
+            ref={fileInput}
+            type="file"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) attach.mutate(file)
+            }}
+          />
+          <button
+            onClick={() => fileInput.current?.click()}
+            disabled={attach.isPending}
+            title="Add a document to this check-in"
+            style={{ padding: '10px 12px', borderRadius: 8, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, cursor: attach.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+          >
+            {attach.isPending ? 'Adding…' : '+ Doc'}
+          </button>
           <input
             value={text}
             onChange={e => setText(e.target.value)}
