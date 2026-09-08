@@ -30,8 +30,14 @@ export interface MyRecordProps {
   totalSessions: number | null
   /** How many this reader has finished, for the same rule. */
   completedCount: number
-  /** This reader's own specificity read, from `/grounds/:id/my-specificity`. */
-  specificity?: any
+  /**
+   * GONE FROM HERE, AND THE PROP WITH IT.
+   *
+   * The trend, the thing that would help and their own best answer were three lines in a card at the
+   * foot of this component. They belong with the specificity read they describe, which is now at the
+   * top of the page - see TheFiveThingsThatMakeItCheckable. Leaving the prop declared and unused
+   * would be a promise this component no longer keeps.
+   */
   /**
    * Send the reader to another tab of the same check-in. A prop rather than a router call, because
    * the two pages that render this name their tabs differently and neither's names belong in here.
@@ -46,7 +52,6 @@ export function MyRecord({
   viewerUserId,
   totalSessions,
   completedCount,
-  specificity,
   onGoToTab,
 }: MyRecordProps) {
   return (
@@ -190,65 +195,21 @@ export function MyRecord({
             scale is a mark out of something a person cannot see, and this read exists to be acted
             on rather than scored.
           */}
-          {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              <Sec title="How your answers are going" src="across the sessions so far" />
-              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-                {specificity?.trend === 'rising'
-                  ? 'Your answers are getting more specific as this goes on.'
-                  : specificity?.trend === 'falling'
-                    ? 'Your recent answers carry less detail than your earlier ones.'
-                    : specificity?.trend === 'steady'
-                      ? 'Your level of detail has held steady across these sessions.'
-                      : 'Too early to read a trend. This fills in as you check in.'}
-              </div>
+          {/*
+            "HOW YOUR ANSWERS ARE GOING" AND "WHAT YOUR RECORD CAN SUPPORT" BOTH MOVED TO THE TOP.
 
-              {/* Nobody can act on a word like "low"; everybody can act on "none of your answers
-                  say when". */}
-              {specificity?.whatWouldHelp && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
-                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>What would make the next one land harder. </span>
-                  {specificity.whatWouldHelp}
-                </div>
-              )}
+            They were two cards here, below the sessions and below the carry-forward - a person read
+            everything the page held before reaching the two lines that say what any of it amounts
+            to. And both said it as a mark on a scale nobody can see: a five-segment bar with the
+            word "moderate" beside it, and a sentence about a trend with nothing to compare against.
 
-              {/* Their own best answer, quoted back. What a checkable account looked like in their
-                  own words teaches what no description of specificity can. */}
-              {specificity?.strongest && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
-                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>This one of yours was easy to check. </span>
-                  <span style={{ fontStyle: 'italic' }}>"{specificity.strongest}"</span>
-                </div>
-              )}
+            One card now, above what it summarises, in sentences: see WhatYourRecordCanSupport. The
+            two teaching lines that lived in the first of them - the thing the engine could not find,
+            and the person's own best answer quoted back - moved with the specificity read they
+            belong to, in TheFiveThingsThatMakeItCheckable.
 
-              {/*
-                THE REASON THIS IS SAFE TO SHOW AT ALL IS THAT IT GOES NOWHERE ELSE, and I dropped
-                this line while tightening the card. A person reading feedback on their own writing
-                assumes their lead is reading it too unless told otherwise, so the assurance is part
-                of the feature rather than decoration around it.
-              */}
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
-                Only you see this. It is never shown to the lead or to anybody else in this check-in.
-              </div>
-            </div>
-          )}
-
-          {/* Confidence score - unlocked only */}
-          {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Sec title="What your record can support" src="the whole history, not this session" />
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-navy)' }}>{myRecord.confidence.label}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= myRecord.confidence!.score ? 'var(--gw-navy)' : 'var(--gw-border)' }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{myRecord.confidence.description}</div>
-            </div>
-          )}
-
+            The assurance that only they see this went with the card and is in the new one.
+          */}
           {/* Pattern observations - unlocked, diplomatic */}
           {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>

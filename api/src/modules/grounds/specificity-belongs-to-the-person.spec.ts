@@ -71,6 +71,18 @@ describe('and the page shows it once, with the actionable half', () => {
   const PAGE = [
     readFileSync(join(CLIENT, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'),
     readFileSync(join(CLIENT, 'components/gw/MyRecord.tsx'), 'utf8'),
+    /*
+     * AND THE TWO CARDS THE READ MOVED INTO, for the reason written above: this reaches into the
+     * client, so it must follow the content rather than a filename.
+     *
+     * Both halves of what this spec protects moved to the top of the page. The trend was a card
+     * below the sessions and below the carry-forward, saying "moderate" beside a five-segment bar;
+     * it is now a sentence naming the session it compares against. The teaching half - the thing
+     * the engine could not find, and their own best answer - moved with the specificity read it
+     * describes, which is now itemised as the five dimensions the engine has always stored.
+     */
+    readFileSync(join(CLIENT, 'components/gw/WhatYourRecordCanSupport.tsx'), 'utf8'),
+    readFileSync(join(CLIENT, 'components/gw/TheFiveThingsThatMakeItCheckable.tsx'), 'utf8'),
   ].join('\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('the bare grade line is gone', () => {
@@ -79,17 +91,21 @@ describe('and the page shows it once, with the actionable half', () => {
   });
 
   it('the trend is worded about the record, not the person', () => {
-    expect(PAGE).toMatch(/Your answers are getting more specific/);
+    /* Named against the session it compares with, because `a-trajectory-is-not-a-score` forbids an
+       arrow and a sentence that names what it measured from is the more useful form anyway. */
+    expect(PAGE).toMatch(/Your answers are getting more checkable than session/);
     expect(PAGE).not.toMatch(/label === 'high'/);
   });
 
   it('what would help is rendered', () => {
-    expect(PAGE).toMatch(/specificity\?\.whatWouldHelp &&/);
-    expect(PAGE).toMatch(/What would make the next one land harder/);
+    /* The label went with the card. What matters is that the line reaches the person, and it now
+       sits directly under the five things it is telling them how to fix. */
+    expect(PAGE).toMatch(/whatWouldHelp/);
+    expect(PAGE).toMatch(/\{whatWouldHelp\}/);
   });
 
   it('their own strongest answer is rendered', () => {
-    expect(PAGE).toMatch(/specificity\?\.strongest &&/);
+    expect(PAGE).toMatch(/This one of yours was easy to check/);
   });
 
   it('and the page says out loud that nobody else sees it', () => {

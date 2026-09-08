@@ -19,6 +19,9 @@ import { join } from 'path'
 const read = (...p: string[]) => readFileSync(join(__dirname, ...p), 'utf8')
 const RECORD = read('MyRecord.tsx')
 const PRIVATE = read('MyPrivateReport.tsx')
+/* Both reads moved to the top of the page, above what they summarise. See the two its below. */
+const SUPPORT = read('WhatYourRecordCanSupport.tsx')
+const FIVE = read('TheFiveThingsThatMakeItCheckable.tsx')
 
 describe('my record', () => {
   it('lists the sessions once, not twice', () => {
@@ -41,14 +44,41 @@ describe('my record', () => {
     expect(RECORD).not.toMatch(/specificity\.scores\.map/)
   })
 
+  /**
+   * BOTH READS MOVED TO THE TOP, AND THE DISTINCTION THIS FILE PROTECTS IS WHY THEY ARE TWO CARDS
+   * RATHER THAN ONE.
+   *
+   * They were two cards at the FOOT of this component - below the sessions, below the carry-forward
+   * - so a person read everything the page held before reaching the two lines saying what any of it
+   * amounted to. And each still said it as a mark on a scale nobody can see: a five-segment bar
+   * beside the word "moderate", and a trend with nothing named to compare against.
+   *
+   * Her distinction is unchanged and is still the reason there are two of them: confidence is about
+   * the whole history and the read it makes possible; specificity is about how much was in one
+   * session. So one card is about the record, and the other is about a session and names which.
+   */
   it('keeps the part that IS about the run, and the part somebody can act on', () => {
-    expect(RECORD).toContain('How your answers are going')
-    expect(RECORD).toContain('across the sessions so far')
-    expect(RECORD).toContain('What would make the next one land harder')
+    expect(SUPPORT).toContain('Your answers are getting more checkable than session')
+    expect(FIVE).toContain('worth a sentence in your next session')
+    expect(FIVE).toContain('whatWouldHelp')
   })
 
   it('and confidence says which of the two reads it is', () => {
-    expect(RECORD).toContain('What your record can support')
-    expect(RECORD).toContain('the whole history, not this session')
+    /* One reads the whole record; the other names the single session it read. */
+    expect(SUPPORT).toContain('What your record can support')
+    expect(FIVE).toMatch(/From session \$\{sessionNumber\}/)
+  })
+
+  it('and neither is a bar or a grade word', () => {
+    /*
+     * COMMENTS STRIPPED FIRST. Both files explain in prose that they replaced a bar and the word
+     * "moderate", so an unstripped read fails on the explanation of the fix - which is the trap
+     * `a-guard-that-a-comment-satisfies-is-not-a-guard` names, in the mirror.
+     */
+    const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    for (const src of [code(SUPPORT), code(FIVE)]) {
+      expect(src).not.toMatch(/\[1,2,3,4,5\]\.map/)
+      expect(src).not.toContain('moderate')
+    }
   })
 })

@@ -16,6 +16,8 @@ import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
+import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
@@ -284,6 +286,22 @@ export function GroundParticipantPage() {
     .filter((c) => c.status === 'COMPLETED')
     .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
     .sort((a, b) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+  /**
+   * EVERY SESSION OF MINE AS A DOT, done and still to come.
+   *
+   * Replaces the alignment ladder and the row of specificity bars: both were marks on a scale the
+   * person could not see, and both cost a screen each. A dot per session and "3 of 6" is one row
+   * and says the thing anybody actually wanted from them.
+   */
+  const mySessionDots = (((ground as any)?.checkIns ?? []) as any[])
+    .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
+    .map((c) => ({
+      sessionNumber: c.sessionNumber ?? 0,
+      state: (c.status === 'COMPLETED'
+        ? (c.isSelfCorrection ? 'corrected' : 'done')
+        : 'todo') as 'done' | 'corrected' | 'todo',
+    }))
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
   /**
@@ -566,6 +584,33 @@ export function GroundParticipantPage() {
               My record is your part - the same whole-against-part split the two views' labels already
               use, rather than a second axis to learn.
             */}
+            {/*
+              THE TWO THINGS AT A GLANCE, ABOVE EVERYTHING THEY SUMMARISE.
+
+              "What your record can support" was a five-segment bar with a one-word label, three
+              screens down; "How your answers are going" was another card below that. Both were
+              buried under the thing they were meant to introduce, and both were marks out of a
+              scale nobody can see. One card now, at the top, in sentences.
+            */}
+            <WhatYourRecordCanSupport
+              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
+              trend={specificity?.trend}
+              sessions={mySessionDots}
+              totalSessions={totalSessions ?? null}
+            />
+
+            {/*
+              AND SPECIFICITY AS THE FIVE THINGS IT IS MADE OF, WHICH THE ENGINE HAS ALWAYS STORED
+              AND NO SCREEN HAS EVER SHOWN. `specificityDimensions` is written per check-in; the
+              product was averaging it into one word and printing the word.
+            */}
+            <TheFiveThingsThatMakeItCheckable
+              dimensions={(myFinishedSessions[0] as any)?.specificityDimensions ?? null}
+              sessionNumber={(myFinishedSessions[0] as any)?.sessionNumber ?? null}
+              whatWouldHelp={(myRecord as any)?.insightsLocked ? null : specificity?.whatWouldHelp}
+              strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
+            />
+
             <MyPrivateReport
               groundId={id!}
               /* The private, forward-looking panel that used to sit inside the shared report. See
@@ -591,7 +636,6 @@ export function GroundParticipantPage() {
             viewerUserId={user?.id}
             totalSessions={totalSessions ?? null}
             completedCount={completedCheckIns.length}
-            specificity={specificity}
             /* This page calls the material tab `docs`; the other calls it `context`. The component
                should not have to know either, so it asks and the page translates. */
             onGoToTab={(t) => goTab(t as any)}

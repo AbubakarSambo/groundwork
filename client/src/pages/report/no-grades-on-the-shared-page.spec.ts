@@ -54,8 +54,24 @@ describe('no grades on the shared page', () => {
      * which session was which. What is left under a heading here is the part that IS about the run
      * - the trend, and the one thing that would make the next session land harder.
      */
-    expect(MY_RECORD).toContain('How your answers are going')
-    expect(MY_RECORD).toContain('What would make the next one land harder')
+    /*
+     * IT MOVED A THIRD TIME - to the top of the page, in sentences. What this file guards is that
+     * the read still reaches the person it is about, not which component holds it, so it reads the
+     * card that holds it now.
+     */
+    const AT_THE_TOP = readFileSync(
+      join(__dirname, '..', '..', 'components', 'gw', 'WhatYourRecordCanSupport.tsx'),
+      'utf8',
+    )
+    expect(AT_THE_TOP).toContain('What your record can support')
+    expect(AT_THE_TOP).toContain('Only you see this')
+    /* And the actionable half - the one thing that would make the next session land harder - moved
+       with the specificity read it belongs to. */
+    const FIVE = readFileSync(
+      join(__dirname, '..', '..', 'components', 'gw', 'TheFiveThingsThatMakeItCheckable.tsx'),
+      'utf8',
+    )
+    expect(FIVE).toContain('whatWouldHelp')
     const PRIVATE_REPORT = readFileSync(join(__dirname, '../../components/gw/MyPrivateReport.tsx'), 'utf8')
     expect(PRIVATE_REPORT).toContain('specific enough to check')
   })

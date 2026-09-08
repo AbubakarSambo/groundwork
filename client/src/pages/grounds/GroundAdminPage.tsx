@@ -28,6 +28,8 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
+import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
+import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
@@ -1130,6 +1132,17 @@ export function GroundAdminPage() {
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
     (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
   ).length
+  /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
+     have to move together, which is what the-two-views-are-a-pair protects. */
+  const mySessionDots = ((ground?.checkIns ?? []) as any[])
+    .filter((c) => (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
+    .map((c) => ({
+      sessionNumber: c.sessionNumber ?? 0,
+      state: (c.status === 'COMPLETED'
+        ? (c.isSelfCorrection ? 'corrected' : 'done')
+        : 'todo') as 'done' | 'corrected' | 'todo',
+    }))
   /**
    * How many people have finished the round that is currently open. The round is
    * `sessionsDone + 1` - the one the header already names - so this and the
@@ -1666,6 +1679,20 @@ export function GroundAdminPage() {
               yours, so it sits here rather than above the shared report - which otherwise made that
               tab mean two things at once.
             */}
+            {/* The same two cards the party's view opens My record with. */}
+            <WhatYourRecordCanSupport
+              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
+              trend={mySpecificity?.trend}
+              sessions={mySessionDots}
+              totalSessions={plannedSessions ?? null}
+            />
+            <TheFiveThingsThatMakeItCheckable
+              dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
+              sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}
+              whatWouldHelp={(myRecord as any)?.insightsLocked ? null : mySpecificity?.whatWouldHelp}
+              strongest={(myRecord as any)?.insightsLocked ? null : mySpecificity?.strongest}
+            />
+
             <MyPrivateReport
               groundId={id!}
               mySoloReport={mySoloReport}
@@ -1687,7 +1714,6 @@ export function GroundAdminPage() {
             viewerUserId={user?.id}
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
-            specificity={mySpecificity}
             /* This page calls the material tab `docs`; the component asks to be sent and the page
                decides where that is. */
             onGoToTab={(t) => goTab((FROM_TAB_KEY[t] ?? 'docs') as Tab)}
