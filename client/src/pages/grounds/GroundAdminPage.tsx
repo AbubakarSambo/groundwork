@@ -255,7 +255,7 @@ export function GroundAdminPage() {
   /* The start date as typed, against the one on record, so the save button knows if anything moved. */
   const [startsAtDraft, setStartsAtDraft] = useState('')
   /* Which setup questions this person has signed off. Kept in this browser - see the module. */
-  const [setupChecked, setSetupChecked] = useState<number[]>(() => (id ? stepsYouHaveChecked(id) : []))
+  const [setupChecked, setSetupChecked] = useState<number[]>(() => (id ? stepsYouHaveChecked(id, user?.id) : []))
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -1064,8 +1064,8 @@ export function GroundAdminPage() {
     onCheck: () =>
       setSetupChecked(
         setupChecked.includes(n)
-          ? forgetYouCheckedIt(id!, n)
-          : rememberYouCheckedIt(id!, n),
+          ? forgetYouCheckedIt(id!, user?.id, n)
+          : rememberYouCheckedIt(id!, user?.id, n),
       ),
   })
 
@@ -1190,8 +1190,20 @@ export function GroundAdminPage() {
                 {/* Wraps. It was `nowrap` when the text was "running this check-in"; the longer
                     label that replaced it pushed a 375px page out to 403 and made the whole report
                     scroll sideways. Found by measuring the report on mobile, not by reading this. */}
+                {/*
+                  AND IT HAS TO BE TRUE OF WHOEVER IS READING IT.
+
+                  This page serves two people: the lead, who runs the check-in, and an admin of the
+                  organisation, who does not. It said "you are running this" to both - two inches
+                  above a banner that reads "You are looking at this as an admin, not as its lead".
+                  Seen on a real org's second admin: the header and the banner contradicting each
+                  other on the same screen.
+
+                  Both labels say the same thing about the view - it is everyone's state, not your
+                  own account - and differ only on the half that is about the reader.
+                */}
                 <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
-                  Everyone in it - you are running this
+                  {isInitiator ? 'Everyone in it - you are running this' : 'Everyone in it - you are an admin here'}
                 </span>
               </div>
             </div>
@@ -1506,7 +1518,21 @@ export function GroundAdminPage() {
                 */
               viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
               /* The same roster the participant view now shows. W13-5. */
-              peersHidden={(ground as any).peersVisibleEffective === false}
+              /*
+                PEERS ARE NOT HIDDEN FROM WHOEVER RUNS THE CHECK-IN.
+
+                `peersVisibleEffective` is the rule between the PARTIES - on an evaluation-family
+                ground they check in without seeing each other. Passed straight through, this view
+                showed a lead or an org admin the party sentence: "Your lead knows who is here; you
+                will not see the others or what they wrote, and they will not see you." Said to an
+                admin, on a page that lists both parties by name and email on the very next tab, and
+                whose own banner reads "You can see everything here, which is the point of being an
+                admin". Found walking a second admin of a real organisation.
+
+                The rule has not changed for anybody it applies to. This view is the one that runs
+                the check-in, so it is not one of them.
+              */
+              peersHidden={(ground as any).peersVisibleEffective === false && !canRunThisGround}
               parties={(ground.participants ?? [])
                 .filter((p: any) => !p.managingOnly)
                 .map((p: any) => {

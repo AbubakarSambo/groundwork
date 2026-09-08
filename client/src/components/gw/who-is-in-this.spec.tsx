@@ -164,9 +164,30 @@ describe('the permission stays in the service', () => {
      * green: the component's own behaviour was pinned and the fact that anything passes it was
      * not. A prop nothing supplies is a feature nobody gets.
      */
-    for (const f of ['../../pages/grounds/GroundParticipantPage.tsx', '../../pages/grounds/GroundAdminPage.tsx']) {
-      expect(code(f), `${f} does not tell the chat whether peers are hidden`)
-        .toMatch(/peersHidden=\{\(ground as any\)\.peersVisibleEffective === false\}/)
-    }
+    expect(code('../../pages/grounds/GroundParticipantPage.tsx'))
+      .toMatch(/peersHidden=\{\(ground as any\)\.peersVisibleEffective === false\}/)
+  })
+
+  /**
+   * AND THE VIEW THAT RUNS THE CHECK-IN IS NOT ONE OF THE PEOPLE THE RULE APPLIES TO.
+   *
+   * `peersVisibleEffective` is the rule BETWEEN THE PARTIES: on an evaluation-family ground they
+   * check in without seeing each other. The lead's view passed it straight through, so a lead - or
+   * an org admin, who reads the same page - was shown the party sentence: "Your lead knows who is
+   * here; you will not see the others or what they wrote, and they will not see you." Said to an
+   * admin, on a page that lists both parties by name and email on the next tab, under a banner
+   * reading "You can see everything here, which is the point of being an admin".
+   *
+   * Found walking a second admin of a real organisation, not by reading the prop.
+   */
+  it('so the running view qualifies it by who is reading', () => {
+    expect(code('../../pages/grounds/GroundAdminPage.tsx'))
+      .toMatch(/peersHidden=\{\(ground as any\)\.peersVisibleEffective === false && !canRunThisGround\}/)
+  })
+
+  /** The rule itself is unchanged for everybody it does apply to. */
+  it('and the party view still gets it unqualified', () => {
+    expect(code('../../pages/grounds/GroundParticipantPage.tsx'))
+      .not.toMatch(/peersVisibleEffective === false &&/)
   })
 })

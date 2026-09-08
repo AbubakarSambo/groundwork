@@ -1322,6 +1322,33 @@ export class GroundsService {
     // not the ground's owner from the people they invited.
     const hideContact = !!(ground as any).restrictExternalVisibility;
     const viewerIsInitiator = !!requestingUserId && ground.initiatorId === requestingUserId;
+    /**
+     * AND AN ADMIN OF THIS ORGANISATION RUNS IT TOO, WHICH THE PEER RULE DID NOT KNOW.
+     *
+     * The comment on `hidePeers` below has always said "The lead or an admin decides ... The lead
+     * always sees everyone - running the ground is the job." The code only ever exempted the
+     * INITIATOR. So on an evaluation-family ground - a new hire, a probation, a cohort, where peers
+     * are hidden by default - an org admin was treated as a peer, and the filter keeps only rows
+     * whose `userId` is the viewer's. An admin who is not a party to the check-in matches none of
+     * them, so `participants` came back as an EMPTY ARRAY while `checkIns` came back in full.
+     *
+     * What that produced, walked as a second admin of a real organisation: a Report tab reading
+     * "Session 1 - 0 of 0 answered" on a check-in with two people in it, an empty "who is in this",
+     * and session rows belonging to nobody - directly under a banner telling her "You can see
+     * everything here, which is the point of being an admin".
+     *
+     * `mayShareJoinLink` further down already worked this out for the join token, with the same
+     * reasoning written out ("An admin of THIS organisation. Same role in a different org is a
+     * stranger here"). It read the user row two hundred lines below where the peer rule needed it,
+     * so the peer rule went without. One read, up here, and both use it.
+     */
+    const viewer = requestingUserId
+      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
+      : null;
+    /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
+    const viewerAdminsThisOrg =
+      viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId;
+    const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
 
     // CAN THE PARTIES SEE EACH OTHER AT ALL?
     //
@@ -1338,7 +1365,7 @@ export class GroundsService {
     // the job.
     const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
     const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
-    const hidePeers = !peersVisible && !viewerIsInitiator;
+    const hidePeers = !peersVisible && !viewerRunsThisGround;
 
     /**
      * WHAT EACH PERSON IS WORKING TOWARDS, WITH ITS AUTHORSHIP ATTACHED.
@@ -1545,14 +1572,9 @@ export class GroundsService {
     //
     // Org admins keep it because they created the ground and may be the ones
     // distributing it; everyone else gets null.
-    const viewer = requestingUserId
-      ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
-      : null;
-    const mayShareJoinLink =
-      isInitiatorViewer ||
-      // An admin of THIS organisation. Same role in a different org is a
-      // stranger here, and this is precisely the token not to hand a stranger.
-      (viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId);
+    /* `viewerAdminsThisOrg` is the same test this used to run its own query for, read once above
+       because the peer rule needs it too - see the note on `viewerRunsThisGround`. */
+    const mayShareJoinLink = isInitiatorViewer || viewerAdminsThisOrg;
     return {
       ...rest,
       /*

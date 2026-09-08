@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -32,8 +32,8 @@ describe('signing off a setup question', () => {
   })
 
   it('can be taken back', () => {
-    expect(PAGE).toContain('forgetYouCheckedIt(id!, n)')
-    expect(PAGE).toContain('rememberYouCheckedIt(id!, n)')
+    expect(PAGE).toContain('forgetYouCheckedIt(id!, user?.id, n)')
+    expect(PAGE).toContain('rememberYouCheckedIt(id!, user?.id, n)')
   })
 
   it('and the tally sits where its total is actually known', () => {
@@ -57,5 +57,49 @@ describe('what the tally says', () => {
 
   it('and says nothing at all when there are no questions to count', () => {
     expect(howFarThroughSetup([], 0)).toBe('')
+  })
+})
+
+/**
+ * AND A TICK BELONGS TO A PERSON, NOT TO A BROWSER.
+ *
+ * The store was keyed on the check-in alone, so the ticks belonged to whichever browser made them -
+ * while the row they draw reads "You have signed this off", a claim about a person made from a
+ * store that had no idea which person. Walked as a second admin of an organisation: her Setup tab
+ * opened with two questions already signed off, because somebody else had signed them off in that
+ * browser. Any shared machine, or any second account on one, inherited the first person's review of
+ * a check-in they had never opened.
+ */
+describe('a sign-off belongs to the person who made it', () => {
+  const store: Record<string, string> = {}
+  beforeEach(() => {
+    for (const k of Object.keys(store)) delete store[k]
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store[k] ?? null,
+      setItem: (k: string, v: string) => { store[k] = v },
+      removeItem: (k: string) => { delete store[k] },
+    })
+  })
+
+  it('does not hand one person the ticks another made in the same browser', async () => {
+    const m = await import('./the-setup-steps-you-have-checked')
+    m.rememberYouCheckedIt('g1', 'demo-lead', 1)
+    m.rememberYouCheckedIt('g1', 'demo-lead', 2)
+    expect(m.stepsYouHaveChecked('g1', 'demo-lead')).toEqual([1, 2])
+    expect(m.stepsYouHaveChecked('g1', 'ada-the-admin')).toEqual([])
+  })
+
+  it('and keeps them apart per check-in as well', async () => {
+    const m = await import('./the-setup-steps-you-have-checked')
+    m.rememberYouCheckedIt('g1', 'ada', 3)
+    expect(m.stepsYouHaveChecked('g2', 'ada')).toEqual([])
+  })
+
+  /** Signed out, there is no person - and a tick must not then land in everybody's bucket. */
+  it('and a missing person is its own bucket rather than a shared one', async () => {
+    const m = await import('./the-setup-steps-you-have-checked')
+    m.rememberYouCheckedIt('g1', undefined, 4)
+    expect(m.stepsYouHaveChecked('g1', 'ada')).toEqual([])
+    expect(m.stepsYouHaveChecked('g1', undefined)).toEqual([4])
   })
 })

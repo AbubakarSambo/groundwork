@@ -8,20 +8,28 @@
  * useful thing is not validation - a default is a real answer - it is a way for the person to say
  * "I have looked at this one" and see at a glance which ones they have not.
  *
- * WHERE IT IS KEPT, AND THE LIMIT OF THAT. In this browser, against this check-in. It is not a
- * record about anybody and it changes nothing about the check-in, so it does not belong in the
- * database with the things that do - but it does mean somebody who reviews setup on their laptop
- * and opens it on their phone sees the ticks gone. Setting up a check-in is one sitting; that trade
- * is worth stating rather than discovering.
+ * WHERE IT IS KEPT, AND THE LIMIT OF THAT. In this browser, against this check-in, FOR THIS PERSON.
+ * It is not a record about anybody and it changes nothing about the check-in, so it does not belong
+ * in the database with the things that do - but it does mean somebody who reviews setup on their
+ * laptop and opens it on their phone sees the ticks gone. Setting up a check-in is one sitting; that
+ * trade is worth stating rather than discovering.
+ *
+ * THE PERSON IS PART OF THE KEY, AND WAS NOT. It was keyed on the check-in alone, so the ticks
+ * belonged to the BROWSER rather than to anybody - and the row they draw says "You have signed this
+ * off", which is a claim about a person made from a store that had no idea which person. Walked as a
+ * second admin of an organisation: her Setup tab opened with two questions already signed off,
+ * because somebody else had signed them off in that browser. Anybody sharing a machine, or any
+ * second account on one, inherited the first person's review of a check-in they had never opened.
  *
  * Every read and write is wrapped: a private window, cleared site data, or a browser set to refuse
  * storage all make this throw, and a tick nobody can save must never stop the page rendering.
  */
-const KEY = (groundId: string) => `gw.setup-reviewed.${groundId}`;
+const KEY = (groundId: string, userId: string | null | undefined) =>
+  `gw.setup-reviewed.${userId ?? 'nobody'}.${groundId}`;
 
-export function stepsYouHaveChecked(groundId: string): number[] {
+export function stepsYouHaveChecked(groundId: string, userId: string | null | undefined): number[] {
   try {
-    const raw = localStorage.getItem(KEY(groundId));
+    const raw = localStorage.getItem(KEY(groundId, userId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((n) => typeof n === 'number') : [];
@@ -30,20 +38,20 @@ export function stepsYouHaveChecked(groundId: string): number[] {
   }
 }
 
-export function rememberYouCheckedIt(groundId: string, step: number): number[] {
-  const next = [...new Set([...stepsYouHaveChecked(groundId), step])].sort((a, b) => a - b);
+export function rememberYouCheckedIt(groundId: string, userId: string | null | undefined, step: number): number[] {
+  const next = [...new Set([...stepsYouHaveChecked(groundId, userId), step])].sort((a, b) => a - b);
   try {
-    localStorage.setItem(KEY(groundId), JSON.stringify(next));
+    localStorage.setItem(KEY(groundId, userId), JSON.stringify(next));
   } catch {
     /* Nothing to do about it, and nothing worth telling somebody about a tick. */
   }
   return next;
 }
 
-export function forgetYouCheckedIt(groundId: string, step: number): number[] {
-  const next = stepsYouHaveChecked(groundId).filter((n) => n !== step);
+export function forgetYouCheckedIt(groundId: string, userId: string | null | undefined, step: number): number[] {
+  const next = stepsYouHaveChecked(groundId, userId).filter((n) => n !== step);
   try {
-    localStorage.setItem(KEY(groundId), JSON.stringify(next));
+    localStorage.setItem(KEY(groundId, userId), JSON.stringify(next));
   } catch {
     /* As above. */
   }
