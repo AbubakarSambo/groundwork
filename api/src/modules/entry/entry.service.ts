@@ -752,7 +752,11 @@ From the conversation history, extract whatever you can. Return only what has be
 
 Fields:
 - mode: one of "something_new", "already_underway", "look_back", "recurring" - infer from context if not stated explicitly
-- initial: a plain description of the situation
+- initial: a plain description of the situation, in ONE sentence and under 25 words. It is printed
+  on a confirmation card as a line somebody scans before clicking, not as a summary they read. Name
+  the situation and the person it is about and stop; do not carry over the caveats, the possibilities
+  or the qualifications from the conversation. "Bob James joining as a technical hire, UX/UI" - not
+  a paragraph about what he might become.
 - yourRole: one of "a_party", "setting_up_for_others" - what they said in step 1. There is no third
   value: handing the context to somebody else was removed.
   Extract it as soon as they answer, and do not infer it from how they describe the situation: a lead

@@ -353,6 +353,30 @@ export function withoutPickedOpener(
  * collects it. Listing "why now" as missing for somebody who was told to set this up would be
  * inventing a debt.
  */
+/**
+ * ONE WORD WHERE ONE WORD WILL DO.
+ *
+ * The summary card's labels are sentences - "What this is about", "People you mentioned", "What you
+ * want from it" - which is fine in a report and wrong on a card somebody is scanning to catch a
+ * mistake before clicking. Five sentence-labels down the left edge is five things to read before
+ * reaching the values, which are the point.
+ *
+ * Kept as a lookup rather than renamed at source: `summariseSetup` is read by other screens and by
+ * its own specs, and the long labels are right where there is room for them.
+ */
+function shortLabel(label: string): string {
+  switch (label) {
+    case 'What this is about': return 'About'
+    case 'People you mentioned': return 'People'
+    /* One word, like the rest: at the label column's width "Why now" wraps onto two lines and the
+       row it labels goes out of line with every other row. */
+    case 'Why now': return 'Why'
+    case 'What you want from it': return 'Want'
+    case 'Sessions': return 'Sessions'
+    default: return label
+  }
+}
+
 export function summariseSetup(
   sels: { initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[] },
   /**
@@ -2281,10 +2305,13 @@ export function EntryChatPage() {
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
       {(() => {
         const step = phase === 'onboarding' ? (flowPath === 'lead' ? 2 : 1) : (closed || showSave ? 3 : 2)
-        const labels = ['Describe the situation', flowPath === 'lead' ? 'Hand-off to your lead' : 'Your check-in', 'Save & invite']
+        /* "Hand-off to your lead" named a step that no longer exists - handing the context to
+           somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
+           was being promised a hand-off screen they would never reach. */
+        const labels = ['Describe the situation', flowPath === 'lead' ? 'Setting it up' : 'Your check-in', 'Save & invite']
         const hints = [
           "You're describing the situation. Nothing is saved to an account yet.",
-          flowPath === 'lead' ? "You're naming the lead who runs the first check-in." : "You're giving your own account. It stays private until the report.",
+          flowPath === 'lead' ? "You're adding the people who check in." : "You're saying how you see it. It stays private until the report.",
           'Save this and invite the people involved.',
         ]
         return (
@@ -2641,13 +2668,27 @@ export function EntryChatPage() {
                       const sum = summariseSetup(onboardingSelections, yourRole, sessions, needsPeople)
                       return (
                         <div style={{ marginBottom: 10 }}>
+                          {/*
+                            A CHECK, NOT A DOCUMENT.
+
+                            "WHAT I HAVE" in capitals, then five rows of full-sentence labels, the
+                            first of which held the whole paragraph the extraction wrote about the
+                            situation - four lines of the model's prose, directly above the two
+                            buttons a person is trying to choose between. Read at a live demo: too
+                            much to get through to make a two-word decision.
+
+                            Its job is to let somebody catch a mistake before it becomes the record.
+                            That needs the fields legible at a glance, not readable in full: the
+                            paragraph is the model's own writing and is in the chat three inches
+                            above. So one-word labels, and every value clipped to two lines.
+                          */}
                           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .3, color: 'var(--gw-sub)', marginBottom: 5 }}>
-                            WHAT I HAVE
+                            What I've got so far
                           </div>
                           {sum.have.map((h) => (
-                            <div key={h.label} style={{ fontSize: 12.5, lineHeight: 1.55, marginBottom: 2 }}>
-                              <span style={{ color: 'var(--gw-sub)' }}>{h.label}: </span>
-                              <span style={{ color: 'var(--gw-text)' }}>{h.value}</span>
+                            <div key={h.label} style={{ display: 'flex', gap: 7, fontSize: 12.5, lineHeight: 1.5, marginBottom: 3 }}>
+                              <span style={{ color: 'var(--gw-sub)', fontWeight: 700, flex: '0 0 56px' }}>{shortLabel(h.label)}</span>
+                              <span style={{ color: 'var(--gw-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{h.value}</span>
                             </div>
                           ))}
                           {sum.missing.length > 0 && (
@@ -2659,30 +2700,32 @@ export function EntryChatPage() {
                         </div>
                       )
                     })()}
+                    {/*
+                      THE EXPLANATION IS GONE, AND THE OPTIONS SAY IT INSTEAD.
+
+                      It asked "Who gives the accounts on this?" over two lines explaining what an
+                      account was, and offered "I am one of the people involved. Start my check-in
+                      now." against "They do. I read what comes back." Watched at a live demo and
+                      called confusing for everyone, which it was, for four separate reasons:
+
+                        - the two answers were not parallel. One was about me, the other about them,
+                          so neither could be read without re-reading the other.
+                        - "they" had no antecedent, on a card that names Bob James and Hafsah
+                          Abubakar two inches above.
+                        - one was an answer and the other was a command ("Start my check-in now").
+                        - the question was not the real branch. Everybody answers questions. The only
+                          thing being decided is whether the person setting it up does too.
+
+                      Her wording, and it needs nothing under it: both options open on the same three
+                      words, so the only thing to read is how they end. A choice screen that needs a
+                      paragraph explaining it has the wrong options on it.
+
+                      And the word "account" is gone rather than reworded. It is the login word to
+                      everybody outside this codebase, and it was carrying the whole explanation.
+                    */}
                     {yourRole === 'a_party' ? (
-                      /*
-                       * THEY ALREADY ANSWERED THIS. Say back what they said and move, rather than
-                       * asking it again with buttons - which is what happened when `yourRole` was
-                       * extracted and never read.
-                       *
-                       * It still takes a click, because the click starts the check-in and somebody
-                       * deserves to know that before it happens. And it can still be corrected: an
-                       * extraction is a reading of what they said, not a fact about them.
-                       */
-                      <>
-                        <div style={{ fontWeight: 700, marginBottom: 2 }}>
-                          You said you are one of the people involved.
-                        </div>
-                        So you give the first account, in your own words. That is what the record is
-                        made of.
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontWeight: 700, marginBottom: 2 }}>Who gives the accounts on this?</div>
-                        Everyone involved answers the questions in their own words. That is what the
-                        record is made of, so it matters who is doing it.
-                      </>
-                    )}
+                      <div style={{ fontWeight: 700 }}>You said you are one of the people involved.</div>
+                    ) : null}
                   </div>
                   <button
                     onClick={startSelfPath}
@@ -2692,9 +2735,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    {yourRole === 'a_party'
-                      ? 'Start my check-in'
-                      : 'I am one of the people involved. Start my check-in now.'}
+                    I set this up and check in myself
                   </button>
                   <button
                     onClick={othersGiveTheAccounts}
@@ -2704,9 +2745,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    {yourRole === 'a_party'
-                      ? 'Actually, I do not check in. Others do.'
-                      : 'They do. I read what comes back.'}
+                    I set this check-in up only
                   </button>
                 </div>
               )}
