@@ -32,10 +32,21 @@ describe('GroundParticipantPage: offers a way into the forming report, not just 
 
   it('gives the participant a real affordance into the forming report, not a dead link', () => {
     expect(src).toMatch(/\{\(report as any\)\?\.forming && \(/)
-    /* `id!` was the page's own variable; inside the component it is the `groundId` prop. Same
-       component, same props, one file along. Matched on the call rather than the spelling of what
-       is passed to it. */
-    expect(src).toMatch(/<ReportBody groundId=\{(?:id!|groundId)\} embedded\b/)
+    /*
+     * THE WAY IN IS A DESTINATION NOW, NOT AN EMBED.
+     *
+     * It was `ReportBody` rendered underneath the message. That body has gone - it was a fourth
+     * place to read the same findings - and removing it turned this message straight back into the
+     * dead end this file exists to prevent, which is how the regression was caught.
+     *
+     * What matters is unchanged and is what is asserted: saying "a picture is forming" obliges the
+     * screen to offer something to open. Both destinations hold forming content - the board
+     * regenerates as people answer, and a session page shows that round's picture while it moves.
+     * The board is gated on the scenario having one, so the second button is unconditional.
+     */
+    expect(src).toContain('See what has emerged so far')
+    expect(src).toMatch(/onOpenBoard\(\)/)
+    expect(src).toMatch(/onGoToMyRecord\(\)/)
     expect(src).not.toMatch(/View the forming picture/)
     expect(src).not.toMatch(/navigate\(`\/grounds\/\$\{id\}\/report`\)/)
   })

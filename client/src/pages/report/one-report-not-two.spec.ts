@@ -34,13 +34,24 @@ describe('one report, not two', () => {
     expect(REPORT).toMatch(/export function ReportBody\(/)
   })
 
-  it('and the party view renders it, while the lead page carries no report body at all', () => {
-    /* Matched on the call, not its full attribute list. It gained `reportExists` so a caller that
-       already knows there is no report can stop the client asking for one - see
-       no-report-yet-is-not-an-error.spec.ts. What this protects is that ONE component renders a
-       report, which is unchanged by what is passed to it. */
-    expect(PARTY_REPORT).toMatch(/<ReportBody groundId=\{groundId\} embedded\b/)
+  it('and no page carries a second report body at all', () => {
+    /*
+     * THE STRONGEST FORM OF THIS RULE, NOT A WEAKER ONE.
+     *
+     * It used to require the party view to embed `ReportBody` while the lead's page carried none.
+     * Neither does now. Every part of that body has exactly one home - the disagreements with each
+     * account and what is at stake on the board, the read across the accounts and the round's state
+     * on the session page, the private lines for the conversation ahead on My record, the inferred
+     * claims and their "Correct this" beside the correction control, the method note at the foot of
+     * the board.
+     *
+     * That is this file's own principle carried the rest of the way. Two documents about one
+     * check-in a click apart was the defect; a fourth place to read the same three findings was the
+     * same defect wearing a tab.
+     */
+    expect(PARTY_REPORT).not.toContain('<ReportBody')
     expect(ADMIN).not.toContain('<ReportBody')
+    expect(PARTICIPANT).not.toContain('<ReportBody')
   })
 
   /**
@@ -49,12 +60,15 @@ describe('one report, not two', () => {
    * visibly happened when it was clicked. Fixed the same way the lead's copy was fixed - embed the
    * real thing instead of linking to it.
    */
-  it('and the participant page renders it too', () => {
-    /* The party view reaches it through `SharedReportForAParty`, where the shared report moved so
-       a lead can be shown it on the page that runs the check-in. The call is unchanged - same
-       component, same props - it is just written one file along. */
-    expect(PARTY_REPORT).toMatch(/<ReportBody groundId=\{groundId\} embedded\b/)
+  it('and what the participant page offers instead is a real destination, not a dead button', () => {
+    /* The reason the body was embedded at all: the button that preceded it navigated to a route
+       that redirected back to the tab already on screen, so clicking it did nothing visible. What
+       replaces the body has to clear that same bar - a page that exists and holds the content. */
     expect(PARTICIPANT).toContain('<SharedReportForAParty')
+    expect(PARTY_REPORT).toContain('onOpenBoard()')
+    expect(PARTY_REPORT).toContain('onGoToMyRecord()')
+    expect(PARTICIPANT).toMatch(/onOpenBoard=\{\(\) => navigate\(`\/grounds\/\$\{id\}\/board`\)\}/)
+    expect(PARTICIPANT).toMatch(/onGoToMyRecord=\{\(\) => goTab\('record'\)\}/)
   })
 
   /**

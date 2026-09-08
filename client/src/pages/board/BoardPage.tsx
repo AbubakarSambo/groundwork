@@ -1153,7 +1153,37 @@ export function BoardPage() {
           )
         })()}
 
-        <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 28, lineHeight: 1.6 }}>
+        {/*
+          HOW THIS IS PUT TOGETHER, WHICH USED TO SIT ON THE SHARED REPORT.
+
+          A collapsed legend at the top of the report body explaining the method: what leads, what a
+          gap names, what an honest close is. The report body it explained has gone; the board is the
+          shared surface now and does the things the legend describes - it leads with what is open,
+          each gap names both positions and what is at stake, and it closes on the question the
+          check-in turns on.
+
+          Collapsed, and at the foot rather than the head. On the report it was the first thing on
+          the page, so everybody read an explanation of the method before reading anything the method
+          produced. It is for the person who wants to know where a line came from, and that person
+          goes looking after they have read it, not before.
+        */}
+        <details className="gw-legend" style={{ marginTop: 28 }}>
+          <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>How this board is put together</summary>
+          <div style={{ display: 'grid', gap: 12, marginTop: 10 }}>
+            {[
+              { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across all the accounts follows it.' },
+              { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own account's terms, and what is at stake if it holds. The most significant comes first." },
+              { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
+            ].map((cell, i) => (
+              <div key={i}>
+                <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{cell.p}</div>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <div style={{ color: 'var(--gw-muted)', fontSize: 10.5, textAlign: 'center', marginTop: 20, lineHeight: 1.6 }}>
           Groundwork board · confidential · generated from the check-in.<br />
           Everyone on this check-in sees the same board. It regenerates as people check in each session.<br />
           The mode is fixed at creation, so a private alignment check-in can never be read this way.

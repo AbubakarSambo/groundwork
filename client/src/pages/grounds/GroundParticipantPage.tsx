@@ -116,7 +116,9 @@ export function GroundParticipantPage() {
   const { data: mySoloReport, refetch: refetchSoloReport } = useQuery({
     queryKey: ['my-solo-report', id],
     queryFn: () => groundsApi.getMySoloReport(id!),
-    enabled: !!id && tab === 'report',
+    /* MY RECORD, NOT REPORT. `MyPrivateReport` renders this and lives on the record tab, so the
+       carry-forward line only loaded for somebody who had happened to open Report first. */
+    enabled: !!id && tab === 'record',
     retry: false,
   })
 
@@ -566,6 +568,10 @@ export function GroundParticipantPage() {
             */}
             <MyPrivateReport
               groundId={id!}
+              /* The private, forward-looking panel that used to sit inside the shared report. See
+                 WhatToWalkInWith - it is three lines for one person about a conversation they have
+                 not had yet, and My record is the tab that is theirs. */
+              walkInGuide={(report as any)?.postReportGuide ?? null}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
               myParticipant={myParticipant}

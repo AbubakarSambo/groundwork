@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sec } from './kit'
 import { reportsApi } from '@/api/reports'
-import { ReportBody } from '@/pages/report/ReportPage'
 
 /**
  * THE SHARED REPORT, AS A PARTY READS IT.
@@ -150,10 +149,29 @@ export function SharedReportForAParty({
               <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
             </button>
           )}
+          {/*
+            THE SHARED REPORT IS THE BOARD NOW.
+
+            This section used to embed the whole report body underneath a heading and a line saying
+            "shows where your account and the other party's account agree or differ". Every part of
+            that body now has a home that is not a second copy:
+
+              what is still open, with each account and what is at stake   the board
+              the read across everybody's accounts                          the session page
+              the question it turns on                                      the board, and the session page
+              where things stand, who has checked in                        the session page, and the board
+              the private lines for the conversation ahead                  My record
+              the inferred claims, each with "Correct this"                 the session page
+              how it is put together                                        the foot of the board
+
+            None of it was deleted. What went is the fourth place to read the same three findings,
+            which is what "the participant seems to be looking at too many reports" was.
+
+            WHAT STAYS HERE is the part that is not a reading surface at all: the reveal. Showing
+            yours is an act with a consequence that cannot be undone, and it belongs on the tab a
+            person opens expecting the report, not buried on a page about one session.
+          */}
           <Sec title="Shared report" />
-          <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 4 }}>
-            Shows where your account and the other party's account agree or differ. It does not quote anyone.
-          </div>
 
           {!report ? (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
@@ -196,12 +214,38 @@ export function SharedReportForAParty({
                     ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
                     : 'Your report will be available once it is released.'}
                 </div>
+                {/*
+                  AND A WAY IN, WHICH IS THE WHOLE POINT OF SAYING IT IS FORMING.
+
+                  This message used to be followed by the report body embedded underneath. With the
+                  body gone the message would have been a dead end again - "a picture is forming"
+                  and nothing to open - which is the exact regression
+                  `GroundParticipantPage.formingReport.spec` was written for, and it caught it.
+
+                  Both destinations hold forming content: the board is generated from the check-in
+                  and regenerates as people answer, and each session page shows that round's picture
+                  while it is still moving. The board is offered only where the scenario has one -
+                  a private alignment check-in renders none - so the second button is always there.
+                */}
+                {(report as any)?.forming && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 11 }}>
+                    {!!(ground as any).boardRenders && (
+                      <button
+                        onClick={() => onOpenBoard()}
+                        style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        See what has emerged so far
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onGoToMyRecord()}
+                      style={{ padding: '8px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      My sessions
+                    </button>
+                  </div>
+                )}
               </div>
-              {(report as any)?.forming && (
-                <div style={{ marginTop: 10 }}>
-                  <ReportBody groundId={groundId} embedded reportExists={!!(ground as any)?.report} />
-                </div>
-              )}
             </>
           ) : !report.activated ? (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
@@ -235,33 +279,28 @@ export function SharedReportForAParty({
               </button>
             </div>
           ) : (
-            <>
-              <ReportBody groundId={groundId} embedded reportExists={!!(ground as any)?.report} />
-              {/*
-                FIVE SECTIONS THAT NEVER RENDERED, REMOVED.
-
-                "What your record reveals", "Assumptions you are carrying", "Where you have
-                clarity", and the two "Shared picture" blocks read `report.pattern`,
-                `.assumptions`, `.clarity`, `.alignmentReached` and `.areasRequiringAlignment`.
-
-                None of those are on a check-in report. `GET /grounds/:id/report` returns nineteen
-                keys and these are not among them - checked against a real released report, not
-                inferred from the code. They belong to the ENTRY flow's report shape, which
-                `EntryChatPage` reads correctly; this component was reading them off a different
-                object, so every one of these conditions has always been false.
-
-                Removed rather than wired: making them appear would be building a feature nobody
-                asked for, on a guess about what they were meant to say. If these readings should
-                exist on a check-in report, that is a decision and a build, not a tidy-up.
-              */}
-
-
-              <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 13px' }}>
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
-                  This report shows where both accounts agree and where they differ. The other party's exact words are never visible to you, and yours are never visible to them.
-                </div>
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>Everyone has shown theirs</div>
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 12 }}>
+                Where the accounts agree and where they differ, with each person's own position under
+                it, is on the team board. Your own account of each session, and the claims worked out
+                rather than said, are on My record.
               </div>
-            </>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => onOpenBoard()}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Read it on the board
+                </button>
+                <button
+                  onClick={() => onGoToMyRecord()}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  My record
+                </button>
+              </div>
+            </div>
           )}
     </>
   )

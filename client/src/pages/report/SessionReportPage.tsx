@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
+import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 
@@ -38,6 +39,26 @@ export default function SessionReportPage() {
     queryKey: ['session-shaped-report', data?.groundId, data?.sessionNumber],
     queryFn: () => reportsApi.sessionReport(data!.groundId as string, data!.sessionNumber as number),
     enabled: !!data?.groundId && !!data?.sessionNumber,
+  })
+
+  /**
+   * THE CLAIMS NOBODY ACTUALLY SAID, AND THE ONLY PLACE TO CHALLENGE THEM.
+   *
+   * `InferenceReviewPanel` was rendered from exactly one line, inside the shared report body that
+   * has now gone. It is the mechanism behind the underlining - "worked out from what people wrote,
+   * not stated by anyone" - and the only way a person can dispute a claim the product INFERRED
+   * rather than heard. Deleting the block without moving it would have left the underline on the
+   * page with nothing behind it.
+   *
+   * Here, because this is already the page with the correction control on it: everything about
+   * putting the record right is now in one place, rather than split between a shared document and
+   * a private one.
+   */
+  const { data: groundReport } = useQuery({
+    queryKey: ['report', data?.groundId],
+    queryFn: () => reportsApi.get(data!.groundId as string),
+    enabled: !!data?.groundId,
+    retry: false,
   })
 
   /**
@@ -137,6 +158,12 @@ export default function SessionReportPage() {
           */}
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginTop: 6 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Something here is wrong?</div>
+            {/* The inferred claims themselves, each with its own "Correct this". */}
+            {Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <InferenceReviewPanel groundId={data!.groundId as string} inferences={(groundReport as any).inferences} />
+              </div>
+            )}
             {shape && shape.correctable === false ? (
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                 {shape.whyNotCorrectable}
