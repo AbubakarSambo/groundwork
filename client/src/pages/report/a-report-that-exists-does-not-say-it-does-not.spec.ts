@@ -27,11 +27,19 @@ const REPORT = strip(readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8'))
 
 describe('a report that exists', () => {
   it('is never announced as absent', () => {
-    /* The 16px heading on the Report tab, not the one-line status in the check-in list. */
-    const at = ADMIN.indexOf("fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No report yet")
-    expect(at).toBeGreaterThan(-1)
-    /* Gated on whether a report exists, not on whether it has named an alignment area. */
-    expect(ADMIN.slice(Math.max(0, at - 200), at)).toContain('{!report && (')
+    /*
+     * The heading that did it is gone with the report body it sat above - the tab is a list of
+     * sessions, and a row cannot deny a report because it says how many answered and whether it is
+     * final. What is left to protect is that no denial came back with the rewrite.
+     */
+    /* The 11px status on a check-in row in the LIST is a different thing and correct: that row is
+       about a check-in, and some check-ins genuinely have no report. What must not exist is a
+       heading over a report saying the report is not there. */
+    expect(ADMIN).not.toMatch(/fontSize: 16[^\n]*No report yet/)
+    const LIST = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx'), 'utf8'))
+    expect(LIST).not.toContain('No report yet')
+    /* The one empty state it does have is about sessions, not about the report. */
+    expect(LIST).toContain('No session has finished yet')
   })
 
   it('and is never described as having nothing in it', () => {

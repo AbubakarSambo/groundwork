@@ -55,6 +55,17 @@ const PAGES = [
   '../../components/gw/MyRecord.tsx',
   '../../components/gw/MyPrivateReport.tsx',
   '../../components/gw/SharedReportForAParty.tsx',
+  /*
+   * And the surfaces the report tab became. It was one tab carrying a report, a list, a board
+   * door and a release control; it is a list of sessions whose rows open a session's own page,
+   * which renders the reader's own report and the per-session shared one. Every capability that
+   * was on that tab is in one of these files, and this guard is how a future merge finds out.
+   */
+  '../report/SessionReportPage.tsx',
+  '../report/RoundReportPage.tsx',
+  '../../components/gw/TheReportIsAListOfSessions.tsx',
+  '../../components/gw/TheSessionsReport.tsx',
+  '../../components/gw/WhoIsStillOut.tsx',
 ]
 
 /** Everything the four ground surfaces can do, by the call that does it. */
@@ -65,7 +76,13 @@ const OPERATIONS: Record<string, string[]> = {
   documents: ['documentsApi.list(', 'documentsApi.upload(', 'documentsApi.remove(', 'documentsApi.setVisibility('],
   context: ['addLeadContext('],
   'privacy switches': ['setExternalVisibility(', 'setPeopleWorkTogether('],
-  reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.activate(', 'activationStatus('],
+  /*
+   * `activationStatus(` was here and is gone as a CALL, not as a capability: who has shown theirs
+   * travels with the per-session report now, in `counting`, carrying the report's own labels
+   * instead of being joined against the roster on the page. `reportsApi.sessionReport(` is the
+   * call that answers it, and the endpoint itself still exists.
+   */
+  reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.activate(', 'reportsApi.sessionReport('],
   nudging: ['conversationApi.remind('],
   'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared(', 'getMyCheckinStatus('],
   'my session': ['conversationApi.artifact(', 'startSelfCorrection(', 'signOff('],

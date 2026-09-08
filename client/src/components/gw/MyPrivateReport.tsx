@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Sec } from './kit'
@@ -34,6 +35,11 @@ export interface MyPrivateReportProps {
    * reader is allowed to know about them.
    */
   otherParties: { id: string; name: string; email?: string | null }[]
+  /**
+   * This reader's own finished sessions, newest first, so each one's own report can be opened.
+   * "I need my own report to be the same report on my record."
+   */
+  mySessions?: { id: string; sessionNumber: number; completedAt?: string | Date | null }[]
 }
 
 export function MyPrivateReport({
@@ -42,8 +48,10 @@ export function MyPrivateReport({
   refetchSoloReport,
   myParticipant,
   otherParties,
+  mySessions = [],
 }: MyPrivateReportProps) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [showShareConfirm, setShowShareConfirm] = useState(false)
 
   const setSoloSharedMut = useMutation({
@@ -68,10 +76,51 @@ export function MyPrivateReport({
 
   return (
     <>
-          {/* Individual report section */}
-          <Sec title="Your private report" />
+          {/*
+            THE REPORT YOU READ AT THE END OF EACH SESSION, WHICH IS WHAT THIS TAB IS FOR.
+            "I need my own report to be the same report on my record." My record showed one thing
+            called "your private report" - the two-line summary a background job writes - while
+            the report a person actually read when they finished their session lived nowhere they
+            could reach. One session, one report, and it does not change afterwards.
+          */}
+          {mySessions.length > 0 && (
+            <>
+              <Sec title="Your session reports" src="one per session, exactly as you read it at the end" />
+              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
+                {mySessions.map((ci, i) => (
+                  <button
+                    key={ci.id}
+                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
+                    style={{
+                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
+                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
+                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    }}
+                  >
+                    <span>
+                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
+                        {ci.completedAt ? `Finished ${new Date(ci.completedAt).toLocaleDateString()}` : 'Finished'}
+                        {' · yours only, and it does not change'}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/*
+            AND THE ONE-LINE CARRY-FORWARD, WHICH IS NOT A SECOND REPORT.
+            It is what the next session opens from, and it is the thing that can be shared with
+            the others - a sentence, deliberately, because sharing your whole account with the
+            people you are being compared against is a different act.
+          */}
+          <Sec title="What you are carrying forward" src="the line the next session opens from" />
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
-            This is from your own check-in only. Only you can see it unless you choose to share it.
+            From your own check-in only. Only you can see it unless you choose to share it.
           </div>
           {mySoloReport?.report ? (
             <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 10, padding: '16px 18px', marginBottom: 6 }}>

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
+import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 
 /**
@@ -136,6 +137,61 @@ export default function SessionReportPage() {
             Read the conversation this came from
           </button>
         </>
+      )}
+
+      {/*
+        WHAT NOW? SOMETHING TO PRESS.
+
+        Two buttons that came with the report body when it moved here. They were three paragraphs
+        under that heading once - "share the report", "act on the areas", "open a follow-up" -
+        telling somebody to act and handing them nothing to act with, one of them advising them to
+        "use the report link" on the page that IS the link.
+
+        The third of the three is still not a button and never could be: picking the gap that
+        matters and agreeing who owns it is work between people. It stays a sentence, below the
+        controls, so the page leads with what it can do.
+      */}
+      <div style={{ marginTop: 22, borderTop: '1px solid var(--gw-border)', paddingTop: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>What now?</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => {
+              navigator.clipboard?.writeText(`${window.location.origin}/checkin/${checkInId}/report`)
+                .then(() => toast.success('Link copied'))
+                .catch(() => toast.error('Could not copy it. Select the address bar instead.'))
+            }}
+            style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Copy the link to this session
+          </button>
+          <button
+            onClick={() => navigate('/grounds/new')}
+            style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Open a follow-up check-in
+          </button>
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 9 }}>
+          The link only opens for people already entitled to read this - it is not a way to share
+          it. The part nobody can do for you: pick the gap that matters most and agree who owns it.
+        </div>
+      </div>
+
+      {/*
+        AND THIS SESSION'S SHARED REPORT, UNDER YOUR OWN.
+        Two reports, one session, and they answer different questions: the one above is what you
+        said and what it meant, and it does not change. This one is what the accounts together
+        show for this session - forming while people are still answering, final once the round
+        closed. They belong on one page because that is how a person reads them: mine, then ours.
+      */}
+      {data?.groundId && data?.sessionNumber && (
+        <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What the accounts show for this session</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
+            Everybody's accounts together. It never quotes anyone.
+          </div>
+          <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
+        </div>
       )}
     </div>
   )

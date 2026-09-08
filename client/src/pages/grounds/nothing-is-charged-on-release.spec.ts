@@ -35,8 +35,12 @@ describe('nothing is charged on release', () => {
   })
 
   it('and still says the two things that are true about it', () => {
-    /* Irreversible, and simultaneous. Those are the facts worth carrying into the decision. */
-    expect(SRC).toContain('This cannot be undone.')
+    /* Irreversible, and simultaneous. Those are the facts worth carrying into the decision.
+       Reworded with the control: releasing is no longer the headline action, because it happens by
+       itself when the last person answers - so the confirmation now describes what pressing it
+       EARLY does, which is the only reason to press it. Same two facts. */
+    expect(SRC).toContain('This cannot be undone')
     expect(SRC).toMatch(/at the same moment/)
+    expect(SRC).toContain('loses their turn on')
   })
 })

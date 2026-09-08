@@ -5,6 +5,13 @@ import { join } from 'path'
 /**
  * "NOT YET · PARTY 2" TELLS A LEAD NOTHING SHE CAN ACT ON.
  *
+ * WHERE THIS LESSON LIVES NOW. The reveal row was part of the report tab's body, and that body is
+ * gone: the tab is a list of sessions and each session's report is its own page. The row itself is
+ * not gone - it is better placed, because "who has answered and who has shown theirs" belongs on
+ * the report it is about rather than on a list. It comes from the server with the report, carrying
+ * the report's OWN labels, so there is no roster join left to get wrong and no positional index to
+ * fall back to. The two defects this file was written for are now unreachable rather than fixed.
+ *
  * Found on the report tab of a real three-party ground, opened as its lead. The reveal row is the
  * one place on the page that answers "who am I waiting on", and it answered with a positional
  * index. She could see that somebody had not revealed and had no way to know who, on a page that
@@ -17,61 +24,33 @@ import { join } from 'path'
  * when a check-in was always two people, sitting directly above a row of THREE cards that the same
  * block had just rendered by counting them.
  */
-const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
-const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+const API = readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'reports', 'reports.service.ts'), 'utf8')
+const VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
 
-describe('the reveal row names people', () => {
-  it('no longer prints a positional index as the primary label', () => {
-    expect(CODE).not.toMatch(/marginTop: 2 \}\}>Party \{i \+ 1\}<\/div>/)
+describe('who the report is counting', () => {
+  it('names people, and says which one is you', () => {
+    expect(strip(VIEW)).toContain('{c.isYou ? `${c.who} (you)` : c.who}')
   })
 
-  it('reads the name off the roster the page already has', () => {
-    expect(CODE).toMatch(/\(ground\?\.participants \?\? \[\]\)\.find\(\(x: any\) => x\.id === p\.participantId\)/)
-    expect(CODE).toMatch(/person \? participantLabel\(person\) : `Party \$\{i \+ 1\}`/)
+  it('distinguishes not answered, answered, and shown theirs', () => {
+    const code = strip(VIEW)
+    expect(code).toContain('Not answered yet')
+    expect(code).toContain('Answered, and shown theirs')
   })
 
-  it('and keeps the index as a fallback rather than rendering nothing', () => {
-    /**
-     * A party invited by email who has never recorded a name still has to occupy a card - blanking
-     * it would lose the fact that somebody has not revealed, which is the whole point of the row.
-     */
-    expect(CODE).toMatch(/`Party \$\{i \+ 1\}`/)
+  it('takes the label from the report rather than joining a roster on the page', () => {
+    /* The old row read `participants.find(...)` and printed `Party ${i + 1}` when it missed. */
+    expect(strip(VIEW)).not.toMatch(/participants\s*\?\?\s*\[\]/)
+    expect(API).toContain('who: labels.get(p.id) ?? `Party ${i + 1}`')
   })
 
-  it('using the helper this page already uses everywhere else', () => {
-    /** Not a second naming rule. A lead should not read two different names for the same person. */
-    /**
-     * Loosened from the exact import line to the identifier: `personLabel` now sits alongside it in
-     * the same statement (the lead's own view may fall back to an address; a party's view may not),
-     * and pinning the literal line would make adding a second helper look like removing this one.
-     */
-    expect(CODE).toMatch(/import \{[^}]*\bparticipantLabel\b[^}]*\} from '@\/lib\/utils'/)
-  })
-})
-
-describe('the heading counts past two', () => {
-  it('does not say "Both" about a check-in that may have more than two parties', () => {
-    expect(CODE).not.toMatch(/Both activated/)
+  it('and still gives a nameless party a row rather than dropping them', () => {
+    /* Blanking the row would lose the fact that somebody has not answered, which is the point. */
+    expect(API).toContain('`Party ${i + 1}`')
   })
 
-  it('and says something true for any number of them', () => {
-    /*
-     * Matched on the shape, not the verb. This read /Everyone has revealed/ and went red when the
-     * act was renamed from "reveal" to "show" - a vocabulary decision, with the heading still
-     * saying the true thing for any number of people. That is the second time this file has been
-     * broken by pinning a word rather than the claim; the comment below records the first.
-     */
-    expect(CODE).toMatch(/Everyone has \w+ theirs/)
-  })
-
-  it('while still distinguishing the waiting state', () => {
-    /**
-     * The control: the heading must keep saying which of the two states this check-in is in.
-     *
-     * Matched on the BRANCH rather than on both strings verbatim. It pinned the exact ternary, so
-     * adding a word - "Everyone has shown theirs", after the heading was renamed to say WHICH
-     * reports it means - turned it red while both states were still perfectly distinguished.
-     */
-    expect(CODE).toMatch(/activationStatus\.allActivated \? '·[^']*' : '· Waiting'/)
+  it('never counts somebody who was never going to answer', () => {
+    expect(API).toContain('.filter((p) => !p.managingOnly)')
   })
 })

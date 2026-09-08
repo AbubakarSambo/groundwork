@@ -15,6 +15,7 @@ import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
+import RoundReportPage from '@/pages/report/RoundReportPage'
 
 /** Old address for a check-in. Keeps working, lands on the one canonical route. */
 function ChatRedirect() {
@@ -390,6 +391,8 @@ export default function App() {
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/* One round's report, for a lead or org admin with no session of their own on it. */}
+            <Route path="/grounds/:id/session/:sessionNumber" element={<RequireOrgSetup><RoundReportPage /></RequireOrgSetup>} />
             {/*
               TWO ROUTES, ONE COMPONENT. /chat/:id and /checkin/:id both rendered
               ChatPage, so the same conversation had two addresses and the product

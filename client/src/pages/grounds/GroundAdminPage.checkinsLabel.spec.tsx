@@ -31,7 +31,7 @@ const GROUND = {
 }
 
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
-vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn(), activationStatus: vi.fn() } }))
+vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 
 function renderPage() {
@@ -52,7 +52,6 @@ describe('BUG7: admin check-ins list labels each row by participant', () => {
     vi.clearAllMocks()
     ;(groundsApi.get as any).mockResolvedValue(GROUND)
     ;(reportsApi.get as any).mockResolvedValue(null)
-    ;(reportsApi.activationStatus as any).mockResolvedValue(null)
     ;(documentsApi.list as any).mockResolvedValue([])
   })
 

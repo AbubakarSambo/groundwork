@@ -162,6 +162,39 @@ describe('GW-PRI-04: missing report does not leak ground existence', () => {
   });
 });
 
+/**
+ * GW-PRI-04, ON THE TWO ENDPOINTS THAT WERE ADDED AFTER IT.
+ *
+ * `rounds()` and `sessionReport()` both answered a stranger with ForbiddenException, which says
+ * "this check-in exists, it is just not yours" - the exact distinction the rule above exists to
+ * remove. `rounds` has had it since it was written; `sessionReport` was written with it today.
+ */
+describe('GW-PRI-04: the newer report endpoints do not leak existence either', () => {
+  const strangerSees404 = async (call: (s: any) => Promise<unknown>) => {
+    const prisma: any = {
+      ground: {
+        findUnique: jest.fn(async () => ({
+          organizationId: 'org-A',
+          initiatorId: 'somebody-else',
+          participants: [{ id: 'p1', userId: 'not-them' }],
+          report: { releasedAt: new Date() },
+        })),
+      },
+    };
+    const config: any = { get: () => 'http://localhost:5173' };
+    const service = new ReportsService(prisma, {} as any, {} as any, {} as any, config, { emit: () => Promise.resolve() } as any, { getSessionProgress: jest.fn(async () => null) } as any, { tell: async () => [] } as any);
+    await expect(call(service)).rejects.toBeInstanceOf(NotFoundException);
+  };
+
+  it('rounds() answers a stranger with NotFound', async () => {
+    await strangerSees404((s) => s.rounds('g1', 'a-stranger', 'org-B'));
+  });
+
+  it('sessionReport() answers a stranger with NotFound', async () => {
+    await strangerSees404((s) => s.sessionReport('g1', 1, 'a-stranger', 'org-B'));
+  });
+});
+
 // ---------------------------------------------------------------------------
 // GW-PRI-05: Release org-scoping - admin of org B cannot release org A's report
 // ---------------------------------------------------------------------------
