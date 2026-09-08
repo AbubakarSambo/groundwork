@@ -78,6 +78,14 @@ export const conversationApi = {
   artifact: (checkInId: string) =>
     apiClient.get(`/check-ins/${checkInId}/artifact`, { skipNotFoundToast: true }).then(r => r.data),
 
+  /**
+   * The report this session ended on, as it was read. Not the same object as `artifact`, which is
+   * the two-line summary a background job writes afterwards.
+   */
+  sessionReport: (checkInId: string) =>
+    apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true })
+      .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean }),
+
   documentReceived: (checkInId: string) =>
     apiClient.post<{ reply: string }>(`/check-ins/${checkInId}/document-received`).then(r => r.data),
 

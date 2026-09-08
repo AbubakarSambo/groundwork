@@ -52,8 +52,11 @@ describe('nothing that describes the mechanism assumes two parties', () => {
   })
 
   it('the entry flow, where the same sentence appeared a fourth time', () => {
-    const code = strip(readFileSync(join(__dirname, '../../pages/enter/EntryChatPage.tsx'), 'utf8'))
-    expect(code).toMatch(/once everyone else checks in too/)
-    expect(code).toMatch(/everyone receives the shared report at the same time/)
+    /* The sentence sits on the report screen, which is its own component now so that a session
+       opened later renders exactly what its owner read at the end of it. */
+    const report = strip(readFileSync(join(__dirname, 'TheReportYouSawAtTheEnd.tsx'), 'utf8'))
+    expect(report).toMatch(/once everyone else checks in too/)
+    const page = strip(readFileSync(join(__dirname, '../../pages/enter/EntryChatPage.tsx'), 'utf8'))
+    expect(page).toMatch(/everyone receives the shared report at the same time/)
   })
 })

@@ -114,6 +114,12 @@ export class ConversationController {
     return this.conversation.decline(id, userId);
   }
 
+  @Get(':id/session-report')
+  @ApiOperation({ summary: 'The report this session ended on, as it was read (owner only)' })
+  async sessionReport(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.getSessionReport(id, userId);
+  }
+
   @Get(':id/artifact')
   @ApiOperation({ summary: 'Get this party\'s single-party record artifact (owner only)' })
   async artifact(@Param('id') id: string, @CurrentUser('id') userId: string) {

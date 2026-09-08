@@ -49,7 +49,11 @@ describe('the report tab shows the reports', () => {
   it('lists every session of yours that has finished', () => {
     expect(TAB).toContain('Your sessions')
     expect(TAB).toMatch(/mySessions\.map/)
-    expect(TAB).toMatch(/navigate\(`\/checkin\/\$\{ci\.id\}`\)/)
+    /* And it opens the REPORT, not the conversation. Listing them was not enough: the link went
+       to /checkin/:id, which is the transcript with a different, shorter summary under it, so the
+       click read as "it sends me back to the chat and the report looks nothing like what I got at
+       the end". See the-report-you-saw-is-the-one-that-opens.spec.ts. */
+    expect(TAB).toMatch(/navigate\(`\/checkin\/\$\{ci\.id\}\/report`\)/)
   })
 
   it('and only yours, which is the wall rather than a simplification', () => {

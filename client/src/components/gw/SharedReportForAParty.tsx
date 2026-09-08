@@ -125,7 +125,7 @@ export function SharedReportForAParty({
                 {mySessions.map((ci, i) => (
                   <button
                     key={ci.id}
-                    onClick={() => navigate(`/checkin/${ci.id}`)}
+                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
                     style={{
                       display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
                       gap: 10, padding: '11px 13px', background: 'white', border: 'none',

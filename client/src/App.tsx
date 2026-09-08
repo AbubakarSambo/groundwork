@@ -14,6 +14,7 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
+import SessionReportPage from '@/pages/report/SessionReportPage'
 
 /** Old address for a check-in. Keeps working, lands on the one canonical route. */
 function ChatRedirect() {
@@ -399,6 +400,13 @@ export default function App() {
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
+            {/*
+              THE REPORT ONE SESSION ENDED ON, on its own route.
+              Clicking a finished session used to land on the CHAT above, which is the transcript
+              with a different summary under it - "it sends me back to the chat and the report
+              looks nothing like what I got at the end". This is the report.
+            */}
+            <Route path="/checkin/:checkInId/report" element={<RequireOrgSetup><SessionReportPage /></RequireOrgSetup>} />
             {/* Billing/pricing stay on plain RequireAuth (not RequireOrgSetup): choosing a paid
                 plan is optional, not part of org setup - the free tier is the default, not a
                 step anyone completes. */}
