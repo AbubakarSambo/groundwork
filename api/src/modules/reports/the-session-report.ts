@@ -49,6 +49,23 @@ export interface SessionReportSection {
   saying?: string;
 }
 
+/** One of the four reads the product's own front page shows when it shows a report. */
+export interface AGlanceRead {
+  label: string;
+  value: string;
+  /** What it is a read of, in half a sentence. */
+  sub: string;
+}
+
+/** What one person said they did this session, in their own lines. */
+export interface WhatOnePersonSaid {
+  who: string;
+  isYou: boolean;
+  lines: string[];
+  /** Said instead of lines when they answered and named nothing specific. */
+  saying?: string;
+}
+
 export interface SessionReportShape {
   sessionNumber: number;
   /** 'forming' while the round is open, 'final' once it closed and was snapshotted. */
@@ -64,6 +81,25 @@ export interface SessionReportShape {
     recall: string | null;
     saying: string;
   };
+  /**
+   * THE FOUR READS, which the report did not have and the front page promises.
+   *
+   * "The report where we have people's names and where they are and also risk, similar to what is
+   * in the home page, and how aligned and specific things are, is completely absent."
+   *
+   * They existed - on the BOARD, as `quickRead` - and the report, which is the thing a person
+   * actually reads, had none of them. Same four, computed the same way, because two surfaces
+   * disagreeing about how many differences are open is worse than one surface not saying.
+   */
+  atAGlance: AGlanceRead[];
+  /**
+   * WHAT EACH PERSON SAID THEY DID, which is the front page's "show what each of the eight said".
+   *
+   * Each person's own lines, under their own name, and nobody describing anybody else. Somebody
+   * who answered and named nothing specific says so - that is a finding about the record and the
+   * single most useful thing on the page for whoever runs it.
+   */
+  whatEachPersonSaid: WhatOnePersonSaid[];
   theConversationWorthHaving: string | null;
 }
 
@@ -88,6 +124,12 @@ export interface SessionReportInputs {
   specificityLevel: string | null;
   recallConfidence: string | null;
   centralQuestion: string | null;
+  /** How many named targets moved this session, for the movement read. Null when none are set. */
+  movedOnTargets: number | null;
+  /** How many things are recorded as hard-blocked and waiting on somebody else. */
+  blocked: number;
+  /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
+  answeredThisSession: { who: string; isYou: boolean }[];
 }
 
 const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => ({
@@ -192,10 +234,68 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     },
   ];
 
+  /**
+   * THE FOUR READS, and each one says plainly when it cannot be computed rather than showing a
+   * zero. "No targets set" and "nothing moved" are different facts, and a zero that means the
+   * first reads as the second.
+   */
+  const documented = input.entries.filter((e) => !e.recallBased).length;
+  const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
+  const atAGlance: AGlanceRead[] = [
+    {
+      label: 'Aligned?',
+      value: stillOpen ? `${stillOpen} open` : agreed ? 'no gaps open' : 'nothing to compare yet',
+      sub: 'differences between accounts',
+    },
+    {
+      label: 'Moving?',
+      value: input.movedOnTargets == null
+        ? 'no targets set'
+        : input.movedOnTargets > 0 ? `+${input.movedOnTargets}` : 'no change',
+      sub: input.movedOnTargets == null ? 'nothing here carries a number yet' : 'across targets this session',
+    },
+    {
+      label: 'Stuck?',
+      value: input.blocked ? `${input.blocked} blocked` : 'clear',
+      sub: input.blocked ? 'waiting on somebody else' : 'nothing recorded as blocked',
+    },
+    {
+      label: 'Solid?',
+      value: backedPct == null ? 'nothing on record yet' : `${backedPct}% backed`,
+      sub: backedPct == null ? 'no answers to read' : 'anchored to a document rather than recalled',
+    },
+  ];
+
+  /**
+   * WHAT EACH PERSON SAID THEY DID, under their own name.
+   *
+   * Grouped from the same entries the sections above use - so nothing new is read and the wall is
+   * the same one: whose lines reach this reader was decided before it got here. Somebody who
+   * answered and named nothing specific keeps their line and says so, because that is the finding.
+   */
+  const said = new Map<string, string[]>();
+  for (const e of input.entries) {
+    const key = e.who ?? '';
+    said.set(key, [...(said.get(key) ?? []), e.text]);
+  }
+  const whatEachPersonSaid: WhatOnePersonSaid[] = input.answeredThisSession.map((p) => {
+    const lines = said.get(p.isYou ? '' : p.who) ?? [];
+    return {
+      who: p.who,
+      isYou: p.isYou,
+      lines,
+      ...(lines.length === 0
+        ? { saying: 'Answered, and nothing specific enough to record came out of it.' }
+        : {}),
+    };
+  });
+
   return {
     sessionNumber: input.sessionNumber,
     state: input.closed ? 'final' : 'forming',
     whereThingsStand: { agreed, stillOpen, saying: standing },
+    atAGlance,
+    whatEachPersonSaid,
     sections,
     howClearThisWas: {
       level: input.specificityLevel ?? null,

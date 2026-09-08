@@ -1846,6 +1846,34 @@ Close the report by framing - neutrally, without recommending one - the choice n
       return label;
     };
 
+    /*
+     * WHO ANSWERED THIS SESSION, READ BEFORE ANYTHING USES IT.
+     *
+     * This sat with the reveal rows further down, and the per-person section built above it reads
+     * the same set - so the assembled report threw "Cannot access 'answeredIds' before
+     * initialization" on every request. TypeScript cannot see it: a `const` used before its line
+     * is a runtime temporal-dead-zone error, not a type error, and every unit test passed because
+     * they call the pure assembler rather than this read. Found by opening the page.
+     */
+    const answered = await this.prisma.checkIn.findMany({
+      where: { groundId, sessionNumber, status: 'COMPLETED' },
+      select: { participantId: true },
+    });
+    const answeredIds = new Set(answered.map((c) => c.participantId));
+
+    /*
+     * MOVEMENT AND BLOCKERS, read from the rows the board reads. `objectives` carries the count
+     * and the count as it stood at the previous session; `dependencies` carries what somebody said
+     * they are waiting on and whether it is still hard-blocking.
+     */
+    const [targets, blockedCount] = await Promise.all([
+      this.prisma.groundObjective.findMany({
+        where: { groundId, target: { not: null } },
+        select: { count: true, prevCount: true },
+      }),
+      this.prisma.groundDependency.count({ where: { groundId, status: 'BLOCKING' } }),
+    ]);
+
     const shape = theSessionReport({
       sessionNumber,
       closed: !!snapshot,
@@ -1880,6 +1908,27 @@ Close the report by framing - neutrally, without recommending one - the choice n
       specificityLevel: checkIn?.specificityLevel ?? null,
       recallConfidence: checkIn?.recallConfidence ?? null,
       centralQuestion: snapshot?.centralQuestion ?? ground.report?.centralQuestion ?? null,
+      /*
+       * THE THREE THE FOUR READS NEED THAT THE ENTRIES DO NOT CARRY. Read the same way the board
+       * reads them, from the same rows, so the two surfaces cannot disagree about how many things
+       * are blocked - which is worse than one of them not saying.
+       */
+      movedOnTargets: targets.length
+        ? targets.reduce((sum, o) => sum + (o.count - o.prevCount), 0)
+        : null,
+      blocked: blockedCount,
+      answeredThisSession: ground.participants
+        .filter((p) => !p.managingOnly && answeredIds.has(p.id))
+        .map((p, i) => ({
+          who: (() => {
+            const label = labels.get(p.id);
+            const named = label ? nameByLabel.get(label) : undefined;
+            if (named) return named;
+            if (viewerIsLead && p.email) return p.email;
+            return label || `Party ${i + 1}`;
+          })(),
+          isYou: !!me && p.id === me.id,
+        })),
     });
 
     /**
@@ -1894,11 +1943,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * party who has never recorded a name still occupies a row, because losing the row would lose
      * the fact that somebody has not answered, which is the point of it.
      */
-    const answered = await this.prisma.checkIn.findMany({
-      where: { groundId, sessionNumber, status: 'COMPLETED' },
-      select: { participantId: true },
-    });
-    const answeredIds = new Set(answered.map((c) => c.participantId));
     const activations = await this.prisma.reportActivation.findMany({
       where: { groundId },
       select: { participantId: true, status: true },

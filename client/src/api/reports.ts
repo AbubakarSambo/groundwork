@@ -69,6 +69,10 @@ export interface SessionShapedReport {
   }[]
   howClearThisWas: { level: string | null; recall: string | null; saying: string }
   theConversationWorthHaving: string | null
+  /** The four reads the front page shows when it shows a report. */
+  atAGlance: { label: string; value: string; sub: string }[]
+  /** Each person's own lines this session, under their own name. */
+  whatEachPersonSaid: { who: string; isYou: boolean; lines: string[]; saying?: string }[]
   /** Whether this session's account can still be corrected, and the sentence if it cannot. */
   correctable: boolean
   whyNotCorrectable: string | null
