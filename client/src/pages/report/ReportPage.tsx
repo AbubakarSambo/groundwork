@@ -1066,8 +1066,22 @@ export function ReportBody({
    */
   const oneSided = contributedParties < 2
 
+  /**
+   * "NOTHING TO REPORT ON YET", PRINTED ON A REPORT.
+   *
+   * Read off a live forming report: this line sat under the check-in's name with the shared
+   * picture, the central question and the honest close all rendered below it. It is gated on
+   * `statusLabel` - the ALIGNMENT status, which is empty until the report names an area the
+   * accounts agree or differ on, and a one-sided report never names one. So the branch fires on
+   * exactly the report it is most wrong about.
+   *
+   * A report with one account in it has plenty to say. What it cannot do is compare, and the
+   * one-sided line below already says that.
+   */
   const sessionPhrase = !statusLabel
-    ? 'Nothing to report on yet.'
+    ? (oneSided
+      ? 'One person has checked in so far. The second is what makes it a comparison.'
+      : 'The accounts are in. This has not yet named an area they agree or differ on.')
     : oneSided
       ? 'One person has checked in so far. The second is what makes it a comparison.'
       : divergences.length === 0

@@ -6,6 +6,7 @@ import { conversationApi, streamMessage, type CheckInBrief } from '@/api/convers
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
+import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'
@@ -1049,6 +1050,8 @@ export function ChatPage() {
           {completed && groundId && checkInId && (
             <div style={{ padding: '4px 0 16px' }}>
               <SessionReportCard checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} isInitiator={isInitiator} />
+              {/* And, for whoever is running it, the state of the round they are now waiting on. */}
+              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
               {/*
                 * WHERE THE REPORT LIVES, AND WHERE THE PEOPLE GO.
                 *

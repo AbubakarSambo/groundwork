@@ -746,8 +746,11 @@ body {
 .gw-report-section.open .gw-report-section-body { display: block; }
 
 /* ── PARTICIPANT ROW (ground admin) ──────────────────────── */
+/* THE ROW HAD NO GAP, so its status and its three actions ran into each other as one word:
+   "Invite pendingCopy invite linkResend invite". `justify-content: space-between` only spaces the
+   flex CHILDREN, and the status and the actions are siblings inside the same trailing group. */
 .ga-participant-row {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px;
   background: white; border: 1px solid var(--gw-border); border-radius: 8px; padding: 11px 14px;
 }
 .ga-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }

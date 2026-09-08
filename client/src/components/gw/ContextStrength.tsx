@@ -41,34 +41,47 @@ export function ContextStrength({ read, closedNote }: {
    */
   closedNote?: boolean
 }) {
+  /**
+   * REWRITTEN, BECAUSE IT READ AS GENERATED FILLER.
+   *
+   * "This section of the context page looks like AI slop." It was: an uppercase eyebrow, a green
+   * heading reading "It will be able to" over a bulleted list of future-tense promises, and a
+   * collapsed amber disclosure counting its own shortcomings - "What would make it stronger (5)".
+   * Three colours, two headings and a parenthesised number, for two facts.
+   *
+   * The facts were never the problem and none of them changed. What it says now is what this
+   * check-in can do, in one sentence, and then the things you could add - as things to add, in the
+   * page's own voice, with no colour theatre and nothing hidden behind a counter.
+   */
+  const canLine = read.can.length
+    ? `${read.can.map((l, i) => (i === 0 ? l.charAt(0).toUpperCase() + l.slice(1) : l)).join('; ')}.`
+    : ''
+
   return (
-    <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-sub)', marginBottom: 8 }}>
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>
         What this check-in can tell you
       </div>
 
-      {read.can.length > 0 && (
-        <div style={{ marginBottom: read.cannot.length ? 10 : 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>It will be able to</div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.7 }}>
-            {read.can.map((line, i) => <li key={i}>{line}</li>)}
-          </ul>
+      {canLine && (
+        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, marginBottom: read.cannot.length ? 10 : 0 }}>
+          {canLine}
         </div>
       )}
 
       {read.cannot.length > 0 && (
-        <details>
-          <summary style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4, cursor: 'pointer' }}>
-            What would make it stronger ({read.cannot.length})
-          </summary>
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+        <div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
+            It cannot do these yet, and each one names what is missing:
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
             {read.cannot.map((line, i) => <li key={i}>{line}</li>)}
           </ul>
-        </details>
+        </div>
       )}
 
       {closedNote && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gw-border)' }}>
+        <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 10 }}>
           {LEAD_HOLDS_MORE}
         </div>
       )}

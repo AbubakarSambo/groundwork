@@ -306,6 +306,38 @@ export function withNames(
      * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
      */
     text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+
+    /**
+     * AND THE NEXT SENTENCE, WHICH IS STILL ABOUT THEM.
+     *
+     * Read off a real forming report, one paragraph, one person:
+     *
+     *   "Only you have checked in. Their record describes two standards... Your record states: ..."
+     *
+     * The reader is addressed as "you", "they" and "you" again in three sentences. Every rule
+     * above works inside ONE clause - the label, its possessive, the verb that follows it. A
+     * pronoun opening the NEXT sentence has no label in it to match; its antecedent was the label
+     * in the sentence before, which is now "you".
+     *
+     * NARROW ON PURPOSE, in two ways. Only these nouns, which name a person's own testimony and
+     * cannot belong to a third party in this report - there is no "their record" that is somebody
+     * else's while the subject is you. And only when the sentence immediately before it is about
+     * the reader, so a paragraph that genuinely moves on to another party is untouched.
+     */
+    const OWN_TESTIMONY = 'record|account|answers|answer|response|session|testimony|own words';
+    const sentences = text.split(/(?<=[.!?])(\s+)/);
+    let previousWasAboutTheReader = false;
+    for (let i = 0; i < sentences.length; i += 1) {
+      const piece = sentences[i];
+      if (/^\s+$/.test(piece)) continue;
+      if (previousWasAboutTheReader) {
+        sentences[i] = piece
+          .replace(new RegExp(`^(\\s*)Their (${OWN_TESTIMONY})\\b`), (_m, lead, noun) => `${lead}Your ${noun}`)
+          .replace(new RegExp(`^(\\s*)They (have|had|are|were) (${OWN_TESTIMONY})\\b`), (_m, lead, verb, noun) => `${lead}You ${verb === 'has' ? 'have' : verb} ${noun}`);
+      }
+      previousWasAboutTheReader = /\b(You|you|Your|your)\b/.test(sentences[i]);
+    }
+    text = sentences.join('');
   }
   let out = text;
   const labels = [...visible.keys()].sort((a, b) => b.length - a.length);

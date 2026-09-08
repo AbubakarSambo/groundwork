@@ -1606,8 +1606,15 @@ export function GroundAdminPage() {
                         <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{participantLabel(p)}</div>
-                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
+                          {/* `participantLabel` gives "a teammate" to anybody who has not signed
+                              in yet, so a lead who invited three people saw three rows all called
+                              "a teammate". This is the lead's own roster - they invited these
+                              people by typing the addresses - so `personLabel`, which falls back
+                              to the address, is both truthful and useful here. */}
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{personLabel(p)}</div>
+                          {personLabel(p) !== p.email && (
+                            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
+                          )}
                           {editingRoleId === p.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                               <input
@@ -1810,7 +1817,7 @@ export function GroundAdminPage() {
                       )}
                       {sharedReport && (
                         <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
-                          <Sec title={`${participantLabel(p)}'s private report (shared by them)`} on="dark" />
+                          <Sec title={`${personLabel(p)}'s private report (shared by them)`} on="dark" />
                           {/* The same walk the participant's own page does. One component now, so the
                               report cannot read differently depending on who is looking at it. */}
                           <SoloReportBody report={sharedReport as Record<string, unknown>} dense />
@@ -1822,19 +1829,36 @@ export function GroundAdminPage() {
               </div>
             </div>
 
+            {/*
+              WHAT THIS SAID WAS NOT TRUE, AND THE PAGE ALREADY SAID THE REST OF IT.
+              "We should have a forming report, why do you have this here, we address this a
+              million times." The line claimed the shared report generates once all accounts are
+              in. It does not: the synthesis runs as soon as ANYBODY checks in and the report
+              forms progressively - it is only RELEASED when everyone is through. So the product's
+              own best feature was being denied on the page where a lead waits. The count it
+              carried is in the header two lines up ("1 of 3 checked in for session 1").
+              What is left is the one thing this spot can usefully do: get to the report.
+            */}
             {(() => {
               const pending = ground.participants.filter((p: any) => {
                 const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
                 return !ci || ci.status !== 'COMPLETED'
               })
-              return pending.length > 0 ? (
-                <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
-                  {pending.length === 1
-                    ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
-                    : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
-                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email - it may have gone to spam.</span>
+              if (pending.length === 0) return null
+              return (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 12px', marginBottom: 16, lineHeight: 1.55, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span>
+                    The picture builds as each person answers - you can read what it has so far.
+                    It is only released to everybody once all {ground.participants.length} are in.
+                  </span>
+                  <button
+                    onClick={() => setTab('report')}
+                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
+                  >
+                    Read it so far
+                  </button>
                 </div>
-              ) : null
+              )
             })()}
 
             {pendingRequests.length > 0 && (
@@ -2113,7 +2137,18 @@ export function GroundAdminPage() {
                     So the caption now depends on whether a report EXISTS, and says the true thing in
                     each case rather than the same thing in both.
                   */}
-                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No report yet</div>
+                  {/*
+                    A THIRD ROUND OF THE SAME BUG, AND THE CAUSE THIS TIME IS THE GATE.
+                    Read off the running tab with a forming report on it: "No report yet" in
+                    16px, then two inches down, "A picture is forming ... you can release what
+                    there is now" - over a report with a shared picture and a central question in
+                    it. This block is gated on `alignRead`, which is the ALIGNMENT read and is
+                    null until the report names an area, so it fires on a report that plainly
+                    exists. A report exists or it does not, and that is what `report` says.
+                  */}
+                  {!report && (
+                    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No report yet</div>
+                  )}
                   {/*
                     ONE EXPLANATION, NOT TWO. First pass made these two blocks agree instead of
                     contradict, which was the bug - and then the screen still said the same thing
@@ -2628,6 +2663,17 @@ export function GroundAdminPage() {
                 </div>
               )}
             </div>
+            {/*
+              THE ACCESS CODE, BESIDE THE CONTROL THAT ADDS PEOPLE.
+              It used to sit near the closing controls with a billing link, two bands below the
+              only question it answers: how does somebody get into this check-in.
+            */}
+            <button
+              onClick={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
+              style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            >
+              Or share an access code instead
+            </button>
             </Fold>
             </>
           )}
@@ -2935,18 +2981,15 @@ export function GroundAdminPage() {
               </div>
             </div>
             </Fold>
-            <Fold {...foldProps(setupBand())} title="Codes and billing" src="let somebody in with a code, or change your seats" summary={'an access code, and your seats'}>
-            <button onClick={() => navigate('/billing')}
-              style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>Billing and seats</span><span style={{ color: 'var(--gw-sub)' }}>→</span>
-            </button>
-            <button
-              onClick={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
-              style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span>Share code</span><span style={{ color: 'var(--gw-sub)' }}>↗</span>
-            </button>
-            </Fold>
+            {/*
+              CODES AND BILLING WERE NOT SETUP QUESTIONS.
+
+              "What is not needed on the setup page, and why do we have codes and billing in the
+              setup?" Right on both. Billing is an ORGANISATION's business and already has its own
+              door in the sidebar - it has nothing to do with how this check-in runs. And an access
+              code is how somebody GETS IN, so it belongs beside the control that adds people,
+              which is band 1. Both moved rather than deleted.
+            */}
             <Fold {...foldProps(setupBand())} title="Ending it" src="closing is not reversible" summary={'archiving is done by hand for now'}>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close check-in</div>

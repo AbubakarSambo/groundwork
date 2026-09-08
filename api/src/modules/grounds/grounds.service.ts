@@ -3831,6 +3831,25 @@ export class GroundsService {
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
+          /**
+           * AND THE PEOPLE HOLDING AN UNOPENED INVITATION, which the release rule counts and this
+           * did not - though the comment on this method claims they use "the same active party
+           * definition".
+           *
+           * Seen on one screen: the header said "1 of 2 checked in for session 1" and the release
+           * box, three inches below, said "1 of 1 have checked in for this session". Both from
+           * this ground, neither wrong on its own terms. And the one saying 1 of 1 is the more
+           * misleading of the two, because the round does NOT release at 1 of 1 - somebody with an
+           * open invitation holds it, by the rule right above this method.
+           *
+           * The clause is copied from `isSessionReadyForReport` exactly, so the counter now counts
+           * the set whose completion actually releases the report.
+           */
+          {
+            userId: null,
+            invitedAt: { not: null },
+            inviteTokenExpiresAt: { gt: new Date() },
+          },
         ],
       },
       select: { id: true },

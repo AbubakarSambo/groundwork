@@ -25,7 +25,7 @@ export default function SessionReportPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['session-report', checkInId],
     queryFn: () => conversationApi.sessionReport(checkInId!),
     enabled: !!checkInId,
@@ -67,8 +67,33 @@ export default function SessionReportPage() {
       )}
 
       {isError && (
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20, fontSize: 13, color: 'var(--gw-sub)' }}>
-          We could not open this one. It may belong to somebody else.
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20 }}>
+          {/*
+            "WHY SHOULD ME THAT WE COULDN'T OPEN A REPORT AND IT MAY BELONG TO SOMEONE ELSE."
+
+            Fair. The old line guessed at the cause and picked the one that accuses the reader of
+            opening somebody else's record - on a page reached by clicking their own session. The
+            status says which of the three things actually happened, so it can say the true one,
+            and the fallback offers the retry rather than a theory.
+          */}
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>
+            {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
+              ? 'This session is not yours to open'
+              : 'This did not load'}
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+            {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
+              ? 'A session report is only ever readable by the person who gave that account.'
+              : 'Nothing is wrong with the report - the request did not get through. Try again.'}
+          </div>
+          {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
+            <button
+              onClick={() => refetch()}
+              style={{ marginTop: 12, padding: '9px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
 

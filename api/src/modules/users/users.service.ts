@@ -285,14 +285,31 @@ export class UsersService {
      * screen somebody opens every morning.
      */
     const ids = users.map((u) => u.id);
-    const finished = ids.length
+    /*
+     * "CHECKED IN" WAS TRUE OF SOMEBODY WHO HAD ANSWERED ONE SESSION OUT OF TWELVE.
+     *
+     * The badge asked "has this person ever completed a check-in anywhere", which on a rollout
+     * where people sit on four or five check-ins reads as up to date when it means they have
+     * answered once. Reported as "checked in next to people's name being a bit off if they are on
+     * multiple check-ins", and it is worse than off: it is the number an admin chases by.
+     *
+     * So both halves are counted - how many check-ins they are on, and how many of those they
+     * have given an account on - and the page says which. Still one query for the page.
+     */
+    const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
-        where: { userId: { in: ids }, checkIns: { some: { status: 'COMPLETED' } } },
-        select: { userId: true },
-        distinct: ['userId'],
+        where: { userId: { in: ids } },
+        select: { userId: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
       })
       : [];
-    const hasFinished = new Set(finished.map((f) => f.userId));
+    const onCount = new Map<string, number>();
+    const answeredCount = new Map<string, number>();
+    for (const m of memberships) {
+      if (!m.userId) continue;
+      onCount.set(m.userId, (onCount.get(m.userId) ?? 0) + 1);
+      if (m.checkIns.length) answeredCount.set(m.userId, (answeredCount.get(m.userId) ?? 0) + 1);
+    }
+    const hasFinished = new Set([...answeredCount.keys()]);
 
     return {
       data: users.map((u) => ({
@@ -304,6 +321,9 @@ export class UsersService {
         state: !u.isEmailVerified ? 'invited'
           : hasFinished.has(u.id) ? 'checked in'
             : 'signed in',
+        /** How many check-ins they are on, and how many of those they have answered on. */
+        checkInsOn: onCount.get(u.id) ?? 0,
+        checkInsAnswered: answeredCount.get(u.id) ?? 0,
       })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
