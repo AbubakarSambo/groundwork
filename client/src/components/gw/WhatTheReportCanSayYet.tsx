@@ -154,15 +154,17 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
 
       <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 9 }}>{headline}</div>
 
-      {/* Labels under the meter, in its order, so a segment can be read rather than only counted. */}
-      <div style={{ display: 'grid', gap: 4 }}>
-        {rows.map((r, i) => (
-          <div key={i} style={{ fontSize: 12, lineHeight: 1.5, color: r.can ? 'var(--gw-text)' : 'var(--gw-muted)' }}>
-            {r.says}
-            {!r.can && r.because && <span> — {r.because}</span>}
-          </div>
-        ))}
-      </div>
+      {/*
+        THE LIST UNDER THE METER IS GONE.
+
+        Five labelled rows under a five-segment bar is the meter said twice, and the second time as
+        the shape this page had just been cleared of - a column of rows, each with a grey clause
+        after a dash, sitting above another column of rows that means something different.
+
+        The bar carries the count and the headline carries the reason. Anything more granular is on
+        the segments themselves, where hovering one names it - available to whoever goes looking,
+        and not a second list for everybody who does not.
+      */}
     </section>
   )
 }

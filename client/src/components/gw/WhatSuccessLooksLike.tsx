@@ -71,11 +71,35 @@ export function WhatSuccessLooksLike({
   data,
   /** Whose page this is, which changes only the label on the reader's own line. */
   yourName,
+  dense,
 }: {
   data: AgainstSuccess | null | undefined
   yourName?: string | null
+  /**
+   * A SENTENCE OR TWO AT THE FOOT OF SOMETHING ELSE, RATHER THAN A BAND OF ITS OWN.
+   *
+   * Put on Context as its own numbered section, this was "a new section for no reason": what
+   * success looks like and what is expected of each person are one subject, and giving the second
+   * one its own heading made the page read as though they were two.
+   *
+   * Dense drops the heading, the per-condition list and the counts, and keeps the thing itself -
+   * what was said good looks like, or the one line saying nobody has said. The full band still
+   * renders where there is room to work in it: the board, and each session's report.
+   */
+  dense?: boolean
 }) {
   if (!data) return null
+
+  if (dense) {
+    const line = data.stated || data.saying
+    if (!line) return null
+    return (
+      <div style={{ fontSize: 12.5, color: data.stated ? 'var(--gw-text)' : 'var(--gw-muted)', lineHeight: 1.65 }}>
+        <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>What success looks like. </span>
+        {line}
+      </div>
+    )
+  }
 
   /* Nothing to place anybody against, and nothing anybody can do from here but check in. One
      sentence rather than a heading over three empty panels, which is what the Setup tab used to
@@ -177,11 +201,11 @@ export function WhatSuccessLooksLike({
 }
 
 /** The same band, fetching for itself, for pages that do not already hold a report. */
-export function WhatSuccessLooksLikeFor({ groundId, yourName }: { groundId: string; yourName?: string | null }) {
+export function WhatSuccessLooksLikeFor({ groundId, yourName, dense }: { groundId: string; yourName?: string | null; dense?: boolean }) {
   const { data } = useQuery({
     queryKey: ['against-success', groundId],
     queryFn: () => reportsApi.againstSuccess(groundId),
     enabled: !!groundId,
   })
-  return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} />
+  return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} dense={dense} />
 }

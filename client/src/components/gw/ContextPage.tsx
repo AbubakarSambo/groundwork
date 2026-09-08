@@ -458,21 +458,22 @@ export function ContextPage({
             />
 
             {/*
-              AND WHAT SUCCESS LOOKS LIKE, WHICH THIS PAGE WAS SAID TO HOLD AND DID NOT.
+              AND WHAT SUCCESS LOOKS LIKE, AT THE FOOT OF THIS BAND RATHER THAN AS ONE OF ITS OWN.
 
-              My record used to carry it, and I replaced that with a line reading "Success and
-              expectations live on Context". Expectations do - the band directly above. Success did
-              not: it rendered on the board and inside each session's report and nowhere else, so
-              the link promised a page half of it was on. Read back: "success expectations are not
-              really on context. I dont see it."
-              
-              It belongs here on its own merits rather than to make a link true. Context is where the
-              shared framing of a check-in is published - what it is about, what is expected of each
-              person, the material - and what everybody said good looks like is the same class of
-              thing. It is the one band on this page that shows where the accounts put it, which is
-              the half a party could otherwise only see by opening the board.
+              It was not on Context at all, which made My record's "success and expectations live on
+              Context" a link to a page holding one of the two things it named. Then it arrived here
+              as its own numbered section, which was "a new section for no reason" - what success
+              looks like and what is expected of each person are one subject, and a second heading
+              said they were two.
+
+              So it is a sentence or two under the expectations, which is where somebody reading what
+              is expected of them wants the standard that sits over it. The full band, with each
+              condition and where the accounts put it, still renders where there is room to work in
+              it: the board, and each session's report.
             */}
-            <WhatSuccessLooksLikeFor groundId={id} />
+            <div style={{ marginTop: 10 }}>
+              <WhatSuccessLooksLikeFor groundId={id} dense />
+            </div>
 
             {/*
               3 - AND WHAT YOU DID ABOUT IT, touching the words you are measured against.
