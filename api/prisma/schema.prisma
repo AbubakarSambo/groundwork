@@ -1562,6 +1562,16 @@ model Report {
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
   createdAt       DateTime  @default(now()) @map("created_at")
+  /// WHEN THIS WAS LAST WRITTEN, WHICH IS NOT WHEN THE ROW WAS MADE.
+  ///
+  /// The report page compares the report's age against the newest completed check-in to decide
+  /// whether somebody is reading a stale version, and it had only `createdAt` to compare against.
+  /// Regeneration upserts this row rather than replacing it, so that timestamp stays at first
+  /// generation for ever: the moment anybody checks in again, "someone has checked in since this
+  /// was written, you are reading the previous version" becomes permanently true. Seen on a real
+  /// check-in still showing that banner over a report that had already refreshed correctly - and
+  /// the page polls every five seconds for as long as it believes it.
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   ground        Ground         @relation(fields: [groundId], references: [id], onDelete: Cascade)
   promptVersion PromptVersion? @relation(fields: [promptVersionId], references: [id])

@@ -237,8 +237,31 @@ export function standardsAndWhatTouchedThem(
  */
 const A_MACHINE_MARKER = /\s*\[[A-Z][A-Z_]{2,}(?::|\s)[^\]]*\]/g;
 
+/**
+ * AND THE EXTRACTION'S OWN EDITORIAL ADDITIONS, WHICH ARE NOT MACHINERY BUT ARE NOT THEIRS EITHER.
+ *
+ * Extraction sometimes finishes somebody's sentence for them inside square brackets, so the record
+ * holds words they did not say:
+ *
+ *   "Nobody has said [what I am supposed to have learned by when]"
+ *   "Hit eight [deals]"
+ *
+ * Helpful in intent and wrong in a product whose entire claim is that it holds what people
+ * actually said. The bracket goes and the sentence stays as they left it - a little blunter, and
+ * theirs. Where the insertion is the whole entry there is nothing of theirs to keep, so it is left
+ * alone rather than emptied.
+ *
+ * Lower-case or mixed-case inside the brackets, deliberately: the SHOUTING form above is machinery
+ * and already handled, and telling them apart is what stops this eating "[Q3]" or "[draft]".
+ */
+const AN_EDITORIAL_INSERTION = /\s*\[(?=[^\]]*[a-z])[^\]]{6,}\]/g;
+
 export function cleanText(text: string): string {
-  return (text ?? '').replace(VERIFIABILITY, '').replace(A_MACHINE_MARKER, '').trim();
+  const withoutMarkers = (text ?? '').replace(VERIFIABILITY, '').replace(A_MACHINE_MARKER, '');
+  const withoutEditorial = withoutMarkers.replace(AN_EDITORIAL_INSERTION, '');
+  /* Never hand back nothing: an entry that was ONLY an insertion keeps its original text, because
+     an empty line on a report is worse than a clumsy one. */
+  return (withoutEditorial.trim() || withoutMarkers.trim());
 }
 
 /** The kinds G10 will weigh, as they are spelled in the database. */

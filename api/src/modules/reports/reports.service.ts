@@ -2936,11 +2936,45 @@ happened, and what is in the way.`;
         where: { groundId_participantId: { groundId, participantId: participant.id } },
       });
       if (!activation || activation.status !== ReportActivationStatus.ACTIVATED) {
-        // Return a pre-activation stub - client shows the "Reveal" button.
+        /*
+         * AND WHO IT IS WAITING ON, WHICH THE STUB DID NOT SAY.
+         *
+         * The report releases, everybody is emailed "your shared record is ready", everybody clicks
+         * through and meets a button. The screen explains the mechanism - each of you shows your
+         * own - and names nobody, so two people can sit either side of it each believing the other
+         * has stalled. Read on a real new-hire check-in: released, both notified, neither activated,
+         * and nothing anywhere saying who the other party was or that they had been told the same.
+         *
+         * Names only where this reader is entitled to them, through the same resolver as
+         * everything else here.
+         */
+        const labels = labelsForParties(ground.participants as any);
+        const nameByLabel = namesVisibleTo(participant?.id ?? null, ground.participants as any);
+        const activationsNow = await this.prisma.reportActivation.findMany({
+          where: { groundId },
+          select: { participantId: true, status: true },
+        });
+        const shownIds = new Set(
+          activationsNow.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
+        );
+        const stillToShow = ground.participants
+          .filter((x: any) => !x.managingOnly && x.id !== participant?.id && !shownIds.has(x.id))
+          .map((x: any, i: number) => {
+            const label = labels.get(x.id);
+            return (label ? nameByLabel.get(label) : undefined) ?? label ?? `Party ${i + 1}`;
+          });
         return {
           id: ground.report.id,
           groundId,
+          /* Named, and the fact they were told too - so nobody chases somebody who is waiting on
+             them for the same reason. */
+          waitingToShow: stillToShow,
+          everyoneWasTold: true,
           createdAt: ground.report.createdAt,
+          /* When it was last WRITTEN. The page compares this against the newest completed check-in
+             to decide whether somebody is reading a stale version; against `createdAt` that was
+             permanently true after any regeneration. */
+          updatedAt: (ground.report as any).updatedAt,
           releasedAt: ground.report.releasedAt,
           activated: false,
         };

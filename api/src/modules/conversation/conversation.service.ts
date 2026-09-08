@@ -1,6 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { whatToPutToThem, theReplyAlreadyQuotesIt } from './the-line-that-touches-what-they-said';
+import { aDirectiveAboutTheBurden, countWhatWasAsked } from './the-same-burden-on-both-sides';
 import { whatFitsInTheRoom, tellThemWhatIsMissing } from './a-prompt-that-ran-out-of-room-says-so';
 import { isTheirs, ONLY_THEIR_WORDS } from './a-record-is-what-they-said';
 import { whatTheySaidAboutWhy } from './they-said-why-themselves';
@@ -1929,6 +1930,35 @@ export class ConversationService {
      * - including exceptions written into both of the rules suppressing it - got as far as naming
      * the file and no further. The session is told the difference is already on the screen.
      */
+    /*
+     * AND WHETHER THE TWO SIDES HAVE BEEN ASKED THE SAME KIND OF THING.
+     *
+     * See the-same-burden-on-both-sides.ts. On a real two-party conflict one engineer was invited
+     * to examine his own part and the other was asked to prove herself three times - both correct
+     * turn by turn, and impartiality broken across the session. Neither could see it, because
+     * neither reads the other's check-in.
+     *
+     * Only where there IS another side: on a solo check-in there is nothing to be uneven with.
+     */
+    const everyAiTurn = ground.participants.length > 1
+      ? await this.prisma.conversationTurn.findMany({
+        where: { role: TurnRole.AI, checkIn: { groundId: checkIn.groundId } },
+        select: { content: true, checkIn: { select: { participantId: true } } },
+      })
+      : [];
+    const askedOfEach = new Map<string, string[]>();
+    for (const t of everyAiTurn) {
+      const pid = t.checkIn?.participantId;
+      if (!pid) continue;
+      askedOfEach.set(pid, [...(askedOfEach.get(pid) ?? []), t.content]);
+    }
+    const burden = everyAiTurn.length
+      ? aDirectiveAboutTheBurden(countWhatWasAsked(
+        [...askedOfEach].map(([participantId, aiTurns]) => ({ participantId, aiTurns })),
+        checkIn.participantId,
+      ))
+      : '';
+
     const toPut = latestMessage ? whatToPutToThem(latestMessage, shareableForThisTurn) : null;
     const putThisToThem = toPut?.directive ?? '';
     /* Handed to the caller for this turn only. `composeSystemPrompt` returns a string and has three
@@ -2095,7 +2125,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**

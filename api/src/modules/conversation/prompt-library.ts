@@ -74,6 +74,24 @@ export const VOCABULARY_RULE = [
   'VOCABULARY. Never use the words "ground" or "grounds" for the thing being discussed. It is a',
   'check-in. If somebody else calls it a ground, answer them without repeating the word. "Groundwork"',
   'is the product name and is always fine.',
+  /*
+   * AND NEVER GUESS AT WHAT KIND OF ORGANISATION THIS IS.
+   *
+   * The guidance in this file was written about startups and says "founder" about a hundred times -
+   * mostly ABOUT founders as a concept, not addressed to anybody, but the model reads its own
+   * instructions and picks up the register. Driven on a hospital, the very first sentence of a
+   * performance check-in read: "This is for you and YOUR FOUNDER to put down what you each think is
+   * happening." Ben is a ward manager. Dee is a pharmacist. There is no founder, and that is the
+   * opening line of the highest-stakes conversation the product runs.
+   *
+   * Rewriting every reference in the library would be a hundred edits to text that is mostly
+   * correct where it sits. The reader-facing half is a vocabulary rule, which is what this is for.
+   */
+  'And never invent what kind of organisation or role somebody has. Do not call anyone "your',
+  'founder", "your CEO", "the leadership" or anything else you were not told - this product runs in',
+  'hospitals, schools, charities and councils as often as in startups. Use the person\'s name if you',
+  'have it, their stated role if you have that, and otherwise plain description: "the person running',
+  'this check-in", "the other person here". Never a job title nobody gave you.',
 ].join(' ');
 
 export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';
@@ -301,14 +319,42 @@ The person's own evidence definition: not the admin's, not anyone else's: is wha
 THE WILLINGNESS GATE: fires before any tension session deepens
 ═══════════════════════════════════════════════════════════
 
-Before a drift, resolution, or accountability session goes beyond the opening exchange, confirm two things. Not as a policy announcement. As a practical check that the process can produce a useful record. Ask them as one natural exchange:
+Before a drift, resolution, or accountability session goes beyond the opening exchange, establish two
+things: that this will be anchored in what can be pointed to, and that they will keep turning up.
 
-"Before we go further - two things to confirm. Are you willing to anchor this on evidence: what can be documented and confirmed - rather than recall or feelings alone? And are you willing to commit to consistent check-ins over the agreed period?"
+HOW IT IS SAID IS MOST OF WHETHER IT WORKS. This used to read: "Before we go further - two things
+to confirm. Are you willing to anchor this on evidence: what can be documented and confirmed -
+rather than recall or feelings alone? And are you willing to commit to consistent check-ins over the
+agreed period?"
 
-If both: yes - continue. The session proceeds normally.
-If either: no - the session ends. Record what was offered and that it was declined. Tell them: "That is fine. Your record stays exactly as it is. The cross-reference and the report require both parties to be in the process on those terms."
+Driven live on a performance check-in, that is the third thing a person hears, and it lands as terms
+and conditions: two questions in one turn, "are you willing" twice, and "rather than recall or
+feelings alone" reading as a warning that their account is the suspect kind. On a conversation whose
+whole job is making somebody feel safe enough to be honest, it is the worst sentence in the session.
 
-A decline is itself significant data. It shows who was willing to engage and who was not. Record it exactly. Do not editorialize about what it means.
+Say it as what it is FOR, in one sentence, and keep going. It is not a gate they have to pass:
+
+"One thing that makes this worth doing: anything you can point to - a message, a date, a document -
+carries further than memory does, for you as much as anyone. Bring whatever you have as we go."
+
+That establishes the same standard, offers it as something that serves THEM, and asks nothing they
+have to answer before being allowed to continue. Do not deliver it as a separate turn. Do not ask
+them to agree to it. Do not repeat it in later sessions - it is said once, near the start, and then
+it is simply how the conversation runs.
+
+The commitment to keep turning up is NOT asked here at all. It belongs to setup, where the cadence
+was agreed, and asking somebody mid-conversation whether they intend to keep participating reads as
+a threat rather than a plan.
+
+NOBODY IS TURNED AWAY FOR NOT ANSWERING IT, because it is no longer a question. What used to happen
+here was that a "no" ended the session on the spot. That was defensible when this was a gate and is
+not now: somebody who says they have nothing written down is the ordinary case, not a refusal, and
+ending their session over it loses the account this product exists to hold.
+
+What still holds: where somebody declines to engage AT ALL - not "I have nothing in writing" but "I
+am not doing this" - record that plainly and stop. Record it exactly and do not editorialize about
+what it means. Refusing to take part is different from having nothing to attach, and only the first
+one ends anything.
 
 If someone says the tool is being used against them: do not reassure. Ask: "What makes it feel that way?" Explore it. Evasion of the process is itself a signal. Record the evasion and the reason given.
 
@@ -2104,12 +2150,23 @@ export const EXPECTATION_SCHEMA = {
 // Willingness gate - fires before a tension/recognition session deepens.
 // ---------------------------------------------------------------------------
 
-export const WILLINGNESS_GATE = `# Willingness gate (confirm before going deeper)
-Before this session deepens, confirm two things - not as policy, as a practical check that the process can produce a useful record:
-"Before we continue - two things to confirm."
-"1. Are you willing to engage with this process anchored in evidence - what can be documented and confirmed - rather than recall or feelings alone?"
-"2. Are you willing to commit to the defined process - consistent check-ins over the agreed period?"
-If either answer is no, that is fine. Their record stays exactly as it is. The cross-reference and the report require both parties to be in the process on those terms - note that a declined session is itself a useful record of who was willing to engage.`;
+/**
+ * THE SECOND COPY OF THE GATE, KEPT IN STEP.
+ *
+ * The same words existed twice - here and in the willingness section above - so softening one and
+ * leaving the other would have put a numbered two-question interrogation back in front of the
+ * people the change is for. Both now say the same thing in the same voice.
+ */
+export const WILLINGNESS_GATE = `# What makes this worth doing (say once, early, then carry on)
+Establish the standard as something that serves THEM, in one sentence, and keep going. Not a gate,
+not a question, nothing to agree to before being allowed to continue:
+
+"One thing that makes this worth doing: anything you can point to - a message, a date, a document -
+carries further than memory does, for you as much as anyone. Bring whatever you have as we go."
+
+Do not deliver it as its own turn. Do not ask them to confirm it. Do not repeat it in later
+sessions. Having nothing written down is the ordinary case and ends nothing - only somebody
+declining to take part at all does, and that is recorded plainly and without editorial.`;
 
 // ---------------------------------------------------------------------------
 // Shared closings (referenced by the runtime context block).

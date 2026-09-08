@@ -844,7 +844,19 @@ export function ReportBody({
   // Someone finished a check-in after this report was written, so what is on
   // screen predates their account.
   useEffect(() => {
-    const generatedAt = (report as any)?.createdAt ? new Date((report as any).createdAt).getTime() : 0
+    /*
+     * WHEN IT WAS LAST WRITTEN, NOT WHEN THE ROW WAS MADE.
+     *
+     * This read `createdAt`, and regeneration upserts the report rather than replacing it - so that
+     * timestamp stays at first generation for ever. The moment anybody checked in again, "someone
+     * has checked in since this was written, you are reading the previous version" became
+     * permanently true, and the page polled every five seconds for as long as it believed it. Seen
+     * on a real check-in, still showing the banner over a report that had already refreshed.
+     *
+     * `createdAt` is the fallback for a report written before the column existed.
+     */
+    const writtenAt = (report as any)?.updatedAt ?? (report as any)?.createdAt
+    const generatedAt = writtenAt ? new Date(writtenAt).getTime() : 0
     const newest = (ground?.checkIns ?? [])
       .map((c) => (c.completedAt ? new Date(c.completedAt).getTime() : 0))
       .reduce((m, t) => Math.max(m, t), 0)

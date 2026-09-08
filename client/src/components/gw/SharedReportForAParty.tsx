@@ -206,6 +206,20 @@ export function SharedReportForAParty({
               <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
                 Each of you shows your own when you are ready. Once everyone has, you can all read them - this cannot be undone.
               </div>
+              {/*
+                AND WHO IT IS WAITING ON.
+
+                The mechanism was explained and nobody was named, so two people sit either side of
+                this button each believing the other has stalled. Seen on a real check-in: report
+                released, both parties emailed, neither had pressed it, and nothing on the screen
+                said who the other person was or that they had been sent the same thing.
+              */}
+              {((report as any).waitingToShow ?? []).length > 0 && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 8 }}>
+                  Waiting on {((report as any).waitingToShow as string[]).join(' and ')}
+                  {(report as any).everyoneWasTold ? ' - they have been told it is ready too.' : '.'}
+                </div>
+              )}
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
                 The report shows where accounts agree and where they differ. It does not quote anyone.
               </div>
