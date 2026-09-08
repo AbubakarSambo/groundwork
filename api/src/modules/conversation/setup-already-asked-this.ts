@@ -29,6 +29,19 @@ export interface SetupFacts {
   roleAsDescribed?: string | null;
   /** The brief the lead wrote at the last step of setup. */
   adminBrief?: string | null;
+  /**
+   * WHETHER THE PERSON READING THIS IS THE PERSON IT KEEPS TALKING ABOUT.
+   *
+   * Every line below used to say "the person who set this up", including when the person about to
+   * read the reply was that person. Driven live on a generic check-in the lead had opened about
+   * themselves, the conversation said "the person who set this up described your part as..." back
+   * at the person who had typed it ten minutes earlier. It reads as the product not knowing who it
+   * is talking to, which is exactly what it was.
+   *
+   * The caller already knows this - the ground's initiator is on the row it loaded - so the fact
+   * travels rather than being left for the model to work out from context that does not contain it.
+   */
+  readerSetItUp?: boolean;
 }
 
 /**
@@ -86,11 +99,21 @@ export function alreadyEstablished(facts: SetupFacts): string {
   const others = (facts.otherParties ?? []).map((p) => p.label).filter(Boolean);
   if (others.length) known.push(`The other people in it are: ${others.join(', ')}.`);
 
+  /* Second person when they wrote it, third when somebody else did. Not a politeness: told "the
+     person who set this up wrote X" about their own sentence, the model treats X as somebody
+     else's account and starts asking them to respond to it. */
+  const theirs = facts.readerSetItUp;
+  const whoWrote = theirs ? 'You' : 'The person who set this up';
+
   const role = facts.roleAsDescribed?.trim();
-  if (role) known.push(`The person who set this up described this person's part in it as: ${role}.`);
+  if (role) {
+    known.push(theirs
+      ? `You described your own part in it as: ${role}.`
+      : `The person who set this up described this person's part in it as: ${role}.`);
+  }
 
   const brief = facts.adminBrief?.trim();
-  if (brief) known.push(`The person who set it up wrote this about the situation: ${brief}`);
+  if (brief) known.push(`${whoWrote} wrote this about the situation: ${brief}`);
 
   if (!known.length) return '';
 

@@ -50,6 +50,7 @@ import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-reco
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
+import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -1167,6 +1168,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
       for (const { text } of cleanedAgreements.dropped) this.logger.warn(whyItWasDropped(text));
       result.agreements = cleanedAgreements.kept as any;
     }
+
+    /* The model has been seen writing "atStake:" and its whole value INTO the topic, so the heading
+       printed the field name at the reader and repeated the consequence. Split it back apart before
+       fillAtStake runs - otherwise that pass sees an atStake that is already populated (by the
+       duplicate) and leaves the mangled topic standing. See a-field-name-is-not-a-heading.ts. */
+    result.divergences = everyDivergenceReadable(result.divergences) as any;
 
     await this.fillAtStake(result.divergences);
 

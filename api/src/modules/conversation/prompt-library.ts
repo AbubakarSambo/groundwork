@@ -3728,6 +3728,8 @@ export function buildIntakeBlock(ctx: PromptContext): string {
         otherParties: ctx.otherParties,
         roleAsDescribed: ctx.roleAsDescribed,
         adminBrief: ctx.adminBrief ?? null,
+        /* The initiator IS the person every line of this block refers to. */
+        readerSetItUp: ctx.partyType === PartyType.INITIATOR,
       });
       return block ? ['', block] : [];
     })(),
