@@ -34,6 +34,7 @@ import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -843,7 +844,25 @@ from finishing at all.`;
       if (result) extracted = result;
     } catch { /* extraction is best-effort */ }
 
-    const ready = onboardingIsReady(extracted);
+    /**
+     * OR THE ASSISTANT HAS STOPPED ASKING, IN WHICH CASE THE GATE CAN NEVER OPEN.
+     *
+     * `onboardingIsReady` waits on three extracted fields. A field is only ever populated from
+     * something the person says, and a person only says things in answer to being asked - so once
+     * the model has stopped asking, no future turn can populate a missing one and the gate is shut
+     * for good. Seen live: three replies in a row promising the next screen, over a screen with
+     * nothing to click.
+     *
+     * See a-gate-that-can-never-open-is-shut.ts. It is not a lowered bar; it is the only reading of
+     * the gate that a person can actually get past.
+     */
+    const stoppedAsking = theSetupHasStoppedAsking(messages, reply);
+    const ready = onboardingIsReady(extracted) || stoppedAsking;
+    if (stoppedAsking && !onboardingIsReady(extracted)) {
+      this.logger.warn(
+        `Setup finished without ${whatSetupNeverGot(extracted).join(', ')} - the assistant had stopped asking.`,
+      );
+    }
 
     /**
      * A LEAD WHO HAS NAMED NOBODY IS LET THROUGH, AND TOLD. Hafsah's call.
