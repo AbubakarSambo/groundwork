@@ -34,17 +34,36 @@ const facts = (o: Partial<CoverageFacts> = {}): CoverageFacts => ({
 })
 
 describe('what the report can say so far', () => {
-  it('names the person who has not answered, because that is the actual blocker', () => {
+  /**
+   * IT NAMED SOMEBODY, AND THAT WAS THE WRONG KIND OF PRECISE.
+   *
+   * "It cannot compare anything yet, because Ada Nwosu has not answered yet." Read back: "this area
+   * is literally about how much context it has from the chats yet you name Ada?"
+   *
+   * The fault is not privacy - the reader may be perfectly entitled to that name, and this page is
+   * their own. It is that naming somebody turns a meter about the report into a remark about a
+   * colleague. Every other row counts what the check-in has to work with; that one pointed at a
+   * person and said the shortfall was theirs, on a page that refuses to give verdicts about the
+   * person actually reading it.
+   */
+  it('counts who is outstanding and names nobody', () => {
     const { headline } = whatItCanSay(facts())
-    expect(headline).toContain('Ada Nwosu has not answered yet')
     expect(headline).toContain('It can say what you said')
+    expect(headline).toContain('until one more person answers')
+    expect(headline).not.toContain('Ada')
   })
 
-  it('and falls back to "one person" where peers are hidden', () => {
-    /* A page being private to its reader does not make somebody else's name theirs to know. */
-    const { headline } = whatItCanSay(facts({ waitingOn: [] }))
-    expect(headline).toContain('one person has not answered yet')
-    expect(headline).not.toContain('Ada')
+  it('nor anywhere in the rows', () => {
+    const { rows } = whatItCanSay(facts())
+    for (const r of rows) {
+      expect(r.says).not.toContain('Ada')
+      expect(r.because ?? '').not.toContain('Ada')
+    }
+  })
+
+  it('and counts correctly with more than one outstanding', () => {
+    const { headline } = whatItCanSay(facts({ parties: 4, answered: 1, waitingOn: ['Ada', 'Bo', 'Cy'] }))
+    expect(headline).toContain('until 3 more people answer')
   })
 
   it('says what is missing rather than only that something is', () => {

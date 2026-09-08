@@ -14,9 +14,21 @@
  * how many people have answered this round, how many claims another account could corroborate, how
  * much has a document behind it, how many rounds are finished.
  *
- * NAMES FALL BACK. Naming who has not answered is the useful form and this page is private to its
- * reader - but peers are hidden on some check-ins, and a page being private does not make somebody
- * else's name the reader's to know. Where they are hidden it says "one person".
+ * AND IT NAMES NOBODY, WHICH IS A REVERSAL.
+ *
+ * It said "It cannot compare anything yet, because Ada Nwosu has not answered yet." Read back:
+ * "this area is literally about how much context it has from the chats yet you name Ada?"
+ *
+ * Right, and the fault is not privacy - the reader may well be entitled to that name, and the page
+ * is their own. It is that naming somebody turns a meter about the report into a remark about a
+ * colleague. Every other row here counts what the check-in has to work with; that one row pointed
+ * at a person and said the shortfall was theirs. On a page that refuses to give verdicts about the
+ * reader, it was giving one about somebody who is not even reading it.
+ *
+ * So the rows count. One of two people has answered; two rounds are needed and one has happened;
+ * nothing is attached yet. Who has not answered is a fact about the check-in and it has a home -
+ * the roster on the check-in tab, and the report's own waiting-on line - where it is a prompt to go
+ * and ask somebody rather than a reason printed against a meter.
  */
 
 export interface CoverageFacts {
@@ -25,8 +37,15 @@ export interface CoverageFacts {
   /** How many of the people on this round have answered, and how many there are. */
   answered: number
   parties: number
-  /** Who has not, by the name this reader may use. Empty where peers are hidden. */
-  waitingOn: string[]
+  /**
+   * KEPT ON THE SHAPE AND DELIBERATELY UNUSED BY THE COPY.
+   *
+   * Both callers still compute it, and it stays declared so the next person to want a name here
+   * finds this note rather than the field's absence. Nothing in this component prints it. See the
+   * header: the objection was not that the name was secret, it was that a meter about the report
+   * should not point at a person.
+   */
+  waitingOn?: string[]
   /** Claims another account could be lined up against, out of the claims made. */
   corroborated?: { checked: number; total: number } | null
   /** How much of the record has a document behind it. */
@@ -43,12 +62,10 @@ interface Row { can: boolean; says: string; because?: string }
  */
 export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string } {
   const others = Math.max(0, f.parties - 1)
-  const whoIsMissing = f.waitingOn.length
-    ? f.waitingOn.join(' and ')
-    : f.parties - f.answered === 1
-      ? 'one person'
-      : `${f.parties - f.answered} people`
-  const missingVerb = f.waitingOn.length === 1 || f.parties - f.answered === 1 ? 'has not answered yet' : 'have not answered yet'
+  const outstanding = Math.max(0, f.parties - f.answered)
+  /* A count, never a name. "One more person" is the same fact and points at nobody. */
+  const stillToAnswer = outstanding === 1 ? 'one more person' : `${outstanding} more people`
+  const haveAnswered = `${f.answered} of ${f.parties} have answered`
 
   const rows: Row[] = [
     {
@@ -61,15 +78,14 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
       says: others === 1 ? 'Where the two of you see it differently' : 'Where people see it differently',
       because: others === 0
         ? 'Nobody else is on this check-in yet'
-        : `${whoIsMissing} ${missingVerb}`,
+        : haveAnswered,
     },
     {
       can: (f.corroborated?.checked ?? 0) > 0,
-      /* "account" is banned in copy - it reads as a login. Say the thing instead. */
       says: 'Which parts line up with what someone else said',
       because: f.corroborated?.total
         ? `${f.corroborated.checked} of ${f.corroborated.total} so far`
-        : 'Needs someone else to have answered',
+        : 'Needs a second answer to line yours up against',
     },
     {
       can: (f.documentBackedPct ?? 0) > 0,
@@ -83,15 +99,13 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
     },
   ]
 
-  /* The one line somebody reads if they read nothing else, and it names the real blocker rather than
-     the reader. */
   const canCount = rows.filter(r => r.can).length
   const headline = !f.iHaveCheckedIn
     ? 'Nothing yet. It starts with your first check-in.'
     : canCount === rows.length
       ? 'Everything a report needs is here.'
       : f.answered <= 1 && others > 0
-        ? `It can say what you said. It cannot compare anything yet, because ${whoIsMissing} ${missingVerb}.`
+        ? `It can say what you said. It cannot compare anything until ${stillToAnswer} answers.`
         : `It can say ${canCount} of the ${rows.length} things a full report says.`
 
   return { rows, headline }

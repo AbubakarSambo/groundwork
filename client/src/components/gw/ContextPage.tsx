@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { personLabel } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
+import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
 import { SharedNote } from '@/components/gw/SharedNote'
@@ -455,6 +456,23 @@ export function ContextPage({
               viewerUserId={viewerUserId}
               hasChat={isTheLead && contextEnabled}
             />
+
+            {/*
+              AND WHAT SUCCESS LOOKS LIKE, WHICH THIS PAGE WAS SAID TO HOLD AND DID NOT.
+
+              My record used to carry it, and I replaced that with a line reading "Success and
+              expectations live on Context". Expectations do - the band directly above. Success did
+              not: it rendered on the board and inside each session's report and nowhere else, so
+              the link promised a page half of it was on. Read back: "success expectations are not
+              really on context. I dont see it."
+              
+              It belongs here on its own merits rather than to make a link true. Context is where the
+              shared framing of a check-in is published - what it is about, what is expected of each
+              person, the material - and what everybody said good looks like is the same class of
+              thing. It is the one band on this page that shows where the accounts put it, which is
+              the half a party could otherwise only see by opening the board.
+            */}
+            <WhatSuccessLooksLikeFor groundId={id} />
 
             {/*
               3 - AND WHAT YOU DID ABOUT IT, touching the words you are measured against.
