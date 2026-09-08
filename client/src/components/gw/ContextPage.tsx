@@ -169,11 +169,21 @@ export function ContextPage({
     (n: any) => n.audience !== 'EVERYONE',
   )
 
-  const pageIsEmpty =
-    ((ground as any).objectives ?? []).length === 0 &&
-    (ground.leadContextNotes ?? []).length === 0 &&
-    (ground.participants ?? []).every((p: any) => ((p.objective?.all ?? []).length === 0)) &&
-    docs.length === 0
+  /**
+   * THE NUMBER EACH BAND GETS, COUNTED AS THE PAGE IS DRAWN.
+   *
+   * Numbering them by hand went wrong twice in one day: first the numbers started at the third band,
+   * then a band that only renders when it has content ("Only you see this") left a gap between 3 and
+   * 5. A fixed number on a conditional section is a promise the page cannot keep, and a reader who
+   * sees 3 then 5 reasonably concludes something failed to load.
+   *
+   * Called in render order, once per band that actually renders, so the sequence is always what a
+   * person can see. It is a counter rather than a computed list because the conditions are spread
+   * through the JSX and a list would be a second copy of them.
+   */
+  let bandsSoFar = 0
+  const band = () => ++bandsSoFar
+
 
   /**
    * The lead's own answer to "What is this about? What needs to be true at the end?", typed at
@@ -246,6 +256,7 @@ export function ContextPage({
               whichever is actually there rather than claiming the check-in for both.
             */}
             <Sec
+              n={band()}
               title="What this check-in is for"
               src={
                 theBrief && objectives.length > 0 ? 'from setup, and the lead\u2019s own check-in'
@@ -295,8 +306,19 @@ export function ContextPage({
                 but it should not be the loudest thing on the page while it does.
               */
               /* Only when there is genuinely nothing - a brief alone is not nothing. */
+              /*
+               * THE SAME SHAPE AS EVERY OTHER "NOTHING YET" ON THIS PAGE.
+               *
+               * There were three of them in three shapes: bare grey text here, a bordered panel for
+               * the expectations below, and a dashed drop-zone for documents. Same idea, three
+               * weights, so the page looked like a pile of unrelated states rather than one thing
+               * with sections that are not filled in.
+               *
+               * The bordered panel is the one that wins, because it is the one that reads as a slot
+               * waiting for something rather than as an apology.
+               */
               !theBrief && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
+                <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
                   Nothing yet. This comes out of the lead&rsquo;s own check-in.
                 </div>
               )
@@ -317,6 +339,7 @@ export function ContextPage({
               read like somebody else's list.
             */}
             <Sec
+              n={band()}
               title={isLead ? 'Person by person' : 'What is expected of you'}
               src={isLead ? 'stated in your check-in, read by everyone' : 'you cannot change this here'}
             />
@@ -450,7 +473,15 @@ export function ContextPage({
               </div>
             )}
 
-            <Sec title="Documents" src="each one says who reads it" />
+            {/*
+              * NUMBERED IN THE ORDER THE PAGE ACTUALLY RUNS IN, WHICH IT WAS NOT.
+              *
+              * The numbers went on three of the five bands and started at the third one, so the page
+              * read "What this check-in is for", "Person by person", then "1 DOCUMENTS". A number
+              * that disagrees with the thing above it is worse than no number: it tells somebody
+              * they have missed something.
+              */}
+            <Sec n={band()} title="Documents" src="each one says who reads it" />
 
             <div
               style={{
@@ -710,7 +741,7 @@ export function ContextPage({
             */}
             {isLead && privateSteers.length > 0 && (
               <>
-                <Sec title="Only you see this" src="steers what gets asked &middot; never quoted" />
+                <Sec n={band()} title="Only you see this" src="steers what gets asked &middot; never quoted" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
                   {privateSteers.map((n: any) => {
                     const p = n.participantId ? ground.participants.find((x: any) => x.id === n.participantId) : null
@@ -740,29 +771,31 @@ export function ContextPage({
               nobody but the lead sees; the API refuses them from anyone else, so rendering them to a
               participant would only ever be a form that fails on submit.
             */}
+            {/*
+              * THE DISCLOSURE IS GONE, AND WITH IT A NUMBERED SECTION THAT LIVED INSIDE IT.
+              *
+              * "Or write it yourself instead of saying it in the chat" was a summary floating between
+              * the numbered bands, and folded inside it were the running log AND section five, "What
+              * everyone here reads" - so the page counted 1, 2, 3 and then hid 5 behind a triangle.
+              * Somebody looking for where to write the framing everybody reads had to guess that a
+              * one-line disclosure was where a numbered section went.
+              *
+              * It was collapsed for a good reason - it used to open three textareas and nine hundred
+              * pixels of form on a page that was already full - but the answer to "too much form" is
+              * fewer boxes with clearer jobs, not the same boxes behind a door.
+              *
+              * THE TWO WRITE BANDS ARE NOT MERGED, and that is deliberate rather than unfinished.
+              * They look identical and they are not: one appends to a running log of what changed,
+              * the other is the lead's standing framing with an audience. Different stores, different
+              * lifetimes. Making them one control would have meant dropping one of them on my own
+              * judgement. What they needed was to stop looking the same, which is a line each.
+              */}
             {isLead && (
-            <details
-              /*
-                OPEN ONLY WHEN THE PAGE IS GENUINELY EMPTY.
-
-                It tested `ground.objectives` - the success definitions - and nothing else, so a
-                check-in with expectations on every person, documents, and a shared note still landed
-                the lead on three open textareas and about nine hundred pixels of form, purely because
-                nobody had written a success definition yet. The band that is meant to be the way in
-                when nothing has reached you was the loudest thing on a page that was already full.
-
-                The real question is whether there is anything here at all, and per-person
-                expectations are the main thing that answers it.
-              */
-              open={pageIsEmpty}
-              style={{ marginTop: 20, borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}
-            >
-              <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', listStyle: 'revert' }}>
-                Or write it yourself instead of saying it in the chat
-              </summary>
-              <div style={{ marginTop: 12 }}>
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Context notes</div>
+              <Sec n={band()} title="What has changed since setup" src="a running log &middot; everyone here reads it" />
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: 620 }}>
+                Short entries, added as things move. Each one is dated and kept; nothing is replaced.
+              </div>
               <div className="gw-fld">
                 <textarea className="gw-ta" rows={3} value={ctxNote} onChange={e => { setCtxNote(e.target.value.slice(0, 500)); setNoteSaved(false) }} placeholder="Add a context note: changed scope, revised goal, new constraint…" maxLength={500} />
                 <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'right', marginTop: 2 }}>{ctxNote.length}/500</div>
@@ -788,6 +821,7 @@ export function ContextPage({
                 <div key={i} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.6 }}>{n}</div>
               ))}
             </div>
+            )}
 
             {/*
               LABELLED BY WHO READS IT, WHICH IS THE ONLY DIFFERENCE THAT MATTERS.
@@ -798,7 +832,7 @@ export function ContextPage({
             */}
             {isLead && (
               <div style={{ marginTop: 20 }}>
-                <Sec title="What everyone here reads" src="your framing, never quoted as a finding" />
+                <Sec n={band()} title="What everyone here reads" src="your framing, never quoted as a finding" />
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>A note everyone here reads</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
                   About the whole check-in, not about one person. Everyone sees it with your name on
@@ -828,7 +862,11 @@ export function ContextPage({
                   reason given for anything.
                 </div>
                 <div className="gw-fld">
-                  <select className="gw-input" value={leadCtxTarget} onChange={e => { setLeadCtxTarget(e.target.value); setLeadCtxSaved(false) }} style={{ marginBottom: 8 }}>
+                  {/* LABELLED. It sat above a textarea with no label of its own, so "About the
+                      whole check-in" read as a statement about the page rather than as the current
+                      value of a control you can change. */}
+                  <label className="gw-label" htmlFor="ctx-audience">Who this is about</label>
+                  <select id="ctx-audience" className="gw-input" value={leadCtxTarget} onChange={e => { setLeadCtxTarget(e.target.value); setLeadCtxSaved(false) }} style={{ marginBottom: 8 }}>
                     <option value="">About the whole check-in</option>
                     {ground.participants.map((p: any) => (
                       <option key={p.id} value={p.id}>About {personLabel(p)}</option>
@@ -857,10 +895,6 @@ export function ContextPage({
               last now, and it is where you go to change anything above: you read what the check-in
               holds, then talk to it.
             */}
-              </div>
-            </details>
-
-            )}
 
             {/*
               WHAT THIS CHECK-IN CAN TELL YOU, directly above the chat rather than between the bands.

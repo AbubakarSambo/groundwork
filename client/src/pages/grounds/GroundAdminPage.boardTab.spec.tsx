@@ -32,7 +32,7 @@ import { documentsApi } from '@/api/documents'
 
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
 vi.mock('@/api/participantRequests', () => ({ participantRequestsApi: { list: vi.fn().mockResolvedValue([]) } }))
-vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn(), activationStatus: vi.fn() } }))
+vi.mock('@/api/reports', () => ({ reportsApi: { get: vi.fn() } }))
 vi.mock('@/api/documents', () => ({ documentsApi: { list: vi.fn() } }))
 vi.mock('@/api/resolution', () => ({ resolutionApi: { get: vi.fn().mockResolvedValue(null), propose: vi.fn() } }))
 vi.mock('@/stores/auth', () => ({
@@ -78,7 +78,6 @@ describe('finding the team board', () => {
     vi.clearAllMocks()
     navigated.length = 0
     ;(reportsApi.get as any).mockResolvedValue(null)
-    ;(reportsApi.activationStatus as any).mockResolvedValue(null)
     ;(documentsApi.list as any).mockResolvedValue([])
   })
 

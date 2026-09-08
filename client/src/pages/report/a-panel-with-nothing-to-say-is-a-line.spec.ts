@@ -49,10 +49,18 @@ describe('a panel with nothing to say is a line', () => {
     expect(REPORT).toMatch(/<div style=\{\{[^}]*\}\}>Resolution<\/div>/)
   })
 
-  it('the reveal row shows who to chase, and stops when there is nobody', () => {
-    expect(ADMIN).toMatch(/\{!activationStatus\.allActivated && \(\s*<div/)
-    /* The heading still names the state either way - that is the one line that remains. */
-    expect(ADMIN).toMatch(/Private reports \{activationStatus\.allActivated/)
+  it('the reveal row shows who to chase, and says nothing extra when there is nobody', () => {
+    /*
+     * The panel this was written about went with the report tab's body. The rule it protects -
+     * a section with nothing to say is a line, not a panel - is kept by the shape that replaced
+     * it: one row per person on the report itself, each carrying its own state, so there is no
+     * "everybody has done it" panel left to render empty. A person who has done everything reads
+     * as one line saying so.
+     */
+    const VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
+    expect(VIEW).toContain('Answered, and shown theirs')
+    expect(VIEW).toContain('Not answered yet')
+    expect(ADMIN).not.toMatch(/allActivated/)
   })
 
   it('THE ONE THAT MUST NOT COLLAPSE: staleness is never conditional on being settled', () => {

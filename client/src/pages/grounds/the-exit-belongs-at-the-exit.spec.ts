@@ -25,37 +25,49 @@ import { whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
  *
  * Asserted against source because the condition is the whole fix, and a render test
  * would need a full ground payload to say something a one-line condition already says.
+ *
+ * THE PANEL MOVED TO THE BOARD, and the gate had to move with it. The check-in's report tab is a
+ * list of sessions now and the board is the screen that carries the whole run, so the end of the
+ * run belongs there - but moving the panel without its condition put four buttons including "Stop
+ * the project" on the board of a check-in that started yesterday, which is this defect again. The
+ * board gates on its own spine: the run is at or past its last session, or somebody has already
+ * picked an end state.
  */
 
-const SRC = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const SRC = readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** The overview tab's resolution panel, with the condition in front of it. */
 const BLOCK = (() => {
   const at = SRC.indexOf('<ResolutionPanel')
-  if (at === -1) throw new Error('ResolutionPanel is no longer rendered on the check-in page.')
-  return SRC.slice(Math.max(0, at - 700), at + 120)
+  if (at === -1) throw new Error('ResolutionPanel is no longer rendered anywhere.')
+  return SRC.slice(Math.max(0, at - 1400), at + 200)
 })()
+
+const PANEL = readFileSync(join(__dirname, '../../components/gw/ResolutionPanel.tsx'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 describe('the resolution panel', () => {
   it('is gated, not unconditional', () => {
     // THE FIX. Without a condition it renders on day one of every ground.
-    expect(BLOCK).toMatch(/\{\(.*&&\s*\(\s*$|\{\(.*\) && \(/m)
-    expect(BLOCK).toMatch(/allSessionsDone/)
+    expect(BLOCK).toMatch(/nearTheEnd=\{nearTheEnd\}/)
+    expect(PANEL).toMatch(/nearTheEnd === false/)
   })
 
-  it('appears when the check-in is at or near its last planned session', () => {
-    expect(BLOCK).toMatch(/plannedSessions/)
-    expect(BLOCK).toMatch(/sessionsDone\s*>=\s*plannedSessions\s*-\s*1/)
+  it('appears when the check-in is at or near its last session', () => {
+    expect(BLOCK).toMatch(/done >= total - 1/)
   })
 
   it('and stays visible once a check-in is already mid-decision', () => {
     // Somebody who has started resolving must not lose the panel because the
     // arithmetic says it is early. Losing it would strand a half-finished
     // decision with no way back to it.
-    expect(BLOCK).toMatch(/ground\.resolutionState/)
+    /* This half moved INTO the panel: the caller supplies the arithmetic and only the panel knows
+       whether anybody has picked, so it is the one that can answer this. */
+    expect(PANEL).toMatch(/if \(nearTheEnd === false && !decisionUnderWay\) return null/)
+    expect(PANEL).toMatch(/confirmations \?\? \[\]\)\.some\(\(c\) => c\.confirmed\)/)
   })
 
-  it('counts the session everyone has finished, not the furthest ahead', () => {
+  it('counts sessions everybody has finished, not the furthest ahead', () => {
     // `sessionsDone` is the minimum across participants. Using the highest would
     // offer the exit while somebody is still four rounds behind - the same
     // optimism that once closed a check-in over a missing account.
@@ -64,6 +76,11 @@ describe('the resolution panel', () => {
        spec pinned to where it used to live said nothing about whether it still held. Run it. */
     expect(whichSessionIsThisCheckInOn([[1, 2, 3, 4], [1]])).toBe(2)
     expect(whichSessionIsThisCheckInOn([[1, 2], [1, 2]])).toBe(3)
-    expect(SRC).toMatch(/whichSessionIsThisCheckInOn\(/)
+    /* The board's own read: a spine session is 'done' only when every check-in for it completed,
+       which IS the min-across-people rule. What must never be used here is `currentSession`, the
+       highest session NUMBER any row carries - rows for the next session exist the moment one
+       person finishes, so it runs ahead of the run and would offer the exit early. */
+    expect(BLOCK).toMatch(/x\.state === 'done'/)
+    expect(BLOCK).not.toMatch(/currentSession/)
   })
 })

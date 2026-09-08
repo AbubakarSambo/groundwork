@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Param, NotFoundException, ForbiddenException, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { CurrentUser, Roles, Role } from '../../common';
@@ -37,6 +37,23 @@ export class ReportsController {
     @CurrentUser('organizationId') organizationId: string,
   ) {
     return this.reports.rounds(groundId, userId, organizationId);
+  }
+
+  /**
+   * ONE SESSION'S REPORT, in the shape the site promises per check-in: where things stand,
+   * progress and priorities, commitments, risks and concerns, asks, what changed since last
+   * session, what changed since the beginning, what it rests on, how clear the accounts were,
+   * and the conversation worth having.
+   */
+  @Get('session/:sessionNumber')
+  @ApiOperation({ summary: "One session's report, in the promised shape" })
+  async sessionReport(
+    @Param('groundId') groundId: string,
+    @Param('sessionNumber', ParseIntPipe) sessionNumber: number,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.sessionReport(groundId, sessionNumber, userId, organizationId);
   }
 
   @Post('generate')

@@ -65,7 +65,13 @@ describe('where each person got to', () => {
   it('tells an unopened invitation from an account from somebody who has used it', () => {
     expect(row).toContain('Checked in')
     expect(row).toContain('Invited, not opened')
-    expect(row).toContain('Signed in, not checked in')
+    /* And the third state says whether they are on anything at all. "Signed in, not checked in"
+       was the same sentence for somebody with no check-in and somebody sitting on five of them
+       having answered none - and the green badge above was the same for somebody up to date and
+       somebody who answered once. Both now carry the count. */
+    expect(row).toContain('Signed in, not on a check-in')
+    expect(row).toContain('answered none')
+    expect(row).toContain('Answered on ${m.checkInsAnswered ?? 1} of ${m.checkInsOn}')
   })
 })
 

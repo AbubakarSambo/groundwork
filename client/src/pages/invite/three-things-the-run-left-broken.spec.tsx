@@ -25,8 +25,20 @@ describe('a check-in is not named after a database value', () => {
   })
 
   it('falls back to the words the person actually clicked', () => {
-    expect(CREATE).toMatch(/groundNameFallback\(/)
-    expect(CREATE).toMatch(/cardLabel\?\.trim\(\)/)
+    /*
+     * IT USED TO READ THE WIZARD. `/grounds/new` is a picker that hands over to the setup
+     * conversation, whose save is the only thing that creates a check-in now - so the naming rule
+     * moved there rather than being deleted with the screen that held it.
+     *
+     * The conversation's version is the same rule with better material: the situation as it was
+     * CLASSIFIED from what the person said, then the first thing they actually typed, and only then
+     * "Untitled". A raw enum value never reaches the label, which is what this file is about.
+     */
+    const chat = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
+    expect(chat).toMatch(/export function fallbackGroundName\(/)
+    expect(chat).toMatch(/fallbackGroundName\(onboardingSelections\.classifiedScenario, onboardingSelections\.initial\)/)
+    /* And the raw key is turned into words rather than printed: "NEW_HIRE" is not a name. */
+    expect(chat).toMatch(/\.replace\(\/_\/g, ' '\)/)
   })
 
   it('and does NOT put the person in front of it, which this used to require', () => {

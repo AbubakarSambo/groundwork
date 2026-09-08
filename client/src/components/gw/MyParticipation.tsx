@@ -76,17 +76,18 @@ export function MyParticipation({
             </div>
           </div>
 
-          {/**
-            * The bare grade that stood here - "Overall quality label: low" - is gone. It was the
-            * same read as the one on the record tab, minus everything a person could act on, and
-            * a page that grades you twice is not twice as honest.
-            */}
-          <div style={{ order: 6, background: 'var(--gw-clay-bg)', border: '1px solid var(--gw-clay-b)', borderRadius: 10, padding: '13px 16px' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-clay)', marginBottom: 4 }}>Privacy reminder</div>
-            <div style={{ fontSize: 12, color: '#7A4A44', lineHeight: 1.6 }}>
-              Your check-in answers are never visible to the other party. They are stored privately and only cross-referenced at the point of report generation. Neither party can read the other's raw account at any time.
-            </div>
-          </div>
+          {/*
+            THE PRIVACY REMINDER IS GONE FROM HERE.
+
+            "Also please remove this, you are over doing it with the privacy reminders." It is said
+            on the check-in's own header, in the report's footer, on the Context page, at the top of
+            every session, and on the card that shows the shared report - and it was said HERE in
+            the loudest treatment on the page, a clay-coloured box under a person's own standing.
+
+            Nothing about the rule changed. What changed is that a settings page does not need to
+            reassure somebody about the thing five other surfaces already told them, in a colour
+            that reads like a warning about their own record.
+          */}
     </>
   )
 }

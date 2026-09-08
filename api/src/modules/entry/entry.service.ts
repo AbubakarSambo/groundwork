@@ -8,6 +8,7 @@ import { Injectable, Logger, BadRequestException, ForbiddenException, Unauthoriz
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
+import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
@@ -77,6 +78,38 @@ function resolveScenario(input?: string): GroundScenario {
     scenarioLogger.warn(`resolveScenario fallthrough: input="${input}" defaulted to NEW_PROJECT`);
   }
   return mapped ?? GroundScenario.NEW_PROJECT;
+}
+
+/**
+ * THE SAME LOOKUP, EXCEPT IT ANSWERS "I DO NOT KNOW".
+ *
+ * `resolveScenario` above defaults to NEW_PROJECT, which is right where a ground is being created
+ * and something has to be written down. It is exactly wrong for the setup conversation: an absent
+ * or unrecognised value would make it open with "What is the project, and who is on it?" to
+ * somebody who never mentioned a project - a confidently wrong first question, which is worse than
+ * the generic one it replaced.
+ *
+ * So setup uses this one, and no scenario means no situation pack and the honest open question.
+ */
+/**
+ * THE SETUP PROMPT, ASSEMBLED. Exported so a guard can read what the model is actually given rather
+ * than what the pieces say separately - the whole failure this change fixes was two correct pieces
+ * that never met, because the endpoint was not told which situation it was setting up.
+ */
+export function buildSetupPrompt(base: string, scenarioInput?: string, momentInput?: string): string {
+  const pack = theSetupPackFor(scenarioOrNothing(scenarioInput), momentOrNothing(momentInput));
+  return pack ? `${base}\n\n---\n\n${pack}` : base;
+}
+
+function momentOrNothing(input?: string | null): GroundMoment | null {
+  if (!input) return null;
+  return Object.values(GroundMoment).includes(input as GroundMoment) ? (input as GroundMoment) : null;
+}
+
+function scenarioOrNothing(input?: string | null): GroundScenario | null {
+  if (!input) return null;
+  if (Object.values(GroundScenario).includes(input as GroundScenario)) return input as GroundScenario;
+  return SCENARIO_MAP[input] ?? null;
 }
 
 const DEFAULT_SCENARIO = GroundScenario.NEW_PROJECT;
@@ -383,24 +416,30 @@ export function overlayDraftOntoBody(
  * completely differently. It was extracted first, on purpose, and then left out of the gate - so all
  * four other fields could be collected before anything knew which kind they were.
  *
- * WHAT REPLACES IT:
- *   - Nobody is ready until `yourRole` is known. It is asked first; it now gates first.
- *   - A coordinator is ready as soon as it IS known. What they have to give - who runs the first
- *     check-in - is collected by the step immediately after this, and needs none of these fields.
- *     Anything else they happen to know is welcome and none of it is required.
- *   - A party still owes the situation and why now, because those are genuinely theirs.
+ * WHAT REPLACES IT: the situation and why now, from everybody. Nothing else.
  *
- * WHO IS INVOLVED IS DELIBERATELY NOT HERE, even for a party. It is warned about instead - see
- * `needsPeople`. A required field somebody cannot answer becomes a field they invent.
+ * WHO IS INVOLVED IS DELIBERATELY NOT HERE. It is warned about instead - see `needsPeople`. A
+ * required field somebody cannot answer becomes a field they invent.
+ *
+ * AND `yourRole` IS NO LONGER A CONDITION, WHICH IS A REVERSAL OF THE PARAGRAPH ABOVE.
+ *
+ * It used to gate this because it was asked first, and it was asked first because it decided what
+ * every word after it WAS: a party's words are their own account, a non-party's are context about
+ * other people. That reasoning depended on a third answer - "somebody else sets the context, you are
+ * only setting the check-in up" - and that answer is gone. Both remaining answers write their own
+ * context, so setup's words are the context either way and nothing about them changes with the
+ * answer. The only thing it still decides is whether this person is also asked to check in, and that
+ * is a question about what happens NEXT, not about what was just said.
+ *
+ * So it moved to the end, where she asked for it: "you either set the context to checkin or set it
+ * and other checkin, you just look at the reports". A gate that waits for a question nobody asks any
+ * more would simply never open.
  */
 export function onboardingIsReady(extracted: {
   mode?: string;
   initial?: string;
   decision?: string;
-  yourRole?: string;
 }): boolean {
-  if (!extracted.yourRole) return false;
-  if (extracted.yourRole !== 'a_party') return true;
   return !!(extracted.mode && extracted.initial && extracted.decision);
 }
 
@@ -475,7 +514,15 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
     return { scenario: resolveScenario(mode) };
   }
 
-  async onboard(messages: ChatTurn[]): Promise<{
+  async onboard(
+    messages: ChatTurn[],
+    /**
+     * THE CARD THEY CLICKED. Twenty-two situations opened with one question because this argument
+     * did not exist - see the-first-question-for-this-situation.ts for the whole account.
+     */
+    scenarioInput?: string,
+    momentInput?: string,
+  ): Promise<{
     reply: string;
     extracted: {
       mode?: string;
@@ -509,68 +556,44 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
     const ONBOARD_SYSTEM = `You are Groundwork, helping someone set up a record for a situation involving more than one person.
 
 Your job is to gather these things through natural conversation:
-1. yourRole: WHO WRITES THE OBJECTIVE, AND WHO CHECKS IN AGAINST IT. Ask this FIRST, before anything
-   about the situation itself, in one short question with the three answers named:
+1. THE SITUATION ITSELF, STARTING WITH THE QUESTION THAT SITUATION DESERVES.
+   Open on what this is actually about. If a situation pack follows these rules it names the exact
+   first question for the card they picked - ask that one, or a close version in your own words.
 
-     - you set the context and objective, and you check in against it too
-     - you set the context and objective, and other people check in against it
+   THE FIRST MESSAGE MAY NOT BE THEIRS. Setup usually opens with a sentence the PRODUCT wrote, from
+   a list of situations they clicked - phrased in the first person ("I want one honest read from
+   everyone on my team this week...") but they typed none of it. Treat it as a TOPIC THEY PICKED.
+   Never extract goals from it and never quote it back as though they had said it. What they have
+   actually typed is the only thing that counts as theirs.
 
-   ASK IT IN THOSE TERMS, not as "are you part of this". The old wording asked where they sit, which
-   is a seating plan; what is actually being decided is who writes the objective and who is measured
-   against it. The setup screen asks it the same way now and the two must not drift apart.
+   DO NOT ASK THEM WHAT THE SITUATION IS ABOUT. They answered that by clicking. Ask for the
+   specifics the card cannot carry - who, when, what is at stake - never for the topic again.
 
-   THERE USED TO BE A THIRD ANSWER - "somebody else sets the context, you are only setting the
-   check-in up and inviting them" - and it is gone on her call: "I think we should remove the whole
-   org admin setting a context and handing it over to a lead. It seems like it is confusing." It
-   produced a check-in belonging to nobody in the room: this person named a lead, and the lead was
-   emailed to confirm a context they had not written and could not read until they accepted.
-   IF SOMEBODY SAYS THAT IS THEIR SITUATION - they were told to set this up and do not know the
-   detail - do NOT offer to hand it over. Say plainly that whoever knows what this is about should
-   be the one setting it up, and that they can add themselves to watch the reports afterwards from
-   the check-in's settings. Then stop; do not gather a situation they cannot describe.
+   SAY THIS ONCE, PLAINLY, EARLY: they will do their own check-in separately, and nothing they write
+   here counts as their account. Without it the later check-in feels like being asked the same thing
+   twice for no reason.
 
-   WHY IT COMES FIRST AND NOT THIRD. It decides what everything they say next IS. A party's words are
-   their own account. A non-party's words are context about other people, which this product treats
-   completely differently - it is a place to look, never a thing that is true. Asking afterwards means
-   collecting the words and establishing what kind of words they were once they are already written.
+   WHO WRITES THE OBJECTIVE AND WHO CHECKS IN AGAINST IT IS NOT YOUR QUESTION. DO NOT ASK IT.
+   It used to be the first thing you asked, and it is now asked at the very end, by the screen, with
+   two buttons. Two reasons, and the second is the one that matters.
 
-   AND IT IS WORST FOR THE COMMONEST CASE. Somebody told to set this up has no situation of their own
-   to describe. Asking them to describe one for two rounds before anything asks whose it is wastes
-   their time and produces a record of what a bystander imagines.
+   THE OLD REASON FOR ASKING IT FIRST HAS GONE. It came first because it decided what every word
+   after it WAS - a party's words are their own account, a non-party's are context about other
+   people. That depended on a third answer, "somebody else sets the context and you are only setting
+   this up", which has been removed. Both remaining answers write their own context, so setup's words
+   are the context either way and nothing about them changes with the answer.
 
-   THE FIRST MESSAGE MAY NOT BE THEIRS. Setup usually opens with a sentence the PRODUCT wrote, from a
-   list of situations they clicked - it is phrased in the first person ("I want one honest read from
-   everyone on my team this week...") but they typed none of it. For a party that is roughly what they
-   meant and no harm is done. FOR SOMEBODY SETTING THIS UP FOR OTHER PEOPLE IT IS THE PRODUCT WRITING
-   AN ACCOUNT IN THEIR VOICE about a situation they never described - and goals were being extracted
-   from it as though they had said them.
+   AND ASKING IT FIRST IS WHY EVERY SITUATION FELT THE SAME. Whatever card somebody clicked, the
+   first thing back was a question about org structure that could have been asked of anybody about
+   anything. It read as though the click went nowhere. The first question belongs to their situation.
 
-   So once yourRole is NOT "a_party", treat that opening sentence as a TOPIC THEY PICKED, not as
-   something they told you. Do not extract goals, a situation description or a reason from it. Only
-   what they have actually typed counts.
+   So: if they volunteer where they sit, take it and move on. Never ask for it, never offer the
+   options, and never make it a condition of finishing.
 
-   IF THEY ARE A PARTY, SAY THIS ONCE, PLAINLY: they will do their own check-in separately, and nothing
-   they write here counts as their account. It is true, it is never currently said, and without it the
-   later check-in feels like being asked the same thing twice for no reason.
-
-   IF SOMEBODY ELSE WILL RUN IT and they do not know the detail, say so is fine: take the names and let
-   the person who does know it lead. Do not press a bystander for a situation they cannot describe.
-
-   NAME THE SITUATION THEY PICKED. THIS IS NOT OPTIONAL AND IT WAS THE COMPLAINT.
-   They clicked a card that says exactly what this is about - a new hire starting, a contract about
-   to be signed, a project that has drifted - and the first thing back was a role question that
-   could have been asked of anybody about anything. It reads as though the click went nowhere.
-   So the role question OPENS by naming their actual subject in their own terms, then asks the
-   three answers: "A new hire starting. Before we get into it, who writes what good looks like
-   here, and who checks in against it?" One sentence of subject, one question. Do not summarise
-   the card back at length, and do not add any fact the card did not carry.
-
-   AND THE QUESTION AFTER IT IS THE CONCRETE ONE THE SITUATION IMPLIES, not a blank "tell me about
-   the situation" - which asks them to type out what they just picked. A new hire starting means
-   "Who is the new hire, and when do they start?". A contract about to be signed means "What is
-   the agreement, and who is on the other side of it?". A project that has drifted means "Which
-   project, and what has changed since you agreed it?". Ask for the missing specifics, never for
-   the topic they already gave you.
+   IF SOMEBODY SAYS THEY WERE TOLD TO SET THIS UP AND DO NOT KNOW THE DETAIL, do not offer to hand it
+   over - there is nobody to hand it to any more. Say plainly that whoever knows what this is about
+   should be the one setting it up, and that they can be added to watch the reports afterwards from
+   the check-in's settings. Then stop; do not press for a situation they cannot describe.
 2. mode: is this something new starting, already underway, already happened, or a recurring check-in
 3. initial: what the situation is actually about
 4. whoInvolved: who else is part of this AND their role.
@@ -645,7 +668,19 @@ Rules:
      * `onboard()` was left calling the model directly - in the flow every single new person meets
      * first, and the same flow the original "microchipshit" bug was found in.
      */
-    const reply = await this.guardedReply(ONBOARD_SYSTEM, messages);
+    /*
+     * THE SITUATION'S OWN FIRST QUESTION, APPENDED RATHER THAN WOVEN IN.
+     *
+     * The general rules of setup are the same for every card - one question at a time, plain words,
+     * never invent a timeframe, the role question first - and what differs is one question. So the
+     * pack is a block on the end rather than twenty-two variants of the whole prompt, which is the
+     * shape that drifts.
+     *
+     * Empty for somebody describing their own situation, and that is the honest state: nothing has
+     * been classified yet, so the generic opener stands until `classifyIntent` has an answer to
+     * work from and the next turn carries a real scenario.
+     */
+    const reply = await this.guardedReply(buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput), messages);
 
     // Second lightweight call to extract structured fields
     const EXTRACT_SYSTEM = `You are extracting structured data from an onboarding conversation for Groundwork.
@@ -758,7 +793,20 @@ from finishing at all.`;
      * Only ever true on the party path. A coordinator is not warned about a roster they were never
      * expected to have.
      */
-    const needsPeople = extracted.yourRole === 'a_party' && !extracted.peopleNamed?.length;
+    /*
+     * WARNED FOR EVERYBODY NOW, NOT ONLY A PARTY.
+     *
+     * This read `yourRole === 'a_party' && !peopleNamed.length`, because a coordinator's roster was
+     * the lead's to give and warning them about it was inventing a debt. Two things changed. The
+     * hand-off is gone, so everybody who reaches here is writing their own context and owes their
+     * own roster. And setup no longer ASKS for the role, so `yourRole` is usually absent - leaving
+     * the old condition permanently false and silently deleting the warning for everybody, which is
+     * worse than either of the behaviours it was choosing between.
+     *
+     * It is still a warning and never a refusal: a required field somebody cannot answer becomes a
+     * field they invent, which is the whole history of "My team".
+     */
+    const needsPeople = !extracted.peopleNamed?.length;
 
     return { reply, extracted, ready, needsPeople };
   }
@@ -984,13 +1032,15 @@ STRICT RULES:
       // the lead who will run the first check-in.
       brief?: string;
       lead?: { email: string; name?: string; contextNote?: string };
+      /** True when they said the other people check in and they read what comes back. */
+      managingOnly?: boolean;
       history: ChatTurn[];
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
     // moment). The draft is the base and whatever the browser sent overlays
     // it, so commit works no matter which browser opened the magic link.
@@ -1036,7 +1086,7 @@ STRICT RULES:
    * its ground, briefly waiting out an in-flight winner. */
   private async awaitConsumedDraftGround(
     userId: string,
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const d = await this.prisma.entryDraft.findUnique({ where: { userId } });
       if (d?.groundId) {
@@ -1103,7 +1153,7 @@ STRICT RULES:
     organizationId: string,
     initiatorId: string,
     dto: Parameters<EntryService['commit']>[2],
-  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+  ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
     // Nothing usable from either source: the old client silently skipped this
     // case and stranded the user on /setup. Fail EXPLICITLY so the client can
     // show "we couldn't find your session on this device".
@@ -1267,6 +1317,20 @@ STRICT RULES:
        * Reading the role costs one query and makes the rule the same rule everywhere. A brand new
        * sign-up is genuinely an ADMIN, so nothing about that case changes.
        */
+      /*
+       * WHETHER THIS PERSON ALSO CHECKS IN, WHICH THE CONVERSATION ASKS AND THIS DROPPED.
+       *
+       * The set-up wizard asked it on a form step and posted `managingOnly` at create. That screen
+       * is gone - /grounds/new is a picker that hands over to the conversation - and the question
+       * moved into the conversation's last beat: "I check in too" against "They do, I read what
+       * comes back". The answer then went nowhere, so somebody who said they do not check in was
+       * still recorded as a party who owes an account, given a session 1, and chased for it.
+       *
+       * Sent AT CREATE rather than through `confirmLead` afterwards, which is the whole of the bug
+       * a-lead-who-is-not-a-party.spec.ts exists for: that call rejects a ground its own creator
+       * just made, so the choice was silently dropped every time.
+       */
+      ...(dto.managingOnly === true ? { managingOnly: true } : {}),
     }, role);
 
     // Find the session 1 check-in and the initiator participant just created.
@@ -1299,15 +1363,6 @@ STRICT RULES:
         completedAt: new Date(),
       },
     });
-
-    /*
-     * A ground made through the entry chat can be a round of one - the person who created it is
-     * often the only party at this point - and a round of one closes the moment they finish. This
-     * path writes COMPLETED directly rather than going through the conversation's completion, so
-     * without this call the very first round of the flow most people meet would never be recorded
-     * as closed.
-     */
-    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
 
     /**
      * KEEP THE DOCUMENTS THE PERSON ATTACHED.
@@ -1351,28 +1406,74 @@ STRICT RULES:
       .ensureNextSession(ground.id, participant.id, 1)
       .catch((e) => this.logger.error(`entry commit: could not schedule session 2 for ground ${ground.id}: ${e?.message ?? e}`));
 
-    // Extract structured record entries for the initiator so report synthesis can read them.
+    /*
+     * Extract structured record entries for the initiator so report synthesis can read them.
+     * AWAITED, because the synthesis two dozen lines down reads exactly these rows - the normal
+     * completion path awaits it for the same reason. The summary it builds afterwards is not
+     * awaited: nothing downstream reads that, and a model failure there must not fail a commit.
+     */
     if (dto.history.length > 0) {
-      this.conversation.extractRecordEntries(checkIn.id, participant.id)
-        .then(() => this.conversation.buildSoloArtifact(participant.id, ground.id))
+      await this.conversation
+        .extractRecordEntries(checkIn.id, participant.id)
         .catch((err) => this.logger.error(`commit: record extraction failed for initiator: ${err.message}`));
+      this.conversation
+        .buildSoloArtifact(participant.id, ground.id)
+        .catch((err) => this.logger.error(`commit: summary failed for initiator: ${err.message}`));
     }
 
-    // Store the solo report on the participant record (soloArtifact lives there, not on CheckIn).
+    /*
+     * KEEP THE REPORT THEY JUST READ, ON THE SESSION THAT PRODUCED IT.
+     *
+     * This wrote it into `GroundParticipant.soloArtifact`. That column belongs to
+     * `buildSoloArtifact`, fired two dozen lines above and landing about twenty seconds later with
+     * its own `{summary, whatToCarry}` - so the full report was overwritten before the person had
+     * finished reading the page it was on, and every reader of that column expects the two-field
+     * shape and would not have rendered this one anyway.
+     *
+     * Reported four times as "the report looks nothing like what I got at the end". It looked
+     * nothing like it because it was not the same object.
+     */
     if (dto.report) {
-      await this.prisma.groundParticipant.update({
-        where: { id: participant.id },
-        data: {
-          soloArtifact: JSON.stringify(dto.report),
-          soloArtifactAt: new Date(),
-        },
+      await this.prisma.checkIn.update({
+        where: { id: checkIn.id },
+        data: { sessionReport: dto.report as object },
       });
     }
+
+    /**
+     * AND SAY THAT A SESSION FINISHED, which nothing here ever did.
+     *
+     * "We should have a forming report, why do you have this here" - and there was no forming
+     * report, on any check-in that came through the entry chat. This method imported
+     * `CheckInCompletedEvent` and `GroundworkEvents` and never emitted either: the check-in was
+     * completed with a direct `update`, so every listener on completion was skipped. Four things
+     * that are supposed to happen on a finished session did not:
+     *
+     *   - the report synthesis, which builds the shared picture AS SOON AS ANYBODY checks in and
+     *     is the whole reason a forming report exists. No event, no synthesis, no report row - so
+     *     the Report tab honestly had nothing to show, and the lead's own end-of-session card fell
+     *     back to a two-line summary. That is "where did the shared report go".
+     *   - the release, once everybody is through. People still holding an unopened invitation keep
+     *     the round open, so this cannot release early.
+     *   - the email telling the lead somebody checked in.
+     *   - the usage event billing reads.
+     *
+     * Emitted after the record has been extracted and the report stored, and before the
+     * invitations go out. The order matters: the synthesis reads record entries, so the normal
+     * completion path awaits the extraction before announcing - this one fired it and forgot,
+     * which would hand the synthesis an empty record. The listener catches its own errors.
+     */
+    this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
+      checkInId: checkIn.id,
+      groundId: ground.id,
+      participantId: participant.id,
+      sessionNumber: 1,
+    } satisfies CheckInCompletedEvent);
 
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
     // for the second and subsequent contributors, silently dropping them.
-    const inviteResults: { email: string; devUrl?: string }[] = [];
+    const inviteResults: { email: string; devUrl?: string; waiting?: boolean }[] = [];
     const failedInvites: string[] = [];
     /*
      * WHY EACH ONE FAILED, NOT JUST THAT IT DID.
@@ -1394,13 +1495,47 @@ STRICT RULES:
           roleAsDescribed: c.context,
           note: c.note,
         });
-        inviteResults.push({ email: c.email, devUrl: (result as any)?.devUrl });
+        /*
+         * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
+         *
+         * `addParticipant` returns `invitedAt`, and it is null when the invitation WAITS - the
+         * check-in starts in the future, so the row is written uninvited and grounds.cron.ts sends
+         * on the day. Reported as "all participants i added didnt get an email", with nothing
+         * anywhere to say why. The wizard's own add-people screen was taught to say it and then
+         * that screen was removed, so the rule has to live where check-ins are actually created.
+         */
+        inviteResults.push({
+          email: c.email,
+          devUrl: (result as any)?.devUrl,
+          waiting: !(result as { invitedAt?: Date | null })?.invitedAt,
+        });
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);
         failedInvites.push(c.email);
         whyInvitesFailed.push({ email: c.email, because: err?.message ?? 'The invite did not send.' });
       }
     }
+
+    /*
+     * NOW THAT EVERYBODY IS ON IT, ASK WHETHER ROUND 1 IS ACTUALLY CLOSED.
+     *
+     * This call used to sit right after the check-in was marked COMPLETED - about a hundred and
+     * thirty lines above, and crucially BEFORE the contributors were added. So the rule counted
+     * the participants that existed at that moment (one: the person who had just written it),
+     * found them all done, and wrote a `RoundCompletion` row with `participantCount: 1`. The row
+     * is unique per round and the writer is idempotent by the database, so the round stayed
+     * closed at a count of one for the life of the check-in, however many people joined a second
+     * later.
+     *
+     * What that looked like: the Report tab's header said "report ready - you release it" while
+     * the body of the same screen said "A picture is forming, 1 of 2 have checked in". The header
+     * reads `roundCompletions`; the body counts people.
+     *
+     * A round of one is still a real thing - somebody who starts alone deliberately - and it
+     * still records, because with zero contributors the count is the same either way. The only
+     * change is that the question is asked once the party is known.
+     */
+    await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
 
     // Zero contributors = a deliberate solo/broadcast start: the initiator
     // completing session 1 is the whole party, so the ground goes ACTIVE.

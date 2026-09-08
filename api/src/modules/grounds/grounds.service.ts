@@ -2398,7 +2398,9 @@ export class GroundsService {
      * in AWAITING_PARTIES with no parties on it — a state nothing else in the product produces and
      * nothing knows how to get out of.
      */
-    const statusBefore = ground.status;
+    /* `statusBefore`/`movedTheGroundOn` used to exist to put the ground back when an invitation's
+       email threw and the participant was deleted. Nothing is rolled back now - the person stays on
+       the check-in - so there is nothing to put back and the ground is right to be waiting. */
     let movedTheGroundOn = false;
 
     const participant = await this.prisma.$transaction(async (tx) => {
@@ -2455,13 +2457,15 @@ export class GroundsService {
        */
       if (ground.status !== GroundStatus.AWAITING_LEAD) {
         await tx.ground.update({ where: { id: groundId }, data: { status: GroundStatus.AWAITING_PARTIES } });
-        movedTheGroundOn = true;
+        movedTheGroundOn = true; /* Kept for the log line below; nothing is reverted. */
       }
 
       return participant;
     });
 
     let emailResult: { devUrl?: string } | undefined;
+    /** Set when the row was created but the mail did not go. Returned so the caller can say so. */
+    let emailFailed: string | undefined;
     /**
      * THE INVITE WAITS FOR THE START DATE.
      *
@@ -2484,34 +2488,35 @@ export class GroundsService {
       );
     } catch (err: any) {
       /*
-       * ROLL BACK WHAT THE CALL DID, not only the row it created.
+       * THE PERSON STAYS ON THE CHECK-IN. THE ROW USED TO BE DELETED, AND THAT MADE IT WORSE.
        *
-       * The participant was deleted here and the ground's status change — made inside the
-       * transaction above, and therefore already committed — was left behind. So an invitation
-       * whose email threw left a ground in AWAITING_PARTIES with zero participants: it reads as
-       * "waiting for people to check in" while there is nobody to wait for, the lead's own
-       * confirmation is no longer reachable, and the only trace is a 500 the admin has already
-       * closed.
+       * This deleted the participant and their check-in and rethrew, on the reasoning that an
+       * invitation whose email threw should leave nothing behind. Two things are wrong with it.
        *
-       * Their check-in goes with them: it is the row that makes them a party who owes an answer.
-       * Deleted explicitly rather than trusted to cascade, because whether it cascades is a
-       * property of the schema that can change without this line noticing.
+       * FIRST, THE MAIL MAY ALREADY HAVE GONE. A send that throws is not a send that did not
+       * happen - a provider can accept the message and then fail the response, and a timeout tells
+       * you nothing either way. So the row is removed while the invitation is in somebody's inbox,
+       * and when they click it the token finds nothing: "This link has already been used, or it is
+       * not a link we recognise." Photographed, on a link that had never been used.
+       *
+       * SECOND, IT DESTROYS THE ONLY THING WORTH KEEPING. Adding somebody is the admin's decision
+       * and the hard part; sending a mail is the recoverable part, and `resendInvite` already
+       * exists for exactly this. Throwing away the decision to protect against a failed mail is the
+       * wrong way round.
+       *
+       * So the row survives, uninvited and unnotified, and the caller is told the mail did not go.
+       * `invitedAt: null` is the truthful state and it is the same one a future start date produces,
+       * which both screens already explain. The ground's status change stands, because there IS now
+       * somebody to wait for.
        */
-      await this.prisma.checkIn
-        .deleteMany({ where: { participantId: participant.id } })
+      await this.prisma.groundParticipant
+        .update({ where: { id: participant.id }, data: { invitedAt: null } })
         .catch(() => undefined);
-      await this.prisma.groundParticipant.delete({ where: { id: participant.id } }).catch(() => undefined);
-      if (movedTheGroundOn) {
-        await this.prisma.ground
-          .update({ where: { id: groundId }, data: { status: statusBefore } })
-          .catch((e) =>
-            this.logger.error(
-              `Could not put ground ${groundId} back to ${statusBefore} after a failed invitation: ${e?.message}. ` +
-                `It may be showing as awaiting parties with none on it.`,
-            ),
-          );
-      }
-      throw err;
+      this.logger.error(
+        `Added ${dto.email.toLowerCase()} to ground ${groundId} but the invitation did not send: ${err?.message}. ` +
+          'They are on the check-in and uninvited; the invite can be resent from the check-in.',
+      );
+      emailFailed = err?.message ?? 'The invitation did not send.';
     }
 
     }
@@ -2533,7 +2538,7 @@ export class GroundsService {
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
     // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
     const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
-    return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt, devUrl: emailResult?.devUrl };
+    return { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt, devUrl: emailResult?.devUrl, emailFailed };
   }
 
   /**
@@ -3826,6 +3831,25 @@ export class GroundsService {
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },
+          /**
+           * AND THE PEOPLE HOLDING AN UNOPENED INVITATION, which the release rule counts and this
+           * did not - though the comment on this method claims they use "the same active party
+           * definition".
+           *
+           * Seen on one screen: the header said "1 of 2 checked in for session 1" and the release
+           * box, three inches below, said "1 of 1 have checked in for this session". Both from
+           * this ground, neither wrong on its own terms. And the one saying 1 of 1 is the more
+           * misleading of the two, because the round does NOT release at 1 of 1 - somebody with an
+           * open invitation holds it, by the rule right above this method.
+           *
+           * The clause is copied from `isSessionReadyForReport` exactly, so the counter now counts
+           * the set whose completion actually releases the report.
+           */
+          {
+            userId: null,
+            invitedAt: { not: null },
+            inviteTokenExpiresAt: { gt: new Date() },
+          },
         ],
       },
       select: { id: true },

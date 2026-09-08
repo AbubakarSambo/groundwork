@@ -275,6 +275,15 @@ export function GroundParticipantPage() {
   if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}><GroundGone /></div>
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+  /**
+   * MY OWN FINISHED SESSIONS, newest first, so each session's own report can be opened from the
+   * record it belongs to. Yours only - somebody else's session is theirs until the shared report
+   * releases.
+   */
+  const myFinishedSessions = (((ground as any)?.checkIns ?? []) as any[])
+    .filter((c) => c.status === 'COMPLETED')
+    .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a, b) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
   /**
@@ -546,6 +555,7 @@ export function GroundParticipantPage() {
               otherParties={(ground.participants ?? [])
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
+              mySessions={myFinishedSessions}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
@@ -572,6 +582,7 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
+              viewerUserId={user?.id}
             />
           </div>
         )}

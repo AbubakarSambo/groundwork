@@ -73,6 +73,13 @@ const CHECKED_AND_FINE = new Set([
    * name alone.
    */
   'modules/grounds/grounds.service.ts:userId',
+  /*
+   * THE THIRD SITE OF THE SAME COLLISION. Counting how many check-ins each person on the People
+   * page is on walks `GroundParticipant` rows, and `userId` there is `String?` - null for anybody
+   * still holding an invitation, which is exactly who must not be counted as a member. Matched
+   * `EmailVerificationToken.userId` on the name.
+   */
+  'modules/users/users.service.ts:userId',
   'modules/conversation/conversation.service.ts:text', // a chat message, not a stored note
   /*
    * Both of these validate the INCOMING HTTP PAYLOAD from a customer's system, not a row read back.

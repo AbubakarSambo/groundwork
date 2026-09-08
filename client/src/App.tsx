@@ -14,6 +14,8 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
+import SessionReportPage from '@/pages/report/SessionReportPage'
+import RoundReportPage from '@/pages/report/RoundReportPage'
 
 /** Old address for a check-in. Keeps working, lands on the one canonical route. */
 function ChatRedirect() {
@@ -344,7 +346,22 @@ export default function App() {
             {/* One page, two links. Both URLs are sent in emails, so both keep resolving. W8-49. */}
             <Route path="/set-password" element={<ChoosePasswordPage />} />
             <Route path="/reset-password" element={<ChoosePasswordPage />} />
-            <Route path="/start" element={<EntryChatPage />} />
+            {/*
+              * THE SAME DOOR AS /grounds/new, AND IT WAS NOT GUARDED.
+              *
+              * /start ends at `POST /entry/commit`, which asks `mayOpen` exactly as the create page
+              * does and throws a Forbidden for anybody who is not allowed. Nothing said so on the way
+              * in. So a member of an organisation set to NAMED_LEADS, or a guest from another
+              * company, could describe their situation, answer every setup question, give a full
+              * check-in, read their report - and be refused at the save, with all of it thrown away.
+              * That is strictly worse than the create page's version of this bug, which at least
+              * refused before the typing.
+              *
+              * `MayOpenCheckIns` reads `user?.mayOpenCheckIns !== false`, and an anonymous visitor
+              * has no user - so a stranger with no account still walks straight in, which is the
+              * whole point of this door. They become the admin of their own organisation.
+              */}
+            <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             <Route path="/join/confirm" element={<JoinConfirmPage />} />
@@ -374,6 +391,8 @@ export default function App() {
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/* One round's report, for a lead or org admin with no session of their own on it. */}
+            <Route path="/grounds/:id/session/:sessionNumber" element={<RequireOrgSetup><RoundReportPage /></RequireOrgSetup>} />
             {/*
               TWO ROUTES, ONE COMPONENT. /chat/:id and /checkin/:id both rendered
               ChatPage, so the same conversation had two addresses and the product
@@ -384,6 +403,13 @@ export default function App() {
             */}
             <Route path="/chat/:checkInId" element={<ChatRedirect />} />
             <Route path="/checkin/:checkInId" element={<RequireOrgSetup><ChatPage /></RequireOrgSetup>} />
+            {/*
+              THE REPORT ONE SESSION ENDED ON, on its own route.
+              Clicking a finished session used to land on the CHAT above, which is the transcript
+              with a different summary under it - "it sends me back to the chat and the report
+              looks nothing like what I got at the end". This is the report.
+            */}
+            <Route path="/checkin/:checkInId/report" element={<RequireOrgSetup><SessionReportPage /></RequireOrgSetup>} />
             {/* Billing/pricing stay on plain RequireAuth (not RequireOrgSetup): choosing a paid
                 plan is optional, not part of org setup - the free tier is the default, not a
                 step anyone completes. */}

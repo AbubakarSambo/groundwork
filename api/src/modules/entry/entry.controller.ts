@@ -2,7 +2,7 @@ import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException } from
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -34,6 +34,27 @@ class EntryOnboardDto {
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   messages: TurnDto[];
+
+  /**
+   * THE SITUATION THEY PICKED, WHICH THIS ROUTE USED NOT TO BE TOLD.
+   *
+   * It took the messages and nothing else, so one prompt served all twenty-two cards and every
+   * situation opened with the same generic question - the complaint that started this. The card is
+   * known at the moment it is clicked, at both doors, and it was simply never sent.
+   *
+   * Optional because it honestly is: somebody describing their own situation has not got one yet,
+   * and the classifier runs on their first answer. An unknown value is ignored rather than refused,
+   * for the same reason - a stale client must not be unable to set anything up.
+   */
+  @IsOptional()
+  @IsString()
+  scenario?: string;
+
+  /** Where in the arc this sits. Only the cohort card reads it, and it reads it to ask a different
+   *  first question for onboarding a group than for an ongoing read of one. */
+  @IsOptional()
+  @IsString()
+  moment?: string;
 }
 
 class EntryOpenerDto {
@@ -122,6 +143,18 @@ export class EntryCommitDto {
   @Type(() => EntryReportSummaryDto)
   reportSummary?: EntryReportSummaryDto;
 
+  /**
+   * TRUE WHEN THEY SAID THE OTHER PEOPLE CHECK IN AND THEY READ WHAT COMES BACK.
+   *
+   * Asked at the end of the setup conversation, where the wizard used to ask it on a form step. It
+   * decides whether this person is given a session of their own to answer - so dropping it, which
+   * is what happened while it had no field here, records somebody as a party who owes an account
+   * when they have just said they are not one.
+   */
+  @IsOptional()
+  @IsBoolean()
+  managingOnly?: boolean;
+
   @IsOptional()
   @ValidateNested()
   @Type(() => EntryLeadDto)
@@ -180,7 +213,7 @@ export class EntryController {
   @Post('onboard')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async onboard(@Body() dto: EntryOnboardDto) {
-    return this.service.onboard(dto.messages);
+    return this.service.onboard(dto.messages, dto.scenario, dto.moment);
   }
 
   @Public()

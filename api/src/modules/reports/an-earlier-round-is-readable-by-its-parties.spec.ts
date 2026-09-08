@@ -1,5 +1,5 @@
 import { ReportsService } from './reports.service';
-import { ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 /**
  * READING WHAT A ROUND SAID AT THE TIME.
@@ -43,8 +43,14 @@ describe('who may read an earlier round', () => {
     expect((await svc().rounds('g1', 'someone-else', 'org1')).rounds).toHaveLength(1);
   });
 
-  it('and a stranger may not', async () => {
-    await expect(svc().rounds('g1', 'nobody', 'another-org')).rejects.toBeInstanceOf(ForbiddenException);
+  it('and a stranger may not - and is not told the check-in exists', async () => {
+    /*
+     * NotFound, not Forbidden. A 403 answers "this check-in exists, it is just not yours", so a
+     * stranger with a list of guessed ids could tell real check-ins from imaginary ones - GW-PRI-04,
+     * which `get()` has always honoured and this endpoint did not. Changed with the rule, not
+     * around it: the refusal is the same, what it discloses is not.
+     */
+    await expect(svc().rounds('g1', 'nobody', 'another-org')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

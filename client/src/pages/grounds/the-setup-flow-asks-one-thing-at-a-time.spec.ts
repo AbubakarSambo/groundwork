@@ -36,10 +36,10 @@ const PAGE = readFileSync(join(__dirname, 'CreateGroundPage.tsx'), 'utf8')
 
 describe('the setup flow asks one thing at a time', () => {
   it('has a step for each of the four questions', () => {
-    for (const n of [1, 2, 3, 4]) {
-      expect(PAGE).toMatch(new RegExp(`STEP ${n}:`))
-    }
-    expect(PAGE).toContain("[STAGE.who]: 'Who it is for'")
+    /* Asserted on the stage labels rather than on numbered comments in the source. The comments
+       said "STEP 1: who this check-in is for" and went stale the moment that step moved to the end;
+       these labels are what a person actually reads at the top of each screen. */
+    expect(PAGE).toContain("[STAGE.who]: 'Who checks in'")
     expect(PAGE).toContain("[STAGE.situation]: 'The situation'")
     expect(PAGE).toContain("[STAGE.coach]: 'A coach'")
     expect(PAGE).toContain("[STAGE.describe]: 'Describe it'")
@@ -86,18 +86,24 @@ describe('the setup flow asks one thing at a time', () => {
      * not theirs is the wrong question. Her call removed that answer, so the skip has nobody left
      * to apply to and the brief is the last step for everyone again.
      */
+    /*
+     * THE BRIEF SCREEN IS GONE ALTOGETHER, along with the timeline, the people and the who.
+     *
+     * They asked for exactly what the setup conversation asks for and extracts, and asked for them
+     * worse. What is left of this file's original point - a setter being walked through screens
+     * that were not theirs - is answered by there being almost no screens.
+     */
     const own = seen({ describingOwnSituation: true })
-    expect(own).toContain(STAGE.brief)
     expect(own).toContain(STAGE.describe)
-    expect(own[own.length - 1]).toBe(STAGE.brief)
+    expect(own).not.toContain(STAGE.brief)
   })
 
   it('skips the free-text step when a card already said what this is', () => {
     expect(seen({ describingOwnSituation: false })).not.toContain(STAGE.describe)
     expect(seen({ describingOwnSituation: true })).toContain(STAGE.describe)
-    // Back is the same list read backwards, so it cannot land on the skipped step either.
-    const path = seen({ describingOwnSituation: false })
-    expect(path[path.indexOf(STAGE.timeline) - 1]).toBe(STAGE.situation)
+    /* And with the card picked there is nothing after the picker at all - the next thing is the
+       conversation, which this page hands to rather than steps to. */
+    expect(seen({ describingOwnSituation: false })).toEqual([STAGE.situation])
   })
 
   it('and skips the coach step for anybody who cannot use it', () => {
@@ -108,8 +114,11 @@ describe('the setup flow asks one thing at a time', () => {
      */
     expect(seen({ onAPaidPlan: false })).not.toContain(STAGE.coach)
     expect(seen({ onAPaidPlan: true })).toContain(STAGE.coach)
+    /* Back must not land on the skipped screen: on the free plan the step after the situation is
+       the timeline, not the coach. Read forwards now, because the situation is the FIRST step and
+       has nothing before it to read backwards to. */
     const path = seen({ onAPaidPlan: false })
-    expect(path[path.indexOf(STAGE.situation) - 1]).toBe(STAGE.who)
+    expect(path[path.indexOf(STAGE.situation) + 1]).not.toBe(STAGE.coach)
   })
 
   it('asks for one thing per step rather than everything at once', () => {
@@ -117,29 +126,30 @@ describe('the setup flow asks one thing at a time', () => {
      * The old bar gated on situation AND moment AND the description together, with one line of help
      * trying to say which was missing. Each step now has its own reason for being blocked.
      */
-    expect(PAGE).toMatch(/step === STAGE\.who \? alsoAParty === null/)
     expect(PAGE).toMatch(/step === STAGE\.situation \? \(!scenario \|\| !moment\)/)
     expect(PAGE).toMatch(/step === STAGE\.describe \? needsRouting/)
   })
 
-  it('still ends where it always did, at the brief that creates the check-in', () => {
+  it('derives the count from the steps this person sees, rather than a typed total', () => {
     /*
-     * The count is derived rather than typed, so this asserts the derivation and the stage rather
-     * than the literal 8. A number typed in two places is what let the dot comment say "(6)" while
-     * the constant said 8.
-     *
-     * It derives from the steps THIS PERSON sees, not from every stage that exists: three of the
-     * eight are conditional, so `Object.keys(STAGE).length` told somebody they were on "Step 5 of
-     * 8" when they would be shown six screens.
+     * A number typed in two places is what let the dot comment say "(6)" while the constant said 8,
+     * and it is why this is asserted on the derivation rather than on a literal.
      */
     expect(PAGE).toContain('const totalStepsForThisPerson = visibleSteps.length')
     expect(PAGE).not.toContain('const TOTAL_STEPS')
-    expect(PAGE).toContain("[STAGE.brief]: 'The brief'")
-    // The brief is last for everyone, whichever steps they were shown.
-    for (const o of [{}, { onAPaidPlan: true }, { describingOwnSituation: true }, { billingSettledAndFree: false }]) {
-      const path = seen(o)
-      expect(path[path.length - 1]).toBe(STAGE.brief)
-    }
-    expect(PAGE).toMatch(/\{step === STAGE\.brief && \(/)
+  })
+
+  it('hands over rather than creating, once the situation is picked', () => {
+    /*
+     * The last screen used to call `create.mutate()`. Nothing is created here now: the ground is
+     * created when the conversation is saved, by the same commit the entry chat has always used.
+     * A page that both created check-ins and handed off would be two flows again.
+     */
+    expect(PAGE).toMatch(/next === step \? handOverToTheConversation\(\) : setStep\(next\)/)
+    expect(PAGE).toMatch(/navigate\(`\/start\?\$\{q\.toString\(\)\}`\)/)
+  })
+
+  it('and carries the situation, so nobody is asked to pick it twice', () => {
+    expect(PAGE).toMatch(/new URLSearchParams\(\{ scenario \}\)/)
   })
 })

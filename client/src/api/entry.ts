@@ -90,7 +90,7 @@ export const entryApi = {
           { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, joinToken },
         ).then(r => r.data),
 
-  onboard: (messages: ChatTurn[]): Promise<{
+  onboard: (messages: ChatTurn[], scenario?: string, moment?: string): Promise<{
     reply: string;
     extracted: {
       mode?: string; initial?: string; whoInvolved?: string; decision?: string;
@@ -120,7 +120,10 @@ export const entryApi = {
      */
     needsPeople: boolean;
   }> =>
-    apiClient.post('/entry/onboard', { messages }).then(r => r.data),
+    /* The situation travels with the messages. Without it the endpoint served one prompt to all
+       twenty-two cards, so every situation opened with the same question about the situation - which
+       is the one question the person answered by clicking. */
+    apiClient.post('/entry/onboard', { messages, scenario, moment }).then(r => r.data),
 
   classifyIntent: (description: string, mode?: string) =>
     apiClient.post<{ scenario: string }>('/entry/classify-intent', { description, mode }).then(r => r.data),
@@ -142,6 +145,9 @@ export const entryApi = {
     // to run. The lead is invited to confirm and becomes the initiator; the
     // onboarding context travels as `brief` (the coordinator has no transcript).
     lead?: { email: string; name?: string; contextNote?: string }
+    /** True when they said the other people check in and they read what comes back. Without it
+     *  somebody who has just said they are not a party is still given a session to answer. */
+    managingOnly?: boolean
     brief?: string
   }) =>
     apiClient.post<{
@@ -149,7 +155,10 @@ export const entryApi = {
       joinToken?: string | null
       // who the commit successfully invited - drives the positive "Invited"
       // confirmation on the completion screen
-      contributors?: { email: string }[]
+      /* `waiting` is true where the invitation has NOT gone: the check-in starts in the future and
+         the row is written uninvited, for the cron to send on the day. The screen has to say so, or
+         "all participants i added didnt get an email" is what it produces. */
+      contributors?: { email: string; waiting?: boolean }[]
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]

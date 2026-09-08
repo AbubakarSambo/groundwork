@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -300,7 +301,7 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
         boxShadow: mine ? 'none' : '0 1px 3px rgba(0,0,0,.06)',
       }}
     >
-      {content}
+      {nothingInternalReachesTheBubble(content)}
     </div>
   )
 }

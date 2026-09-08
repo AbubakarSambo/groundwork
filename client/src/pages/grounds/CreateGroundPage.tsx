@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react'
 import { keep, whatWasKept, forget, howLongAgo } from '@/lib/what-you-typed-survives-a-reload'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { groundsApi, type GroundScenario, type GroundMoment, type GroundCadence } from '@/api/grounds'
-import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
+import { useQuery } from '@tanstack/react-query'
+import { type GroundScenario, type GroundMoment } from '@/api/grounds'
+import { SituationCard } from '@/components/gw/SituationCard'
 import { billingApi, FALLBACK_FREE_LIMITS } from '@/api/billing'
 import { entryApi } from '@/api/entry'
-import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, CADENCE_VALUE, RECOMMENDED_MOMENT, COACH_CARD, recommendedSessions, type ScenarioGroupKey } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, GROUPS_YOU_PICK_FROM, SCENARIO_FACTS, RECOMMENDED_MOMENT, COACH_CARD, type ScenarioGroupKey } from '@/lib/scenario-catalog'
 import { coachApi, MIN_INTENTION_LENGTH, COACHING_PRICE } from '@/api/coach'
-import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
-import { rememberWhoWasNotInvited } from './who-was-not-invited'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -347,8 +345,21 @@ const CARD_GROUP: Record<string, ScenarioGroupKey> = {
   COHORT_ONBOARDING: 'starting',
 }
 
+/**
+ * WHICH HEADING A CARD SITS UNDER, and it is not always its scenario's group.
+ *
+ * COHORT_CHECK is offered twice - as an ongoing read of a group, and as onboarding one - so two
+ * cards share a scenario and cannot both take the scenario's group. The override is per CARD.
+ *
+ * Exported because the entry chat renders these same cards now, and reading the facts directly there
+ * filed both cohort cards under one heading and silently dropped the onboarding one from the picker.
+ */
+export function groupOfCard(card: { cardKey: string; scenario: string }): ScenarioGroupKey {
+  return CARD_GROUP[card.cardKey] ?? SCENARIO_FACTS[card.scenario as keyof typeof SCENARIO_FACTS].group
+}
+
 export function cardsInGroup(group: ScenarioGroupKey): ScenarioCard[] {
-  return SCENARIOS.filter(c => (CARD_GROUP[c.cardKey] ?? SCENARIO_FACTS[c.scenario].group) === group)
+  return SCENARIOS.filter(c => groupOfCard(c) === group)
 }
 
 /**
@@ -370,20 +381,7 @@ export function cardsInGroup(group: ScenarioGroupKey): ScenarioCard[] {
  *
  * It is the topic, in the words on the card they just clicked, and nothing else.
  */
-function groundNameFallback(cardLabel: string | undefined, scenario: string | null): string {
-  const base = cardLabel?.trim();
-  if (base) return base;
-  /** No card label is a routing failure, not a naming decision. Say the situation, not the enum. */
-  return (scenario ?? 'Check-in').replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase());
-}
 
-interface MomentOption { moment: GroundMoment; label: string; sub: string }
-const MOMENTS: MomentOption[] = [
-  { moment: 'STARTING',    label: 'At the start',    sub: 'Set expectations before the work begins.' },
-  { moment: 'RECOGNITION', label: 'Mid-way',          sub: 'Acknowledge progress. Name what has changed.' },
-  { moment: 'RESOLUTION',  label: 'Reaching an end',  sub: 'Close a chapter. Agree on what happened.' },
-
-]
 
 
 interface Participant {
@@ -504,7 +502,7 @@ const SCENARIO_VALUES = new Set<string>(Object.values(SCENARIO_FROM_LABEL))
  * every link and saved position that already exists.
  */
 const STEP_NAMES: Record<number, string> = {
-  [STAGE.who]: 'Who it is for',
+  [STAGE.who]: 'Who checks in',
   [STAGE.situation]: 'The situation',
   [STAGE.coach]: 'A coach',
   [STAGE.describe]: 'Describe it',
@@ -605,7 +603,6 @@ export function CreateGroundPage() {
    * sent them - so the engine's per-scenario timeline was dead code on the path people use. A 14-day
    * shock ran for 90 days; a year-long advisory ran for 90 days.
    */
-  const qc = useQueryClient()
   const [timelineDays, setTimelineDays] = useState(90)
   /*
    * WHEN THE CHECK-IN STARTS, WHICH IS NOT ALWAYS TODAY.
@@ -632,11 +629,7 @@ export function CreateGroundPage() {
    * already happened. Empty is a real answer and stays one; a coach comes back to agree a time.
    */
   const [coachWhen, setCoachWhen] = useState('')
-  const [cadence, setCadence] = useState<GroundCadence>('FORTNIGHTLY')
   const [participants, setParticipants] = useState<Participant[]>([])
-  const [pEmail, setPEmail] = useState('')
-  const [pRole, setPRole] = useState('')
-  const [pNote, setPNote] = useState('')
   /**
    * WHEN THIS PERSON STARTS, IF THEY HAVE NOT YET.
    *
@@ -644,7 +637,6 @@ export function CreateGroundPage() {
    * their invitation until the day, because an email asking somebody to account for their work can
    * otherwise land before they have signed a contract, and cannot be recalled once read.
    */
-  const [bulkMode, setBulkMode] = useState(false)
   const [bulkText, setBulkText] = useState('')
   const [brief, setBrief] = useState('')
   /**
@@ -656,7 +648,6 @@ export function CreateGroundPage() {
    * first they knew was a check-in link arriving for a project they only
    * administer. It is a one-line question and it changes who is measured.
    */
-  const [alsoAParty, setAlsoAParty] = useState<boolean | null>(null)
   /**
    * Does someone ELSE run this ground?
    *
@@ -747,10 +738,7 @@ export function CreateGroundPage() {
   const [appliedAccessCode, setAppliedAccessCode] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
 
-  const sessionTotal = sessionsFor(timelineDays, cadence) ?? 1
 
-  const briefWords = brief.trim() ? brief.trim().split(/\s+/).length : 0
-  const briefShort = briefWords > 0 && briefWords < 20 /* BRIEF_WORDS_WORTH_READING, declared below with the other two */
   /**
    * MUST MATCH GroundsService.MEANS_SOMETHING (api/src/modules/grounds/grounds.service.ts).
    *
@@ -777,10 +765,6 @@ export function CreateGroundPage() {
    * (@MaxLength on CreateGroundDto.brief) and would refuse the request beyond it. Nothing on the
    * page said so, so a long brief could be typed and lost on submit.
    */
-  const BRIEF_WORDS_TO_INVITE = 8
-  const BRIEF_WORDS_WORTH_READING = 20
-  const BRIEF_CHARS_MAX = 4000
-  const briefTooShortToInvite = participants.length > 0 && briefWords < BRIEF_WORDS_TO_INVITE
 
   // When entering step 2 (billing), auto-check
   useEffect(() => {
@@ -833,127 +817,23 @@ export function CreateGroundPage() {
     }
   }
 
-  const create = useMutation({
-    mutationFn: async () => {
-      const ground = await groundsApi.create({
-        label: groundName.trim() || groundNameFallback(SCENARIOS.find(c => c.cardKey === selectedCard)?.label, scenario),
-        scenario: scenario!,
-        moment: moment!,
-        timelineDays,
-        cadence,
-        ...(startsOn ? { startsAt: new Date(`${startsOn}T09:00:00`).toISOString() } : {}),
-        brief: (brief.trim() || ownDescription.trim()) || undefined,
-        ...(appliedAccessCode ? { accessCode: appliedAccessCode } : {}),
-        /**
-         * Sent at CREATE now, not via the follow-up confirmLead call that used to
-         * run here. An admin's own ground is created OPEN, not AWAITING_LEAD, so
-         * confirmLead's AWAITING_LEAD-only guard threw "already been confirmed"
-         * on every single call for this flow, into a silent catch - meaning the
-         * choice on the very first wizard step was dropped every time. The server
-         * applies it at creation and skips the creator's own check-in when set.
-         */
-        ...(alsoAParty !== null ? { managingOnly: !alsoAParty } : {}),
-      } as Parameters<typeof groundsApi.create>[0] & { accessCode?: string; managingOnly?: boolean })
-      // Use allSettled so a failed invite email never blocks navigation to the
-      // newly-created ground. Failed invites are surfaced as warnings after redirect.
-      const results = await Promise.allSettled(participants.map(p =>
-        groundsApi.addParticipant(ground.id, {
-          email: p.email,
-          roleAsDescribed: p.role || undefined,
-          note: p.note || undefined,
-          /*
-           * The check-in's start date, which is what holds an invitation until somebody's first
-           * day. Only sent when it is in the future - a past or absent date means invite now,
-           * exactly as it always did.
-           */
-          startsAt: p.startsAt ?? (startsOn && new Date(`${startsOn}T09:00:00`).getTime() > Date.now()
-            ? new Date(`${startsOn}T09:00:00`).toISOString()
-            : undefined),
-        })
-      ))
-      /*
-       * THE SERVER'S OWN REASON, PER PERSON, RATHER THAN A COUNT.
-       *
-       * This counted rejections and said "2 invites could not be sent - retry from the check-in
-       * page", which is wrong twice over. Retrying does not help when the reason is a seat limit or
-       * an email that is already on the check-in, and the person is left guessing at a rule nobody
-       * told them: the lead who saw this concluded the product would only add people already in the
-       * organisation, which is not what it said and not what happened.
-       *
-       * The API answers every one of these with a sentence written for a person. It was being
-       * thrown away one line before it reached them.
-       */
-      const failed = results
-        .map((r, i) => ({ r, email: participants[i].email }))
-        .filter((x): x is { r: PromiseRejectedResult; email: string } => x.r.status === 'rejected')
-        .map(({ r, email }) => ({
-          email,
-          because: (r.reason as any)?.response?.data?.message
-            ?? (r.reason as any)?.message
-            ?? 'The invite did not send.',
-        }))
-      return { ground, failed }
-    },
-    onSuccess: ({ ground, failed }) => {
-      toast.success('Check-in opened')
-      /* It exists now, so the draft must not. See the note on DRAFT_KEY. */
-      forget(DRAFT_KEY)
-      /*
-       * THE RAIL DOES NOT KNOW IT EXISTS UNTIL SOMEBODY TELLS IT.
-       *
-       * The sidebar reads `['grounds']` and this navigated away without invalidating it, so a
-       * person who had just created a check-in landed on its page with the rail still showing the
-       * list from before - their new one simply absent from the place they had been told to look
-       * for it. It appeared later, whenever something else happened to refetch.
-       */
-      qc.invalidateQueries({ queryKey: ['grounds'] })
-      /* One toast per person, each carrying the reason that person was refused for. */
-      for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
-      /*
-       * AND WRITTEN DOWN, because a toast does not survive the navigation on the next line, let
-       * alone a reload. The admin's list of five silently became three and the destination page
-       * recorded none of it. See who-was-not-invited.ts.
-       */
-      rememberWhoWasNotInvited(ground.id, failed)
-      navigate(`/grounds/${ground.id}`)
-    },
-    /*
-     * THE SERVER'S OWN REASON, WHERE IT GAVE ONE.
-     *
-     * This said "Could not open it. Try again." to everything, which is right for a network blip
-     * and wrong for every refusal - and the product now has a refusal that will never come good by
-     * retrying: somebody who has not been named as able to open check-ins. Telling them to try
-     * again sends them round a loop the product knows they cannot leave.
-     *
-     * Only a 4xx message is shown. A 500 carries an internal message that is nobody's business, and
-     * "try again" is the honest answer to one anyway.
-     */
-    onError: (e: any) => {
-      const status = e?.response?.status
-      const said = e?.response?.data?.message
-      toast.error(
-        status >= 400 && status < 500 && typeof said === 'string' && said
-          ? said
-          : 'Could not open it. Try again.',
-      )
-    },
-  })
-
-  function addParticipant() {
-    const email = pEmail.trim()
-    if (!email || !email.includes('@')) return
-    if (participants.find(p => p.email === email)) return
-    setParticipants(v => [...v, { email, role: pRole.trim(), note: pNote.trim(), startsAt: undefined }])
-    setPEmail(''); setPRole(''); setPNote('')
+  /**
+   * HAND THE REST TO THE CONVERSATION.
+   *
+   * Everything the removed screens collected is what the setup conversation already gathers and
+   * extracts, and it gathers it better. The scenario travels so the conversation opens on that
+   * situation's own first question rather than asking what has just been chosen.
+   */
+  function handOverToTheConversation() {
+    if (!scenario) return
+    forget(DRAFT_KEY)
+    const q = new URLSearchParams({ scenario })
+    if (moment) q.set('mode', moment === 'STARTING' ? 'new' : 'underway')
+    navigate(`/start?${q.toString()}`)
   }
 
-  function addBulk() {
-    const emails = bulkText.split(/[\n,;]+/).map(e => e.trim()).filter(e => e.includes('@'))
-    const fresh = emails.filter(e => !participants.find(p => p.email === e))
-    setParticipants(v => [...v, ...fresh.map(e => ({ email: e, role: '', note: '', startsAt: undefined as string | undefined }))])
-    setBulkText('')
-    setBulkMode(false)
-  }
+
+
 
   /**
    * THE STEPS THIS PERSON WILL ACTUALLY SEE, IN ORDER.
@@ -1002,7 +882,6 @@ export function CreateGroundPage() {
 
   const renderSituation = (card: ScenarioCard) => {
                         const facts = SCENARIO_FACTS[card.scenario]
-                        const sessions = recommendedSessions(card.scenario)
                         const isSel = selectedCard === card.cardKey
                         const arcOpen = openArc === card.cardKey
                         const pick = () => {
@@ -1013,91 +892,46 @@ export function CreateGroundPage() {
                              fortnightly for every situation - so the engine's per-scenario
                              timeline was never reached on the path people use. The lead still
                              changes either one at step 3. */
+                          /* Seeded as the card's own recommendation. The cadence was seeded here
+                             too and set on a later screen; that screen is gone and the conversation
+                             asks how long and how often in the person's own words, so a seed
+                             nothing reads would be a value pretending to be a choice. */
                           setTimelineDays(facts.timelineDays)
-                          setCadence(CADENCE_VALUE[facts.cadence] as GroundCadence)
                           /* And where in the arc. Step one required this second choice and disabled
                              Continue until it was answered, without saying which choice was missing -
                              while the card just clicked already answered it. Still changeable below. */
                           setMoment(RECOMMENDED_MOMENT[card.scenario] as GroundMoment)
                         }
                         return (
-                          <div
+                          <SituationCard
                             key={card.cardKey}
-                            role="radio"
-                            tabIndex={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey) ? 0 : -1}
-                            aria-checked={isSel}
-                            aria-label={`${cardLabel(card)}. ${card.moment} ${card.desc}`}
-                            onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick() } }}
-                            className={`cg-sit-card${isSel ? ' selected' : ''}`}
-                            onClick={pick}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 5, background: card.tagBg, color: card.tagColor }}>{card.tag}</span>
-                              <div className="cg-sit-check" />
-                            </div>
-                            {/* Named situations are facts about the product and never change. The
-                                describe-your-own card is about the READER, so it does - see
-                                whose-situation-is-it.ts. */}
-                            <div style={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.3 }}>{cardLabel(card)}</div>
-                            <p className="cg-moment">{card.moment}</p>
-
-                            {/*
-                              * WHERE YOU ACTUALLY TYPE IT, SAID ON THE CARD.
-                              *
-                              * Every other card on this step is a complete choice: pick it and the
-                              * step is answered. This one is a promise of a text box that lives on
-                              * the NEXT screen, and the card looked identical to the others - so
-                              * picking it appeared to do nothing, and the field it leads to could
-                              * not be found. Reported as exactly that.
-                              *
-                              * Shown only when it is chosen, because before that it is an
-                              * instruction for a screen nobody is going to.
-                              */}
-                            {card.scenario === 'OPEN_READ' && isSel && (
-                              <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
-                                You write it on the next screen, in your own words.
-                              </div>
-                            )}
-
-                            <button
-                              type="button"
-                              className="cg-more"
-                              aria-expanded={arcOpen}
-                              onClick={(e) => { e.stopPropagation(); setOpenArc(arcOpen ? null : card.cardKey) }}
-                            >
-                              {arcOpen ? 'How it runs \u2039' : 'How it runs \u203A'}
-                            </button>
-                            {arcOpen && (
-                              <dl className="cg-arc">
-                                <div>
-                                  <dt>Agreed at the start</dt>
-                                  <dd>{card.agreed}</dd>
+                            card={card}
+                            label={cardLabel(card)}
+                            selected={isSel}
+                            focusable={isSel || (!selectedCard && card.cardKey === SCENARIOS[0].cardKey)}
+                            expanded={arcOpen}
+                            onToggleExpanded={() => setOpenArc(arcOpen ? null : card.cardKey)}
+                            onPick={pick}
+                            extra={
+                              /*
+                               * WHERE YOU ACTUALLY TYPE IT, SAID ON THE CARD.
+                               *
+                               * Every other card on this step is a complete choice: pick it and the
+                               * step is answered. This one is a promise of a text box that lives on
+                               * the NEXT screen, and the card looked identical to the others - so
+                               * picking it appeared to do nothing, and the field it leads to could
+                               * not be found. Reported as exactly that.
+                               *
+                               * Passed in rather than built into the card, because it is true of
+                               * this screen only: the entry chat has no next screen to promise.
+                               */
+                              card.scenario === 'OPEN_READ' && isSel ? (
+                                <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', fontWeight: 600, marginTop: 2 }}>
+                                  You write it on the next screen, in your own words.
                                 </div>
-                                <div>
-                                  <dt>What the check-ins test</dt>
-                                  <dd>{card.tests}</dd>
-                                </div>
-                                {facts.notThisOneIf && (
-                                  <div className="warn">
-                                    <dt>Not this one if</dt>
-                                    <dd>{facts.notThisOneIf}</dd>
-                                  </div>
-                                )}
-                                {card.examples && card.examples.length > 0 && (
-                                  <div>
-                                    <dt>Also this</dt>
-                                    <dd>{card.examples.map((ex, i) => <div key={i}>{ex}</div>)}</dd>
-                                  </div>
-                                )}
-                              </dl>
-                            )}
-
-                            <dl className="cg-meta">
-                              <div><dt>Recommended cadence</dt><dd>{facts.cadence}</dd></div>
-                              <div><dt>Runs for</dt><dd>{facts.timelineDays === 1 ? 'Once' : `${facts.timelineDays} days`}</dd></div>
-                              <div><dt>Check-ins</dt><dd>{sessions}</dd></div>
-                            </dl>
-                          </div>
+                              ) : undefined
+                            }
+                          />
                         )
   }
 
@@ -1195,10 +1029,38 @@ export function CreateGroundPage() {
         </div>
 
         {/* Step 1: Scenario + Moment */}
-        {step >= STAGE.who && step <= STAGE.describe && (
+        {/* The picking screens share one shell. Named rather than ranged: this read
+            `step >= STAGE.who && step <= STAGE.describe`, and `who` is the LAST step now, so a
+            range would have hidden every one of them. */}
+        {(step === STAGE.situation || step === STAGE.coach || step === STAGE.describe || step === STAGE.who) && (
           <div>
-            {/* ---- STEP 1: who this check-in is for ---- */}
-            {step === STAGE.who && (<>
+            {/* SAID BEFORE THE SETUP WORK, NOT AFTER IT, WHICH MEANS IT HAD TO MOVE WITH THE STEPS.
+                The API refuses an eleventh check-in correctly, but it refused it at submit - so the
+                admin picked a card, named it, set the timeline and the people, and only then was
+                told she could not. The block was right; the timing made it feel like a trick.
+                It sat inside the "who checks in" step because that step was FIRST. That step is now
+                LAST, so leaving it there would have put the refusal back at the end - the exact bug,
+                reintroduced by moving a neighbour. It belongs to whichever screen opens the flow. */}
+            {/*
+              * THE SCREENS THAT ASKED WHAT THE CONVERSATION ASKS WERE HERE.
+              *
+              * The timeline, the people, the brief, and who checks in against it. Every one
+              * collected something the setup conversation already gathers and extracts, and
+              * collected it worse - a textarea cannot say "you have said what but not who", cannot
+              * press on a vague answer, and cannot tell a new hire's setup from a contract
+              * renewal's. Then the flow ended on an admin board rather than on this person's own
+              * check-in and a report, so most people who set one up never gave an account at all.
+              *
+              * REMOVED ONLY AFTER THE RULES THEY CARRIED MOVED. Those screens were the only place
+              * six things were enforced - the plan limit before the work, the server's own refusal
+              * sentence, who was not invited written down rather than toasted, who is waiting for a
+              * start date, the draft, and naming a check-in from the words somebody clicked. They
+              * are on the conversation's save now; see the-rules-came-with-the-flow.spec.ts.
+              *
+              * Deleting first and repointing the specs would have left six rules quietly
+              * unenforced and a suite claiming otherwise.
+              */}
+            {step === STAGE.situation && (<>
             {/* Say the limit is reached BEFORE the setup work, not after it.
                 The API refuses an eleventh ground correctly, but it refused it
                 at submit - so the admin picked a card, named the ground, set
@@ -1221,94 +1083,14 @@ export function CreateGroundPage() {
                 </button>
               </div>
             )}
-            {/* MOVED FROM STEP 4 TO THE TOP OF STEP 1.
-                It decides what everything the person types afterwards IS. A party's words are their
-                own account; a non-party's are context about other people, which this product treats
-                as "a place to look, never a thing that is true". Asked at step 4, the words were
-                collected first and classified once they were already written.
-                It also matters most for the commonest case: somebody told to set this up has no
-                situation of their own, and "someone else runs this" was three steps out of reach. */}
-            <div role="radiogroup" aria-label="Where do you sit in this check-in?" style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: 'white' }}>
-              {/*
-                * WHO IS THIS FOR, ANSWERED IN TERMS OF WHO WRITES THE OBJECTIVE AND WHO CHECKS IN.
-                *
-                * It asked "where do you sit in this?" and offered "I am part of this too" against
-                * "I am setting it up for others", which describes a seating plan. The thing being
-                * decided is concrete and this hid it: who sets the context and the objective, and
-                * who then checks in against it. Her words, and they are better than what was here:
-                *
-                *   "i'll setup the context and objective and me and other checkin against it,
-                *    i'll setup the context and others checkin against it,
-                *    someone else is setting up the context, i am just setting the checkin and
-                *    inviting them to run it"
-                *
-                * The same three now read the same way in the entry chat - see ONBOARD_SYSTEM in
-                * entry.service.ts, which asks this in conversation rather than as radio buttons.
-                */}
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>Who is this check-in for?</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 9, lineHeight: 1.5 }}>
-                This decides who writes the objective and who is asked to check in against it. Everything after it is asking you for one or the other. You can change it later.
-              </div>
-              {[
-                { v: true, label: 'I set the context and objective, and I check in too', sub: 'You write what this is about and what good looks like. You check in against it alongside everyone else.', other: false },
-                { v: false, label: 'I set the context and objective, others check in', sub: 'You write what this is about and what good looks like. They check in against it. Nothing asks you to check in, and nothing measures you.', other: false },
-                /*
-                 * THE THIRD ANSWER IS GONE. HER CALL, AND HER REASON.
-                 *
-                 * "I think we should remove the whole org admin setting a context and handing it
-                 * over to a lead. It seems like it is confusing. maybe you set context but you can
-                 * add someone to have oversight."
-                 *
-                 * It was the one answer that produced a check-in belonging to somebody who was not
-                 * in the room: this person filled in a situation, a timeline and a roster, and then
-                 * a lead was emailed to confirm a context they had not written and could not see
-                 * until they accepted. Two people half-owned it and neither could finish it alone.
-                 *
-                 * What is left is the real distinction: you write what good looks like, and either
-                 * you check in against it or you read what comes back. Anybody who needs to watch
-                 * without writing it is added as oversight in the check-in's own settings, after it
-                 * exists - which is where every other "who else should see this" question is asked.
-                 */
-              ].map((o) => (
-                <div
-                  key={o.label}
-                  role="radio"
-                  tabIndex={alsoAParty === o.v || (alsoAParty === null && o.v) ? 0 : -1}
-                  aria-checked={alsoAParty === o.v}
-                  aria-label={`${o.label}. ${o.sub}`}
-                  onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setAlsoAParty(o.v) } }}
-                  onClick={() => { setAlsoAParty(o.v) }}
-                  className={`cg-sit-card${alsoAParty === o.v ? ' selected' : ''}`}
-                  style={{ marginBottom: 6 }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${alsoAParty === o.v ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: alsoAParty === o.v ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{o.sub}</div>
-                </div>
-              ))}
-              {/*
-                * "YOUR PART IN THE WORK" IS GONE, AND IT WAS NEVER GOING ANYWHERE.
-                *
-                * Her call: the chat asks this anyway, and there are too many places asking you for
-                * things. Both true - the check-in asks it in these words: "What are you bringing to
-                * this, what are you responsible for, and what does your contribution look like over
-                * the next period? Not the vision. The work."
-                *
-                * And it was worse than redundant. Traced before removing it: `myRemit` was held in
-                * component state, written into the saved draft, and sent to the server by NEITHER
-                * create path. It asked a question on the way in and threw the answer away, so the
-                * only thing it ever did was make the screen longer.
-                *
-                * `leadRemit` on the other branch is kept: that one is sent at creation, and it is
-                * about somebody who is not here to be asked yet.
-                */}
-            </div>
-
             </>)}
 
-            {/* ---- STEP 2: which situation ---- */}
+            {/* ---- LAST: who checks in against this ----
+                 Numbered comments used to label these ("STEP 1: who this check-in is for"), and the
+                 numbers went stale the moment a step moved. Named now: the order lives in
+                 stepsThisPersonSees and a comment that repeats it is a second copy that can drift. */}
+
+            {/* ---- FIRST: which situation ---- */}
             {step === STAGE.situation && (<>
             {/*
               * ONE PICK AT THE TOP, THEN A DROPDOWN. What this replaced and why:
@@ -1374,7 +1156,7 @@ export function CreateGroundPage() {
 
             </>)}
 
-            {/* ---- STEP 3: a coach, before you decide ---- */}
+            {/* ---- THEN: a coach, before you decide ---- */}
             {step === STAGE.coach && (<>
             {/*
               * A STEP OF ITS OWN, BEFORE THE SITUATION IS WRITTEN DOWN.
@@ -1551,7 +1333,7 @@ export function CreateGroundPage() {
             </div>
             </>)}
 
-            {/* ---- STEP 4: describe it in your own words ---- */}
+            {/* ---- THEN: describe it in your own words ---- */}
             {step === STAGE.describe && (<>
             {selectedCard === 'DESCRIBE_OWN' && (
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, background: 'white' }}>
@@ -1648,14 +1430,12 @@ export function CreateGroundPage() {
                   const needsRouting = selectedCard === 'DESCRIBE_OWN' && !routedTo && !routeFailed
 
                   const blocked =
-                    step === STAGE.who ? alsoAParty === null
-                    : step === STAGE.situation ? (!scenario || !moment)
+                    step === STAGE.situation ? (!scenario || !moment)
                     : step === STAGE.describe ? needsRouting
                     : false
 
                   const why =
-                    step === STAGE.who ? 'Choose one to continue'
-                    : step === STAGE.situation ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
+                    step === STAGE.situation ? (!scenario ? 'Pick a situation to continue' : 'Pick where you are in it to continue')
                     : step === STAGE.describe ? 'Describe the situation above, then let us find the closest match'
                     : ''
 
@@ -1677,7 +1457,39 @@ export function CreateGroundPage() {
 
                   return (
                     <>
-                      <button className="gw-btn" disabled={blocked} onClick={() => setStep(next)} style={{ margin: 0 }}>Continue</button>
+                      {/* WHEN THERE IS NOTHING AFTER THIS STEP, CONTINUE IS THE END OF THE FLOW.
+                          `stepAfter` returns the SAME step when it is the last one - its documented
+                          contract - so this used to leave somebody exactly where they were with no
+                          message. That is live now rather than theoretical: "who checks in" moved
+                          to the end, so this bar IS the last screen. */}
+                      {/*
+                        * THE END OF THIS FLOW IS THE CONVERSATION, NOT A CREATED CHECK-IN.
+                        *
+                        * The picker used to be screen two of eight, and the last of them called
+                        * `create.mutate()`. The screens in between asked for exactly what the setup
+                        * conversation already asks for and extracts - what this is about, who is in
+                        * it, why now, how long, how often, the brief - and asked for them worse: a
+                        * textarea cannot press on a vague answer or tell a new hire's setup from a
+                        * contract renewal's. Then it ended on an admin board rather than on this
+                        * person's own check-in and a report, so most people who set one up never
+                        * gave an account at all.
+                        *
+                        * Her words, over "Step 5 of 5 - The brief": "this page should not really
+                        * exist... the entry chat and the wizard should be similar, right?"
+                        *
+                        * So picking a situation hands over, with the situation already chosen so
+                        * nobody is asked to pick it twice. Nothing is created here any more: the
+                        * ground is created when the conversation is saved, by the same commit the
+                        * entry chat has always used.
+                        */}
+                      <button
+                        className="gw-btn"
+                        disabled={blocked}
+                        onClick={() => (next === step ? handOverToTheConversation() : setStep(next))}
+                        style={{ margin: 0 }}
+                      >
+                        {next === step ? 'Continue →' : 'Continue'}
+                      </button>
                       {blocked ? (
                         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>{why}</div>
                       ) : null}
@@ -1810,300 +1622,8 @@ export function CreateGroundPage() {
         )}
 
         {/* Step 3 (was 2): Timeframe + cadence */}
-        {step === STAGE.timeline && (
-          <div>
-            <h1 className="gw-ttl">How long will this run?</h1>
-            <div className="gw-sub-t">Set the timeframe and how often each party checks in.</div>
-            <div className="gw-fld">
-              <label className="gw-label" htmlFor="gw-timeframe">Recommended timeframe</label>
-              {/* PRESETS AS SHORTCUTS, NOT AS THE ONLY ANSWERS.
-                  This was a fixed menu of seven values, so 45 days could not be expressed anywhere -
-                  and a situation whose recommendation was not on the list (the one-off read, at one
-                  day) made the control show a value the product had not chosen. The number field is
-                  the truth; the buttons just fill it in. */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                {[
-                  { d: 7, label: '1 week' }, { d: 14, label: '2 weeks' }, { d: 30, label: '30 days' },
-                  { d: 60, label: '60 days' }, { d: 90, label: '90 days' }, { d: 180, label: '6 months' },
-                  { d: 365, label: '12 months' },
-                ].map(o => (
-                  <button
-                    key={o.d}
-                    type="button"
-                    onClick={() => setTimelineDays(o.d)}
-                    aria-pressed={timelineDays === o.d}
-                    style={{
-                      fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                      padding: '5px 11px', borderRadius: 100,
-                      border: `1px solid ${timelineDays === o.d ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                      background: timelineDays === o.d ? 'var(--gw-blue-bg)' : 'white',
-                      color: timelineDays === o.d ? 'var(--gw-navy)' : 'var(--gw-sub)',
-                    }}
-                  >{o.label}</button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  id="gw-timeframe"
-                  className="gw-select"
-                  type="number"
-                  min={1}
-                  max={730}
-                  value={timelineDays}
-                  onChange={e => {
-                    // Empty or nonsense must not become NaN days on the ground.
-                    const n = Math.round(Number(e.target.value))
-                    if (Number.isFinite(n)) setTimelineDays(Math.min(730, Math.max(1, n)))
-                  }}
-                  style={{ maxWidth: 110 }}
-                />
-                <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>days</span>
-              </div>
-            </div>
-            {/* WHEN IT STARTS. The most common real case is setting a check-in up before the
-                person it is about arrives, and until now the clock started anyway. */}
-            <div className="gw-fld">
-              <label className="gw-label" htmlFor="gw-starts">When does this start?</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <input
-                  id="gw-starts"
-                  className="gw-input"
-                  type="date"
-                  value={startsOn}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={e => setStartsOn(e.target.value)}
-                  style={{ maxWidth: 190 }}
-                />
-                {startsOn && (
-                  <button
-                    type="button"
-                    onClick={() => setStartsOn('')}
-                    style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                  >
-                    Start today instead
-                  </button>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                Leave it empty to start today. Set a date and nothing opens, and no time is counted, until then - useful when somebody has not joined yet.
-              </div>
-            </div>
-            <div className="gw-fld">
-              <label className="gw-label" htmlFor="gw-cadence">Recommended cadence</label>
-              <select id="gw-cadence" className="gw-select" value={cadence} onChange={e => setCadence(e.target.value as GroundCadence)}>
-                {SELECTABLE_CADENCES.map(c => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
-              </select>
-            </div>
-            <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-              {/* THE DATES, NOT JUST THE DURATION. "6 check-ins over 90 days" does not answer the
-                  question a person actually has, which is when the first one happens and when this
-                  is over. Both are known here and neither was shown. */}
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                {sessionTotal} {sessionTotal === 1 ? 'check-in' : 'check-ins'} over {timelineDays} {timelineDays === 1 ? 'day' : 'days'}, {runDates(startsOn, timelineDays)}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                Both are set from the situation you picked, and you can change either one now. Every check-in produces a report for each person. Afterwards the lead can still change the timeframe or the cadence at any time.
-              </div>
-              <div style={{ marginTop: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', borderRadius: 20, padding: '2px 8px' }}>Included in your plan</span>
-              </div>
-            </div>
-            <button className="gw-btn" onClick={() => setStep(stepAfter(visibleSteps, step))} style={{ margin: 0 }}>Continue</button>
-          </div>
-        )}
 
         {/* Step 4 (was 3): Participants */}
-        {step === STAGE.people && (
-          <div>
-            <h1 className="gw-ttl">Who is in this check-in?</h1>
-            <div className="gw-sub-t">Add everyone who will check in. They can be from different organisations. You can add more at any time.</div>
-
-            {/*
-              * WHAT ADDING SOMEBODY ACTUALLY DOES, SAID ON THE SCREEN THAT DOES IT.
-              *
-              * This said nothing, and the consequence is not small. Traced through the code rather
-              * than assumed: `participants.service.ts` accept() looks the address up, and if there
-              * is no account it creates a User in THIS organisation with role MEMBER, verified,
-              * inside the same transaction that accepts the invitation. No approval, no queue,
-              * nobody asked. And a seat is any active user in the org - see common/seats.ts - so
-              * that new account counts toward the plan the moment they accept.
-              *
-              * So somebody setting up a check-in for two people outside the company is adding two
-              * members to their organisation and two people to their bill, and nothing on the way
-              * through says so. Said plainly here, and only what is true: an approval step for
-              * this does not exist yet, so this does not promise one.
-              */}
-            <div style={{ background: 'var(--gw-blue-bg)', borderLeft: '3px solid var(--gw-navy)', borderRadius: '0 8px 8px 0', padding: '10px 14px', margin: '10px 0 16px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              Anyone here who does not already have a Groundwork account gets one in your organisation
-              when they accept, so they can write their own account of this. Everyone with an account
-              counts toward your plan.
-            </div>
-
-
-            {participants.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
-                {participants.map((p, i) => (
-                  <div key={i} className="gw-prow gw-prow-static">
-                    <div className={`gw-av gw-av-${i % 6}`}>{p.email.charAt(0).toUpperCase()}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{p.email}</div>
-                      {p.role && <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.role}</div>}
-                    </div>
-                    <button style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setParticipants(v => v.filter((_, j) => j !== i))}>Remove</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <button onClick={() => { setBulkMode(false) }} style={{ fontSize: 12, fontWeight: bulkMode ? 400 : 700, color: bulkMode ? 'var(--gw-sub)' : 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>Add one by one</button>
-              <span style={{ color: 'var(--gw-border)', fontSize: 12 }}>|</span>
-              <button onClick={() => { setBulkMode(true) }} style={{ fontSize: 12, fontWeight: bulkMode ? 700 : 400, color: bulkMode ? 'var(--gw-navy)' : 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>Paste multiple emails</button>
-            </div>
-
-            {bulkMode ? (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Paste emails</div>
-                <textarea
-                  rows={4}
-                  value={bulkText}
-                  onChange={e => setBulkText(e.target.value)}
-                  placeholder={'one@example.com\ntwo@example.com\nthree@example.com'}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--gw-border)', borderRadius: 7, fontSize: 13, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', boxSizing: 'border-box', marginBottom: 8 }}
-                />
-                <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8 }}>Separate by line, comma, or semicolon. Roles and notes can be added after.</div>
-                <button onClick={addBulk} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>Add all</button>
-              </div>
-            ) : (
-            <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Add someone new</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <div className="gw-fld" style={{ margin: 0 }}>
-                  <label className="gw-label">Email address</label>
-                  <input className="gw-input" type="email" value={pEmail} onChange={e => setPEmail(e.target.value)} placeholder="their@email.com" />
-                </div>
-                <div className="gw-fld" style={{ margin: 0 }}>
-                  <label className="gw-label">Their role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
-                  <input className="gw-input" value={pRole} onChange={e => setPRole(e.target.value)} placeholder="e.g. Head of Engineering" />
-                </div>
-              </div>
-              <div className="gw-fld" style={{ margin: '0 0 8px' }}>
-                <label className="gw-label">Personal note in the invite email <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
-                <input className="gw-input" value={pNote} onChange={e => setPNote(e.target.value)} placeholder="e.g. Looking forward to building this together." onKeyDown={e => e.key === 'Enter' && addParticipant()} />
-              </div>
-              {/*
-                * "WHEN DO THEY START?" USED TO BE ASKED HERE, AND IT WAS THE SECOND DATE ON THE
-                * SAME FLOW.
-                *
-                * Step six asks when the check-in starts. This asked when the person starts, four
-                * steps later, and the two read as the same question asked twice - which is exactly
-                * how somebody sets one and not the other and gets a clock they did not mean.
-                *
-                * The field was doing real work: a future date holds the invitation, so an email
-                * asking a new hire to account for their work cannot land before they have signed a
-                * contract, and cannot be recalled once read. That protection is kept and the
-                * question is not: a participant now inherits the check-in's own start date, which
-                * for an onboarding IS their first day and has already been asked for once.
-                */}
-              <button onClick={addParticipant} style={{ width: '100%', padding: 9, borderRadius: 6, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1.5px dashed var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit' }}>+ Add this person to the list</button>
-            </div>
-            )}
-
-            {participants.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-bg)', borderRadius: 7, padding: '10px 12px', marginBottom: 14, lineHeight: 1.6 }}>
-                Each person gets their own private check-in. Nobody can see what anyone else wrote until the report is activated.
-              </div>
-            )}
-
-            {/* WHAT ACTUALLY LIMITS THE NUMBER, WHICH IS THE PLAN AND NOT THE CHECK-IN.
-                This said "Up to 20 per ground" and there is no 20 anywhere in the product. The API is
-                explicit that there is no per-check-in limit at all - "all scenarios support any number
-                of participants, the initiator decides who needs to be in the ground, no hard-coded
-                per-scenario cap" - and the real ceilings are the free member limit and the org's plan.
-                So 20 was lower than Growth (100) and Scale (500) and higher than free (5): wrong in
-                both directions at once. */}
-            {participants.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10 }}>
-                {participants.length} {participants.length === 1 ? 'person' : 'people'} added.
-                {' '}How many you can add depends on your plan, not on the check-in.
-              </div>
-            )}
-
-            {/* Handing the ground over needs an address to hand it to. Better to
-                stop here than to create a ground nobody is leading. */}
-            {/*
-              * "+ Add to this check-in" sat directly above "Continue" and the two read as rival
-              * ways of doing the same thing - one of them adds the person in the box to a list, the
-              * other leaves the step. Now the first says which person and which list, and the
-              * second says how many it is continuing with, so neither can be mistaken for the
-              * other.
-              */}
-            {/*
-              * THROUGH THE ORDERING, NOT PAST IT. This said `setStep(STAGE.brief)`, which was
-              * true for everybody until the brief became a step somebody can skip. A hardcoded
-              * next screen is exactly what `stepsThisPersonSees` exists to stop - and here it
-              * would have walked a setter onto the one screen the decision above says is not
-              * theirs. When there is nothing after this step, this button is the end of the flow
-              * and starts the check-in itself.
-              */}
-            <button
-              className="gw-btn"
-              disabled={participants.length === 0 || create.isPending}
-              onClick={() => {
-                const next = stepAfter(visibleSteps, STAGE.people)
-                if (next === STAGE.people) create.mutate()
-                else setStep(next)
-              }}
-              style={{ margin: 0 }}
-            >
-              {create.isPending
-                ? 'Opening…'
-                : stepAfter(visibleSteps, STAGE.people) === STAGE.people
-                  ? 'Start check-in →'
-                  : participants.length === 0
-                    ? 'Continue'
-                    : `Continue with ${participants.length} ${participants.length === 1 ? 'person' : 'people'}`}
-            </button>
-            {/*
-              THE OTHER HALF OF THE SAME REFUSAL, WHICH SAID NOTHING. W-UX-7.
-              
-              Two conditions disable this button and only one of them explained itself. Somebody who
-              had added nobody yet - the ordinary first state of this step - got a dead Continue and
-              no sentence anywhere on the screen. The lead-email case, added later, was written
-              properly and made the gap look like it did not exist.
-            */}
-            {participants.length === 0 ? (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 5 }}>
-                Add at least one person to continue. A check-in needs somebody to check in.
-              </div>
-            ) : null}
-            {/*
-              * THIS SKIPPED TO THE NEXT STEP, AND FOR A SETTER THERE IS NO NEXT STEP.
-              *
-              * `setStep(stepAfter(...))` returns the SAME step when there is nothing after it - the
-              * documented contract of stepAfter - so once the brief was skipped for somebody
-              * setting a check-in up for a lead, this control did nothing at all. Pressing it left
-              * you exactly where you were, with no message. My own doing, from removing that step.
-              *
-              * It starts the check-in in that case, which is what "skip" means on the last screen.
-              */}
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 10, cursor: create.isPending ? 'not-allowed' : 'pointer', opacity: create.isPending ? 0.45 : 1 }}
-              onClick={() => {
-                if (create.isPending) return
-                const next = stepAfter(visibleSteps, step)
-                if (next === step) create.mutate()
-                else setStep(next)
-              }}>
-              {stepAfter(visibleSteps, step) === step ? 'Skip - start it and add people after' : 'Skip - add participants after'}
-            </div>
-            {/* WHERE, because "after" on its own is not an instruction. Reported as: if you skip at
-                the start, how do you add them later? */}
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', marginTop: 4, lineHeight: 1.5 }}>
-              You add people on the check-in's own page afterwards, under Add someone. The shared
-              report cannot be built until at least one other person has checked in.
-            </div>
-          </div>
-        )}
 
         {/*
           * STEP 5, THE END STATE, IS GONE FROM CREATION. Her call, and the right one.
@@ -2128,135 +1648,6 @@ export function CreateGroundPage() {
         */}
 
         {/* Step 6 (was 5): Opening brief + ground name */}
-        {step === STAGE.brief && (
-          <div>
-            <h1 className="gw-ttl">What is this about?</h1>
-            <div className="gw-sub-t">Your version of the brief. Each person writes their own in their first session. The report shows where accounts agree and where they differ.</div>
-
-            <div style={{ position: 'relative', marginBottom: 6 }}>
-              <textarea
-                rows={6}
-                value={brief}
-                /* Capped where the server caps it, so a long brief is stopped as it is typed rather
-                   than refused after somebody has written it. */
-                maxLength={BRIEF_CHARS_MAX}
-                onChange={e => setBrief(e.target.value)}
-                placeholder="What is this about? What needs to be true at the end?"
-                style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--gw-border)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', color: 'var(--gw-text)', background: 'white', resize: 'vertical', lineHeight: 1.65, boxSizing: 'border-box' }}
-              />
-              {/* The count, and what it is counting towards - a bare number tells you nothing about
-                  whether you have enough. */}
-              <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--gw-sub)' }}>
-                {briefWords} {briefWords === 1 ? 'word' : 'words'}
-                {briefTooShortToInvite
-                  ? ` · ${BRIEF_WORDS_TO_INVITE - briefWords} more to invite anyone`
-                  : briefShort
-                    ? ` · ${BRIEF_WORDS_WORTH_READING} is where these start to work`
-                    : ''}
-              </div>
-            </div>
-
-            {briefTooShortToInvite ? (
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
-                A little more before you can invite anyone: {BRIEF_WORDS_TO_INVITE} words is the floor and you have {briefWords}. With nobody else checked in yet and nothing else on Context, the brief is the only thing telling {participants.length === 1 ? 'them' : 'people'} what this is about.
-              </div>
-            ) : briefShort && (
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 7, padding: '10px 12px', marginBottom: 12, lineHeight: 1.6 }}>
-                A brief this short will produce weaker first sessions - around {BRIEF_WORDS_WORTH_READING} words is where these start to work, and you have {briefWords}. The questions each person is asked are shaped by what you write here. You can write up to {BRIEF_CHARS_MAX.toLocaleString()} characters.
-              </div>
-            )}
-
-
-            {/*
-              * WHERE YOU ARE IN THE SITUATION, ASKED WHERE YOU SAY WHAT IT IS ABOUT.
-              *
-              * It used to sit at the bottom of the situation step, under twenty-one cards and a
-              * fixed action bar - "hard to see", and reported as such. Her call: put it on the
-              * page where you describe what this is about, which is also where it belongs by
-              * meaning. Both questions here are about the same thing: what is going on, and how
-              * far through it you are.
-              *
-              * Picking a card already sets a recommended moment (see pick() in renderSituation),
-              * so nobody can arrive at the end without one and this is a change-it control rather
-              * than a required question. That is also why skipping this whole step for somebody who
-              * is only setting a check-in up for a lead loses nothing.
-              */}
-            {scenario && (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Where are you in this situation?</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 6 }}>Are you just starting, mid-way through, or wrapping up? This shapes the questions each person answers.</div>
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10 }}>Choose one that best describes your situation.</div>
-                <div role="radiogroup" aria-label="Where are you in this situation?" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                  {MOMENTS.map(m => (
-                    <div
-                      key={m.moment}
-                      role="radio"
-                      tabIndex={moment === m.moment || (!moment && m.moment === MOMENTS[0].moment) ? 0 : -1}
-                      aria-checked={moment === m.moment}
-                      aria-label={`${m.label}. ${m.sub}`}
-                      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setMoment(m.moment) } }}
-                      className={`cg-sit-card${moment === m.moment ? ' selected' : ''}`}
-                      onClick={() => setMoment(m.moment)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{m.label}</div>
-                        <div className="cg-sit-radio" style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${moment === m.moment ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: moment === m.moment ? 'var(--gw-navy)' : 'transparent', flexShrink: 0 }} />
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{m.sub}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            <div className="gw-fld" style={{ marginTop: 16 }}>
-              <label className="gw-label" htmlFor="gw-ground-name">Name <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label>
-              <input
-                id="gw-ground-name"
-                className="gw-input"
-                value={groundName}
-                onChange={e => setGroundName(e.target.value)}
-                placeholder={`e.g. COO onboarding, Q3 2025`}
-              />
-            </div>
-
-            <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Summary</div>
-              <div style={{ fontSize: 12, lineHeight: 1.7 }}>
-                <div>{SCENARIOS.find(s => s.cardKey === selectedCard)?.label ?? (scenario ?? '').replace(/_/g, ' ')} · {MOMENTS.find(m => m.moment === moment)?.label ?? moment}</div>
-                <div>{sessionTotal} sessions · {cadence.toLowerCase()}</div>
-                {/*
-                  * ITEM 3: THE ROUTING DECISION, SHOWN WHERE IT IS CHEAPEST TO CATCH.
-                  *
-                  * On the free-text path a model picked the shape, and the shape decides the board,
-                  * the questions and the endings. Until now that choice was made two steps earlier and
-                  * never repeated, so the last screen before creating showed no sign that anything had
-                  * been guessed. If the guess is wrong this is the moment to notice - after this, the
-                  * questions people get asked are already decided.
-                */}
-                {selectedCard === 'DESCRIBE_OWN' && (
-                  routedTo ? (
-                    <div style={{ color: 'var(--gw-sub)' }}>
-                      Read from your description as <b>{SCENARIOS.find(c => c.scenario === routedTo)?.label}</b>.
-                      Go back if that is not it.
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--gw-sub)' }}>
-                      Opening as an <b>open read</b>, because your description did not match a named situation.
-                    </div>
-                  )
-                )}
-                {participants.length > 0 && <div>{participants.length} participant{participants.length !== 1 ? 's' : ''} invited</div>}
-                {appliedAccessCode && <div style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>Access code applied</div>}
-              </div>
-            </div>
-
-            <button className="gw-btn" onClick={() => create.mutate()} disabled={create.isPending || !brief.trim() || briefTooShortToInvite} style={{ margin: 0 }}>
-              {/* "Talk it through" described the conversation and not the button. It opens the
-                  check-in, so it says so. */}
-              {create.isPending ? 'Opening…' : 'Start check-in →'}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

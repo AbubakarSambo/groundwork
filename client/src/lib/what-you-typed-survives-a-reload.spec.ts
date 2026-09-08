@@ -106,11 +106,17 @@ describe('the wizard uses it, and lets go at the right moment', () => {
     }
   })
 
-  it('and forgets it the moment the check-in exists', () => {
-    /* A draft that outlives the thing it was drafting reappears, gets finished a second time,
-       and invites everybody twice. */
-    const onSuccess = src.slice(src.indexOf('onSuccess:'), src.indexOf('onError:'))
-    expect(onSuccess).toContain('forget(DRAFT_KEY)')
+  it('and forgets it the moment there is nothing left to come back to', () => {
+    /*
+     * A draft that outlives the thing it was drafting reappears, gets finished a second time, and
+     * invites everybody twice.
+     *
+     * IT USED TO BE FORGOTTEN WHEN THE CHECK-IN WAS CREATED, in the create mutation's onSuccess.
+     * This page does not create anything now - it is a picker that hands the rest to the setup
+     * conversation - so the moment there is nothing to return to is the hand-off itself.
+     */
+    const handOver = src.slice(src.indexOf('function handOverToTheConversation'), src.indexOf('const create') + 1 || undefined)
+    expect(handOver).toContain('forget(DRAFT_KEY)')
   })
 
   it('says it picked something up rather than filling the form in silently', () => {

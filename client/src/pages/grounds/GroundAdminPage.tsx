@@ -13,7 +13,8 @@ import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
-import { personLabel, participantLabel } from '@/lib/utils'
+import { personLabel } from '@/lib/utils'
+import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
 import { conversationApi } from '@/api/conversation'
@@ -23,18 +24,15 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
-import { ReportBody } from '@/pages/report/ReportPage'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
-import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
-import { whoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
+import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -105,7 +103,56 @@ const FROM_TAB_KEY: Record<string, Tab> = {
 const TO_TAB_KEY: Partial<Record<Tab, string>> = {
   chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', settings: 'settings',
 }
-type ReportSession = 's1' | 's2' | 'closing'
+
+
+/**
+ * ONE SETUP QUESTION AT A TIME.
+ *
+ * "The setup page is still messy and hard to go through" - said after the tab had already been cut
+ * into five named, numbered bands. Naming them was not the fix, because all five were still open
+ * at once: about five hundred lines of controls, so finding the timeframe meant scrolling past
+ * everybody's invitation and reading two privacy toggles on the way.
+ *
+ * Five rows now, each saying what it is currently set to. Open one and the rest close. The numbers
+ * stay, because they are the order the questions were asked in when the check-in was set up.
+ */
+function Fold({
+  n, title, src, summary, open, onToggle, children,
+}: {
+  n: number
+  title: string
+  src: string
+  summary: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '13px 14px',
+          background: open ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <span style={{
+          flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: open ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>{n}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{open ? src : summary}</span>
+        </span>
+        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
+      </button>
+      {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
+    </div>
+  )
+}
 
 export function GroundAdminPage() {
   const { id } = useParams<{ id: string }>()
@@ -150,7 +197,6 @@ export function GroundAdminPage() {
     if (key) next.set('tab', key); else next.delete('tab')
     setSearchParams(next, { replace: true })
   }
-  const [reportSession, setReportSession] = useState<ReportSession>('s1')
   /* People the wizard could not invite, kept against this ground so the toast that faded is not
      the only record. Read once on mount: it is unfinished business, not live data. */
   const [notInvited, setNotInvited] = useState<NotInvited[]>(() => (id ? whoWasNotInvited(id) : []))
@@ -161,8 +207,14 @@ export function GroundAdminPage() {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  /** Whether the last person added is waiting for the start date rather than having been emailed. */
+  const [lastInviteWaits, setLastInviteWaits] = useState(false)
   const [newParticipantNote, setNewParticipantNote] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
+  /* Which setup question is open. One at a time; the first is open when the tab is reached.
+     Declared up here with the rest: this component returns early for several ground states, and a
+     hook below one of those returns is a hook that sometimes does not run. */
+  const [openSetupBand, setOpenSetupBand] = useState<number>(1)
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -197,33 +249,64 @@ export function GroundAdminPage() {
    */
   const definitelyGone = isError && (error as any)?.response?.status === 404
 
-  const { data: report } = useQuery({
-    queryKey: ['report', id],
-    queryFn: () => reportsApi.get(id!),
-    /**
-     * ONLY WHEN THE CHECK-IN SAYS THERE IS ONE.
-     *
-     * `GET /grounds/:id/report` answers 404 for "no report yet" - deliberately, and it must keep
-     * doing so: the same 404 covers a check-in that does not exist and one that is not yours, so a
-     * caller cannot tell those apart. See GW-PRI-04, `missing report does not leak ground
-     * existence`. Turning it into a 200 would make "this check-in exists and has no report" a
-     * distinguishable answer, which is the leak that spec prevents.
-     *
-     * So the fix is here rather than there: the ground payload already carries `report`, so the
-     * client knows before it asks. Asking anyway put a red 404 in the console on every check-in
-     * that has not reported yet - noise that makes a real error harder to see.
-     */
-    enabled: !!id && tab === 'report' && !!(ground as any)?.report,
-    retry: false,
-  })
+  /* THE CHECK-IN'S LIVE REPORT QUERY WENT WITH THE BODY THAT RENDERED IT. Each session's report
+     is fetched by the page that shows it, from `/report/session/:n`, which is the only call that
+     knows which session is being asked about. What this page still needs is whether a report
+     exists at all - and `ground.report` already says that. */
 
-  const { data: activationStatus } = useQuery({
-    queryKey: ['report-activation', id],
-    queryFn: () => reportsApi.activationStatus(id!),
-    enabled: !!id && tab === 'report' && !!report?.releasedAt,
-    retry: false,
-  })
+  /* `activationStatus` and the report tab's session picker went with the report body. Each
+     session's report is its own page now, and the mutual-reveal state is shown there, on the
+     report it gates - not on a list of sessions. */
 
+
+  /**
+   * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
+   *
+   * Yours only. Somebody else's session is theirs until the shared report releases, which is the
+   * same wall the session grid keeps - and the reason this reads `userId === user?.id` rather than
+   * "everybody on the check-in".
+   */
+  const mySessions = ((ground as any)?.checkIns ?? [])
+    .filter((c: any) => c.status === 'COMPLETED')
+    .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+
+  /**
+   * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
+   *
+   * "It is just meant to show a list of sessions and then you click and get the report. And you
+   * see who's checked in, the report is counting."
+   *
+   * The denominator is every party who is not managing-only, which is exactly the set
+   * `recordRoundCompletion` counts on the server - so "3 of 4 answered" and whether the row says
+   * Final cannot disagree. Somebody managing without giving an account is not in it, because they
+   * were never going to answer.
+   */
+  const sessionRows: SessionRow[] = (() => {
+    const parties = (((ground as any)?.participants ?? []) as any[]).filter((p) => !p.managingOnly)
+    const checkIns = ((ground as any)?.checkIns ?? []) as any[]
+    const numbers = [...new Set(checkIns.filter((c) => !c.isSetup).map((c) => c.sessionNumber as number))]
+      .filter((n) => checkIns.some((c) => c.sessionNumber === n && c.status === 'COMPLETED'))
+      .sort((a, b) => b - a)
+
+    return numbers.map((n) => {
+      const answeredIds = new Set(
+        checkIns.filter((c) => c.sessionNumber === n && c.status === 'COMPLETED').map((c) => c.participantId),
+      )
+      const mine = checkIns.find(
+        (c) => c.sessionNumber === n && c.status === 'COMPLETED'
+          && parties.some((p) => p.id === c.participantId && p.userId === user?.id),
+      )
+      return {
+        sessionNumber: n,
+        myCheckInId: mine?.id ?? null,
+        answered: parties.filter((p) => answeredIds.has(p.id)).length,
+        total: parties.length,
+        closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.roundNumber === n),
+        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => personLabel(p)),
+      }
+    })
+  })()
 
   const releaseReport = useMutation({
     mutationFn: () => reportsApi.release(id!),
@@ -537,9 +620,98 @@ export function GroundAdminPage() {
    */
 
 
+  /**
+   * PEOPLE LINED UP TO BE ADDED, EACH WITH THEIR OWN LINE ABOUT WHAT THEY ANSWER FOR.
+   *
+   * "You should be able to add many parties to the check-in at setup and add context about them."
+   * The form took one address at a time and cleared itself, so a team of six was six rounds.
+   *
+   * Nothing is sent until the queue is invited: adding to the list is free and reversible, which is
+   * the whole reason to have a list rather than firing an invitation per keystroke of enthusiasm.
+   */
+  const [queuedToAdd, setQueuedToAdd] = useState<{ email: string; note: string }[]>([])
+
+  /**
+   * SENT ONE AT A TIME, AND EVERY OUTCOME REPORTED.
+   *
+   * `addParticipant` is per-person on the server - it has the seat check, the approval rule and the
+   * deferral in it - so this is a loop rather than a bulk endpoint, and each result is read: refused
+   * ones name their reason and are written down, waiting ones are counted. The same rules the
+   * conversation's save keeps, because "we added them but you heard nothing" is the bug that started
+   * all of this.
+   */
+  const inviteTheQueue = useMutation({
+    mutationFn: async () => {
+      const results = await Promise.allSettled(
+        queuedToAdd.map((q) =>
+          groundsApi.addParticipant(id!, { email: q.email, note: q.note || undefined }),
+        ),
+      )
+      const failed = results
+        .map((r, i) => ({ r, email: queuedToAdd[i].email }))
+        .filter((x): x is { r: PromiseRejectedResult; email: string } => x.r.status === 'rejected')
+        .map(({ r, email }) => ({
+          email,
+          because: (r.reason as any)?.response?.data?.message ?? 'The invite did not send.',
+        }))
+      const waiting = results
+        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null }> => r.status === 'fulfilled')
+        .filter((r) => !r.value?.invitedAt).length
+      return { failed, waiting, sent: results.length - failed.length - waiting }
+    },
+    onSuccess: ({ failed, waiting, sent }) => {
+      setQueuedToAdd([])
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+      if (sent > 0) toast.success(`Invite sent to ${sent} ${sent === 1 ? 'person' : 'people'}`)
+      if (waiting > 0) {
+        toast.info(
+          waiting === 1
+            ? 'One person is on the check-in and will be invited on the start date.'
+            : `${waiting} people are on the check-in and will be invited on the start date.`,
+        )
+      }
+      for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
+      if (failed.length) rememberWhoWasNotInvited(id!, failed)
+    },
+    /*
+     * THE SERVER'S OWN SENTENCE, WHICH THIS THREW AWAY UNTIL TWO GUARDS CAUGHT IT.
+     *
+     * Every reason adding somebody can be refused is written for a person and returned: the seat
+     * limit, an address already on the check-in, the gate that refuses an invitation until
+     * something has been said about what the check-in is for. "Could not add them. Try again."
+     * replaces all of them with a loop the product knows they cannot leave.
+     *
+     * This handler only fires when the whole batch fails - a per-person refusal is reported by name
+     * in onSuccess above - so it also says what became of the queue, which is the other half:
+     * nobody was invited and the list is still there to try again with.
+     */
+    onError: (e: any) => {
+      const said = e?.response?.data?.message
+      const status = e?.response?.status
+      toast.error(
+        status >= 400 && status < 500 && typeof said === 'string' && said
+          ? `${said} Nobody was invited - your list is still here.`
+          : 'Could not add them, and nobody was invited. Your list is still here - try again.',
+      )
+    },
+  })
+
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
-    onSuccess: () => {
+    onSuccess: (added) => {
+      /*
+       * "INVITE SENT" WAS SAID WHETHER OR NOT ONE WAS SENT.
+       *
+       * An invitation waits when the check-in starts in the future - the row is written with
+       * `invitedAt: null` and no email goes, deliberately, because a mail that has already been read
+       * cannot be recalled. The server returns `invitedAt` saying so, and this screen ignored it and
+       * printed "Invite sent to ..." regardless.
+       *
+       * Reported as "all participants i added didnt get an email", with nothing anywhere on the
+       * screen to explain why. The product was working as designed and lying about it, which is
+       * worse than either.
+       */
+      setLastInviteWaits(!(added as { invitedAt?: string | null }).invitedAt)
       setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')
@@ -720,7 +892,9 @@ export function GroundAdminPage() {
           */}
           {lastInvitedEmail && (
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>Invite sent to {lastInvitedEmail}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
+                {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+              </div>
               <div style={{ fontSize: 12, color: 'var(--gw-green-t)', marginTop: 2 }}>
                 They check in on their own, and nothing is shown to them until the report is ready.
               </div>
@@ -807,6 +981,39 @@ export function GroundAdminPage() {
     ),
   )
   const sessionsDone = openRoundFromRule - 1
+  /**
+   * HOW MANY SESSIONS *YOU* HAVE FINISHED, which is not the same number.
+   *
+   * `sessionsDone` is the round EVERYONE has finished - the person furthest behind sets the pace,
+   * deliberately, because counting the highest anybody reached would say "Session 12 of 12" while
+   * one party was on 4. That is the right number for the header, which is about the check-in.
+   *
+   * It was also being handed to `MyParticipation`, which prints it under "Sessions completed" in a
+   * card whose other rows are "Your role" and your status. So finishing session 1 and then adding
+   * two people - who have finished nothing - made your own card read "0 of 6". Seen on screen the
+   * moment two people were invited: a session I had completed the night before, reported as not
+   * done, on the panel that is explicitly about me.
+   */
+  /**
+   * THE NUMBER EACH SETUP BAND GETS, COUNTED AS THE TAB IS DRAWN.
+   *
+   * Same reasoning as the Context page: several of these sections only render for an initiator, so
+   * a hand-written number would leave gaps for everybody else - and a reader who sees 2 then 4
+   * concludes something failed to load rather than that it was never theirs to see.
+   */
+  let setupBands = 0
+  const setupBand = () => ++setupBands
+  /* Counted once, and out here, so the row's own label does not have to reach into the record. */
+  const settingsChangeCount = ((ground as any)?.settingsChanges?.length ?? 0) as number
+  const foldProps = (n: number) => ({
+    n,
+    open: openSetupBand === n,
+    onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
+  })
+
+  const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
+    (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
+  ).length
   /**
    * How many people have finished the round that is currently open. The round is
    * `sessionsDone + 1` - the one the header already names - so this and the
@@ -1325,6 +1532,7 @@ export function GroundAdminPage() {
               otherParties={(ground.participants ?? [])
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
+              mySessions={mySessions}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
@@ -1333,7 +1541,7 @@ export function GroundAdminPage() {
             myRecord={myRecord}
             viewerUserId={user?.id}
             totalSessions={plannedSessions ?? null}
-            completedCount={sessionsDone}
+            completedCount={mySessionsDone}
             specificity={mySpecificity}
             /* This page calls the material tab `docs`; the component asks to be sent and the page
                decides where that is. */
@@ -1414,8 +1622,15 @@ export function GroundAdminPage() {
                         <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{participantLabel(p)}</div>
-                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
+                          {/* `participantLabel` gives "a teammate" to anybody who has not signed
+                              in yet, so a lead who invited three people saw three rows all called
+                              "a teammate". This is the lead's own roster - they invited these
+                              people by typing the addresses - so `personLabel`, which falls back
+                              to the address, is both truthful and useful here. */}
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{personLabel(p)}</div>
+                          {personLabel(p) !== p.email && (
+                            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
+                          )}
                           {editingRoleId === p.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                               <input
@@ -1529,7 +1744,24 @@ export function GroundAdminPage() {
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
-                            const isMine = p.userId === user?.id && !done
+                            /*
+                             * YOUR OWN FINISHED SESSION IS WHERE YOUR REPORT IS, AND IT WAS THE ONE
+                             * CELL YOU COULD NOT CLICK.
+                             *
+                             * `&& !done` made a completed session of your own unclickable, so the
+                             * private report you read the moment you finished had no way back to it:
+                             * "I cannot find the report that popped up after I was done with my
+                             * first check-in, once it closes I have no idea where it went."
+                             *
+                             * It is not in the Report tab and never was - that tab holds the SHARED
+                             * report, which does not exist until everyone has checked in. The
+                             * private one lives on the session itself, and /checkin/:id renders it
+                             * for a completed check-in already. Nothing linked there.
+                             *
+                             * Somebody else's session stays unclickable, done or not. That is the
+                             * wall, and it is the reason this condition existed at all.
+                             */
+                            const isMine = p.userId === user?.id
                             return (
                               <button
                                 key={ci.id}
@@ -1537,7 +1769,7 @@ export function GroundAdminPage() {
                                 onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
                                   state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
                                 }) : undefined}
-                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? ' - yours, open it' : ''}`}
+                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + new Date(ci.completedAt).toLocaleDateString() : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ''}`}
                                 style={{
                                   fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', minWidth: 22,
                                   padding: '2px 6px', borderRadius: 4, cursor: isMine ? 'pointer' : 'default',
@@ -1601,7 +1833,7 @@ export function GroundAdminPage() {
                       )}
                       {sharedReport && (
                         <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
-                          <Sec title={`${participantLabel(p)}'s private report (shared by them)`} on="dark" />
+                          <Sec title={`${personLabel(p)}'s private report (shared by them)`} on="dark" />
                           {/* The same walk the participant's own page does. One component now, so the
                               report cannot read differently depending on who is looking at it. */}
                           <SoloReportBody report={sharedReport as Record<string, unknown>} dense />
@@ -1613,20 +1845,63 @@ export function GroundAdminPage() {
               </div>
             </div>
 
+            {/*
+              WHAT THIS SAID WAS NOT TRUE, AND THE PAGE ALREADY SAID THE REST OF IT.
+              "We should have a forming report, why do you have this here, we address this a
+              million times." The line claimed the shared report generates once all accounts are
+              in. It does not: the synthesis runs as soon as ANYBODY checks in and the report
+              forms progressively - it is only RELEASED when everyone is through. So the product's
+              own best feature was being denied on the page where a lead waits. The count it
+              carried is in the header two lines up ("1 of 3 checked in for session 1").
+              What is left is the one thing this spot can usefully do: get to the report.
+            */}
             {(() => {
               const pending = ground.participants.filter((p: any) => {
                 const ci = ground.checkIns?.find((c: any) => c.participantId === p.id)
                 return !ci || ci.status !== 'COMPLETED'
               })
-              return pending.length > 0 ? (
-                <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '8px 12px', marginBottom: 16, lineHeight: 1.5 }}>
-                  {pending.length === 1
-                    ? `1 participant has not yet checked in. The shared report generates once all accounts are in.`
-                    : `${pending.length} participants have not yet checked in. The shared report generates once all accounts are in.`}
-                  <span style={{ marginLeft: 6, fontWeight: 600 }}>Use Remind if they have not received the email - it may have gone to spam.</span>
+              if (pending.length === 0) return null
+              return (
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 12px', marginBottom: 16, lineHeight: 1.55, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span>
+                    The picture builds as each person answers - you can read what it has so far.
+                    It is only released to everybody once all {ground.participants.length} are in.
+                  </span>
+                  <button
+                    onClick={() => setTab('report')}
+                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
+                  >
+                    Read it so far
+                  </button>
                 </div>
-              ) : null
+              )
             })()}
+
+            {/*
+              THE FREE EXTRA SESSION, ON THE TAB ABOUT SESSIONS.
+              It was on the report tab, which is where somebody goes to READ - so an offer to add
+              a session to the run appeared underneath a report. It belongs beside the run itself.
+            */}
+            {/*
+              THE CONDITION CAME ACROSS UNCHANGED, and it has to. I moved this panel with a made-up
+              gate - `ground.freeExtensionAvailable`, which is not a field - and a wrong path for
+              `freeExtensionUsed`. The real one is four facts: the round has reported, this is not
+              a free check-in, the organisation has no active subscription, and the balance is zero.
+              Any one of them wrong shows a paywall to somebody who has already paid.
+            */}
+            {ground.status === 'REPORT_READY' && !postSessionDismissed &&
+              !ground.isFreeGround &&
+              !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
+              (ground.sessionsBalance ?? 0) === 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <PostSessionPanel
+                    groundId={ground.id}
+                    freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
+                    onDismiss={() => setPostSessionDismissed(true)}
+                  />
+                </div>
+              )
+            }
 
             {pendingRequests.length > 0 && (
               <div style={{ marginBottom: 16 }}>
@@ -1696,7 +1971,9 @@ export function GroundAdminPage() {
             <div style={{ marginTop: 20 }}>
               {lastInvitedEmail ? (
                 <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invite sent to {lastInvitedEmail}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginBottom: 6 }}>
+                    {lastInviteWaits ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.` : `Invite sent to ${lastInvitedEmail}`}
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.6, marginBottom: 10 }}>
                     They will get an email and do their own private check-in - about 10 minutes. You cannot see what they write. Once everyone has checked in, the shared report releases to everyone at the same time.
                   </div>
@@ -1842,381 +2119,229 @@ export function GroundAdminPage() {
         )}
 
         {/* REPORT */}
+        {/*
+          THE REPORT TAB IS A LIST OF SESSIONS, AND NOTHING ELSE.
+
+          "The report page is annoying and carries too much - it is just meant to show a list of
+          sessions and then you click and get the report. And you see who's checked in, the report
+          is counting."
+
+          What used to be here, all at once: the board, a release control with its own
+          confirmation, the forming report's entire body, an alignment read with two competing
+          empty states, "how this report is put together", a resolution strip, a correction
+          paragraph, a list of your own sessions, and the round history. Nine things on the screen
+          somebody opens to read one report.
+
+          All of it still exists. Each session's report - your own account and what the accounts
+          together show - is on that session's own page, which is where a report belongs. The whole
+          run in one place is the board's job, and the board is the first row here.
+        */}
         {tab === 'report' && (
           <div>
-            {/* What the accounts actually agree on. This was a big "4/5" over
-                a band name over a canned description - all three derived from
-                the number of completed check-ins. */}
-            {/*
-              THE THIRD COPY OF ONE SENTENCE, AND THE ONE TO DROP.
-              
-              "All 2 areas still open" was printed by the page header, by this block, and by the
-              report's own "Where things stand" - three times on one screen once the report moved into
-              the tab. The report's own copy is the one that stays: it carries its own explanation of
-              what was counted, and it is the report speaking about itself rather than a summary of it.
-              
-              Only the truthy branch goes. The empty states below it are load-bearing and stay.
-            */}
-            <div style={{ textAlign: 'center', padding: '20px 0 16px' }}>
-              {!alignRead && (
-                <>
-                  {/*
-                    TWO EMPTY STATES, STACKED, DISAGREEING. W-UX-P.
-                    
-                    Seen on the running Report tab: this said "The report has not named an area the
-                    accounts agree or differ on" - which claims a report exists and looked - directly
-                    above a second block saying "Waiting for sessions. The report generates once
-                    everybody has completed their sessions."
-                    
-                    Both were rendering because they are gated on different things, and only the second
-                    was true: nobody had checked in, so nothing had looked at anything. A person cannot
-                    tell which half to believe, and the first one is the one that sounds like a finding.
-                    
-                    So the caption now depends on whether a report EXISTS, and says the true thing in
-                    each case rather than the same thing in both.
-                  */}
-                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-sub)' }}>No report yet</div>
-                  {/*
-                    ONE EXPLANATION, NOT TWO. First pass made these two blocks agree instead of
-                    contradict, which was the bug - and then the screen still said the same thing
-                    twice, three inches apart. Where no report exists, the "Waiting for sessions"
-                    block below is the explanation, so this one says nothing and stops competing
-                    with it.
-                  */}
-                  {report?.createdAt && (
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>
-                      The report has not named an area the accounts agree or differ on.
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <TheReportIsAListOfSessions
+              rows={sessionRows}
+              boardRenders={!!(ground as any).boardRenders}
+              onOpenBoard={() => navigate(`/grounds/${ground.id}/board`)}
+              onOpenSession={(n: number) => navigate(`/grounds/${ground.id}/session/${n}`)}
+            />
 
-            {/* Session switcher */}
-            {report?.releasedAt && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 16, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: 4 }}>
-                {(['s1', 's2', 'closing'] as ReportSession[]).map(s => (
+            {/*
+              RELEASING, AS ONE LINE RATHER THAN THE HEADLINE ACTION.
+
+              "Not sure what release report is for." Fair - in the normal path nobody presses it.
+              It fires by itself the moment the last person finishes: everybody is emailed, the
+              report is stamped released, and each person's follow-up guide is written. The button
+              exists only to cut a round short and publish what there is, so it says that, and it
+              only appears while a round is genuinely open.
+            */}
+            {isInitiator && (ground as any).report && !(ground as any).report.releasedAt && (
+              <div style={{ marginTop: 14, border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  When the last person answers, the report goes out to everybody on its own - you do
+                  not have to do anything. If you need to stop waiting, you can close this round now
+                  and publish what there is; it will be missing whoever has not answered.
+                </div>
+                {!showReleaseConfirm ? (
                   <button
-                    key={s}
-                    onClick={() => setReportSession(s)}
-                    style={{ flex: 1, padding: '7px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, background: reportSession === s ? 'white' : 'transparent', color: reportSession === s ? 'var(--gw-navy)' : 'var(--gw-sub)', boxShadow: reportSession === s ? '0 1px 3px rgba(0,0,0,.08)' : 'none', transition: 'all .15s' }}
+                    onClick={() => setShowReleaseConfirm(true)}
+                    style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                   >
-                    {{ s1: 'Session 1', s2: 'Session 2', closing: 'Closing' }[s]}
+                    Close this round now and publish what there is
                   </button>
-                ))}
-              </div>
-            )}
-
-            {report?.releasedAt && activationStatus && (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
-                  {/*
-                      "BOTH" ON A GROUND WITH THREE PEOPLE IN IT.
-                      Hardcoded from when a ground was always two parties. This block sits directly
-                      above a row of THREE cards on a three-party ground, counting them itself.
-                  */}
-                  {/**
-                    * WHICH REPORTS THIS IS ABOUT, BECAUSE THE HEADER IS TALKING ABOUT A DIFFERENT ONE.
-                    *
-                    * The strip above says "report sent to everyone" the moment the SHARED report is
-                    * released. This panel said "Report reveal status - Waiting", about each person's
-                    * OWN private report, which they reveal to each other separately.
-                    *
-                    * Both true. On one screen, five hundred pixels apart, they read as opposites:
-                    * sent to everyone, and nobody has seen it. Reproduced on a real released report.
-                    *
-                    * The product already separates these words - "Your private report" against
-                    * "Shared report" - everywhere except here. Same fix as "0 of 2 checked in for
-                    * session 2": say which one you mean and the contradiction stops being one.
-                    */}
-                  Private reports {activationStatus.allActivated ? '· Everyone has shown theirs' : '· Waiting'}
-                </div>
-                {/**
-                  * SETTLED PANELS SHOW ONE LINE. WAITING PANELS SHOW THE WORK.
-                  *
-                  * This panel exists so a lead knows who to chase. Once everybody has revealed
-                  * there is nobody to chase, and it went on taking the same space at the top of
-                  * the report - a row of cards all saying "Shown", above 856px of preamble
-                  * somebody has to scroll past to reach the findings.
-                  *
-                  * The heading already says which state it is in. When that state is "done", the
-                  * heading is the whole message.
-                  */}
-                {!activationStatus.allActivated && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
-                    Each person sees their own report privately until they show it. Once everybody has, the reports become visible to each other. Each person does this from their own check-in page.
-                  </div>
-                )}
-                {!activationStatus.allActivated && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {activationStatus.parties.map((p, i) => (
-                    <div key={p.participantId} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, background: p.activated ? 'rgba(8,80,65,0.07)' : 'white', border: `1px solid ${p.activated ? 'var(--gw-green-t)' : 'var(--gw-border)'}`, textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: p.activated ? 'var(--gw-green-t)' : 'var(--gw-sub)' }}>
-                        {p.activated ? 'Shown' : 'Not yet'}
-                      </div>
-                      {/*
-                          THE ONE THING THE LEAD NEEDS HERE IS WHO SHE IS WAITING ON.
-                          This said "Party 1 / Party 2 / Party 3" - a positional index - on the
-                          lead's own report tab, so "Not yet" named nobody and she could not chase
-                          anyone. `participantLabel` is already used five times on this same page for
-                          exactly this, and the roster is already loaded, so no new request is needed.
-                          The index remains the fallback for a party with no name recorded yet.
-                      */}
-                      <div style={{ fontSize: 10, color: 'var(--gw-sub)', marginTop: 2 }}>
-                        {(() => {
-                          const person = (ground?.participants ?? []).find((x: any) => x.id === p.participantId)
-                          return person ? participantLabel(person) : `Party ${i + 1}`
-                        })()}
-                      </div>
+                ) : (
+                  <div style={{ marginTop: 10, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '11px 13px' }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, marginBottom: 10 }}>
+                      Everybody is emailed and everybody reads the same thing at the same moment.
+                      This cannot be undone, and anybody who has not answered loses their turn on
+                      this round.
                     </div>
-                  ))}
-                </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => releaseReport.mutate()}
+                        disabled={releaseReport.isPending}
+                        style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: releaseReport.isPending ? 0.6 : 1 }}
+                      >
+                        {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
+                      </button>
+                      <button
+                        onClick={() => setShowReleaseConfirm(false)}
+                        style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        Keep waiting
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
-
-            {/*
-              THE REPORT ITSELF, NOT A LINK TO IT.
-              
-              This was a button reading "View the full shared report (Venn view)" that left for a
-              page of its own - so the product held two reports about one check-in, a click apart,
-              with no way to know which you had read. The tab showed a summary; the page showed the
-              thing. Nothing said the summary was a summary.
-              
-              The report body now renders here and the old route redirects back. There is one report,
-              and "Venn view" - a word for how a diagram on it is drawn - stops being the name of a
-              destination.
-            */}
-
-            {report?.releasedAt ? (
-              <div>
-                {/*
-                  THE REPORT, RENDERED ONCE.
-                  
-                  What stood here was a SECOND rendering of the same report - pattern, areas, an
-                  honest close, a collapsed Divergences section - written for this tab while the real
-                  one lived on a page of its own behind a button. Two reports about one check-in, a
-                  click apart, and nothing told you the shorter one was short.
-                  
-                  `ReportBody` is that page's content, unchanged. Deleting the summary rather than
-                  keeping both is the point: a summary nobody can tell is a summary is the defect.
-                */}
-                {/**
-                  * THE REPORT, BARE. I briefly rendered `SharedReportForAParty` here instead, to
-                  * give a lead four readings the party view appeared to have and this one did not.
-                  * They do not exist: `GET /grounds/:id/report` returns nineteen keys and
-                  * `assumptions`, `clarity`, `alignmentReached`, `areasRequiringAlignment` and
-                  * `pattern` are none of them - checked against a released report, not inferred.
-                  * Those sections come from the ENTRY flow's report shape and have never rendered
-                  * here for anybody. Nothing to hand over, so nothing changes.
-                  */}
-                <ReportBody groundId={id!} embedded reportExists={!!(ground as any)?.report} />
-                {/* Fix 17: Post-report offboarding */}
-                <div style={{ marginTop: 16, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
-                  {/*
-                    THINGS TO PRESS, NOT THINGS TO READ.
-                    
-                    This was three paragraphs headed "What now?" - "share the report", "act on the
-                    areas requiring alignment", "open a follow-up check-in" - telling somebody to act
-                    and giving them nothing to act with. Two of the three are things this page can
-                    just do.
-                    
-                    The third, "pick the highest-priority gap and set a concrete next step", is not a
-                    button: it is work that happens between people. It stays as the one sentence, and
-                    it sits under the controls rather than above them so the page leads with what it
-                    can actually offer.
-                  */}
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 10 }}>What now?</div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                    <button
-                      onClick={async () => {
-                        /**
-                         * Copies the report's own address, which is this page. It used to say "use the
-                         * report link" without giving one, on a page that is the link.
-                         */
-                        const url = `${window.location.origin}/grounds/${id}?tab=report`
-                        try {
-                          await navigator.clipboard.writeText(url)
-                          toast.success('Link copied. Everyone in this check-in can already open it.')
-                        } catch {
-                          toast.error('Could not copy. The link is this page\u2019s address.')
-                        }
-                      }}
-                      style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '9px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      Copy the link to this report
-                    </button>
-                    <button
-                      onClick={() => navigate('/grounds/new')}
-                      style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '9px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      Open a follow-up check-in
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>
-                    The part nobody can do for you: pick the gap that matters most, agree a next step,
-                    and name who owns it and by when.
-                  </div>
-                </div>
-              </div>
-            ) : report?.createdAt ? (
-              <div>
-                <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                  {/*
-                    "EVERYBODY HAS COMPLETED THEIR SESSIONS" WAS SAID WHETHER OR NOT THEY HAD.
-
-                    This branch gated on `report?.createdAt` - a Report ROW EXISTING - and a row
-                    exists long before the round is done: the API creates a forming picture as soon
-                    as anybody finishes, marks it `forming: true`, and attaches `sessionProgress`
-                    saying how many are still out. A participant reading the same row is correctly
-                    told "a picture is forming, not everyone has checked in yet".
-
-                    So one row was read two ways: the party was told it was incomplete, and the lead
-                    was told everybody was done and offered a release - which reveals the picture to
-                    the whole team simultaneously and activates billing. Seen on a check-in whose own
-                    header said "1 of 4 checked in" two lines above this sentence.
-
-                    Releasing early stays possible, because a lead may genuinely want to close a
-                    round short. What it must not do is claim the round finished.
-                  */}
-                  {(report as any)?.forming ? (
-                    <>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>A picture is forming</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-                        {(report as any)?.sessionProgress
-                          ? `${(report as any).sessionProgress.completed} of ${(report as any).sessionProgress.total} have checked in for this session. `
-                          : 'Not everyone has checked in yet. '}
-                        You can release what there is now, and everybody will see it at the same moment. It will
-                        be missing whoever has not answered.
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Report is ready</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody has completed their sessions. When you release the report, everybody sees it at the same moment - nobody reads it before anybody else.</div>
-                    </>
-                  )}
-                  {!showReleaseConfirm ? (
-                    <button onClick={() => setShowReleaseConfirm(true)}
-                      style={{ width: '100%', padding: 12, borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                      {(report as any)?.forming
-                        ? 'Release it as it stands'
-                        : isOrgAdmin && !isInitiator ? 'Release on the lead\'s behalf' : 'Release report to everybody'}
-                    </button>
-                  ) : (
-                    <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '14px 16px' }}>
-                      {/*
-                        * "BILLING ACTIVATES ON RELEASE" WAS NOT TRUE, IN EITHER PLACE IT SAID IT.
-                        *
-                        * Releasing emits a REPORT_RELEASED usage event and nothing consumes it for
-                        * billing. `billing.service.ts` says so itself: free-tier check-ins have
-                        * unlimited sessions and "are never metered or paywalled - the 10-ground cap
-                        * (canCreateGround) is the only free-tier limit", and a subscribed
-                        * organisation has unlimited sessions with no balance check either. The limit
-                        * is counted when a check-in is CREATED, and the person is told so there.
-                        *
-                        * The audit filed this as disclosing a charge too late. The charge does not
-                        * exist. Warning somebody about money on an irreversible action that costs
-                        * nothing is worse than saying nothing: it makes them hesitate over the one
-                        * thing the product needs them to do, and it is false.
-                        */}
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Release report?</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>Everybody will see the report at the same moment. This cannot be undone.</div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => setShowReleaseConfirm(false)}
-                          style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-sub)' }}>
-                          Cancel
-                        </button>
-                        <button onClick={() => { releaseReport.mutate(); setShowReleaseConfirm(false) }} disabled={releaseReport.isPending}
-                          style={{ flex: 1, padding: '9px 12px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                          {releaseReport.isPending ? 'Releasing…' : 'Confirm release'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Waiting for sessions</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The report generates once everybody has completed their sessions.</div>
-                <button onClick={() => setTab('checkins')} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
-                  View check-in progress
-                </button>
-              </div>
-            )}
-
-            {/* Buying more sessions is a decision, and it follows reading the report like the
-                resolution below it. It was on Overview, where somebody could finish the report
-                and never learn the check-in had run out. */}
-            {/* Post-session decision panel: shown when session is complete, no balance, not subscribed */}
-            {ground.status === 'REPORT_READY' && !postSessionDismissed &&
-              !ground.isFreeGround &&
-              !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
-              (ground.sessionsBalance ?? 0) === 0 && (
-                <PostSessionPanel
-                  groundId={ground.id}
-                  freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
-                  onDismiss={() => setPostSessionDismissed(true)}
-                />
-              )
-            }
-
-            {/*
-              THE WAY INTO THE BOARD, WHERE SOMEBODY IS WHEN THEY WANT IT.
-              
-              It was a tab that left the page. The board is the shared picture a team talks over, and
-              you want it once you have read what the accounts actually said - so it opens from the
-              foot of the report rather than from a row of tabs that otherwise all stay put.
-              
-              Full width and named plainly, because it is a departure and should look like one.
-            */}
-            {!!(ground as any).boardRenders && (
-              <button
-                onClick={() => navigate(`/grounds/${id}/board`)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                  background: 'var(--gw-dark)', color: 'white', border: 'none', borderRadius: 10,
-                  padding: '14px 18px', marginTop: 16, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                <span style={{ textAlign: 'left' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Open the team board</span>
-                  <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.6)' }}>The same picture for everyone, built from the accounts. Never a verdict.</span>
-                </span>
-                <span style={{ fontSize: 13 }}>→</span>
-              </button>
-            )}
-
-            {/*
-              THE DECISION LANDS AFTER THE READING, WHICH IS THE ORDER PEOPLE ACTUALLY WORK IN.
-
-              This is the single most consequential control in the product - how the check-in ends -
-              and it sat in the middle of Overview, the tab least likely to be opened, between a stat
-              row and a billing line. You could read the whole report and never see it.
-              
-              Deciding follows reading, so it belongs at the foot of the thing you read. The guard is
-              unchanged and carries its own history: not shown on a fresh check-in, because the first
-              thing somebody meets about their new record should not be how to end it.
-            */}
-            {(allSessionsDone || (plannedSessions != null && sessionsDone >= plannedSessions - 1) || ground.resolutionState) && (
-              <ResolutionPanel groundId={ground.id} />
-            )}
-
-            {/*
-              HOW THIS HAS MOVED, under the report and not on a page of its own.
-              
-              It is the same report at earlier moments, so somebody looking for it is already here.
-              Below the report and above nothing: you read the current picture first, and the
-              earlier ones are context for it rather than a competing headline.
-            */}
-            <HowThisHasMoved groundId={ground.id} />
           </div>
         )}
 
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/*
+            * ADDING SOMEBODY TO THE CHECK-IN, ON THE SCREEN CALLED SETUP.
+            *
+            * Reported plainly: "the setup page has no way for me to add another party to the
+            * check-in." It did not. The control existed on the Sessions tab, beside the roster,
+            * which is where somebody goes to see how a run is going rather than to change who is in
+            * it - and Setup held the timeline, the cadence, the name, the visibility and how to
+            * close the whole thing, but not the one setting people look for first.
+            *
+            * MY OWN LINK POINTED HERE, which is how it got worse. Two turns ago the check-in
+            * conversation gained an "Add people" link straight to this tab, on the grounds that a
+            * tab nobody is told about is a tab nobody uses. It sent people to a screen without the
+            * control. A link to the wrong place teaches somebody the product cannot do the thing.
+            *
+            * Same control, same mutation as the Sessions tab: this is one queue with two entrances,
+            * not a second way of adding anybody.
+            */}
+          {/*
+            * THE SETUP TAB WAS EIGHT LOOSE FIELDS WITH NOTHING GROUPING THEM.
+            *
+            * "The setup page should get the same treatment you just gave the context page." It was
+            * add-a-person, then a card about you, then who-works-together, then a timeframe, then a
+            * name, then a scenario, then two privacy toggles, then closing and an access code - each
+            * one a bare label, all the same weight, in the order they happened to be built.
+            *
+            * The questions themselves fall into four: who is in it, how it runs, what it is, and how
+            * it ends. Nothing moved; they are named and numbered, which is the difference between a
+            * form and a settings page.
+            */}
+          {isInitiator && (
+            <>
+            <Fold {...foldProps(setupBand())} title="Who is in it" src="adding somebody sends them an invitation" summary={`${(ground.participants ?? []).length} on this check-in`}>
+            <div className="gw-card" style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
+                They give their own account of the same work. You cannot see what they write until the report releases.
+              </div>
+              <input
+                type="email" placeholder="name@company.com" aria-label="Their email address"
+                value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+              />
+              <input
+                type="text" placeholder="What do you want them to account for? (optional)" aria-label="What they are accountable for"
+                value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => addParticipantMut.mutate()}
+                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
+                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                >
+                  {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
+                </button>
+                {/*
+                  * ADDING FOUR PEOPLE SHOULD NOT BE FOUR VISITS TO THE SAME FORM.
+                  *
+                  * "You should be able to add many parties to the check-in at setup and add context
+                  * about them." The form took one address, sent it, and cleared itself - so a team
+                  * of six was six rounds of typing, pressing, waiting for the invite to go, and
+                  * finding the box again.
+                  *
+                  * The queue below is the fix and it keeps the part that matters: each person keeps
+                  * their OWN line about what they are accountable for, because "what do you want
+                  * them to account for" is the difference between a check-in that asks each person
+                  * the right question and one that asks everybody the same one. A bulk paste of
+                  * addresses would have been easier to build and would have thrown that away.
+                  */}
+                <button
+                  onClick={() => {
+                    const email = newParticipantEmail.trim().toLowerCase()
+                    if (!email.includes('@')) return
+                    if (queuedToAdd.some((q) => q.email === email)) return
+                    setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
+                    setNewParticipantEmail('')
+                    setNewParticipantNote('')
+                  }}
+                  disabled={!newParticipantEmail.includes('@')}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                >
+                  + Add another
+                </button>
+              </div>
+
+              {queuedToAdd.length > 0 && (
+                <div style={{ marginTop: 12, border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden' }}>
+                  {queuedToAdd.map((q, i) => (
+                    <div
+                      key={q.email}
+                      style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 11px', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined, background: 'white' }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{q.email}</div>
+                        <div style={{ fontSize: 11.5, color: q.note ? 'var(--gw-sub)' : 'var(--gw-muted)', lineHeight: 1.45 }}>
+                          {q.note || 'No note - they will be asked the general questions for this situation.'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
+                        aria-label={`Remove ${q.email}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ padding: '9px 11px', borderTop: '1px solid var(--gw-border)', background: 'var(--gw-bg)' }}>
+                    <button
+                      onClick={() => inviteTheQueue.mutate()}
+                      disabled={inviteTheQueue.isPending}
+                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: inviteTheQueue.isPending ? 0.6 : 1 }}
+                    >
+                      {inviteTheQueue.isPending
+                        ? 'Inviting…'
+                        : `Invite ${queuedToAdd.length} ${queuedToAdd.length === 1 ? 'person' : 'people'}`}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {lastInvitedEmail && (
+                <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
+                  {lastInviteWaits
+                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                    : `Invite sent to ${lastInvitedEmail}`}
+                </div>
+              )}
+            </div>
+            {/*
+              THE ACCESS CODE, BESIDE THE CONTROL THAT ADDS PEOPLE.
+              It used to sit near the closing controls with a billing link, two bands below the
+              only question it answers: how does somebody get into this check-in.
+            */}
+            <button
+              onClick={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
+              style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            >
+              Or share an access code instead
+            </button>
+            </Fold>
+            </>
+          )}
           {/**
             * WHAT IS TRUE ABOUT YOU, FOR A LEAD WHO IS ALSO IN IT.
             *
@@ -2229,15 +2354,20 @@ export function GroundAdminPage() {
             * simpler reason: it is about you and they are about the check-in.
             */}
           {viewerIsAParty && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            <Fold
+              {...foldProps(setupBand())}
+              title="You in this check-in"
+              src="your role, your standing, and what you have finished"
+              summary={`${mySessionsDone} of ${plannedSessions ?? '?'} of your sessions done`}
+            >
               <MyParticipation
                 viewer={user}
                 ground={ground}
                 myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
-                completedCount={sessionsDone}
+                completedCount={mySessionsDone}
                 totalSessions={plannedSessions ?? null}
               />
-            </div>
+            </Fold>
           )}
             {/*
               THE DEFINING CHOICE GOES FIRST, AND SAYS WHAT IT DECIDES.
@@ -2250,9 +2380,6 @@ export function GroundAdminPage() {
               
               So it leads the tab, and the line under it says the thing it decides.
             */}
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: -6 }}>
-              This one decides whether people here can corroborate each other.
-            </div>
             {/* WHETHER THESE PEOPLE ACTUALLY SEE EACH OTHER'S WORK.
                 The scenario can only guess, and the guess decides whether the
                 board's fairness reads have anything to stand on. Where nobody can
@@ -2260,6 +2387,13 @@ export function GroundAdminPage() {
                 treating it as work going missing is how a competent person gets
                 reported as absent on a ground that decides their job. */}
             {isInitiator && (
+              <>
+            <Fold {...foldProps(setupBand())} title="Who can corroborate whom" src="whether these people can see each other's work" summary={ground.peopleWorkTogether == null ? 'Not answered - assumed from the kind of check-in' : ground.peopleWorkTogether ? 'They work together' : 'They work separately'}>
+            {/* The line that says what the first question here decides. It used to sit above the
+                band, outside it, so it read as a caption for the whole tab. */}
+            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 4 }}>
+              The first one decides whether people here can corroborate each other.
+            </div>
               <div className="gw-fld">
                 <label className="gw-label">Do these people work together?</label>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
@@ -2299,6 +2433,8 @@ export function GroundAdminPage() {
                   </div>
                 )}
               </div>
+            </Fold>
+              </>
             )}
             {/**
               * WHAT WAS CHANGED, AND WHEN. W14-3.
@@ -2317,14 +2453,18 @@ export function GroundAdminPage() {
               * facts live. Stating it is the lead's; reading it is everybody's, so the party view
               * mounts the same component with `canState` false.
               */}
+            <Fold {...foldProps(setupBand())} title="What good looks like" src="the yardstick, and where this stood at the start" summary={'stated by the lead, read by everybody'}>
             <BaselinePanel groundId={id!} canState={isInitiator || isOrgAdmin} />
             {/**
               * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
               * yardstick and the starting point together are what let a report say something moved.
               */}
             <StartingPointPanel groundId={id!} canRecord={isInitiator || isOrgAdmin} />
+            </Fold>
 
-            {((ground as any).settingsChanges?.length ?? 0) > 0 && (
+            {settingsChangeCount > 0 && (
+            <Fold {...foldProps(setupBand())} title="What has changed here" src="every change to the length or the cadence, and who made it" summary={settingsChangeCount === 1 ? '1 change since setup' : `${settingsChangeCount} changes since setup`}>
+            <div style={{ display: 'contents' }}>
               <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '13px 16px' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What has been changed here</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -2339,8 +2479,9 @@ export function GroundAdminPage() {
                   ))}
                 </div>
               </div>
+            </div>
+            </Fold>
             )}
-
             {/* HOW LONG THIS RUNS, AND HOW OFTEN.
                 There was no way to change either after creation, anywhere in the
                 product. A ground created at the wrong length - which the old
@@ -2349,6 +2490,7 @@ export function GroundAdminPage() {
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
 
+            <Fold {...foldProps(setupBand())} title="How long this runs" src="the length of the run, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
             {isInitiator && (
               <div className="gw-fld">
                 <label className="gw-label">How long this runs</label>
@@ -2379,6 +2521,8 @@ export function GroundAdminPage() {
                 </button>
               </div>
             )}
+            </Fold>
+            <Fold {...foldProps(setupBand())} title="What it is" src="what it is called, and which situation it runs as" summary={ground.label}>
             <div className="gw-fld">
               <label className="gw-label">Name</label>
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
@@ -2420,6 +2564,7 @@ export function GroundAdminPage() {
                 Save scenario
               </button>
             </div>
+            </Fold>
             {/*
               THE THREE RULES THAT DECIDE WHAT PEOPLE SEE, IN ONE PLACE. W14-4.
 
@@ -2432,9 +2577,20 @@ export function GroundAdminPage() {
               contact toggle's own copy used to promise "participants can see who's here", which
               is not true when this one is off.
             */}
+            {/*
+              * ONE HEADING FOR THE TWO SETTINGS THAT ARE ONE QUESTION.
+              *
+              * "The setup tab can have fewer cards, some things can be dropdowns, some texts or
+              * spacing could make more sense." These were the clearest case: two `gw-fld` blocks,
+              * two headings, two bordered cards and two paragraphs - "Can the people here see each
+              * other?" and "Participant contact details" - for what a person thinks of as one
+              * decision, who can see whom. The second even explains itself in terms of the first
+              * ("this matters again if you turn the setting above on"), which is a card admitting
+              * it should not be a separate card.
+              */}
+            <Fold {...foldProps(setupBand())} title="Who can see whom" src="two settings, one question" summary={peersVisible ? 'Everyone here sees who else is in it' : 'Each person sees only themselves'}>
             <div className="gw-fld">
-              <label className="gw-label">Can the people here see each other?</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: '8px 8px 0 0' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
                     Show who else is in this check-in
@@ -2463,9 +2619,10 @@ export function GroundAdminPage() {
               </div>
             </div>
 
-            <div className="gw-fld">
-              <label className="gw-label">Participant contact details</label>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
+            {/* The second half of the same question, so it carries no heading of its own and sits
+                directly under the first - one card, two rows, read top to bottom. */}
+            <div className="gw-fld" style={{ marginTop: -8 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
@@ -2488,16 +2645,17 @@ export function GroundAdminPage() {
                 </button>
               </div>
             </div>
-            <button onClick={() => navigate('/billing')}
-              style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>Billing and seats</span><span style={{ color: 'var(--gw-sub)' }}>→</span>
-            </button>
-            <button
-              onClick={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
-              style={{ width: '100%', padding: 11, borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span>Share code</span><span style={{ color: 'var(--gw-sub)' }}>↗</span>
-            </button>
+            </Fold>
+            {/*
+              CODES AND BILLING WERE NOT SETUP QUESTIONS.
+
+              "What is not needed on the setup page, and why do we have codes and billing in the
+              setup?" Right on both. Billing is an ORGANISATION's business and already has its own
+              door in the sidebar - it has nothing to do with how this check-in runs. And an access
+              code is how somebody GETS IN, so it belongs beside the control that adds people,
+              which is band 1. Both moved rather than deleted.
+            */}
+            <Fold {...foldProps(setupBand())} title="Ending it" src="closing is not reversible" summary={'archiving is done by hand for now'}>
             <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -2513,6 +2671,7 @@ export function GroundAdminPage() {
                 Close this check-in
               </button>
             </div>
+            </Fold>
           </div>
         )}
       </div>

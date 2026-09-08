@@ -1,8 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { SCENARIO_LABELS, SCENARIO_GROUPS } from '@/lib/scenario-catalog'
+/*
+ * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
+ *
+ * A page importing a page is not lovely, and the alternative was worse: a third file holding a
+ * third copy of twenty-two situations, which is the exact shape of the bug being fixed. SCENARIOS is
+ * already exported and already the thing the signed-in picker reads. Moving it into lib/ is the
+ * tidier home and is a separate change - doing it here would bury the fix in a file move.
+ */
+import { SCENARIOS, groupOfCard } from '@/pages/grounds/CreateGroundPage'
+import { SituationCard } from '@/components/gw/SituationCard'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
+import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
@@ -10,9 +21,11 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
-import { Sec } from '@/components/gw/kit'
 import { scrollTo } from '@/lib/scroll-to'
+import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
+import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
+import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 
@@ -260,33 +273,42 @@ export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string;
 
 
 /**
- * THE SENTENCE THE PRODUCT WROTE IS NOT THE COORDINATOR'S ACCOUNT.
+ * THE SENTENCE THE PRODUCT WROTE IS NOBODY'S ACCOUNT - AND REMOVING IT LEFT NOTHING TO ANSWER.
  *
- * Setup opens with a first-person sentence taken from whichever situation card was clicked - "I want
- * one honest read from everyone on my team this week..." - which nobody typed. For a party it is
- * near enough to what they meant. For somebody setting this up FOR other people it is the product
- * writing an account in their voice about a situation they never described.
+ * Setup opens with a first-person sentence lifted from whichever situation card was clicked - "I want
+ * one honest read from everyone on my team this week..." - which nobody typed. The extractor was
+ * lifting goals out of it as though they had said them: driven against the live endpoint, somebody
+ * who said only "I am the ops admin, I do not really know the details" came back with one goal, the
+ * canned sentence almost verbatim. An instruction not to do that was tried first and did not hold -
+ * the model stopped taking `initial` and `decision` from it and kept taking `goals` - so the sentence
+ * was cut from what the extractor sees. It cannot lift what it cannot see.
  *
- * That was not theoretical: driven against the live endpoint, a coordinator who said only "I am the
- * ops admin, I do not really know the details" came back with a `goals` array whose single entry was
- * the canned sentence, almost word for word.
+ * THEN CUTTING IT ENTIRELY BROKE THE FIRST TURN, AND THAT IS WHY THIS REPLACES RATHER THAN REMOVES.
  *
- * AN INSTRUCTION WAS TRIED FIRST AND DID NOT HOLD. The prompt was told, in those words, not to
- * extract goals or a situation from that opener once the person is not a party. It stopped taking
- * `initial` and `decision` from it and kept taking `goals`. So the sentence is removed from what the
- * extractor is shown instead - it cannot lift what it cannot see.
+ * The cut was conditional on `yourRole` while it existed. Setup stopped asking the role, so the cut
+ * became unconditional - and on the first turn after a click that sentence is the ONLY user message.
+ * Removing it left the model a lone assistant greeting and nothing to reply to, so it wrote a user
+ * line for itself and answered that: somebody who clicked "a quick recurring check-in with my team"
+ * was answered with "I want one honest read from everyone on my team this week. Who is on the team?"
+ * - a different card's sentence, spoken back to them as though they had said it. Photographed twice.
  *
- * ONLY FOR NON-PARTIES, and only the opener. Everything the person actually typed still goes.
+ * So the turn stays and its CONTENT changes: a flat third-person note saying which card was clicked.
+ * The model knows what happened; there is no first-person sentence to mistake for an account; and
+ * `initial`, `decision` and `goals` still have to come from something the person actually typed.
+ *
+ * ONLY WHAT IS SENT. The transcript on screen is untouched - a person still sees the sentence their
+ * click posted, because that is what it looked like when they clicked it.
  */
 export function withoutPickedOpener(
   history: { role: string; content: string }[],
-  role: 'a_party' | 'setting_up_for_others' | null,
 ): { role: string; content: string }[] {
-  if (!role || role === 'a_party') return history
-  const picked = new Set(SITUATION_CARDS.map((c) => c.message))
-  const first = history.findIndex((t) => t.role === 'user')
-  if (first === -1 || !picked.has(history[first].content)) return history
-  return history.filter((_, i) => i !== first)
+  const first = history.findIndex((t) => t.role === 'user');
+  if (first === -1) return history;
+  const card = SITUATION_CARDS.find((c) => c.message === history[first].content);
+  if (!card) return history;
+  return history.map((t, i) =>
+    i === first ? { ...t, content: `[Situation picked from the list: ${card.label}]` } : t,
+  );
 }
 
 
@@ -363,17 +385,9 @@ export function summariseSetup(
   return { have, missing }
 }
 
-// Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
-// data values ('Unresolved'...'Aligned') are the AI report schema's enum and are
-// what the report JSON carries; they must never change. Only what the person
-// SEES is reframed here.
-export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned', string> = {
-  Unresolved: 'Just started',
-  Mixed: 'Taking shape',
-  Emerging: 'Getting there',
-  Clear: 'Clear',
-  Aligned: 'Shared',
-}
+/* The ladder's display labels moved with the report screen that reads them. Re-exported here
+   because this page was where anything else importing them found them. */
+export { STATUS_DISPLAY } from '@/components/gw/TheReportYouSawAtTheEnd'
 
 
 // Recognizer sub-examples ("e.g. ...") sit under each card's description so
@@ -640,7 +654,11 @@ export const SITUATION_CARDS = [
     scenario: 'PULSE_CHECK',
     label: SCENARIO_LABELS.PULSE_CHECK,
     detail: 'A short, repeatable read from each person on what is moving, what is stuck, and what has changed since last time.',
-    message: 'I want a quick recurring check-in with my team on what is moving, what is stuck and what has changed.',
+    /* "QUICK" AND NO LENGTH AT ALL. It read as a one-off favour rather than the thing you run over a
+       team for as long as you are managing them - "I have a sales team and I want to monitor them for
+       a year, this should be the one, but it is not from the entry chat." Each check-in is quick; the
+       run is not, and only one of those belongs in the sentence. */
+    message: 'I want an ongoing read from my team on what is moving, what is stuck and what has changed, for as long as this runs.',
     timelineHint: 'typically ongoing',
     examples: [
       'A weekly pulse across a delivery team instead of a status meeting.',
@@ -652,7 +670,10 @@ export const SITUATION_CARDS = [
     scenario: 'SNAPSHOT',
     label: SCENARIO_LABELS.SNAPSHOT,
     detail: 'One honest read from everyone, once. No setup, no target, and no follow-up: five minutes each on what is going well, what is stuck and what has changed.',
-    message: 'I want one honest read from everyone on my team this week about what is going well and what is stuck. Just once, not on a schedule.',
+    /* "This week" was doing the work of "once" and doing it badly: it reads as a deadline rather than
+       as the whole extent of the thing, and it is the phrase that made this card and the recurring
+       one hard to tell apart. */
+    message: 'I want one honest read from everyone on my team about what is going well and what is stuck. Once only, not on a schedule.',
     timelineHint: 'one check-in, no follow-up',
     examples: [
       'You want to know how people are actually doing this week, without booking a meeting.',
@@ -726,6 +747,35 @@ export const SITUATION_CARDS = [
  * cards. Lifted out of the effect that used to own it so that "pick a different situation" can
  * restore the same opening rather than a second wording of it.
  */
+/**
+ * WHAT CLICKING A CARD SAYS, AND WHY IT IS A LOOKUP RATHER THAN A FIELD ON THE CARD.
+ *
+ * The two pickers route differently on purpose: `/grounds/new` sends a scenario KEY, `/start` sends a
+ * SENTENCE that opens the conversation. So the entry chat needs one thing the catalogue does not
+ * carry, and exactly one - which is a lookup, not a second copy of the list. It used to be a second
+ * copy of the list, and that is how this picker fell eight cards behind the other one.
+ *
+ * Keyed by label because that is what both lists already agree on, and a guard holds the agreement:
+ * every card the catalogue offers has a sentence here, or the click does nothing.
+ */
+export function whatThisCardSays(label: string): string | undefined {
+  return SITUATION_CARDS.find((c) => c.label === label)?.message
+}
+
+/**
+ * WHICH GROUP A CARD BELONGS TO, THROUGH THE PICKER'S OWN FUNCTION.
+ *
+ * The first version read `SCENARIO_FACTS[scenario].group` directly, which is right for twenty-one of
+ * the twenty-two and wrong for the one that matters: COHORT_CHECK is offered TWICE, as an ongoing
+ * read and as onboarding a group, and the two cards share a scenario. The per-card override lives in
+ * `cardsInGroup`, so reading the facts directly filed both under the same heading and the onboarding
+ * card vanished - "Starting something (8)" became "(7)" and nobody would have known which card had
+ * gone. Caught by looking at the screen, not by a test.
+ */
+export function groupOf(card: { cardKey: string; scenario: string }): string {
+  return groupOfCard(card)
+}
+
 export const THE_OPENING_QUESTION =
   /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
      were both true of a long scrolling list with the catch-all last, and both wrong the moment it
@@ -812,6 +862,42 @@ export function EntryChatPage() {
   // Situation cards shown before user types first message
   const [pickedSituation, setPickedSituation] = useState<string | null>(null)
   /**
+   * THE CARD'S SCENARIO KEY, WHICH IS NOT THE SAME THING AS ITS LABEL.
+   *
+   * `pickedSituation` holds the label, for deciding whether the grid is still on screen. What setup
+   * needs is the key - NEW_HIRE, DRIFT - because that is what selects the situation's own first
+   * question on the server. Without it every card opened with the same generic question, which is
+   * the whole complaint: "new hire does not ask you about the new hire".
+   */
+  const [pickedScenario, setPickedScenario] = useState<string | null>(null)
+
+  /**
+   * THE REFUSAL COMES BEFORE THE WORK, WHICH IS WHERE IT USED TO BE AND WHERE I MOVED IT FROM.
+   *
+   * The set-up wizard checked the plan on its FIRST screen, with a comment saying exactly why: "the
+   * API refuses an eleventh ground correctly, but it refused it at submit - so the admin picked a
+   * card, named the ground, set the timeline and the people, and only then was told she could not.
+   * The block was right; the timing made it feel like a trick."
+   *
+   * Then the wizard became a picker that hands over to this conversation, and the check stayed
+   * behind on a screen almost nobody now sees. So a signed-in person on a used-up free plan could
+   * be handed here, spend ten minutes setting up and giving their whole account, and be refused at
+   * the save with all of it gone - the same bug, reintroduced by moving its neighbour.
+   *
+   * Only for somebody signed in: a stranger has no organisation to have used anything up, and
+   * asking the billing endpoint on their behalf would answer about nobody.
+   */
+  const whetherTheyMayOpenOne = useQuery({
+    queryKey: ['can-create-ground'],
+    queryFn: () => billingApi.checkCanCreateGround(),
+    enabled: !!user,
+    retry: false,
+  })
+  const refusedByThePlan =
+    !!user && whetherTheyMayOpenOne.data && !whetherTheyMayOpenOne.data.allowed
+      ? (whetherTheyMayOpenOne.data.reason ?? 'Subscribe to open more.')
+      : null
+  /**
    * WHICH GROUP THE PICKER IS SHOWING.
    *
    * The set-up wizard was rebuilt to her instruction - describe-your-own first, then a dropdown,
@@ -877,6 +963,8 @@ export function EntryChatPage() {
    */
   function pickADifferentSituation() {
     setPickedSituation(null)
+    /* Or the next situation is set up with the last one's first question. */
+    setPickedScenario(null)
     setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
     setOnboardingSelections(defaultSels)
     setOnboardingReady(false)
@@ -1010,10 +1098,21 @@ export function EntryChatPage() {
   const taRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Seed ground name
+  /*
+   * SEED THE NAME FROM THE SITUATION'S NAME, NOT FROM ITS KEY.
+   *
+   * This did `scenario.replace(/\+/g, ' ')`, which turns "A+new+hire" from an old marketing link
+   * into something readable and turns "NEW_HIRE" into "NEW_HIRE". That was tolerable while the
+   * parameter only arrived from those links; it is not now that /grounds/new hands over with the
+   * scenario key in the query string, and it was the first thing on screen: NEW_HIRE in the rail,
+   * NEW_HIRE on the header, on the ordinary signed-in path.
+   *
+   * The catalogue already has the name a person reads. An unrecognised value falls back to the old
+   * behaviour, which is right for a link we did not write.
+   */
   useEffect(() => {
-    const defaultName = scenario ? scenario.replace(/\+/g, ' ') : ''
-    setGroundName(defaultName)
+    const known = SITUATION_CARDS.find((c) => c.scenario === scenario)
+    setGroundName(known ? known.label : scenario ? scenario.replace(/\+/g, ' ') : '')
     setSessions(1)
   }, [])
 
@@ -1067,13 +1166,57 @@ export function EntryChatPage() {
       setShowNewScenarioConflict(true)
     } else {
       clearEntrySession()
-      if (urlInitial || scenario) {
-        const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial || scenario || '' }
+      /*
+       * THE SCENARIO KEY IS NOT A DESCRIPTION OF ANYTHING.
+       *
+       * `initial` is what this check-in is about, in the person's words, and it is what the check-in
+       * gets NAMED from. Seeding it with the raw parameter put "NEW_HIRE" in the rail and on the
+       * header - photographed the moment /grounds/new started handing over with the scenario in the
+       * query string, which is now the ordinary signed-in path rather than a rare marketing link.
+       *
+       * Only a description somebody actually wrote is seeded. A bare scenario says which situation
+       * it is and nothing about theirs, and the conversation is about to ask.
+       */
+      if (urlInitial) {
+        const sels: OnboardingSelections = { mode: urlMode || 'new', initial: urlInitial }
         setOnboardingSelections(sels)
         persistOnboarding([], sels, 1)
       }
+      /*
+       * ARRIVING WITH THE SITUATION ALREADY PICKED, WHICH IS HOW THE SIGNED-IN DOOR NOW WORKS.
+       *
+       * `/grounds/new` is the picker and nothing else: pick a card there and it hands the rest to
+       * this conversation. Without this the person would be shown the picker a second time and
+       * asked to choose the thing they had just chosen - which is the "click went nowhere" bug in
+       * its most literal form.
+       *
+       * Only when the scenario names a real card. A `?scenario=` from an old marketing link that
+       * matches nothing still lands on the picker, which is the right place for somebody whose
+       * situation we do not know.
+       */
+      const already = SITUATION_CARDS.find((c) => c.scenario === scenario)
+      if (already) {
+        setPickedSituation(already.label)
+        setPickedScenario(already.scenario)
+        theyArrivedHavingPicked.current = already.message
+      }
     }
   }, [])
+
+  /**
+   * SENT ONCE, AFTER THE FIRST PAINT, RATHER THAN INSIDE THE EFFECT ABOVE.
+   *
+   * `sendOnboarding` reads state the mount effect is still setting, so calling it from in there
+   * posts a history that does not yet contain what was just chosen. A ref carries the message out
+   * and this fires it on the next tick, when the picked situation is actually in state.
+   */
+  const theyArrivedHavingPicked = useRef<string | null>(null)
+  useEffect(() => {
+    const said = theyArrivedHavingPicked.current
+    if (!said) return
+    theyArrivedHavingPicked.current = null
+    sendOnboarding(said)
+  }, [pickedScenario])
 
   function persistOnboarding(h: Turn[], sels: OnboardingSelections, step: number, obHistory?: Turn[], obReady?: boolean) {
     saveSession({ scenario, history: h, closed: false, onboardingStep: step, onboardingSelections: sels, ...(obHistory !== undefined ? { onboardingHistory: obHistory, onboardingReady: obReady ?? false } : {}) } as any)
@@ -1098,8 +1241,25 @@ export function EntryChatPage() {
     setStreamingIdx(lastIdx)
     let i = 0
     const full = last.content
-    const CHUNK = 2
+    /*
+     * THE TYPEWRITER IS NOT A STREAM, AND IT WAS CHARGING LIKE ONE.
+     *
+     * The reply arrives whole - this endpoint does not stream - and then this animated it at two
+     * characters every 25ms. That is 80 characters a second, so a 500-character answer spent six
+     * more seconds appearing AFTER the model had already finished. Reported as "the chat is slow
+     * on both entry and when signed in, the response is slow and doesn't render as writing".
+     *
+     * A real stream is slow because the words genuinely are not there yet. This one is slow on
+     * purpose, over text already sitting in memory, which is the worst version: all of the waiting
+     * and none of the reason for it.
+     *
+     * So the animation is bounded by TIME rather than by length - about a second, whatever the
+     * reply's size. Short answers still feel written rather than pasted; long ones stop punishing
+     * the person for having asked something that deserved a full answer.
+     */
+    const ABOUT_A_SECOND = 900
     const DELAY = 25
+    const CHUNK = Math.max(2, Math.ceil(full.length / (ABOUT_A_SECOND / DELAY)))
     const base = history.slice(0, lastIdx)
     const tick = setInterval(() => {
       i += CHUNK
@@ -1130,7 +1290,16 @@ export function EntryChatPage() {
       return entryApi.chat([{
         role: 'user',
         content: `I have completed the onboarding. Here is my context. ${ctx}. Please ask me your first specific check-in question based on what I told you. Reference my situation and what I said I need. Do not open generically. Do not ask what my role is. Ask one direct specific question drawn from what I have shared.`,
-      }], scenario || undefined, groundName || undefined)
+      /*
+       * THE SITUATION THEY PICKED, NOT ONLY A URL PARAMETER.
+       *
+       * This sent `scenario`, which is `params.get('scenario')` - set when somebody arrives from a
+       * marketing link and empty for everybody who lands on /start and picks a card. So the CHECK-IN
+       * fell to the server's default of NEW_PROJECT for the ordinary path: a person who had just
+       * spent four turns setting up a new hire was interviewed as though they were starting a
+       * project. All the work making SETUP situation-aware stopped at the setup.
+       */
+      }], onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined)
     },
     onSuccess: (res) => {
       const transition: Turn = { role: 'assistant', content: 'Good, I have what I need. Now let me ask you about your side of this.' }
@@ -1144,7 +1313,9 @@ export function EntryChatPage() {
   })
 
   const sendMut = useMutation({
-    mutationFn: (msgs: Turn[]) => entryApi.chat(msgs, scenario || undefined, groundName || undefined),
+    /* Same situation for every turn after the first, and for the same reason - a check-in that
+       opens on the right question and continues on a generic one is the same bug, one turn later. */
+    mutationFn: (msgs: Turn[]) => entryApi.chat(msgs, onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined),
     onSuccess: (res, msgs) => {
       const newTurn: Turn = { role: 'assistant', content: res.reply }
       const updated = [...msgs, newTurn]
@@ -1293,7 +1464,24 @@ export function EntryChatPage() {
     setInput('')
     setOnboardingLoading(true)
     try {
-      const res = await entryApi.onboard(withoutPickedOpener(newHistory, yourRole) as Turn[])
+      /*
+       * THE SITUATION GOES WITH THE MESSAGES NOW.
+       *
+       * `classifiedScenario` is preferred over the card because it is later evidence: somebody who
+       * clicked "A new project starting" and then described a contract renewal has been reclassified
+       * from what they typed, and the question should follow what they said rather than what they
+       * first guessed. The card is the fallback, and it is what carries the very first turn - before
+       * the classifier has anything to run on.
+       *
+       * The MOMENT is only ever sent when they have actually said which it is. One card reads it
+       * (onboarding a group is a different question from an ongoing read of one), and guessing it
+       * would ask the wrong one of the two with complete confidence.
+       */
+      const res = await entryApi.onboard(
+        withoutPickedOpener(newHistory) as Turn[],
+        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
+      )
       // Safety net: if the endpoint says we are ready to wrap up but the reply
       // still asks a question, showing the wrap-up card would strand that
       // question (the input hides). Swap the question-reply for a clean closer
@@ -1587,8 +1775,19 @@ export function EntryChatPage() {
          * useful half of the coordinator path; inviting somebody to confirm a context they had not
          * written was the half she removed.
          */
+        /*
+         * "THEY DO. I READ WHAT COMES BACK." - and until now that answer went nowhere.
+         *
+         * `flowPath === 'lead'` is set by exactly one control: the second answer on the fork at the
+         * end of setup. The person has said they are not one of the people checking in. Without
+         * `managingOnly` they were recorded as a party anyway, given a session 1 of their own, and
+         * chased for an account they had just said was not theirs to give.
+         *
+         * The BRIEF travels for the same reason it always did: they gave no account, so the
+         * onboarding is the only context the people who do check in have to work from.
+         */
         ...(flowPath === 'lead'
-          ? { brief: composeLeadBrief(onboardingSelections) || undefined }
+          ? { managingOnly: true, brief: composeLeadBrief(onboardingSelections) || undefined }
           : {}),
       }
   }
@@ -1637,6 +1836,46 @@ export function EntryChatPage() {
    * simply never asked whether it was talking to somebody who had already signed in.
    */
   const [savingAsUser, setSavingAsUser] = useState(false)
+  /**
+   * WHO DID NOT GET A MAIL, AND WHY - CARRIED OVER FROM THE SCREEN THAT USED TO DO IT.
+   *
+   * The set-up wizard reported both of these and has since become a picker that hands over here, so
+   * this is now the only place a check-in is created and the rules have to live here or nowhere.
+   *
+   * REFUSED INVITES ARE WRITTEN DOWN, not only toasted. A toast does not survive the navigation on
+   * the next line, let alone a reload: an admin's list of five silently became three and the
+   * destination page recorded none of it. Each carries the API's own sentence, because "the invite
+   * did not send" is not actionable and "that address is already on this check-in" is.
+   *
+   * WAITING INVITES ARE COUNTED AND SAID ONCE. An invitation waits when the check-in starts in the
+   * future - the row is written uninvited and the cron sends on the day - and saying nothing
+   * produced "all participants i added didnt get an email". Once, with a number: five toasts saying
+   * one thing is how a real message gets dismissed as noise.
+   */
+  function sayWhoWasNotInvited(res: {
+    groundId: string
+    contributors?: { email: string; waiting?: boolean }[]
+    whyInvitesFailed?: { email: string; because: string }[]
+    failedInvites?: string[]
+  }) {
+    const refused =
+      res.whyInvitesFailed?.length
+        ? res.whyInvitesFailed
+        : (res.failedInvites ?? []).map((email) => ({ email, because: 'The invite did not send.' }))
+    if (refused.length) {
+      for (const f of refused) toast.warning(`${f.email}: ${f.because}`)
+      rememberWhoWasNotInvited(res.groundId, refused)
+    }
+    const waiting = (res.contributors ?? []).filter((c) => c.waiting).length
+    if (waiting > 0) {
+      toast.info(
+        waiting === 1
+          ? 'One person is on the check-in and will be invited on the start date.'
+          : `${waiting} people are on the check-in and will be invited on the start date.`,
+      )
+    }
+  }
+
   async function saveAsSignedInUser() {
     setSavingAsUser(true)
     try {
@@ -1644,10 +1883,42 @@ export function EntryChatPage() {
       /** The rail caches the grounds list, so it has to be told the ground exists. GW-019. */
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
       clearEntryHandover()
+      sayWhoWasNotInvited(res)
       navigate(`/grounds/${res.groundId}`, { replace: true })
+      /*
+       * WHERE THE PANEL THAT JUST VANISHED WENT.
+       *
+       * The save-and-invite card is the last thing a lead sees: their report, and the controls for
+       * cadence, dates and who is on this. It commits and is gone, and nothing has ever said where
+       * any of it went - reported as "that pop up where you set the team or cadence, no longer able
+       * to be seen".
+       *
+       * All of it still exists. The report is on Report under Your sessions; the settings are on
+       * Setup, which now names them. This is the sentence saying so, at the one moment somebody is
+       * looking for them, and it is fired AFTER the navigate so it lands on the page it describes.
+       */
+      toast.info('Cadence, dates and who is on this are on Setup. Your report is on Report, under Your sessions.')
     } catch (err: any) {
       setSavingAsUser(false)
-      toast.error(err?.response?.data?.message ?? 'Could not save this. Try again.')
+      /*
+       * THE SERVER'S OWN SENTENCE, AND ONLY WHERE IT IS FOR A PERSON.
+       *
+       * This showed `data.message` for anything at all. Every refusal here is written for somebody
+       * to act on - the plan limit, the seat limit, "you have not been named as able to open
+       * check-ins" - and printing "try again" over those sends them round a loop the product knows
+       * they cannot leave. But a 500 carries an internal message that is nobody's business, and
+       * "try again" is the honest answer to one.
+       *
+       * Carried over from the set-up wizard, whose own screens made this distinction and which is a
+       * picker now. This is the only place a check-in is created, so the rule lives here or nowhere.
+       */
+      const status = err?.response?.status
+      const said = err?.response?.data?.message
+      toast.error(
+        status >= 400 && status < 500 && typeof said === 'string' && said
+          ? said
+          : 'Could not save this. Try again.',
+      )
     }
   }
 
@@ -1939,7 +2210,7 @@ export function EntryChatPage() {
           'Save this and invite the people involved.',
         ]
         return (
-          <div style={{ padding: '7px 20px', borderBottom: '1px solid var(--gw-border)', background: '#FAFAF8', flexShrink: 0 }}>
+          <div style={{ padding: '7px 20px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {labels.map((l, i) => (
                 <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1957,11 +2228,27 @@ export function EntryChatPage() {
       })()}
 
       {/* Start over / clear check-in - hidden once session is closed */}
-      {!closed && (
+      {/*
+        * THE WAY OUT DOES NOT DISAPPEAR WHEN THE SESSION CLOSES.
+        *
+        * This whole bar was hidden on `!closed`, so once the check-in ended there was no "start
+        * over" and no "clear" anywhere on the page - reported as exactly that: "should be able to
+        * start over even when on the chat, clear or end session". A closed session with no exit is
+        * a dead end on the one screen a stranger meets first, and their only way out is the browser
+        * back button or a reload that restores the same finished session.
+        *
+        * Hiding it was defensible while closing meant "your answers lock" and nothing else. It is
+        * not defensible now that closing is followed by a save-and-invite step somebody may not
+        * want to take. The confirmation still stands in front of it, so nothing is thrown away by
+        * a stray click.
+        */}
+      {(
         <div style={{ padding: '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
           {confirmClear ? (
             <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              {phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
+              {closed
+                ? 'This will throw away this session and everything in it. Are you sure?'
+                : phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
               <button onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Yes, clear</button>
               <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
             </span>
@@ -1993,11 +2280,16 @@ export function EntryChatPage() {
                   ← Pick a different situation
                 </button>
               )}
+              {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
+                  organisation name and anybody queued to be invited - cheap to confirm, expensive
+                  to undo. On the picker with nothing said yet there is nothing to lose, so it goes
+                  straight through. Once a session has CLOSED it always confirms: that is the state
+                  where somebody has the most written down and the least expectation of losing it. */}
               <button
-                onClick={() => phase === 'checkin' ? setConfirmClear(true) : handleClearSession()}
+                onClick={() => (phase === 'checkin' || closed || onboardingHistory.length > 1) ? setConfirmClear(true) : handleClearSession()}
                 style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
               >
-                {phase === 'checkin' ? 'Clear check-in' : 'Start over'}
+                {closed ? 'Start over' : phase === 'checkin' ? 'Clear check-in' : 'Start over'}
               </button>
             </span>
           )}
@@ -2028,6 +2320,37 @@ export function EntryChatPage() {
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/*
+              * SAID BEFORE THE SETUP WORK, NOT AFTER IT.
+              *
+              * The wizard checked this on its first screen and said why: refusing at submit means
+              * somebody picked, named, planned and rostered before being told no, and "the block
+              * was right; the timing made it feel like a trick". The wizard is a picker now and
+              * hands over here, so the check has to be here or it is nowhere.
+              *
+              * They are not stopped from looking or from talking - the conversation still runs and
+              * everything stays on this device. What they are not allowed to do is find out at the
+              * save, after giving their whole account.
+              */}
+            {refusedByThePlan && (
+              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-bd)', padding: '12px 20px', flexShrink: 0 }}>
+                <div style={{ maxWidth: 680, margin: '0 auto' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
+                    You have used all of your free check-ins
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                    {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.
+                  </div>
+                  <button
+                    onClick={() => navigate('/billing')}
+                    style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    See plans
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Product intro - shown once before conversation starts */}
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
@@ -2063,7 +2386,10 @@ export function EntryChatPage() {
                     boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
                   }}
                 >
-                  {m.content}
+                  {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
+                      in a bubble in production, with its markdown asterisks intact. Stripped on the
+                      server too - this is a net, not the fix. */}
+                  {nothingInternalReachesTheBubble(m.content)}
                 </div>
               ))}
 
@@ -2081,7 +2407,7 @@ export function EntryChatPage() {
                       which is the right words for the end of a list and the wrong ones for the top:
                       nothing has come before it to be none of. Same order as /grounds/new. */}
                   <button
-                    onClick={() => setPickedSituation('other')}
+                    onClick={() => { setPickedSituation('other'); setPickedScenario(null) }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 12,
                       textAlign: 'left', padding: '14px 16px', borderRadius: 10,
@@ -2108,7 +2434,11 @@ export function EntryChatPage() {
                   >
                     {SITUATION_GROUPS.map(g => (
                       <option key={g.key} value={g.key}>
-                        {g.heading} ({SITUATION_CARDS.filter(c => c.group === g.key).length})
+                        {/* COUNTED FROM WHAT THE GROUP ACTUALLY RENDERS. This counted the entry
+                            chat's own list while the grid below now renders the catalogue's, so a
+                            situation present in one and not the other would have shown a number that
+                            did not match the cards under it. */}
+                        {g.heading} ({SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === g.key).length})
                       </option>
                     ))}
                   </select>
@@ -2122,141 +2452,41 @@ export function EntryChatPage() {
                   {SITUATION_GROUPS.filter(g => g.key === situationGroup).map((group) => {
                     const cards = SITUATION_CARDS.filter(c => c.group === group.key)
                     if (!cards.length) return null
-                    const last = true
                     return (
                       <div key={group.key}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 5, marginBottom: last ? 0 : 8 }}>
-                          {cards.map(card => (
-                            <div
-                              key={card.label}
-                              /**
-                               * NAMED EXPLICITLY, BECAUSE ITS CONTENTS CANNOT NAME IT RELIABLY.
-                               *
-                               * Read back through the accessibility tree while driving this page, every
-                               * one of these eighteen cards came out as an unnamed button - the only
-                               * named thing in the group was the little "i" beside it. Somebody on a
-                               * screen reader gets eighteen buttons called nothing and one called
-                               * "What A pulse check covers".
-                               *
-                               * The cause is the info affordance below: it is a role="button" INSIDE
-                               * this button, which is invalid, and a control nested in a control makes
-                               * the outer one's name unreliable. Naming this one outright fixes what a
-                               * person hears. The nesting itself needs the info control moved out of
-                               * the card, which is a layout change and is flagged rather than smuggled
-                               * in here.
-                               */
-                              style={{
-                                position: 'relative',
-                                textAlign: 'left', padding: '8px 11px', borderRadius: 10,
-                                border: '1px solid var(--gw-border)', background: 'white',
-                                cursor: 'pointer', fontFamily: 'inherit',
+                        {/*
+                          * THE SAME CARD AS /grounds/new, BECAUSE IT IS LITERALLY THE SAME COMPONENT.
+                          *
+                          * This block used to draw its own: a smaller title, a 9.5px italic "typically
+                          * 90 days", and an "i" that opened a paragraph. The wizard drew a coloured
+                          * tag, the moment you would open the app, and a "How it runs" disclosure.
+                          * Same twenty-two situations, same groups, two different objects - and
+                          * reported twice, the second time after the LISTS had been reconciled:
+                          * "the scenario cards on the entry chat still look different from what's in
+                          * the wizard".
+                          *
+                          * It renders SCENARIOS now, the catalogue the signed-in picker reads, rather
+                          * than a second list of the same situations. What stays here is the one thing
+                          * that is genuinely different about this door: clicking does not select, it
+                          * SENDS - there is no Continue on a chat - so the sentence that starts the
+                          * conversation is looked up from the card.
+                          */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))', gap: 8 }}>
+                          {SCENARIOS.filter(c => c.scenario !== 'OPEN_READ' && groupOf(c) === group.key).map(card => (
+                            <SituationCard
+                              key={card.cardKey}
+                              card={card}
+                              label={card.label}
+                              expanded={openCardInfo === card.label}
+                              onToggleExpanded={() => setOpenCardInfo(openCardInfo === card.label ? null : card.label)}
+                              onPick={() => {
+                                const said = whatThisCardSays(card.label)
+                                if (!said) return
+                                setPickedSituation(card.label)
+                                setPickedScenario(card.scenario)
+                                sendOnboarding(said)
                               }}
-                            >
-                              {/*
-                                THE CHOICE IS A BUTTON THE SIZE OF THE CARD, SITTING UNDER THE CONTENT.
-                                
-                                The card used to BE the button, with the info "i" as a role="button"
-                                inside it. A control inside a control is invalid, and it is why every
-                                one of these eighteen cards read back through the accessibility tree as
-                                an unnamed button while the only named thing in the group was the "i"
-                                beside it.
-                                
-                                Splitting them is the fix, and covering the card rather than wrapping
-                                it is what keeps the layout identical: the content lays out exactly as
-                                it did, this sits behind it at inset 0, and the "i" comes back above
-                                both. Two siblings, neither inside the other, and nothing moved.
-                              */}
-                              <button
-                                aria-label={card.label}
-                                onClick={() => { setPickedSituation(card.label); sendOnboarding(card.message) }}
-                                style={{
-                                  position: 'absolute', inset: 0, zIndex: 0,
-                                  background: 'none', border: 'none', borderRadius: 10,
-                                  cursor: 'pointer', padding: 0, fontFamily: 'inherit',
-                                }}
-                              />
-                              {/*
-                                THE ICON LIVES IN THE TITLE ROW.
-                                
-                                First version put it on its own line under the detail, where it hung
-                                as a fourth element on every card and made the grid look busier than
-                                the wall of text it was meant to replace. Beside the title it costs no
-                                height at all, and it is obvious which card it belongs to.
-                              */}
-                              {/*
-                                TITLE ON ITS OWN LINE, THE TWO SMALL THINGS UNDER IT.
-                                
-                                They were inline with the title, which meant a long name like "A new
-                                partner, cofounder, or manager" pushed the hint to a second line
-                                anyway and the row wrapped unevenly card to card. Below the title they
-                                sit on one predictable line, and every card is the same shape.
-                              */}
-                              {/*
-                                POINTER EVENTS OFF, SO THE CARD IS STILL CLICKABLE ANYWHERE.
-                                
-                                The content draws above the covering button, which would otherwise
-                                intercept every click that landed on the title. The one thing that DOES
-                                take clicks - the "i" - turns them back on for itself.
-                              */}
-                              <div style={{ position: 'relative', zIndex: 1, pointerEvents: 'none' }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.3 }}>{card.label}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                                {(card.detail || (card.examples && card.examples.length > 0)) && (
-                                  <button
-                                    type="button"
-                                    aria-label={`What ${card.label} covers`}
-                                    title={[card.detail, '', ...(card.examples ?? []).map(e => `e.g. ${e}`)].join('\n')}
-                                    onClick={e => { e.stopPropagation(); setOpenCardInfo(openCardInfo === card.label ? null : card.label) }}
-                                    style={{
-                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                      width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                                      padding: 0, background: 'none', fontFamily: 'inherit',
-                                      pointerEvents: 'auto', position: 'relative', zIndex: 2,
-                                      border: '1px solid',
-                                      color: openCardInfo === card.label ? 'var(--gw-navy)' : 'var(--gw-muted)',
-                                      borderColor: openCardInfo === card.label ? 'var(--gw-navy)' : 'var(--gw-border)',
-                                      fontSize: 9, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
-                                    }}
-                                  >
-                                    i
-                                  </button>
-                                )}
-                                {card.timelineHint && (
-                                  <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>{card.timelineHint}</div>
-                                )}
-                              </div>
-                              {/*
-                                NOTHING ON THE FACE OF THE CARD BUT THE NAME.
-                                
-                                Two attempts got this wrong. The first left the detail paragraph and
-                                put the icon on its own line under it, which added an element instead
-                                of removing one. The second kept the paragraph and only moved the
-                                examples - still a wall, because the paragraph was most of the text.
-                                
-                                Choosing is the only job here, and seventeen titles are choosable.
-                                Everything explanatory is behind the icon, for the person who is not
-                                sure which one is theirs.
-                                
-                                A `caution` branch used to sit here for data no card has: no entry in
-                                SITUATION_CARDS carries that field. Removed rather than left as a
-                                promise the shape does not keep - if a warning is ever needed, it has
-                                to go on the face of the card, because a warning behind an icon is
-                                read by exactly the people who did not need it.
-                              */}
-                              {openCardInfo === card.label && (
-                                <div style={{ marginTop: 5 }}>
-                                  <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{card.detail}</div>
-                                  {card.examples && card.examples.length > 0 && (
-                                    <div style={{ marginTop: 4 }}>
-                                      {card.examples.map((e, i) => (
-                                        <div key={i} style={{ fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.5 }}>e.g. {e}</div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              </div>
-                            </div>
+                            />
                           ))}
                         </div>
                       </div>
@@ -2403,13 +2633,18 @@ export function EntryChatPage() {
                 </div>
               )}
 
-              /*
-               * THE LEAD-CAPTURE PANEL WAS HERE, and it is gone with the answer that reached it.
-               * It asked for a name, an email and a note, then invited that person to confirm a
-               * situation somebody else had written. Whoever knows what a check-in is about is the
-               * person who should set it up; anybody who only needs to watch is added as oversight
-               * in the check-in's own settings, once it exists.
-               */
+              {/*
+                * THE LEAD-CAPTURE PANEL WAS HERE, and it is gone with the answer that reached it.
+                * It asked for a name, an email and a note, then invited that person to confirm a
+                * situation somebody else had written. Whoever knows what a check-in is about is the
+                * person who should set it up; anybody who only needs to watch is added as oversight
+                * in the check-in's own settings, once it exists.
+                *
+                * WRITTEN AS A BARE /* *\/ FIRST, WHICH JSX RENDERS AS TEXT. It shipped, and this
+                * whole paragraph appeared on the entry chat under the conversation, in front of
+                * anybody who opened it. Inside JSX children a comment needs the braces; without
+                * them it is a string, and nothing in the build says so.
+                */}
               {startCheckin.isPending && (
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
                   Starting your check-in…
@@ -2577,7 +2812,7 @@ export function EntryChatPage() {
                         ))}
                         <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                       </span>
-                    ) : m.content}
+                    ) : nothingInternalReachesTheBubble(m.content)}
                     {streamingIdx === i && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />}
                   </div>
                 )
@@ -2798,293 +3033,122 @@ export function EntryChatPage() {
 
             {/* Structured report */}
             {sessionReport && (
-              <>
-                {/* What we heard from you */}
-                <div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>What we heard from you</div>
-                    {reportWasCorrected && !generatingReport && (
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
-                    )}
-                  </div>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{sessionReport.whatGroundworkSaw}</p>
-                  {/* Anonymous correction: routed through the live engine (/entry/chat),
-                      not a one-shot patch. See the comment block above buildCorrectionTurn. */}
-                  {!showCorrection ? (
-                    <button
-                      onClick={() => setShowCorrection(true)}
-                      disabled={generatingReport}
-                      style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-green-b)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                    >
-                      This isn't right - correct it
-                    </button>
-                  ) : (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
-                        {/*
-                          W8. "We may ask a follow-up" reads like a warning that
-                          something might go wrong, and next to a button marked
-                          "Send correction" it reads as one-shot - which is what
-                          it looked like to Hafsah, on a flow where the follow-up
-                          loop is in fact wired. Saying plainly that this is a
-                          conversation is the difference between "the deadline is
-                          wrong" and a correction the record can act on.
-                        */}
-                        What did we get wrong? Say it plainly. This is a conversation, not a form - we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
-                      </div>
-                      {correctionExchange.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-                          {correctionExchange.map((m, i) => (
-                            <div
-                              key={i}
-                              style={{
-                                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                                maxWidth: '88%',
-                                padding: '7px 10px',
-                                borderRadius: 8,
-                                fontSize: 12.5,
-                                lineHeight: 1.5,
-                                background: m.role === 'user' ? 'var(--gw-green-b)' : 'rgba(255,255,255,.1)',
-                                color: m.role === 'user' ? 'var(--gw-dark)' : 'rgba(255,255,255,.9)',
-                              }}
-                            >
-                              {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
-                                ? m.content.slice(CORRECTION_PREFIX.length).trim()
-                                : m.content}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <textarea
-                        autoFocus
-                        value={correctionText}
-                        onChange={e => setCorrectionText(e.target.value)}
-                        placeholder="e.g. The deadline is not May - it is March 1."
-                        style={{ width: '100%', minHeight: 64, padding: '8px 10px', fontSize: 13, lineHeight: 1.55, border: 'none', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', background: 'rgba(255,255,255,.94)', color: 'var(--gw-text)' }}
+              <TheReportYouSawAtTheEnd
+                report={sessionReport}
+                correctedNote={reportWasCorrected && !generatingReport}
+                onRecordLine={
+                  uploadedDoc
+                    ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
+                    : 'On record: your account. No documents uploaded yet.'
+                }
+                renderAdd={(key, label) =>
+                  queuedFromSuggestion.has(key) ? (
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                  ) : addingContributorFor === key ? (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      <input
+                        type="email" autoFocus placeholder="their@email.com"
+                        value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
+                        style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
                       />
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <button
-                          onClick={submitReportCorrection}
-                          disabled={!correctionText.trim() || correctionLoading || generatingReport}
-                          style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-green-b)', color: 'var(--gw-dark)', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
-                        >
-                          {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
-                        </button>
-                        {correctionExchange.length > 0 && (
-                          <button
-                            onClick={finishCorrection}
-                            disabled={correctionLoading || generatingReport}
-                            style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-green-b)', fontSize: 12, border: '1px solid rgba(93,202,165,.5)', cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
-                            I'm done, redo my report
-                          </button>
-                        )}
-                        <button
-                          onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
-                          disabled={correctionLoading || generatingReport}
-                          style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'rgba(255,255,255,.6)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                      <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
                     </div>
-                  )}
-                </div>
-
-                {/* How complete your account is (one-sided until others check in) */}
-                <div style={{ marginBottom: 16 }}>
-                  <Sec title="How complete your account is" />
-                  <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--gw-text)' }}>{STATUS_DISPLAY[sessionReport.alignmentStatus] ?? sessionReport.alignmentStatus}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{sessionReport.alignmentBasis}</div>
-                  <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
-                    {(['Unresolved','Mixed','Emerging','Clear','Aligned'] as const).map(s => {
-                      const order = ['Unresolved','Mixed','Emerging','Clear','Aligned']
-                      const on = order.indexOf(s) <= order.indexOf(sessionReport.alignmentStatus)
-                      // "Shared" (data value 'Aligned') requires a second party, so it stays locked in a one-sided report.
-                      const locked = s === 'Aligned'
-                      const bg = on ? 'var(--gw-navy)' : 'var(--gw-bg)'
-                      return (
-                        <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : 'var(--gw-muted)'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${STATUS_DISPLAY[s]} 🔒` : STATUS_DISPLAY[s]}</div>
-                      )
-                    })}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
-                    Reading left to right: <b>Just started</b> (little saved yet) → <b>Taking shape</b> → <b>Getting there</b> → <b>Clear</b> (your side is well defined) → <b>Shared</b>. This is your side only. It becomes "Shared" once everyone else checks in too.
-                  </div>
-                </div>
-
-                {/* What's still open */}
-                {sessionReport.areasRequiringAlignment.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Sec title={`What's still open`} />
-                    {sessionReport.areasRequiringAlignment.map((a, i) => (
-                      <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>
-                        <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
-                        <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
-                        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Clear on your side (not mutual agreement - only one party has checked in) */}
-                {sessionReport.alignmentReached.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Sec title="Clear on your side" />
-                    {sessionReport.alignmentReached.map((a, i) => (
-                      <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Suggested parties */}
-                {sessionReport.suggestedParties && sessionReport.suggestedParties.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Sec title="Recommended additions" />
-                    <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-blue-bg)' }}>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                        Based on this check-in, these roles would strengthen the check-in. Their account would change or confirm what is currently on record from one side only.
-                      </div>
-                      {sessionReport.suggestedParties.map((p, i) => {
-                        const key = `sug-${i}-${p.role}`
-                        return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
-                          <div style={{ flex: 1 }}>
-                            <CardTitle>{p.role}</CardTitle>
-                            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.reason}</div>
-                            {queuedFromSuggestion.has(key) ? (
-                              <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
-                            ) : addingContributorFor === key ? (
-                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                                <input
-                                  type="email" autoFocus placeholder="their@email.com"
-                                  value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
-                                  onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, p.reason)}
-                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
-                                />
-                                <button onClick={() => queueSuggestedContributor(key, p.reason)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                  ) : (
+                    <button
+                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      + Add them
+                    </button>
+                  )
+                }
+                correctionSlot={
+                  <>
+                          {/* Anonymous correction: routed through the live engine (/entry/chat),
+                              not a one-shot patch. See the comment block above buildCorrectionTurn. */}
+                          {!showCorrection ? (
+                            <button
+                              onClick={() => setShowCorrection(true)}
+                              disabled={generatingReport}
+                              style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-green-b)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            >
+                              This isn't right - correct it
+                            </button>
+                          ) : (
+                            <div style={{ marginTop: 10 }}>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
+                                {/*
+                                  W8. "We may ask a follow-up" reads like a warning that
+                                  something might go wrong, and next to a button marked
+                                  "Send correction" it reads as one-shot - which is what
+                                  it looked like to Hafsah, on a flow where the follow-up
+                                  loop is in fact wired. Saying plainly that this is a
+                                  conversation is the difference between "the deadline is
+                                  wrong" and a correction the record can act on.
+                                */}
+                                What did we get wrong? Say it plainly. This is a conversation, not a form - we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
                               </div>
-                            ) : (
-                              <button
-                                onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
-                                style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                              >
-                                + Add them
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Mentioned people */}
-                {sessionReport.mentionedPeople && sessionReport.mentionedPeople.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Sec title="People mentioned" />
-                    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                        {/*
-                          W5. TWO PLACES TO ADD PEOPLE, NEITHER SAYING SO.
-                          This list and the invite screen below are the same
-                          queue with two entrances, which nobody could tell from
-                          either one. Both now say which queue they are.
-                        */}
-                        These people came up in this check-in. Adding one puts them on the same invite list as the screen below, so you will not send twice.
-                      </div>
-                      {sessionReport.mentionedPeople.map((p, i) => {
-                        const key = `men-${i}-${p.name}`
-                        return (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
-                          <div style={{ flex: 1 }}>
-                            <CardTitle>{p.name}</CardTitle>
-                            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
-                            {queuedFromSuggestion.has(key) ? (
-                              <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
-                            ) : addingContributorFor === key ? (
-                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                                <input
-                                  type="email" autoFocus placeholder="their@email.com"
-                                  value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
-                                  onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, `${p.name} - ${p.context}`)}
-                                  style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
-                                />
-                                <button onClick={() => queueSuggestedContributor(key, `${p.name} - ${p.context}`)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                              {correctionExchange.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                                  {correctionExchange.map((m, i) => (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                                        maxWidth: '88%',
+                                        padding: '7px 10px',
+                                        borderRadius: 8,
+                                        fontSize: 12.5,
+                                        lineHeight: 1.5,
+                                        background: m.role === 'user' ? 'var(--gw-green-b)' : 'rgba(255,255,255,.1)',
+                                        color: m.role === 'user' ? 'var(--gw-dark)' : 'rgba(255,255,255,.9)',
+                                      }}
+                                    >
+                                      {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
+                                        ? m.content.slice(CORRECTION_PREFIX.length).trim()
+                                        : nothingInternalReachesTheBubble(m.content)}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <textarea
+                                autoFocus
+                                value={correctionText}
+                                onChange={e => setCorrectionText(e.target.value)}
+                                placeholder="e.g. The deadline is not May - it is March 1."
+                                style={{ width: '100%', minHeight: 64, padding: '8px 10px', fontSize: 13, lineHeight: 1.55, border: 'none', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', background: 'rgba(255,255,255,.94)', color: 'var(--gw-text)' }}
+                              />
+                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <button
+                                  onClick={submitReportCorrection}
+                                  disabled={!correctionText.trim() || correctionLoading || generatingReport}
+                                  style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-green-b)', color: 'var(--gw-dark)', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
+                                >
+                                  {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
+                                </button>
+                                {correctionExchange.length > 0 && (
+                                  <button
+                                    onClick={finishCorrection}
+                                    disabled={correctionLoading || generatingReport}
+                                    style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-green-b)', fontSize: 12, border: '1px solid rgba(93,202,165,.5)', cursor: 'pointer', fontFamily: 'inherit' }}
+                                  >
+                                    I'm done, redo my report
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
+                                  disabled={correctionLoading || generatingReport}
+                                  style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'rgba(255,255,255,.6)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >
+                                  Cancel
+                                </button>
                               </div>
-                            ) : (
-                              <button
-                                onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
-                                style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                              >
-                                + Add them
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/*
-                  W3. ALSO CAME UP, AND DELIBERATELY WITHOUT A BUTTON.
-                  Her report offered "Microchip Solutions" and "Mass General"
-                  with "+ Add them" next to them, and adding a client sends that
-                  client an invitation to give their own account of her team's
-                  performance. The split is made on the server, where it is
-                  arithmetic rather than a prompt hoping to be careful. Nothing
-                  is dropped: both are still named and still described here.
-                */}
-                {sessionReport.alsoCameUp && sessionReport.alsoCameUp.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Sec title="Also came up" />
-                    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', background: '#FAFAF8' }}>
-                      {sessionReport.alsoCameUpNote && (
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                          {sessionReport.alsoCameUpNote}
-                        </div>
-                      )}
-                      {sessionReport.alsoCameUp.map((p, i) => (
-                        <div key={i} style={{ padding: '8px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
-                          <CardTitle>{p.name}</CardTitle>
-                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.4 }}>{p.context}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Where this leaves you — the one-glance summary of the detail above */}
-                <div style={{ marginBottom: 16 }}>
-                  <Sec title="Where this leaves you" />
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Worth revisiting" is what we will check back on with you next time, not a task list.</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {[
-                      { k: 'Settled', v: sessionReport.honestClose.aligned, bg: 'var(--gw-green-bg)', kc: 'var(--gw-green-t)' },
-                      { k: 'Still open', v: sessionReport.honestClose.open, bg: 'var(--gw-amber-bg)', kc: 'var(--gw-amber-t)' },
-                      { k: 'Worth revisiting', v: sessionReport.honestClose.revisit, bg: 'var(--gw-blue-bg)', kc: 'var(--gw-navy)' },
-                      { k: 'Watch for', v: sessionReport.honestClose.risk,  bg: 'var(--gw-clay-bg)', kc: 'var(--gw-clay)' },
-                    ].map(({ k, v, bg, kc }) => (
-                      <div key={k} style={{ background: bg, borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.5, color: 'var(--gw-text)' }}>
-                        <span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: kc, display: 'block', marginBottom: 3 }}>{k}</span>
-                        {v}
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 8 }}>
-                    {uploadedDoc
-                      ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
-                      : 'On record: your account. No documents uploaded yet.'}
-                  </div>
-                </div>
-              </>
+                            </div>
+                          )}
+                  </>
+                }
+              />
             )}
 
             {/* What happens next - shown after report is ready, before signup */}
@@ -3376,6 +3440,18 @@ export function EntryChatPage() {
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
                 Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this check-in and confirm your email.
+                {' '}
+                {/*
+                  * HOW MANY PEOPLE CAN BE ON THIS, SAID WHERE PEOPLE ARE ADDED.
+                  *
+                  * A check-in has no size of its own - the limit is the plan's seats. The set-up
+                  * wizard's people screen said so, and that screen is gone: /grounds/new is a picker
+                  * that hands over here, so this is where people are added and this is where the
+                  * sentence has to be. Without it the next person to guess writes "up to 20 per
+                  * check-in" again, which is the defect this rule exists for and which was invented
+                  * once already.
+                  */}
+                How many people you can add depends on your plan, not on the check-in.
               </div>
               {/* THERE IS A LATER, AND IT SHOULD SAY SO.
                   Adding people has always been optional - the commit defaults
@@ -3596,9 +3672,33 @@ export function EntryChatPage() {
                   if (pendingNewScenario) {
                     clearEntrySession()
                     setOnboardingSelections(pendingNewScenario.sels)
-                    setOnboardingHistory([])
+                    /*
+                     * THE OPENER, WHICH THIS SET TO AN EMPTY LIST AND LEFT THERE.
+                     *
+                     * `setOnboardingHistory([])` cleared the conversation and put nothing back, and
+                     * the picker only renders while the history is exactly one turn long. So
+                     * "Start new scenario" produced a blank screen: no question, no cards, no way
+                     * forward except reloading. Seen by driving it - the wizard hands over, the
+                     * session from an earlier attempt triggers this modal, and the way through it
+                     * is a dead end.
+                     */
+                    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
                     setOnboardingReady(false)
+                    setPickedSituation(null)
+                    setPickedScenario(null)
                     persistOnboarding([], pendingNewScenario.sels, 1)
+                    /*
+                     * AND IF THEY ARRIVED HAVING ALREADY PICKED, honour that here as well. Coming
+                     * from /grounds/new the situation is chosen and in the URL; showing them the
+                     * picker again after they have just used one is the "click went nowhere" bug
+                     * with an extra modal in front of it.
+                     */
+                    const already = SITUATION_CARDS.find((c) => c.scenario === scenario)
+                    if (already) {
+                      setPickedSituation(already.label)
+                      setPickedScenario(already.scenario)
+                      theyArrivedHavingPicked.current = already.message
+                    }
                   }
                   setShowNewScenarioConflict(false)
                   setPendingNewScenario(null)

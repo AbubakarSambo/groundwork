@@ -349,14 +349,34 @@ export class ConversationService {
       priorRecordEntries = withEntries.filter((s) => s.entries.length > 0);
     }
 
+    /*
+     * CLEANED ON THE WAY OUT, NOT REWRITTEN IN THE DATABASE.
+     *
+     * `forHumans` runs when a reply is generated, so every turn stored before a rule existed keeps
+     * whatever it was saved with. Scrolling back through a finished session still showed "That
+     * Zainab has not been told is now on the record" - the courtroom sentence the strip was added
+     * to remove - because the strip had never seen that row.
+     *
+     * WHY NOT A MIGRATION. What is stored is what a person was actually told. Editing it changes
+     * the record of the conversation to say something that was not said, on a product whose whole
+     * claim is that it keeps what people said. Cleaning at the read changes only what is shown, and
+     * it covers every old session at once rather than every old session that a migration remembered.
+     *
+     * Only the AI's own turns. A person's words go through untouched: `forHumans` strips OUR
+     * ceremony and house style, and running it over somebody's account would be the product editing
+     * them.
+     */
+    const asRead = <T extends { role: TurnRole; content: string }>(t: T): T =>
+      t.role === TurnRole.AI ? { ...t, content: forHumans(t.content) } : t;
+
     return {
       checkIn: {
         ...checkIn,
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      turns,
-      priorTurns,
+      turns: turns.map(asRead),
+      priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
       priorRecordEntries,
     };
@@ -3473,6 +3493,25 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return;
     }
 
+    /*
+     * THE LEAD'S OWN PROMISES, WHICH NOTHING WROTE DOWN.
+     *
+     * This branched: a participant's session went to `writeTheirOwnPromises`, a lead's went to
+     * `EXPECTATION_PROMPT` - and that prompt's rules forbid the speaker writing anything about
+     * themselves, correctly, because its job is what they expect OF OTHERS.
+     *
+     * So the one person whose own next step nobody recorded was the person running the check-in.
+     * Read back from a real session: the lead said "I have not told him, and that is on me", the
+     * conversation agreed it was the most important fact established, and it went into the record as
+     * an observation about the situation rather than as anything he owed. Session two had nothing of
+     * his to test.
+     *
+     * BOTH NOW, NOT INSTEAD. Expectations of others and promises of your own are different things
+     * about different people, they are stored differently, and a lead has both. The two prompts do
+     * not overlap: one is explicitly barred from self-statements and the other reads nothing else.
+     */
+    await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+
     const result = await this.anthropic.extract<{
       groundAims: string[];
       expectations: {
@@ -4066,6 +4105,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
   }
 
+  /**
+   * THE REPORT THIS SESSION ENDED ON, exactly as it was read.
+   *
+   * Owner-scoped, and returned untouched: the point of it is sameness. `null` when this session
+   * never produced one - sessions that ran before it was kept, and sessions still open.
+   */
+  async getSessionReport(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkIn.id },
+      select: {
+        sessionReport: true,
+        completedAt: true,
+        sessionNumber: true,
+        groundId: true,
+        /* Whether this session was the lead's own, so a page rendering it can label it as the
+           card under the transcript labels it rather than guessing. */
+        participant: { select: { partyType: true } },
+      },
+    });
+    return {
+      report: (row?.sessionReport ?? null) as Record<string, unknown> | null,
+      finishedAt: row?.completedAt ?? null,
+      sessionNumber: row?.sessionNumber ?? null,
+      groundId: row?.groundId ?? null,
+      isInitiator: row?.participant?.partyType === 'INITIATOR',
+    };
+  }
+
   /** Fetch this party's single-party artifact (B2, owner-scoped). */
   async getSoloArtifact(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
@@ -4318,7 +4386,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         date: (c.completedAt ?? c.createdAt).toISOString(),
         isSelfCorrection: c.isSelfCorrection,
         correctionOf: c.selfCorrectionTargetSession,
-        turns: c.turns.map((t) => ({ id: t.id, role: t.role, content: t.content })),
+        /* Cleaned on the way out, same as `open` above: a turn stored before a rule existed keeps
+           whatever it was saved with, and what is shown should follow today's rules even where the
+           row cannot. The AI's turns only - a person's words are theirs. */
+        turns: c.turns.map((t) => ({ id: t.id, role: t.role, content: t.role === TurnRole.AI ? forHumans(t.content) : t.content })),
       })),
     };
   }
