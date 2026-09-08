@@ -2,7 +2,7 @@
 
 **Two live vulnerabilities, found 1 September 2026. Neither is closed. Both need you.**
 
-*Last checked 5 September 2026. Both still open.*
+*Last checked 8 September 2026. Item 1 is still open and still live. Item 4 is fixed.*
 
 Nothing here is a code change waiting for review. These are credentials and configuration, and
 only you can act on them.
@@ -23,6 +23,17 @@ the API runs on today. It is present in 82 branches.
 > **Re-checked 5 September 2026.** Still true, and worse: byte-identical again on that date, and
 > now reachable from **141 branches**, not 82. Four days, fifty-nine more branches. Nothing about
 > this ages out on its own — every branch cut from any of those carries it forward.
+>
+> **Re-checked again 8 September 2026, and measured rather than remembered.** The secret in that
+> file is *still byte-identical* to the one the API is running on right now, and the commit that
+> added it is reachable from **104 branches**. The number went down because branches were deleted,
+> not because anything was fixed — deleting a branch does not remove a commit that other branches
+> still reach, and it does not un-publish anything already scraped.
+>
+> Eight days since this note was written. Nothing has been rotated. Every day this stays open, the
+> only honest thing to say about the platform's authentication is that it has none: anybody holding
+> this value can be any user in any organisation, including an admin, and nothing in the logs will
+> tell them apart from a real session.
 
 Anyone holding it can mint a token the API accepts — **as any user, in any organisation, including
 an admin** — with no password, no failed login, and nothing in the logs to separate it from a real
@@ -82,8 +93,8 @@ and until they are rotated the first item on this list is still open.
 
 ---
 
-*Written by Claude, working with Hafsah, 1 September 2026. No values are repeated in this note —
-reading it is not a second disclosure.*
+*Written by Claude, working with Hafsah, 1 September 2026; re-verified 5 and 8 September. No
+values are repeated in this note — reading it is not a second disclosure.*
 
 ---
 

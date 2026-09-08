@@ -85,7 +85,15 @@ export function MyPrivateReport({
           */}
           {mySessions.length > 0 && (
             <>
-              <Sec title="Your session reports" src="one per session, exactly as you read it at the end" />
+              {/*
+                "ONE PER SESSION, EXACTLY AS YOU READ IT AT THE END" WAS HALF TRUE, AND I WROTE IT.
+                Only the entry chat stores the full report a person read when they finished; a
+                session run inside the app ends on the card, and opening it later shows that card.
+                Both ARE what that person read at the end of that session, which is the promise
+                worth making - so the wording is now the one that holds for both, rather than the
+                one that implies a single kept artifact for every session.
+              */}
+              <Sec title="Your session reports" src="what you read when you finished each one" />
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
                 {mySessions.map((ci, i) => (
                   <button
