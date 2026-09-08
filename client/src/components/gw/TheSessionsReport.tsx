@@ -16,6 +16,19 @@ import { Sec } from './kit'
  * Everything here is assembled server-side from what people actually said, typed at extraction.
  * Nothing on this screen was asked of a model.
  */
+/**
+ * THE THREE THINGS A SESSION REPORT ANSWERS, and which of the promised sections belong to each.
+ *
+ * The order inside each group is the promise's own order; the grouping is what stops eight
+ * headings competing. A group with nothing in it does not render, which can only happen if the
+ * assembled shape changes - the server always returns all seven.
+ */
+const THE_THREE_GROUPS: { heading: string; titles: string[] }[] = [
+  { heading: 'What people said this session', titles: ['Progress and priorities', 'Commitments', 'Risks and concerns', 'Asks'] },
+  { heading: 'What moved', titles: ['What changed since last session', 'What changed since the beginning'] },
+  { heading: 'What this rests on', titles: ['What this rests on'] },
+]
+
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['session-shaped-report', groundId, sessionNumber],
@@ -65,7 +78,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       */}
       {data.counting.length > 0 && (
         <>
-          <Sec title="Who this is counting" src="every party this report waits for" />
+          <Sec title="Who this is counting" />
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}>
             {data.counting.map((c, i) => (
               <div
@@ -90,7 +103,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </>
       )}
 
-      <Sec title="Where things stand" src="counted from the areas the accounts name" />
+      <Sec title="Where things stand" />
       <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 14 }}>
         {data.whereThingsStand.saying}
       </div>
@@ -104,31 +117,65 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </>
       )}
 
-      {data.sections.map((s) => (
-        <div key={s.title} style={{ marginBottom: 14 }}>
-          <Sec title={s.title} src={s.about} />
-          {s.items.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {s.items.map((it, i) => (
-                <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6, borderBottom: '1px solid var(--gw-border)', paddingBottom: 6 }}>
-                  {it.text}
-                  {(it.who || it.documented) && (
-                    <span style={{ color: 'var(--gw-muted)', fontSize: 11.5 }}>
-                      {it.who ? ` — ${it.who}` : ''}
-                      {it.documented ? ' · from a document' : ''}
-                    </span>
+      {/*
+        EIGHT EQUAL HEADINGS IS NOT A REPORT, IT IS A CONTENTS PAGE.
+
+        "The session report looks chaotic." It was: eight uppercase eyebrows, each with a second
+        grey caption right-aligned against it, each followed by one or two short lines, every line
+        underlined by its own hairline. Sixteen labels and twenty rules for about a dozen facts -
+        so nothing led, and the eye had nowhere to rest.
+
+        The sections were never equal, and grouping them is the fix rather than restyling them:
+        what people SAID this session, what MOVED, and what it RESTS ON. The group carries the
+        heading; each section inside it is a plain sub-label, and an empty one is one quiet line.
+        The per-section captions are gone - they explained a heading that does not need explaining
+        and doubled the number of things to read.
+      */}
+      {THE_THREE_GROUPS.map((group) => {
+        const inThisGroup = data.sections.filter((s) => group.titles.includes(s.title))
+        if (inThisGroup.length === 0) return null
+        return (
+          <div key={group.heading} style={{ marginBottom: 18 }}>
+            <Sec title={group.heading} />
+            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '4px 14px 12px' }}>
+              {inThisGroup.map((s, si) => (
+                <div key={s.title} style={{ paddingTop: si === 0 ? 12 : 14, borderTop: si > 0 ? '1px solid var(--gw-border)' : undefined, marginTop: si > 0 ? 12 : 0 }}>
+                  {/* A group of one whose section is named after it does not say it twice -
+                      "WHAT THIS RESTS ON" over "What this rests on", read off the live page. */}
+                  {!(inThisGroup.length === 1 && s.title === group.heading) && (
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 5 }}>{s.title}</div>
+                  )}
+                  {s.items.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: 17, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.7 }}>
+                      {s.items.map((it, i) => (
+                        <li key={i}>
+                          {it.text}
+                          {(it.who || it.documented) && (
+                            <span style={{ color: 'var(--gw-muted)', fontSize: 11.5 }}>
+                              {it.who ? ` — ${it.who}` : ''}
+                              {it.documented ? ' · from a document' : ''}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6 }}>{s.saying}</div>
                   )}
                 </div>
               ))}
             </div>
-          ) : (
-            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{s.saying}</div>
-          )}
-        </div>
-      ))}
+          </div>
+        )
+      })}
 
-      <Sec title="How clear the accounts were" src="a report can only be as specific as what it was given" />
-      <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 14 }}>
+      {/*
+        HOW SPECIFIC THE ACCOUNTS WERE, as a sentence about the REPORT rather than a heading of its
+        own. Given equal billing with the substance it reads as a mark out of five for the person,
+        which this product does not give - so it sits at the foot, in the muted weight, saying what
+        the level means for what came out.
+      */}
+      <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.65, marginBottom: 14 }}>
         {data.howClearThisWas.saying}
       </div>
 

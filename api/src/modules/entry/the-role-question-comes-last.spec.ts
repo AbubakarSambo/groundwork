@@ -66,10 +66,32 @@ describe('the role question comes last, and not from the model', () => {
     expect(ONBOARD.indexOf('THE SITUATION ITSELF')).toBeLessThan(ONBOARD.indexOf('2. mode:'));
   });
 
-  it('tells a party their own check-in is separate, which was previously silent', () => {
-    /* Kept from the file this replaces. Setup answers are context, so a party is asked the same
-       ground again in their own check-in, and without this it reads as being asked twice for nothing. */
-    expect(ONBOARD).toMatch(/they will do their own check-in separately/i);
+  it('says what this stage is FOR, rather than what it does not count as', () => {
+    /*
+     * Kept from the file this replaces, and rewritten because the words it pinned were the
+     * problem. It required "they will do their own check-in separately", and the model said the
+     * whole thought: "Nothing you write here is your official account of the situation." Read
+     * back live as: nobody talks like that, and it raises a question it does not answer - the next
+     * message was "is this about me or the other person?"
+     *
+     * The fact is unchanged and still has to be said, once. What changed is that it is now a
+     * promise about what happens next instead of a disclaimer about what this is not.
+     */
+    expect(ONBOARD).toMatch(/These few questions just work out what kind of situation this is/);
+    expect(ONBOARD).toMatch(/then you go into your own\s+check-in, where you set the context/i);
+    /* And the disclaimer framing is banned outright, because it is what the model reached for. */
+    expect(ONBOARD).toMatch(/Never call what they type here an account/);
+  });
+
+  it('and never tells somebody the product cannot run without their own account', () => {
+    /*
+     * Asked live: "I do not want to check in, I want to set the context and she checks in against
+     * it." The answer was "the system is designed for both people to give their account", which is
+     * false - running a check-in without giving one of your own is a button at the end of setup and
+     * always has been.
+     */
+    expect(ONBOARD).toMatch(/THAT IS A SUPPORTED SETUP/);
+    expect(ONBOARD).toMatch(/they set the context and the other person answers/);
   });
 
   it('and no longer offers handing the context to somebody else', () => {

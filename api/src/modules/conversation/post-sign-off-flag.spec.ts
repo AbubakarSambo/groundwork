@@ -19,6 +19,11 @@ import { ConversationService } from './conversation.service';
 function makeService(signedOffAt: Date | null) {
   const prisma: any = {
     groundParticipant: { findFirst: jest.fn(async () => ({ id: 'p1', groundId: 'g1', signedOffAt })) },
+    /* The correction path now also asks whether the report has gone out, and for how long a
+       released one stays correctable. No report row means not released, which is the state this
+       file's cases are in - the sign-off stamp it guards is unchanged. */
+    report: { findUnique: jest.fn(async () => null) },
+    platformSetting: { findUnique: jest.fn(async () => null) },
     checkIn: {
       findUnique: jest.fn(async () => ({ id: 'ci-target', status: 'COMPLETED', sessionNumber: 1 })),
       findFirst: jest.fn(async (args: any) => {
