@@ -378,8 +378,21 @@ export function summariseSetup(
   const missing: string[] = []
 
   if (sels.initial?.trim()) have.push({ label: 'What this is about', value: sels.initial.trim() })
+  /*
+   * NAMED, NOT ADDED - AND THE LABEL USED TO SAY OTHERWISE.
+   *
+   * `peopleNamed` is every person the extraction heard in the conversation. Nobody is on the
+   * check-in until they are added on the report below, which is opt-in per person and deliberately
+   * so. Labelled "Who is in it", this asserted membership for all of them.
+   *
+   * Read on a real setup: the lead said "Just Nadia and me for this one. My two managers, Tunde and
+   * Priya, will run their own check-ins separately", the assistant answered "Perfect, so this one
+   * is just between you and Nadia", and the summary two turns later read "Who is in it: Nadia,
+   * Tunde, Priya". Contradicting its own confirmation, about the one thing the lead had been
+   * explicit about.
+   */
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
-  if (people.length) have.push({ label: 'Who is in it', value: people.join(', ') })
+  if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
   if (sels.decision?.trim()) have.push({ label: 'Why now', value: sels.decision.trim() })
   if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.join('; ') })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
@@ -842,6 +855,29 @@ const QUICK_ACTIONS = [
  * use it: the classified scenario if the engine reached one, otherwise the first
  * thing the person typed, trimmed to something an inbox can show.
  */
+/**
+ * WHETHER THE ASSISTANT HAS JUST ASKED SOMETHING.
+ *
+ * The close prompt fires on the backend's completion signal, and that signal can arrive on a turn
+ * that also asks a question. Read on a real setup, in one reply:
+ *
+ *   "...You've said you'll handle that. What is the first thing you will do towards that, and when?"
+ *   [ This session has reached a natural close. Would you like to end and see your report? ]
+ *
+ * Answer it and the banner is stale; end the session and the question goes unanswered - and it was
+ * the commitment question, the one the record most needs. A session where something has just been
+ * asked has not reached a natural close: answering is the close.
+ *
+ * Only the LAST sentence counts. A turn that gives examples mid-paragraph and lands on a statement
+ * is finished; one that ends on a question is waiting.
+ */
+export function itIsStillAskingSomething(reply: string): boolean {
+  const said = (reply ?? '').trim()
+  if (!said) return false
+  const lastSentence = said.split(/(?<=[.!?])\s+/).filter(Boolean).pop() ?? said
+  return lastSentence.trim().endsWith('?')
+}
+
 export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
   const fromScenario = (classifiedScenario ?? '')
     .trim()
@@ -1345,7 +1381,10 @@ export function EntryChatPage() {
       // Consume the backend's completion signal (previously ignored: the client
       // re-derived its own phrase-match and threw res.sessionComplete away). The reply
       // phrase-match stays as a backstop for phrasings the backend's own matcher misses.
-      if (sessionHasClosed(res) && !closed && !endPromptDismissed) {
+      /* Not while it is still asking. See itIsStillAskingSomething: the completion signal can
+         arrive on a turn that ends in a question, and offering to close over the top of one loses
+         the answer. The signal comes again on the next turn. */
+      if (sessionHasClosed(res) && !closed && !endPromptDismissed && !itIsStillAskingSomething(res.reply)) {
         setShowEndPrompt(true)
       }
       persistCheckin(updated)
