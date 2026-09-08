@@ -3952,6 +3952,15 @@ export class GroundsService {
     label: string;
     trend: 'rising' | 'steady' | 'falling' | 'new';
     whatWouldHelp: string | null;
+    /**
+     * WHICH OF THE FIVE WOULD MOVE THEM MOST, as a key rather than only as prose.
+     *
+     * "with the one that would move you most marked" - marked in the list, which needs the list to
+     * know which one. The prose has always known: the three branches below are a number, a date and
+     * vague language, and the first two are the same dimension. The client was left to guess from a
+     * sentence, so it printed the sentence underneath and marked nothing.
+     */
+    mostUseful: { dimension: string; says: string } | null;
     strongest: string | null;
   }> {
     const participant = await this.prisma.groundParticipant.findFirst({
@@ -3988,6 +3997,7 @@ export class GroundsService {
       select: { text: true },
     });
     let whatWouldHelp: string | null = null;
+    let mostUseful: { dimension: string; says: string } | null = null;
     let strongest: string | null = null;
     if (entries.length) {
       const read = entries.map(e => ({ text: e.text, ...runIntake(e.text) }));
@@ -4000,18 +4010,22 @@ export class GroundsService {
        * that shows them: "you speak english like a robot". They are the one line somebody is meant
        * to act on, so they say the thing and stop.
        */
+      /* Her wording, and the dimension it belongs to, so the row can carry the mark. */
       if (unnumbered > entries.length / 2) {
         whatWouldHelp = 'Most of your answers have no number in them. How many? How long? How often? One number changes a lot.';
+        mostUseful = { dimension: 'evidence', says: 'a number. How many, how long, how often - one figure carries a lot.' };
       } else if (undated > entries.length / 2) {
         whatWouldHelp = 'Most of your answers do not say when. A date, a week, even "before the handover" is enough.';
+        mostUseful = { dimension: 'evidence', says: 'a date. A week, a day, even "before the handover" is enough.' };
       } else if (vague > entries.length / 3) {
         whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Saying what actually happened lands harder.`;
+        mostUseful = { dimension: 'delivery', says: 'saying what actually happened, rather than describing it.' };
       }
       const best = read.filter(r => r.specificity >= 0.5).sort((a, b) => b.specificity - a.specificity)[0];
       if (best) strongest = best.text.slice(0, 220);
     }
 
-    return { scores, label, trend, whatWouldHelp, strongest };
+    return { scores, label, trend, whatWouldHelp, mostUseful, strongest };
   }
 
   /**

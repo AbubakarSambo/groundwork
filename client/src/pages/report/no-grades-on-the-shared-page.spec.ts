@@ -71,7 +71,9 @@ describe('no grades on the shared page', () => {
       join(__dirname, '..', '..', 'components', 'gw', 'TheFiveThingsThatMakeItCheckable.tsx'),
       'utf8',
     )
-    expect(FIVE).toContain('whatWouldHelp')
+    /* Named as a dimension now, so the row itself can carry the mark rather than the person
+       having to work out which of five a sentence was about. */
+    expect(FIVE).toContain('mostUseful')
     /* The per-session phrase moved to its own file when the session list moved to the Report tab
        and two surfaces needed the same reading. */
     const PHRASE = readFileSync(

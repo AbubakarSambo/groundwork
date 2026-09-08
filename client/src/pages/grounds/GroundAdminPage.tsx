@@ -1712,7 +1712,7 @@ export function GroundAdminPage() {
             <TheFiveThingsThatMakeItCheckable
               dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
               sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}
-              whatWouldHelp={(myRecord as any)?.insightsLocked ? null : mySpecificity?.whatWouldHelp}
+              mostUseful={(myRecord as any)?.insightsLocked ? null : mySpecificity?.mostUseful}
               strongest={(myRecord as any)?.insightsLocked ? null : mySpecificity?.strongest}
             />
 

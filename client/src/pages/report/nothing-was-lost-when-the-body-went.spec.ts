@@ -28,7 +28,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const read = (...p: string[]) => readFileSync(path.join(__dirname, ...p), 'utf8')
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-const MY_RECORD = strip(read('../../components/gw/MyPrivateReport.tsx'))
 const GUIDE = strip(read('../../components/gw/WhatToWalkInWith.tsx'))
 const SESSION = strip(read('SessionReportPage.tsx'))
 const BOARD = strip(read('../board/BoardPage.tsx'))

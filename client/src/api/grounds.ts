@@ -198,6 +198,8 @@ export const groundsApi = {
       label: string
       trend: 'rising' | 'steady' | 'falling' | 'new'
       whatWouldHelp: string | null
+      /** Which of the five would move them most, so the row itself can carry the mark. */
+      mostUseful: { dimension: string; says: string } | null
       strongest: string | null
     }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
 

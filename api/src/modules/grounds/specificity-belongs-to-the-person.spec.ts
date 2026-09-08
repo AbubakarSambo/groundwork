@@ -98,10 +98,20 @@ describe('and the page shows it once, with the actionable half', () => {
   });
 
   it('what would help is rendered', () => {
-    /* The label went with the card. What matters is that the line reaches the person, and it now
-       sits directly under the five things it is telling them how to fix. */
-    expect(PAGE).toMatch(/whatWouldHelp/);
-    expect(PAGE).toMatch(/\{whatWouldHelp\}/);
+    /*
+     * IT IS A MARK ON A ROW NOW, NOT ONLY A SENTENCE.
+     *
+     * "the five, phrased as additions, with the one that would move you most marked." Marked in the
+     * list needs the list to know which one, so the server names the dimension as well as the
+     * words - the three branches that write this have always known whether it was a number, a date
+     * or vague language, and the client was left to infer it from prose and print the prose instead.
+     *
+     * What this file protects is that the actionable half reaches the person. It does, twice: on
+     * the row and under it.
+     */
+    expect(PAGE).toMatch(/mostUseful/);
+    expect(PAGE).toMatch(/Most useful for you: /);
+    expect(PAGE).toMatch(/most useful<\/span>/);
   });
 
   it('their own strongest answer is rendered', () => {

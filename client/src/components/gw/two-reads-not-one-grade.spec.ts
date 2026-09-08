@@ -77,7 +77,7 @@ describe('my record', () => {
   it('keeps the part that IS about the run, and the part somebody can act on', () => {
     expect(SUPPORT).toContain('Your answers are getting more checkable than session')
     expect(FIVE).toContain('Add one or two next time')
-    expect(FIVE).toContain('whatWouldHelp')
+    expect(FIVE).toContain('mostUseful')
   })
 
   it('and confidence says which of the two reads it is', () => {

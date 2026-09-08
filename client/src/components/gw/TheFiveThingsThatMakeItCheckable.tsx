@@ -84,20 +84,32 @@ const THE_FIVE: { key: string; met: string; missing: string }[] = [
 export function TheFiveThingsThatMakeItCheckable({
   dimensions,
   sessionNumber,
-  whatWouldHelp,
+  mostUseful,
   strongest,
 }: {
   /** From the latest finished session. Absent until one has been analysed. */
   dimensions?: Record<string, string> | null
   sessionNumber?: number | null
-  /** The one thing the engine could not find across recent answers. */
-  whatWouldHelp?: string | null
+  /**
+   * WHICH OF THE FIVE WOULD MOVE THEM MOST, and how to say it.
+   *
+   * "the five, phrased as additions, with the one that would move you most marked." Marked in the
+   * list, which needs the list to know which one - so the server names the dimension rather than
+   * leaving the client to infer it from a sentence and print the sentence underneath instead.
+   */
+  mostUseful?: { dimension: string; says: string } | null
   /** Their own best answer, quoted back. */
   strongest?: string | null
 }) {
   if (!dimensions || Object.keys(dimensions).length === 0) return null
 
-  const rows = THE_FIVE.map(d => ({ ...d, there: wasItThere(dimensions[d.key]) }))
+  const rows = THE_FIVE.map(d => ({
+    ...d,
+    there: wasItThere(dimensions[d.key]),
+    /* Only ever marks something that is actually missing - telling somebody the most useful thing
+       they could add is one they already did says nothing. */
+    mostUseful: !!mostUseful && mostUseful.dimension === d.key && !wasItThere(dimensions[d.key]),
+  }))
   const shortBy = rows.filter(r => !r.there).length
 
   return (
@@ -147,10 +159,18 @@ export function TheFiveThingsThatMakeItCheckable({
             */}
             <span style={{
               fontSize: 12.5, lineHeight: 1.5,
-              color: r.there ? 'var(--gw-text)' : 'var(--gw-sub)',
-              textDecoration: 'none',
+              color: r.there ? 'var(--gw-text)' : r.mostUseful ? 'var(--gw-text)' : 'var(--gw-sub)',
+              fontWeight: r.mostUseful ? 700 : 400,
             }}>
               {r.there ? r.met : r.missing}
+              {r.mostUseful && (
+                <span style={{
+                  marginLeft: 7, fontSize: 10, fontWeight: 700, letterSpacing: '.04em',
+                  textTransform: 'uppercase', color: 'var(--gw-navy)',
+                  background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
+                  borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap',
+                }}>most useful</span>
+              )}
             </span>
           </div>
         ))}
@@ -164,12 +184,12 @@ export function TheFiveThingsThatMakeItCheckable({
       )}
 
       {/* Nobody can act on a word like "low"; everybody can act on "none of your answers say when". */}
-      {/* THE ONE THAT WOULD MOVE THEM MOST, marked as such. Five equal suggestions is a list to
-          skim; one named as the most useful is a thing to do. */}
-      {whatWouldHelp && (
+      {/* Her line, under the list the mark is in. Five equal suggestions is something to skim; one
+          named as the most useful is a thing to do. */}
+      {mostUseful && (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
-          <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>Most useful for you. </span>
-          {whatWouldHelp}
+          <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>Most useful for you: </span>
+          {mostUseful.says}
         </div>
       )}
 

@@ -637,7 +637,7 @@ export function GroundParticipantPage() {
             <TheFiveThingsThatMakeItCheckable
               dimensions={(myFinishedSessions[0] as any)?.specificityDimensions ?? null}
               sessionNumber={(myFinishedSessions[0] as any)?.sessionNumber ?? null}
-              whatWouldHelp={(myRecord as any)?.insightsLocked ? null : specificity?.whatWouldHelp}
+              mostUseful={(myRecord as any)?.insightsLocked ? null : specificity?.mostUseful}
               strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
             />
 
