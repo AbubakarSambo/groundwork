@@ -185,7 +185,8 @@ export const groundsApi = {
    * it - otherwise one failed rename produced two notifications, the useful one and "Something
    * went wrong".
    */
-  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string }, opts?: { quiet?: boolean }) =>
+  /** `startsAt` is an ISO date; the server refuses it once anybody has answered. */
+  update: (groundId: string, body: { label?: string; timelineDays?: number; cadence?: GroundCadence; contextNote?: string; startsAt?: string }, opts?: { quiet?: boolean }) =>
     apiClient.patch<Ground>(`/grounds/${groundId}`, body, opts?.quiet
       ? ({ skipForbiddenToast: true, skipServerErrorToast: true } as any)
       : undefined).then(r => r.data),

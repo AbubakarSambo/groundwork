@@ -215,6 +215,8 @@ export function GroundAdminPage() {
      Declared up here with the rest: this component returns early for several ground states, and a
      hook below one of those returns is a hook that sometimes does not run. */
   const [openSetupBand, setOpenSetupBand] = useState<number>(1)
+  /* The start date as typed, against the one on record, so the save button knows if anything moved. */
+  const [startsAtDraft, setStartsAtDraft] = useState('')
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -367,6 +369,13 @@ export function GroundAdminPage() {
     if (!p) return null
     return personLabel(p)
   }
+
+  /**
+   * The start date on record, as an `<input type="date">` wants it - the first ten characters of
+   * the ISO string, in UTC. Not `toLocaleDateString`, which would show a person west of UTC the
+   * day before and then save it back.
+   */
+  const startsAtOnRecord = (ground as any)?.startsAt ? String((ground as any).startsAt).slice(0, 10) : ''
 
   const isInitiator = !!ground && user?.id === ground.initiatorId
 
@@ -741,7 +750,10 @@ export function GroundAdminPage() {
     if (ground?.timelineDays) setTimelineDaysDraft(ground.timelineDays)
     if (ground?.cadence) setCadenceDraft(ground.cadence as GroundCadence)
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
-  }, [ground?.label, ground?.scenario])
+    /* Seeded from the record for the same reason as the two above: an empty date control on a
+       check-in that HAS a start date would offer to clear it by pressing save. */
+    setStartsAtDraft(startsAtOnRecord)
+  }, [ground?.label, ground?.scenario, startsAtOnRecord])
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
   if (definitelyGone) return <Shell><GroundGone /></Shell>
@@ -1533,6 +1545,9 @@ export function GroundAdminPage() {
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
               mySessions={mySessions}
+              /* Per-session specificity, so each row can say how checkable that account was. The
+                 same read the trend card uses; it just belongs on the session it is about. */
+              specificityBySession={Object.fromEntries(((mySpecificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
             />
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
@@ -2447,8 +2462,46 @@ export function GroundAdminPage() {
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
 
-            <Fold {...foldProps(setupBand())} title="How long this runs" src="the length of the run, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
-            {isInitiator && (
+            <Fold {...foldProps(setupBand())} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
+
+            {/*
+              WHEN IT STARTS, WHICH HAD NO CONTROL ANYWHERE.
+
+              "There is no start date on setup. Where does it exist." On the check-in, and it
+              decides two real things: an invitation for somebody added before the start is held
+              and sent on that day, and session 1 stays shut until then. It could be set when the
+              check-in was created and never again - so a new hire whose start moved by a week left
+              a check-in opening on the wrong day with no way to say so.
+
+              It disappears once somebody has answered rather than refusing on press: from that
+              point the start is the thing everything else is measured from, and the server says so
+              too, because a control being hidden is not a rule.
+            */}
+            {isInitiator && mySessionsDone === 0 && sessionRows.length === 0 && (
+              <div className="gw-fld">
+                <label className="gw-label" htmlFor="starts-at">When it starts</label>
+                <input
+                  id="starts-at"
+                  className="gw-input"
+                  type="date"
+                  value={startsAtDraft}
+                  onChange={(e) => setStartsAtDraft(e.target.value)}
+                />
+                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                  Session 1 opens on this day, and anybody you add before it is invited on it. Leave
+                  it empty to open the check-in as soon as people are added.
+                </div>
+                <button
+                  disabled={startsAtDraft === startsAtOnRecord}
+                  onClick={() => groundsApi.update(id!, { startsAt: startsAtDraft || undefined })
+                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
+                    .catch((e: any) => toast.error(e?.response?.data?.message ?? 'The start date did not change - try again.'))}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: startsAtDraft === startsAtOnRecord ? 0.4 : 1 }}
+                >
+                  Save start date
+                </button>
+              </div>
+            )}            {isInitiator && (
               <div className="gw-fld">
                 <label className="gw-label">How long this runs</label>
                 <div style={{ display: 'flex', gap: 8 }}>
