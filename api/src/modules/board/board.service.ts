@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nest
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
+import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF } from './the-board-keeps-the-same-wall';
 import {
   BoardFamily,
   BoardSection,
@@ -30,7 +31,7 @@ import {
   whatThePlaceIsWaitingOn,
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
-import { PATTERN_NAME_BY_CODE } from '../patterns/pattern-library';
+import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-library';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 
 /**
@@ -146,7 +147,24 @@ export class BoardService {
     const isInitiator = ground.initiatorId === requestingUserId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
-    if (!me && !isInitiator && !isSetupAdmin) {
+    /**
+     * AND AN ADMIN OF THIS ORGANISATION, WHO WAS BEING TURNED AWAY FROM HER OWN COMPANY'S BOARD.
+     *
+     * Read as a second admin on a real org: she can open the check-in, its report, its setup and
+     * its context - and the board answered "You are not a participant in this check-in". The board
+     * is the one surface that puts the whole run in one place, so the reader most likely to want it
+     * was the only one refused it. Same rule as the peer filter below and as `grounds.service`: an
+     * admin of THIS organisation runs the check-in; an admin of a different one is a stranger.
+     */
+    const viewer = requestingUserId
+      ? await this.prisma.user.findUnique({
+        where: { id: requestingUserId },
+        select: { role: true, organizationId: true },
+      })
+      : null;
+    const adminsThisOrg =
+      viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId;
+    if (!me && !isInitiator && !isSetupAdmin && !adminsThisOrg) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
 
@@ -157,6 +175,24 @@ export class BoardService {
     const sections = sectionsFor(ground.scenario);
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
+
+    /**
+     * THE WALL THE CHECK-IN KEEPS, KEPT HERE TOO.
+     *
+     * Worked out exactly as `grounds.service` works it out, and for the same reason: on an
+     * evaluation-family ground people give their accounts without seeing each other. That service
+     * filters the other parties out of the ground payload; this one had never heard of the rule, so
+     * one hire on a real twelve-session cohort got a check-in page listing only herself and a board
+     * listing every colleague by name with the read on their quarter attached.
+     *
+     * Never hidden from whoever RUNS the check-in - its lead, the admin who set it up, or an admin
+     * of the organisation. The rule is between the parties.
+     */
+    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(family);
+    const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
+    /* `viewer` and `adminsThisOrg` are read once at the door above - see the note there. */
+    const runsThisGround = isInitiator || isSetupAdmin || !!adminsThisOrg;
+    const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };
 
     // WHOSE ANSWER THIS IS.
     //
@@ -515,6 +551,19 @@ export class BoardService {
           label: PATTERN_NAME_BY_CODE.get(d.code) ?? null,
           text: d.observationText,
           periods: d.periodsObserved,
+          /*
+           * AND WHAT TO DO ABOUT IT, which the board was leaving in the library.
+           *
+           * "i would expect a coaching line or an assessment after, what do i do with this" - about
+           * "Direct questions about deliverables were met with unrelated statements about needs and
+           * blockers." Every pattern has carried a `probe` since the library was written: the
+           * question to put to somebody once the pattern has been seen, which is the entire reason
+           * a pattern is worth naming. It just never left the file.
+           *
+           * A question, not a verdict. A pattern is something the record has noticed more than
+           * once; the next move is asking the person about it.
+           */
+          askThem: whatToAskAbout(d.code),
         }));
     }
 
@@ -531,6 +580,29 @@ export class BoardService {
             })),
           }
         : null;
+    }
+
+    /*
+     * APPLIED IN ONE PLACE, AT THE END, ON PURPOSE. Threading the rule through eight builders is
+     * eight chances to forget it and no single place to read what the board gives away. Here the
+     * whole answer is one paragraph, and a section added later is walled by being added to it
+     * rather than by whoever wrote it remembering.
+     */
+    if (whoMaySee.peersHidden) {
+      out.contribution = onlyWhatThisReaderMaySee(out.contribution as any, whoMaySee);
+      out.coverage = onlyWhatThisReaderMaySee(out.coverage as any, whoMaySee);
+      out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
+      out.managerAlignment = onlyWhatThisReaderMaySee(out.managerAlignment as any, whoMaySee);
+      out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
+      out.dependencies = onlyHandoffsTheyAreIn(out.dependencies as any, whoMaySee);
+      if (out.checkInGrid) {
+        out.checkInGrid = {
+          ...(out.checkInGrid as any),
+          rows: onlyWhatThisReaderMaySee((out.checkInGrid as any).rows, whoMaySee),
+        };
+      }
+      /* Said, rather than left as a board that has quietly lost most of itself. */
+      out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
     }
 
     return out;

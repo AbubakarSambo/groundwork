@@ -700,6 +700,24 @@ export function BoardPage() {
         {/* ---------------------------------------------- contribution and fairness */}
         {(shown.contribution || shown.coverage) && <Zone label="Contribution and fairness" />}
 
+        {/*
+          WHY THIS HALF OF THE BOARD IS SHORTER FOR SOME PEOPLE.
+
+          On an evaluation-family ground the parties give their accounts without seeing each other,
+          and the board now keeps that wall - a party gets their own row and nobody else's, where
+          before they got every colleague's name and the read on their quarter. Without a line
+          saying so, a board that has quietly lost most of itself reads as broken, or as though
+          nobody else is in the check-in.
+
+          The server decides and sends the sentence; this renders it. A rule the client worked out
+          for itself would be a second copy of the rule, and the wrong one to get wrong.
+        */}
+        {(b as any).whyYouOnlySeeYourself && (
+          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 10, maxWidth: 620 }}>
+            {(b as any).whyYouOnlySeeYourself}
+          </div>
+        )}
+
         {shown.contribution && b.contribution && (
           <>
             <Sec title="Contribution against role" src="each role, own terms" />
@@ -893,8 +911,26 @@ export function BoardPage() {
                   <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
                     {p.label && <Pill tone="info">{p.label}</Pill>}
                     <span style={{ flex: 1, fontSize: 12.5 }}>{p.text}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>{p.periods} periods</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', flexShrink: 0 }}>{p.periods} periods</span>
                   </div>
+                  {/*
+                    AND WHAT TO DO ABOUT IT.
+
+                    "i would expect a coaching line or an assessment after, what do i do with this" -
+                    about "Direct questions about deliverables were met with unrelated statements
+                    about needs and blockers." An observation with no next move is a dead end on the
+                    one board somebody opens to decide something.
+
+                    The library has carried the question for every pattern since it was written; the
+                    server now sends it. A QUESTION and not a verdict, because a pattern is a thing
+                    the record has noticed more than once, and the next move is asking the person.
+                  */}
+                  {(p as any).askThem && (
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 6, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
+                      <span style={{ color: 'var(--gw-muted)' }}>Ask them: </span>
+                      {(p as any).askThem}
+                    </div>
+                  )}
                 </Row>
               ))}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
