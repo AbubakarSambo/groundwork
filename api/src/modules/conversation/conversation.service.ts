@@ -2590,7 +2590,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }>(
       COACHING_OBSERVATION_PROMPT,
       [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
-      COACHING_OBSERVATION_SCHEMA as any,
+      COACHING_OBSERVATION_SCHEMA,
     );
 
     // signalRead applies the guards that matter - an index off the end, an empty
@@ -3701,7 +3701,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }>(
       OPERATING_DIFFERENCE_PROMPT,
       [{ role: 'user', content: `WHAT IS WRITTEN:\n${written}\n\nWHAT THEY SAID:\n${said}` }],
-      OPERATING_DIFFERENCE_SCHEMA as any,
+      OPERATING_DIFFERENCE_SCHEMA,
     ).catch(() => null);
     if (!result?.differences?.length) return;
 
@@ -3814,7 +3814,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const result = await this.anthropic.extract<{ happened: TheySay[] }>(
       THEY_SAY_HAPPENED_PROMPT,
       [{ role: 'user', content: said }],
-      THEY_SAY_HAPPENED_SCHEMA as any,
+      THEY_SAY_HAPPENED_SCHEMA,
     ).catch(() => null);
     if (!result?.happened?.length) return;
 
@@ -3875,7 +3875,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }>(
       PROGRESS_PROMPT,
       [{ role: 'user', content: `THEIR PROMISES:\n${mine.map((m) => `- ${m.text}`).join('\n')}\n\nTHEIR CHECK-IN:\n${said}` }],
-      PROGRESS_SCHEMA as any,
+      PROGRESS_SCHEMA,
     ).catch(() => null);
     if (!result?.progress?.length) return;
 
@@ -3916,7 +3916,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   ) {
     const result = await this.anthropic.extract<{
       promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
-    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA as any);
+    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA);
     if (!result?.promises?.length) return;
 
     /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */

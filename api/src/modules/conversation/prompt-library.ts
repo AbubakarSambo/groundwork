@@ -1874,23 +1874,27 @@ Never write that they are wrong, do not understand, or have a gap.
 Be conservative. An empty list is usually correct.`;
 
 export const OPERATING_DIFFERENCE_SCHEMA = {
-  type: 'object',
-  properties: {
-    differences: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          about: { type: 'string' },
-          theirAccount: { type: 'string' },
-          whatIsWritten: { type: 'string' },
-          neverTold: { type: 'boolean' },
+  name: 'emit_operating_differences',
+  description: 'Where what this person said differs from what is written down.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      differences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            about: { type: 'string' },
+            theirAccount: { type: 'string' },
+            whatIsWritten: { type: 'string' },
+            neverTold: { type: 'boolean' },
+          },
+          required: ['about', 'theirAccount', 'whatIsWritten'],
         },
-        required: ['about', 'theirAccount', 'whatIsWritten'],
       },
     },
+    required: ['differences'],
   },
-  required: ['differences'],
 } as const;
 
 /**
@@ -1938,24 +1942,28 @@ Do not turn one visit into several because it was mentioned twice.
 Be conservative. An empty list is a correct answer.`;
 
 export const THEY_SAY_HAPPENED_SCHEMA = {
-  type: 'object',
-  properties: {
-    happened: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
-          counterparty: { type: 'string' },
-          when: { type: 'string' },
-          note: { type: 'string' },
-          saysRecordIsWrong: { type: 'boolean' },
+  name: 'emit_what_they_say_happened',
+  description: 'Interactions the person says happened, in their words.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      happened: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
+            counterparty: { type: 'string' },
+            when: { type: 'string' },
+            note: { type: 'string' },
+            saysRecordIsWrong: { type: 'boolean' },
+          },
+          required: ['kind', 'counterparty'],
         },
-        required: ['kind', 'counterparty'],
       },
     },
+    required: ['happened'],
   },
-  required: ['happened'],
 } as const;
 
 export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
@@ -1977,22 +1985,26 @@ Do not turn a difficulty into progress, and do not turn progress into a difficul
 Be conservative. An empty list is a correct answer and usually the right one.`;
 
 export const PROGRESS_SCHEMA = {
-  type: 'object',
-  properties: {
-    progress: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          promise: { type: 'string' },
-          whatTheyDid: { type: 'string' },
-          finished: { type: 'boolean' },
+  name: 'emit_progress',
+  description: 'What the person says they did against their own promises.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      progress: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            promise: { type: 'string' },
+            whatTheyDid: { type: 'string' },
+            finished: { type: 'boolean' },
+          },
+          required: ['promise', 'whatTheyDid'],
         },
-        required: ['promise', 'whatTheyDid'],
       },
     },
+    required: ['progress'],
   },
-  required: ['progress'],
 } as const;
 
 export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
@@ -2027,27 +2039,31 @@ Do not turn a worry or a complaint into a commitment.
 Be conservative. An empty list is usually correct.`;
 
 export const OWN_PROMISE_SCHEMA = {
-  type: 'object',
-  properties: {
-    promises: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          promise: { type: 'string' },
-          kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
-          check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
-          dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
-          dueSaid: { type: 'string' },
-          owedTo: { type: 'string' },
-          target: { type: 'string' },
-          measure: { type: 'string' },
+  name: 'emit_own_promises',
+  description: 'What the person said they themselves will do.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      promises: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            promise: { type: 'string' },
+            kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
+            check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+            dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+            dueSaid: { type: 'string' },
+            owedTo: { type: 'string' },
+            target: { type: 'string' },
+            measure: { type: 'string' },
+          },
+          required: ['promise', 'kind', 'check', 'dueKind'],
         },
-        required: ['promise', 'kind', 'check', 'dueKind'],
       },
     },
+    required: ['promises'],
   },
-  required: ['promises'],
 } as const;
 
 export const EXPECTATION_SCHEMA = {
@@ -4200,21 +4216,25 @@ RULES.
 Return JSON only.`;
 
 export const COACHING_OBSERVATION_SCHEMA = {
-  type: 'object',
-  properties: {
-    index: {
-      type: ['integer', 'null'],
-      description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
+  name: 'emit_coaching_observation',
+  description: 'Which behaviour from the supplied list the transcript shows, if any, with the reason in the person\'s own terms, and what became of the last step.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      index: {
+        type: ['integer', 'null'],
+        description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
+      },
+      reason: {
+        type: ['string', 'null'],
+        description: "One sentence from what the person said, in their own terms. Null if index is null.",
+      },
+      lastStepOutcome: {
+        type: ['string', 'null'],
+        enum: ['done', 'not done', 'did more', 'sideways', null],
+        description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
+      },
     },
-    reason: {
-      type: ['string', 'null'],
-      description: "One sentence from what the person said, in their own terms. Null if index is null.",
-    },
-    lastStepOutcome: {
-      type: ['string', 'null'],
-      enum: ['done', 'not done', 'did more', 'sideways', null],
-      description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
-    },
+    required: ['index', 'reason', 'lastStepOutcome'],
   },
-  required: ['index', 'reason', 'lastStepOutcome'],
 } as const;
