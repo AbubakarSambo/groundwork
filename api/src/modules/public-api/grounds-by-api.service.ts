@@ -277,6 +277,8 @@ export class GroundsByApiService {
       cadence: ground.cadence,
       startsAt: ground.startsAt,
       endsAt: ground.endsAt,
+      /* Echoed so the caller can see the standard it set; it was stored and never shown. */
+      brief: (ground as any).brief ?? null,
       invitations,
     };
   }

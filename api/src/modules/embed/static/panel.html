@@ -175,6 +175,21 @@
    * the check-in and not to the assistant; it clears when the session completes or fails to open.
    */
   var inCheckIn = null;
+  /* A ground waiting on this person to start: the next thing they type is their part in it. */
+  var awaitingPartFor = null;
+
+  function confirmWithPart(groundId, part) {
+    awaitingPartFor = null;
+    input.placeholder = 'Ask about your work';
+    bubble('me', part);
+    api('POST', '/grounds/' + encodeURIComponent(groundId) + '/confirm-lead', { remit: part })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        bubble('them', o ? 'Started. Your first check-in is open when you are ready.' : 'I could not start it just then. Try again in a moment.');
+        if (typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
+      })
+      .catch(function () { bubble('them', 'I could not start it just then. Try again in a moment.'); });
+  }
 
   function act(a) {
     if (a.kind === 'open_a_check_in') return startCheckIn(a.id);
@@ -249,24 +264,15 @@
         var g = (list || []).filter(function (x) { return x.groundId === groundId; })[0];
         if (!g) { bubble('them', 'That one has already started, or is no longer waiting on you.'); return; }
         bubble('them', (g.brief ? 'What was written for you: "' + g.brief + '"\n\n' : '') + g.says);
-        var wrap = document.createElement('div');
-        wrap.className = 'chips';
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'chip act';
-        b.textContent = 'Confirm and start';
-        b.addEventListener('click', function () {
-          api('POST', '/grounds/' + encodeURIComponent(groundId) + '/confirm-lead', {})
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (o) {
-              bubble('them', o ? 'Started. Your first check-in is open when you are ready.' : 'I could not start it just then. Try again in a moment.');
-              if (typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
-            })
-            .catch(function () { bubble('them', 'I could not start it just then. Try again in a moment.'); });
-        });
-        wrap.appendChild(b);
-        log.appendChild(wrap);
-        log.scrollTop = log.scrollHeight;
+        /*
+         * THEIR OWN PART, ASKED ONCE, BEFORE IT STARTS. The role map, the coaching read and the
+         * probe list all key on it, and a lead confirmed from the panel used to arrive with none:
+         * 0 of 2 API-set leads had one. One sentence, sent as the remit with the confirmation.
+         */
+        bubble('them', 'And your part in this, in a sentence? Type it and send, and this starts.');
+        awaitingPartFor = groundId;
+        input.placeholder = 'Your part in this';
+        input.focus();
       })
       .catch(function () { bubble('them', 'I could not read that just then. Try again in a moment.'); });
   }
@@ -312,7 +318,8 @@
     var v = input.value.trim();
     if (!v) return;
     input.value = '';
-    if (inCheckIn) answerInCheckIn(v);
+    if (awaitingPartFor) confirmWithPart(awaitingPartFor, v);
+    else if (inCheckIn) answerInCheckIn(v);
     else ask(v);
   });
 
