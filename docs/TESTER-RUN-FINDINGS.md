@@ -281,3 +281,155 @@ clean. Noting it only because a tester would report it.
 | Second admin | Yes | Findings 18, 19, 23, 24 |
 | Guest from another organisation | No | Needs a second organisation |
 | Broadcast link, no invite | No | Link exists on the Setup tab, untested |
+
+---
+
+# Third run: the guest, the broadcast link, and the three things Hafsah spotted
+
+## What was and was not tested
+
+The invite email was never seen. Resend has a placeholder key locally, so nothing sends. The
+invite tokens were read out of the database and the `/invite?token=...` links opened by hand. The
+link is tested; the email that carries it is not.
+
+## 26. "Somebody from outside your organisation" gets no gate and no different treatment
+
+The Setup panel tells the lead:
+
+> Somebody from outside your organisation is invited straight away, and an admin here has to let
+> them in before they can check in. You will see that on their row, and they are told the same thing.
+
+Invited `hafsah+tunde@stmarys-clinic.test`, a different domain from the lead. All three halves of
+that sentence are false:
+
+- `awaiting_seat` is `false` on his row. No approval was needed and none was asked for.
+- He walked from the invite link straight into a check-in and completed it.
+- His invite page is word for word the same as the internal one. Nothing tells him he is from
+  outside, and nothing mentions waiting to be let in.
+- There is no row. The "Who is in it" panel shows an add form and a toast, and never lists who is
+  in it. Neither Zainab nor Tunde ever appeared there.
+
+## 27. An outside person is made a member of the customer's organisation
+
+After finishing, his sidebar reads:
+
+> Tunde Okafor - Member at Hafsah's workspace
+
+with "All check-ins" and "Settings" in the nav. In the database his `role` is `MEMBER` and his
+`organization_id` is Hafsah's. The People page copy says "Guests come from another organisation:
+they take part in what they are added to, and never open one here." No guest state was applied to
+him at all.
+
+## 28. Cadence at the end of the report: it is hidden exactly when it matters, and there are no dates
+
+Hafsah's report: the cadence block does not show up and has no start dates. Both confirmed, and
+here is why.
+
+`WhatThisCheckInStillNeeds` renders only when `cadenceChosen === false` **and** the reader is the
+lead. In this check-in cadence was picked during the opening conversation, so `cadence_stated` is
+true and the block never appears again anywhere. A lead who wants to change the rhythm after
+reading a report has no route to it from the report.
+
+There are no dates because none exist. On this ground:
+
+| Column | Value |
+| --- | --- |
+| `starts_at` | null |
+| `ends_at` | null |
+| `cadence_anchor_day` | null |
+| `timeline_days` | 90 |
+| `timeline_stated` | false |
+
+"89 days remaining" and "Your next check-in opens 9 October" are computed off `created_at`. Nobody
+set a start date, nothing offers to, and the 90 days is a default nobody chose. Unlike cadence,
+there is no prompt anywhere for the timeline.
+
+And a participant never sees the block at all, because of the lead gate. Zainab and Tunde were
+never told how often this runs.
+
+## 29. "Correct it" navigates, and lands you on a page that looks like it did nothing
+
+Pressing "Something here is wrong - correct it" on the pop-up report does fire. The server returns
+201 on `POST /grounds/{id}/correct-session` and the browser goes to `/checkin/{newId}`.
+
+What you then see is the old finished transcript, the same report card, and the same "correct it"
+button. Nothing says a correction session opened. There is no new question, no framing, no
+difference of any kind on screen. Two correction sessions now sit in the database with nothing in
+them, because the second one looked exactly like the first attempt failing.
+
+So Hafsah is right that you cannot correct the report from the pop-up. The cause is not a dead
+button, it is a destination that is indistinguishable from where you started.
+
+## 30. The report has nothing in it after a specific session
+
+Tunde gave dates, a count, a duration, an unanswered email and a stated measure of success. His
+report:
+
+> WHERE THIS STANDS, ACROSS EVERYONE
+> Not enough has been said yet to draw one. It fills in as people check in.
+> WHERE THIS HAS GOT TO
+> Too little to say. 0 areas settled.
+
+Three parties have now checked in on this session.
+
+## 31. Three statements about release, in one card, that cannot all be true
+
+On the same report card, within ten lines:
+
+- "The full comparison is now open, and everyone reads the same report at the same moment."
+- "The shared report, where what everybody said sits side by side, appears once the others have
+  checked in."
+- "Session 1 - Your words are private until everyone activates the report."
+
+Open, not yet open, and waiting on activation.
+
+## 32. An assistant reply came out corrupted on screen
+
+> That's a strong,waiting more than an hour in September" and "a named on-call person published by
+> Friday each week."
+
+A chunk of the sentence is missing and an opening quote mark with it. It stayed like that in the
+saved transcript.
+
+## 33. The participant is asked the manager's question
+
+Tunde, an outside clinic contact, was opened with:
+
+> To begin, I need your definition of success for this role. In 90 days, if Zainab is succeeding,
+> what specific thing will she be doing that you are doing now?
+
+"that you are doing now" is the lead's question. He does not do Zainab's job and never did.
+
+## 34. The broadcast link works, and contradicts what the lead was promised about it
+
+The Setup panel says:
+
+> anyone can check in without creating an account first. They'll be asked to save their details at
+> the end.
+
+The page the link opens asks for first name, last name and email before anything else, and says it
+sets up an account.
+
+Its heading is also not English:
+
+> Hafsah invited your check-in
+
+And it repeats the same two lines: "Nobody ever reads what you write - not Hafsah, not anyone" and
+"Your account stays private."
+
+## 35. Adding a person rewinds the session counter, twice
+
+Confirmed again. Before inviting Tunde the header read "Session 2 of 3, 0 of 2 checked in for
+session 2". Immediately after, with nothing else done, "Session 1 of 3, 2 of 3 checked in for
+session 1".
+
+## Perspectives now covered
+
+| Perspective | Covered |
+| --- | --- |
+| Lead setting up and checking in | Yes |
+| Invited person, same organisation | Yes |
+| Second admin | Yes |
+| Person from another organisation | Yes |
+| Broadcast link, no invite | Yes |
+| The invite email itself | No - nothing sends locally |
