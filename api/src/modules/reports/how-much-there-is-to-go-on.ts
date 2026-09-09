@@ -75,10 +75,16 @@ export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
   }
 
   const documented = r.saidInAll > 0 ? r.documented / r.saidInAll : 0;
+  /*
+   * A STATEMENT, NOT AN ASK. This line used to tell every reader to attach a document, at a time when
+   * 26 uploads across 22 grounds had changed nothing anybody could see. A document changes the record
+   * now (anchorRecordToDocuments), so the fact stands; the instruction does not. Where a document was
+   * checked, it says how many lines it backs.
+   */
   if (r.saidInAll > 0 && r.documented === 0) {
-    reasons.push('Everything here was recalled. Attaching one document would let somebody check it.');
+    reasons.push('Everything here is from memory. Nothing said was checked against a document.');
   } else if (documented < 0.34 && r.saidInAll > 0) {
-    reasons.push('Most of this was recalled rather than checked against anything written down.');
+    reasons.push(`${r.documented} of ${r.saidInAll} lines are backed by a document. The rest is from memory.`);
   }
 
   const compared = r.agreed + r.stillOpen > 0;
