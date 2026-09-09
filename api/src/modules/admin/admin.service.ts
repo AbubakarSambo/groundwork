@@ -74,6 +74,50 @@ export class AdminService implements OnApplicationBootstrap {
   // Platform stats
   // ---------------------------------------------------------------------------
 
+  /**
+   * THE FIRST COACHING OUTPUTS, WITH THEIR INPUT. Nothing here reaches a person until the
+   * coaching_live setting is true; this is where somebody reads a batch before deciding that.
+   */
+  async getCoaching() {
+    const [live, rows] = await Promise.all([
+      this.prisma.platformSetting.findUnique({ where: { key: 'coaching_live' } }).catch(() => null),
+      this.prisma.coachingState.findMany({
+        orderBy: { updatedAt: 'desc' },
+        take: 200,
+        include: {
+          participant: {
+            select: {
+              id: true, roleAsDescribed: true, detectedFunction: true, detectedFunctionConfidence: true,
+              user: { select: { firstName: true, lastName: true, email: true } },
+              ground: { select: { id: true, label: true, scenario: true, organization: { select: { name: true } } } },
+            },
+          },
+        },
+      }),
+    ]);
+    return {
+      live: live?.value === true || live?.value === 'true',
+      count: rows.length,
+      rows: rows.map((r) => ({
+        participantId: r.participantId,
+        who: [r.participant.user?.firstName, r.participant.user?.lastName].filter(Boolean).join(' ') || r.participant.user?.email || r.participantId,
+        organisation: r.participant.ground?.organization?.name ?? null,
+        ground: r.participant.ground?.label ?? null,
+        scenario: r.participant.ground?.scenario ?? null,
+        roleAsDescribed: r.participant.roleAsDescribed,
+        detectedFunction: r.participant.detectedFunction,
+        detectedFunctionConfidence: r.participant.detectedFunctionConfidence,
+        currentStep: r.currentStep,
+        stepGivenAt: r.stepGivenAt,
+        staircase: r.staircase,
+        staircasePosition: r.staircasePosition,
+        history: r.history,
+        lastInput: r.lastInput,
+        updatedAt: r.updatedAt,
+      })),
+    };
+  }
+
   async getPlatformStats() {
     const [orgsCount, groundsCount, codesCount, redemptionsCount, freeReasonBreakdown] =
       await Promise.all([

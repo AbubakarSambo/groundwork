@@ -1841,6 +1841,8 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
+        // The setter's own part in this, as the interview extracted it. Lands on their participant row.
+        roleAsDescribed: sessionReport?.yourRole?.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures

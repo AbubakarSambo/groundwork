@@ -221,6 +221,10 @@ const ENTRY_REPORT_SCHEMA = {
   input_schema: {
     type: 'object' as const,
     properties: {
+      yourRole: {
+        type: ['string', 'null'],
+        description: 'The part the person setting this up said THEY play in the situation, in their own words, one line (e.g. "her manager", "I run the clinic St Mary\'s refers into"). Only what they actually typed about themselves. Null if they never said.',
+      },
       whatGroundworkSaw: {
         type: 'string',
         description: '2-3 sentences. The pattern across what this person shared. What is clear, what is still unstated, what the record holds so far. No verdict.',
@@ -305,6 +309,8 @@ const ENTRY_REPORT_SCHEMA = {
 
 export interface EntryReport {
   whatGroundworkSaw: string;
+  /** The setter's own part in the situation, in their words. Null when they never said. */
+  yourRole?: string | null;
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
   alignmentBasis: string;
   areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[];
@@ -618,6 +624,12 @@ Your job is to gather these things through natural conversation:
    over - there is nobody to hand it to any more. Say plainly that whoever knows what this is about
    should be the one setting it up, and that they can be added to watch the reports afterwards from
    the check-in's settings. Then stop; do not press for a situation they cannot describe.
+1b. yourPart: THE ONE THING ABOUT THEM. After the first question about the situation, ask once
+   what their own part in it is, in one plain sentence that fits what they just said: "And where do
+   you sit in this, are you her manager?" or "And your part in this?" Take whatever they say in their
+   own words; do not offer options, do not ask for a title, do not ask again. It is asked because
+   the questions their own check-in gets are shaped by it, and it was skipped by 237 of the last 239
+   people because nothing asked. If they already said it, do not ask.
 2. mode: is this something new starting, already underway, already happened, or something that
    comes round again.
    ASK IT ABOUT THE SITUATION, NEVER ABOUT THEM. "Is this a one time check in, or will you be
@@ -656,10 +668,10 @@ Your job is to gather these things through natural conversation:
 Rules:
 - Ask one short question at a time. One sentence. No lists, no sub-questions.
 - Keep each reply to 1 or 2 sentences. Never write more than that.
-- The person's own role is STEP 1 and is asked before anything else - see above. It used to be an
-  instruction to "ask early" inside step 3, which is why it kept arriving third, mixed into a question
-  about other people. Do NOT ask about the same thing (role, position, who is involved) more than once -
-  if it has already been answered, move on. Re-asking is a bug.
+- The person's own part in this is step 1b, the second question, on its own - see above. It used to
+  be an instruction to "ask early" inside step 3, which is why it kept arriving third, mixed into a
+  question about other people. Do NOT ask about the same thing (their part, who is involved) more than
+  once - if it has already been answered, move on. Re-asking is a bug.
 - ASKED TWICE AND STILL NOT ANSWERED MEANS TAKE THE OBVIOUS ANSWER AND SAY SO. Driven live, the
   same question about how long this runs was asked three times in six turns: once, again after an
   answer that was about something else, and a third time after the person stopped to ask what it
@@ -1123,6 +1135,8 @@ STRICT RULES:
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
+      /** The setter's own part in this, from the report's yourRole or typed by them. */
+      roleAsDescribed?: string;
       contributors: { email: string; context?: string; inviteToken?: string; note?: string }[];
     },
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
@@ -1443,6 +1457,19 @@ STRICT RULES:
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId: ground.id, userId: initiatorId },
     });
+
+    /*
+     * THE SETTER'S OWN PART, SAVED. Setup asked it and threw the answer away: 237 of 239 initiators
+     * had no roleAsDescribed, and the role map, the coaching read and the lead's probe list all key
+     * on that column. The report's yourRole is what the interview extracted; roleAsDescribed is the
+     * typed fallback. Whichever is there goes on the initiator's own row.
+     */
+    const setterRole = ((dto.report as any)?.yourRole ?? dto.roleAsDescribed ?? '').toString().trim().slice(0, 300);
+    if (setterRole) {
+      await this.prisma.groundParticipant
+        .updateMany({ where: { groundId: ground.id, userId: initiatorId, partyType: PartyType.INITIATOR }, data: { roleAsDescribed: setterRole } })
+        .catch((err) => this.logger.warn(`Could not save the setter's role on ${ground.id}: ${err.message}`));
+    }
     if (!participant) throw new BadRequestException('Participant not found after creating a check-in');
 
     const checkIn = await this.prisma.checkIn.findFirst({

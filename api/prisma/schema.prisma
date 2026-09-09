@@ -967,6 +967,9 @@ model CoachingState {
   // step or change tack, and without the history the coach repeats itself at
   // somebody, which is the failure this mechanic exists to avoid.
   history           Json?
+  // What the last observation read: noticed, lookingLike, reason, the session, the outcome of the
+  // last step. Kept so the first outputs can be read against the input that produced them.
+  lastInput         Json?   @map("last_input")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

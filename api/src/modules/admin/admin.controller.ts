@@ -229,6 +229,12 @@ export class AdminController {
     return this.adminService.getDashboard();
   }
 
+  @Get('coaching')
+  @ApiOperation({ summary: 'Every coaching state row with the read that produced it, and whether the block is live. Read these before setting coaching_live.' })
+  getCoaching() {
+    return this.adminService.getCoaching();
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Platform-wide stats: orgs, grounds, codes, redemptions, freeReason breakdown' })
   getPlatformStats() {

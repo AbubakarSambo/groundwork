@@ -47,6 +47,9 @@ import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
+
+/** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
+export const COACHING_LIVE_KEY = 'coaching_live';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -2364,6 +2367,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return true;
   }
 
+  /** platform_settings.coaching_live = true, set by hand once the first outputs have been read. */
+  private async coachingIsLive(): Promise<boolean> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } });
+      return row?.value === true || row?.value === 'true';
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * What the coach has to say into THIS session, or nothing.
    *
@@ -2378,6 +2391,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    */
   private async coachingBlock(participantId: string, sessionNumber: number): Promise<string> {
     if (!this.coachingEnabled()) return '';
+    /*
+     * THE GATE. Rows are written on every completed session and can be read at /admin/coaching.
+     * The block reaches a live prompt only once the platform setting below has been set to true,
+     * by a person, after reading a first batch. Until then the chain runs in full and says nothing
+     * to anybody. There is no default row: absent means off.
+     */
+    if (!(await this.coachingIsLive())) return '';
     try {
       const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
       if (!row?.currentStep) return '';
@@ -2666,6 +2686,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         state = afterOffering(state, move.step, sessionNumber);
       }
 
+      /* The read that produced this, kept beside it: the first outputs are to be read against their input. */
+      const lastInput = { ...read, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
       await this.prisma.coachingState.upsert({
         where: { participantId },
         create: {
@@ -2675,6 +2697,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           staircase: state.staircase,
           staircasePosition: state.staircasePosition,
           history: state.history as any,
+          lastInput,
         },
         update: {
           currentStep: state.currentStep,
@@ -2682,6 +2705,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           staircase: state.staircase,
           staircasePosition: state.staircasePosition,
           history: state.history as any,
+          lastInput,
         },
       });
       return { offered };

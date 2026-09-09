@@ -49,7 +49,7 @@ export function JoinPage() {
    * the work.
    */
   async function join() {
-    if (!email.trim().includes('@') || joining) return
+    if (!email.trim().includes('@') || !role.trim() || joining) return
     setJoining(true)
     try {
       const res = await joinApi.accept({
@@ -57,7 +57,7 @@ export function JoinPage() {
         email: email.trim(),
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
-        roleAsDescribed: role.trim() || undefined,
+        roleAsDescribed: role.trim(),
       })
       setSentTo(res.to)
       setSentSays(res.says)
@@ -118,8 +118,18 @@ export function JoinPage() {
           <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-last">Last name</label><input id="join-last" className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
         </div>
         <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
-        <div className="gw-fld"><label className="gw-label" htmlFor="join-role">Your role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label><input id="join-role" className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Engineering lead" /></div>
-        <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@')} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@')) ? 0.6 : 1 }}>
+        {/*
+          ONE LINE ON THEIR PART IN THIS, AND IT IS NOT OPTIONAL ANY MORE.
+          205 of 223 people skipped it while it said "(optional)", and that one line is what the
+          questions get shaped by: the role map, the coaching read and the lead's probe list all key
+          on it. No asterisk; the copy says why it is asked and the button waits for it.
+        */}
+        <div className="gw-fld">
+          <label className="gw-label" htmlFor="join-role">Your part in this</label>
+          <input id="join-role" className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. I run the clinic that St Mary's refers into" />
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.5 }}>One line on what you do here. The questions you get asked are shaped by it.</div>
+        </div>
+        <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@') || !role.trim()} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@') || !role.trim()) ? 0.6 : 1 }}>
           {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
         </button>
       </form>

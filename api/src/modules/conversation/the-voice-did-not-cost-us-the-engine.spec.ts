@@ -38,6 +38,8 @@ const stubPrisma = () => {
     'personObjective.findMany': [],
     'interaction.findMany': [],
     'proposedChange.findMany': [],
+    /* The gate is open for this spec: it is about the step reaching the prompt. */
+    'platformSetting.findUnique': { key: 'coaching_live', value: true },
     /* The coach's own state, which is where the step actually comes from. */
     'coachingState.findUnique': {
       participantId: 'p1', currentStep: 'name the blocker out loud',
