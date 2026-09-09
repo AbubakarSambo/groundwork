@@ -1050,7 +1050,7 @@ export function ReportBody({
   const sessionPhrase = !statusLabel
     ? (oneSided
       ? 'One person has checked in so far. The second is what makes it a comparison.'
-      : 'The accounts are in. This has not yet named an area they agree or differ on.')
+      : 'Everyone has answered. This has not yet named an area they agree or differ on.')
     : oneSided
       ? 'One person has checked in so far. The second is what makes it a comparison.'
       : divergences.length === 0
@@ -1381,7 +1381,7 @@ export function ReportBody({
                 <div style={{ marginTop: 16, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
                   <SecH>This is closing</SecH>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 8 }}>
-                    Every account is in. The choice now in front of you, together:
+                    Everyone has answered. The choice now in front of you, together:
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                     {((report as any).finalSynthesis.endStates ?? []).map((es: any) => (
@@ -1470,7 +1470,7 @@ export function ReportBody({
                 )}
 
                 {statusShort && <div style={{ marginBottom: 16 }}>
-                  <SecH>Your account, so far</SecH>
+                  <SecH>Where this has got to</SecH>
                   <div style={{ fontSize: 18, fontWeight: 800 }}>{statusShort}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
                     {sessionPhrase}
@@ -1628,7 +1628,7 @@ export function ReportBody({
             </span>
           </div>
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
+            {tab === 'own' ? 'What you said.' : "Where everyone's accounts agree or differ."}
           </h1>
           {/*
             THE HERO WAS STILL THE PROSE. W13-7, second half.
@@ -1648,7 +1648,7 @@ export function ReportBody({
               ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
               : divergences.length + agreements.length > 0
                 ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
-                : 'Everyone has checked in. This is what runs across their accounts.'}
+                : 'Everyone has checked in. This is what runs across what they said.'}
           </p>
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[

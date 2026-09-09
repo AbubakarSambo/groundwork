@@ -143,7 +143,7 @@ export function TheReportYouSawAtTheEnd({
             <Sec title="Recommended additions" />
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-blue-bg)' }}>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                Based on this check-in, these roles would strengthen the check-in. Their account would change or confirm what is currently on record from one side only.
+                Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
               </div>
               {report.suggestedParties.map((p, i) => {
                 const key = `sug-${i}-${p.role}`
@@ -190,7 +190,7 @@ export function TheReportYouSawAtTheEnd({
                   names, no buttons, and no save. It is only true while you are still finishing.
                 */}
                 {renderAdd
-                  ? 'You named these people while you were talking. Add anyone who should give their own account of this, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.'
+                  ? 'You named these people while you were talking. Add anyone who should answer for this themselves, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.'
                   : 'You named these people while you were talking. Adding somebody to this check-in is done on its Setup tab.'}
               </div>
               {report.mentionedPeople.map((p, i) => {

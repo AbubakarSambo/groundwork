@@ -1069,7 +1069,7 @@ export function ChatPage() {
                 */}
                 <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
                   <li>This cannot be undone for this session.</li>
-                  <li>The session finishes without your account, so nobody is left waiting on you.</li>
+                  <li>The session finishes without your answers, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
                   <li>Nothing you have written here is shown to anyone.</li>
                 </ul>
@@ -1140,7 +1140,7 @@ export function ChatPage() {
               <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
                 This report is yours and it stays on this session - the button below opens it on
                 its own, and it is also under Report, in Your sessions. The shared report, where
-                everybody's accounts sit side by side, appears once the others have checked in.
+                what everybody said sits side by side, appears once the others have checked in.
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
                 {/* The check-in itself, where the people, the sessions and the setup all live.

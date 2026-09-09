@@ -159,7 +159,7 @@ function awarenessLine(o: NonNullable<Objective>): { text: string; tone: 'plain'
       return {
         text: o.awarenessDetail?.trim()
           ? `Not yet said directly. The lead's words: "${o.awarenessDetail.trim()}"`
-          : 'Not yet said directly, on the lead’s own account.',
+          : 'Not yet said directly, in the lead’s own words.',
         tone: 'gap',
       }
     case 'UNSURE':

@@ -168,7 +168,7 @@ export function WhatSuccessLooksLike({
       */}
       {data.counting === 'only-yours' && data.conditions.length > 0 && (
         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 9, lineHeight: 1.5 }}>
-          This is your own account against it. What everybody else has said arrives with the report.
+          This is what you said against it. What everybody else has said arrives with the report.
         </div>
       )}
 

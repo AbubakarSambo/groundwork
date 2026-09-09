@@ -187,7 +187,7 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
       )}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
         {viewerIsParty === false
-          ? 'Each account stays on its own side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'
+          ? 'What each person says stays on their own side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'
           : 'What you say stays on your side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'}
       </div>
     </div>
@@ -616,7 +616,7 @@ export function GroundChat({
                 ? 'Nobody has checked in yet.'
                 : `Checked in: ${h.people.join(', ')}.`}
               <div style={{ color: 'var(--gw-muted)', fontSize: 11.5, marginTop: 2 }}>
-                What each person wrote stays with them. The report is where their accounts meet.
+                What each person wrote stays with them. The report is where those answers meet.
               </div>
             </div>
           </div>

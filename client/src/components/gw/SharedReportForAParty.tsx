@@ -115,7 +115,7 @@ export function SharedReportForAParty({
               <span style={{ textAlign: 'left' }}>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Open the team board</span>
                 <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
-                  The same picture for everyone, built from the accounts. Never a verdict.
+                  The same picture for everyone, built from what each person said. Never a verdict.
                 </span>
               </span>
               <span style={{ fontSize: 13 }}>&rarr;</span>
@@ -231,7 +231,7 @@ export function SharedReportForAParty({
                 </div>
               )}
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
-                The report shows where accounts agree and where they differ. It does not quote anyone.
+                The report shows where people agree and where they differ. It does not quote anyone.
               </div>
               <button
                 onClick={() => activateMutation.mutate()}

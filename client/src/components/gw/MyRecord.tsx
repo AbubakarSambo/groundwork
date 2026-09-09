@@ -119,7 +119,7 @@ export function MyRecord({
               */}
               <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>What this page will hold</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
-                A line per session, each with how specific that account was, and a trend across all
+                A line per session, each with how specific it was, and a trend across all
                 of them once there is more than one. Both appear here - this is the page where you
                 see how you are being read.
               </div>

@@ -145,7 +145,7 @@ export default function SessionReportPage() {
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
-              ? 'A session report is only ever readable by the person who gave that account.'
+              ? 'A session report is only ever readable by the person who wrote it.'
               : 'Nothing is wrong with the report - the request did not get through. Try again.'}
           </div>
           {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
@@ -251,9 +251,9 @@ export default function SessionReportPage() {
       */}
       {data?.groundId && data?.sessionNumber && (
         <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What the accounts show for this session</div>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What everyone said, for this session</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            Everybody's accounts together. It never quotes anyone.
+            What everybody said, together. It never quotes anyone.
           </div>
           <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
         </div>

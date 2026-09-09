@@ -7,32 +7,24 @@ import { conversationApi } from '@/api/conversation'
 import type { Report } from '@/types'
 import { whatToCallIt } from './absence-of-evidence-is-not-a-finding'
 
-// ---------------------------------------------------------------------------
-// Alignment ladder labels + colours
-// ---------------------------------------------------------------------------
-const LADDER = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
-const LADDER_INDEX: Record<string, number> = {
-  Unresolved: 0, Mixed: 1, Emerging: 2, Clear: 3, Aligned: 4,
-  'Clear, trending to aligned': 3,
-}
+/* The ladder's labels and its position table went with it. The five words are still the synthesis's
+   own enum and still reach a person one at a time; nothing needs to know which rung they are. */
 
-function AlignmentLadder({ status, closed }: { status: string; closed?: boolean }) {
-  const idx = LADDER_INDEX[status] ?? 0
-  return (
-    <div style={{ display: 'flex', gap: 3, marginTop: 8 }}>
-      {LADDER.map((l, i) => {
-        const on = i <= idx
-        const bg = on ? (closed ? 'var(--gw-green-b)' : 'var(--gw-navy)') : 'var(--gw-bg)'
-        const color = on ? '#fff' : 'var(--gw-muted)'
-        return (
-          <div key={l} style={{ flex: 1, textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', padding: '4px 2px', borderRadius: 4, background: bg, color }}>
-            {l}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+/*
+ * THE LADDER IS GONE - the last of the scales nobody can see.
+ *
+ * UNRESOLVED · MIXED · EMERGING · CLEAR · ALIGNED, filled in up to your position. The same shape as
+ * the specificity bars and the five-segment confidence meter, both of which came off My record for
+ * the same reason: a mark on a scale whose steps are never defined, on a product that gives no
+ * verdicts.
+ *
+ * It was worse here. Those were about a record; this was a five-rung ladder with a person standing
+ * on the second rung, on the report of their own session. And it read as progress they could make,
+ * which they cannot - where it lands depends on whether somebody else has answered yet.
+ *
+ * The word stays. "Emerging" is what the synthesis called it, it is one word, and it is above this.
+ * What went is turning that word into a position out of five.
+ */
 
 // ---------------------------------------------------------------------------
 // Honest close grid
@@ -185,7 +177,6 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
               {report.agreements?.length ?? 0} agreed
               {report.divergences?.length ? `, ${report.divergences.length} still open` : ''}.
             </div>
-            <AlignmentLadder status={status} closed={closed} />
           </>
         )}
       </div>
@@ -317,13 +308,13 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
             </div>
           )}
           <div style={{ marginBottom: 14 }}>
-            <SecH>Your account, so far</SecH>
+            {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
+            <SecH>Where this has got to</SecH>
             <div style={{ fontSize: 17, fontWeight: 800 }}>{status}</div>
             <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
               {report.agreements?.length ?? 0} area{(report.agreements?.length ?? 0) !== 1 ? 's' : ''} settled.
-              {report.divergences?.length ? ` ${report.divergences.length} still need your clearest account.` : ''}
+              {report.divergences?.length ? ` ${report.divergences.length} still open.` : ''}
             </div>
-            <AlignmentLadder status={status} />
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
             {report.releasedAt
