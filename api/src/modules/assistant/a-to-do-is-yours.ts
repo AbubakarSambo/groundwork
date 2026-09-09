@@ -15,10 +15,11 @@ export interface AToDo {
 const WHEN = /\b(?:by|on|before|this|next|end of)\s+(?:the\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day\b|\b(?:by|on|before)\s+(?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\b|\b(?:today|tomorrow|tonight|this\s+week|next\s+week|end\s+of\s+(?:the\s+)?(?:week|month|quarter))\b/i;
 
 /** The to-do out of what they said, with their words for when if they gave any. */
-export function readToDo(subject: string | undefined): AToDo | null {
+export function readToDo(subject: string | undefined, wholeMessage = ''): AToDo | null {
   const text = (subject ?? '').trim().replace(/[.!]+$/, '');
   if (text.length < 3) return null;
-  const when = WHEN.exec(text);
+  /* When may sit in the subject or after the list: "add the rota to my list by Friday". */
+  const when = WHEN.exec(text) ?? WHEN.exec(wholeMessage);
   return { text, dueSaid: when ? when[0].trim() : null };
 }
 
@@ -31,7 +32,9 @@ export function toDoProposal(t: AToDo): string {
  * more tied means asking, none means saying so. Never closes on a guess.
  */
 export function whichToDo<T extends { id: string; text: string }>(said: string, open: T[]): { one: T } | { several: T[] } | { none: true } {
-  const words = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
+  /* "the" is three letters and on every to-do; a match on it closed the wrong one once. */
+  const STOP = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'onto', 'our', 'your', 'about']);
+  const words = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w)));
   const want = words(said);
   if (!want.size || !open.length) return { none: true };
   const scored = open

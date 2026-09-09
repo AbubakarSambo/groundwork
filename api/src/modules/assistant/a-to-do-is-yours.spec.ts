@@ -10,6 +10,8 @@ describe('a to-do is read from what they said', () => {
 
   it('routes the shapes that name a list, and leaves documents and commitments alone', () => {
     expect(route('add the rota to my to-do list')).toEqual({ lane: 'add_a_to_do', subject: 'the rota' });
+    expect(route('add the rota to my to-do list by Friday')).toEqual({ lane: 'add_a_to_do', subject: 'the rota' });
+    expect(readToDo('the rota', 'add the rota to my to-do list by Friday')).toEqual({ text: 'the rota', dueSaid: 'by Friday' });
     expect(route('remind me to book the room').lane).toBe('add_a_to_do');
     expect(route('what is on my list?').lane).toBe('my_to_dos');
     expect(route('done: send the rota')).toEqual({ lane: 'tick_off_a_to_do', subject: 'send the rota' });
@@ -28,8 +30,9 @@ describe('ticking off never closes on a guess', () => {
     const r = whichToDo('send', open);
     expect('several' in r && r.several.length).toBe(2);
   });
-  it('no overlap says so', () => {
+  it('no overlap says so, and "the" is not an overlap', () => {
     expect(whichToDo('zebra', open)).toEqual({ none: true });
+    expect(whichToDo('the zebra', open)).toEqual({ none: true });
   });
   it('the list is theirs and says so when empty', () => {
     expect(listToDos([])).toContain('nobody else reads it');

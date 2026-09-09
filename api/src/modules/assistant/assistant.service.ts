@@ -184,7 +184,7 @@ export class AssistantService {
 
     switch (routed.lane) {
       case 'add_a_to_do':
-        return this.addAToDo(organizationId, who, routed.subject ?? '');
+        return this.addAToDo(organizationId, who, routed.subject ?? '', message);
       case 'my_to_dos':
         return this.compose(await this.myToDos(organizationId, who));
       case 'tick_off_a_to_do':
@@ -1602,9 +1602,9 @@ export class AssistantService {
 
   /* --- to-dos: a note to yourself, apart from anything promised to anybody --- */
 
-  private async addAToDo(organizationId: string, who: string | null, subject: string): Promise<Reply> {
+  private async addAToDo(organizationId: string, who: string | null, subject: string, message: string): Promise<Reply> {
     if (!who) return rules('add_a_to_do', text('I cannot see you in your organisation records, so I have no list to put that on.'));
-    const todo = readToDo(subject);
+    const todo = readToDo(subject, message);
     if (!todo) return rules('add_a_to_do', text('What goes on the list? A few words is enough.'));
     const proposal = await this.prisma.assistantProposal.create({
       data: { organizationId, personExternalId: who, kind: 'todo', summary: toDoProposal(todo), payload: todo as any },

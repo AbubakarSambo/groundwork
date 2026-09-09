@@ -66,7 +66,8 @@ const RULES = [
     /\bmark\s+(.{3,120}?)\s+(?:as\s+)?done\s*$/i,
   ]),
   rule('add_a_to_do', [
-    /\b(?:add|put)\s+(.{3,160}?)\s+(?:to|on|onto)\s+(?:my\s+)?(?:to[- ]?dos?|to[- ]?do\s+list|list)\s*$/i,
+    /* A deadline may trail the list: "add the rota to my to-do list by Friday". The lane reads the whole message for when. */
+    /\b(?:add|put)\s+(.{3,160}?)\s+(?:to|on|onto)\s+(?:my\s+)?(?:to[- ]?dos?|to[- ]?do\s+list|list)\b(?:\s+(?:by|on|before|this|next|for|end\s+of)\b.{0,60})?\s*$/i,
     /^\s*to[- ]?do:\s*(.{3,160})$/i,
     /\bremind\s+me\s+to\s+(.{3,160})$/i,
     /\bnote\s+to\s+self:?\s*(.{3,160})$/i,
