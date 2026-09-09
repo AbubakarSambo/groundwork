@@ -52,6 +52,8 @@ import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt
 
 /** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
 export const COACHING_LIVE_KEY = 'coaching_live';
+/** askedFor stamp on the turn that asks what an uploaded document shows; the id follows. */
+export const DESCRIBES_DOCUMENT = 'describes document:';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -849,6 +851,9 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
+    await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
+      this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
+    );
     await this.noteIfTheySaidWhy(checkIn as any, message);
 
     // Rebuild history (this party only) and ask the engine for the next turn.
@@ -1165,6 +1170,9 @@ export class ConversationService {
     const personTurn = await this.prisma.conversationTurn.create({
       data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
     });
+    await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
+      this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
+    );
     await this.noteIfTheySaidWhy(checkIn as any, message);
 
     let raw = '';
@@ -2317,7 +2325,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    const [seenBefore, closeHeldLine, documentReadsDifferently] = await Promise.all([
+    const [seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed] = await Promise.all([
       this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId),
       this.prisma.recordEntry
         .findMany({
@@ -2334,6 +2342,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.prisma.checkIn
         .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
         .then((r) => (r?.closeHeldAt ? THE_CLOSE_WAS_HELD : ''))
+        .catch(() => ''),
+      /* THE UPLOADER IS ASKED, NOT CORRECTED. A document that does not read as they described it is
+         put to them once as a question; until they answer it backs nothing. */
+      this.prisma.groundDocument
+        .findMany({
+          where: { groundId: checkIn.groundId, participantId: checkIn.participantId, uploaderNote: { not: null } },
+          select: { fileName: true, uploaderNote: true, descriptionCheck: true },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        })
+        .then((docs) => docs.filter((d) => (d.descriptionCheck as any)?.matches === false && !(d.descriptionCheck as any)?.answered))
+        .then((docs) => docs.length
+          ? 'A DOCUMENT THEY UPLOADED DOES NOT READ AS THEY DESCRIBED IT. Ask, once, as an ordinary question; never correct them. Until they answer, the document backs nothing. Say what the file reads as and ask whether it is the one they meant, or whether their description is the fuller picture.\n'
+            + docs.map((d) => `- "${d.fileName}": they said it is ${JSON.stringify(d.uploaderNote)}. It reads as: ${JSON.stringify((d.descriptionCheck as any).reads)}.`).join('\n')
+          : '')
         .catch(() => ''),
     ]);
 
@@ -2355,12 +2378,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
-      ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
+      ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -3617,14 +3640,40 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * meter and What this rests on already read recallBased, so they move on their own. Runs at
    * complete() and again when a document is uploaded, so an upload after the session still counts.
    */
+  /**
+   * THE ANSWER TO "WHAT DOES THIS SHOW" IS THE DOCUMENT'S DESCRIPTION.
+   * If the turn before this one was the product asking that about a document, this message is kept
+   * as the document's uploaderNote and the description is checked against the file. 2 of 27 uploads
+   * had a description because this surface, the one people use, threw the answer away.
+   */
+  private async keepTheDocumentDescription(checkInId: string, personTurnId: string, message: string) {
+    const previous = await this.prisma.conversationTurn.findFirst({
+      where: { checkInId, role: TurnRole.AI, id: { not: personTurnId } },
+      orderBy: { createdAt: 'desc' },
+      select: { askedFor: true },
+    });
+    if (!previous?.askedFor?.startsWith(DESCRIBES_DOCUMENT)) return;
+    const docId = previous.askedFor.slice(DESCRIBES_DOCUMENT.length);
+    const said = message.trim().slice(0, 500);
+    if (!said) return;
+    await this.prisma.groundDocument.update({ where: { id: docId }, data: { uploaderNote: said } }).catch(() => undefined);
+    this.logger.log(`document-description doc=${docId} said=${JSON.stringify(said.slice(0, 120))}`);
+    await this.documents?.checkDescription(docId).catch(() => null);
+  }
+
   async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number; readsDifferently?: number }> {
     const [docs, entries] = await Promise.all([
       this.prisma.groundDocument.findMany({
         where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
-        select: { id: true, fileName: true, content: true },
+        select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true },
         orderBy: { createdAt: 'desc' },
         take: 12,
-      }),
+      }).then((all) => all.filter((d) => {
+        /* A document that does not read as its uploader described it backs nothing until they have
+           answered for it. It is still on the list and still theirs; it just carries no weight yet. */
+        const check = d.descriptionCheck as any;
+        return !(check && check.matches === false);
+      })),
       /* Every line of theirs, backed or not: a line one document backs can still be read differently
          by a newer one (the revised offer letter that moves the start date), and that is the case that
          matters most. Only an unbacked line can become backed here. */
@@ -3650,7 +3699,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
          something to see, not something to watch for. */
       this.logger.log(`anchoring-decision participant=${participantId} line=${JSON.stringify(entries[b.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[b.document].fileName)} passage=${JSON.stringify((b.where ?? '').slice(0, 200))}`);
       await this.prisma.recordEntry
-        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null } })
+        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (docs[b.document] as any).origin ?? null } })
         .then(() => { backed++; })
         .catch(() => undefined);
     }
@@ -4886,7 +4935,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: docContext }]);
 
     await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
+      data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: doc ? `${DESCRIBES_DOCUMENT}${doc.id}` : stampWhatItAskedFor(reply) },
     });
 
     return { reply };

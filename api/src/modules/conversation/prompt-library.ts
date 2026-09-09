@@ -4296,3 +4296,28 @@ export const ANCHOR_TO_DOCUMENTS_SCHEMA = {
     required: ['backed', 'readsDifferently'],
   },
 } as const;
+
+
+/** WHAT KIND OF THING A TEXT DOCUMENT IS, read from its content. See what-kind-of-thing-a-document-is.ts. */
+export const DOCUMENT_ORIGIN_PROMPT = `You are deciding what kind of thing an uploaded text document is, from its content alone.
+
+typed: a document a person or organisation wrote and issued: a contract, an offer letter, a rota, a job description, a memo, a plan, meeting minutes, a spreadsheet export, a ticket.
+generated: notes or a summary written with an AI model, or a model's answer pasted in: tidy parallel headings and bullets, summary phrasing, no author, no issue date, generic wording.
+pasted: a message, email or chat excerpt a person pasted in.
+
+When it is not clear, answer typed. Return JSON only.`;
+export const DOCUMENT_ORIGIN_SCHEMA = {
+  name: 'emit_document_origin',
+  description: 'Whether a text document is a typed source, model-generated notes, or pasted text.',
+  input_schema: { type: 'object', properties: { origin: { type: 'string', enum: ['typed', 'generated', 'pasted'] }, because: { type: 'string', description: 'One short sentence.' } }, required: ['origin', 'because'] },
+} as const;
+
+/** DOES THE FILE READ AS THE UPLOADER DESCRIBED IT. Separate from anchoring. */
+export const DESCRIPTION_CHECK_PROMPT = `Somebody uploaded a document and said what it is. You have their description and the document's content.
+
+Say whether the document reads as what they described. "The on-call schedule" against a rota of names and nights matches. "The on-call schedule" against a holiday rota, a job description or an unrelated memo does not. A description that is broader or looser than the file still matches if the file is that kind of thing. Say in one sentence what the file actually reads as. Never say the person was wrong. Return JSON only.`;
+export const DESCRIPTION_CHECK_SCHEMA = {
+  name: 'emit_description_check',
+  description: 'Whether an uploaded document reads as its uploader described it.',
+  input_schema: { type: 'object', properties: { matches: { type: 'boolean' }, reads: { type: 'string', description: 'What the document actually reads as, one sentence, plain.' } }, required: ['matches', 'reads'] },
+} as const;

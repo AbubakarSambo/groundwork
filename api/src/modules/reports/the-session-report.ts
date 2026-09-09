@@ -1,3 +1,4 @@
+import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
 
@@ -32,6 +33,9 @@ import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go
  */
 
 /** One thing somebody said, as it reaches a section. */
+/** Null origin (a document from before origins existed) counts as a source; generated notes do not. */
+const countsAsASource = (origin: string | null | undefined) => origin == null || COUNTS_AS_A_SOURCE.has(origin);
+
 export interface SaidThing {
   text: string;
   /** The party's label, or null where the section is the reader's own. */
@@ -136,7 +140,7 @@ export interface SessionReportInputs {
   agreements: unknown[];
   divergences: unknown[];
   /** This session's entries, already typed at extraction. */
-  entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null }[];
+  entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null }[];
   /** The previous session's entries, for what has changed and what was not spoken to again. */
   previousEntries: { type: RecordEntryType; text: string; threadKey: string | null }[];
   /** What was said at the beginning: the baseline's success statement and the starting point. */
@@ -370,7 +374,9 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * Solid. The label says what is being read and the value says where it stands, which is the
    * order somebody reads them in.
    */
-  const documented = input.entries.filter((e) => !e.recallBased).length;
+  /* A line backed by notes somebody wrote with a model is not backed by an independent source: it
+     shows as backed, and it does not raise the documented share. */
+  const documented = input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length;
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
   const atAGlance: AGlanceRead[] = [
     {
@@ -489,7 +495,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const confidence = howMuchThereIsToGoOn({
     answered: input.answeredThisSession.length,
     ofPeople: input.peopleInAll ?? input.answeredThisSession.length,
-    documented: input.entries.filter((e) => !e.recallBased).length,
+    documented: input.entries.filter((e) => !e.recallBased && countsAsASource(e.backedBy)).length,
     saidInAll: input.entries.length,
     agreed,
     stillOpen,
