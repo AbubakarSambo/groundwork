@@ -2349,9 +2349,12 @@ export function GroundAdminPage() {
                 ) : (
                   <div style={{ marginTop: 10, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '11px 13px' }}>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, marginBottom: 10 }}>
-                      Everybody is emailed and everybody reads the same thing at the same moment.
-                      This cannot be undone, and anybody who has not answered loses their turn on
-                      this round.
+                      {/* "Everybody reads the same thing at the same moment" was here and is not
+                          true: everyone is emailed, but each person has to show theirs before they
+                          can read it, and the lead does not. A false reassurance in the
+                          confirmation for something that cannot be undone. */}
+                      Everybody is emailed. This cannot be undone, and
+                      anybody who has not answered loses their turn on this round.
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button
