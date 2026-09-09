@@ -39,13 +39,27 @@ function Who({ who, documented }: { who?: string | null; documented?: boolean })
   )
 }
 
-/** A quote list is plain indented text on the page, not a card. Cards are for things that lead. */
+/**
+ * WHAT SOMEBODY SAID, AS BODY TEXT.
+ *
+ * THE RAIL IS GONE. A vertical bar with indented text is the visual grammar of verbatim speech,
+ * and it was being used for three different kinds of content at once: the quotes, the settled and
+ * open items, and the success statements. Two of those three are synthesis - the product's words
+ * about what people said, not the words themselves - so the rail was telling the reader that a
+ * summary was a quotation.
+ *
+ * It survives on the private half, where the member's own words legitimately appear.
+ *
+ * These lists also read LIGHTER than the tiles and the picture above them, which is the point of
+ * taking the borders off: after the rails came off, the whole stretch was undifferentiated body
+ * text at one weight, so nothing led.
+ */
 function Lines({ items }: { items: { text: string; who?: string | null; documented?: boolean }[] }) {
   return (
-    <div style={{ display: 'grid', gap: 9, paddingLeft: 13, borderLeft: '2px solid var(--gw-border)' }}>
+    <div style={{ display: 'grid', gap: 10 }}>
       {items.map((it, i) => (
         <div key={i}>
-          <div style={{ fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{it.text}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>{it.text}</div>
           <Who who={it.who} documented={it.documented} />
         </div>
       ))}
@@ -110,7 +124,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* 7. Who this is counting. */}
       {d.counting?.length > 0 && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 30 }}>
           <Sec title="Who this is counting" />
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden' }}>
             {d.counting.map((c: any, i: number) => (
@@ -140,7 +154,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         one now. It is carried in weight rather than in a second colour: one accent on this page.
       */}
       {d.atAGlance?.length > 0 && (
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 22 }}>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 30 }}>
           {d.atAGlance.map((r: any) => {
             const wantsAttention = r.tone === 'warn' || r.tone === 'bad'
             return (
@@ -167,7 +181,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* 9. The picture from the accounts. Carries weight: it is the thing the report is for. */}
       {d.sharedPicture && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 30 }}>
           <Sec title="The picture from everybody" />
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)', padding: '15px 17px' }}>
             <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.sharedPicture}</p>
@@ -177,7 +191,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* 10. What people said this session. Themed, with the by-person toggle. One rendering. */}
       {themed.length > 0 && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 30 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
             <Sec title="What people said this session" />
             <button
@@ -230,45 +244,64 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       )}
 
       {/*
-        11. WHERE THINGS STAND, NAMING WHAT.
+        11 AND 12, WHICH WERE THE SAME QUESTION IN THREE FORMATS.
 
-        It said "1 area the accounts agree on, 1 still open" beside a tile carrying the same two
-        numbers. The tiles count. This says what is settled and what is not.
+        "Where things stand" was four labels around two facts: a heading, a count line, a "Settled"
+        sub-heading, the item, a "Still open" sub-heading, the item - with the counts already sitting
+        in a tile two sections up. Then "What success looks like" answered the same question again in
+        a third format: the honest line about the lead not having stated theirs, and a bold-name
+        em-dash list of what each person says it is.
+
+        One section. Each line carries its own state and there are no sub-headings, because two lines
+        that say "settled" and "still open" do not need labels saying so. The honest line about the
+        lead stays - that absence is the point of it - and loses its own layout.
       */}
-      <section style={{ marginBottom: 22 }}>
-        <Sec title="Where things stand" />
-        <div style={{ fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{d.whereThingsStand.saying}</div>
-        {(d.whereThingsStand.settled?.length > 0 || d.whereThingsStand.open?.length > 0) && (
-          <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-            {d.whereThingsStand.settled?.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Settled</div>
-                <Lines items={d.whereThingsStand.settled.map((t: string) => ({ text: t }))} />
-              </div>
-            )}
-            {d.whereThingsStand.open?.length > 0 && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Still open</div>
-                <Lines items={d.whereThingsStand.open.map((t: string) => ({ text: t }))} />
+      <section style={{ marginBottom: 30 }}>
+        <Sec title="Where this stands, against what good looks like" />
+
+        {(d.whereThingsStand.settled ?? []).map((t: string, i: number) => (
+          <p key={`s${i}`} style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+            <b style={{ fontWeight: 700 }}>Settled.</b> {t}
+          </p>
+        ))}
+        {(d.whereThingsStand.open ?? []).map((t: string, i: number) => (
+          <p key={`o${i}`} style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+            <b style={{ fontWeight: 700 }}>Still open.</b> {t}
+          </p>
+        ))}
+        {!(d.whereThingsStand.settled?.length || d.whereThingsStand.open?.length) && (
+          <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>
+            {d.whereThingsStand.saying}
+          </p>
+        )}
+
+        {d.againstSuccess && (
+          <div style={{ marginTop: 12 }}>
+            <WhatSuccessLooksLike
+              data={d.againstSuccess}
+              yourName={d.counting?.find((c: any) => c.isYou)?.who ?? null}
+              dense
+            />
+            {(d.againstSuccess.definitions ?? []).length > 0 && (
+              <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                {d.againstSuccess.definitions.map((def: any, i: number) => {
+                  const yourName = d.counting?.find((c: any) => c.isYou)?.who ?? null
+                  const who = def.who === null || (yourName && def.who === yourName) ? 'You' : def.who
+                  return (
+                    <p key={i} style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+                      {who} say{who === 'You' ? '' : 's'} it is {def.text}
+                    </p>
+                  )
+                })}
               </div>
             )}
           </div>
         )}
       </section>
 
-      {/* 12. What success looks like. Kept including the honest line when nobody stated one. */}
-      {d.againstSuccess && (
-        <section style={{ marginBottom: 22 }}>
-          <WhatSuccessLooksLike
-            data={d.againstSuccess}
-            yourName={d.counting?.find((c: any) => c.isYou)?.who ?? null}
-          />
-        </section>
-      )}
-
       {/* 13. What moved. The server sends nothing here on a first session. */}
       {moved.length > 0 && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 30 }}>
           <Sec title="What moved" />
           <div style={{ display: 'grid', gap: 16 }}>
             {moved.map((s: any) => (
@@ -285,7 +318,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* The documents, when there are any. When there are none it is a reason under confidence. */}
       {restsOn.length > 0 && restsOn[0].items.length > 0 && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 30 }}>
           <Sec title="What this rests on" />
           <Lines items={restsOn[0].items} />
         </section>
@@ -293,7 +326,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* 14. The conversation worth having now. */}
       {d.theConversationWorthHaving && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 30 }}>
           <Sec title="The conversation worth having now" />
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)', padding: '15px 17px' }}>
             <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.theConversationWorthHaving}</p>

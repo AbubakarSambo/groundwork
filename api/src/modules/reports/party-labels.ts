@@ -180,9 +180,29 @@ export function readsWithNamesOf(
   return viewerParticipantId ?? null;
 }
 
+/**
+ * WHETHER PEOPLE IN THIS CHECK-IN ARE NAMED TO EACH OTHER, WHICH IS ALREADY A SETTING.
+ *
+ * This read gave a participant the lead's name, their own, and nobody else's, always - so a report
+ * carried three registers at once ("Hafsah", "Participant A", "Tunde Okafor (you)") and the middle
+ * one read as a placeholder that had failed to resolve.
+ *
+ * Meanwhile the product had already answered this question, deliberately, in a setting whose own
+ * copy says "each person sees the others by name": `Ground.peersVisibleToEachOther`, defaulting by
+ * scenario - hidden on an EVALUATION or COHORT check-in, where a roster tells people exactly who
+ * they are measured against, and shown everywhere else. The board reads it. The check-in page reads
+ * it. The report did not, so the one surface everybody opens disagreed with the setting and with
+ * the roster three inches above it.
+ *
+ * WHAT IS STILL WALLED IS THE WORDS. Knowing Zainab is in this and reading what Zainab wrote are
+ * different things, and only the second was ever protected here: whose lines reach a reader is
+ * decided by `readableParticipantIds` and by the release rules. Nothing about this changes that.
+ */
 export function namesVisibleTo(
   viewerParticipantId: string | null | undefined,
   parties: LabelParty[],
+  /** From the ground. Undefined keeps the old behaviour, for callers that have no ground to hand. */
+  peersVisibleToEachOther?: boolean,
 ): Map<string, string> {
   const labels = labelsForParties(parties);
   const visible = new Map<string, string>();
@@ -198,7 +218,7 @@ export function namesVisibleTo(
     const isSelf = p.id === viewerParticipantId;
     const isLead = p.partyType === PartyType.INITIATOR;
 
-    if (viewerIsLead || isSelf || isLead) visible.set(label, name);
+    if (peersVisibleToEachOther || viewerIsLead || isSelf || isLead) visible.set(label, name);
   }
 
   return visible;

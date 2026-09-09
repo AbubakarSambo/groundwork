@@ -35,7 +35,7 @@ export function HowMuchThereIsToGoOn({ read }: { read: ConfidenceRead }) {
     <section
       style={{
         border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)',
-        padding: '16px 18px', marginBottom: 22,
+        padding: '16px 18px', marginBottom: 30,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>

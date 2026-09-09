@@ -14,6 +14,21 @@ import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitise
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
+import { whatToProbe } from './what-to-probe';
+import { BoardFamily, familyFor } from '../board/board-families';
+
+/**
+ * The catalogue by code, so both coaching surfaces read the same plain words.
+ *
+ * BUILT ON FIRST USE, NOT AT IMPORT. As a module-level const this threw "Cannot access
+ * 'pattern_library_1' before initialization" across twenty-five suites: this file and the pattern
+ * library sit in an import cycle, and a top-level `new Map([...CODES])` runs while the other half
+ * of the cycle is still an empty object. A function body runs after both are loaded.
+ */
+let patternByCode: Map<string, { code: string; signal: string; probe?: string }> | null = null;
+const patternCatalogue = () => (patternByCode ??= new Map(
+  [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]),
+));
 import { cleanText } from './what-the-record-actually-holds';
 import {
   CORRECTION_WINDOW_KEY,
@@ -1782,7 +1797,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * check-in whose lead is plainly entitled to her name and is shown it on the next tab along.
      * The session report two hundred lines below passes `me?.id` and has always been right.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
     const whoOf = (participantId: string | null) => {
       if (!participantId) return null;
       const label = labels.get(participantId) ?? null;
@@ -1927,7 +1942,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * a roster calling three colleagues "a teammate" - and the rule that fixes it is the one the
      * report body already uses, not a second guess at it.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
     /*
      * THE SAME NAMING RULE ON THE LINES AS ON THE ROWS.
      *
@@ -2173,6 +2188,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             ground.participants as any,
             me?.id ?? null,
             viewerIsLead,
+            this.peersAreNamed(ground as any),
           ).sharedPicture
         : null,
       takenAt: snapshot?.takenAt ?? null,
@@ -2694,12 +2710,16 @@ happened, and what is in the way.`;
     parties: any[],
     viewerParticipantId: string | null,
     viewerIsLead: boolean,
+    /** Whether this check-in names people to each other. See `peersAreNamed`. */
+    peersAreNamed = false,
   ): T {
     // An org admin reads with the lead's eyes; they already see the whole ground.
     // Shared with the board, which had no version of this at all and showed a lead their
     // own ground in placeholders as a result. W8-73.
     const asWhom = readsWithNamesOf({ viewerIsLead, viewerParticipantId, parties });
-    const visible = namesVisibleTo(asWhom, parties);
+    /* The check-in's own setting, so the picture names people the same way the roster three
+       inches above it does. See the-report-names-people-the-way-the-setting-says.spec.ts. */
+    const visible = namesVisibleTo(asWhom, parties, peersAreNamed);
     // Deliberately NO early return when there are no names to put back. The
     // dash cleanup below runs on every report, and an invited participant who
     // has not joined yet has no name - which is exactly a report that would
@@ -2820,7 +2840,55 @@ happened, and what is in the way.`;
    * Visibility is `canSeeDocument`'s question and is asked of it rather than answered again here.
    */
   /**
-   * WHAT THIS PERSON SHOULD WORK ON NEXT, built from their patterns, their role and their stage.
+   * THE ROWS BOTH COACHING SURFACES READ, READ ONCE.
+   *
+   * The member's own note and the lead's probe list are two readings of the same facts, and they
+   * must not contradict each other: a lead told to probe somebody on a thing has to find that the
+   * person was already told to move it, or the conversation is an ambush. One read, two shapes.
+   */
+
+  /**
+   * WHETHER THIS CHECK-IN NAMES PEOPLE TO EACH OTHER. See namesVisibleTo.
+   *
+   * The same read the board and the check-in page make, in the same words, so the report cannot
+   * disagree with them: the lead's setting where they have made one, and otherwise hidden on the
+   * kinds of check-in that decide something about a person.
+   */
+  private peersAreNamed(ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }): boolean {
+    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
+    return (ground as any).peersVisibleToEachOther ?? !evaluative;
+  }
+
+  private async whatTheRecordHoldsFor(groundId: string, ground: any) {
+    const [detections, dependencies, entries, docs, sessions] = await Promise.all([
+      this.prisma.patternDetection.findMany({
+        where: { groundId, status: PatternStatus.SURFACED },
+        orderBy: { lastSeenAt: 'desc' },
+        select: { participantId: true, code: true, periodsObserved: true },
+      }),
+      this.prisma.groundDependency.findMany({
+        where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
+        select: {
+          fromParticipantId: true, onParticipantId: true, onLabel: true,
+          what: true, createdAt: true, escalatedAt: true,
+        },
+      }),
+      this.prisma.recordEntry.findMany({
+        where: { participant: { groundId } },
+        select: { participantId: true, type: true, text: true, recallBased: true },
+      }),
+      this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true } }),
+      this.prisma.checkIn.findMany({
+        where: { groundId, status: CheckInStatus.COMPLETED },
+        select: { participantId: true, sessionNumber: true },
+      }),
+    ]);
+    const wholeDays = (d: Date) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
+    return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
+  }
+
+  /**
+   * WHAT THIS PERSON SHOULD WORK ON NEXT, built from four things rather than from one session.
    *
    * SURFACED only. A CANDIDATE is the engine's first read and has not survived the three-period
    * rule, and telling somebody a candidate observation about themselves as though it were settled
@@ -2828,35 +2896,124 @@ happened, and what is in the way.`;
    */
   private async coachingNoteFor(
     groundId: string,
-    ground: { scenario?: string | null; timelineDays?: number | null; checkIns?: { sessionNumber: number }[] },
+    ground: any,
     participant: { id: string; roleAsDescribed?: string | null },
+    nameOf: (participantId: string | null, fallback: string | null) => string | null,
   ) {
-    const [detections, mine, sessions] = await Promise.all([
-      this.prisma.patternDetection.findMany({
-        where: { groundId, participantId: participant.id, status: PatternStatus.SURFACED },
-        orderBy: { lastSeenAt: 'desc' },
-        select: { code: true },
-      }),
-      this.prisma.recordEntry.findMany({
-        where: { participantId: participant.id },
-        select: { recallBased: true },
-      }),
-      this.prisma.checkIn.findMany({
-        where: { participantId: participant.id, status: CheckInStatus.COMPLETED },
-        select: { sessionNumber: true },
-      }),
-    ]);
-    const sessionNumber = sessions.length ? Math.max(...sessions.map((c) => c.sessionNumber)) : 1;
-    const planned = (ground.checkIns ?? []).reduce((n, c) => Math.max(n, c.sessionNumber ?? 0), 0);
+    const held = await this.whatTheRecordHoldsFor(groundId, ground);
+    const mine = held.entries.filter((e) => e.participantId === participant.id);
+    const mySessions = held.sessions.filter((c) => c.participantId === participant.id);
+    const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
+    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+
     return whatToWorkOnNext({
-      confirmedCodes: detections.map((d) => d.code),
+      patterns: held.detections
+        .filter((d) => d.participantId === participant.id)
+        .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
       role: participant.roleAsDescribed ?? null,
       sessionNumber,
       totalSessions: planned > 0 ? planned : null,
       scenario: ground.scenario ?? null,
+      waitingOn: held.dependencies
+        .filter((d) => d.fromParticipantId === participant.id)
+        .map((d) => ({
+          what: d.what,
+          /* `onLabel` is whatever the extraction captured and is often a thing rather than a
+             person - "the on-call rota" - which turned into "waiting for X from the on-call rota".
+             Only a resolved participant is somebody you can be waiting on. */
+          who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
+          daysOld: held.wholeDays(d.createdAt),
+          escalated: !!d.escalatedAt,
+        })),
+      holdingUp: held.dependencies
+        .filter((d) => d.onParticipantId === participant.id)
+        .map((d) => ({
+          what: d.what,
+          who: nameOf(d.fromParticipantId, null),
+          daysOld: held.wholeDays(d.createdAt),
+          escalated: !!d.escalatedAt,
+        })),
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
     });
+  }
+
+  /**
+   * WHAT TO PROBE EACH PERSON ON. THE LEAD, AND NOBODY ELSE.
+   *
+   * Guarded here rather than in the shape: a surface that is lead-only because a caller remembered
+   * to check is one refactor away from not being.
+   */
+  private async whatToProbeOn(
+    groundId: string,
+    ground: any,
+    viewerIsLead: boolean,
+    nameOf: (participantId: string | null, fallback: string | null) => string | null,
+    /** The same resolver without the second-person substitution, for headings. */
+    nameOf2: (participantId: string) => string | null,
+  ) {
+    if (!viewerIsLead) return null;
+    const held = await this.whatTheRecordHoldsFor(groundId, ground);
+    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+    const thisRound = planned > 0 ? planned : 1;
+
+    return (ground.participants ?? [])
+      .filter((p: any) => !p.managingOnly)
+      .map((p: any) => {
+        const mine = held.entries.filter((e) => e.participantId === p.id);
+        const answered = held.sessions.some((c) => c.participantId === p.id && c.sessionNumber === thisRound);
+        return whatToProbe({
+          /*
+           * THE LEAD'S OWN ROW IS HEADED WITH THEIR NAME, NOT "you".
+           *
+           * `nameOf` answers "you" for the reader, which is right inside a sentence and wrong as
+           * the heading of a section in a list of people - it rendered a card titled "you" above
+           * two cards titled by name. `nameOf2` is the same resolver without that substitution.
+           */
+          who: nameOf2(p.id) ?? 'Somebody',
+          participantId: p.id,
+          role: p.roleAsDescribed ?? null,
+          answeredThisSession: answered,
+          patterns: held.detections
+            .filter((d) => d.participantId === p.id)
+            .map((d) => {
+              const lib = patternCatalogue().get(d.code);
+              return {
+                code: d.code,
+                periodsObserved: d.periodsObserved,
+                signal: lib?.signal ?? d.code,
+                probe: lib?.probe,
+              };
+            })
+            .filter((x) => !ALIGNMENT_FEED_ONLY_CODES.has(x.code)),
+          waitingOn: held.dependencies
+            .filter((d) => d.fromParticipantId === p.id)
+            .map((d) => ({
+              what: d.what,
+              /* `onLabel` is whatever the extraction captured and is often a thing rather than a
+             person - "the on-call rota" - which turned into "waiting for X from the on-call rota".
+             Only a resolved participant is somebody you can be waiting on. */
+          who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
+              daysOld: held.wholeDays(d.createdAt),
+              escalated: !!d.escalatedAt,
+            })),
+          holdingUp: held.dependencies
+            .filter((d) => d.onParticipantId === p.id)
+            .map((d) => ({
+              what: d.what,
+              who: nameOf(d.fromParticipantId, null),
+              daysOld: held.wholeDays(d.createdAt),
+            })),
+          concrete: mine
+            .filter((e) => e.type === RecordEntryType.SUCCESS_DEFINITION || !e.recallBased)
+            .map((e) => cleanText(e.text))
+            .slice(0, 2),
+          documentsAttached: held.docs.filter((d) => d.participantId === p.id).length,
+          sessionNumber: thisRound,
+          totalSessions: planned > 0 ? planned : null,
+          scenario: ground.scenario ?? null,
+        });
+      });
   }
 
   private async whatItRestsOn(
@@ -2993,7 +3150,7 @@ happened, and what is in the way.`;
       }
 
       return {
-        ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
+        ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)),
         activated: true,
         forming: true,
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
@@ -3054,8 +3211,26 @@ happened, and what is in the way.`;
      * nothing here, because coaching somebody through a document they cannot reply to is the
      * opposite of what this is for.
      */
+    /*
+     * WHO ANYBODY IS CALLED, decided by the same rule the rest of the report uses. Passed in so
+     * the coaching surfaces cannot invent a second naming rule of their own.
+     */
+    const coachLabels = labelsForParties(ground.participants as any);
+    const coachNames = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    /** Whoever this is, named, with no "you" - for a heading rather than a sentence. */
+    const plainNameOf = (participantId: string): string | null => {
+      const label = coachLabels.get(participantId);
+      return (label ? coachNames.get(label) : undefined) ?? label ?? null;
+    };
+    const nameOf = (participantId: string | null, fallback: string | null): string | null => {
+      if (!participantId) return fallback;
+      if (participant && participantId === participant.id) return 'you';
+      const label = coachLabels.get(participantId);
+      return (label ? coachNames.get(label) : undefined) ?? label ?? fallback;
+    };
+
     const coaching = participant
-      ? await this.coachingNoteFor(groundId, ground as any, participant as any).catch((err) => {
+      ? await this.coachingNoteFor(groundId, ground as any, participant as any, nameOf).catch((err) => {
           /* A NOTE THAT CANNOT BE BUILT MUST NOT TAKE THE REPORT DOWN. The report is the thing
              somebody came for; the coaching note is an addition to it. Same rule as the record
              read and the guide above. */
@@ -3082,7 +3257,7 @@ happened, and what is in the way.`;
      */
     const base: any = {
       ...withoutOtherPeoplesReads(
-        this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
+        this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)) as any,
         {
           viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
           viewerParticipantId: participant?.id ?? null,
@@ -3092,6 +3267,16 @@ happened, and what is in the way.`;
       activated: true,
       postReportGuide,
       coaching,
+      /*
+       * AND THE LEAD'S OWN SECTION. Null for everybody else, decided inside `whatToProbeOn` rather
+       * than by this caller remembering to ask - a lead-only surface guarded at the call site is
+       * one refactor away from not being lead-only.
+       */
+      probes: await this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf)
+        .catch((err) => {
+          this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
+          return null;
+        }),
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not

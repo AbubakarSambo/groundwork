@@ -17,7 +17,8 @@
 export interface CoachingNote {
   showingUp: string | null
   whyItMatters: string
-  beforeNextTime: string
+  /** One or two things to do. A list, because two actions run together read as one sentence. */
+  beforeNextTime: string[]
   general: boolean
 }
 
@@ -67,9 +68,11 @@ export function WhatToWorkOnNext({ note, guide }: {
           </div>
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Before the next session</div>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
-              {note.beforeNextTime}
-            </p>
+            <div style={{ display: 'grid', gap: 7 }}>
+              {(note.beforeNextTime ?? []).map((a, i) => (
+                <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>{a}</p>
+              ))}
+            </div>
           </div>
         </div>
       )}

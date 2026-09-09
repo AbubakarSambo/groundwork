@@ -9,6 +9,7 @@ import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
+import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
 
@@ -363,6 +364,16 @@ export default function SessionReportPage() {
           <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
         </div>
       )}
+      {/*
+        AND THE LEAD'S OWN SECTION, AFTER THE SHARED REPORT.
+
+        Nobody else can see this. The server returns null for anybody who is not the lead or an org
+        admin, before it reads a row, so there is nothing here to gate on the client - which is the
+        point: a lead-only surface guarded by a caller remembering to check is one refactor away
+        from not being lead-only.
+      */}
+      <WhatToProbeThemOn reads={(groundReport as any)?.probes} />
+
       {/*
         15. ACTION, AFTER BOTH HALVES.
 
