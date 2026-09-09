@@ -12,6 +12,8 @@ import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { ConversationService } from '../conversation/conversation.service';
+import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from './what-kind-of-thing-a-document-is';
+import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
@@ -193,8 +195,11 @@ export class DocumentsService {
     if (file.mimetype === 'application/pdf') {
       const parser = new PDFParse({ data: file.buffer });
       const text = await parser.getText().then((r) => r.text?.trim() ?? '').finally(() => parser.destroy());
-      if (text) return text;
-      // Scanned/image-only PDF: fall back to vision on the raw PDF bytes.
+      /* A scanned PDF has a text layer of page markers and nothing else ("-- 1 of 1 --"), which is
+         "text" to the parser. Driven with a scanned memo: it came back as that marker in 46ms and the
+         vision fallback never ran. Substance, not presence, decides. */
+      if (this.hasSubstance(text)) return text;
+      this.lastPdfWasAScan = true;
       return this.mediaToText(file.buffer, 'application/pdf', file.originalname);
     }
     if (file.mimetype === DOCX_MIME) {
@@ -288,6 +293,7 @@ export class DocumentsService {
     if (isConversation && !consentConfirmed) throw new BadRequestException(NOT_CONFIRMED);
 
     const assessment = await this.assessDocument(content, file.originalname);
+    const origin = await this.decideOrigin(file, content, isConversation);
 
     const doc = await this.prisma.groundDocument.create({
       data: {
@@ -304,6 +310,7 @@ export class DocumentsService {
         uploaderNote: uploaderNote?.trim() || null,
         content,
         assessment: assessment as any,
+        origin,
       },
       /* `visibility` and `participantId` too — `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask told the person who just attached a file
@@ -314,7 +321,8 @@ export class DocumentsService {
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
-    this.anchorAfterUpload(participant.id, groundId);
+    if (uploaderNote?.trim()) this.checkDescription(doc.id).catch(() => null).then(() => this.anchorAfterUpload(participant.id, groundId));
+    else this.anchorAfterUpload(participant.id, groundId);
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
@@ -358,6 +366,63 @@ export class DocumentsService {
    * same model that runs everything else in the product, rather than a
    * separate provider just for OCR.
    */
+  /** Set by extractContent when a PDF had no usable text layer, read once by the upload that called it. */
+  private lastPdfWasAScan = false;
+
+  private hasSubstance(text: string): boolean {
+    const stripped = (text ?? '').replace(/--\s*\d+\s*of\s*\d+\s*--/g, '').replace(/\s+/g, ' ').trim();
+    return stripped.length >= 40;
+  }
+
+  /**
+   * WHAT KIND OF THING THIS IS. The file type decides for images and scans; for text the content is
+   * read, cheaply first and then by the model, so notes somebody generated with a model do not get
+   * the standing of a contract. See what-kind-of-thing-a-document-is.ts.
+   */
+  private async decideOrigin(file: { mimetype: string; originalname: string }, content: string, isConversation: boolean): Promise<DocumentOrigin> {
+    const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan });
+    this.lastPdfWasAScan = false;
+    if (fromFile) return fromFile;
+    if (content.startsWith('[Attached:')) return 'typed';
+    const cheap = looksGeneratedByAModel(content);
+    try {
+      const read = await this.anthropic.extract<{ origin: DocumentOrigin; because: string }>(DOCUMENT_ORIGIN_PROMPT, [{ role: 'user', content: content.slice(0, 6000) }], DOCUMENT_ORIGIN_SCHEMA);
+      if (read?.origin === 'generated' || cheap) return 'generated';
+      if (read?.origin === 'pasted') return 'pasted';
+    } catch (err: any) {
+      this.logger.warn(`Origin read failed for "${file.originalname}": ${err?.message}`);
+    }
+    return cheap ? 'generated' : 'typed';
+  }
+
+  /**
+   * DOES THE FILE READ AS THEY DESCRIBED IT. Run when a description exists: at upload if one came
+   * with the file, and from the check-in when the person answers "what does this show". Stored on
+   * the document. A mismatch backs nothing (anchoring skips it) and is put to the uploader as a
+   * question in their next turn, never as a correction.
+   */
+  async checkDescription(docId: string): Promise<{ matches: boolean; reads: string } | null> {
+    /* Not a card read: this feeds the check, not a list, so it selects the name under its own key rather than
+       as `fileName`, which the-list-carries-what-was-read.spec treats as a card read. */
+    const doc = await this.prisma.groundDocument.findUnique({ where: { id: docId }, select: { id: true, content: true, uploaderNote: true, fileName: true, assessment: true } });
+    if (!doc?.uploaderNote?.trim() || doc.content.startsWith('[Attached:')) return null;
+    try {
+      const read = await this.anthropic.extract<{ matches: boolean; reads: string }>(
+        DESCRIPTION_CHECK_PROMPT,
+        [{ role: 'user', content: `THEY SAID IT IS: ${doc.uploaderNote.trim()}\n\nFILE "${doc.fileName}":\n${doc.content.slice(0, 8000)}` }],
+        DESCRIPTION_CHECK_SCHEMA,
+      );
+      if (!read || typeof read.matches !== 'boolean') return null;
+      const check = { matches: read.matches, reads: (read.reads ?? '').trim().slice(0, 300), checkedAt: new Date().toISOString() };
+      await this.prisma.groundDocument.update({ where: { id: docId }, data: { descriptionCheck: check as any } });
+      this.logger.log(`description-check doc=${docId} matches=${check.matches} said=${JSON.stringify(doc.uploaderNote.trim().slice(0, 120))} reads=${JSON.stringify(check.reads)}`);
+      return check;
+    } catch (err: any) {
+      this.logger.warn(`Description check failed for ${docId}: ${err?.message}`);
+      return null;
+    }
+  }
+
   private async mediaToText(buffer: Buffer, mimeType: string, fileName: string): Promise<string> {
     try {
       const base64 = buffer.toString('base64');
@@ -441,6 +506,7 @@ export class DocumentsService {
 
     const content = await this.extractContent(file);
     const assessment = await this.assessDocument(content, file.originalname);
+    const origin = await this.decideOrigin(file, content, false);
 
     const doc = await this.prisma.groundDocument.create({
       data: {
@@ -450,6 +516,7 @@ export class DocumentsService {
         mimeType: file.mimetype,
         content,
         assessment: assessment as any,
+        origin,
       },
       /* `visibility` and `participantId` too: `toDocShape` omits what was not selected rather
          than guessing, so an upload that did not ask for them told the person who just attached a
