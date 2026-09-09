@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
-import { Sec } from './kit'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 import { HowMuchThereIsToGoOn } from './HowMuchThereIsToGoOn'
 
@@ -27,357 +26,293 @@ const WHAT_MOVED = ['What changed since last session', 'What changed since the b
 const RESTS_ON = ['What this rests on']
 
 /** Body copy is capped so a long quote does not run the full width of the container. */
-const PROSE: React.CSSProperties = { maxWidth: '68ch', lineHeight: 1.65 }
+const PROSE: React.CSSProperties = { maxWidth: '68ch', lineHeight: 1.6 }
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
-/** Attribution is metadata. Same size, same colour, same place, every time. */
-function Who({ who, documented }: { who?: string | null; documented?: boolean }) {
-  if (!who && !documented) return null
+/**
+ * THE SHARED REPORT, IN THE SHAPE THE MARKETING PAGE PROMISES.
+ *
+ * The example reports on the marketing site are one card: a header line, the finding in amber with
+ * its basis small underneath, the four states in a row, the words people gave as quotes with a
+ * small cite, the two sides of a difference side by side, and one boxed thing to settle first. This
+ * page had the same facts as eleven headings of prose. Every block below is one of the card's rows;
+ * the facts and their sources are unchanged, only the shape is.
+ */
+const ROW: React.CSSProperties = { padding: '16px 20px', borderTop: '1px solid var(--gw-border)' }
+const LABEL: React.CSSProperties = {
+  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
+  color: 'var(--gw-muted)', marginBottom: 10,
+}
+
+function Cite({ who, documented }: { who: string; documented?: boolean }) {
   return (
-    <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
-      {who ?? ''}{who && documented ? ' · ' : ''}{documented ? 'from a document' : ''}
+    <div style={{ marginTop: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+      {who}{documented ? ' · from a document' : ''}
     </div>
   )
 }
 
 /**
- * WHAT SOMEBODY SAID, AS BODY TEXT.
- *
- * THE RAIL IS GONE. A vertical bar with indented text is the visual grammar of verbatim speech,
- * and it was being used for three different kinds of content at once: the quotes, the settled and
- * open items, and the success statements. Two of those three are synthesis - the product's words
- * about what people said, not the words themselves - so the rail was telling the reader that a
- * summary was a quotation.
- *
- * It survives on the private half, where the member's own words legitimately appear.
- *
- * These lists also read LIGHTER than the tiles and the picture above them, which is the point of
- * taking the borders off: after the rails came off, the whole stretch was undifferentiated body
- * text at one weight, so nothing led.
+ * ONE LINE SOMEBODY SAID, AS A QUOTE WITH A NAME UNDER IT.
+ * The reader's own lines used to arrive with no name at all, so the list read as three voices and
+ * one anonymous one. A line with no name is the reader's, and says so.
  */
-function Lines({ items }: { items: { text: string; who?: string | null; documented?: boolean }[] }) {
+function Quotes({ items, yourName }: { items: { text: string; who?: string | null; documented?: boolean }[]; yourName: string | null }) {
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div style={{ display: 'grid', gap: 12 }}>
       {items.map((it, i) => (
         <div key={i}>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>{it.text}</div>
-          <Who who={it.who} documented={it.documented} />
+          <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{it.text}</div>
+          <Cite who={it.who ?? (yourName ? `${yourName} (you)` : 'You')} documented={it.documented} />
         </div>
       ))}
     </div>
   )
 }
 
+function Row({ label, children, style }: { label?: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ ...ROW, ...style }}>
+      {label && <div style={LABEL}>{label}</div>}
+      {children}
+    </div>
+  )
+}
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
-  /*
-   * ONE SET OF FACTS, TWO WAYS TO LOOK AT IT. The toggle re-groups what is already on the page
-   * rather than adding a second section, which is what the duplication was.
-   */
   const [byPerson, setByPerson] = useState(false)
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ['session-shaped-report', groundId, sessionNumber],
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
     enabled: !!groundId && !!sessionNumber,
   })
-
   if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading this session…</div>
   if (isError || !data) return null
-
   const d = data as any
   const final = d.state === 'final'
   const amended = !!d.amendedAt
   const themed = (d.sections ?? []).filter((s: any) => THEMES.includes(s.title))
   const moved = (d.sections ?? []).filter((s: any) => WHAT_MOVED.includes(s.title))
   const restsOn = (d.sections ?? []).filter((s: any) => RESTS_ON.includes(s.title))
+  const yourName: string | null = d.counting?.find((c: any) => c.isYou)?.who ?? null
+  const answered = (d.counting ?? []).filter((c: any) => c.answered).length
+  const ofPeople = (d.counting ?? []).length
+
+  /*
+    THE FINDING LEADS. The server ranks the drafted lines (something in the way, then a read on
+    coverage or contribution, then a pattern) and names one. The lines the tiles already carry
+    ('reads') and the settled-and-open line ('written', which has its own row below) are not
+    repeated; the basis line sits small under the finding.
+  */
+  const picture: { key: string; text: string }[] = d.picture ?? ((d.pictureLines as string[] | undefined) ?? []).map((text, i) => ({ key: `line-${i}`, text }))
+  const finding: { key: string; text: string; basis: string | null } | null = d.finding ?? null
+  const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== finding?.key)
+  const settled: string[] = d.whereThingsStand?.settled ?? []
+  const open: string[] = d.whereThingsStand?.open ?? []
+  const definitions: { who: string | null; text: string }[] = d.againstSuccess?.definitions ?? []
 
   return (
     <div>
-      {/*
-        WHAT STATE THIS IS IN, IN ONE LINE INSTEAD OF TWO CONTRADICTORY ONES.
-
-        "Session 1 · final - Closed 09/09/2026. This does not change." sat directly above an amber
-        banner saying the report had been updated. Both were true of different things and read as
-        the product contradicting itself in consecutive lines. A closed round that was later
-        amended is one state, so it is one sentence, and the amber banner is gone: it named the
-        categories that could change rather than what did.
-      */}
-      <div
-        style={{
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
-          borderBottom: '1px solid var(--gw-border)', paddingBottom: 10, marginBottom: 22,
-        }}
-      >
-        <span style={{ fontSize: 12.5, color: 'var(--gw-text)', fontWeight: 700 }}>
-          Session {d.sessionNumber} · {final ? 'closed' : 'still forming'}
-        </span>
-        <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-          {!final
-            ? 'People are still answering, so this moves.'
-            : amended
-              ? `Closed ${d.takenAt ? new Date(d.takenAt).toLocaleDateString() : ''} and updated since, when somebody corrected their own check-in.`
-              : `Closed ${d.takenAt ? new Date(d.takenAt).toLocaleDateString() : ''}. This does not change.`}
-        </span>
-      </div>
-
-      {/* 6. How much there is to go on. First, because it decides how to read everything under it. */}
+      {/* How much there is to go on. First, because it decides how to read everything under it. */}
       {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
 
-      {/* 7. Who this is counting. */}
-      {d.counting?.length > 0 && (
-        <section style={{ marginBottom: 30 }}>
-          <Sec title="Who this is counting" />
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden' }}>
-            {d.counting.map((c: any, i: number) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10,
-                  padding: '8px 12px', fontSize: 12.5,
-                  borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
-                }}
-              >
-                <span style={{ color: 'var(--gw-text)' }}>{c.isYou ? `${c.who} (you)` : c.who}</span>
-                <span style={{ color: 'var(--gw-muted)', flexShrink: 0 }}>
-                  {c.answered ? 'Answered' : 'Not answered yet'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/*
-        8. THE FOUR READS.
-
-        All four used to render identically, so "no blockers noted" looked like the same kind of
-        fact as "1 unresolved" and the row read as four failures. The server sends a tone with each
-        one now. It is carried in weight rather than in a second colour: one accent on this page.
-      */}
-      {d.atAGlance?.length > 0 && (
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 30 }}>
-          {d.atAGlance.map((r: any) => {
-            const wantsAttention = r.tone === 'warn' || r.tone === 'bad'
-            return (
-              <div
-                key={r.label}
-                style={{
-                  border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)',
-                  padding: '13px 15px',
-                  borderLeft: wantsAttention ? '3px solid var(--gw-navy)' : '1px solid var(--gw-border)',
-                }}
-              >
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>
-                  {r.label}
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2, color: wantsAttention ? 'var(--gw-navy)' : 'var(--gw-text)' }}>
-                  {r.value}
-                </div>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.5 }}>{r.sub}</div>
-              </div>
-            )
-          })}
-        </section>
-      )}
-
-      {/*
-        WHAT KEEPS SHOWING UP. The pattern engine, as a read of its own.
-
-        Its only route here used to be a note to the writing model saying to mention a pattern "if
-        the record corroborates". Now it is a section: the library's own sentence for the pattern,
-        who it is about, and how many sessions it was seen across, which is the fact that makes it
-        a pattern rather than an incident. Nothing here is a verdict on a person; every line is a
-        count over rows the engine kept.
-      */}
-      {d.patterns?.length > 0 && (
-        <section style={{ marginBottom: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)' }}>
-          <Sec title="What keeps showing up" />
-          <div style={{ display: 'grid', gap: 10 }}>
-            {d.patterns.map((p: any, i: number) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 140px) 1fr', gap: 12, alignItems: 'baseline' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{p.isYou ? `${p.who} (you)` : p.who}</div>
-                <div>
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{p.signal}</div>
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
-                    Seen across {p.periodsObserved} session{p.periodsObserved === 1 ? '' : 's'}{p.positive ? ' · a good sign' : ''}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 9. The picture from the accounts. Carries weight: it is the thing the report is for. */}
-      {d.sharedPicture && (
-        <section style={{ marginBottom: 30 }}>
-          <Sec title="The picture from everybody" src="built from the record's own reads, worded by the model" />
-          {/* One claim per line. Joined into a paragraph it read as a wall of prose. */}
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-paper-2)', padding: '14px 17px', display: 'grid', gap: 9 }}>
-            {((d.pictureLines as string[] | undefined) ?? [d.sharedPicture]).map((line: string, i: number) => (
-              <p key={i} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{line}</p>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 10. What people said this session. Themed, with the by-person toggle. One rendering. */}
-      {themed.length > 0 && (
-        <section style={{ marginBottom: 30 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-            <Sec title="What people said this session" />
-            <button
-              onClick={() => setByPerson(v => !v)}
-              style={{
-                background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-                fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', flexShrink: 0,
-              }}
-            >
-              {byPerson ? 'Group by theme' : 'Group by person'}
-            </button>
-          </div>
-
-          {byPerson ? (
-            <div style={{ display: 'grid', gap: 16 }}>
-              {(d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
-                <div key={i}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
-                    {p.isYou ? `${p.who} (you)` : p.who}
-                  </div>
-                  {p.lines?.length
-                    ? <Lines items={p.lines.map((text: string) => ({ text }))} />
-                    : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{p.saying}</div>}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: 16 }}>
-              {themed.map((s: any) => (
-                <div key={s.title}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{s.title}</div>
-                  {s.items.length > 0
-                    ? <Lines items={s.items} />
-                    : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{s.saying}</div>}
-                  {/*
-                    Risks and concerns groups by entry type, so it fills up with whoever names
-                    problems out loud. The server decides when that is worth saying; usually there
-                    is nothing here.
-                  */}
-                  {s.note && (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 7, paddingLeft: 13 }}>
-                      {s.note}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/*
-        11 AND 12, WHICH WERE THE SAME QUESTION IN THREE FORMATS.
-
-        "Where things stand" was four labels around two facts: a heading, a count line, a "Settled"
-        sub-heading, the item, a "Still open" sub-heading, the item - with the counts already sitting
-        in a tile two sections up. Then "What success looks like" answered the same question again in
-        a third format: the honest line about the lead not having stated theirs, and a bold-name
-        em-dash list of what each person says it is.
-
-        One section. Each line carries its own state and there are no sub-headings, because two lines
-        that say "settled" and "still open" do not need labels saying so. The honest line about the
-        lead stays - that absence is the point of it - and loses its own layout.
-      */}
-      <section style={{ marginBottom: 30 }}>
-        <Sec title="Where this stands, against what good looks like" />
-
-        {(d.whereThingsStand.settled ?? []).map((t: string, i: number) => (
-          <p key={`s${i}`} style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
-            <b style={{ fontWeight: 700 }}>Settled.</b> {t}
-          </p>
-        ))}
-        {(d.whereThingsStand.open ?? []).map((t: string, i: number) => (
-          <p key={`o${i}`} style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
-            <b style={{ fontWeight: 700 }}>Still open.</b> {t}
-          </p>
-        ))}
-        {!(d.whereThingsStand.settled?.length || d.whereThingsStand.open?.length) && (
-          <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>
-            {d.whereThingsStand.saying}
-          </p>
-        )}
-
-        {d.againstSuccess && (
-          <div style={{ marginTop: 12 }}>
-            <WhatSuccessLooksLike
-              data={d.againstSuccess}
-              yourName={d.counting?.find((c: any) => c.isYou)?.who ?? null}
-              dense
-            />
-            {(d.againstSuccess.definitions ?? []).length > 0 && (
-              <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                {d.againstSuccess.definitions.map((def: any, i: number) => {
-                  const yourName = d.counting?.find((c: any) => c.isYou)?.who ?? null
-                  const who = def.who === null || (yourName && def.who === yourName) ? 'You' : def.who
-                  return (
-                    <p key={i} style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
-                      {who} say{who === 'You' ? '' : 's'} it is {def.text}
-                    </p>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* 13. What moved. The server sends nothing here on a first session. */}
-      {moved.length > 0 && (
-        <section style={{ marginBottom: 30 }}>
-          <Sec title="What moved" />
-          <div style={{ display: 'grid', gap: 16 }}>
-            {moved.map((s: any) => (
-              <div key={s.title}>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{s.title}</div>
-                {s.items.length > 0
-                  ? <Lines items={s.items} />
-                  : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{s.saying}</div>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* The documents, when there are any. When there are none it is a reason under confidence. */}
-      {restsOn.length > 0 && restsOn[0].items.length > 0 && (
-        <section style={{ marginBottom: 30 }}>
-          <Sec title="What this rests on" />
-          <Lines items={restsOn[0].items} />
-        </section>
-      )}
-
-      {/* 14. The conversation worth having now. From the blocker kind or the role map; never a model
-          over the transcript. With neither, the honest absence, not a heading over nothing. */}
-      {!d.theConversationWorthHaving && d.whyNoQuestion && (
-        <section style={{ marginBottom: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)' }}>
-          <Sec title="The conversation worth having now" />
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
-        </section>
-      )}
-      {d.theConversationWorthHaving && (
-        <section style={{ marginBottom: 30 }}>
-          <Sec title="The conversation worth having now" />
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)', padding: '15px 17px' }}>
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.theConversationWorthHaving}</p>
-          </div>
-        </section>
-      )}
-
-      {!d.showsEverybody && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, borderTop: '1px solid var(--gw-border)', paddingTop: 12 }}>
-          Until the shared report is out, the words above are your own. The counts are from
-          everybody's answers. Nobody else's wording reaches you and yours does not reach them.
+      <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+        {/* The header line: what this is, and how many are in it. */}
+        <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <b style={{ fontSize: 14 }}>Session {d.sessionNumber} · {final ? 'closed' : 'still forming'}</b>
+          <em style={{ fontFamily: MONO, fontStyle: 'normal', fontSize: 11, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+            {ofPeople ? `${answered} of ${ofPeople} answered` : ''}
+          </em>
         </div>
-      )}
+
+        {/* The finding, in amber. One sentence the engines stand behind, worded by the model. */}
+        {finding && (
+          <div style={{ padding: '20px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
+            <p style={{ margin: 0, fontSize: 18, lineHeight: 1.38, fontWeight: 600, letterSpacing: '-.012em', color: 'var(--gw-text)', maxWidth: '60ch' }}>{finding.text}</p>
+            {finding.basis && <small style={{ display: 'block', marginTop: 9, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>{finding.basis}</small>}
+          </div>
+        )}
+
+        {/* The four states, one grammar, same place every time. */}
+        {d.atAGlance?.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
+            {d.atAGlance.map((r: any, i: number) => {
+              const wantsAttention = r.tone === 'warn' || r.tone === 'bad'
+              return (
+                <div key={r.label} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gw-sub)', marginBottom: 5 }}>{r.label}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: wantsAttention ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
+                    {r.value}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3, lineHeight: 1.45 }}>{r.sub}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* The rest of the picture, one claim per line. */}
+        {rest.length > 0 && (
+          <Row label="The picture from everybody">
+            <div style={{ display: 'grid', gap: 8 }}>
+              {rest.map((l) => (
+                <p key={l.key} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{l.text}</p>
+              ))}
+            </div>
+          </Row>
+        )}
+
+        {/* What keeps showing up: the pattern engine's own sentences, with the span that makes them a pattern. */}
+        {d.patterns?.length > 0 && (
+          <Row label="What keeps showing up">
+            <div style={{ display: 'grid', gap: 10 }}>
+              {d.patterns.map((p: any, i: number) => (
+                <div key={i}>
+                  <div style={{ fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{p.signal}</div>
+                  <Cite who={`${p.isYou ? `${p.who} (you)` : p.who} · seen across ${p.periodsObserved} session${p.periodsObserved === 1 ? '' : 's'}${p.positive ? ' · a good sign' : ''}`} />
+                </div>
+              ))}
+            </div>
+          </Row>
+        )}
+
+        {/* What people said this session. Quotes with a name under each, by theme or by person. */}
+        {themed.length > 0 && (
+          <Row>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+              <div style={LABEL}>What people said this session</div>
+              <button
+                onClick={() => setByPerson(v => !v)}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', flexShrink: 0,
+                }}
+              >
+                {byPerson ? 'Group by theme' : 'Group by person'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px 28px' }}>
+              {byPerson
+                ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
+                  <div key={i}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{p.isYou ? `${p.who} (you)` : p.who}</div>
+                    {p.lines?.length
+                      ? <Quotes items={p.lines.map((text: string) => ({ text, who: p.isYou ? `${p.who} (you)` : p.who }))} yourName={yourName} />
+                      : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{p.saying}</div>}
+                  </div>
+                ))
+                : themed.map((s: any) => (
+                  <div key={s.title}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{s.title}</div>
+                    {s.items.length > 0
+                      ? <Quotes items={s.items} yourName={yourName} />
+                      : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{s.saying}</div>}
+                    {s.note && (
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 7 }}>{s.note}</div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </Row>
+        )}
+
+        {/* Settled and still open, side by side: the two columns of the difference. */}
+        {(settled.length > 0 || open.length > 0) ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 1, background: 'var(--gw-border)', borderTop: '1px solid var(--gw-border)' }}>
+            <div style={{ background: 'var(--gw-card)', padding: '16px 20px' }}>
+              <div style={LABEL}>Settled</div>
+              {settled.length
+                ? settled.map((t, i) => <p key={i} style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>)
+                : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing settled yet.</p>}
+            </div>
+            <div style={{ background: 'var(--gw-card)', padding: '16px 20px' }}>
+              <div style={LABEL}>Still open</div>
+              {open.length
+                ? open.map((t, i) => <p key={i} style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>)
+                : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing still open.</p>}
+            </div>
+          </div>
+        ) : d.whereThingsStand?.saying ? (
+          <Row label="Where this stands">
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>{d.whereThingsStand.saying}</p>
+          </Row>
+        ) : null}
+
+        {/*
+          WHAT GOOD LOOKS LIKE. The honest line about whether there is anything to read against
+          stays visible. The four "X says it is..." lines used to sit under it in the open, saying
+          the same thing a second way; they fold, and the count on the fold says how many there are.
+        */}
+        {d.againstSuccess && (
+          <Row label="Against what good looks like">
+            {/* The definitions render folded below, once; the component's own copy of them is switched off. */}
+            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} dense />
+            {definitions.length > 0 && (
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-navy)' }}>
+                  What each person says success is ({definitions.length})
+                </summary>
+                <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+                  {definitions.map((def, i) => {
+                    const who = def.who === null || (yourName && def.who === yourName) ? (yourName ? `${yourName} (you)` : 'You') : def.who
+                    return (
+                      <div key={i}>
+                        <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
+                        <Cite who={who!} />
+                      </div>
+                    )
+                  })}
+                </div>
+              </details>
+            )}
+          </Row>
+        )}
+
+        {/* What moved. The server sends nothing here on a first session. */}
+        {moved.length > 0 && (
+          <Row label="What moved">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px 28px' }}>
+              {moved.map((s: any) => (
+                <div key={s.title}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{s.title}</div>
+                  {s.items.length > 0
+                    ? <Quotes items={s.items} yourName={yourName} />
+                    : <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{s.saying}</div>}
+                </div>
+              ))}
+            </div>
+          </Row>
+        )}
+
+        {/* The documents, when there are any. When there are none it is a reason under confidence. */}
+        {restsOn.length > 0 && restsOn[0].items.length > 0 && (
+          <Row label="What this rests on">
+            <Quotes items={restsOn[0].items} yourName={yourName} />
+          </Row>
+        )}
+
+        {/* The one thing to settle first. From the blocker kind or the role map; never a model over the transcript. */}
+        {d.theConversationWorthHaving ? (
+          <div style={{ padding: 20, background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
+            <div style={{ ...LABEL, color: 'var(--gw-navy)', marginBottom: 6 }}>The conversation worth having now</div>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '60ch' }}>{d.theConversationWorthHaving}</p>
+          </div>
+        ) : d.whyNoQuestion ? (
+          <Row label="The conversation worth having now">
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
+          </Row>
+        ) : null}
+
+        <div style={{ ...ROW, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          {!final
+            ? 'People are still answering, so this moves. '
+            : amended
+              ? `Closed ${d.takenAt ? new Date(d.takenAt).toLocaleDateString() : ''} and updated since, when somebody corrected their own check-in. `
+              : `Closed ${d.takenAt ? new Date(d.takenAt).toLocaleDateString() : ''}. This does not change. `}
+          {d.showsEverybody
+            ? 'Everybody in this check-in sees this same report, at the same moment. Nothing here decides who is right.'
+            : 'Until the shared report is out, the words above are your own. The counts are from everybody\'s answers. Nobody else\'s wording reaches you and yours does not reach them.'}
+        </div>
+      </div>
     </div>
   )
 }

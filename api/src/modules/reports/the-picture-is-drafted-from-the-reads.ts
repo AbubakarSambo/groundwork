@@ -36,6 +36,25 @@ export interface PictureInput {
 
 const andList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const theThing = (s: string) => s.replace(/[.\s]+$/, '');
+/* Lower-case a first letter that is only capitalised because the row began a sentence. A name or
+   an acronym keeps its case: two capitals in a row, or a capital followed by a non-letter, is left. */
+const lower = (s: string) => (/^[A-Z]([a-z]|\s)/.test(s) && !/^I\b/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+
+/**
+ * WHICH LINE IS THE FINDING. The template on the marketing page leads with one sentence in amber,
+ * then the four states, then the rest. The drafted lines are ranked for that slot: something in
+ * the way outranks a read on coverage or contribution, which outranks a pattern, which outranks
+ * the tile line, which outranks the settled-and-open line. The basis line never leads; it goes
+ * underneath the finding, small.
+ */
+const FINDING_RANK: [RegExp, number][] = [[/^block-/, 0], [/^(cov|con)-/, 1], [/^pattern-/, 2], [/^reads$/, 3], [/^written$/, 4]];
+export function pickTheFinding(keys: string[]): string | null {
+  const ranked = keys
+    .map((k) => ({ k, r: FINDING_RANK.find(([re]) => re.test(k))?.[1] ?? 9 }))
+    .filter((x) => x.r < 9)
+    .sort((a, b) => a.r - b.r);
+  return ranked[0]?.k ?? null;
+}
 
 export function hasAnEngineBasis(i: PictureInput): boolean {
   return i.answered > 0 || i.patterns.length > 0 || i.coverage.length > 0 || i.contribution.length > 0 || i.blockers.length > 0;
@@ -67,7 +86,11 @@ export function draftThePicture(i: PictureInput): Drafted[] {
     const byKind = new Map<string, typeof i.blockers>();
     for (const b of i.blockers) byKind.set(b.kind ?? '', [...(byKind.get(b.kind ?? '') ?? []), b]);
     for (const [kind, bs] of byKind) {
-      const items = andList(bs.map((b) => theThing(b.what)));
+      /* Five asks read out in one breath ("the rota, a clear list of what is mine, to be paid for
+         the nights, a reply and...") is a list wearing a sentence. Past two, count them and name
+         the first; the rows themselves sit in What people said. */
+      const things = bs.map((b) => theThing(b.what));
+      const items = things.length > 2 ? `${things.length} things, starting with ${lower(things[0])}` : andList(things.map(lower));
       const who = [...new Set(bs.map((b) => b.who).filter(Boolean))] as string[];
       /*
        * "ON" IS PEOPLE ONLY. Driven live: "waiting on You, role definition, payment for on-call work
@@ -79,12 +102,14 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       const escalated = bs.filter((b) => b.escalated).length;
       /* The reader is "You" as a name and "you" mid-sentence. Read live as "waiting on You for". */
       const mid = (n: string) => (n === 'You' ? 'you' : n);
-      const head = `${who.length ? andList(who) : 'Somebody'} ${who.length > 1 ? 'are' : 'is'} waiting${on.length ? ` on ${andList(on.map(mid))}` : ''} for ${items}${escalated ? `, ${escalated === bs.length ? 'and has escalated it' : `and ${escalated} of ${bs.length} has been escalated`}` : ', with no escalation on record'}.`;
+      /* "Zainab Bello and You are waiting": the reader's label is only capitalised when it opens the sentence. */
+      const whoSaid = who.length ? andList(who.map((n, i) => (i === 0 ? n : mid(n)))) : 'Somebody';
+      const head = `${whoSaid} ${who.length > 1 ? 'are' : 'is'} waiting${on.length ? ` on ${andList(on.map(mid))}` : ''} for ${items}${escalated ? `, ${escalated === bs.length ? 'and has escalated it' : `and ${escalated} of ${bs.length} has been escalated`}` : ', with no escalation on record'}.`;
       const tail = kind ? ` ${WHAT_IT_MEANS[kind as Kind]} ${WHO_CAN_MOVE_IT[kind as Kind]}` : '';
       out.push({
         key: `block-${kind || 'unkinded'}`,
         text: head + tail,
-        mustKeep: [...bs.map((b) => theThing(b.what)), ...(kind ? [WHAT_IT_MEANS[kind as Kind], WHO_CAN_MOVE_IT[kind as Kind]] : [])],
+        mustKeep: [...(things.length > 2 ? [lower(things[0])] : things.map(lower)), ...(kind ? [WHAT_IT_MEANS[kind as Kind], WHO_CAN_MOVE_IT[kind as Kind]] : [])],
       });
     }
   }
@@ -113,8 +138,8 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       const all = names.length === i.ofPeople && i.ofPeople > 1;
       out.push({
         key: `${prefix}-${text.slice(0, 24)}`,
-        text: all ? `For everybody here: ${text}` : `${andList(names)}: ${text}`,
-        mustKeep: [text],
+        text: all ? `For everybody here: ${lower(text)}` : `${andList(names)}: ${lower(text)}`,
+        mustKeep: [lower(text)],
       });
     }
   };
@@ -127,12 +152,16 @@ export function draftThePicture(i: PictureInput): Drafted[] {
    */
   if (i.settled.length || i.open.length) {
     const parts: string[] = [];
-    if (i.settled.length) parts.push(`settled on ${andList(i.settled.map(theThing))}`);
-    if (i.open.length) parts.push(`still open on ${andList(i.open.map(theThing))}`);
+    /* "settled on A clear, written rota": a row that was a sentence of its own starts lower-case
+       once it sits inside one. */
+    const settled = i.settled.map((t) => lower(theThing(t)));
+    const open = i.open.map((t) => lower(theThing(t)));
+    if (settled.length) parts.push(`settled on ${andList(settled)}`);
+    if (open.length) parts.push(`still open on ${andList(open)}`);
     out.push({
       key: 'written',
       text: `As the written report reads it, this is ${parts.join(' and ')}.`,
-      mustKeep: [...i.settled.map(theThing), ...i.open.map(theThing)],
+      mustKeep: [...settled, ...open],
     });
   }
   return out;

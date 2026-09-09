@@ -16,7 +16,7 @@ import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
-import { draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
+import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -2048,12 +2048,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * and the count as it stood at the previous session; `dependencies` carries what somebody said
      * they are waiting on and whether it is still hard-blocking.
      */
-    const [targets, blockedCount] = await Promise.all([
+    const [targets, blockedCount, waitingCount] = await Promise.all([
       this.prisma.groundObjective.findMany({
         where: { groundId, target: { not: null } },
         select: { count: true, prevCount: true },
       }),
       this.prisma.groundDependency.count({ where: { groundId, status: 'BLOCKING' } }),
+      this.prisma.groundDependency.count({ where: { groundId, status: 'WAITING' } }),
     ]);
 
     const shape = theSessionReport({
@@ -2099,6 +2100,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         ? targets.reduce((sum, o) => sum + (o.count - o.prevCount), 0)
         : null,
       blocked: blockedCount,
+      waiting: waitingCount,
       /* Everybody the session counts, not only those who answered: the confidence read is about
          how much basis there is, and somebody who has not answered is the largest gap there is. */
       peopleInAll: ground.participants.filter((p) => !p.managingOnly).length,
@@ -2369,9 +2371,18 @@ Close the report by framing - neutrally, without recommending one - the choice n
           question ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
         ]);
         const pictureLines = drafts.map((d) => worded[d.key] ?? d.text);
+        /* Keyed as well, so the page can lead with the finding and leave out the lines the tiles and
+           the settled-and-open section already carry. */
+        const picture = drafts.map((d) => ({ key: d.key, text: worded[d.key] ?? d.text }));
+        const findingKey = pickTheFinding(drafts.map((d) => d.key));
+        const finding = findingKey
+          ? { key: findingKey, text: picture.find((l) => l.key === findingKey)!.text, basis: picture.find((l) => l.key === 'basis')?.text ?? null }
+          : null;
         return {
           /* One claim per line, kept as lines: joined into a paragraph it read as a wall of prose. */
           pictureLines,
+          picture,
+          finding,
           sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
           theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,

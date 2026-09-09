@@ -151,7 +151,7 @@ export function WhatSuccessLooksLike({
                     condition is moving and having to take the product's word for it.
                   */}
                   <div style={{ fontSize: 11.5, color: s.tone, lineHeight: 1.5, marginTop: 1 }}>
-                    {c.why ? <>{s.word}{c.who ? ` · ${c.who}` : ''} — “{c.why}”</> : s.word}
+                    {c.why ? <>{s.word}{c.who ? ` · ${c.who}` : ''}: “{c.why}”</> : s.word}
                   </div>
                 </div>
               </div>
@@ -190,7 +190,7 @@ export function WhatSuccessLooksLike({
                       neither says "Somebody", which is what the null used to become. */}
                   {d.who === null || (yourName && d.who === yourName) ? 'You' : d.who}
                 </span>
-                {' — '}{d.text}
+                {': '}{d.text}
               </div>
             ))}
           </div>

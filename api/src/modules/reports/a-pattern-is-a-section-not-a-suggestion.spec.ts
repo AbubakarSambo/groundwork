@@ -37,7 +37,7 @@ describe('one route for patterns', () => {
 
   it('and the page renders it as a section with the count that makes it a pattern', () => {
     expect(CLIENT).toContain('What keeps showing up');
-    expect(CLIENT).toMatch(/Seen across \{p\.periodsObserved\} session/);
+    expect(CLIENT).toMatch(/seen across \$\{p\.periodsObserved\} session/);
     expect(CLIENT).toContain('{p.signal}');
   });
 });

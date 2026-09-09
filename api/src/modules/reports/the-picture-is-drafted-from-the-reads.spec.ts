@@ -35,7 +35,7 @@ describe('what the picture is made of', () => {
   it('every line traces to an engine output that was handed in', () => {
     expect(all).toContain(base.confidence.saying);
     expect(all).toContain('Repeated future-tense promises without completions.');
-    expect(all).toContain('Work in this remit is described by others more than by its owner.');
+    expect(all).toContain('work in this remit is described by others more than by its owner.');
     expect(all).toContain('the on-call rota');
     expect(all).toContain(WHAT_IT_MEANS.DECISION);
   });
@@ -60,7 +60,8 @@ describe('what the picture is made of', () => {
   it('labels the written report\'s own items as its, rather than as measurement', () => {
     const w = lines.find((l) => l.key === 'written')!;
     expect(w.text).toMatch(/^As the written report reads it/);
-    expect(w.text).toContain('The responsibilities of the new ward coordinator role');
+    expect(w.text).toContain('still open on the responsibilities of the new ward coordinator role');
+    expect(w.text).toContain('settled on a clear, written, and published rota');
   });
 
   it('is not a mail merge', () => {
@@ -77,7 +78,7 @@ describe('what the picture is made of', () => {
     });
     const cov = out.filter((l) => l.key.startsWith('cov-'));
     expect(cov).toHaveLength(1);
-    expect(cov[0].text).toBe(`For everybody here: ${same}`);
+    expect(cov[0].text).toBe(`For everybody here: ${same[0].toLowerCase()}${same.slice(1)}`);
     expect(readsAsAMailMerge(out.map((l) => l.text))).toBeNull();
   });
 

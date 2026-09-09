@@ -153,6 +153,8 @@ export interface SessionReportInputs {
   movedOnTargets: number | null;
   /** How many things are recorded as hard-blocked and waiting on somebody else. */
   blocked: number;
+  /** WAITING rows: somebody is waiting on somebody else, not hard-blocked. */
+  waiting?: number;
   /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
   answeredThisSession: { who: string; isYou: boolean }[];
   /** How many people the session counts in all, answered or not, for the confidence read. */
@@ -412,9 +414,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     },
     {
       label: 'Blockers',
-      value: input.blocked ? `${input.blocked}` : 'None',
-      sub: input.blocked ? 'named as holding work up' : 'nobody named anything holding work up',
-      tone: input.blocked ? 'bad' : 'good',
+      /* BLOCKING rows are blockers. WAITING rows are not, but a tile saying "None" over a finding that
+         says two people are waiting on a third for five things read as the report contradicting
+         itself in consecutive lines. Both are counted, in the template's own grammar. */
+      value: input.blocked ? `${input.blocked}` : (input.waiting ?? 0) > 0 ? `${input.waiting} waiting` : 'None',
+      sub: input.blocked
+        ? 'named as holding work up'
+        : (input.waiting ?? 0) > 0 ? 'on someone else, nothing hard-blocked' : 'nobody named anything holding work up',
+      tone: input.blocked ? 'bad' : (input.waiting ?? 0) > 0 ? 'warn' : 'good',
     },
     {
       /* "Solid - 0% evidence backed" put a positive label over a zero. This counts one thing and
