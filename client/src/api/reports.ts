@@ -93,7 +93,13 @@ export interface SessionShapedReport {
   /** Whether the shared report has gone out, and whether this reader has shown their own. */
   released: boolean
   iHaveShownMine: boolean
+  /** Drafted from the engines' reads and worded by the model. Null when there is no engine basis. */
   sharedPicture: string | null
+  pictureBasis: 'engines' | 'none'
+  /** The stored, model-written picture. Kept under its own name; this page does not render it. */
+  writtenPicture: string | null
+  /** Why there is no conversation question, when there is none. */
+  whyNoQuestion: string | null
   takenAt: string | null
   amendedAt: string | null
   amendedNote: string | null

@@ -374,9 +374,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     {
       label: 'Differences',
       value: stillOpen ? `${stillOpen}` : agreed ? 'None' : 'Nothing to compare yet',
+      /*
+       * WHAT THIS COUNT IS OVER, SAID. Agreed and open come from the written report, which a model
+       * produced; no engine measures them. The tile kept the count, because the alternative was a
+       * tile with nothing in it, and now says whose reading it is counting.
+       */
       sub: stillOpen
-        ? 'still open between what people said'
-        : agreed ? 'what people said does not disagree anywhere' : 'one side has answered so far',
+        ? 'still open, as the written report reads it'
+        : agreed ? 'no disagreement, as the written report reads it' : 'one side has answered so far',
       tone: stillOpen ? 'warn' : agreed ? 'good' : 'flat',
     },
     {

@@ -210,7 +210,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {/* 9. The picture from the accounts. Carries weight: it is the thing the report is for. */}
       {d.sharedPicture && (
         <section style={{ marginBottom: 30 }}>
-          <Sec title="The picture from everybody" />
+          <Sec title="The picture from everybody" src="built from the record's own reads, worded by the model" />
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)', padding: '15px 17px' }}>
             <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.sharedPicture}</p>
           </div>
@@ -352,7 +352,14 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </section>
       )}
 
-      {/* 14. The conversation worth having now. */}
+      {/* 14. The conversation worth having now. From the blocker kind or the role map; never a model
+          over the transcript. With neither, the honest absence, not a heading over nothing. */}
+      {!d.theConversationWorthHaving && d.whyNoQuestion && (
+        <section style={{ marginBottom: 22 }}>
+          <Sec title="The conversation worth having now" />
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
+        </section>
+      )}
       {d.theConversationWorthHaving && (
         <section style={{ marginBottom: 30 }}>
           <Sec title="The conversation worth having now" />

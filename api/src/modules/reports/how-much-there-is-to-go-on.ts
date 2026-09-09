@@ -77,7 +77,7 @@ export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
 
   const compared = r.agreed + r.stillOpen > 0;
   if (!compared) {
-    reasons.push('Nothing has been compared across people yet, so this names no agreement and no gap.');
+    reasons.push('The written report has not yet set what people said side by side, so it names no agreement and no gap.');
   }
 
   const owned = r.commitments > 0 ? r.commitmentsWithOwnerAndDate / r.commitments : 0;

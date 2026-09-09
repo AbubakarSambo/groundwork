@@ -16,6 +16,8 @@ import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
+import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
 
@@ -1838,6 +1840,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
            labels this reader may resolve; `email` as the last resort a lead is entitled to. */
         participants: {
           select: {
+            /* The function detection columns, so the conversation question can read the role map of
+               the round's clearest function. Same tier as roleAsDescribed: a fact about the work. */
+            detectedFunction: true, detectedFunctionConfidence: true,
             id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true,
             user: { select: { firstName: true, lastName: true } },
           },
@@ -2137,6 +2142,33 @@ Close the report by framing - neutrally, without recommending one - the choice n
       windowDays: window,
     });
 
+    /* Surfaced detections, computed once: the section renders them and the picture draft reads them. */
+    const patternsForPage = (await this.prisma.patternDetection.findMany({
+      where: { groundId, status: PatternStatus.SURFACED },
+      orderBy: [{ periodsObserved: 'desc' }, { lastSeenAt: 'desc' }],
+      select: { participantId: true, code: true, periodsObserved: true },
+    }))
+      .filter((r) => !ALIGNMENT_FEED_ONLY_CODES.has(r.code) && patternCatalogue().has(r.code))
+      .map((r) => {
+        const lib = patternCatalogue().get(r.code)!;
+        return {
+          who: whoOf(r.participantId) ?? (me && r.participantId === me.id ? 'You' : 'Somebody'),
+          isYou: !!me && r.participantId === me.id,
+          signal: lib.signal,
+          positive: isPositiveCode(r.code),
+          periodsObserved: r.periodsObserved,
+        };
+      });
+    /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
+    const started = <T,>(f: () => Promise<T>, fallback: T): Promise<T> => Promise.resolve().then(f).catch(() => fallback);
+    const [mentionRows, depRows] = await Promise.all([
+      started(() => this.prisma.workMention.findMany({ where: { groundId }, select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true } }), [] as any[]),
+      started(() => this.prisma.groundDependency.findMany({
+        where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, blockerKind: true },
+      }), [] as any[]),
+    ]);
+
     return {
       ...shape,
       againstSuccess,
@@ -2172,26 +2204,73 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * codes stay out, as they do everywhere a person reads. The wording is the library's own
        * `signal`, and who it is about follows the same naming rule as every other line here.
        */
-      patterns: await this.prisma.patternDetection
-        .findMany({
-          where: { groundId, status: PatternStatus.SURFACED },
-          orderBy: [{ periodsObserved: 'desc' }, { lastSeenAt: 'desc' }],
-          select: { participantId: true, code: true, periodsObserved: true },
-        })
-        .then((rows) =>
-          rows
-            .filter((r) => !ALIGNMENT_FEED_ONLY_CODES.has(r.code) && patternCatalogue().has(r.code))
-            .map((r) => {
-              const lib = patternCatalogue().get(r.code)!;
-              return {
-                who: whoOf(r.participantId) ?? (me && r.participantId === me.id ? 'You' : 'Somebody'),
-                isYou: !!me && r.participantId === me.id,
-                signal: lib.signal,
-                positive: isPositiveCode(r.code),
-                periodsObserved: r.periodsObserved,
-              };
-            }),
-        ),
+      patterns: patternsForPage,
+      /*
+       * THE PICTURE FROM EVERYBODY, DRAFTED FROM THE READS AND WORDED BY THE MODEL.
+       *
+       * The stored `sharedPicture` is a model over the whole corpus and nothing checks it. It stays
+       * for the ground report and the board, under `writtenPicture` here. On THIS page the picture
+       * is built from the engines' own claims and the model rewords the draft under the same guard
+       * as every other line. With no engine basis it is empty, not filled from the transcript.
+       * See the-picture-is-drafted-from-the-reads.ts.
+       */
+      ...(await (async () => {
+        const nameFor = (pid: string) => whoOf(pid) ?? (me && pid === me.id ? 'You' : null);
+        const readInput = {
+          participants: ground.participants.map((p: any) => ({
+            id: p.id, roleAsDescribed: p.roleAsDescribed ?? null, managingOnly: !!p.managingOnly,
+            detectedFunction: p.detectedFunction ?? null, detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
+          })),
+          checkIns: answered.map((c) => ({ participantId: c.participantId, sessionNumber, status: CheckInStatus.COMPLETED })),
+          entries: entries.map((e) => ({ participantId: e.participantId, sessionNumber, text: cleanText(e.text) })),
+          mentions: mentionRows,
+          dependencies: depRows.map((d) => ({
+            fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId, onLabel: d.onLabel,
+            what: d.what, status: d.status, createdAt: d.createdAt,
+          })),
+        };
+        let coverage: { name: string; reasonText: string }[] = [];
+        let contribution: { name: string; reason: string }[] = [];
+        try {
+          coverage = buildCoverage(readInput as any, nameFor).reads
+            .filter((r) => r.reasonText?.trim() && r.name)
+            .map((r) => ({ name: r.name!, reasonText: r.reasonText }));
+          contribution = buildContribution(readInput as any, nameFor)
+            .filter((r) => r.reason?.trim() && r.name)
+            .map((r) => ({ name: r.name!, reason: r.reason! }));
+        } catch (err: any) {
+          this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
+        }
+        const drafts = draftThePicture({
+          answered: answered.length,
+          ofPeople: ground.participants.filter((p: any) => !p.managingOnly).length,
+          confidence: shape.confidence,
+          tiles: shape.atAGlance,
+          patterns: patternsForPage,
+          coverage,
+          contribution,
+          blockers: depRows.map((d) => ({
+            who: nameFor(d.fromParticipantId),
+            on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
+            onIsPerson: !!d.onParticipantId,
+            what: d.what, kind: (d.blockerKind as any) ?? null, escalated: !!d.escalatedAt,
+          })),
+          settled: shape.whereThingsStand.settled,
+          open: shape.whereThingsStand.open,
+        });
+        const worded = await this.phrase('the picture from everybody', drafts);
+        const question = draftTheQuestion({
+          functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
+          blockers: depRows.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+        });
+        const wordedQ = question ? await this.phrase('the conversation worth having', [question]) : {};
+        return {
+          sharedPicture: drafts.length ? drafts.map((d) => worded[d.key] ?? d.text).join(' ') : null,
+          pictureBasis: drafts.length ? 'engines' : 'none',
+          theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
+          whyNoQuestion: question ? null : WHY_NO_QUESTION,
+        };
+      })()),
       /*
        * THE ONE SURFACE THAT HANDED OUT RAW LABELS.
        *
@@ -2205,7 +2284,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * own label into "you". This one returned the stored string. Same resolver, so the picture,
        * the counting table and the attributions cannot disagree about what to call somebody.
        */
-      sharedPicture: snapshot?.sharedPicture
+      /* The stored, model-written picture, under its own name so nothing downstream that still reads
+         it breaks, and so the page can never mistake it for the engine-drafted one. */
+      writtenPicture: snapshot?.sharedPicture
         ? this.applyNames(
             { sharedPicture: snapshot.sharedPicture } as any,
             ground.participants as any,
