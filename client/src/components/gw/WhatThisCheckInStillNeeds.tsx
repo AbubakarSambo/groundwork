@@ -33,6 +33,9 @@ export function WhatThisCheckInStillNeeds({
   onPickCadence,
   standardUnset,
   onGoToSetup,
+  startDateUnset = false,
+  timelineUnset = false,
+  timelineDays,
 }: {
   /** True when nobody has chosen a rhythm and the default is standing in for one. */
   cadenceUnset: boolean
@@ -42,20 +45,39 @@ export function WhatThisCheckInStillNeeds({
   /** True when what success looks like has been said but never set as the standard. */
   standardUnset: boolean
   onGoToSetup: () => void
+  /**
+   * THE OTHER TWO ANSWERS NOBODY IS ASKED FOR EITHER.
+   *
+   * Read back on a real check-in: "meeting cadence at the end of the report does not show up and
+   * does not have start dates." Both true, and for different reasons.
+   *
+   * It does not show up because this block hides itself the moment a rhythm was picked - and the
+   * door picks one, so `cadenceStated` is true on every check-in born that way and the block never
+   * appears at all. That is the right rule applied to too narrow a question. The question is not
+   * "is the cadence unset", it is "is anything about how this runs unset", and on that same
+   * check-in `startsAt`, `endsAt` and `cadenceAnchorDay` were all null and `timelineStated` false.
+   *
+   * There are no dates because none were ever set. The control exists, on Setup, under "How long
+   * this runs" - so these two rows send you there rather than growing a second date picker here.
+   */
+  startDateUnset?: boolean
+  timelineUnset?: boolean
+  timelineDays?: number | null
 }) {
-  if (!cadenceUnset && !standardUnset) return null
+  const missing = [cadenceUnset, standardUnset, startDateUnset, timelineUnset].filter(Boolean).length
+  if (!missing) return null
 
   return (
     <div style={{ marginTop: 18, border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', background: 'var(--gw-paper-2)' }}>
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>
-        {cadenceUnset && standardUnset ? 'Two things this check-in still needs' : 'One thing this check-in still needs'}
+        {missing === 1 ? 'One thing this check-in still needs' : `${missing === 2 ? 'Two' : missing === 3 ? 'Three' : 'Four'} things this check-in still needs`}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 11 }}>
         Nothing to do with the session you just finished. These are about how it runs.
       </div>
 
       {cadenceUnset && (
-        <div style={{ marginBottom: standardUnset ? 13 : 0 }}>
+        <div style={{ marginBottom: 13 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>How often?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
             Nobody has set this, so it is every two weeks by default.
@@ -77,6 +99,39 @@ export function WhatThisCheckInStillNeeds({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {startDateUnset && (
+        <div style={{ marginBottom: 13 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When does this start?</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
+            No start date is set, so everything is counted from the day you opened this. A date
+            decides two real things: session one stays shut until then, and anybody added before it
+            is invited on the day rather than now.
+          </div>
+          <button
+            onClick={onGoToSetup}
+            style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Set a start date on Setup &rarr;
+          </button>
+        </div>
+      )}
+
+      {timelineUnset && (
+        <div style={{ marginBottom: 13 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>How long does it run?</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
+            Nobody chose this, so it is {timelineDays ?? 90} days by default. Everything that says
+            days remaining is counting against that number.
+          </div>
+          <button
+            onClick={onGoToSetup}
+            style={{ padding: '7px 13px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Change it on Setup &rarr;
+          </button>
         </div>
       )}
 

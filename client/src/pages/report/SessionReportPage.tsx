@@ -180,11 +180,26 @@ export default function SessionReportPage() {
             report={data.report}
             onRecordLine="On record: your account."
             stillNeeded={
-              (ground as any) && (ground as any).cadenceChosen === false && amTheInitiator ? (
+              /*
+               * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
+               *
+               * "Meeting cadence at the end of the report does not show up and does not have start
+               * dates." The whole block was gated on `cadenceChosen === false`, and the opening
+               * conversation picks a rhythm, so on any check-in born through the door this never
+               * rendered once - including the two answers it never asked about at all.
+               *
+               * The gate is now whether ANYTHING about how this runs is unset. The component still
+               * disappears when nothing is, which was always the rule; it just asks the whole
+               * question now.
+               */
+              (ground as any) && amTheInitiator ? (
                 <WhatThisCheckInStillNeeds
-                  cadenceUnset
+                  cadenceUnset={(ground as any).cadenceChosen === false}
                   cadence={(ground as any).cadence ?? 'FORTNIGHTLY'}
                   onPickCadence={(c) => setCadence.mutate(c)}
+                  startDateUnset={(ground as any).startDateChosen === false}
+                  timelineUnset={(ground as any).timelineChosen === false}
+                  timelineDays={(ground as any).timelineDays ?? null}
                   /* The board already says the standard is unset and links to Setup; what was
                      missing was any route to Setup from here at all. */
                   standardUnset={((ground as any).objectives ?? []).length === 0}

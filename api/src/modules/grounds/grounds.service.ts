@@ -1693,6 +1693,21 @@ export class GroundsService {
        */
       cadenceChosen: (ground as any).cadenceStated ?? false,
       /**
+       * AND THE SAME QUESTION ABOUT THE OTHER TWO. See WhatThisCheckInStillNeeds.
+       *
+       * "Meeting cadence at the end of the report does not show up and does not have start dates."
+       * The block that asks about the rhythm was gated on the rhythm alone, and the rhythm is
+       * always picked at the door - so it never appeared. Meanwhile the two answers nobody is ever
+       * asked for were both sitting unset: `startsAt` null on every check-in born through the
+       * door, and `timelineStated` false, which means the 90 days everything counts against is a
+       * default nobody chose.
+       *
+       * Same shape as `cadenceChosen` and for the same reason: the column has always known, and
+       * the payload every screen reads could not say.
+       */
+      startDateChosen: !!(ground as any).startsAt,
+      timelineChosen: (ground as any).timelineStated ?? false,
+      /**
        * WHOSE CHECK-IN THIS IS, WHEN IT IS NOT THE READER'S OWN COMPANY.
        *
        * Somebody added to a check-in in another organisation can open it - the cross-org read a
