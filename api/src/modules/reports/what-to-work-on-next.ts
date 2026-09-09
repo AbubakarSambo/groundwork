@@ -156,11 +156,20 @@ export function thePair(map: RoleMap, noticed: string | null): { noticed: string
   return { noticed: map.failureSignals[at], lookingLike: map.successSignals[at] };
 }
 
-/** "0 days" is accurate on the day something is recorded and reads as a bug. See what-to-probe. */
-const howLong = (n: number) => (n === 0 ? 'since today' : n === 1 ? 'since yesterday' : `for ${n} days`);
+/**
+ * HOW LONG, AND NOTHING AT ALL WHEN THE ANSWER CARRIES NO INFORMATION.
+ *
+ * "Waiting since today", on a session-1 report where every row was written today, tells the reader
+ * nothing and costs them a clause. Zero duration is suppressed rather than phrased.
+ */
+const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` for ${n} days`);
 
 /** `what` is text somebody said, so nothing is concatenated onto the front of it. */
 const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+
+/** Two things are "a and b", three are "a, b and c". One list, not one sentence each. */
+export const andList = (xs: string[]): string =>
+  xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 
 /**
  * WHAT TO DO ABOUT SOMETHING YOU ARE WAITING ON.
@@ -201,30 +210,63 @@ function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: st
 export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   const { map, why: whyNoRoleMap } = whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
+  const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
   /*
    * WHAT THIS IS ABOUT, FROM THE MAP WHERE THERE IS ONE. The map's label is what kind of work this
    * person's record is made of, which is a stronger fact than the scenario the check-in was opened
    * under - a new-hire check-in for a sales hire is still sales.
+   *
+   * The labels are domain names ("Operations and people", "Project management"), so they take a
+   * preposition badly: "in operations and people" was read back off the page as wrong, and it is.
+   * They sit after "work" instead, which is the only position that holds for all ten.
    */
-  const about = map ? map.label.toLowerCase() : i.role?.trim() ? i.role.trim().toLowerCase() : 'this piece of work';
-  const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
+  const about = map
+    ? `${map.label.toLowerCase()} work`
+    : i.role?.trim() ? `your work as ${i.role.trim().toLowerCase()}` : 'this work';
+
   const early = i.sessionNumber <= 2;
   const last = i.totalSessions != null && i.sessionNumber >= i.totalSessions;
-
   const actions: string[] = [];
 
   /*
+   * GROUPING HAPPENS HERE, NOT IN THE PHRASING.
+   *
+   * Three things one person is waiting on used to be three sentences, each "Put this in writing,
+   * with the date you need it by: X". A phrasing pass over three near-identical drafts is a model
+   * being asked to vary a mail merge, which is the wrong job and produces the wrong thing. One
+   * claim about three items is one drafted sentence.
+   *
    * WHAT THEY ARE BLOCKING GOES FIRST, ALWAYS. Somebody else is stopped, which outranks anything
    * this person is waiting on and anything a pattern says about them.
    */
-  for (const d of i.holdingUp.slice(0, 2)) {
-    const who = d.who ? `${d.who} has` : 'Somebody has';
+  if (i.holdingUp.length) {
+    const named = [...new Set(i.holdingUp.map((d) => d.who).filter(Boolean))] as string[];
+    const who = named.length === 1 ? named[0] : named.length ? `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}` : 'Somebody';
+    const items = i.holdingUp.map((d) => theThing(d.what));
+    const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
     actions.push(
-      `${who} been waiting on you ${howLong(d.daysOld)} for this: ${theThing(d.what)}. Either do it, or tell them a date you can do it by.`,
+      `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you${howLong(oldest)} for ${andList(items)}. Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`,
     );
   }
-  for (const d of i.waitingOn.slice(0, 2 - Math.min(2, i.holdingUp.length))) {
-    actions.push(aboutWaiting(d));
+
+  if (i.waitingOn.length) {
+    const escalated = i.waitingOn.filter((d) => d.escalated);
+    const notYet = i.waitingOn.filter((d) => !d.escalated);
+    if (notYet.length) {
+      const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
+      const oldest = Math.max(...notYet.map((d) => d.daysOld));
+      const items = andList(notYet.map((d) => theThing(d.what)));
+      actions.push(
+        oldest >= 14
+          ? `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, without escalating. Put the request in writing with a date, or take it to whoever is above them.`
+          : `Put ${items} in writing${from.length ? ` to ${andList(from)}` : ''}, with the date you need ${notYet.length > 1 ? 'them' : 'it'} by.`,
+      );
+    }
+    if (escalated.length) {
+      actions.push(
+        `You have escalated ${andList(escalated.map((d) => theThing(d.what)))} already. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
+      );
+    }
   }
 
   /*
@@ -241,8 +283,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     return {
       showingUp: `${entry.signal} Read across ${recurring.periodsObserved} sessions, not once.`,
       whyItMatters: map
-        ? `This is ${where}, in ${about}. On track here means: ${map.onTrackMeans} Something read once is an incident; read across sessions it becomes what people expect of you.`
-        : `This is ${where}, in ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
+        ? `This is ${where} of ${about}. On track here means: ${map.onTrackMeans} Something read once is an incident; read across sessions it becomes what people expect of you.`
+        : `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
       beforeNextTime: actions.slice(0, 3),
       general: false,
       role: roleBlock(map, pair),
@@ -265,8 +307,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   return {
     showingUp: null,
     whyItMatters: early
-      ? `This is ${where}, in ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
-      : `This is ${where}, in ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
+      ? `This is ${where} of ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
+      : `This is ${where} of ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
     beforeNextTime: actions.slice(0, 3),
     general: true,
     role: roleBlock(map, pair),

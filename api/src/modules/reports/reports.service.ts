@@ -15,6 +15,8 @@ import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
+import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
 
 /**
@@ -2859,6 +2861,25 @@ happened, and what is in the way.`;
     return (ground as any).peersVisibleToEachOther ?? !evaluative;
   }
 
+  /**
+   * THE ENGINE'S CLAIMS, SAID BETTER, OR THE ENGINE'S CLAIMS.
+   *
+   * One call per surface rather than one per sentence, so the model sees the whole block and can
+   * vary it as a piece. `wordedByTheModel` holds the line count and runs the assistant's own
+   * `safeToUse` on each line, and hands back the draft untouched on any refusal.
+   *
+   * Never allowed to fail the read. A report that will not load because a wording pass timed out
+   * is strictly worse than one that reads like an engine wrote it.
+   */
+  private async phrase(what: string, drafts: Drafted[]): Promise<Record<string, string>> {
+    const out = await wordedByTheModel(
+      drafts,
+      (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
+      (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`),
+    ).catch(() => drafts);
+    return Object.fromEntries(out.map((d) => [d.key, d.text]));
+  }
+
   private async whatTheRecordHoldsFor(groundId: string, ground: any) {
     const [detections, dependencies, entries, docs, sessions] = await Promise.all([
       this.prisma.patternDetection.findMany({
@@ -2906,7 +2927,8 @@ happened, and what is in the way.`;
     const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
     const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
-    return whatToWorkOnNext({
+    const map = roleMapFor((participant as any).detectedFunction);
+    const note = whatToWorkOnNext({
       patterns: held.detections
         .filter((d) => d.participantId === participant.id)
         .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
@@ -2962,6 +2984,35 @@ happened, and what is in the way.`;
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
     });
+
+    /*
+     * THE ROLE MAP'S OWN FIELDS ARE NOT REWORDED. They are somebody's considered sentences about a
+     * function, written once and read by everybody in it, and a model paraphrasing them per reader
+     * would drift the one thing here that is meant to be stable. What varies is the part built by
+     * substitution: the actions, and the sentence around the map.
+     */
+    /*
+     * AND WHAT THE ROWS SAY, HELD INTACT THROUGH THE REWORDING.
+     *
+     * Every awaited or blocked item is somebody's own words for the thing they are owed. Driven
+     * live, "a named on-call person published by Friday each week" came back as "Each Friday, give
+     * Hafsah ... a named on-call person": the cadence moved from the item to the action, which is a
+     * different claim, and no number or name changed so nothing caught it.
+     */
+    const rows = [...held.dependencies.map((d) => d.what.replace(/[.\s]+$/, ''))];
+    const said = await this.phrase('the coaching note', [
+      { key: 'whyItMatters', text: note.whyItMatters, mustKeep: map ? [map.onTrackMeans] : [] },
+      ...note.beforeNextTime.map((t, n) => ({
+        key: `a${n}`,
+        text: t,
+        mustKeep: rows.filter((r) => t.includes(r)),
+      })),
+    ]);
+    return {
+      ...note,
+      whyItMatters: said.whyItMatters ?? note.whyItMatters,
+      beforeNextTime: note.beforeNextTime.map((t, n) => said[`a${n}`] ?? t),
+    };
   }
 
   /**
@@ -2983,7 +3034,7 @@ happened, and what is in the way.`;
     const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
     const thisRound = planned > 0 ? planned : 1;
 
-    return (ground.participants ?? [])
+    const reads = (ground.participants ?? [])
       .filter((p: any) => !p.managingOnly)
       .map((p: any) => {
         const mine = held.entries.filter((e) => e.participantId === p.id);
@@ -3040,6 +3091,24 @@ happened, and what is in the way.`;
           scenario: ground.scenario ?? null,
         });
       });
+
+    /* One call for the whole list rather than one per person: the same guard, a tenth of the
+       calls, and the model sees the section as a section. */
+    const drafts: Drafted[] = [];
+    const rowWords = held.dependencies.map((d) => d.what.replace(/[.\s]+$/, ''));
+    const keeping = (t: string) => rowWords.filter((r) => t.includes(r));
+    reads.forEach((r: any, i: number) => {
+      r.probe.forEach((t: string, n: number) => drafts.push({ key: `p${i}.${n}`, text: t, mustKeep: keeping(t) }));
+      r.encourage.forEach((t: string, n: number) => drafts.push({ key: `e${i}.${n}`, text: t, mustKeep: keeping(t) }));
+      drafts.push({ key: `u${i}`, text: r.triedToUnblock });
+    });
+    const said = await this.phrase('the probe list', drafts);
+    return reads.map((r: any, i: number) => ({
+      ...r,
+      probe: r.probe.map((t: string, n: number) => said[`p${i}.${n}`] ?? t),
+      encourage: r.encourage.map((t: string, n: number) => said[`e${i}.${n}`] ?? t),
+      triedToUnblock: said[`u${i}`] ?? r.triedToUnblock,
+    }));
   }
 
   private async whatItRestsOn(

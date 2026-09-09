@@ -98,7 +98,7 @@ describe('what somebody is blocking outranks what they are waiting on', () => {
     /* "You are named as the holdup on X" is about the reader. "Tunde should chase you" is not, and
        a private note that instructs somebody about a third party is a management memo. */
     expect(member.beforeNextTime[0]).toMatch(/waiting on you/);
-    expect(member.beforeNextTime[0]).toMatch(/Either do it, or tell them a date/);
+    expect(member.beforeNextTime[0]).toMatch(/Either do it, or give a date/);
   });
 });
 

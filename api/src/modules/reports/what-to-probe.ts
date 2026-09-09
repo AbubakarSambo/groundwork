@@ -56,10 +56,11 @@ export interface WhatToProbe {
 /**
  * HOW LONG, IN WORDS SOMEBODY WOULD USE.
  *
- * "0 days now" was read off the page on the day everything was recorded. It is accurate and it
- * reads as a bug, which on a page whose job is to be trusted is the same cost as being wrong.
+ * "0 days now" was read off the page on the day everything was recorded. It is accurate, it reads
+ * as a bug, and on a page whose job is to be trusted that costs the same as being wrong. Zero
+ * duration is suppressed rather than phrased: it carries no information either way.
  */
-const howLong = (n: number) => (n === 0 ? 'since today' : n === 1 ? 'since yesterday' : `for ${n} days`);
+const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` for ${n} days`);
 
 /**
  * WHAT THEY ARE WAITING ON, AS ITS OWN CLAUSE.
@@ -69,6 +70,10 @@ const howLong = (n: number) => (n === 0 ? 'since today' : n === 1 ? 'since yeste
  * onto captured text will do this eventually. A colon takes whatever the text is.
  */
 const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+
+/** Two things are "a and b", three are "a, b and c". One list, not one sentence each. */
+const andList = (xs: string[]): string =>
+  xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 
 /** Early enough that not escalating is ordinary. Coach it, do not treat it as a finding. */
 function earlyDays(i: ProbeInput): boolean {
@@ -85,22 +90,42 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
   }
 
   /*
+   * ONE CLAIM ABOUT THREE THINGS IS ONE SENTENCE.
+   *
+   * Three items one person is waiting on used to be three probes, identical apart from the noun.
+   * Read back off the page as exactly that. Grouping belongs in the draft: a phrasing pass over
+   * three near-identical sentences is a model being asked to vary a mail merge.
+   *
    * WHAT THEY ARE HOLDING UP FIRST. Somebody else is stopped, it is the most actionable thing on
    * the page, and the lead is usually the only person who can unstick it.
    */
-  for (const d of i.holdingUp) {
-    const who = d.who ?? 'Somebody';
-    probe.push(`${who} is waiting on them ${howLong(d.daysOld)} for this: ${theThing(d.what)}. Ask what it is waiting on.`);
+  if (i.holdingUp.length) {
+    const named = [...new Set(i.holdingUp.map((d) => d.who).filter(Boolean))] as string[];
+    const who = named.length ? andList(named) : 'Somebody';
+    const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
+    probe.push(
+      `${who} ${named.length > 1 ? 'are' : 'is'} waiting on them${howLong(oldest)} for ${andList(i.holdingUp.map((d) => theThing(d.what)))}. Ask what that is waiting on.`,
+    );
   }
 
-  for (const d of i.waitingOn) {
-    const from = d.who ? ` from ${d.who}` : '';
-    if (d.escalated) {
-      probe.push(`Waiting ${howLong(d.daysOld)}${from} for this: ${theThing(d.what)}. They have escalated it, so ask what happened after they did.`);
-    } else if (earlyDays(i)) {
-      probe.push(`Waiting ${howLong(d.daysOld)}${from} for this: ${theThing(d.what)}. No escalation on record, and this early that is worth showing them rather than asking about.`);
-    } else {
-      probe.push(`Waiting ${howLong(d.daysOld)}${from} for this: ${theThing(d.what)}. No escalation on record. Ask what has stopped them raising it.`);
+  if (i.waitingOn.length) {
+    const escalated = i.waitingOn.filter((d) => d.escalated);
+    const notYet = i.waitingOn.filter((d) => !d.escalated);
+    if (escalated.length) {
+      const oldest = Math.max(...escalated.map((d) => d.daysOld));
+      probe.push(
+        `Waiting${howLong(oldest)} for ${andList(escalated.map((d) => theThing(d.what)))}, and has escalated. Ask what happened after they did.`,
+      );
+    }
+    if (notYet.length) {
+      const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
+      const oldest = Math.max(...notYet.map((d) => d.daysOld));
+      const items = andList(notYet.map((d) => theThing(d.what)));
+      probe.push(
+        earlyDays(i)
+          ? `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. This early that is worth showing them rather than asking about.`
+          : `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. Ask what has stopped them raising it.`,
+      );
     }
   }
 
@@ -114,8 +139,8 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     );
   }
 
-  for (const c of i.concrete.slice(0, 2)) {
-    encourage.push(`Put something checkable on record: ${theThing(c)}.`);
+  if (i.concrete.length) {
+    encourage.push(`Put something checkable on record: ${andList(i.concrete.slice(0, 2).map(theThing))}.`);
   }
   if (i.documentsAttached > 0) {
     encourage.push(
