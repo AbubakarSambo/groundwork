@@ -2169,8 +2169,39 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }), [] as any[]),
     ]);
 
+    /*
+     * THE ASSEMBLER'S OWN SENTENCES GO THROUGH THE SAME WORDING PASS AS EVERYTHING ELSE.
+     *
+     * "Nobody committed to anything specific this session", the tile sub-lines and the confidence
+     * reasons were template output read by every ground in the product in identical words. One call
+     * for the lot, and the claims are held: a tile's VALUE is a count or a library string and must
+     * survive; a reason's numbers must survive; and the draft ships on any refusal.
+     */
+    const wordedShape = await (async () => {
+      const drafts: Drafted[] = [];
+      shape.sections.forEach((sec, i) => { if (sec.saying) drafts.push({ key: `say${i}`, text: sec.saying }); });
+      shape.atAGlance.forEach((t, i) => drafts.push({ key: `sub${i}`, text: `${t.label}: ${t.value}, ${t.sub}.`, mustKeep: [t.value] }));
+      shape.confidence.reasons.forEach((r, i) => drafts.push({ key: `why${i}`, text: r }));
+      drafts.push({ key: 'conf', text: shape.confidence.saying });
+      drafts.push({ key: 'stand', text: shape.whereThingsStand.saying });
+      const said = await this.phrase('the session report', drafts);
+      const subOf = (i: number, t: { label: string; value: string; sub: string }) => {
+        const w = said[`sub${i}`];
+        /* The tile keeps label and value as its own fields; only the sub-line takes the wording. */
+        const m = w ? w.match(new RegExp(`^${t.label}: ${t.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\s*(.*)\.?$`)) : null;
+        return m ? m[1].replace(/\.$/, '') : t.sub;
+      };
+      return {
+        ...shape,
+        sections: shape.sections.map((sec, i) => ({ ...sec, saying: sec.saying ? (said[`say${i}`] ?? sec.saying) : sec.saying })),
+        atAGlance: shape.atAGlance.map((t, i) => ({ ...t, sub: subOf(i, t) })),
+        confidence: { ...shape.confidence, saying: said.conf ?? shape.confidence.saying, reasons: shape.confidence.reasons.map((r, i) => said[`why${i}`] ?? r) },
+        whereThingsStand: { ...shape.whereThingsStand, saying: said.stand ?? shape.whereThingsStand.saying },
+      };
+    })();
+
     return {
-      ...shape,
+      ...wordedShape,
       againstSuccess,
       correctable: canCorrect.allowed,
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
