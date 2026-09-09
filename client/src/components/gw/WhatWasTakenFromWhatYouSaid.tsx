@@ -21,6 +21,10 @@ export interface MyRow {
   disputedAt: string | null
   checkInId: string | null
   sessionNumber: number | null
+  /** A document you can see states this. */
+  documented?: boolean
+  /** A document you can see states it differently. Yours stays yours; this is beside it. */
+  documentSays?: string | null
 }
 
 const KIND: Record<string, string> = {
@@ -65,6 +69,12 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
               {/* A visible separator, not only a margin: read back off the page as "refers into.what you are working on". */}
               <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· {KIND[r.type] ?? r.type.toLowerCase()}</span>
               {r.disputedAt && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· you said this is not what you said</span>}
+              {!r.disputedAt && r.documented && <span style={{ color: 'var(--gw-green-t)', fontSize: 11, marginLeft: 8 }}>· backed by a document</span>}
+              {!r.disputedAt && r.documentSays && (
+                <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 3, lineHeight: 1.5 }}>
+                  A document you can see reads differently: “{r.documentSays}”. Yours stands as you said it; your next check-in will ask which is current.
+                </div>
+              )}
             </div>
             {!r.disputedAt && (
               <button

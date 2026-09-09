@@ -2317,8 +2317,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    const [seenBefore, closeHeldLine] = await Promise.all([
+    const [seenBefore, closeHeldLine, documentReadsDifferently] = await Promise.all([
       this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId),
+      this.prisma.recordEntry
+        .findMany({
+          where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
+          select: { text: true, documentSays: true },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+        })
+        .then((rows) => rows.length
+          ? 'A DOCUMENT THEY CAN SEE READS DIFFERENTLY FROM SOMETHING THEY SAID. This is theirs to answer, once, as an ordinary question: put the two side by side and ask which is current. Never say the document is right. Never say they were wrong. Do not raise it twice.\n'
+            + rows.map((r) => `- They said: "${r.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}". The document says: "${r.documentSays}".`).join('\n')
+          : '')
+        .catch(() => ''),
       this.prisma.checkIn
         .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
         .then((r) => (r?.closeHeldAt ? THE_CLOSE_WAS_HELD : ''))
@@ -2343,12 +2355,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
-      ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
+      ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -3593,7 +3605,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * meter and What this rests on already read recallBased, so they move on their own. Runs at
    * complete() and again when a document is uploaded, so an upload after the session still counts.
    */
-  async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number }> {
+  async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number; readsDifferently?: number }> {
     const [docs, entries] = await Promise.all([
       this.prisma.groundDocument.findMany({
         where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
@@ -3608,10 +3620,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         take: 120,
       }),
     ]);
-    if (!docs.length || !entries.length) return { backed: 0, of: entries.length };
+    if (!docs.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
     const documents = docs.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
     const lines = entries.map((e, i) => `[${i}] ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
-    const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[] }>(
+    const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
       ANCHOR_TO_DOCUMENTS_PROMPT,
       [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
       ANCHOR_TO_DOCUMENTS_SCHEMA,
@@ -3624,8 +3636,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         .then(() => { backed++; })
         .catch(() => undefined);
     }
-    if (backed) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document.`);
-    return { backed, of: entries.length };
+    /*
+     * WHERE A DOCUMENT READS DIFFERENTLY, THE LINE STAYS THEIRS. Nothing is overwritten and nobody
+     * is ruled wrong: the line keeps their words, gains what the document says beside it, shows in
+     * their own report, and is put to them as a question in their next session. "Not what I said"
+     * still works on it. The document may be the stale one.
+     */
+    const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && docs[d.document] && d.says?.trim());
+    for (const d of differs) {
+      await this.prisma.recordEntry
+        .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: docs[d.document].id } })
+        .catch(() => undefined);
+    }
+    if (backed || differs.length) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document; ${differs.length} read differently.`);
+    return { backed, of: entries.length, readsDifferently: differs.length };
   }
 
   async reviseDetectedFunction(participantId: string) {

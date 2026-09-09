@@ -31,7 +31,7 @@ function makeService({
   leavePeriods = null,
   /* Recurrence: a step is offered only when the same thing was seen in two distinct sessions. The
      default harness has seen it once before, in session 3, so session 4 is the second time. */
-  priorObservations = [{ sessionNumber: 3, noticed: roleMapFor(RoleFunction.MANAGEMENT)!.failureSignals[0], reason: 'seen before' }],
+  priorObservations = [{ sessionNumber: 3, noticed: roleMapFor(RoleFunction.MANAGEMENT)?.failureSignals?.[0] ?? '', reason: 'seen before' }],
 }: any = {}) {
   const upserts: any[] = [];
   const prisma: any = {

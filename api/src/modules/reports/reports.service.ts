@@ -3690,10 +3690,11 @@ happened, and what is in the way.`;
             .then(() => this.prisma.recordEntry.findMany({
               where: { participantId: participant.id },
               orderBy: [{ createdAt: 'asc' }],
-              select: { id: true, type: true, text: true, disputedAt: true, checkIn: { select: { id: true, sessionNumber: true } } },
+              select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
             }))
             .then((rows) => rows.map((r) => ({
               id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
+              documented: !r.recallBased, documentSays: r.documentSays ?? null,
               checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
             })))
             .catch(() => [])

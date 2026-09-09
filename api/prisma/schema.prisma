@@ -1270,6 +1270,8 @@ model RecordEntry {
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
   anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
+  documentSays         String?         @map("document_says") @db.Text // when a document they can see states the same thing differently: what it says, quoted short
+  documentSaysId       String?         @map("document_says_id") // which document
   dimensionThreadKey   String?         @map("dimension_thread_key") // groups entries across sessions by theme
   anchored_question_id String?         @map("anchored_question_id") // which verbatim question produced this entry
   createdAt            DateTime        @default(now()) @map("created_at")

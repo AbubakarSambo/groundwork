@@ -4258,7 +4258,9 @@ export const ANCHOR_TO_DOCUMENTS_PROMPT = `You are matching lines taken from wha
 
 A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. When in doubt, it is not backed.
 
-Return, for every backed line, the line's index and the index of the document that backs it. Most lines will not be backed. Return JSON only.`;
+A line READS DIFFERENTLY in a document when the document states the same thing with a different date, number, name or outcome. Report those separately, quoting the document's words short. Do not decide who is right: the person may be describing a change the document does not have yet.
+
+Return, for every backed line, the line's index and the index of the document that backs it; and for every line that reads differently, the line, the document and its words. Most lines will be neither. Return JSON only.`;
 
 export const ANCHOR_TO_DOCUMENTS_SCHEMA = {
   name: 'emit_backed_lines',
@@ -4278,7 +4280,19 @@ export const ANCHOR_TO_DOCUMENTS_SCHEMA = {
           required: ['line', 'document', 'where'],
         },
       },
+      readsDifferently: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            line: { type: 'integer', description: 'Zero-based index of the record line.' },
+            document: { type: 'integer', description: 'Zero-based index of the document.' },
+            says: { type: 'string', description: 'What the document says on the same point, quoted short, under 30 words.' },
+          },
+          required: ['line', 'document', 'says'],
+        },
+      },
     },
-    required: ['backed'],
+    required: ['backed', 'readsDifferently'],
   },
 } as const;
