@@ -17,6 +17,9 @@ const waiting = { what: 'the on-call rota', who: 'Hafsah', daysOld: 26, escalate
 const memberBase = {
   patterns: [],
   role: 'ward coordinator',
+  detectedFunction: null as string | null,
+  functionConfidence: null as number | null,
+  noticedBehaviour: null as string | null,
   sessionNumber: 2,
   totalSessions: 6,
   scenario: 'NEW_HIRE',

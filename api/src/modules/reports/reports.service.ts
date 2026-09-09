@@ -2911,6 +2911,32 @@ happened, and what is in the way.`;
         .filter((d) => d.participantId === participant.id)
         .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
       role: participant.roleAsDescribed ?? null,
+      /*
+       * THE COLUMN THAT SELECTS THE ROLE MAP, read here for the first time on this page. See
+       * whichRoleMap: below MIN_COACHING_CONFIDENCE there is no map and the note says why, rather
+       * than coaching somebody against a function nobody established.
+       */
+      detectedFunction: (participant as any).detectedFunction ?? null,
+      functionConfidence: (participant as any).detectedFunctionConfidence ?? null,
+      /*
+       * ALWAYS NULL HERE, AND THAT IS A WALL RATHER THAN A GAP.
+       *
+       * The map's `failureSignals` are paired with `successSignals`, and finding which one applies
+       * to a person means reading `coachingState.staircase` - what they were asked to work on and
+       * what they did not manage, given voluntarily on the understanding that it was for them.
+       *
+       * `coaching-can-never-justify-a-firing.spec.ts` makes reports.service one of five files with
+       * no path to that table, deliberately, and it reads the source rather than the behaviour so
+       * that adding the import fails. I added the import; it failed; it was right to.
+       *
+       * The argument is not only that a firing could be justified with it. It is that people would
+       * work out that it could, and stop answering honestly, which destroys the layer in the same
+       * motion. And this read feeds the LEAD's probe list as well as the private note.
+       *
+       * So the paired signals do not reach this page. Everything else in the map is per-function
+       * rather than per-person and carries no such risk.
+       */
+      noticedBehaviour: null,
       sessionNumber,
       totalSessions: planned > 0 ? planned : null,
       scenario: ground.scenario ?? null,

@@ -1,4 +1,5 @@
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
 
 /**
  * THE COACHING NOTE. THE ONE PART OF A REPORT THAT SPEAKS TO THE PERSON READING IT.
@@ -39,6 +40,24 @@ export interface WhatToWorkOnNext {
   beforeNextTime: string[];
   /** True when this is role, stage and blocker guidance rather than a read on a pattern. */
   general: boolean;
+  /**
+   * WHAT THE ROLE MAP SAYS, WHERE THERE IS ONE. Null when no function was detected, or when it was
+   * detected below MIN_COACHING_CONFIDENCE - see `whyNoRoleMap`.
+   *
+   * `onTrack` and `goingWrong` come from the map verbatim. `noticed`/`lookingLike` are the paired
+   * failure and success signals, and only appear when the coaching engine actually recorded which
+   * behaviour it noticed: an unpaired failure signal is a label stapled to somebody.
+   */
+  role: {
+    label: string;
+    onTrack: string;
+    goingWrong: string;
+    protectAgainst: string;
+    noticed: string | null;
+    lookingLike: string | null;
+  } | null;
+  /** Why there is no role map, said plainly rather than left as an absence. */
+  whyNoRoleMap: string | null;
 }
 
 /** One thing somebody is waiting on, or one thing they are holding up. */
@@ -54,7 +73,22 @@ export interface Dependency {
 export interface CoachingInputs {
   /** Surfaced pattern codes for THIS participant, with how many periods each was observed over. */
   patterns: { code: string; periodsObserved: number }[];
+  /** How this person's part is described, when anybody has said. Not the detected function. */
   role: string | null;
+  /**
+   * WHAT KIND OF WORK THIS PERSON'S RECORD IS ACTUALLY MADE OF, and how sure the engine is.
+   *
+   * `detectFunction` has been writing these two columns for a long time and nothing on the report
+   * ever read them, which is why 749 lines of role map were dead weight here.
+   */
+  detectedFunction: string | null;
+  functionConfidence: number | null;
+  /**
+   * The behaviour the coaching engine noticed, as it stored it. Matched back against the map's
+   * `failureSignals` to find its paired success signal. Null when the engine has never run for
+   * this person, which is most people today.
+   */
+  noticedBehaviour: string | null;
   sessionNumber: number;
   totalSessions: number | null;
   scenario: string | null;
@@ -68,19 +102,58 @@ export interface CoachingInputs {
 
 const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
 
-/** What this kind of check-in is about, in the second person, in one clause. */
-export function whatThisRoleIsFor(scenario: string | null, role: string | null): string {
-  if (role?.trim()) return `your part in this, which is ${role.trim().toLowerCase()}`;
-  switch (scenario) {
-    case 'NEW_HIRE': return 'the first months of a new role';
-    case 'NEW_MANAGER': return 'taking on a team';
-    case 'ROLE_HANDOVER': return 'a role changing hands';
-    case 'PIP': return 'getting back on track';
-    case 'CONTRACT_RENEWAL': return 'a renewal decision';
-    case 'DRIFT': case 'REALIGN_TEAM': return 'getting back onto the same page';
-    case 'CRISIS_ALIGNMENT': case 'ACUTE_SHOCK': return 'a situation that just changed';
-    default: return 'this piece of work';
+/**
+ * WHICH ROLE MAP APPLIES, AND WHY THERE IS NOT ONE.
+ *
+ * THE HAND-WRITTEN SWITCH THIS REPLACES was seven lines of `case 'NEW_HIRE': return 'the first
+ * months of a new role'` sitting beside 749 lines of role map that says, per function, what on
+ * track means, what going wrong looks like, the behaviours to notice, their paired success
+ * signals, and what that function's people get unfairly read as. The switch existed because
+ * nothing here read `detectedFunction`, which is the column that selects the map.
+ *
+ * LOW CONFIDENCE DEGRADES TO STAGE, NOT TO A WRONG MAP. `priorFunctionFromRole` returns 0.4 for a
+ * title alone, deliberately, because a title is weak evidence - somebody titled product manager
+ * whose record is all coordination reads as project management, and coaching them out of the wrong
+ * map is worse than not coaching them. Below `MIN_COACHING_CONFIDENCE` there is no map and the
+ * note says so, rather than quietly reading against a function nobody established.
+ */
+export function whichRoleMap(
+  detectedFunction: string | null,
+  confidence: number | null,
+): { map: RoleMap | null; why: string | null } {
+  const map = roleMapFor(detectedFunction);
+  if (!map) {
+    return {
+      map: null,
+      why: 'What kind of work this is has not been read from your record yet, so this is about where you are rather than about the role.',
+    };
   }
+  if ((confidence ?? 0) < MIN_COACHING_CONFIDENCE) {
+    return {
+      map: null,
+      why: `Your record looks like ${map.label.toLowerCase()}, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it.`,
+    };
+  }
+  return { map, why: null };
+}
+
+/**
+ * THE PAIR, WHERE THE COACHING ENGINE ACTUALLY NOTICED SOMETHING.
+ *
+ * `failureSignals[n]` and `successSignals[n]` are paired by index so the coach always knows what it
+ * is coaching TOWARD. Handing somebody the failure half alone is the label this product refuses to
+ * produce, so both or neither.
+ *
+ * Matched by the stored text rather than by an index, because the index lives inside the coaching
+ * engine's own call and the report reads `coachingState.staircase`, which is the behaviour as it
+ * was written down.
+ */
+export function thePair(map: RoleMap, noticed: string | null): { noticed: string; lookingLike: string } | null {
+  if (!noticed?.trim() || !map.failureSignals?.length || !map.successSignals?.length) return null;
+  const want = noticed.trim().toLowerCase();
+  const at = map.failureSignals.findIndex((f) => f.trim().toLowerCase() === want);
+  if (at < 0 || at >= map.successSignals.length) return null;
+  return { noticed: map.failureSignals[at], lookingLike: map.successSignals[at] };
 }
 
 /** "0 days" is accurate on the day something is recorded and reads as a bug. See what-to-probe. */
@@ -108,8 +181,32 @@ function aboutWaiting(d: Dependency): string {
   return `Put this in writing${from}, with the date you need it by: ${it}.`;
 }
 
+/**
+ * The map, as the reader gets it. `protectAgainst` travels with it always: it is the fairness half
+ * of the map, it is the reason the map is a map rather than a prompt, and dropping it would leave
+ * only the stick.
+ */
+function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: string } | null) {
+  if (!map) return null;
+  return {
+    label: map.label,
+    onTrack: map.onTrackMeans,
+    goingWrong: map.goingWrongLooksLike,
+    protectAgainst: map.protectAgainst,
+    noticed: pair?.noticed ?? null,
+    lookingLike: pair?.lookingLike ?? null,
+  };
+}
+
 export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
-  const about = whatThisRoleIsFor(i.scenario, i.role);
+  const { map, why: whyNoRoleMap } = whichRoleMap(i.detectedFunction, i.functionConfidence);
+  const pair = map ? thePair(map, i.noticedBehaviour) : null;
+  /*
+   * WHAT THIS IS ABOUT, FROM THE MAP WHERE THERE IS ONE. The map's label is what kind of work this
+   * person's record is made of, which is a stronger fact than the scenario the check-in was opened
+   * under - a new-hire check-in for a sales hire is still sales.
+   */
+  const about = map ? map.label.toLowerCase() : i.role?.trim() ? i.role.trim().toLowerCase() : 'this piece of work';
   const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
   const early = i.sessionNumber <= 2;
   const last = i.totalSessions != null && i.sessionNumber >= i.totalSessions;
@@ -143,9 +240,13 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     if (entry.probe?.trim()) actions.push(entry.probe.trim());
     return {
       showingUp: `${entry.signal} Read across ${recurring.periodsObserved} sessions, not once.`,
-      whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
+      whyItMatters: map
+        ? `This is ${where}, in ${about}. On track here means: ${map.onTrackMeans} Something read once is an incident; read across sessions it becomes what people expect of you.`
+        : `This is ${where}, in ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
       beforeNextTime: actions.slice(0, 3),
       general: false,
+      role: roleBlock(map, pair),
+      whyNoRoleMap,
     };
   }
 
@@ -164,9 +265,11 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   return {
     showingUp: null,
     whyItMatters: early
-      ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
-      : `This is ${where} of ${about}. Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
+      ? `This is ${where}, in ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
+      : `This is ${where}, in ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
     beforeNextTime: actions.slice(0, 3),
     general: true,
+    role: roleBlock(map, pair),
+    whyNoRoleMap,
   };
 }

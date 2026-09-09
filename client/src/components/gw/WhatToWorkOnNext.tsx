@@ -20,6 +20,17 @@ export interface CoachingNote {
   /** One or two things to do. A list, because two actions run together read as one sentence. */
   beforeNextTime: string[]
   general: boolean
+  /** From the role map, where a function was detected confidently. See what-to-work-on-next.ts. */
+  role: {
+    label: string
+    onTrack: string
+    goingWrong: string
+    protectAgainst: string
+    noticed: string | null
+    lookingLike: string | null
+  } | null
+  /** Why there is no role map, when there is none. An absence with no reason reads as a gap. */
+  whyNoRoleMap: string | null
 }
 
 export function WhatToWorkOnNext({ note, guide }: {
@@ -58,6 +69,22 @@ export function WhatToWorkOnNext({ note, guide }: {
               </p>
             </div>
           )}
+          {/*
+            WHAT GOING WRONG LOOKS LIKE IN THIS KIND OF WORK, AND WHAT IT LOOKS LIKE WHEN IT DOES
+            NOT. Both halves or neither: the failure signal alone is a label stapled to a person,
+            and the pairing is the whole reason the map is a staircase rather than a stick.
+          */}
+          {note.role?.noticed && note.role.lookingLike && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>What was noticed, and what it looks like instead</div>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
+                {note.role.noticed}.
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
+                Done well, that is: {note.role.lookingLike.charAt(0).toLowerCase() + note.role.lookingLike.slice(1)}.
+              </p>
+            </div>
+          )}
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>
               {note.general ? 'Where you are' : 'Why it matters here'}
@@ -66,6 +93,27 @@ export function WhatToWorkOnNext({ note, guide }: {
               {note.whyItMatters}
             </p>
           </div>
+          {/*
+            THE FAIRNESS HALF OF THE MAP, AND IT IS NOT OPTIONAL.
+
+            `protectAgainst` is how this function's people get unfairly read. A coaching note that
+            carries what somebody does wrong and not what they get blamed for wrongly is the stick
+            without the map, and the map exists so this product is not that.
+          */}
+          {note.role?.protectAgainst && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>What this work gets read as unfairly</div>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65, maxWidth: '68ch' }}>
+                {note.role.protectAgainst}
+              </p>
+            </div>
+          )}
+          {/* An absence with no reason reads as the product having nothing to say. */}
+          {!note.role && note.whyNoRoleMap && (
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6, maxWidth: '68ch' }}>
+              {note.whyNoRoleMap}
+            </p>
+          )}
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 3 }}>Before the next session</div>
             <div style={{ display: 'grid', gap: 7 }}>
