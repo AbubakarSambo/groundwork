@@ -110,7 +110,7 @@ describe('the paired signals', () => {
      * So `thePair` stays exported and tested for the surfaces that may use it, and the report
      * always passes null.
      */
-    const src = require('fs').readFileSync(__dirname + '/reports.service.ts', 'utf8');
+    const src = require('fs').readFileSync(__dirname + '/reports.service.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(src).toMatch(/noticedBehaviour: null/);
     const out = whatToWorkOnNext({ ...base, detectedFunction: 'SALES', functionConfidence: 0.72 });
     expect(out.role?.noticed).toBeNull();
@@ -124,7 +124,7 @@ describe('the paired signals', () => {
 
 describe('the switch it replaced', () => {
   it('is gone', () => {
-    const src = require('fs').readFileSync(__dirname + '/what-to-work-on-next.ts', 'utf8');
+    const src = require('fs').readFileSync(__dirname + '/what-to-work-on-next.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(src).not.toContain('whatThisRoleIsFor');
     expect(src).not.toContain("case 'NEW_MANAGER'");
   });

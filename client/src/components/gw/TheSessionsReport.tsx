@@ -124,6 +124,22 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           </em>
         </div>
 
+        {/*
+          WHO THIS IS COUNTING. On a forming report this is the row that says who to chase; on a
+          closed one it is a receipt. Kept compact: one line per person, and the only state left is
+          whether they answered.
+        */}
+        {d.counting?.length > 0 && (
+          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--gw-border)', display: 'flex', flexWrap: 'wrap', gap: '6px 18px' }}>
+            {d.counting.map((c: any, i: number) => (
+              <span key={i} style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>{c.isYou ? `${c.who} (you)` : c.who}</span>
+                {' · '}{c.answered ? 'Answered' : 'Not answered yet'}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* The finding, in amber. One sentence the engines stand behind, worded by the model. */}
         {finding && (
           <div style={{ padding: '20px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
@@ -232,7 +248,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
             </div>
           </div>
         ) : d.whereThingsStand?.saying ? (
-          <Row label="Where this stands">
+          <Row label="Where things stand">
             <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>{d.whereThingsStand.saying}</p>
           </Row>
         ) : null}
