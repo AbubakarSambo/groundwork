@@ -372,7 +372,9 @@ function shortLabel(label: string): string {
     /* One word, like the rest: at the label column's width "Why now" wraps onto two lines and the
        row it labels goes out of line with every other row. */
     case 'Why now': return 'Why'
-    case 'What you want from it': return 'Want'
+    /* "Want" beside a bare clause read as a sentence: "Want take the on-call escalations off me".
+       "Aim" is a noun and frames the clause as the thing being aimed at. */
+    case 'What you want from it': return 'Aim'
     case 'Sessions': return 'Sessions'
     default: return label
   }
@@ -419,7 +421,9 @@ export function summariseSetup(
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
   if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
   if (sels.decision?.trim()) have.push({ label: 'Why now', value: sels.decision.trim() })
-  if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.join('; ') })
+  /* The goal is a clause the model lifted mid-sentence ("take the on-call escalations off me"). It is
+     the person's words, so nothing is added to them; it is capitalised because it now opens a line. */
+  if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1)).join('; ') })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
 
   /*
@@ -2757,8 +2761,11 @@ export function EntryChatPage() {
                       And the word "account" is gone rather than reworded. It is the login word to
                       everybody outside this codebase, and it was carrying the whole explanation.
                     */}
+                    {/* `yourRole` is EXTRACTED from what they typed, not something they said in so many
+                        words. "You said" put a sentence in their mouth; this attributes it to their text,
+                        and the button beside it is how they change it. */}
                     {yourRole === 'a_party' ? (
-                      <div style={{ fontWeight: 700 }}>You said you are one of the people involved.</div>
+                      <div style={{ fontWeight: 700 }}>From what you wrote, you are one of the people involved.</div>
                     ) : null}
                   </div>
                   <button

@@ -244,6 +244,9 @@ export default function SessionReportPage() {
           */}
           <TheReportYouSawAtTheEnd
             report={data.report}
+            /* The engine's own meter is above this. Two meters about one session, six lines apart,
+               said "Thin" and "Clear" about the same ten minutes. See hideCompleteness. */
+            hideCompleteness={!!shape?.howClearThisWas?.level}
             /* "Account" is the login word. Here it meant what this person said, so it says that. */
             onRecordLine="On record: what you said this session."
             stillNeeded={

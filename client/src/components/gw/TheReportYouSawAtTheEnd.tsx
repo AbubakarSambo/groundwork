@@ -51,6 +51,20 @@ export interface TheReportYouSawAtTheEndProps {
    * differs by caller and only the caller can answer it - the same reason `renderAdd` is a slot.
    */
   stillNeeded?: ReactNode
+  /**
+   * DROP THE FIVE-RUNG LADDER, BECAUSE A BETTER READ OF THE SAME THING IS ON THE PAGE.
+   *
+   * "How complete your side of this is" and the specificity meter answer one question: how much
+   * did you give this session. Read off the session report page they sat inches apart and
+   * disagreed - "Specificity: Thin" above "Clear" - which is two meters telling a person two
+   * different things about the same ten minutes.
+   *
+   * The rule for which survives is the architectural one. The ladder is `alignmentStatus`, a model's
+   * word for it. The meter is `specificityLevel`, computed at extraction. Where both exist the
+   * engine wins. Where only the model's exists - the end of an entry session, before extraction has
+   * run - the ladder is the only read there is and it stays.
+   */
+  hideCompleteness?: boolean
 }
 
 // Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
@@ -96,6 +110,7 @@ export function TheReportYouSawAtTheEnd({
   renderAdd,
   onRecordLine,
   stillNeeded,
+  hideCompleteness,
 }: TheReportYouSawAtTheEndProps) {
   const report = everySectionCanBeAbsent(given)
   return (
@@ -112,7 +127,8 @@ export function TheReportYouSawAtTheEnd({
           {correctionSlot}
         </div>
 
-        {/* How complete your account is (one-sided until others check in) */}
+        {/* How complete your side is, unless the engine's own meter is on the page. See above. */}
+        {!hideCompleteness && (
         <div style={{ marginBottom: 16 }}>
           {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
           <Sec title="How complete your side of this is" />
@@ -134,6 +150,7 @@ export function TheReportYouSawAtTheEnd({
             Reading left to right: <b>Just started</b> (little saved yet) → <b>Taking shape</b> → <b>Getting there</b> → <b>Clear</b> (your side is well defined) → <b>Shared</b>. This is your side only. It becomes "Shared" once everyone else checks in too.
           </div>
         </div>
+        )}
 
         {/* What's still open */}
         {report.areasRequiringAlignment.length > 0 && (

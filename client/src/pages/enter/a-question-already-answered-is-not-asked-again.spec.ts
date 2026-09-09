@@ -55,7 +55,8 @@ describe('a question already answered is not asked again', () => {
    * deserves to know that before it happens. What changes is that it confirms instead of re-asking.
    */
   it('confirms what the party said instead of asking them again', () => {
-    expect(PAGE).toContain('You said you are one of the people involved.')
+    /* Extracted from their text, not said in so many words. See the render. */
+    expect(PAGE).toContain('From what you wrote, you are one of the people involved.')
   })
 
   /**
