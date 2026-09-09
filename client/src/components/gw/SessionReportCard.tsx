@@ -317,9 +317,23 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
             </div>
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
+            {/*
+              THE LINE SAID THE OPPOSITE OF WHAT WAS ON THE SCREEN ABOVE IT.
+
+              Walked as a real participant, on a card that was showing a cross reference of what
+              everybody had said: "You can still only see your own. The full comparison opens once
+              everyone has opened the report." Two lines above it, a paragraph naming the other
+              party and describing their account of the same events.
+
+              Both were correct about the data. This card only ever renders a cross reference once
+              everybody in the round has answered, and until the report is released that picture is
+              still forming. What was wrong is the label, which described a state the reader had
+              already left. A person who can see the thing being denied stops believing the next
+              promise too, and the next promise is the one about their wording.
+            */}
             {report.releasedAt
               ? 'The full comparison is now open, and everyone reads the same report at the same moment.'
-              : 'You can still only see your own. The full comparison opens once everyone has opened the report.'}
+              : 'Everyone in this round has answered, so this picture is forming from all of it. It is not final until the report is released, and nobody\'s wording is in it.'}
           </div>
         </>
       )}

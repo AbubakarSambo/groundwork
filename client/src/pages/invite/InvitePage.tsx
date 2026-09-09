@@ -209,10 +209,27 @@ export function InvitePage() {
           </div>
         )}
 
+        {/*
+          THE ONE SENTENCE THAT WAS NOT TRUE, ON THE FIRST PAGE AN INVITED PERSON READS.
+
+          It said "Nobody ever reads what you write - not {initiator}, not anyone." What is written
+          is read: it is summarised, cross referenced against what other people said, and the
+          result is put in front of them. Promising otherwise is worse than promising nothing,
+          because the moment somebody works out what the product actually does, everything else on
+          this page stops counting.
+
+          So it says the true thing, which is still a strong thing: your words build the report and
+          the report does not carry them. What is protected is the wording, not the substance, and
+          that is exactly the promise the product keeps.
+
+          "Your account stays private" went with it. Here it means somebody's version of events and
+          in a product it reads as a login, and it was carrying the false claim anyway.
+        */}
         <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          Nobody ever reads what you write - not {preview.initiatorName}, not anyone.{' '}
-          The shared report shows <strong>where what you said and what they said agree or differ</strong>. It does not quote you.
-          Your account stays private. Always.
+          What you write is used to build the shared report and nothing else. It shows{' '}
+          <strong>where what you said and what they said agree or differ</strong>, in its own words.
+          Your wording is never shown to {preview.initiatorName} or to anyone else, in this session
+          or any later one.
         </div>
 
         {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
@@ -255,7 +272,17 @@ export function InvitePage() {
           <div style={{ display: 'flex', gap: 10 }}>
             <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>What you get back.</b> The same report {preview.initiatorName} gets, at the same moment, plus a short private note meant only for you.
+              {/*
+                AND THE BUTTON NOBODY WAS WARNED ABOUT. The report is released to everybody in one
+                stroke - `releasedAt` is stamped once - so "the same report, at the same moment" is
+                true and stays. What was missing is that a party then meets an activation gate the
+                lead does not: you press once to open it, and until you do, it is closed. Somebody
+                who has been told they get it at the same moment and then finds a button reads the
+                button as the product going back on the first half.
+              */}
+              <b>What you get back.</b> The same report {preview.initiatorName} gets, released to
+              everybody at once. You open your copy with one press when it lands, plus a short
+              private note meant only for you.
             </div>
           </div>
         </div>
@@ -305,12 +332,12 @@ export function InvitePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
             <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label">First name</label>
-              <input className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
+              <label className="gw-label" htmlFor="invite-first">First name</label>
+              <input id="invite-first" className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
             </div>
             <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label">Last name</label>
-              <input className="gw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
+              <label className="gw-label" htmlFor="invite-last">Last name</label>
+              <input id="invite-last" className="gw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
             </div>
           </div>
           <button className="gw-btn" type="submit" disabled={accept.isPending} style={{ marginTop: 12, opacity: accept.isPending ? 0.7 : 1 }}>

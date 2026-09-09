@@ -387,20 +387,33 @@ export function ChatPage() {
           if (cancelled) return
           // Reopen (#3): if this is a correction session, show the prior
           // session's turns read-only so the person sees what they said before.
+          /*
+           * AND THAT THIS IS A CORRECTION, which the header had no way to know.
+           *
+           * A correction is created at the next free session number, so the page called it
+           * "Session 3" while the person had pressed Correct it on session 1. The check-in row
+           * has said so all along; the header was reading `sessionNumber` out of navigation
+           * state, which carries no such thing.
+           *
+           * OUT OF THE priorTurns BRANCH, WHERE IT WAS UNREACHABLE. Walked as a real participant:
+           * pressed "Something here is wrong - correct it", landed on a page identical to the one
+           * left behind - same transcript, same report card, same button - with nothing anywhere
+           * saying a correction had opened. It looked so exactly like a failed press that it was
+           * pressed again, and two empty correction sessions were created.
+           *
+           * The three places that say "Correcting session N" were all written and all correct.
+           * They were nested inside `if (t.priorTurns.length > 0)`, so whether the page could tell
+           * you what you were doing depended on whether the prior turns happened to come back.
+           * Whether this is a correction is a fact about the check-in, so it is read from the
+           * check-in and nothing else.
+           */
+          if ((t.checkIn as any)?.isSelfCorrection) {
+            setCorrectingSession((t.checkIn as any).selfCorrectionTargetSession ?? t.priorSessionNumber ?? null)
+          }
+          // Reopen (#3): the prior session's turns, read-only, so the person sees what they said.
           if (t.priorTurns && t.priorTurns.length > 0) {
             setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             setPriorSessionNumber(t.priorSessionNumber ?? null)
-            /*
-             * AND THAT THIS IS A CORRECTION, which the header had no way to know.
-             *
-             * A correction is created at the next free session number, so the page called it
-             * "Session 3" while the person had pressed Correct it on session 1. The check-in row
-             * has said so all along; the header was reading `sessionNumber` out of navigation
-             * state, which carries no such thing.
-             */
-            if ((t.checkIn as any)?.isSelfCorrection) {
-              setCorrectingSession((t.checkIn as any).selfCorrectionTargetSession ?? t.priorSessionNumber ?? null)
-            }
           }
           if (t.priorRecordEntries && t.priorRecordEntries.length > 0) {
             setPriorRecordEntries(t.priorRecordEntries)

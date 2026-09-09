@@ -99,20 +99,25 @@ export function JoinPage() {
 
   return (
     <Shell>
-      <h1 className="gw-ttl">{ground.initiatorName} invited your check-in</h1>
+      {/* "invited your check-in" is not a sentence. It is an invitation to a person, so say that. */}
+      <h1 className="gw-ttl">{ground.initiatorName} has asked for your side of this</h1>
       <div className="gw-sub-t">A Groundwork session about: <strong>{ground.groundLabel}</strong>.</div>
 
+      {/* The same false promise as InvitePage carried, kept in step with it deliberately: these are
+          the two doors an invited person can arrive through and they must say the same true thing. */}
       <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>
-        Nobody ever reads what you write - not {ground.initiatorName}, not anyone. The shared report shows <strong>where people agree and where they differ</strong>, never your raw answers. Your account stays private.
+        What you write is used to build the shared report and nothing else. It shows{' '}
+        <strong>where people agree and where they differ</strong>, in its own words, never your raw
+        answers. Your wording is never shown to {ground.initiatorName} or to anyone else.
       </div>
 
       <form onSubmit={e => { e.preventDefault(); join() }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
-          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label">First name</label><input className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
-          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label">Last name</label><input className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
+          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-first">First name</label><input id="join-first" className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
+          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-last">Last name</label><input id="join-last" className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
         </div>
-        <div className="gw-fld"><label className="gw-label">Email</label><input className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
-        <div className="gw-fld"><label className="gw-label">Your role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label><input className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Engineering lead" /></div>
+        <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
+        <div className="gw-fld"><label className="gw-label" htmlFor="join-role">Your role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label><input id="join-role" className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Engineering lead" /></div>
         <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@')} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@')) ? 0.6 : 1 }}>
           {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
         </button>

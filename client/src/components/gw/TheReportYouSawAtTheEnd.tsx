@@ -65,14 +65,39 @@ export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear
   Aligned: 'Shared',
 }
 
+/**
+ * A REPORT THAT IS MISSING A LIST IS STILL A REPORT.
+ *
+ * This page crashed with "Cannot read properties of undefined (reading 'length')" the moment a
+ * second person had checked in: the Report tab's session row handed it a report whose
+ * `areasRequiringAlignment` and `alignmentReached` were simply not there, and the two `.length`
+ * reads below assumed the type. `honestClose` had the same hole one field deeper.
+ *
+ * The type says these are required, and for a freshly written report they are. What reaches this
+ * component is JSON off the wire, from more than one endpoint, and a shape a reader cannot control
+ * must not be able to take the whole screen down. So every list read goes through here first, and
+ * a report arriving without one renders without that section instead of not rendering at all.
+ */
+function everySectionCanBeAbsent(report: EntryReport): EntryReport {
+  const hc = report.honestClose ?? ({} as EntryReport['honestClose'])
+  return {
+    ...report,
+    areasRequiringAlignment: report.areasRequiringAlignment ?? [],
+    alignmentReached: report.alignmentReached ?? [],
+    mentionedPeople: report.mentionedPeople ?? [],
+    honestClose: { aligned: hc.aligned ?? '', open: hc.open ?? '', revisit: hc.revisit ?? '', risk: hc.risk ?? '' },
+  }
+}
+
 export function TheReportYouSawAtTheEnd({
-  report,
+  report: given,
   correctionSlot,
   correctedNote,
   renderAdd,
   onRecordLine,
   stillNeeded,
 }: TheReportYouSawAtTheEndProps) {
+  const report = everySectionCanBeAbsent(given)
   return (
     <>
         {/* What we heard from you */}

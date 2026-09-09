@@ -2460,10 +2460,41 @@ export function GroundAdminPage() {
                 everybody and discloses nothing.
               */}
               <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 7, padding: '8px 10px', marginBottom: 10, lineHeight: 1.55 }}>
-                Somebody from outside your organisation is invited straight away, and an admin here
-                has to let them in before they can check in. You will see that on their row, and
-                they are told the same thing.
+                {/*
+                  THE RULE WAS TRUE AND THIS WAS THE ONE SCREEN WHERE IT DOES NOT APPLY.
+
+                  Walked with a real outside address, from a different domain, added here: no
+                  approval was asked for, the person went straight into a check-in, their invite
+                  page said nothing about being from outside, and there was no row to see it on.
+
+                  Nothing is broken. `whyTheyDoNotNeedApproval` returns "an admin of this
+                  organisation added them, which is the approval" - see
+                  nobody-joins-your-company-by-being-invited-to-a-check-in.ts, which is deliberate
+                  and right, because asking an admin to approve their own action is a queue with
+                  one item in it that they put there.
+
+                  So the panel was describing the rule from the one place it is exempt. An admin
+                  reading it expects a queue that will never appear, and misses the thing that
+                  actually happens: the person gets a login here and shows up on People.
+                */}
+                {isOrgAdmin
+                  ? 'You are an admin here, so adding somebody is the approval - there is no queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
+                  : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name on the Sessions tab.'}
               </div>
+              {/*
+                AND WHERE THE ROWS ARE. "You will see that on their row" was said on a panel with
+                no rows on it: this fold is an add form and a toast, and after adding two people it
+                still showed neither of them. The roster itself is real, complete and better than
+                anything a second copy here would be - delivery state, waiting for a seat, waiting
+                on your organisation, remind, fix a bounced address - and it lives on Sessions. So
+                this points at it rather than growing a rival list that would drift.
+              */}
+              <button
+                onClick={() => setTab('checkins')}
+                style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                See who is in it, and where each of them has got to &rarr;
+              </button>
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
                 value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
