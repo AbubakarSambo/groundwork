@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Optional, Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
@@ -26,6 +26,7 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { ReportsService } from '../reports/reports.service';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
@@ -74,7 +75,15 @@ export class BoardService {
    * `AnthropicService` for one job: rewording the reads' reason lines. The board decides nothing
    * with it. See the-engine-drafts-it-the-model-words-it.ts for the guard.
    */
-  constructor(private prisma: PrismaService, private readonly anthropic: AnthropicService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly anthropic: AnthropicService,
+    /* ONE ENGINE. The board's tiles and question used to be computed here, a second time, from the
+       same rows the session report reads, and disagreed with it on the same screen. When the reports
+       service is present the board takes its tiles, its stands and its question from the session
+       report's shape; the local computation is only a fallback for a board built without it. */
+    @Optional() @Inject(forwardRef(() => ReportsService)) private readonly reports?: ReportsService,
+  ) {}
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
     const ground = await this.prisma.ground.findUnique({
@@ -221,6 +230,17 @@ export class BoardService {
       orderBy: { sessionNumber: 'asc' },
     });
     const maxSession = checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 1);
+    /* ONE CLOCK. The open round is the lowest session anybody who gives a check-in has not finished.
+       When a third person is added, the round goes back to session 1 while the lead's session 2 may
+       already be in progress; the board said "session 2" and the header said "back to session 1".
+       The round is the clock everywhere; a session ahead of it is upcoming, not current. */
+    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
+    const unfinished = checkIns.filter((c) => givers.has(c.participantId) && c.status !== CheckInStatus.COMPLETED).map((c) => c.sessionNumber);
+    const openRound = unfinished.length ? Math.min(...unfinished) : maxSession;
+    let sessionShape: any = null;
+    if (this.reports && requestingUserId) {
+      sessionShape = await this.reports.sessionReport(groundId, openRound, requestingUserId, (ground as any).organizationId ?? undefined).catch(() => null);
+    }
 
     /**
      * NAMES AND RAW EMAIL ADDRESSES IN THE SAME COLUMN. W-UX-4.
@@ -335,13 +355,13 @@ export class BoardService {
       out.phaseSpine = {
         startsAt: ground.startsAt,
         endsAt: ground.endsAt,
-        currentSession: maxSession,
+        currentSession: openRound,
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b).map((n) => {
           const forSession = checkIns.filter((c) => c.sessionNumber === n);
           const allDone = forSession.length > 0 && forSession.every((c) => c.status === CheckInStatus.COMPLETED);
           return {
             n,
-            state: n < maxSession || allDone ? 'done' : n === maxSession ? 'current' : 'upcoming',
+            state: n < openRound || allDone ? 'done' : n === openRound ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
           };
         }),
@@ -421,7 +441,9 @@ export class BoardService {
       out.divergence = {
         items: Array.isArray(reportSafe.divergences) ? reportSafe.divergences : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
-        centralQuestion: reportSafe.centralQuestion ?? null,
+        centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
+        settled: sessionShape?.whereThingsStand?.settled ?? [],
+        stillOpen: sessionShape?.whereThingsStand?.open ?? [],
       };
     }
 
@@ -507,7 +529,9 @@ export class BoardService {
         'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
     }
 
-    if (has('quickRead')) {
+    if (has('quickRead') && sessionShape?.atAGlance?.length) {
+      out.quickRead = sessionShape.atAGlance;
+    } else if (has('quickRead')) {
       const blockers = ground.dependencies.filter((d) => d.status === DependencyStatus.BLOCKING).length;
       const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
       const movedTotal = ground.objectives.reduce((s, o) => s + (o.count - o.prevCount), 0);
@@ -531,8 +555,8 @@ export class BoardService {
           label: 'Differences',
           value: divCount ? `${divCount}` : 'None',
           sub: divCount
-            ? `still open between the accounts`
-            : 'the accounts do not disagree anywhere yet',
+            ? 'still open between people'
+            : 'nobody disagrees anywhere yet',
           tone: divCount ? 'warn' : 'good',
         },
         {

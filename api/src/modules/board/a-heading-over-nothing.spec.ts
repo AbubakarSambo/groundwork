@@ -43,7 +43,7 @@ describe('the quick read', () => {
   it('and every tile says in a whole clause what its number is of', () => {
     /* The sub-line used to be a fragment - "differences between accounts", "across targets this
        session" - which is a caption on a number nobody could read. */
-    expect(SERVICE).toContain('still open between the accounts');
+    expect(SERVICE).toContain('still open between people');
     expect(SERVICE).toContain('no target moved this session');
     expect(SERVICE).toContain('nobody named anything holding work up');
     expect(SERVICE).toContain('of it is backed by a document');
@@ -62,9 +62,11 @@ describe('and the band that had nothing to show', () => {
     expect(CARD).toContain('Not enough has been said yet to draw one');
   });
 
-  it('in both places that print it', () => {
+  it('in one component both bands use', () => {
+    /* Both bands render <ThePicture>, which carries the sentence once. */
     const hits = CARD.match(/Not enough has been said yet to draw one/g) ?? [];
-    expect(hits.length).toBe(2);
+    expect(hits.length).toBe(1);
+    expect((CARD.match(/<ThePicture picture=\{picture\} dark \/>/g) ?? []).length).toBe(2);
   });
 
   it('and never renders an empty paragraph', () => {

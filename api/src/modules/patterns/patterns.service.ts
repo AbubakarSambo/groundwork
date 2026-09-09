@@ -137,10 +137,10 @@ export class PatternsService {
       const lowCount = Object.values(dims).filter((v) => v === 'vague' || v === 'managed').length;
       if (lowCount >= 3) {
         const next = checkIn.sessionNumber + 1;
-        const obsText =
-          `Session ${checkIn.sessionNumber} produced limited specificity across multiple dimensions. ` +
-          `Session ${next} will use a different approach.`;
-        await this.observePositive(checkIn.groundId, checkIn.participantId, 'LOW_SPEC_MULTI_DIM', obsText, checkIn.sessionNumber);
+        /* A note to the engine, not a pattern about a person. It reached the board's alignment feed
+           as "Session 2 will use a different approach". The prompt already reads specificityDimensions
+           directly, so nothing needed this row. */
+        this.logger.log(`Low specificity across ${lowCount} dimensions on session ${checkIn.sessionNumber}; session ${next} adjusts.`);
       }
     }
 

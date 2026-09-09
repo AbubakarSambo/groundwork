@@ -17,6 +17,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
+import { sentenceWithANumber } from './where-you-are-against-what-you-named';
 import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
@@ -1866,7 +1867,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const named = label ? nameByLabel.get(label) : undefined;
       if (named) return named;
       const p = ground.participants.find((x) => x.id === participantId);
-      if (viewerIsLead && p?.email) return p.email;
       return label;
     };
 
@@ -1887,7 +1887,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
       /* What this read was allowed to look at, so its words can say "you have not" rather than
          "nobody" when it only ever saw one person's rows. */
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
-      stated: baseline?.successLooksLike ?? null,
+      /* THE BRIEF COUNTS. "Get 10 clients on the platform" in the brief is a standard; telling its
+         author nothing is set while it sits one tab over is wrong. Until one is set on Setup, the
+         first sentence of the brief that carries a number is read as the standard, and says so. */
+      stated: baseline?.successLooksLike ?? sentenceWithANumber((ground as any).brief) ?? null,
+      statedFromBrief: !baseline?.successLooksLike && !!sentenceWithANumber((ground as any).brief),
       /* Whether the LEAD has said it in their own check-in, which is not the same as having set it
          on Setup - see the note on `leadHasSaidIt`. */
       leadHasSaidIt: entries.some(
@@ -1918,6 +1922,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           },
         },
         report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true } },
+        brief: true,
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2026,7 +2031,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const named = nameByLabel.get(label);
       if (named) return named;
       const p = ground.participants.find((x) => x.id === participantId);
-      if (viewerIsLead && p?.email) return p.email;
       return label;
     };
 
@@ -2125,8 +2129,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             const label = labels.get(p.id);
             const named = label ? nameByLabel.get(label) : undefined;
             if (named) return named;
-            if (viewerIsLead && p.email) return p.email;
-            return label || `Party ${i + 1}`;
+                  return label || 'A teammate';
           })(),
           isYou: !!me && p.id === me.id,
         })),
@@ -2165,8 +2168,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
            * they cannot tell which invitation is outstanding. That distinction is already
            * written down above `displayName`; this is the read that needed it.
            */
-          if (viewerIsLead && p.email) return p.email;
-          return label || `Party ${i + 1}`;
+              return label || 'A teammate';
         })(),
         isYou: !!me && p.id === me.id,
         answered: answeredIds.has(p.id),
@@ -2278,6 +2280,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
     return {
       ...wordedShape,
       againstSuccess,
+      /* For the page that says what the check-in still needs: the date this person gave, and the
+         brief's own number, so neither is asked for as if nobody had said it. */
+      myTimeframe: me ? (entries.filter((e) => e.participantId === me.id && e.type === RecordEntryType.TIMEFRAME).map((e) => cleanText(e.text)).pop() ?? null) : null,
+      briefStandard: sentenceWithANumber((ground as any).brief),
       correctable: canCorrect.allowed,
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
       counting,
@@ -2349,6 +2355,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
           this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
         }
         const drafts = draftThePicture({
+          /* Where two people describe the same thing differently, that is the finding. */
+          differences: ((snapshot?.divergences ?? ground.report?.divergences ?? []) as any[])
+            .filter((d) => d?.topic && Array.isArray(d.perspectives) && d.perspectives.length >= 2)
+            .slice(0, 3)
+            .map((d) => ({
+              topic: String(d.topic),
+              sides: (d.perspectives as any[]).slice(0, 3).map((p) => ({ who: nameByLabel.get(String(p.participantLabel ?? '')) ?? String(p.participantLabel ?? 'somebody'), says: String(p.view ?? '') })),
+            })),
           answered: answered.length,
           ofPeople: ground.participants.filter((p: any) => !p.managingOnly).length,
           confidence: shape.confidence,

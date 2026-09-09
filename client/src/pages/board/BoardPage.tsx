@@ -530,7 +530,7 @@ export function BoardPage() {
 
         {shown.divergence && b.divergence && (
           <>
-            <Sec title="Where accounts differ" src="cross-referenced" />
+            <Sec title="Where people differ" src="cross-referenced" />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
@@ -901,7 +901,7 @@ export function BoardPage() {
 
         {b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
-            <Sec title="How the leading is landing" src="two accounts of the same leadership" />
+            <Sec title="How the leading is landing" src="two sides of the same leadership" />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
@@ -928,7 +928,7 @@ export function BoardPage() {
               ))}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
                 Neither read is called wrong. Something can be set clearly and still not land, and both people can be describing
-                their own experience honestly. This shows that two accounts of the same leadership differ, never who said what, and it
+                their own experience honestly. This shows that two sides of the same leadership differ, never who said what, and it
                 is a prompt for a conversation rather than a finding about anyone.
               </div>
             </Card>

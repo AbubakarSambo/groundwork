@@ -1,3 +1,4 @@
+import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -1271,8 +1272,11 @@ export class GroundsService {
     const rawBrief = (ground as any).brief ?? null;
     const brief = typeof rawBrief === 'string' ? notTheWordParty(rawBrief) : rawBrief;
 
+    /* The board's alignment feed. Codes on ALIGNMENT_FEED_ONLY_CODES are the engine talking to
+       itself ("Session 2 will use a different approach") and never reach a person; only SURFACED
+       detections do, the same rule as the report. */
     const signals = (ground.patternDetections ?? [])
-      .filter((pd) => pd.observationText)
+      .filter((pd) => pd.observationText && !ALIGNMENT_FEED_ONLY_CODES.has(pd.code) && (pd as any).status !== 'CANDIDATE')
       .map((pd) => ({
         id: pd.id,
         groundId: id,
