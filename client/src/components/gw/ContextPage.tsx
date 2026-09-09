@@ -457,6 +457,22 @@ export function ContextPage({
             />
 
             {/*
+              AND WHAT SUCCESS LOOKS LIKE, AT THE FOOT OF THIS BAND RATHER THAN AS ONE OF ITS OWN.
+
+              It was not on Context at all, which made My record's "success and expectations live on
+              Context" a link to a page holding one of the two things it named. Then it arrived here
+              as its own numbered section, which was "a new section for no reason" - what success
+              looks like and what is expected of each person are one subject, and a second heading
+              said they were two.
+
+              So it is a sentence or two under the expectations, which is where somebody reading what
+              is expected of them wants the standard that sits over it. The full band, with each
+              condition and where the accounts put it, still renders where there is room to work in
+              it: the board, and each session's report.
+            */}
+
+
+            {/*
               3 - AND WHAT YOU DID ABOUT IT, touching the words you are measured against.
 
               The page could state what was expected of somebody and gave them nowhere to answer it,

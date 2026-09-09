@@ -71,6 +71,18 @@ describe('and the page shows it once, with the actionable half', () => {
   const PAGE = [
     readFileSync(join(CLIENT, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'),
     readFileSync(join(CLIENT, 'components/gw/MyRecord.tsx'), 'utf8'),
+    /*
+     * AND THE TWO CARDS THE READ MOVED INTO, for the reason written above: this reaches into the
+     * client, so it must follow the content rather than a filename.
+     *
+     * Both halves of what this spec protects moved to the top of the page. The trend was a card
+     * below the sessions and below the carry-forward, saying "moderate" beside a five-segment bar;
+     * it is now a sentence naming the session it compares against. The teaching half - the thing
+     * the engine could not find, and their own best answer - moved with the specificity read it
+     * describes, which is now itemised as the five dimensions the engine has always stored.
+     */
+    readFileSync(join(CLIENT, 'components/gw/WhatYourRecordCanSupport.tsx'), 'utf8'),
+    readFileSync(join(CLIENT, 'components/gw/TheFiveThingsThatMakeItCheckable.tsx'), 'utf8'),
   ].join('\n').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('the bare grade line is gone', () => {
@@ -79,24 +91,45 @@ describe('and the page shows it once, with the actionable half', () => {
   });
 
   it('the trend is worded about the record, not the person', () => {
-    expect(PAGE).toMatch(/Your answers are getting more specific/);
+    /* Named against the session it compares with, because `a-trajectory-is-not-a-score` forbids an
+       arrow and a sentence that names what it measured from is the more useful form anyway. */
+    expect(PAGE).toMatch(/Your answers are getting more checkable than session/);
     expect(PAGE).not.toMatch(/label === 'high'/);
   });
 
   it('what would help is rendered', () => {
-    expect(PAGE).toMatch(/specificity\?\.whatWouldHelp &&/);
-    expect(PAGE).toMatch(/What would make the next one land harder/);
+    /*
+     * IT IS A MARK ON A ROW NOW, NOT ONLY A SENTENCE.
+     *
+     * "the five, phrased as additions, with the one that would move you most marked." Marked in the
+     * list needs the list to know which one, so the server names the dimension as well as the
+     * words - the three branches that write this have always known whether it was a number, a date
+     * or vague language, and the client was left to infer it from prose and print the prose instead.
+     *
+     * What this file protects is that the actionable half reaches the person. It does, twice: on
+     * the row and under it.
+     */
+    expect(PAGE).toMatch(/mostUseful/);
+    /* The badge marks WHICH one; the line under the list says why. They both used to open "Most
+       useful for you", which is the same statement twice, so the line keeps only the reason. */
+    expect(PAGE).toMatch(/most useful<\/span>/);
+    expect(PAGE).toMatch(/\{mostUseful\.says/);
   });
 
   it('their own strongest answer is rendered', () => {
-    expect(PAGE).toMatch(/specificity\?\.strongest &&/);
+    expect(PAGE).toMatch(/This one of yours was easy to check/);
   });
 
-  it('and the page says out loud that nobody else sees it', () => {
-    /**
-     * The reason this is safe to show at all is that it goes nowhere else. A person reading
-     * feedback on their own writing will assume their lead is reading it too unless told.
+  it('and the page does not say a second time that nobody else sees it', () => {
+    /*
+     * THE REASON IT WAS SAFE TO SHOW IS UNCHANGED; THE SENTENCE IS NOT NEEDED TWICE.
+     *
+     * The check-in header carries it on every tab of this page - "Just yours - only you see this
+     * until the report releases" - and a card repeating it three inches lower is the same statement
+     * twice, which is the pattern this page has been cleared of several times over. What matters is
+     * that the assurance is on screen, not that this component is the one making it.
      */
-    expect(PAGE).toMatch(/never shown to the lead/);
+    const HEADER = readFileSync(join(CLIENT, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8');
+    expect(HEADER).toMatch(/only you see this until the report releases/i);
   });
 });

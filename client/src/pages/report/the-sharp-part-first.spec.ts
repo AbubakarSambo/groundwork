@@ -59,7 +59,9 @@ describe('the order of the shared report', () => {
      * Anchored forwards on two strings inside the hero itself, so the order of the file's regions
      * cannot invert it again.
      */
-    const heroStart = SRC.indexOf("Where everyone's accounts agree or differ.")
+    /* The anchor is the hero's own subtitle, which changed with the ban on "account" in copy - it
+       said "Where everyone's accounts agree or differ." What is anchored is the hero, not the word. */
+    const heroStart = SRC.indexOf("Where everyone agrees and where they differ.")
     expect(heroStart).toBeGreaterThan(-1)
     const hero = SRC.slice(heroStart, heroStart + 2200)
     expect(hero.length, 'the hero block moved - re-anchor this check').toBeGreaterThan(200)

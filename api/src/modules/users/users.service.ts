@@ -299,7 +299,7 @@ export class UsersService {
     const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
         where: { userId: { in: ids } },
-        select: { userId: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
+        select: { userId: true, createdAt: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
       })
       : [];
     const onCount = new Map<string, number>();
@@ -310,6 +310,32 @@ export class UsersService {
       if (m.checkIns.length) answeredCount.set(m.userId, (answeredCount.get(m.userId) ?? 0) + 1);
     }
     const hasFinished = new Set([...answeredCount.keys()]);
+    /*
+     * WHO CAME IN THROUGH A CHECK-IN, RATHER THAN BEING PUT ON THE ORGANISATION.
+     *
+     * Walked with an address from another company invited to one check-in: they appeared on this
+     * page as an ordinary member with a dropdown offering to make them an admin, indistinguishable
+     * from somebody hired. The approval gate is real and correctly skipped when an admin adds them,
+     * and the account has to exist for them to write their own record - so the fix is not a role
+     * change, it is saying how they got here.
+     *
+     * No column records it, and none is needed. An invitation creates the participant row first, and
+     * the person's account only when they accept; somebody put on the organisation, or who signed up
+     * themselves, exists before any check-in row names them. So: the earliest participant row for
+     * this person was created BEFORE their account was. Checked against the live rows - the two
+     * invited people had a row 40 and 70 seconds before their account, the lead the other way round.
+     * (`joinedAt` was the first idea and is never stamped by accept(), so it could never fire.)
+     */
+    const firstRow = new Map<string, number>();
+    for (const m of memberships) {
+      if (!m.userId) continue;
+      const t = new Date(m.createdAt).getTime();
+      firstRow.set(m.userId, Math.min(firstRow.get(m.userId) ?? Infinity, t));
+    }
+    const arrivedThroughACheckIn = (u: { id: string; createdAt: Date }) => {
+      const first = firstRow.get(u.id);
+      return first != null && first < new Date(u.createdAt).getTime();
+    };
 
     return {
       data: users.map((u) => ({
@@ -324,6 +350,7 @@ export class UsersService {
         /** How many check-ins they are on, and how many of those they have answered on. */
         checkInsOn: onCount.get(u.id) ?? 0,
         checkInsAnswered: answeredCount.get(u.id) ?? 0,
+        arrivedThroughACheckIn: arrivedThroughACheckIn(u),
       })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };

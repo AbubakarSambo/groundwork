@@ -62,10 +62,12 @@ export const SCENARIO_LABELS = {
   ACUTE_SHOCK: 'Something serious just happened',
   OPEN_READ: 'Describe your own situation',
   /**
-   * The twentieth, and the only one that does not run.
+   * THE ONE-OFF, AND IT DOES RUN - the note here used to say it was "the only one that does not",
+   * which stopped being true when it got a card, a group, a cadence and a place in both pickers.
+   * A comment asserting the opposite of the code beside it is worse than no comment.
    *
-   * PULSE_CHECK above is "a regular read on live work" - you want to know what your team is doing,
-   * week after week, against what they own. This is the one-off: one honest read from everybody
+   * PULSE_CHECK above is "a regular read on live work" - what your team is doing, week after week,
+   * against what they own, for up to a year. This is the one-off: one honest read from everybody
    * today, no target and no second session. They were the same card once, which is why neither could
    * be found - the label described the recurring one and the interview behind it did the snapshot.
    */
@@ -293,7 +295,9 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
    * These two run until you stop them, so printing a number was answering a question they do not
    * have, with a figure that then read as a cap.
    */
-  PULSE_CHECK:      { group: 'reading',  cadence: 'Weekly',        timelineDays: 30, ongoing: true,
+  /* A year. It offered four weekly sessions and then stopped, which is not a regular read on live
+     work - see DEFAULT_TIMELINE_DAYS, which this has to agree with. */
+  PULSE_CHECK:      { group: 'reading',  cadence: 'Monthly',       timelineDays: 365, ongoing: true,
                       notThisOneIf: 'Everyone does the same job in parallel. Use "several people in the same role" instead.' },
   COHORT_CHECK:     { group: 'reading',  cadence: 'Every 2 weeks', timelineDays: 30, ongoing: true,
                       notThisOneIf: 'They all started together. Use "onboarding several people at once" instead.' },

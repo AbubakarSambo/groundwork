@@ -295,7 +295,7 @@ export function BoardPage() {
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0' }}>
-            Built from each person's own account, given privately, on the record.{' '}
+            Built from what each person said, given privately, on the record.{' '}
             <b style={{ color: '#8BE0AE', fontWeight: 600 }}>It is not decided by who speaks the loudest or argues best.</b>
           </p>
           {howToRead && (
@@ -309,20 +309,30 @@ export function BoardPage() {
                 It shows the record, never a verdict. Each person is shown against their own role in its own terms, never on one shared scale.
               </p>
               {/*
-                * WHICH OF THE TWO IS THE RECORD.
+                * THERE IS NO LONGER A SECOND DOCUMENT TO BE POINTED AT.
                 *
-                * The board and the report both show a shared picture of the same check-in, and
-                * nothing on either page said how they relate - so a reader had two documents and no
-                * way to know which one to trust when they differ. The answer already exists, written
-                * where nobody reading the product can see it, in board.service.ts: the board is a
-                * delivery-shaped rendering of the delivery-relevant parts of the report, its
-                * divergence section is a pointer, and the report holds the detail.
+                * This paragraph existed to settle which of two shared pictures to trust: "the board
+                * is the report arranged for running the work... where it points at a difference, the
+                * report is where that is set out in full. If the two ever read differently, the
+                * report is the record."
+                *
+                * True when it was written, and untrue as of tonight. The report body a participant
+                * could open has gone - it was a fourth place to read the same three findings - and
+                * each disagreement on this board now carries both accounts and what is at stake,
+                * directly under it. So the sentence sends a reader looking for a page that is not
+                * there, which is worse than the ambiguity it was written to remove.
+                *
+                * What replaces it is not a shorter version of the same explanation. Two documents
+                * needed a rule about precedence; one does not. What a reader still needs to know is
+                * where the words came from and what this is not - and the paragraph above already
+                * says that. So this says the one thing left that is not obvious: it is built per
+                * session, and it moves.
                 */}
               <p style={{ fontSize: 12, lineHeight: 1.55, color: '#D6DAF0', marginTop: 7 }}>
-                This board is the report arranged for running the work: the parts that bear on
-                delivery, and no more. Where it points at a difference,{' '}
-                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>the report is where that is set out in full</b>.
-                If the two ever read differently, the report is the record.
+                This is the whole shared picture, not a summary of one held somewhere else. It is
+                rebuilt each session from the accounts given that session, so{' '}
+                <b style={{ color: '#8BE0AE', fontWeight: 600 }}>it changes as people check in</b>.
+                What each person said about a difference sits under that difference.
               </p>
             </>
           )}
@@ -814,7 +824,7 @@ export function BoardPage() {
             <Sec title="Where work is landing" src="whose work is landing where" />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
-                A drop in ownership shows up as your responsibilities landing more and more in other people's accounts.
+                A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
                 Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.
               </div>
 
@@ -894,7 +904,7 @@ export function BoardPage() {
             <Sec title="How the leading is landing" src="two accounts of the same leadership" />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
-                Where one account of how this team is being led differs from another. Neither is called wrong.
+                Where one person's read of how this team is being led differs from another's. Neither is called wrong.
               </div>
               {b.managerAlignment.map((m, i) => (
                 <Row key={i}>
@@ -917,7 +927,7 @@ export function BoardPage() {
                 </Row>
               ))}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
-                Neither account is called wrong. Something can be set clearly and still not land, and both people can be describing
+                Neither read is called wrong. Something can be set clearly and still not land, and both people can be describing
                 their own experience honestly. This shows that two accounts of the same leadership differ, never who said what, and it
                 is a prompt for a conversation rather than a finding about anyone.
               </div>
@@ -1171,8 +1181,8 @@ export function BoardPage() {
           <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>How this board is put together</summary>
           <div style={{ display: 'grid', gap: 12, marginTop: 10 }}>
             {[
-              { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across all the accounts follows it.' },
-              { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own account's terms, and what is at stake if it holds. The most significant comes first." },
+              { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across everything people said follows it.' },
+              { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own words, and what is at stake if it holds. The most significant comes first." },
               { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
             ].map((cell, i) => (
               <div key={i}>

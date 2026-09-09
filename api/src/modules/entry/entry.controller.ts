@@ -168,6 +168,9 @@ export class EntryCommitDto {
   @IsOptional()
   report?: any;
 
+  /** The setter's own part in this, one line. Setup asks it; this is where the answer lands. */
+  @IsOptional() @IsString() @MaxLength(300) roleAsDescribed?: string;
+
   /**
    * DOCUMENTS ATTACHED DURING THE ENTRY CHAT.
    *

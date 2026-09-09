@@ -151,8 +151,17 @@ describe('GW-PATTERN-PROBE-NOT-STATEMENT: patterns sharpen questions live, never
     // eslint-disable-next-line no-console
     console.log('===== FINAL REPORT concernFlags (proof) =====\n' + JSON.stringify((report as any).engagement.concernFlags, null, 2) + '\n===== END =====\n');
 
-    expect(reportCorpus).toContain(D1_OBSERVATION);
-    expect(reportCorpus).toContain('note it in concernFlags');
+    /*
+     * THE REPORT ROUTE MOVED. This asserted the observation reached the synthesis corpus as a note
+     * telling the model to put it in concernFlags "if the record corroborates". That route is gone:
+     * a finding handed to a model as a suggestion is not a finding on the page, and when the model
+     * complied the same fact could reach the reader twice and disagree. Surfaced detections render
+     * as their own section in `sessionReport` now (a-pattern-is-a-section-not-a-suggestion.spec).
+     * What still holds here is the half about the LIVE prompt, below: probes sharpen questions and
+     * never state conclusions.
+     */
+    expect(reportCorpus).not.toContain(D1_OBSERVATION);
+    expect(reportCorpus).not.toContain('note it in concernFlags');
     expect((report as any).engagement.concernFlags).toEqual([
       { label: 'founder', observation: 'Completion was claimed without downstream confirmation.' },
     ]);

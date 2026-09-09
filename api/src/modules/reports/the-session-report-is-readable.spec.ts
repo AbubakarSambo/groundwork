@@ -72,21 +72,31 @@ describe('the four reads', () => {
 
   it('says all four, always', () => {
     const out = theSessionReport(base);
-    expect(out.atAGlance.map((r) => r.label)).toEqual(['Aligned?', 'Moving?', 'Stuck?', 'Solid?']);
+    /*
+     * NAMED THINGS, NOT QUESTIONS. "Aligned? 1 open" was read back off the page: the label asks a
+     * question and the value answers a different one, so the reader cannot tell whether 1 open is
+     * good. The board's four tiles had the same fault and were fixed months ago (see
+     * a-heading-over-nothing.spec.ts); this surface kept the question marks.
+     */
+    /* ONE SET OF NAMES ACROSS BOTH SURFACES. The board fixed the same four reads months ago (see
+       a-heading-over-nothing.spec.ts) and this surface kept question marks, so the product had two
+       names for every one of them. These are the board's. */
+    expect(out.atAGlance.map((r) => r.label)).toEqual(['Differences', 'Movement', 'Blockers', 'How much was said']);
+    for (const r of out.atAGlance) expect(r.label).not.toContain('?');
   });
 
   it('never lets "no targets set" read as "nothing moved"', () => {
     /* The difference between a run with nothing to measure and a run that did not move. A zero
        standing for the first is read as the second, and that is a false finding. */
-    expect(read(theSessionReport(base), 'Moving?').value).toBe('no targets set');
-    expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Moving?').value).toBe('no change');
-    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Moving?').value).toBe('+14');
+    expect(read(theSessionReport(base), 'Movement').value).toBe('No target set');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Movement').value).toBe('None');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Movement').value).toBe('+14');
   });
 
-  it('and does not call one account "no gaps open"', () => {
+  it('and does not call one person\'s side "no differences"', () => {
     /* Nothing to compare with is not agreement. */
-    expect(read(theSessionReport(base), 'Aligned?').value).toBe('nothing to compare yet');
-    expect(read(theSessionReport({ ...base, divergences: [{}, {}] }), 'Aligned?').value).toBe('2 open');
+    expect(read(theSessionReport(base), 'Differences').value).toBe('Nothing to compare yet');
+    expect(read(theSessionReport({ ...base, divergences: [{}, {}] }), 'Differences').value).toBe('2');
   });
 
   it('counts what is document-backed rather than describing it', () => {
@@ -97,8 +107,8 @@ describe('the four reads', () => {
         entry(RecordEntryType.COMMITMENT, 'From memory'),
       ],
     });
-    expect(read(out, 'Solid?').value).toBe('50% backed');
-    expect(read(theSessionReport(base), 'Solid?').value).toBe('nothing on record yet');
+    expect(read(out, 'How much was said').value).toBe('50% documented');
+    expect(read(theSessionReport(base), 'How much was said').value).toBe('Nothing on record yet');
   });
 });
 
@@ -131,7 +141,11 @@ describe('what each person said they did', () => {
 
 describe('the per-session report', () => {
   it('carries every promised heading even when a section is empty, and says why', () => {
-    const out = theSessionReport(base);
+    /* From session 2. On a first session the two "what changed" headings cannot say anything, and
+       a heading whose only possible content is "there is nothing before this" is not a finding -
+       see the sections list. "What this rests on" is now a reason under the confidence meter when
+       there is nothing to list, and a section when there is. */
+    const out = theSessionReport({ ...base, sessionNumber: 2, evidence: [{ text: 'The rota', who: null }] });
     const titles = out.sections.map((s) => s.title);
     for (const promised of [
       'Progress and priorities', 'Commitments', 'Risks and concerns', 'Asks',
@@ -142,6 +156,14 @@ describe('the per-session report', () => {
     for (const s of out.sections) {
       expect(s.items.length === 0 ? s.saying : 'x').toBeTruthy();
     }
+  });
+
+  it('and drops the two "what changed" headings on a first session rather than filling them with nothing', () => {
+    /* They rendered two cards that both said the page could not answer, which was two thirds of
+       the headings on the first report anybody ever reads. */
+    const titles = theSessionReport(base).sections.map((s) => s.title);
+    expect(titles).not.toContain('What changed since last session');
+    expect(titles).not.toContain('What changed since the beginning');
   });
 
   it('never renders the engine\'s verifiability marker', () => {
@@ -156,9 +178,10 @@ describe('the per-session report', () => {
     expect(all).toContain('Ship by Friday');
   });
 
-  it('says a first session has nothing before it, rather than showing an empty change list', () => {
-    const changed = theSessionReport(base).sections.find((s) => s.title === 'What changed since last session');
-    expect(changed!.saying).toContain('first session');
+  it('and from session 2 says plainly when nothing moved', () => {
+    const changed = theSessionReport({ ...base, sessionNumber: 2 })
+      .sections.find((s) => s.title === 'What changed since last session');
+    expect(changed!.saying).toBeTruthy();
   });
 
   it('names last session\'s commitments that were not returned to', () => {

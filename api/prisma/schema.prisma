@@ -967,6 +967,12 @@ model CoachingState {
   // step or change tack, and without the history the coach repeats itself at
   // somebody, which is the failure this mechanic exists to avoid.
   history           Json?
+  // What the last observation read: noticed, lookingLike, reason, the session, the outcome of the
+  // last step. Kept so the first outputs can be read against the input that produced them.
+  lastInput         Json?   @map("last_input")
+  // Every observation ever made, one per session: { sessionNumber, noticed, reason }. Recurrence is
+  // what makes a pattern; a step is offered only when the same thing was seen in two sessions.
+  observations      Json?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1178,6 +1184,7 @@ model CheckIn {
   isClarification             Boolean       @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget         String?       @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection            Boolean       @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
+  closeHeldAt                 DateTime?     @map("close_held_at") // set once, the one time the close was held for a date, a number or a document
   selfCorrectionTargetSession Int?          @map("self_correction_target_session") // the session number being corrected
   // True when this self-correction session was started AFTER the participant
   // had already signed off (GroundParticipant.signedOffAt). Not a block - just
@@ -1262,9 +1269,16 @@ model RecordEntry {
   evidenceType         EvidenceType    @default(CHECK_IN)
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
+  anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
+  anchoredPassage      String?         @map("anchored_passage") @db.Text // the document's words that back it, quoted short, so a false match can be seen
+  documentSays         String?         @map("document_says") @db.Text // when a document they can see states the same thing differently: what it says, quoted short
+  documentSaysId       String?         @map("document_says_id") // which document
   dimensionThreadKey   String?         @map("dimension_thread_key") // groups entries across sessions by theme
   anchored_question_id String?         @map("anchored_question_id") // which verbatim question produced this entry
   createdAt            DateTime        @default(now()) @map("created_at")
+  /// Set by the person this row is about when they say it is not what they said. A disputed row stays
+  /// on the record and stops counting toward every read. See the-wall-between-said-and-extracted.
+  disputedAt           DateTime?       @map("disputed_at")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
