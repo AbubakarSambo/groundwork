@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Sec } from './kit'
-import { howCheckable } from './how-checkable-was-that-session'
+import { reportsApi } from '@/api/reports'
 
 /**
  * THE SHARED REPORT, AS A PARTY READS IT.
@@ -26,22 +27,46 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
-  /** Per-session specificity, so a row can say how checkable that account was. */
-  specificityBySession?: Record<number, number>
+  /** Where the session list lives now. The page owns tab names, so it is handed a callback. */
+  onGoToMyRecord: () => void
   /** Who is reading, so their own finished sessions can be listed and nobody else's. */
   viewerUserId?: string | null
 }
 
 export function SharedReportForAParty({
-  /* `groundId` stays on the props so callers do not change; nothing in here needs it any more,
-     which is what removing the reveal took out. */
+  groundId,
   report,
   ground,
   onOpenBoard,
-  specificityBySession,
+  onGoToMyRecord,
   viewerUserId,
 }: SharedReportForAPartyProps) {
-  const navigate = useNavigate()
+  const qc = useQueryClient()
+  /**
+   * SHOWING YOUR REPORT TO THE OTHERS, which came across with the button that does it.
+   *
+   * It lived on the page with the other mutations while the only button calling it was here. The
+   * same split that put the solo-report share button, its modal and its mutation in three places.
+   */
+  const activateMutation = useMutation({
+    mutationFn: () => reportsApi.activate(groundId),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['report', groundId] })
+      /* The ground too: the report query is gated on `ground.report`, so refreshing only the
+         report would leave the gate shut and the new report unfetched. */
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      /*
+       * "REPORT REVEALED" WAS NOT TRUE FOR ANYBODY BUT THE LAST PERSON.
+       *
+       * Showing yours takes effect only when everyone has done the same, so for all but the final
+       * person this said something had happened that had not. The response already carries
+       * `allActivated`, so it can say which of the two actually occurred.
+       */
+      if (res?.allActivated) toast.success('Everyone has shown theirs. You can all read them now.')
+      else toast.success('Noted. Yours becomes visible when everyone has done the same.')
+    },
+    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
+  })
 
   /**
    * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
@@ -87,57 +112,66 @@ export function SharedReportForAParty({
               <span style={{ textAlign: 'left' }}>
                 <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Open the team board</span>
                 <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
-                  The same picture for everyone, built from what each person said. Never a verdict.
+                  The same picture for everyone, built from the accounts. Never a verdict.
                 </span>
               </span>
               <span style={{ fontSize: 13 }}>&rarr;</span>
             </button>
           )}
           {/*
-            AND THE SESSIONS ARE BACK HERE, WHICH REVERSES WHAT I DID AN HOUR AGO.
+            THE SESSION LIST IS ON MY RECORD, AND WAS ON BOTH.
 
-            They were on this tab and on My record, byte-for-byte the same rows, so I removed one
-            copy - and removed the wrong one. Her call: "your sessions on the report page should go
-            to reports." Which is right, and the tab's own name says so: a session's report is a
-            report. My record is what you wrote and what it amounts to; Report is what came out of
-            it, one row per session, plus the board.
+            This block was byte-for-byte the block in `MyPrivateReport` - the same rows, the same
+            `navigate('/checkin/:id/report')` - so a person with three finished sessions had two
+            identical lists two tabs apart and no way to tell whether one held something the other
+            did not. Asked about it: "the participant seems to be looking at too many reports".
 
-            The duplicate is still gone. This is the list now, and My record links here rather than
-            holding its own copy.
+            My record's copy is the one that stays. It is where a quoted decision put it - "I need
+            my own report to be the same report on my record" - and it says something this one did
+            not: how checkable each account was, on the session it is about. Deleting the richer of
+            two identical lists to keep the plainer one would have been the wrong way round.
           */}
           {mySessions.length > 0 && (
-            <>
-              <Sec title="Your sessions" src="each one has its own report" />
-              <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
-                {mySessions.map((ci: any, i: number) => (
-                  <button
-                    key={ci.id}
-                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
-                    style={{
-                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
-                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
-                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
-                    <span>
-                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
-                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt ? `Finished ${new Date(ci.completedAt).toLocaleDateString()}` : 'Finished'}
-                        {howCheckable(specificityBySession?.[ci.sessionNumber])}
-                      </span>
-                    </span>
-                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
-                  </button>
-                ))}
-              </div>
-            </>
+            <button
+              onClick={() => onGoToMyRecord()}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10,
+                padding: '12px 14px', marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              }}
+            >
+              <span>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Your sessions</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
+                  {mySessions.length} finished. Each one has its own report, on My record.
+                </span>
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+            </button>
           )}
           {/*
-            THE HEADING GOES. The tab is called Report, the row above it opens the board, and the
-            only thing under it now is the reveal - which announces itself. A heading naming the tab
-            you are on is the page talking about itself.
+            THE SHARED REPORT IS THE BOARD NOW.
+
+            This section used to embed the whole report body underneath a heading and a line saying
+            "shows where your account and the other party's account agree or differ". Every part of
+            that body now has a home that is not a second copy:
+
+              what is still open, with each account and what is at stake   the board
+              the read across everybody's accounts                          the session page
+              the question it turns on                                      the board, and the session page
+              where things stand, who has checked in                        the session page, and the board
+              the private lines for the conversation ahead                  My record
+              the inferred claims, each with "Correct this"                 the session page
+              how it is put together                                        the foot of the board
+
+            None of it was deleted. What went is the fourth place to read the same three findings,
+            which is what "the participant seems to be looking at too many reports" was.
+
+            WHAT STAYS HERE is the part that is not a reading surface at all: the reveal. Showing
+            yours is an act with a consequence that cannot be undone, and it belongs on the tab a
+            person opens expecting the report, not buried on a page about one session.
           */}
+          <Sec title="Shared report" />
 
           {!report ? (
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
@@ -163,53 +197,110 @@ export function SharedReportForAParty({
             */
             <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                There is a picture forming, and you have not answered yet
+                A picture is forming, and you have not given your account yet
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6 }}>
                 {(report as any).saying}
               </div>
             </div>
           ) : !report.releasedAt ? (
-            /*
-              THE FORMING BANNER IS GONE.
+            <>
+              <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+                  {(report as any)?.forming ? 'A picture is forming' : 'Report is being prepared'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6, marginBottom: 0 }}>
+                  {(report as any)?.forming
+                    ? 'Not everyone has checked in yet, so this is not final - but you can see what has emerged so far. It never fabricates agreement, only what is actually known.'
+                    : 'Your report will be available once it is released.'}
+                </div>
+                {/*
+                  AND A WAY IN, WHICH IS THE WHOLE POINT OF SAYING IT IS FORMING.
 
-              "A picture is forming. Not everyone has checked in yet, so this is not final - but you
-              can see what has emerged so far", over two buttons to the board and to My sessions.
-              Three sentences and two doors on a tab whose first row is already a door to the board.
+                  This message used to be followed by the report body embedded underneath. With the
+                  body gone the message would have been a dead end again - "a picture is forming"
+                  and nothing to open - which is the exact regression
+                  `GroundParticipantPage.formingReport.spec` was written for, and it caught it.
 
-              And it said nothing the reader could not already see: My record's coverage bars say
-              what the report can and cannot say yet, in one row, on the page that is about exactly
-              that. Two screens describing the same half-built report, one of them in prose.
-            */
-            null
+                  Both destinations hold forming content: the board is generated from the check-in
+                  and regenerates as people answer, and each session page shows that round's picture
+                  while it is still moving. The board is offered only where the scenario has one -
+                  a private alignment check-in renders none - so the second button is always there.
+                */}
+                {(report as any)?.forming && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 11 }}>
+                    {!!(ground as any).boardRenders && (
+                      <button
+                        onClick={() => onOpenBoard()}
+                        style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        See what has emerged so far
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onGoToMyRecord()}
+                      style={{ padding: '8px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      My sessions
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : !report.activated ? (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
+              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
+                Each of you shows your own when you are ready. Once everyone has, you can all read them - this cannot be undone.
+              </div>
+              {/*
+                AND WHO IT IS WAITING ON.
+
+                The mechanism was explained and nobody was named, so two people sit either side of
+                this button each believing the other has stalled. Seen on a real check-in: report
+                released, both parties emailed, neither had pressed it, and nothing on the screen
+                said who the other person was or that they had been sent the same thing.
+              */}
+              {((report as any).waitingToShow ?? []).length > 0 && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 8 }}>
+                  Waiting on {((report as any).waitingToShow as string[]).join(' and ')}
+                  {(report as any).everyoneWasTold ? ' - they have been told it is ready too.' : '.'}
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
+                The report shows where accounts agree and where they differ. It does not quote anyone.
+              </div>
+              <button
+                onClick={() => activateMutation.mutate()}
+                disabled={activateMutation.isPending}
+                style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
+              >
+                {activateMutation.isPending ? 'Confirming…' : 'Show mine'}
+              </button>
+            </div>
           ) : (
-            /*
-              THE REVEAL IS GONE FROM HERE TOO.
-
-              A branch on `!report.activated` held "The shared report is ready... Each of you shows
-              your own when you are ready... this cannot be undone" over a "Show mine" button. The
-              server no longer withholds anything for it to unlock: the gate in reports.service
-              get() is removed, because the per-session read handed the same person the same
-              content one request later, and the empty payload it returned made the card beneath it
-              say "0 areas settled" about a full three-party report.
-
-              "Report updates as people check in, that's all it is."
-            */
-            /*
-              ONCE EVERYONE HAS SHOWN THEIRS, THIS SECTION HAS NOTHING TO DO.
-
-              An hour ago it held three sentences saying where the report had gone - "Where the
-              accounts agree and where they differ... is on the team board. Your own account of each
-              session... on My record" - over two buttons to those places. Read back: "remove". Fair.
-              It was a paragraph of directions standing where a document used to be, and the tab
-              already has a door to the board and a door to My record at the top of it. Saying it
-              again in prose is a third and fourth door to two rooms.
-
-              So the section renders nothing here, and the heading above renders only when there IS
-              something. What is left on the tab is the board, your sessions, and - before everyone
-              has shown theirs - the one thing that is an act rather than a reading: the reveal.
-            */
-            null
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 5 }}>Everyone has shown theirs</div>
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 12 }}>
+                Where the accounts agree and where they differ, with each person's own position under
+                it, is on the team board. Your own account of each session, and the claims worked out
+                rather than said, are on My record.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => onOpenBoard()}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Read it on the board
+                </button>
+                <button
+                  onClick={() => onGoToMyRecord()}
+                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  My record
+                </button>
+              </div>
+            </div>
           )}
     </>
   )

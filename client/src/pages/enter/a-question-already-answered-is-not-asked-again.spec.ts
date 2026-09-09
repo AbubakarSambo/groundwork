@@ -55,8 +55,7 @@ describe('a question already answered is not asked again', () => {
    * deserves to know that before it happens. What changes is that it confirms instead of re-asking.
    */
   it('confirms what the party said instead of asking them again', () => {
-    /* Extracted from their text, not said in so many words. See the render. */
-    expect(PAGE).toContain('From what you wrote, you are one of the people involved.')
+    expect(PAGE).toContain('You said you are one of the people involved.')
   })
 
   /**
@@ -64,39 +63,16 @@ describe('a question already answered is not asked again', () => {
    * would trade a repeated question for a trapped one.
    */
   it('leaves a way to correct a wrong reading', () => {
-    /*
-     * BOTH OPTIONS RENDER FOR EVERYBODY, WHICH IS THE PROMISE - the wording is not.
-     *
-     * This asserted the exact string "Actually, I do not check in. Others do.", one of four variants
-     * the card carried: two for a party, two for everybody else. All four are gone. Watched at a
-     * live demo and called confusing for everyone, and the two shown to a non-party were the worst
-     * of it - "I am one of the people involved. Start my check-in now." against "They do. I read
-     * what comes back.", which are not the same kind of sentence and do not share a subject.
-     *
-     * One pair now, opening on the same three words so only the ending has to be read. What this
-     * file protects is unchanged: somebody the model read wrongly can still say so, because the
-     * option is on the screen whatever `yourRole` says.
-     */
-    expect(PAGE).toContain('I set this check-in up only')
+    /* The wording followed the answer it leads to: not "someone else gives the accounts" and gets
+       handed the check-in, but "I do not check in, others do" - which is a mode, not a hand-off. */
+    expect(PAGE).toContain('Actually, I do not check in. Others do.')
   })
 
   /**
-   * Undefined is a real state - the model may not have got a clear answer. Then somebody with no role
-   * on file must still reach the fork with something to click.
+   * Undefined is a real state - the model may not have got a clear answer. Then the original question
+   * must still be asked, or somebody with no role on file reaches the fork with nothing to click.
    */
-  it('still offers the choice when the model got no clear answer', () => {
-    /*
-     * The question used to be a heading with two lines under it explaining what an account was. It
-     * is gone: a choice screen that needs a paragraph to explain it has the wrong options on it.
-     * Both options are outside the `yourRole` branch now, so neither answer - nor the absence of one
-     * - can leave the card with nothing on it.
-     */
-    expect(PAGE).toContain('I set this up and check in myself')
-    expect(PAGE).toContain('I set this check-in up only')
-    expect(PAGE).not.toContain('Who gives the accounts on this?')
-    /* And the buttons are not inside the yourRole conditional, so an undefined role still gets both. */
-    const branch = PAGE.indexOf("yourRole === 'a_party' ?")
-    const first = PAGE.indexOf('I set this up and check in myself')
-    expect(PAGE.slice(branch, first)).toContain(') : null}')
+  it('still asks outright when the model got no clear answer', () => {
+    expect(PAGE).toContain('Who gives the accounts on this?')
   })
 })

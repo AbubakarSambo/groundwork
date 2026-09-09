@@ -9,6 +9,7 @@ import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
+import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'
 
 interface Msg {
   id: string
@@ -129,13 +130,7 @@ export function ChatPage() {
    *
    * Empty is a fact you have to have looked to know. This is the looking.
    */
-  /* The setter still records that the transcript was looked at; nothing reads the flag now the
-     briefing screen it gated is gone. */
-  const [, setKnowWhatIsHere] = useState(false)
-  /** An assistant bubble with nothing in it yet, however it was minted. */
-  const isWaiting = (m: { id: string; role: string; content: string }) =>
-    m.id === 'loading' || (m.role === 'AI' && m.content.trim() === '…')
-
+  const [knowWhatIsHere, setKnowWhatIsHere] = useState(false)
   const [priorTurns, setPriorTurns]   = useState<Msg[]>([])
   const [priorSessionNumber, setPriorSessionNumber] = useState<number | null>(null)
   /** The session this one is correcting, when it is a correction rather than a new session. */
@@ -388,46 +383,24 @@ export function ChatPage() {
           if (cancelled) return
           // Reopen (#3): if this is a correction session, show the prior
           // session's turns read-only so the person sees what they said before.
-          /*
-           * AND THAT THIS IS A CORRECTION, which the header had no way to know.
-           *
-           * A correction is created at the next free session number, so the page called it
-           * "Session 3" while the person had pressed Correct it on session 1. The check-in row
-           * has said so all along; the header was reading `sessionNumber` out of navigation
-           * state, which carries no such thing.
-           *
-           * OUT OF THE priorTurns BRANCH, WHERE IT WAS UNREACHABLE. Walked as a real participant:
-           * pressed "Something here is wrong - correct it", landed on a page identical to the one
-           * left behind - same transcript, same report card, same button - with nothing anywhere
-           * saying a correction had opened. It looked so exactly like a failed press that it was
-           * pressed again, and two empty correction sessions were created.
-           *
-           * The three places that say "Correcting session N" were all written and all correct.
-           * They were nested inside `if (t.priorTurns.length > 0)`, so whether the page could tell
-           * you what you were doing depended on whether the prior turns happened to come back.
-           * Whether this is a correction is a fact about the check-in, so it is read from the
-           * check-in and nothing else.
-           */
-          if ((t.checkIn as any)?.isSelfCorrection) {
-            setCorrectingSession((t.checkIn as any).selfCorrectionTargetSession ?? t.priorSessionNumber ?? null)
-          }
-          // Reopen (#3): the prior session's turns, read-only, so the person sees what they said.
           if (t.priorTurns && t.priorTurns.length > 0) {
             setPriorTurns(t.priorTurns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             setPriorSessionNumber(t.priorSessionNumber ?? null)
+            /*
+             * AND THAT THIS IS A CORRECTION, which the header had no way to know.
+             *
+             * A correction is created at the next free session number, so the page called it
+             * "Session 3" while the person had pressed Correct it on session 1. The check-in row
+             * has said so all along; the header was reading `sessionNumber` out of navigation
+             * state, which carries no such thing.
+             */
+            if ((t.checkIn as any)?.isSelfCorrection) {
+              setCorrectingSession((t.checkIn as any).selfCorrectionTargetSession ?? t.priorSessionNumber ?? null)
+            }
           }
           if (t.priorRecordEntries && t.priorRecordEntries.length > 0) {
             setPriorRecordEntries(t.priorRecordEntries)
           }
-          /*
-            WHAT THIS CHECK-IN IS ABOUT, ON EVERY LOAD.
-
-            `brief` was set in exactly one place - `openSession.onSuccess` - so the band appeared on
-            the single load that opened the session and never again. Somebody did an entire check-in
-            and only found out what it was about afterwards. Outside the turns check on purpose: a
-            session with no turns yet still has a subject, and that is the load where it matters most.
-          */
-          if (t.brief) setBrief(t.brief)
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
@@ -656,6 +629,9 @@ export function ChatPage() {
    * work that would make the stronger claim true; until it lands, this says the
    * true version.
    */
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(() => {
+    try { return localStorage.getItem('gw_privacy_seen') === '1' } catch { return false }
+  })
   /**
    * AND IT MUST NOT SWALLOW A FAILURE TO OPEN.
    *
@@ -680,15 +656,50 @@ export function ChatPage() {
    * The acknowledgement is what stops it being read twice, and it already errs the safe way: a
    * person on a new device sees the explainer again rather than never.
    */
-  /*
-   * THE "WHAT HAPPENS TO WHAT YOU WRITE" GATE IS GONE.
-   *
-   * A full-page screen stood between a person and their first question, headed "Nobody you work
-   * with reads it", with a button to press before the check-in would start. Read back: "the nobody
-   * sees what you write page should be deleted." The four claims themselves still exist in one
-   * file and still render where somebody is deciding whether to take part - the invitation, and
-   * the admin's guide - which is where a promise belongs. Not in front of every session.
-   */
+  const showPrivacyFirst = knowWhatIsHere && !privacyAcknowledged && msgs.length === 0 && !openFailed
+
+  if (showPrivacyFirst) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+        <div className="gw-hdr">
+          <div>
+            <div className="gw-logo">{groundLabel || 'Before you start'}</div>
+            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
+              {correctingSession != null ? `Correcting session ${correctingSession}` : `Session ${sessionNumber}`}
+            </div>
+          </div>
+        </div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
+          <div style={{ maxWidth: 520, width: '100%' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 6px', letterSpacing: '-.02em' }}>What happens to what you write</h1>
+            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>Worth thirty seconds before the first question, because it changes what is worth writing.</p>
+
+            {/*
+              * THE SAME FOUR CLAIMS, now read from one place because a second screen shows them
+              * too - an admin rolling this out has to be able to show their company what will be
+              * read and by whom, before anybody is asked to answer anything. Two copies of a
+              * privacy promise drift. See `what-happens-to-what-you-write.ts`.
+              *
+              * This screen renders them exactly as it did before.
+              */}
+            {WHAT_HAPPENS_TO_WHAT_YOU_WRITE.map(c => (
+              <div key={c.title} style={{ background: c.plain ? 'var(--gw-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: c.plain ? '14px 16px' : '16px 18px', marginBottom: c.plain ? 18 : 12 }}>
+                <div style={{ fontSize: c.plain ? 12.5 : 14, fontWeight: 700, color: c.plain ? 'var(--gw-sub)' : 'var(--gw-text)', marginBottom: 4 }}>{c.title}</div>
+                <p style={{ fontSize: c.plain ? 12.5 : 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>{c.body}</p>
+              </div>
+            ))}
+
+            <button
+              onClick={() => { try { localStorage.setItem('gw_privacy_seen', '1') } catch { /* private mode: shown again, which is the safe direction */ } setPrivacyAcknowledged(true) }}
+              style={{ width: '100%', padding: '12px 0', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Start my check-in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
@@ -776,9 +787,7 @@ export function ChatPage() {
             ten-minute conversation is a target you are no longer looking at by the time it matters.
             Only shared facts: the subject and the stated objectives, never another party's words.
           */}
-          {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
-              description but which has no objectives and no label showed nothing at all. */}
-          {brief && (brief.subject || (brief as any).says || brief.objectives.length > 0) && (
+          {brief && (brief.subject || brief.objectives.length > 0) && (
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
                 What this check-in is about
@@ -861,18 +870,6 @@ export function ChatPage() {
               </div>
             </div>
           )}
-          {/*
-            THE WAITING TREATMENT EXISTED AND THE BUBBLE THAT NEEDED IT DID NOT QUALIFY FOR IT.
-
-            "As a participant I type and I don't know if my chat landed until seconds later." The
-            message does appear at once, and so does an assistant bubble - carrying a literal "…",
-            because the bouncing dots and the after-a-few-seconds explanation below are gated on
-            `m.id === 'loading'` and the optimistic bubble is minted with its own id. So the one
-            path a person actually takes got a static ellipsis, which reads as a rendering glitch,
-            while the treatment written for exactly this sat one condition away.
-
-            Matched on what the bubble IS rather than on which id it happens to carry.
-          */}
           {displayedMsgs.map(m => (
             m.docAssessment ? (
               <AssessmentCard
@@ -897,11 +894,11 @@ export function ChatPage() {
                 fontSize: 14,
                 lineHeight: 1.6,
                 whiteSpace: 'pre-wrap',
-                opacity: isWaiting(m) ? 0.5 : 1,
+                opacity: m.id === 'loading' ? 0.5 : 1,
                 boxShadow: m.role === 'AI' ? '0 1px 3px rgba(0,0,0,.05)' : 'none',
               }}
             >
-              {isWaiting(m) ? (
+              {m.id === 'loading' ? (
                 /*
                  * THE DOTS, AND AFTER A FEW SECONDS WHAT THEY MEAN.
                  *
@@ -990,10 +987,10 @@ export function ChatPage() {
               </div>
             </div>
           )}
-          {/* Manual fallback: "done" flips on the AI's close marker, or when the
-              person asked to finish and the reply asked nothing (closesInOtherWords
-              on the backend). A closing reply can still miss both, which would
-              leave no way to complete. Once there's a real record built,
+          {/* Manual fallback: "done" only flips when the AI's reply happens to
+              match a fixed set of closing phrases (detectSessionComplete on
+              the backend). That heuristic can miss a legitimate closing reply,
+              leaving no way to complete. Once there's a real record built,
               offer a manual path - the backend's own readiness gate is the
               actual authority and returns a clear message if it's too early. */}
           {/* COUNT WHAT LANDED, NOT WHAT WAS TYPED.
@@ -1045,7 +1042,7 @@ export function ChatPage() {
                 */}
                 <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
                   <li>This cannot be undone for this session.</li>
-                  <li>The session finishes without your answers, so nobody is left waiting on you.</li>
+                  <li>The session finishes without your account, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
                   <li>Nothing you have written here is shown to anyone.</li>
                 </ul>
@@ -1116,7 +1113,7 @@ export function ChatPage() {
               <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
                 This report is yours and it stays on this session - the button below opens it on
                 its own, and it is also under Report, in Your sessions. The shared report, where
-                what everybody said sits side by side, appears once the others have checked in.
+                everybody's accounts sit side by side, appears once the others have checked in.
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
                 {/* The check-in itself, where the people, the sessions and the setup all live.

@@ -4,12 +4,12 @@ import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
 /**
  * THE TIDY-UP MUST NOT MOVE A NAME ONTO SOMEBODY ELSE. W8-73.
  *
- * The model writes bare "the participant" where it was given the label "Participant A", so a
+ * The model writes bare "the participant" where it was given the label "participant A", so a
  * lead read their own board with one name resolved and one left as a placeholder. Collapsing
- * "Participant A" to "participant" fixes that - and my first version of the collapse counted
+ * "participant A" to "participant" fixes that - and my first version of the collapse counted
  * uniqueness across the labels the READER may see.
  *
- * On a three-party ground, read by participant A, only "Participant A" is visible. So
+ * On a three-party ground, read by participant A, only "participant A" is visible. So
  * "participant" looked unambiguous, and the substitution rewrote
  *
  *   "participant B said the handover was late"   ->   "Abubakar B B said the handover was late"
@@ -54,15 +54,12 @@ describe('collapsing a bare label', () => {
   });
 
   it('never rewrites another party\'s label into a name', () => {
-    // THE REGRESSION. Reading as A, "Participant B" must survive untouched.
+    // THE REGRESSION. Reading as A, "participant B" must survive untouched.
     const parties = [lead, a, b];
     const all = [...labelsForParties(parties).values()];
     const visible = namesVisibleTo('p-a', parties);
     const out = withNames('participant B said the handover was late.', visible, all);
-    /* Still the label and never the name. Its casing is normalised to the form the counting table
-       and the attributions print, because one person spelled three ways on one screen reads as the
-       product not knowing who anybody is. */
-    expect(out).toBe('Participant B said the handover was late.');
+    expect(out).toBe('participant B said the handover was late.');
     expect(out).not.toContain('Abubakar');
     expect(out).not.toContain('Kavon');
   });
@@ -87,7 +84,7 @@ describe('a label does not match inside a word', () => {
   /**
    * A LIVE DEFECT, FOUND BY ACCIDENT. W8-73.
    *
-   * The substitution had no word boundaries, and "Participant A" - the label for anybody
+   * The substitution had no word boundaries, and "participant A" - the label for anybody
    * with no stated role - matches the middle of "particip[ant a]nswered" case-insensitively:
    *
    *   "the participant answered"  ->  "the Abubakarnswered"
@@ -126,7 +123,7 @@ describe('the collapse respects who may see the name', () => {
      * report tests green, so the guard was doing unasserted work.
      *
      * The case that isolates it: an org admin who is not a party reads a two-party ground.
-     * They may see the lead's name and not the participant's. "Participant A" is then the
+     * They may see the lead's name and not the participant's. "participant A" is then the
      * only label with that base - unambiguous - but its name is not theirs to see. Without
      * the check the code looks up a name that is not in the map and substitutes the string
      * "undefined" into the sentence.

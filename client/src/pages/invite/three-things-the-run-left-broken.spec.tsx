@@ -106,22 +106,15 @@ describe('an invited person reads the disclosure before they commit, once', () =
   })
 
   it('and accepting stamps the acknowledgement so the chat opens on the first question', () => {
-    /* `onSuccess: async (res)` since the resumed branch refreshes the user before navigating - see
-       InvitePage. Matched on the handler rather than on whether it happens to be async. */
-    const onSuccess = INVITE.slice(INVITE.search(/onSuccess: (?:async )?\(res\)/))
+    const onSuccess = INVITE.slice(INVITE.indexOf('onSuccess: (res)'))
     expect(onSuccess).toMatch(/localStorage\.setItem\('gw_privacy_seen', '1'\)/)
   })
 
-  it('the chat no longer shows it to anybody, by decision', () => {
-    /*
-     * This pinned the opposite: that ChatPage kept a full-page disclosure gate for anyone who had not
-     * come through the invitation. "The nobody sees what you write page should be deleted." It is.
-     * The disclosure lives where somebody decides whether to take part - this page and the admin's
-     * guide - not in front of every session.
-     */
+  it('the chat still shows it to anyone who did NOT come through this page', () => {
+    /** The control. Removing a gate must not remove the disclosure for a returning participant. */
     const CHAT = read('../chat/ChatPage.tsx')
-    expect(CHAT).not.toMatch(/showPrivacyFirst/)
-    expect(CHAT).not.toMatch(/WHAT_HAPPENS_TO_WHAT_YOU_WRITE/)
+    expect(CHAT).toMatch(/gw_privacy_seen/)
+    expect(CHAT).toMatch(/showPrivacyFirst/)
   })
 })
 

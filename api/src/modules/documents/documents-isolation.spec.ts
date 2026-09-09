@@ -41,7 +41,7 @@ function makeService(opts: {
   };
   const anthropic: any = { extract: jest.fn(async () => ({ claims: [] })) };
   const config: any = { get: jest.fn(() => 'test-key') };
-  return { service: new DocumentsService(prisma, anthropic, config, { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) } as any), prisma };
+  return { service: new DocumentsService(prisma, anthropic, config), prisma };
 }
 
 // GW-PRI-DOC-01: non-participant cannot upload

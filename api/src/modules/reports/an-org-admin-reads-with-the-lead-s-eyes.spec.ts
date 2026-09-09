@@ -33,10 +33,7 @@ describe('who reads with the lead\'s eyes', () => {
   it('an org admin does, on both the forming and the released report', () => {
     // Two call sites, and a report that names people before release but not after would be
     // the worst of both.
-    /* The call now carries the check-in's naming setting after this flag, so the match runs to the
-       flag rather than to the closing bracket. What is protected is that both call sites hand an
-       org admin the same eyes as the lead. */
-    const calls = CODE.match(/applyNames\([^)]*isInitiator \|\| isOrgAdmin[,)]/g) ?? [];
+    const calls = CODE.match(/applyNames\([^)]*isInitiator \|\| isOrgAdmin\)/g) ?? [];
     expect(calls.length).toBe(2);
   });
 

@@ -29,7 +29,6 @@ import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageE
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
-import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
 import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
@@ -45,13 +44,7 @@ import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
-import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
-import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
-import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
-
-/** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
-export const COACHING_LIVE_KEY = 'coaching_live';
+import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -301,29 +294,7 @@ export class ConversationService {
     });
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
-      select: {
-        label: true,
-        scenario: true,
-        /*
-         * WHAT THE CHECK-IN IS ABOUT, WHICH ONLY EVER ARRIVED ONCE.
-         *
-         * `open()` returns the brief, and the client stores it in that response handler and nowhere
-         * else. So the band that says what this check-in is about renders on the single load that
-         * OPENS the session, and never again - come back, refresh, or land on a session already
-         * open and it is gone.
-         *
-         * Reported by somebody who did a whole check-in and only saw what it was about afterwards.
-         * The band's own comment on the client says why that is the wrong behaviour: "it stays
-         * visible rather than appearing once, because a target you saw at the top of a ten-minute
-         * conversation is a target you are no longer looking at by the time it matters." It was
-         * describing what the code was supposed to do.
-         *
-         * The transcript is what every later load reads, so the brief travels on it too. Same
-         * `briefFor`, same shared-facts-only rule: the subject, what the lead wrote, the objectives.
-         */
-        brief: true,
-        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
-      },
+      select: { label: true, scenario: true },
     });
 
     // Reopen (#3): when this is a self-correction session, surface the prior
@@ -413,7 +384,6 @@ export class ConversationService {
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      brief: this.briefFor(ground),
       turns: turns.map(asRead),
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
@@ -544,9 +514,6 @@ export class ConversationService {
     if (existingAiTurn) {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
     }
-    await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
-      this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
-    );
 
     // Session balance gate: consume one session from the ground's balance once
     // per session round (sessionNumber). If any other participant has already
@@ -698,35 +665,9 @@ export class ConversationService {
       : correctingSession != null
         ? `<<BEGIN_CHECK_IN>> The person pressed "correct it" on session ${correctingSession}. This is NOT a new session and NOT a progress check. Do not ask what has happened since, do not ask what exists now, and do not ask how anything is going. Open in one sentence by saying you are back on session ${correctingSession} and asking what they want to change or add - then let them tell you, and only then probe for specifics. Their original answers are not deleted or edited; this is recorded alongside them.`
         : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
-    /*
-     * THE FIRST QUESTION TO SOMEBODY WHO IS NOT THE LEAD, IN A STARTING SCENARIO, IS WRITTEN HERE.
-     *
-     * The prompt has two roles: initiator and participant. Every non-initiator got the participant
-     * block, and in NEW_HIRE that block is the HIRE's question - "what do you think you were hired
-     * to do". Walked as a real third party (the clinic the ward refers into) and the model, seeing
-     * the person was plainly not the hire, improvised the initiator's framing instead: "in 90 days,
-     * if she is succeeding, what will she be doing that you are doing now?" He does not do her job.
-     *
-     * Nothing on the participant row says whether they are the person this is about. So the
-     * product asks, in its own words, before the model asks anything - the same move as the
-     * session-date citation: the product writes the line, the model only takes it from there. The
-     * answer is in the transcript, and the pack tells the model which block follows from it.
-     */
-    /*
-     * `ground` is the row loaded above with `scenario` selected. The first version read
-     * `checkIn.ground`, which `loadOwnedCheckIn` never includes, so the guard was always false and the
-     * model wrote the opener - found by opening a real session and reading it. And a FIRST session
-     * only: the answer is in session one's transcript, and asking again on session two puts a
-     * question to somebody the record has already answered.
-     */
-    const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
-    const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
-    const firstSession = checkIn.sessionNumber === 1;
-    const reply = startsSomething && notTheLead && firstSession && correctingSession == null && !(checkIn as any).isFinal
-      ? WHO_ARE_YOU_IN_THIS
-      : await this.anthropic.respond(fullSystem, [
-          { role: 'user', content: beginMessage },
-        ]);
+    const reply = await this.anthropic.respond(fullSystem, [
+      { role: 'user', content: beginMessage },
+    ]);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
@@ -918,21 +859,11 @@ export class ConversationService {
       /* Who is reading, so their own name cannot come back at them in the third person. Their
          first name is on the row this method already loaded. */
       const readerName = (checkIn as any).participant?.user?.firstName ?? null;
-      const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
-      this.knownForThisTurn.delete(checkIn.id);
-      let screened = screen(stripped.text, known, readerName);
-      if (screened.hits.length) {
-        /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
-           the hit named. One time. If the second try is clean it replaces the first; if not, the
-           first stands minus its dropped sentences. */
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, screened.hits, known, readerName, theirWords, checkIn.id);
-        if (again) {
-          screened = again.screened;
-          stripped.hadMarker = again.hadMarker;
-        }
-      }
-      if (!screened.text) {
-        for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
+      const screened = screen(stripped.text, personWords, readerName);
+      if (screened.dropped.length) {
+        this.logger.warn(
+          `Dropped ${screened.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
+        );
       }
       reply = screened.text || ASK_AGAIN;
 
@@ -1007,12 +938,8 @@ export class ConversationService {
     // is in your record" where the list wanted "here is what is NOW in your
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
-    const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
-    const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
-    if (close.ask) {
-      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${aiTurn.content}\n\n${close.ask}` } });
-    }
-    const sessionComplete = close.ready;
+    const signalled = hadCloseMarker || this.detectSessionComplete(reply);
+    const sessionComplete = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false;
 
     /*
      * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,
@@ -1036,92 +963,42 @@ export class ConversationService {
    * nothing, and then never again in that session. Nobody gets trapped in a loop
    * to extract a specific that does not exist.
    */
-  /**
-   * ONE MORE TRY, WITH THE INVENTION NAMED. Returns nothing if the second reply is not clean.
-   */
-  private async askAgainWithoutTheInvention(
-    fullSystem: string,
-    history: ChatTurn[],
-    hits: Hit[],
-    known: string[],
-    readerName: string | null,
-    theirWords: string[],
-    checkInId: string,
-  ): Promise<{ screened: ReturnType<typeof screen>; hadMarker: boolean } | null> {
-    const second = await this.anthropic
-      .respond(`${fullSystem}\n\n${askInsteadOfInventing(hits)}`, history)
-      .catch(() => '');
-    if (!second.trim()) {
-      for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
-      return null;
-    }
-    const screened = screen(withoutQuotesTheyDidNotSay(forHumans(second), theirWords), known, readerName);
-    const clean = screened.hits.length === 0 && !!screened.text;
-    for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, clean ? 'regenerated, clean' : 'regenerated, still hit'));
-    if (!clean) {
-      for (const h of screened.hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
-      return null;
-    }
-    return { screened, hadMarker: textHadCloseMarker(second) };
-  }
-
-  /**
-   * THE CLOSE BAR, AND THE ONE HOLD.
-   *
-   * The model has signalled a close. Before it is accepted, the last thing the person said is read
-   * for a number, a date, a document or an attachment. If none of those is there, and this check-in
-   * has not been held before, it is held ONCE: closeHeldAt is stamped, the product's one question
-   * goes out on the end of the reply, and the next answer closes it whatever it says.
-   *
-   * closeReadiness then runs as it always did. Its "already held back once" branch used to be fed
-   * by aiTurns > personTurns, which is true on every turn of every session (the opener is an AI
-   * turn), so the hold never held. It is fed by the stamp now.
-   */
-  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string }> {
-    const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true } }),
-      this.prisma.conversationTurn.findMany({
-        where: { checkInId },
-        orderBy: { createdAt: 'asc' },
-        select: { role: true, content: true },
-      }),
-    ]);
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<boolean> {
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    });
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    // Has a close already been held back? The AI's own turns carry the extra
+    // question, so a second offer to close means we have already had our one.
+    const aiTurns = turns.filter((t) => t.role === TurnRole.AI).length;
+    const alreadyProbed = aiTurns > personSaid.length;
+
+    // The same floor complete() enforces, so the engine never offers to close
+    // something the server will then refuse. See close-readiness.ts.
     const minTurns = isSelfCorrection ? 1 : 3;
-    if (personSaid.length < minTurns) {
-      this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
-      return { ready: false };
+    const verdict = closeReadiness(personSaid, alreadyProbed, minTurns);
+    if (!verdict.ready) {
+      this.logger.log(`Holding the close on ${checkInId}: ${verdict.reason}`);
     }
-    if (row?.closeHeldAt) {
-      return { ready: closeReadiness(personSaid, true, minTurns).ready };
-    }
-    const attached = row
-      ? (await this.prisma.groundDocument.count({
-          where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
-        })) > 0
-      : false;
-    const last = personSaid[personSaid.length - 1] ?? '';
-    const concrete = whatIsConcreteIn(last, attached);
-    const verdict = closeReadiness(personSaid, false, minTurns);
-    if (concrete.length && verdict.ready) return { ready: true };
-    await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
-    this.logger.log(
-      `Holding the close once on ${checkInId}: ${concrete.length ? verdict.reason : 'the last answer carried no number, date, document or attachment'}.`,
-    );
-    return { ready: false, ask: THE_ONE_CONCRETE_THING };
+    return verdict.ready;
   }
 
-  /**
-   * WHAT COUNTS AS THE MODEL CLOSING.
-   *
-   * The [[SESSION_COMPLETE]] marker, checked by the caller. This is the only other way: the person
-   * has just said they are finished and the reply asks them nothing. Nine hard-coded phrases used
-   * to sit here ("here is what is now in your record", "your account is now on record"). A reply
-   * that closed in other words left the session open, and a mid-session reply that happened to say
-   * "now in your record" and "next step" closed it. Both went with the list.
-   */
-  private closesInOtherWords(reply: string, lastPersonTurn: string): boolean {
-    return !/\?/.test(reply) && askedToFinish([lastPersonTurn]);
+  /** Whether the AI reply contains the mandatory session-closing phrasing. */
+  private detectSessionComplete(reply: string): boolean {
+    const replyLower = reply.toLowerCase();
+    return (
+      replyLower.includes('here is what is now in your record') ||
+      replyLower.includes('what is in your record from today') ||
+      replyLower.includes('in your record from today') ||
+      replyLower.includes('your account is now on record') ||
+      replyLower.includes('your record from this session') ||
+      (replyLower.includes('now in your record') && replyLower.includes('next steps')) ||
+      (replyLower.includes('now in your record') && replyLower.includes('carry forward')) ||
+      (replyLower.includes('now in your record') && (replyLower.includes('next step') || replyLower.includes('come back when'))) ||
+      (replyLower.includes('your record now') && replyLower.includes('session'))
+    );
   }
 
   /**
@@ -1188,10 +1065,10 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      const streamKnown = streamPersonWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
-      this.knownForThisTurn.delete(checkIn.id);
-      const streamReaderName = (checkIn as any).participant?.user?.firstName ?? null;
-      const gate = new SentenceGate(streamKnown, streamReaderName);
+      const gate = new SentenceGate(
+        streamPersonWords,
+        (checkIn as any).participant?.user?.firstName ?? null,
+      );
       let shown = '';
 
       /*
@@ -1268,22 +1145,13 @@ export class ConversationService {
        * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
        * somebody the model hallucinated is alarming and useless to them.
        */
-      /* On the stream the sentence is already gone by the time it is known to be wrong, so a hit is
-         dropped live and logged. Only when NOTHING survived is there room to ask the model again. */
-      let reply = shown.trim();
-      if (reply) {
-        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
-      } else {
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
-        if (again) {
-          reply = again.screened.text;
-          strippedStream.hadMarker = again.hadMarker;
-        } else {
-          for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
-          reply = ASK_AGAIN;
-        }
-        yield { type: 'delta', text: reply };
+      if (gate.dropped.length) {
+        this.logger.warn(
+          `Dropped ${gate.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
+        );
       }
+      const reply = shown.trim() || ASK_AGAIN;
+      if (!shown.trim()) yield { type: 'delta', text: ASK_AGAIN };
 
       /*
        * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
@@ -1306,20 +1174,14 @@ export class ConversationService {
         );
       }
 
-      const streamAiTurn = await this.prisma.conversationTurn.create({
+      await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
-      const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
-      const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
-      if (close.ask) {
-        reply = `${reply}\n\n${close.ask}`;
-        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
-        yield { type: 'delta', text: `\n\n${close.ask}` };
-      }
-      yield { type: 'done', reply, sessionComplete: close.ready };
+      const signalled = strippedStream.hadMarker || this.detectSessionComplete(reply);
+      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -1413,21 +1275,6 @@ export class ConversationService {
    * that only exists when the constructor did would be undefined in exactly the tests that
    * exercise the prompt.
    */
-  /**
-   * WHAT IS ALREADY ON THE TABLE, for the invention gate.
-   *
-   * The gate checked a reply against the person's own words and their first name. Everything else
-   * the prompt legitimately hands the model (who else is in the check-in, the lead's shared note,
-   * the documents, the objectives, their own prior rows, the citation the product wrote) was
-   * "invented" by that reading, so a reply that used a colleague's name from the roster lost the
-   * sentence. Written by composeSystemPrompt, read once by the reply path, same request.
-   */
-  private _knownForThisTurn?: Map<string, string[]>;
-  private get knownForThisTurn(): Map<string, string[]> {
-    if (!this._knownForThisTurn) this._knownForThisTurn = new Map();
-    return this._knownForThisTurn;
-  }
-
   private get citationForThisTurn(): Map<string, { citation: string; directive: string }> {
     if (!this._citationForThisTurn) this._citationForThisTurn = new Map();
     return this._citationForThisTurn;
@@ -2280,16 +2127,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     //
     // Adds nothing at all when the function is unknown or confidence is low, so an
     // uncertain profile never produces coaching from a guess.
-    const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
-    const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence);
+    const roleProbeBlock = buildRoleProbeBlock(
+      (checkIn.participant as any).detectedFunction,
+      (checkIn.participant as any).detectedFunctionConfidence,
+    );
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
      *
-     * ON, everywhere. This comment used to say "behind COACHING_ENABLED, off in
-     * every environment" while coachingEnabled() returned true, and the comment was
-     * the wrong one: the block has been reaching live prompts since it was wired.
-     * There is no flag. It still adds nothing at all when there is no step to raise.
+     * Behind COACHING_ENABLED, off in every environment, and it adds nothing at
+     * all when off - not an empty heading, not a blank line. Off is the check-in
+     * exactly as it is today.
      *
      * It also adds nothing when there is no step to raise, which is most sessions.
      * A coaching block that always has something in it is a product that always
@@ -2317,50 +2165,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    const [seenBefore, closeHeldLine, documentReadsDifferently] = await Promise.all([
-      this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId),
-      this.prisma.recordEntry
-        .findMany({
-          where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
-          select: { text: true, documentSays: true },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-        })
-        .then((rows) => rows.length
-          ? 'A DOCUMENT THEY CAN SEE READS DIFFERENTLY FROM SOMETHING THEY SAID. This is theirs to answer, once, as an ordinary question: put the two side by side and ask which is current. Never say the document is right. Never say they were wrong. Do not raise it twice.\n'
-            + rows.map((r) => `- They said: "${r.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}". The document says: "${r.documentSays}".`).join('\n')
-          : '')
-        .catch(() => ''),
-      this.prisma.checkIn
-        .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
-        .then((r) => (r?.closeHeldAt ? THE_CLOSE_WAS_HELD : ''))
-        .catch(() => ''),
-    ]);
-
-    /* What the invention gate may treat as already said. See knownForThisTurn. */
-    this.knownForThisTurn.set(checkIn.id, [
-      ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
-      ...(ground.leadContextNotes ?? []).map((n) => n.text ?? ''),
-      ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
-      ...((ground as any).objectives ?? []).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
-      priorSession ?? '',
-      toPut?.citation ?? '',
-      ...pendingNotes.map((n: any) => n.text ?? ''),
-      ...pendingDeliveries.map((d: any) => `${d.text ?? ''} ${d.evidence ?? ''}`),
-    ].filter(Boolean));
-
-    /* Which blocks were actually there, one log line per turn. Two blocks that looked wired and were
-       not were found by reading; this is so the next one is found by looking. */
-    const named: [string, string][] = [
-      ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
-      ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock],
-      ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
-      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
-    ];
-    this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
-
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, documentReadsDifferently, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -2381,16 +2186,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return true;
   }
 
-  /** platform_settings.coaching_live = true, set by hand once the first outputs have been read. */
-  private async coachingIsLive(): Promise<boolean> {
-    try {
-      const row = await this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } });
-      return row?.value === true || row?.value === 'true';
-    } catch {
-      return false;
-    }
-  }
-
   /**
    * What the coach has to say into THIS session, or nothing.
    *
@@ -2405,13 +2200,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    */
   private async coachingBlock(participantId: string, sessionNumber: number): Promise<string> {
     if (!this.coachingEnabled()) return '';
-    /*
-     * THE GATE. Rows are written on every completed session and can be read at /admin/coaching.
-     * The block reaches a live prompt only once the platform setting below has been set to true,
-     * by a person, after reading a first batch. Until then the chain runs in full and says nothing
-     * to anybody. There is no default row: absent means off.
-     */
-    if (!(await this.coachingIsLive())) return '';
     try {
       const row = await this.prisma.coachingState.findUnique({ where: { participantId } });
       if (!row?.currentStep) return '';
@@ -2506,17 +2294,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const map = roleMapFor(participant?.detectedFunction);
     const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
-    if (!map?.failureSignals?.length || !confident) {
-      /* A WRITER THAT RAN AND COULD NOT COACH STILL WRITES. 95 of the first 100 backfilled sessions
-         left no row here, which is the same dark shape as a writer that never ran. The row says why. */
-      await this.recordCoachingStep(participantId, sessionNumber, {
-        noticed: null, lookingLike: null, reason: null, hadSubstance: false,
-        observed: null,
-        observations: undefined,
-        why: !map?.failureSignals?.length ? `no role map for function ${participant?.detectedFunction ?? 'none'}` : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`,
-      } as any).catch(() => undefined);
-      return;
-    }
+    if (!map?.failureSignals?.length || !confident) return;
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2610,12 +2388,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const observed = await this.anthropic.extract<{
       index: number | null;
       reason: string | null;
-      theyAskedForThisThemselves?: boolean;
       lastStepOutcome: string | null;
     }>(
       COACHING_OBSERVATION_PROMPT,
       [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
-      COACHING_OBSERVATION_SCHEMA,
+      COACHING_OBSERVATION_SCHEMA as any,
     );
 
     // signalRead applies the guards that matter - an index off the end, an empty
@@ -2652,22 +2429,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // Every step here comes from a role map so this should never fire, which is
     // exactly why it is cheap to keep: if a map entry is ever edited into
     // something generic, nothing offers it.
-    /*
-     * TWO CHECKS BEFORE ANYTHING IS OFFERED, both from the first batch that was ever read.
-     * Recurrence: this session's observation is kept, and a step is offered only when the same thing
-     * was seen in two distinct sessions (SESSIONS_BEFORE_A_STEP). Inversion: never a step the person
-     * asked for themselves, by their own words and by the model's own field.
-     */
-    const prior = await this.prisma.coachingState.findUnique({ where: { participantId }, select: { observations: true } }).catch(() => null);
-    const observations: Observation[] = Array.isArray((prior as any)?.observations) ? ((prior as any).observations as Observation[]) : [];
-    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === sessionNumber && o.noticed === read.noticed)) {
-      observations.push({ sessionNumber, noticed: read.noticed, reason: read.reason.trim() });
-    }
-    const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
-    const inverted = !!read && (observed?.theyAskedForThisThemselves === true || theyAskedForItThemselves(read.lookingLike, personSaid));
-    if (read && inverted) this.logger.log(`Coaching: not offering "${read.lookingLike}" to ${participantId}, they asked for it themselves.`);
-    if (read && !recurring) this.logger.log(`Coaching: "${read.noticed}" seen once for ${participantId}, waiting for recurrence.`);
-    const offerable = read && !isGenericStep(read.lookingLike) && recurring && !inverted;
+    const offerable = read && !isGenericStep(read.lookingLike);
 
     await this.recordCoachingStep(
       participantId,
@@ -2676,8 +2438,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         noticed: offerable ? read!.noticed : null,
         lookingLike: offerable ? read!.lookingLike : null,
         reason: offerable ? read!.reason : null,
-        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted } : null,
-        observations,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
@@ -2703,14 +2463,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async recordCoachingStep(
     participantId: string,
     sessionNumber: number,
-    read: {
-      noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean;
-      /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
-      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean } | null;
-      observations?: Observation[];
-      /** Why nothing could be read this session, when that is the case. */
-      why?: string;
-    },
+    read: { noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean },
     outcomeOfLastStep?: StepOutcome | null,
   ): Promise<{ offered: string | null }> {
     if (!this.coachingEnabled()) return { offered: null };
@@ -2728,16 +2481,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
       if (outcomeOfLastStep && state.currentStep) state = afterOutcome(state, outcomeOfLastStep);
 
-      const { observed, observations, why, ...forTheMove } = read;
-      const move = nextMove(state, { ...forTheMove, sessionNumber });
+      const move = nextMove(state, { ...read, sessionNumber });
       let offered: string | null = null;
       if (move.move === 'offer') {
         offered = move.step;
         state = afterOffering(state, move.step, sessionNumber);
       }
 
-      /* The read that produced this, kept beside it: the first outputs are to be read against their input. */
-      const lastInput = { ...forTheMove, observed: observed ?? null, why: why ?? null, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
       await this.prisma.coachingState.upsert({
         where: { participantId },
         create: {
@@ -2747,8 +2497,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           staircase: state.staircase,
           staircasePosition: state.staircasePosition,
           history: state.history as any,
-          lastInput,
-          observations: (observations ?? []) as any,
         },
         update: {
           currentStep: state.currentStep,
@@ -2756,8 +2504,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           staircase: state.staircase,
           staircasePosition: state.staircasePosition,
           history: state.history as any,
-          lastInput,
-          ...(observations ? { observations: observations as any } : {}),
         },
       });
       return { offered };
@@ -3064,11 +2810,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // is still fire-and-forget. Both are best-effort.
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
-    /* The lines just taken are read against the documents this person can see. Best effort, after
-       the extraction they depend on, before the report reads recallBased. */
-    await this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
-      this.logger.warn(`Document anchoring failed for participant ${checkIn.participantId}: ${err.message}`),
     );
 
     // Handoffs are a board object, so this only runs on SHARED-mode grounds.
@@ -3531,146 +3272,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Writes the confidence alongside the function so a low-confidence read adds
    * no coaching downstream rather than being treated as settled.
    */
-  /**
-   * THE ROLE MAP FROM TURN ONE.
-   *
-   * detectFunction ran only at complete(), so the first session of every participant, and every
-   * session of the 94% who never got a read, had no role map at all: the coaching box and the
-   * probe list were wired to a column that was empty for almost everybody. On the first open, the
-   * stated role alone gives a provisional read (confidence 0.4, under MIN_COACHING_CONFIDENCE, so
-   * buildRoleProbeBlock hedges it as PROVISIONAL). complete() re-reads with the record rows and
-   * overwrites, so the read sharpens rather than appears from nowhere.
-   */
-  private async provisionalFunctionFromTheStatedRole(participant: {
-    id: string;
-    roleAsDescribed: string | null;
-    detectedFunction: string | null;
-    detectedFunctionConfidence: number | null;
-  }) {
-    if (participant.detectedFunction) return;
-    const read = detectFunction(participant.roleAsDescribed, [], null);
-    if (!read.fn) return;
-    await this.prisma.groundParticipant.update({
-      where: { id: participant.id },
-      data: { detectedFunction: read.fn, detectedFunctionConfidence: read.confidence, detectedFunctionAt: new Date() },
-    });
-    participant.detectedFunction = read.fn;
-    participant.detectedFunctionConfidence = read.confidence;
-    this.logger.log(`Provisional function ${read.fn} (${read.confidence}) for participant ${participant.id}: ${read.basis}`);
-  }
-
-  /**
-   * WHICH MAP THIS TURN USES. The stored read when it is confident. Below MIN_COACHING_CONFIDENCE,
-   * what they have said so far in THIS session is read too, in memory and not persisted: the
-   * persisted read is complete()'s job. When the in-session read disagrees with the stored one,
-   * detectFunction's own rule applies (the words win, held more tentatively, minus 0.1) and it is
-   * logged. The person sees none of this; the map only changes which question is asked next.
-   */
-  private async roleReadForThisTurn(
-    checkIn: { id: string; participant: { roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
-    latestMessage?: string,
-  ): Promise<{ fn: string | null; confidence: number | null }> {
-    const stored = { fn: checkIn.participant.detectedFunction, confidence: checkIn.participant.detectedFunctionConfidence };
-    if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return stored;
-    const turns = await this.prisma.conversationTurn
-      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true }, orderBy: { createdAt: 'asc' } })
-      .catch(() => [] as { content: string }[]);
-    const texts = turns.map((t) => t.content ?? '').concat(latestMessage ?? '').filter(Boolean);
-    if (!texts.length) return stored;
-    const read = detectFunction(checkIn.participant.roleAsDescribed, texts, stored);
-    if (read.fn && read.fn !== stored.fn) {
-      this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
-    }
-    return read.fn ? { fn: read.fn, confidence: read.confidence } : stored;
-  }
-
-  /**
-   * WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON'S SESSIONS, framed as offerWhatWorked frames it:
-   * a place to look, not a finding. SURFACED only; a CANDIDATE never reaches a conversation. The
-   * query is on THIS participantId, so nothing another person said can arrive through it.
-   */
-  private async whatHasBeenSeenAcrossTheirSessions(participantId: string): Promise<string> {
-    const surfaced = await (this.prisma.patternDetection?.findMany({
-      where: { participantId, status: 'SURFACED' as any },
-      select: { observationText: true, periodsObserved: true },
-      orderBy: { lastSeenAt: 'desc' },
-      take: 3,
-    }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
-      .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
-    const rows = surfaced.filter((p) => p.observationText?.trim());
-    if (!rows.length) return '';
-    return (
-      'WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON\'S OWN SESSIONS. Use this ONLY to decide which one question '
-      + 'matters most right now. It is a place to look, not a finding: it is not evidence about this session, it is '
-      + 'never the reason for anything you say, and if this conversation does not show it then it is not here. Never '
-      + 'repeat it back to them, never describe them with it, never ask about it by name. Ask about the work.\n'
-      + rows.map((p) => `- ${p.observationText!.trim()} (seen across ${p.periodsObserved} periods)`).join('\n')
-    );
-  }
-
-  /**
-   * A DOCUMENT HAS TO CHANGE SOMETHING. See ANCHOR_TO_DOCUMENTS_PROMPT.
-   *
-   * Every record line of this person's that is still recall is read against the documents they can
-   * see: their own, and any on the ground marked OPEN. A line a document plainly backs becomes
-   * recallBased=false and names the document. Nothing else is touched; the tiles, the confidence
-   * meter and What this rests on already read recallBased, so they move on their own. Runs at
-   * complete() and again when a document is uploaded, so an upload after the session still counts.
-   */
-  async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number; readsDifferently?: number }> {
-    const [docs, entries] = await Promise.all([
-      this.prisma.groundDocument.findMany({
-        where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
-        select: { id: true, fileName: true, content: true },
-        orderBy: { createdAt: 'desc' },
-        take: 12,
-      }),
-      /* Every line of theirs, backed or not: a line one document backs can still be read differently
-         by a newer one (the revised offer letter that moves the start date), and that is the case that
-         matters most. Only an unbacked line can become backed here. */
-      this.prisma.recordEntry.findMany({
-        where: { participantId, disputedAt: null },
-        select: { id: true, text: true, recallBased: true },
-        orderBy: { createdAt: 'asc' },
-        take: 120,
-      }),
-    ]);
-    if (!docs.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
-    const documents = docs.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
-    const lines = entries.map((e, i) => `[${i}] ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
-    const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
-      ANCHOR_TO_DOCUMENTS_PROMPT,
-      [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
-      ANCHOR_TO_DOCUMENTS_SCHEMA,
-    ).catch(() => null);
-    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && docs[b.document]);
-    let backed = 0;
-    for (const b of rows) {
-      /* Every decision, greppable, with the line, the passage and the document: a false match is
-         something to see, not something to watch for. */
-      this.logger.log(`anchoring-decision participant=${participantId} line=${JSON.stringify(entries[b.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[b.document].fileName)} passage=${JSON.stringify((b.where ?? '').slice(0, 200))}`);
-      await this.prisma.recordEntry
-        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null } })
-        .then(() => { backed++; })
-        .catch(() => undefined);
-    }
-    /*
-     * WHERE A DOCUMENT READS DIFFERENTLY, THE LINE STAYS THEIRS. Nothing is overwritten and nobody
-     * is ruled wrong: the line keeps their words, gains what the document says beside it, shows in
-     * their own report, and is put to them as a question in their next session. "Not what I said"
-     * still works on it. The document may be the stale one.
-     */
-    const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && docs[d.document] && d.says?.trim());
-    for (const d of differs) {
-      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} line=${JSON.stringify(entries[d.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[d.document].fileName)} says=${JSON.stringify(d.says.trim().slice(0, 200))}`);
-      await this.prisma.recordEntry
-        .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: docs[d.document].id } })
-        .catch(() => undefined);
-    }
-    if (backed || differs.length) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document; ${differs.length} read differently.`);
-    return { backed, of: entries.length, readsDifferently: differs.length };
-  }
-
   async reviseDetectedFunction(participantId: string) {
     const p = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
@@ -3821,7 +3422,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }>(
       OPERATING_DIFFERENCE_PROMPT,
       [{ role: 'user', content: `WHAT IS WRITTEN:\n${written}\n\nWHAT THEY SAID:\n${said}` }],
-      OPERATING_DIFFERENCE_SCHEMA,
+      OPERATING_DIFFERENCE_SCHEMA as any,
     ).catch(() => null);
     if (!result?.differences?.length) return;
 
@@ -3934,7 +3535,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const result = await this.anthropic.extract<{ happened: TheySay[] }>(
       THEY_SAY_HAPPENED_PROMPT,
       [{ role: 'user', content: said }],
-      THEY_SAY_HAPPENED_SCHEMA,
+      THEY_SAY_HAPPENED_SCHEMA as any,
     ).catch(() => null);
     if (!result?.happened?.length) return;
 
@@ -3995,7 +3596,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }>(
       PROGRESS_PROMPT,
       [{ role: 'user', content: `THEIR PROMISES:\n${mine.map((m) => `- ${m.text}`).join('\n')}\n\nTHEIR CHECK-IN:\n${said}` }],
-      PROGRESS_SCHEMA,
+      PROGRESS_SCHEMA as any,
     ).catch(() => null);
     if (!result?.progress?.length) return;
 
@@ -4036,7 +3637,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   ) {
     const result = await this.anthropic.extract<{
       promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
-    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA);
+    }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA as any);
     if (!result?.promises?.length) return;
 
     /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */
@@ -4777,34 +4378,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         soloArtifactAt: new Date(),
       },
     });
-  }
-
-  /**
-   * "THIS IS NOT WHAT I SAID." THE ONE PRESS THAT MAKES THE EXTRACTION WALL VISIBLE.
-   *
-   * Nine model extractors write record entries and every engine downstream counts them as record.
-   * Nothing compared a row against the words it came from, and the person never saw the row as a
-   * row - only their manager did, on the shared report. Correcting added a contradicting row beside
-   * the wrong one, and both then counted equally.
-   *
-   * Owner-scoped: the check-in has to be this person's, and the entry has to be theirs. Nothing is
-   * deleted or edited. The row stays, the dispute stays, and from this moment the row counts toward
-   * nothing - every read filters `disputedAt: null`.
-   */
-  async disputeEntry(checkInId: string, entryId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
-    const entry = await this.prisma.recordEntry.findFirst({
-      where: { id: entryId, participantId: checkIn.participantId },
-      select: { id: true, disputedAt: true },
-    });
-    if (!entry) throw new NotFoundException('That line is not on your record');
-    if (entry.disputedAt) return { id: entry.id, disputedAt: entry.disputedAt };
-    const updated = await this.prisma.recordEntry.update({
-      where: { id: entry.id },
-      data: { disputedAt: new Date() },
-      select: { id: true, disputedAt: true },
-    });
-    return updated;
   }
 
   /**

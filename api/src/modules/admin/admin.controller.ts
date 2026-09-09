@@ -229,18 +229,6 @@ export class AdminController {
     return this.adminService.getDashboard();
   }
 
-  @Get('coaching')
-  @ApiOperation({ summary: 'Every coaching state row with the read that produced it, and whether the block is live. Read these before setting coaching_live.' })
-  getCoaching() {
-    return this.adminService.getCoaching();
-  }
-
-  @Get('writers')
-  @ApiOperation({ summary: 'Zero-row detection: every writer that should fill a table, its row count, last write and ship date. Zero since shipped is flagged.' })
-  getWriters() {
-    return this.adminService.getWriters();
-  }
-
   @Get('stats')
   @ApiOperation({ summary: 'Platform-wide stats: orgs, grounds, codes, redemptions, freeReason breakdown' })
   getPlatformStats() {

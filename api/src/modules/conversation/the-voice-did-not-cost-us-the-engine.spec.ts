@@ -38,8 +38,6 @@ const stubPrisma = () => {
     'personObjective.findMany': [],
     'interaction.findMany': [],
     'proposedChange.findMany': [],
-    /* The gate is open for this spec: it is about the step reaching the prompt. */
-    'platformSetting.findUnique': { key: 'coaching_live', value: true },
     /* The coach's own state, which is where the step actually comes from. */
     'coachingState.findUnique': {
       participantId: 'p1', currentStep: 'name the blocker out loud',
@@ -177,7 +175,7 @@ describe('the rhythm nudge reads what actually happened', () => {
   });
 
   it('and the line it produces goes into the prompt', () => {
-    expect(src).toMatch(/coachingBlock, seenBefore, closeHeldLine, rhythmNow, dynamicContext/);
+    expect(src).toMatch(/coachingBlock, rhythmNow, dynamicContext/);
   });
 
   it('never removes a question from a written turn, because that is the probe', () => {

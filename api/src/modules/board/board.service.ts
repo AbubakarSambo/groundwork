@@ -25,8 +25,6 @@ import {
   ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
-import { AnthropicService } from '../conversation/anthropic.service';
-import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
   OrgDependency,
@@ -70,11 +68,7 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
 
-  /*
-   * `AnthropicService` for one job: rewording the reads' reason lines. The board decides nothing
-   * with it. See the-engine-drafts-it-the-model-words-it.ts for the guard.
-   */
-  constructor(private prisma: PrismaService, private readonly anthropic: AnthropicService) {}
+  constructor(private prisma: PrismaService) {}
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
     const ground = await this.prisma.ground.findUnique({
@@ -360,7 +354,7 @@ export class BoardService {
       // when it disagrees with the lead's number, and let them accept it in one
       // click. The board never silently overwrites what a person set.
       const objectiveEvidence = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
+        where: { participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
         select: { text: true },
       });
       const suggestFor = (name: string): number | null => {
@@ -452,7 +446,7 @@ export class BoardService {
 
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT'] } },
+        where: { participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT'] } },
         select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       });
@@ -513,50 +507,10 @@ export class BoardService {
       const movedTotal = ground.objectives.reduce((s, o) => s + (o.count - o.prevCount), 0);
       const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
       out.quickRead = [
-        /*
-         * THE LABELS WERE QUESTIONS AND THE VALUES DID NOT ANSWER THEM.
-         *
-         * Read off a live board: "ALIGNED? 1 open". "MOVING? no change". "STUCK? clear". "SOLID?
-         * moderate". Reported as "board and report have aligned, moving etc, but it is not clear
-         * what it means, 1 misalignment etc" - and it is not clear, because none of the four is an
-         * answer to the question above it. "1 open" does not say whether anybody is aligned. "clear"
-         * against "Stuck?" reads as confirming that they are. "moderate" answers nothing at all.
-         *
-         * A question-mark label also forces the value to be a verdict, and this board is explicitly
-         * not a verdict - its own panel says so three lines above. So the label is a plain noun for
-         * the thing being counted, the value is the count, and the sub-line is a whole clause saying
-         * what the count is of. Nothing has to be decoded and nothing is judged.
-         */
-        {
-          label: 'Differences',
-          value: divCount ? `${divCount}` : 'None',
-          sub: divCount
-            ? `still open between the accounts`
-            : 'the accounts do not disagree anywhere yet',
-          tone: divCount ? 'warn' : 'good',
-        },
-        {
-          label: 'Movement',
-          value: movedTotal > 0 ? `+${movedTotal}` : 'None',
-          sub: movedTotal > 0 ? 'targets moved this session' : 'no target moved this session',
-          tone: movedTotal > 0 ? 'good' : 'flat',
-        },
-        {
-          label: 'Blockers',
-          value: blockers ? `${blockers}` : 'None',
-          sub: blockers ? 'named as holding work up' : 'nobody named anything holding work up',
-          tone: blockers ? 'bad' : 'good',
-        },
-        {
-          /* Two different things used to share this tile: a word for how much was said, and a
-             percentage for how much of it had a document behind it. The label named neither. */
-          label: 'How much was said',
-          value: eng.coverage ?? 'unknown',
-          sub: eng.documentBackedPct != null
-            ? `${eng.documentBackedPct}% of it is backed by a document`
-            : 'nothing yet says how much is backed by a document',
-          tone: eng.coverage === 'thin' ? 'warn' : 'good',
-        },
+        { label: 'Aligned?', value: divCount ? `${divCount} open` : 'no gaps open', sub: 'differences between accounts', tone: divCount ? 'warn' : 'good' },
+        { label: 'Moving?', value: movedTotal > 0 ? `+${movedTotal}` : 'no change', sub: 'across targets this session', tone: movedTotal > 0 ? 'good' : 'flat' },
+        { label: 'Stuck?', value: blockers ? `${blockers} blocked` : 'clear', sub: blockers ? 'hard blockers' : 'nothing hard-blocked', tone: blockers ? 'bad' : 'good' },
+        { label: 'Solid?', value: eng.coverage ?? 'unknown', sub: eng.documentBackedPct != null ? `${eng.documentBackedPct}% document-backed` : 'how much is backed by evidence', tone: eng.coverage === 'thin' ? 'warn' : 'good' },
       ];
     }
 
@@ -566,26 +520,6 @@ export class BoardService {
       const readInput = await this.loadReadInput(ground);
       if (has('contribution')) out.contribution = buildContribution(readInput, nameOf);
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
-      /*
-       * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
-       * every board in the product. The engine's claims are unchanged: `safeToUse` holds every number
-       * and every capitalised word, the line count is held, and the draft ships on refusal.
-       */
-      try {
-        const drafts: Drafted[] = [];
-        (out.contribution ?? []).forEach((r: any, i: number) => { if (r.reason) drafts.push({ key: `c${i}`, text: r.reason }); });
-        (out.coverage?.reads ?? []).forEach((r: any, i: number) => { if (r.reasonText) drafts.push({ key: `v${i}`, text: r.reasonText }); });
-        if (drafts.length) {
-          const said = Object.fromEntries((await wordedByTheModel(
-            drafts,
-            (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
-          )).map((d) => [d.key, d.text]));
-          out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
-          if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };
-        }
-      } catch (err: any) {
-        this.logger?.warn?.(`Wording the board reads failed, shipping the engine's words: ${err?.message}`);
-      }
     }
 
     if (has('contribution')) {
@@ -747,7 +681,7 @@ export class BoardService {
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId: ground.id } },
+        where: { participant: { groundId: ground.id } },
         select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
       }),
       this.prisma.workMention.findMany({

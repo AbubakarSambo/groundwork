@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
-import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND, WHAT_IT_MEANS, WHO_CAN_MOVE_IT } from '../board/what-kind-of-thing-is-in-the-way';
+import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND } from '../board/what-kind-of-thing-is-in-the-way';
 import { howItReads, WHAT_A_NUMBER_IS_NOT, NEVER_CONCLUDE_FROM_A_NUMBER } from '../public-api/a-number-does-not-argue';
 import { whatTheRecordsReach, NEVER_CONCLUDE_ABOUT_SHIPPING } from '../public-api/what-shipped-actually-means';
 import { whatCouldBeChecked, AClaim, COULD_NOT_WORK_IT_OUT } from './what-nothing-here-could-check';
@@ -12,27 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
-import { theSessionReport, hasOwnerAndDate } from './the-session-report';
-import { whatToWorkOnNext } from './what-to-work-on-next';
-import { whatToProbe } from './what-to-probe';
-import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
-import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
-import { buildCoverage, buildContribution } from '../board/reads';
-import { roleMapFor } from '../board/role-maps';
-import { BoardFamily, familyFor } from '../board/board-families';
-
-/**
- * The catalogue by code, so both coaching surfaces read the same plain words.
- *
- * BUILT ON FIRST USE, NOT AT IMPORT. As a module-level const this threw "Cannot access
- * 'pattern_library_1' before initialization" across twenty-five suites: this file and the pattern
- * library sit in an import cycle, and a top-level `new Map([...CODES])` runs while the other half
- * of the cycle is still an empty object. A function body runs after both are loaded.
- */
-let patternByCode: Map<string, { code: string; signal: string; probe?: string }> | null = null;
-const patternCatalogue = () => (patternByCode ??= new Map(
-  [...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]),
-));
+import { theSessionReport } from './the-session-report';
 import { cleanText } from './what-the-record-actually-holds';
 import {
   CORRECTION_WINDOW_KEY,
@@ -74,6 +54,10 @@ import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
+const PATTERN_CODE_NAME = new Map<string, string>([
+  ...BAD_FAITH_CODES.map((c) => [c.code, c.name] as const),
+  ...POSITIVE_CODES.map((c) => [c.code, c.name] as const),
+]);
 
 /**
  * SOLO_ARTIFACT_SCHEMA and SOLO_ARTIFACT_PROMPT were defined here and used nowhere.
@@ -395,7 +379,7 @@ export class ReportsService {
 
       const [rows, docs, closing] = await Promise.all([
         this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, participant: { groundId } },
+          where: { participant: { groundId } },
           select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
         }),
         this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } }),
@@ -655,7 +639,7 @@ export class ReportsService {
       for (const pid of acceptedIds) {
         const [entries, sessions, docs] = await Promise.all([
           this.prisma.recordEntry.findMany({
-            where: { disputedAt: null, participantId: pid, checkInId: { not: null } },
+            where: { participantId: pid, checkInId: { not: null } },
             select: { type: true, recallBased: true, dimensionThreadKey: true, checkIn: { select: { sessionNumber: true } } },
           }),
           this.prisma.checkIn.findMany({
@@ -706,7 +690,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const labelById = labelsForParties(parties as any);
 
     const records = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participant: { groundId } },
+      where: { participant: { groundId } },
       include: {
         participant: { select: { id: true } },
         checkIn: { select: { sessionNumber: true } },
@@ -902,14 +886,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // Collaborator) is explicitly told NOT to go in concernFlags - that field's own
     // schema is scoped to reduced follow-through/thinner contribution, and forcing a
     // compliment into a "concern" field would mischaracterize it.
-    /*
-     * THE PROMPT ROUTE FOR PATTERNS IS GONE. It read every surfaced detection and wrote the model a
-     * paragraph per row saying to note it "if the record corroborates this". The engine's finding
-     * became a suggestion the model could decline, and when it did not decline, the same fact reached
-     * the page twice - once here in the model's words and once in the section - and could disagree
-     * with itself. Patterns render as their own read in `sessionReport` now, in the library's words.
-     */
-    const patternNotice = '';
+    const surfacedPatternRows = await this.prisma.patternDetection.findMany({
+      where: { groundId, status: PatternStatus.SURFACED },
+      select: { participantId: true, code: true, observationText: true },
+    });
+    const patternNotices = surfacedPatternRows
+      .filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code))
+      .map((p) => {
+        const label = labelById.get(p.participantId) ?? 'a party';
+        const name = PATTERN_CODE_NAME.get(p.code) ?? p.code;
+        const rawObservation = p.observationText ?? 'no further detail recorded';
+        const observation = rawObservation.trim().replace(/[.!?]+$/, '');
+        return isPositiveCode(p.code)
+          ? `NOTE [longitudinal pattern evidence - positive, code ${p.code} ${name}]: ${label} - ${observation}. This is a positive signal, not a concern. Reflect it in the narrative or hiddenContributors if the record supports it. Do NOT place this in concernFlags - that field is for reduced follow-through or thinner contribution only.`
+          : `NOTE [longitudinal pattern evidence - code ${p.code} ${name}]: ${label} - ${observation}. If the record itself corroborates this, note it in concernFlags as a plain factual observation about the record per synthesis rule 10 - never an accusation, never a judgement of the person, never speculation about motive. If the record does not corroborate it, do not include it.`;
+      });
+    const patternNotice = patternNotices.length ? patternNotices.join('\n') + '\n\n' : '';
 
     // LEAD-SUPPLIED CONTEXT: private notes the initiator fed in about a participant or
     // the ground. Read from its OWN store (leadContextNote) - never RecordEntry, never
@@ -1077,60 +1069,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * The retry is not trusted blindly either. If the second attempt is worse on the same tests,
      * the first one is kept: a rule is not worth a worse report.
      */
-    /*
-     * THE PICTURE IS CHECKED AGAINST THE CORPUS IT WAS WRITTEN FROM.
-     *
-     * The assistant's phrasing layer refuses an invented number and an invented capitalised word,
-     * after a live reply attributed the holding-up of somebody's work to a fabricated "Alex Smith".
-     * The stored picture here is the most weighted prose in the product, it is written by a model
-     * over the whole corpus, and nothing checked it. The same failure is worse here: it goes into the
-     * permanent shared record and is quoted back in later sessions.
-     *
-     * Three checks, computed, never asked of the model. A number not in any record. A capitalised
-     * word mid-sentence that is neither a party label nor in any record. A run of eight or more
-     * words lifted verbatim from one person's entry, because a long enough lifted phrase identifies
-     * its author as surely as a name and the picture promises synthesis, not quotation.
-     */
-    const corpusText = records.map((r) => r.text).join('\n');
-    const corpusDigits = new Set(corpusText.match(/\d+/g) ?? []);
-    const knownWords = new Set(
-      [...labelById.values(), ...(corpusText.match(/\b[A-Z][a-zA-Z]+\b/g) ?? [])]
-        .flatMap((w) => w.split(/\s+/))
-        .map((w) => w.toLowerCase()),
-    );
-    const severeFaultsIn = (picture: string): string[] => {
-      const out: string[] = [];
-      for (const n of picture.match(/\d+/g) ?? []) {
-        if (!corpusDigits.has(n)) out.push(`it used the number ${n}, which appears in nobody's record`);
-      }
-      const midSentence = picture.replace(/(^|[.!?]\s+)[A-Z][a-zA-Z]+/g, (m) => m.toLowerCase());
-      for (const w of midSentence.match(/\b[A-Z][a-zA-Z]{2,}\b/g) ?? []) {
-        if (!knownWords.has(w.toLowerCase()) && !/^(I|You|Your)$/.test(w)) out.push(`it named "${w}", which is not a party here and appears in nobody's record`);
-      }
-      return out;
-    };
-    const liftedRunIn = (picture: string): string | null => {
-      const words = picture.split(/\s+/);
-      for (const r of records) {
-        const theirs = r.text.replace(/^\[VERIFIABILITY:\w+\] /, '').split(/\s+/);
-        for (let i = 0; i + 8 <= theirs.length; i++) {
-          const run = theirs.slice(i, i + 8).join(' ');
-          if (run.length > 30 && picture.includes(run)) return run;
-        }
-      }
-      void words;
-      return null;
-    };
-
     const faultsIn = (r: SynthesisResult) => {
       const faults: string[] = [];
-      for (const f of severeFaultsIn(String((r as any).sharedPicture ?? ''))) {
-        faults.push(`${f}. Use only numbers and names that are in the records.`);
-      }
-      const lifted = liftedRunIn(String((r as any).sharedPicture ?? ''));
-      if (lifted) {
-        faults.push(`it copied "${lifted}" word for word from one person's record. Say what it shows; do not quote it.`);
-      }
       const tally = tallyInReport(r as any, ground.peopleWorkTogether !== false);
       if (tally) {
         faults.push(
@@ -1171,22 +1111,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
       } else if (secondPass) {
         this.logger?.warn?.(`Ground ${groundId}: the second attempt was no better, keeping the first.`);
       }
-    }
-    /*
-     * A PICTURE THAT STILL NAMES SOMEBODY WHO IS NOT HERE, OR A NUMBER NOBODY GAVE, DOES NOT SHIP.
-     *
-     * Two passes and the severe faults are still in it. There is no draft to fall back to, so what
-     * ships is the last picture that was released - kept on the previous report row - and the
-     * amendment machinery already says a picture did not move. On a first round there is none, and
-     * the picture is empty rather than wrong; the counts, tiles and per-person lines are engine
-     * output and unaffected. A lifted quotation is a fault to retry on, not to withhold for.
-     */
-    const stillSevere = severeFaultsIn(String((result as any).sharedPicture ?? ''));
-    if (stillSevere.length) {
-      this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); shipping the previous picture instead.`);
-      /* Read here, on this rare path, rather than threaded from the engagement read further down. */
-      const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
-      (result as any).sharedPicture = previous?.sharedPicture ?? '';
     }
 
     // SECOND PASS: what is at stake, one gap at a time.
@@ -1263,7 +1187,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       parties.map(async (p) => {
         const [sessions, allEntries, documentsAttached] = await Promise.all([
           this.prisma.checkIn.count({ where: { participantId: p.id, status: CheckInStatus.COMPLETED } }),
-          this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: p.id }, select: { text: true } }),
+          this.prisma.recordEntry.findMany({ where: { participantId: p.id }, select: { text: true } }),
           this.prisma.groundDocument.count({ where: { groundId, participantId: p.id } }),
         ]);
         const recordEntries = allEntries.length;
@@ -1318,7 +1242,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     // difficultyDisclosures: true if any record entry for this ground contains a difficulty keyword.
     const allGroundTexts = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participant: { groundId } },
+      where: { participant: { groundId } },
       select: { text: true, evidenceType: true },
     });
     const lowerTexts = allGroundTexts.map((e) => e.text.toLowerCase());
@@ -1510,9 +1434,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const [groundDocsAll, annotatedEntries, tensionEntries] = await Promise.all([
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { id: true } }),
-      this.prisma.recordEntry.findMany({ where: { disputedAt: null, participant: { groundId }, recallBased: false }, select: { id: true } }),
+      this.prisma.recordEntry.findMany({ where: { participant: { groundId }, recallBased: false }, select: { id: true } }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, recallBased: false, type: { in: ['TENSION', 'WORRY'] } },
+        where: { participant: { groundId }, recallBased: false, type: { in: ['TENSION', 'WORRY'] } },
         select: { text: true, participant: { select: { id: true } } },
       }),
     ]);
@@ -1626,11 +1550,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * otherwise erase them. Everything else in engagement is rebuilt from this
      * synthesis; these are not, so they are the one thing carried across.
      */
-    const priorReport = await this.prisma.report.findUnique({
+    const priorEngagement = (await this.prisma.report.findUnique({
       where: { groundId },
       select: { engagement: true },
-    });
-    const priorEngagement = priorReport?.engagement as Record<string, any> | null | undefined;
+    }))?.engagement as Record<string, any> | null | undefined;
     const existingGuides = priorEngagement?.postReportGuides;
 
     const report = await this.prisma.report.upsert({
@@ -1858,7 +1781,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * check-in whose lead is plainly entitled to her name and is shown it on the next tab along.
      * The session report two hundred lines below passes `me?.id` and has always been right.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
     const whoOf = (participantId: string | null) => {
       if (!participantId) return null;
       const label = labels.get(participantId) ?? null;
@@ -1876,7 +1799,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participantId: { in: readableParticipantIds } },
+        where: { participantId: { in: readableParticipantIds } },
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
       }),
@@ -1909,9 +1832,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
            labels this reader may resolve; `email` as the last resort a lead is entitled to. */
         participants: {
           select: {
-            /* The function detection columns, so the conversation question can read the role map of
-               the round's clearest function. Same tier as roleAsDescribed: a fact about the work. */
-            detectedFunction: true, detectedFunctionConfidence: true,
             id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true,
             user: { select: { firstName: true, lastName: true } },
           },
@@ -1962,12 +1882,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
+        where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
         select: { type: true, text: true, recallBased: true, dimensionThreadKey: true, participantId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
-          where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
+          where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
           select: { type: true, text: true, dimensionThreadKey: true },
         })
         : Promise.resolve([]),
@@ -2006,7 +1926,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * a roster calling three colleagues "a teammate" - and the rule that fixes it is the one the
      * report body already uses, not a second guess at it.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any);
     /*
      * THE SAME NAMING RULE ON THE LINES AS ON THE ROWS.
      *
@@ -2018,8 +1938,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * not. Defined after `nameByLabel` for that reason.
      */
     const whoOf = (participantId: string) => {
-      /* The reader's own rows carried no name, so the list read as three voices and one anonymous
-         one. They get the same name everybody else's rows get; the page adds "(you)". */
+      if (mine.has(participantId)) return null;
       const label = labels.get(participantId);
       if (!label) return null;
       const named = nameByLabel.get(label);
@@ -2049,13 +1968,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * and the count as it stood at the previous session; `dependencies` carries what somebody said
      * they are waiting on and whether it is still hard-blocking.
      */
-    const [targets, blockedCount, waitingCount] = await Promise.all([
+    const [targets, blockedCount] = await Promise.all([
       this.prisma.groundObjective.findMany({
         where: { groundId, target: { not: null } },
         select: { count: true, prevCount: true },
       }),
       this.prisma.groundDependency.count({ where: { groundId, status: 'BLOCKING' } }),
-      this.prisma.groundDependency.count({ where: { groundId, status: 'WAITING' } }),
     ]);
 
     const shape = theSessionReport({
@@ -2101,20 +2019,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
         ? targets.reduce((sum, o) => sum + (o.count - o.prevCount), 0)
         : null,
       blocked: blockedCount,
-      waiting: waitingCount,
-      /* Everybody the session counts, not only those who answered: the confidence read is about
-         how much basis there is, and somebody who has not answered is the largest gap there is. */
-      peopleInAll: ground.participants.filter((p) => !p.managingOnly).length,
-      /*
-       * A COMMITMENT WITH A NAME AND A DATE ON IT IS A DIFFERENT OBJECT FROM ONE WITHOUT.
-       *
-       * Counted here rather than read from a model: an entry that mentions somebody and carries a
-       * month, a weekday or a date is checkable, and one that does not is an intention. It is one
-       * of the four things the confidence reading is built from.
-       */
-      commitmentsWithOwnerAndDate: entries.filter(
-        (e) => e.type === RecordEntryType.COMMITMENT && hasOwnerAndDate(cleanText(e.text)),
-      ).length,
       answeredThisSession: ground.participants
         .filter((p) => !p.managingOnly && answeredIds.has(p.id))
         .map((p, i) => ({
@@ -2188,7 +2092,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * the report.
      */
     const everyEntrySoFar = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
     });
@@ -2214,66 +2118,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       windowDays: window,
     });
 
-    /* Surfaced detections, computed once: the section renders them and the picture draft reads them. */
-    const patternsForPage = (await this.prisma.patternDetection.findMany({
-      where: { groundId, status: PatternStatus.SURFACED },
-      orderBy: [{ periodsObserved: 'desc' }, { lastSeenAt: 'desc' }],
-      select: { participantId: true, code: true, periodsObserved: true },
-    }))
-      .filter((r) => !ALIGNMENT_FEED_ONLY_CODES.has(r.code) && patternCatalogue().has(r.code))
-      .map((r) => {
-        const lib = patternCatalogue().get(r.code)!;
-        return {
-          who: whoOf(r.participantId) ?? (me && r.participantId === me.id ? 'You' : 'Somebody'),
-          isYou: !!me && r.participantId === me.id,
-          signal: lib.signal,
-          positive: isPositiveCode(r.code),
-          periodsObserved: r.periodsObserved,
-        };
-      });
-    /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
-    const started = <T,>(f: () => Promise<T>, fallback: T): Promise<T> => Promise.resolve().then(f).catch(() => fallback);
-    const [mentionRows, depRows] = await Promise.all([
-      started(() => this.prisma.workMention.findMany({ where: { groundId }, select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true } }), [] as any[]),
-      started(() => this.prisma.groundDependency.findMany({
-        where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, blockerKind: true },
-      }), [] as any[]),
-    ]);
-
-    /*
-     * THE ASSEMBLER'S OWN SENTENCES GO THROUGH THE SAME WORDING PASS AS EVERYTHING ELSE.
-     *
-     * "Nobody committed to anything specific this session", the tile sub-lines and the confidence
-     * reasons were template output read by every ground in the product in identical words. One call
-     * for the lot, and the claims are held: a tile's VALUE is a count or a library string and must
-     * survive; a reason's numbers must survive; and the draft ships on any refusal.
-     */
-    const wordedShape = await (async () => {
-      const drafts: Drafted[] = [];
-      shape.sections.forEach((sec, i) => { if (sec.saying) drafts.push({ key: `say${i}`, text: sec.saying }); });
-      shape.atAGlance.forEach((t, i) => drafts.push({ key: `sub${i}`, text: `${t.label}: ${t.value}, ${t.sub}.`, mustKeep: [t.value] }));
-      shape.confidence.reasons.forEach((r, i) => drafts.push({ key: `why${i}`, text: r }));
-      drafts.push({ key: 'conf', text: shape.confidence.saying });
-      drafts.push({ key: 'stand', text: shape.whereThingsStand.saying });
-      const said = await this.phrase('the session report', drafts);
-      const subOf = (i: number, t: { label: string; value: string; sub: string }) => {
-        const w = said[`sub${i}`];
-        /* The tile keeps label and value as its own fields; only the sub-line takes the wording. */
-        const m = w ? w.match(new RegExp(`^${t.label}: ${t.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\s*(.*)\.?$`)) : null;
-        return m ? m[1].replace(/\.$/, '') : t.sub;
-      };
-      return {
-        ...shape,
-        sections: shape.sections.map((sec, i) => ({ ...sec, saying: sec.saying ? (said[`say${i}`] ?? sec.saying) : sec.saying })),
-        atAGlance: shape.atAGlance.map((t, i) => ({ ...t, sub: subOf(i, t) })),
-        confidence: { ...shape.confidence, saying: said.conf ?? shape.confidence.saying, reasons: shape.confidence.reasons.map((r, i) => said[`why${i}`] ?? r) },
-        whereThingsStand: { ...shape.whereThingsStand, saying: said.stand ?? shape.whereThingsStand.saying },
-      };
-    })();
-
     return {
-      ...wordedShape,
+      ...shape,
       againstSuccess,
       correctable: canCorrect.allowed,
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
@@ -2294,127 +2140,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        */
       released: !!ground.report?.releasedAt,
       iHaveShownMine: !!me && shown.has(me.id),
-      /*
-       * WHAT KEEPS SHOWING UP, AS A SECTION AND NOT A SUGGESTION.
-       *
-       * The pattern engine has survived a three-period rule and has three hundred surfaced rows in
-       * this database, and its only route into the shared report was a paragraph telling the
-       * synthesis model to mention it "if the record corroborates". A model that may decline is a
-       * suggestion, not a section, and two routes for one fact can disagree on one page - so the
-       * prompt route is gone (see synthesize) and this is the route.
-       *
-       * SURFACED only: a CANDIDATE has been seen once and once is not a pattern. The alignment-feed
-       * codes stay out, as they do everywhere a person reads. The wording is the library's own
-       * `signal`, and who it is about follows the same naming rule as every other line here.
-       */
-      patterns: patternsForPage,
-      /*
-       * THE PICTURE FROM EVERYBODY, DRAFTED FROM THE READS AND WORDED BY THE MODEL.
-       *
-       * The stored `sharedPicture` is a model over the whole corpus and nothing checks it. It stays
-       * for the ground report and the board, under `writtenPicture` here. On THIS page the picture
-       * is built from the engines' own claims and the model rewords the draft under the same guard
-       * as every other line. With no engine basis it is empty, not filled from the transcript.
-       * See the-picture-is-drafted-from-the-reads.ts.
-       */
-      ...(await (async () => {
-        /* The reader is 'you' in the picture, whatever whoOf calls them in a cite. */
-        const nameFor = (pid: string) => (me && pid === me.id ? 'You' : whoOf(pid) ?? null);
-        const readInput = {
-          participants: ground.participants.map((p: any) => ({
-            id: p.id, roleAsDescribed: p.roleAsDescribed ?? null, managingOnly: !!p.managingOnly,
-            detectedFunction: p.detectedFunction ?? null, detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
-          })),
-          checkIns: answered.map((c) => ({ participantId: c.participantId, sessionNumber, status: CheckInStatus.COMPLETED })),
-          entries: entries.map((e) => ({ participantId: e.participantId, sessionNumber, text: cleanText(e.text) })),
-          mentions: mentionRows,
-          dependencies: depRows.map((d) => ({
-            fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId, onLabel: d.onLabel,
-            what: d.what, status: d.status, createdAt: d.createdAt,
-          })),
-        };
-        let coverage: { name: string; reasonText: string }[] = [];
-        let contribution: { name: string; reason: string }[] = [];
-        try {
-          coverage = buildCoverage(readInput as any, nameFor).reads
-            .filter((r) => r.reasonText?.trim() && r.name)
-            .map((r) => ({ name: r.name!, reasonText: r.reasonText }));
-          contribution = buildContribution(readInput as any, nameFor)
-            .filter((r) => r.reason?.trim() && r.name)
-            .map((r) => ({ name: r.name!, reason: r.reason! }));
-        } catch (err: any) {
-          this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
-        }
-        const drafts = draftThePicture({
-          answered: answered.length,
-          ofPeople: ground.participants.filter((p: any) => !p.managingOnly).length,
-          confidence: shape.confidence,
-          tiles: shape.atAGlance,
-          patterns: patternsForPage,
-          coverage,
-          contribution,
-          blockers: depRows.map((d) => ({
-            who: nameFor(d.fromParticipantId),
-            on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
-            onIsPerson: !!d.onParticipantId,
-            what: d.what, kind: (d.blockerKind as any) ?? null, escalated: !!d.escalatedAt,
-          })),
-          settled: shape.whereThingsStand.settled,
-          open: shape.whereThingsStand.open,
-        });
-        const question = draftTheQuestion({
-          functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
-          blockers: depRows.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
-        });
-        /* Two wording passes that do not depend on each other, in parallel. Measured serial: this
-           endpoint took ten seconds and the page waited on it before drawing the shared half. */
-        const [worded, wordedQ] = await Promise.all([
-          this.phrase('the picture from everybody', drafts),
-          question ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
-        ]);
-        const pictureLines = drafts.map((d) => worded[d.key] ?? d.text);
-        /* Keyed as well, so the page can lead with the finding and leave out the lines the tiles and
-           the settled-and-open section already carry. */
-        const picture = drafts.map((d) => ({ key: d.key, text: worded[d.key] ?? d.text }));
-        const findingKey = pickTheFinding(drafts.map((d) => d.key));
-        const finding = findingKey
-          ? { key: findingKey, text: picture.find((l) => l.key === findingKey)!.text, basis: picture.find((l) => l.key === 'basis')?.text ?? null }
-          : null;
-        return {
-          /* One claim per line, kept as lines: joined into a paragraph it read as a wall of prose. */
-          pictureLines,
-          picture,
-          finding,
-          sharedPicture: drafts.length ? pictureLines.join(' ') : null,
-          pictureBasis: drafts.length ? 'engines' : 'none',
-          theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
-          whyNoQuestion: question ? null : WHY_NO_QUESTION,
-        };
-      })()),
-      /*
-       * THE ONE SURFACE THAT HANDED OUT RAW LABELS.
-       *
-       * Read off the page: "a 2am call to the initiator for a bed shortage on a weekend
-       * participant A was thought to be on call... with participant B reporting delays" - to
-       * participant B, who is the person reading it. Three registers in one paragraph, one of them
-       * the reader described in the third person by a placeholder.
-       *
-       * Every other read runs the picture through `applyNames`, which resolves each label to a
-       * name where this reader may see one, leaves it where they may not, and turns the reader's
-       * own label into "you". This one returned the stored string. Same resolver, so the picture,
-       * the counting table and the attributions cannot disagree about what to call somebody.
-       */
-      /* The stored, model-written picture, under its own name so nothing downstream that still reads
-         it breaks, and so the page can never mistake it for the engine-drafted one. */
-      writtenPicture: snapshot?.sharedPicture
-        ? this.applyNames(
-            { sharedPicture: snapshot.sharedPicture } as any,
-            ground.participants as any,
-            me?.id ?? null,
-            viewerIsLead,
-            this.peersAreNamed(ground as any),
-          ).sharedPicture
-        : null,
+      sharedPicture: snapshot?.sharedPicture ?? null,
       takenAt: snapshot?.takenAt ?? null,
       amendedAt: snapshot?.amendedAt ?? null,
       amendedNote: snapshot?.amendedNote ?? null,
@@ -2482,16 +2208,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ...m,
       says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
     }));
-    /*
-     * WHAT EACH ROUND LED WITH, WORDED. `moved[].says` came out of howThisHasMoved and whyNot as
-     * template sentences, the same on every ground. One call for the list, the round's own count of
-     * differences held as a number the model may not touch.
-     */
-    const saidMoved = await this.phrase(
-      'how this has moved',
-      moved.map((m: any, i: number) => ({ key: `m${i}`, text: String(m.says ?? '') })),
-    );
-    return { rounds: cleaned, moved: moved.map((m: any, i: number) => ({ ...m, says: saidMoved[`m${i}`] ?? m.says })) };
+    return { rounds: cleaned, moved };
   }
 
   /**
@@ -2530,7 +2247,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const [anchored, deliveries, records] = await Promise.all([
       /* Entries anchored to a document rather than recalled - the model already records which. */
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId }, recallBased: false },
+        where: { participant: { groundId }, recallBased: false },
         select: { participantId: true },
       }),
       /* Somebody's recorded progress against a specific objective, with evidence named. */
@@ -2540,7 +2257,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }),
       /* Everybody's own entries, so "somebody else said something too" can be answered per party. */
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId } },
+        where: { participant: { groundId } },
         select: { participantId: true },
       }),
     ]);
@@ -2795,7 +2512,7 @@ happened, and what is in the way.`;
     if (!initiatorParticipant) return;
 
     const entries = await this.prisma.recordEntry.findMany({
-      where: { disputedAt: null, participantId: initiatorParticipant.id },
+      where: { participantId: initiatorParticipant.id },
       select: { type: true, text: true },
       orderBy: { createdAt: 'asc' },
       take: 30,
@@ -2943,16 +2660,12 @@ happened, and what is in the way.`;
     parties: any[],
     viewerParticipantId: string | null,
     viewerIsLead: boolean,
-    /** Whether this check-in names people to each other. See `peersAreNamed`. */
-    peersAreNamed = false,
   ): T {
     // An org admin reads with the lead's eyes; they already see the whole ground.
     // Shared with the board, which had no version of this at all and showed a lead their
     // own ground in placeholders as a result. W8-73.
     const asWhom = readsWithNamesOf({ viewerIsLead, viewerParticipantId, parties });
-    /* The check-in's own setting, so the picture names people the same way the roster three
-       inches above it does. See the-report-names-people-the-way-the-setting-says.spec.ts. */
-    const visible = namesVisibleTo(asWhom, parties, peersAreNamed);
+    const visible = namesVisibleTo(asWhom, parties);
     // Deliberately NO early return when there are no names to put back. The
     // dash cleanup below runs on every report, and an invited participant who
     // has not joined yet has no name - which is exactly a report that would
@@ -3072,350 +2785,6 @@ happened, and what is in the way.`;
    *
    * Visibility is `canSeeDocument`'s question and is asked of it rather than answered again here.
    */
-  /**
-   * THE ROWS BOTH COACHING SURFACES READ, READ ONCE.
-   *
-   * The member's own note and the lead's probe list are two readings of the same facts, and they
-   * must not contradict each other: a lead told to probe somebody on a thing has to find that the
-   * person was already told to move it, or the conversation is an ambush. One read, two shapes.
-   */
-
-  /**
-   * WHETHER THIS CHECK-IN NAMES PEOPLE TO EACH OTHER. See namesVisibleTo.
-   *
-   * The same read the board and the check-in page make, in the same words, so the report cannot
-   * disagree with them: the lead's setting where they have made one, and otherwise hidden on the
-   * kinds of check-in that decide something about a person.
-   */
-  private peersAreNamed(ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }): boolean {
-    const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor(ground.scenario));
-    return (ground as any).peersVisibleToEachOther ?? !evaluative;
-  }
-
-  /**
-   * THE ENGINE'S CLAIMS, SAID BETTER, OR THE ENGINE'S CLAIMS.
-   *
-   * One call per surface rather than one per sentence, so the model sees the whole block and can
-   * vary it as a piece. `wordedByTheModel` holds the line count and runs the assistant's own
-   * `safeToUse` on each line, and hands back the draft untouched on any refusal.
-   *
-   * Never allowed to fail the read. A report that will not load because a wording pass timed out
-   * is strictly worse than one that reads like an engine wrote it.
-   */
-  private async phrase(what: string, drafts: Drafted[]): Promise<Record<string, string>> {
-    const out = await wordedByTheModel(
-      drafts,
-      (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
-      (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`),
-    ).catch(() => drafts);
-    return Object.fromEntries(out.map((d) => [d.key, d.text]));
-  }
-
-  /**
-   * WHAT IS THIN IN YOUR OWN ACCOUNT, AND WHAT WOULD FIX IT. YOURS, TO YOU.
-   *
-   * `softSpots` and `whatWouldRaiseIt` already existed and rendered on the ground report for the
-   * lead, per participant (G34: the lead's, and nobody else's). The specificity meter on the session
-   * page gestured at the same thing with a hand-written sentence. So the person themselves never saw
-   * the engine's read of their own thinness, only their manager did.
-   *
-   * G34 is about not showing one person's spots to another. Showing yours to you is the opposite
-   * case, and it is not behind CONFIDENCE_ENABLED because that flag gates what a lead may read
-   * about others, not what you may read about yourself. Every spot travels with what would raise
-   * it, which is G34's own guarantee, kept here.
-   */
-  private async myOwnSoftSpots(groundId: string, participantId: string) {
-    /*
-     * EACH READ STARTS INSIDE A PROMISE. A missing method on the client throws synchronously while
-     * the array is still being built, which leaves a sibling read that has already started - and
-     * already rejected - with no handler. Node treats that as fatal. Seen as a jest worker dying
-     * under the-record-read-reaches-the-payload.spec, whose whole point is that a failing read must
-     * never take the report down.
-     */
-    const start = <T,>(f: () => Promise<T>): Promise<T> => Promise.resolve().then(f);
-    const [rows, docs, done] = await Promise.all([
-      start(() => this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId } },
-        select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
-      })),
-      start(() => this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } })),
-      start(() => this.prisma.checkIn.count({ where: { participantId, status: CheckInStatus.COMPLETED } })),
-    ]);
-    const entries: EntryRow[] = rows
-      .filter((r) => !!r.participantId)
-      .map((r) => ({ participantId: r.participantId as string, type: String(r.type), text: r.text, sessionNumber: r.checkIn?.sessionNumber ?? 1 }));
-    const shape = accountShapeFor(participantId, entries, docs.map((d) => ({ participantId: d.participantId, name: d.fileName })), done);
-    return softSpots(shape).map((f) => ({ line: f.line, wouldRaiseIt: whatWouldRaiseIt(f.spot) }));
-  }
-
-  private async whatTheRecordHoldsFor(groundId: string, ground: any) {
-    const [detections, dependencies, entries, docs, sessions] = await Promise.all([
-      this.prisma.patternDetection.findMany({
-        where: { groundId, status: PatternStatus.SURFACED },
-        orderBy: { lastSeenAt: 'desc' },
-        select: { participantId: true, code: true, periodsObserved: true },
-      }),
-      this.prisma.groundDependency.findMany({
-        where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
-        select: {
-          fromParticipantId: true, onParticipantId: true, onLabel: true,
-          what: true, createdAt: true, escalatedAt: true,
-          /* What kind of thing is in the way, and therefore who can move it. The row has carried
-             this all along and both coaching surfaces said "waiting on X" without reading it. */
-          blockerKind: true,
-        },
-      }),
-      this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participant: { groundId } },
-        select: { participantId: true, type: true, text: true, recallBased: true },
-      }),
-      this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true } }),
-      this.prisma.checkIn.findMany({
-        where: { groundId, status: CheckInStatus.COMPLETED },
-        select: { participantId: true, sessionNumber: true },
-      }),
-    ]);
-    const wholeDays = (d: Date) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
-    return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
-  }
-
-  /**
-   * WHAT THIS PERSON SHOULD WORK ON NEXT, built from four things rather than from one session.
-   *
-   * SURFACED only. A CANDIDATE is the engine's first read and has not survived the three-period
-   * rule, and telling somebody a candidate observation about themselves as though it were settled
-   * is exactly the accusation this product refuses to make.
-   */
-  private async coachingNoteFor(
-    groundId: string,
-    ground: any,
-    participant: { id: string; roleAsDescribed?: string | null },
-    nameOf: (participantId: string | null, fallback: string | null) => string | null,
-  ) {
-    const held = await this.whatTheRecordHoldsFor(groundId, ground);
-    const mine = held.entries.filter((e) => e.participantId === participant.id);
-    const mySessions = held.sessions.filter((c) => c.participantId === participant.id);
-    const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
-    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
-
-    const map = roleMapFor((participant as any).detectedFunction);
-    const note = whatToWorkOnNext({
-      patterns: held.detections
-        .filter((d) => d.participantId === participant.id)
-        .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
-      role: participant.roleAsDescribed ?? null,
-      /*
-       * THE COLUMN THAT SELECTS THE ROLE MAP, read here for the first time on this page. See
-       * whichRoleMap: below MIN_COACHING_CONFIDENCE there is no map and the note says why, rather
-       * than coaching somebody against a function nobody established.
-       */
-      detectedFunction: (participant as any).detectedFunction ?? null,
-      functionConfidence: (participant as any).detectedFunctionConfidence ?? null,
-      /*
-       * ALWAYS NULL HERE, AND THAT IS A WALL RATHER THAN A GAP.
-       *
-       * The map's `failureSignals` are paired with `successSignals`, and finding which one applies
-       * to a person means reading `coachingState.staircase` - what they were asked to work on and
-       * what they did not manage, given voluntarily on the understanding that it was for them.
-       *
-       * `coaching-can-never-justify-a-firing.spec.ts` makes reports.service one of five files with
-       * no path to that table, deliberately, and it reads the source rather than the behaviour so
-       * that adding the import fails. I added the import; it failed; it was right to.
-       *
-       * The argument is not only that a firing could be justified with it. It is that people would
-       * work out that it could, and stop answering honestly, which destroys the layer in the same
-       * motion. And this read feeds the LEAD's probe list as well as the private note.
-       *
-       * So the paired signals do not reach this page. Everything else in the map is per-function
-       * rather than per-person and carries no such risk.
-       */
-      noticedBehaviour: null,
-      sessionNumber,
-      totalSessions: planned > 0 ? planned : null,
-      scenario: ground.scenario ?? null,
-      waitingOn: held.dependencies
-        .filter((d) => d.fromParticipantId === participant.id)
-        .map((d) => ({
-          what: d.what,
-          /* `onLabel` is whatever the extraction captured and is often a thing rather than a
-             person - "the on-call rota" - which turned into "waiting for X from the on-call rota".
-             Only a resolved participant is somebody you can be waiting on. */
-          who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
-          daysOld: held.wholeDays(d.createdAt),
-          escalated: !!d.escalatedAt,
-          kind: (d.blockerKind as any) ?? null,
-        })),
-      holdingUp: held.dependencies
-        .filter((d) => d.onParticipantId === participant.id)
-        .map((d) => ({
-          what: d.what,
-          who: nameOf(d.fromParticipantId, null),
-          daysOld: held.wholeDays(d.createdAt),
-          escalated: !!d.escalatedAt,
-          kind: (d.blockerKind as any) ?? null,
-        })),
-      saidSomethingSpecific: mine.length > 0,
-      anythingDocumented: mine.some((e) => !e.recallBased),
-    });
-
-    /*
-     * THE ROLE MAP'S OWN FIELDS ARE NOT REWORDED. They are somebody's considered sentences about a
-     * function, written once and read by everybody in it, and a model paraphrasing them per reader
-     * would drift the one thing here that is meant to be stable. What varies is the part built by
-     * substitution: the actions, and the sentence around the map.
-     */
-    /*
-     * AND WHAT THE ROWS SAY, HELD INTACT THROUGH THE REWORDING.
-     *
-     * Every awaited or blocked item is somebody's own words for the thing they are owed. Driven
-     * live, "a named on-call person published by Friday each week" came back as "Each Friday, give
-     * Hafsah ... a named on-call person": the cadence moved from the item to the action, which is a
-     * different claim, and no number or name changed so nothing caught it.
-     */
-    const rows = [
-      ...held.dependencies.map((d) => d.what.replace(/[.\s]+$/, '')),
-      /* And the library's own sentences about the kind of blocker, which are claims, not wording. */
-      ...Object.values(WHAT_IT_MEANS), ...Object.values(WHO_CAN_MOVE_IT),
-    ];
-    /*
-     * THE ROLE MAP IS CONTEXT FOR WHAT TO SAY, NOT A QUOTATION.
-     *
-     * The first version held the map's sentences verbatim through the wording pass, so every person
-     * in the same function read the same paragraph and the box read as a quotation from a manual.
-     * Read back: "seems to be quoting directly from the role map instead of using it as context".
-     * The claims are unchanged - what on track means, what going wrong looks like, what this work
-     * gets read as unfairly - and the words are now the model's, under the same guard as every other
-     * line. Only the ROWS - what somebody is waiting for - stay held word for word, because those are
-     * somebody's own words for the thing they are owed.
-     */
-    const mapContext = note.role
-      ? `What on track looks like in ${note.role.label.toLowerCase()} work: ${note.role.onTrack} What going wrong looks like: ${note.role.goingWrong} How this work gets read unfairly: ${note.role.protectAgainst}`
-      : undefined;
-    const said = await this.phrase('the coaching note', [
-      /* Written FROM the map, never quoting it. See Drafted.context. */
-      { key: 'whyItMatters', text: note.whyItMatters, context: mapContext },
-      ...(note.role ? [
-        { key: 'protectAgainst', text: `This kind of work is often read unfairly, and that is worth knowing before you read anything into where you stand.`, context: `How ${note.role.label.toLowerCase()} work gets read unfairly: ${note.role.protectAgainst}` },
-      ] : []),
-      ...note.beforeNextTime.map((t, n) => ({
-        key: `a${n}`,
-        text: t,
-        mustKeep: rows.filter((r) => t.includes(r)),
-      })),
-    ]);
-    return {
-      ...note,
-      whyItMatters: said.whyItMatters ?? note.whyItMatters,
-      role: note.role ? {
-        ...note.role,
-        /* Only the fairness line is shown as its own block; it is written from the map, not lifted. */
-        protectAgainst: said.protectAgainst ?? note.role.protectAgainst,
-      } : null,
-      beforeNextTime: note.beforeNextTime.map((t, n) => said[`a${n}`] ?? t),
-    };
-  }
-
-  /**
-   * WHAT TO PROBE EACH PERSON ON. THE LEAD, AND NOBODY ELSE.
-   *
-   * Guarded here rather than in the shape: a surface that is lead-only because a caller remembered
-   * to check is one refactor away from not being.
-   */
-  private async whatToProbeOn(
-    groundId: string,
-    ground: any,
-    viewerIsLead: boolean,
-    nameOf: (participantId: string | null, fallback: string | null) => string | null,
-    /** The same resolver without the second-person substitution, for headings. */
-    nameOf2: (participantId: string) => string | null,
-  ) {
-    if (!viewerIsLead) return null;
-    const held = await this.whatTheRecordHoldsFor(groundId, ground);
-    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
-    const thisRound = planned > 0 ? planned : 1;
-
-    const reads = (ground.participants ?? [])
-      .filter((p: any) => !p.managingOnly)
-      .map((p: any) => {
-        const mine = held.entries.filter((e) => e.participantId === p.id);
-        const answered = held.sessions.some((c) => c.participantId === p.id && c.sessionNumber === thisRound);
-        return whatToProbe({
-          /*
-           * THE LEAD'S OWN ROW IS HEADED WITH THEIR NAME, NOT "you".
-           *
-           * `nameOf` answers "you" for the reader, which is right inside a sentence and wrong as
-           * the heading of a section in a list of people - it rendered a card titled "you" above
-           * two cards titled by name. `nameOf2` is the same resolver without that substitution.
-           */
-          who: nameOf2(p.id) ?? 'Somebody',
-          participantId: p.id,
-          role: p.roleAsDescribed ?? null,
-          answeredThisSession: answered,
-          patterns: held.detections
-            .filter((d) => d.participantId === p.id)
-            .map((d) => {
-              const lib = patternCatalogue().get(d.code);
-              return {
-                code: d.code,
-                periodsObserved: d.periodsObserved,
-                signal: lib?.signal ?? d.code,
-                probe: lib?.probe,
-              };
-            })
-            .filter((x) => !ALIGNMENT_FEED_ONLY_CODES.has(x.code)),
-          waitingOn: held.dependencies
-            .filter((d) => d.fromParticipantId === p.id)
-            .map((d) => ({
-              what: d.what,
-              /* `onLabel` is whatever the extraction captured and is often a thing rather than a
-             person - "the on-call rota" - which turned into "waiting for X from the on-call rota".
-             Only a resolved participant is somebody you can be waiting on. */
-          who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
-              daysOld: held.wholeDays(d.createdAt),
-              escalated: !!d.escalatedAt,
-              kind: (d.blockerKind as any) ?? null,
-            })),
-          holdingUp: held.dependencies
-            .filter((d) => d.onParticipantId === p.id)
-            .map((d) => ({
-              what: d.what,
-              who: nameOf(d.fromParticipantId, null),
-              daysOld: held.wholeDays(d.createdAt),
-              kind: (d.blockerKind as any) ?? null,
-            })),
-          concrete: mine
-            .filter((e) => e.type === RecordEntryType.SUCCESS_DEFINITION || !e.recallBased)
-            .map((e) => cleanText(e.text))
-            .slice(0, 2),
-          documentsAttached: held.docs.filter((d) => d.participantId === p.id).length,
-          sessionNumber: thisRound,
-          totalSessions: planned > 0 ? planned : null,
-          scenario: ground.scenario ?? null,
-        });
-      });
-
-    /* One call for the whole list rather than one per person: the same guard, a tenth of the
-       calls, and the model sees the section as a section. */
-    const drafts: Drafted[] = [];
-    const rowWords = [
-      ...held.dependencies.map((d) => d.what.replace(/[.\s]+$/, '')),
-      ...Object.values(WHAT_IT_MEANS), ...Object.values(WHO_CAN_MOVE_IT),
-    ];
-    const keeping = (t: string) => rowWords.filter((r) => t.includes(r));
-    reads.forEach((r: any, i: number) => {
-      r.probe.forEach((t: string, n: number) => drafts.push({ key: `p${i}.${n}`, text: t, mustKeep: keeping(t) }));
-      r.encourage.forEach((t: string, n: number) => drafts.push({ key: `e${i}.${n}`, text: t, mustKeep: keeping(t) }));
-      drafts.push({ key: `u${i}`, text: r.triedToUnblock });
-    });
-    const said = await this.phrase('the probe list', drafts);
-    return reads.map((r: any, i: number) => ({
-      ...r,
-      probe: r.probe.map((t: string, n: number) => said[`p${i}.${n}`] ?? t),
-      encourage: r.encourage.map((t: string, n: number) => said[`e${i}.${n}`] ?? t),
-      triedToUnblock: said[`u${i}`] ?? r.triedToUnblock,
-    }));
-  }
-
   private async whatItRestsOn(
     groundId: string,
     parties: any[],
@@ -3550,7 +2919,7 @@ happened, and what is in the way.`;
       }
 
       return {
-        ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)),
+        ...this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
         forming: true,
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
@@ -3565,80 +2934,64 @@ happened, and what is in the way.`;
       };
     }
 
-    /**
-     * THERE IS NO REVEAL. THE REPORT UPDATES AS PEOPLE CHECK IN, AND THAT IS ALL IT IS.
-     *
-     * What stood here was a per-party gate: a released report was withheld from every participant
-     * until they pressed a button, and the lead was exempt. Walked as a real participant and it
-     * was theatre on both sides of the screen.
-     *
-     * It withheld nothing. `sessionReport` - the per-session read the report page actually makes -
-     * walls on `released || viewerIsLead` and had never heard of activation, so the same person
-     * blocked here was handed the whole thing, every party's own words included, one request
-     * later. The button sat above the record it claimed to be protecting, saying "this cannot be
-     * undone" about a door that was already open.
-     *
-     * And it made the product lie about itself. `get()` returned `{ activated: false }` with no
-     * content, so the card that renders it printed "Not enough has been said yet to draw one.
-     * Too little to say. 0 areas settled." to somebody whose session had produced a full
-     * three-party synthesis. The one screen that tells a participant what their ten minutes were
-     * worth told them it was worth nothing.
-     *
-     * The independence this product rests on is protected in the place it actually lives: nobody
-     * reads a forming picture before giving their own account - see the branch above, which is
-     * about having ANSWERED, not about having pressed anything. Once a report is released it is
-     * released, and it shows.
-     *
-     * The `ReportActivation` rows and `activate()` are left where they are rather than dropped in
-     * the same change: nothing reads them to decide what anybody may see any more, and removing a
-     * table is a migration that has no business riding along with a fix to what people see.
-     */
+    // Per-party reveal gate: each participant must activate before seeing
+    // content, but only their own activation is checked here - this is not
+    // mutual. The initiator is exempt - they released the report and can
+    // always read it.
+    if (participant && !isInitiator) {
+      const activation = await this.prisma.reportActivation.findUnique({
+        where: { groundId_participantId: { groundId, participantId: participant.id } },
+      });
+      if (!activation || activation.status !== ReportActivationStatus.ACTIVATED) {
+        /*
+         * AND WHO IT IS WAITING ON, WHICH THE STUB DID NOT SAY.
+         *
+         * The report releases, everybody is emailed "your shared record is ready", everybody clicks
+         * through and meets a button. The screen explains the mechanism - each of you shows your
+         * own - and names nobody, so two people can sit either side of it each believing the other
+         * has stalled. Read on a real new-hire check-in: released, both notified, neither activated,
+         * and nothing anywhere saying who the other party was or that they had been told the same.
+         *
+         * Names only where this reader is entitled to them, through the same resolver as
+         * everything else here.
+         */
+        const labels = labelsForParties(ground.participants as any);
+        const nameByLabel = namesVisibleTo(participant?.id ?? null, ground.participants as any);
+        const activationsNow = await this.prisma.reportActivation.findMany({
+          where: { groundId },
+          select: { participantId: true, status: true },
+        });
+        const shownIds = new Set(
+          activationsNow.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
+        );
+        const stillToShow = ground.participants
+          .filter((x: any) => !x.managingOnly && x.id !== participant?.id && !shownIds.has(x.id))
+          .map((x: any, i: number) => {
+            const label = labels.get(x.id);
+            return (label ? nameByLabel.get(label) : undefined) ?? label ?? `Party ${i + 1}`;
+          });
+        return {
+          id: ground.report.id,
+          groundId,
+          /* Named, and the fact they were told too - so nobody chases somebody who is waiting on
+             them for the same reason. */
+          waitingToShow: stillToShow,
+          everyoneWasTold: true,
+          createdAt: ground.report.createdAt,
+          /* When it was last WRITTEN. The page compares this against the newest completed check-in
+             to decide whether somebody is reading a stale version; against `createdAt` that was
+             permanently true after any regeneration. */
+          updatedAt: (ground.report as any).updatedAt,
+          releasedAt: ground.report.releasedAt,
+          activated: false,
+        };
+      }
+    }
 
     const engagement = ground.report.engagement && typeof ground.report.engagement === 'object'
       ? (ground.report.engagement as Record<string, any>)
       : {};
     const postReportGuide = participant ? (engagement.postReportGuides?.[participant.id] ?? null) : null;
-
-    /**
-     * AND THE COACHING NOTE, WHICH IS THE ONE PART OF THIS THAT SPEAKS TO THE READER.
-     *
-     * `postReportGuide` is about the conversation to have next and is written from one session's
-     * text. This is about the person: what keeps showing up for them across sessions, what that
-     * means for somebody in their role at this point in the run, and the one thing to do before
-     * the next one. See what-to-work-on-next.ts.
-     *
-     * Only for a party, and only about themselves. A lead reading somebody else's report gets
-     * nothing here, because coaching somebody through a document they cannot reply to is the
-     * opposite of what this is for.
-     */
-    /*
-     * WHO ANYBODY IS CALLED, decided by the same rule the rest of the report uses. Passed in so
-     * the coaching surfaces cannot invent a second naming rule of their own.
-     */
-    const coachLabels = labelsForParties(ground.participants as any);
-    const coachNames = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
-    /** Whoever this is, named, with no "you" - for a heading rather than a sentence. */
-    const plainNameOf = (participantId: string): string | null => {
-      const label = coachLabels.get(participantId);
-      return (label ? coachNames.get(label) : undefined) ?? label ?? null;
-    };
-    const nameOf = (participantId: string | null, fallback: string | null): string | null => {
-      if (!participantId) return fallback;
-      if (participant && participantId === participant.id) return 'you';
-      const label = coachLabels.get(participantId);
-      return (label ? coachNames.get(label) : undefined) ?? label ?? fallback;
-    };
-
-    /* Started now, awaited beside the probe list below: neither wording call needs the other. */
-    const coachingPending = participant
-      ? this.coachingNoteFor(groundId, ground as any, participant as any, nameOf).catch((err) => {
-          /* A NOTE THAT CANNOT BE BUILT MUST NOT TAKE THE REPORT DOWN. The report is the thing
-             somebody came for; the coaching note is an addition to it. Same rule as the record
-             read and the guide above. */
-          this.logger.warn(`Could not build the coaching note for ${participant.id}: ${err?.message}`);
-          return null;
-        })
-      : Promise.resolve(null);
 
     const soloArtifact = participant?.soloArtifact
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
@@ -3656,16 +3009,9 @@ happened, and what is in the way.`;
      * own-reads-only.ts for what that looked like on a real report and why it
      * is worse than it appears.
      */
-    const [coaching, probes] = await Promise.all([
-      coachingPending,
-      this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
-        this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
-        return null;
-      }),
-    ]);
     const base: any = {
       ...withoutOtherPeoplesReads(
-        this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)) as any,
+        this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
         {
           viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
           viewerParticipantId: participant?.id ?? null,
@@ -3674,41 +3020,6 @@ happened, and what is in the way.`;
       ),
       activated: true,
       postReportGuide,
-      coaching,
-      /*
-       * THE LINES TAKEN FROM WHAT YOU SAID, AS ROWS, WITH THE PRESS THAT DISPUTES ONE.
-       *
-       * The person had never seen these as rows. They saw the text, on the shared report, under
-       * their name, with nothing saying it was extracted rather than typed. This is theirs alone, on
-       * their own half, labelled as what it is. Disputed rows are returned too, so the page can show
-       * the dispute; every read that COUNTS rows filters them out.
-       */
-      myRows: participant
-        ? await Promise.resolve()
-            /* Started inside a promise, so a client without this table rejects instead of throwing
-               synchronously while the object is being built. Same shape as myOwnSoftSpots. */
-            .then(() => this.prisma.recordEntry.findMany({
-              where: { participantId: participant.id },
-              orderBy: [{ createdAt: 'asc' }],
-              select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
-            }))
-            .then((rows) => rows.map((r) => ({
-              id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
-              documented: !r.recallBased, documentSays: r.documentSays ?? null,
-              checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
-            })))
-            .catch(() => [])
-        : [],
-      /* The reader's own thin spots, with the fix for each. Never anybody else's. */
-      mySoftSpots: participant
-        ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
-        : [],
-      /*
-       * AND THE LEAD'S OWN SECTION. Null for everybody else, decided inside `whatToProbeOn` rather
-       * than by this caller remembering to ask - a lead-only surface guarded at the call site is
-       * one refactor away from not being lead-only.
-       */
-      probes,
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not
@@ -3928,7 +3239,7 @@ happened, and what is in the way.`;
       participantIds.map(async (participantId) => {
         try {
           const entries = await this.prisma.recordEntry.findMany({
-            where: { disputedAt: null, participantId },
+            where: { participantId },
             orderBy: { createdAt: 'asc' },
             select: { type: true, text: true },
           });

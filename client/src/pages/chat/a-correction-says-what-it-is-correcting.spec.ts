@@ -23,10 +23,8 @@ describe('a correction session', () => {
     expect(CHAT).toContain('selfCorrectionTargetSession')
   })
 
-  it('names the session it is correcting, in every place the number is shown', () => {
-    /* Three places until the "what happens to what you write" gate was deleted - its header was one
-       of them. Two remain: the page header and the composer footer. */
-    expect((CHAT.match(/Correcting session \$\{correctingSession\}/g) ?? []).length).toBeGreaterThanOrEqual(2)
+  it('names the session it is correcting, in all three places the number is shown', () => {
+    expect((CHAT.match(/Correcting session \$\{correctingSession\}/g) ?? []).length).toBeGreaterThanOrEqual(3)
   })
 
   it('and says the original is not overwritten, where somebody is about to add to it', () => {

@@ -172,7 +172,7 @@ export function DeliveredPanel({
         thing it is about, in one line.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 9 }}>
-        This is not yours. It reaches your next session as something to ask about, and what
+        This is not your account. It reaches your next session as something to ask about, and what
         you say under questioning is what becomes the record.
       </div>
     </div>

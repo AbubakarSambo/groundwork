@@ -32,8 +32,7 @@ describe('the weigh section reaches the page', () => {
   it('and "what nobody has evidence for" says so rather than rendering an empty list', () => {
     // The part that earns the section: absence is invisible, so an empty list would read as
     // "nothing to see" when it means the opposite.
-    /* Was "reached by somebody's account". The sentence is the point, not the word. */
-    expect(CODE).toMatch(/Everything you named was reached by something somebody said/)
+    expect(CODE).toMatch(/Everything you named was reached by somebody/)
   })
 
   it('it carries the module\'s own note, not a rewrite of it', () => {

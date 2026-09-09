@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { participantsApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { authApi } from '@/api/auth'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
@@ -43,7 +42,7 @@ export function InvitePage() {
 
   const accept = useMutation({
     mutationFn: () => participantsApi.accept(token, { firstName: firstName || undefined, lastName: lastName || undefined }),
-    onSuccess: async (res) => {
+    onSuccess: (res) => {
       /**
        * They have just read it on this page, so the chat must not open with it again.
        * Same key ChatPage reads; private mode simply shows the explainer once more, which
@@ -66,28 +65,6 @@ export function InvitePage() {
        * whoever received it, without the link ever being worthless to its owner.
        */
       if ((res as any).resumed) {
-        /*
-          REFRESH WHO THEY ARE BEFORE SENDING THEM ON.
-
-          "If I am added and already have an org on Groundwork, the check-in link does not take me
-          to my check-in, it asks me to add an org still."
-
-          `mustSetUpOrganisation` is computed on the server as "an admin of an organisation with no
-          contact email, who belongs nowhere else" - and being added to somebody else's check-in
-          writes the membership that makes the last clause false. The flag is only recomputed when
-          somebody signs in or calls /auth/me, and this path does neither: the browser already holds
-          a session, so it carries whatever was true the last time it looked. An admin of a
-          half-finished organisation of their own is therefore still flagged, and RequireOrgSetup
-          bounces them to org setup instead of the check-in they clicked.
-
-          One call, on the path where the membership has just changed. Failure is not fatal - the
-          worst case is the state they were already in.
-        */
-        try {
-          const fresh = await authApi.me()
-          const token = localStorage.getItem('token')
-          if (token) setAuth(fresh, token)
-        } catch { /* leaves them exactly as they were */ }
         const checkInId = (res as any).checkInId as string | null
         const groundId = (res as any).groundId as string
         navigate(checkInId ? `/checkin/${checkInId}` : `/grounds/${groundId}/p`, { replace: true })
@@ -209,30 +186,10 @@ export function InvitePage() {
           </div>
         )}
 
-        {/*
-          THE ONE SENTENCE THAT WAS NOT TRUE, ON THE FIRST PAGE AN INVITED PERSON READS.
-
-          It said "Nobody ever reads what you write - not {initiator}, not anyone." What is written
-          is read: it is summarised, cross referenced against what other people said, and the
-          result is put in front of them. Promising otherwise is worse than promising nothing,
-          because the moment somebody works out what the product actually does, everything else on
-          this page stops counting.
-
-          So it says the true thing, and the true thing is already written down: this is the first
-          of the four claims in what-happens-to-what-you-write.ts, which is calibrated line by line
-          and even carries a "the part we are not going to dress up". That file was the standard
-          this box should always have met. Your own words about your own work can appear in the
-          report; what you say about somebody else never does. Saying "your wording is never shown"
-          would have been a second false promise pointing the other way.
-
-          "Your account stays private" went with it. Here it means somebody's version of events and
-          in a product it reads as a login, and it was carrying the false claim anyway.
-        */}
         <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          What you write is used to build the shared report and nothing else. It shows{' '}
-          <strong>where what you said and what they said agree or differ</strong>. Your own words
-          about your own work can appear in it. Anything you say about somebody else never does,
-          and it never says who said what about whom.
+          Nobody ever reads what you write - not {preview.initiatorName}, not anyone.{' '}
+          The shared report shows <strong>where your account and theirs agree or differ</strong>. It does not quote you.
+          Your account stays private. Always.
         </div>
 
         {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
@@ -263,7 +220,7 @@ export function InvitePage() {
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
             <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without your side of it, the picture is everybody else's.
+              <b>Why you.</b> You are close enough to this work to know things nobody else in it can see. Without your account, the picture is everybody else's.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
@@ -275,17 +232,7 @@ export function InvitePage() {
           <div style={{ display: 'flex', gap: 10 }}>
             <span style={{ fontSize: 13, flexShrink: 0 }}>&rarr;</span>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
-              {/*
-                AND THE BUTTON NOBODY WAS WARNED ABOUT. The report is released to everybody in one
-                stroke - `releasedAt` is stamped once - so "the same report, at the same moment" is
-                true and stays. What was missing is that a party then meets an activation gate the
-                lead does not: you press once to open it, and until you do, it is closed. Somebody
-                who has been told they get it at the same moment and then finds a button reads the
-                button as the product going back on the first half.
-              */}
-              <b>What you get back.</b> The same report {preview.initiatorName} gets, released to
-              everybody at once. You open your copy with one press when it lands, plus a short
-              private note meant only for you.
+              <b>What you get back.</b> The same report {preview.initiatorName} gets, at the same moment, plus a short private note meant only for you.
             </div>
           </div>
         </div>
@@ -312,7 +259,7 @@ export function InvitePage() {
           <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nobody you work with reads it</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing everyone's accounts. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>We cannot show it to ourselves either</div>
@@ -335,12 +282,12 @@ export function InvitePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
             <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label" htmlFor="invite-first">First name</label>
-              <input id="invite-first" className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
+              <label className="gw-label">First name</label>
+              <input className="gw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
             </div>
             <div className="gw-fld" style={{ margin: 0 }}>
-              <label className="gw-label" htmlFor="invite-last">Last name</label>
-              <input id="invite-last" className="gw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
+              <label className="gw-label">Last name</label>
+              <input className="gw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
             </div>
           </div>
           <button className="gw-btn" type="submit" disabled={accept.isPending} style={{ marginTop: 12, opacity: accept.isPending ? 0.7 : 1 }}>

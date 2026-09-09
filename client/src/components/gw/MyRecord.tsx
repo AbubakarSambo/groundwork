@@ -1,4 +1,6 @@
+import { Sec } from './kit'
 import { ResolutionPanel } from './ResolutionPanel'
+import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 
 /**
  * SOMEBODY'S OWN ACCOUNT OF A CHECK-IN.
@@ -22,30 +24,30 @@ export interface MyRecordProps {
   ground: any
   /** This reader's record, from `/grounds/:id/my-record`. */
   myRecord: any
+  /** Who is reading, so their own objective can be found among the parties. */
+  viewerUserId?: string
   /** How many sessions this check-in plans, for the "near the end" rule. */
   totalSessions: number | null
   /** How many this reader has finished, for the same rule. */
   completedCount: number
-  /**
-   * GONE FROM HERE, AND THE PROP WITH IT.
-   *
-   * The trend, the thing that would help and their own best answer were three lines in a card at the
-   * foot of this component. They belong with the specificity read they describe, which is now at the
-   * top of the page - see TheFiveThingsThatMakeItCheckable. Leaving the prop declared and unused
-   * would be a promise this component no longer keeps.
-   */
+  /** This reader's own specificity read, from `/grounds/:id/my-specificity`. */
+  specificity?: any
   /**
    * Send the reader to another tab of the same check-in. A prop rather than a router call, because
    * the two pages that render this name their tabs differently and neither's names belong in here.
    */
+  onGoToTab: (tab: string) => void
 }
 
 export function MyRecord({
   groundId,
   ground,
   myRecord,
+  viewerUserId,
   totalSessions,
   completedCount,
+  specificity,
+  onGoToTab,
 }: MyRecordProps) {
   return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -83,13 +85,18 @@ export function MyRecord({
           )}
 
           {/*
-            AND THE EMPTY CARD IT LEFT BEHIND.
+            WHAT SUCCESS WAS SAID TO BE, AND WHERE THE ACCOUNTS PUT IT.
 
-            Moving "what success looks like" to Context emptied this wrapper and left the wrapper
-            rendering: a white box with a border, a radius and nothing inside it, floating between
-            sign-off and the Context link. Visible in a screenshot before it was visible to me,
-            which is the argument for looking at the page rather than at the diff.
+            This is where a party meets it now. It used to be on her Setup tab, as a read-only panel
+            under a paragraph apologising for being read-only - a disclosure, not a comparison, and
+            on the one tab where nothing is hers. Here it sits beside her own sessions, next to her
+            own account of the same question, which is the only place the two can be read together.
           */}
+          {groundId && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <WhatSuccessLooksLikeFor groundId={groundId} />
+            </div>
+          )}
 
           {/* The empty state, and NO price.
               `insightsLocked` does not mean "unpaid" - it means "no completed
@@ -119,7 +126,7 @@ export function MyRecord({
               */}
               <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 6 }}>What this page will hold</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.6 }}>
-                A line per session, each with how specific it was, and a trend across all
+                A line per session, each with how specific that account was, and a trend across all
                 of them once there is more than one. Both appear here - this is the page where you
                 see how you are being read.
               </div>
@@ -138,17 +145,26 @@ export function MyRecord({
               belongs next to the sessions it is read against; the words belong where everybody
               reads the same copy.
             */}
-            {/*
-              AND "WHAT IS EXPECTED OF YOU" WITH IT, FOR THE SAME REASON.
-
-              It was a card whose usual content was "Nothing yet", above a button that opened
-              Context - so the page carried a heading, an absence and a link, where the link alone
-              says all three. Both bands are published on Context for everybody including the person
-              they are about, which is the point of publishing them.
-            */}
-            {/* The Context signpost went with the Report one: a page that ends by naming its
-                neighbouring tabs, which are in the tab bar above it, has run out of things to say
-                about itself. */}
+            {(() => {
+              const mine = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
+              const o = mine?.objective
+              return (
+                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 16px' }}>
+                  <Sec title="What is expected of you" />
+                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                    {!o?.text?.trim()
+                      ? 'Nothing yet. This comes out of the lead\u2019s own check-in, where they are asked what they expect of each person.'
+                      : o.text}
+                  </div>
+                  <button
+                    onClick={() => onGoToTab('docs')}
+                    style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}
+                  >
+                    {o?.text?.trim() ? 'See it in context, with everyone else\u2019s' : 'Open Context'}
+                  </button>
+                </div>
+              )
+            })()}
 
           {/* Session history summary - always visible */}
           {/*
@@ -174,29 +190,80 @@ export function MyRecord({
             scale is a mark out of something a person cannot see, and this read exists to be acted
             on rather than scored.
           */}
-          {/*
-            "HOW YOUR ANSWERS ARE GOING" AND "WHAT YOUR RECORD CAN SUPPORT" BOTH MOVED TO THE TOP.
+          {myRecord && !myRecord.insightsLocked && myRecord.specificity && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <Sec title="How your answers are going" src="across the sessions so far" />
+              <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                {specificity?.trend === 'rising'
+                  ? 'Your answers are getting more specific as this goes on.'
+                  : specificity?.trend === 'falling'
+                    ? 'Your recent answers carry less detail than your earlier ones.'
+                    : specificity?.trend === 'steady'
+                      ? 'Your level of detail has held steady across these sessions.'
+                      : 'Too early to read a trend. This fills in as you check in.'}
+              </div>
 
-            They were two cards here, below the sessions and below the carry-forward - a person read
-            everything the page held before reaching the two lines that say what any of it amounts
-            to. And both said it as a mark on a scale nobody can see: a five-segment bar with the
-            word "moderate" beside it, and a sentence about a trend with nothing to compare against.
+              {/* Nobody can act on a word like "low"; everybody can act on "none of your answers
+                  say when". */}
+              {specificity?.whatWouldHelp && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>What would make the next one land harder. </span>
+                  {specificity.whatWouldHelp}
+                </div>
+              )}
 
-            One card now, above what it summarises, in sentences: see WhatYourRecordCanSupport. The
-            two teaching lines that lived in the first of them - the thing the engine could not find,
-            and the person's own best answer quoted back - moved with the specificity read they
-            belong to, in TheFiveThingsThatMakeItCheckable.
+              {/* Their own best answer, quoted back. What a checkable account looked like in their
+                  own words teaches what no description of specificity can. */}
+              {specificity?.strongest && (
+                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 9 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>This one of yours was easy to check. </span>
+                  <span style={{ fontStyle: 'italic' }}>"{specificity.strongest}"</span>
+                </div>
+              )}
 
-            The assurance that only they see this went with the card and is in the new one.
-          */}
-          {/*
-            OBSERVATIONS FOLDED INTO THE CARD AT THE TOP.
+              {/*
+                THE REASON THIS IS SAFE TO SHOW AT ALL IS THAT IT GOES NOWHERE ELSE, and I dropped
+                this line while tightening the card. A person reading feedback on their own writing
+                assumes their lead is reading it too unless told otherwise, so the assurance is part
+                of the feature rather than decoration around it.
+              */}
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 10 }}>
+                Only you see this. It is never shown to the lead or to anybody else in this check-in.
+              </div>
+            </div>
+          )}
 
-            A card of its own here made it the fourth thing on the page saying the same thing in a
-            fourth vocabulary. Not dropped - they also reach a person on the board, but only where
-            the scenario renders one, so dropping them would take them from exactly the people with
-            nowhere else to read them. See WhatYourRecordCanSupport, "Also noticed".
-          */}
+          {/* Confidence score - unlocked only */}
+          {myRecord && !myRecord.insightsLocked && myRecord.confidence && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Sec title="What your record can support" src="the whole history, not this session" />
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-navy)' }}>{myRecord.confidence.label}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= myRecord.confidence!.score ? 'var(--gw-navy)' : 'var(--gw-border)' }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{myRecord.confidence.description}</div>
+            </div>
+          )}
+
+          {/* Pattern observations - unlocked, diplomatic */}
+          {myRecord && !myRecord.insightsLocked && myRecord.patterns && myRecord.patterns.length > 0 && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px' }}>
+              <Sec title="Observations from your record" />
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+                These are patterns Groundwork has noticed across your check-ins. They are observations, not verdicts. Worth being aware of as your record builds.
+              </div>
+              {myRecord.patterns.map((p: any, i: number) => (
+                <div key={i} style={{ padding: '10px 0', borderTop: i === 0 ? '1px solid var(--gw-bg)' : '1px solid var(--gw-bg)', fontSize: 13, color: '#3A3630', lineHeight: 1.6 }}>
+                  {p.observation}
+                  {p.sessionNumber && <span style={{ display: 'block', fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>First noticed in Session {p.sessionNumber}</span>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {myRecord && !myRecord.insightsLocked && (!myRecord.patterns || myRecord.patterns.length === 0) && (
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, padding: '0 2px' }}>

@@ -56,10 +56,7 @@ describe('no report yet is not an error', () => {
 
   it('THE COUPLING: everything that creates a report refreshes the ground as well', () => {
     // Otherwise the gate above stays shut and the new report is never fetched.
-    /* `activate` was in this list, against SHARED. The reveal that called it is deleted, so there
-       is no mutation left to check and requiring one would require the button back. Release is
-       the only thing that now creates a report from the client. */
-    for (const [name, src] of [['release', ADMIN]] as const) {
+    for (const [name, src] of [['release', ADMIN], ['activate', SHARED]] as const) {
       const after = src.slice(src.indexOf('reportsApi.' + name))
       const block = after.slice(0, 500)
       expect(block, `${name} must invalidate the ground too`).toMatch(/queryKey: \['ground'/)

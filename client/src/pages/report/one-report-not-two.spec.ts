@@ -64,12 +64,11 @@ describe('one report, not two', () => {
     /* The reason the body was embedded at all: the button that preceded it navigated to a route
        that redirected back to the tab already on screen, so clicking it did nothing visible. What
        replaces the body has to clear that same bar - a page that exists and holds the content. */
-    /* The forming message and its two buttons are gone entirely - see
-       nothing-was-lost-when-the-body-went. What has to clear the dead-button bar is the tab's own
-       first row, the board, which is a page that exists and holds the shared picture. */
     expect(PARTICIPANT).toContain('<SharedReportForAParty')
     expect(PARTY_REPORT).toContain('onOpenBoard()')
+    expect(PARTY_REPORT).toContain('onGoToMyRecord()')
     expect(PARTICIPANT).toMatch(/onOpenBoard=\{\(\) => navigate\(`\/grounds\/\$\{id\}\/board`\)\}/)
+    expect(PARTICIPANT).toMatch(/onGoToMyRecord=\{\(\) => goTab\('record'\)\}/)
   })
 
   /**

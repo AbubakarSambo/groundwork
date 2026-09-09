@@ -26,7 +26,7 @@ function makeService(opts: { initiatorId: string; participantId?: string; doc?: 
   /* Context on, because with it off every one of these refuses for a different reason. */
   const config: any = { get: jest.fn((k: string) => (k === 'app.contextEnabled' ? true : 'test-key')) };
   const anthropic: any = { extract: jest.fn() };
-  return { service: new DocumentsService(prisma, anthropic, config, { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) } as any), prisma };
+  return { service: new DocumentsService(prisma, anthropic, config), prisma };
 }
 
 describe('CLOSED is the lead\'s only', () => {
