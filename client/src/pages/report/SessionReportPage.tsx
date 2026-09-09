@@ -354,9 +354,22 @@ export default function SessionReportPage() {
         show for this session - forming while people are still answering, final once the round
         closed. They belong on one page because that is how a person reads them: mine, then ours.
       */}
+      {/*
+        THE SHARED HALF IN A BOX OF ITS OWN, LIKE THE PRIVATE ONE.
+        Your own report sat on an inset surface and the shared report sat on the bare page, so one
+        read as a thing and the other as leftovers under it. Two boxes, two headers, same grammar.
+      */}
       {data?.groundId && data?.sessionNumber && (
-        <div>
-          <h2 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 2px' }}>The shared report</h2>
+        <section
+          style={{
+            border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)',
+            padding: '18px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>The shared report</h2>
+            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Everybody's</span>
+          </div>
           {/*
             "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.
             The section below is right and the line was wrong. What the product actually protects,
@@ -370,7 +383,7 @@ export default function SessionReportPage() {
             else never does.
           </div>
           <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
-        </div>
+        </section>
       )}
       {/*
         AND THE LEAD'S OWN SECTION, AFTER THE SHARED REPORT.

@@ -703,9 +703,17 @@ export class ConversationService {
      * session-date citation: the product writes the line, the model only takes it from there. The
      * answer is in the transcript, and the pack tells the model which block follows from it.
      */
-    const startsSomething = STARTING_SCENARIOS.has(String((checkIn as any).ground?.scenario ?? ''));
+    /*
+     * `ground` is the row loaded above with `scenario` selected. The first version read
+     * `checkIn.ground`, which `loadOwnedCheckIn` never includes, so the guard was always false and the
+     * model wrote the opener - found by opening a real session and reading it. And a FIRST session
+     * only: the answer is in session one's transcript, and asking again on session two puts a
+     * question to somebody the record has already answered.
+     */
+    const startsSomething = STARTING_SCENARIOS.has(String(ground?.scenario ?? ''));
     const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
-    const reply = startsSomething && notTheLead && correctingSession == null && !(checkIn as any).isFinal
+    const firstSession = checkIn.sessionNumber === 1;
+    const reply = startsSomething && notTheLead && firstSession && correctingSession == null && !(checkIn as any).isFinal
       ? WHO_ARE_YOU_IN_THIS
       : await this.anthropic.respond(fullSystem, [
           { role: 'user', content: beginMessage },

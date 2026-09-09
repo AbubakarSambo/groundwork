@@ -189,7 +189,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         count over rows the engine kept.
       */}
       {d.patterns?.length > 0 && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)' }}>
           <Sec title="What keeps showing up" />
           <div style={{ display: 'grid', gap: 10 }}>
             {d.patterns.map((p: any, i: number) => (
@@ -211,8 +211,11 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {d.sharedPicture && (
         <section style={{ marginBottom: 30 }}>
           <Sec title="The picture from everybody" src="built from the record's own reads, worded by the model" />
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-card)', padding: '15px 17px' }}>
-            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.sharedPicture}</p>
+          {/* One claim per line. Joined into a paragraph it read as a wall of prose. */}
+          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'var(--gw-paper-2)', padding: '14px 17px', display: 'grid', gap: 9 }}>
+            {((d.pictureLines as string[] | undefined) ?? [d.sharedPicture]).map((line: string, i: number) => (
+              <p key={i} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{line}</p>
+            ))}
           </div>
         </section>
       )}
@@ -355,7 +358,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {/* 14. The conversation worth having now. From the blocker kind or the role map; never a model
           over the transcript. With neither, the honest absence, not a heading over nothing. */}
       {!d.theConversationWorthHaving && d.whyNoQuestion && (
-        <section style={{ marginBottom: 22 }}>
+        <section style={{ marginBottom: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)' }}>
           <Sec title="The conversation worth having now" />
           <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
         </section>

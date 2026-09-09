@@ -95,6 +95,8 @@ export interface SessionShapedReport {
   iHaveShownMine: boolean
   /** Drafted from the engines' reads and worded by the model. Null when there is no engine basis. */
   sharedPicture: string | null
+  /** The same picture, one claim per line, which is how the page draws it. */
+  pictureLines: string[]
   pictureBasis: 'engines' | 'none'
   /** The stored, model-written picture. Kept under its own name; this page does not render it. */
   writtenPicture: string | null

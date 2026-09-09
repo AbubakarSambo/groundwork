@@ -9,7 +9,6 @@ import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
-import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'
 
 interface Msg {
   id: string
@@ -130,7 +129,9 @@ export function ChatPage() {
    *
    * Empty is a fact you have to have looked to know. This is the looking.
    */
-  const [knowWhatIsHere, setKnowWhatIsHere] = useState(false)
+  /* The setter still records that the transcript was looked at; nothing reads the flag now the
+     briefing screen it gated is gone. */
+  const [, setKnowWhatIsHere] = useState(false)
   /** An assistant bubble with nothing in it yet, however it was minted. */
   const isWaiting = (m: { id: string; role: string; content: string }) =>
     m.id === 'loading' || (m.role === 'AI' && m.content.trim() === '…')
@@ -655,9 +656,6 @@ export function ChatPage() {
    * work that would make the stronger claim true; until it lands, this says the
    * true version.
    */
-  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(() => {
-    try { return localStorage.getItem('gw_privacy_seen') === '1' } catch { return false }
-  })
   /**
    * AND IT MUST NOT SWALLOW A FAILURE TO OPEN.
    *
@@ -682,50 +680,15 @@ export function ChatPage() {
    * The acknowledgement is what stops it being read twice, and it already errs the safe way: a
    * person on a new device sees the explainer again rather than never.
    */
-  const showPrivacyFirst = knowWhatIsHere && !privacyAcknowledged && msgs.length === 0 && !openFailed
-
-  if (showPrivacyFirst) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
-        <div className="gw-hdr">
-          <div>
-            <div className="gw-logo">{groundLabel || 'Before you start'}</div>
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
-              {correctingSession != null ? `Correcting session ${correctingSession}` : `Session ${sessionNumber}`}
-            </div>
-          </div>
-        </div>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 20px' }}>
-          <div style={{ maxWidth: 520, width: '100%' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', margin: '0 0 6px', letterSpacing: '-.02em' }}>What happens to what you write</h1>
-            <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 18px' }}>Worth thirty seconds before the first question, because it changes what is worth writing.</p>
-
-            {/*
-              * THE SAME FOUR CLAIMS, now read from one place because a second screen shows them
-              * too - an admin rolling this out has to be able to show their company what will be
-              * read and by whom, before anybody is asked to answer anything. Two copies of a
-              * privacy promise drift. See `what-happens-to-what-you-write.ts`.
-              *
-              * This screen renders them exactly as it did before.
-              */}
-            {WHAT_HAPPENS_TO_WHAT_YOU_WRITE.map(c => (
-              <div key={c.title} style={{ background: c.plain ? 'var(--gw-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: c.plain ? '14px 16px' : '16px 18px', marginBottom: c.plain ? 18 : 12 }}>
-                <div style={{ fontSize: c.plain ? 12.5 : 14, fontWeight: 700, color: c.plain ? 'var(--gw-sub)' : 'var(--gw-text)', marginBottom: 4 }}>{c.title}</div>
-                <p style={{ fontSize: c.plain ? 12.5 : 13.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>{c.body}</p>
-              </div>
-            ))}
-
-            <button
-              onClick={() => { try { localStorage.setItem('gw_privacy_seen', '1') } catch { /* private mode: shown again, which is the safe direction */ } setPrivacyAcknowledged(true) }}
-              style={{ width: '100%', padding: '12px 0', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Start my check-in
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  /*
+   * THE "WHAT HAPPENS TO WHAT YOU WRITE" GATE IS GONE.
+   *
+   * A full-page screen stood between a person and their first question, headed "Nobody you work
+   * with reads it", with a button to press before the check-in would start. Read back: "the nobody
+   * sees what you write page should be deleted." The four claims themselves still exist in one
+   * file and still render where somebody is deciding whether to take part - the invitation, and
+   * the admin's guide - which is where a promise belongs. Not in front of every session.
+   */
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>

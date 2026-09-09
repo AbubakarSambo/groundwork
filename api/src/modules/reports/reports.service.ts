@@ -2358,14 +2358,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
           settled: shape.whereThingsStand.settled,
           open: shape.whereThingsStand.open,
         });
-        const worded = await this.phrase('the picture from everybody', drafts);
         const question = draftTheQuestion({
           functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
           blockers: depRows.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
         });
-        const wordedQ = question ? await this.phrase('the conversation worth having', [question]) : {};
+        /* Two wording passes that do not depend on each other, in parallel. Measured serial: this
+           endpoint took ten seconds and the page waited on it before drawing the shared half. */
+        const [worded, wordedQ] = await Promise.all([
+          this.phrase('the picture from everybody', drafts),
+          question ? this.phrase('the conversation worth having', [question]) : Promise.resolve({} as Record<string, string>),
+        ]);
+        const pictureLines = drafts.map((d) => worded[d.key] ?? d.text);
         return {
-          sharedPicture: drafts.length ? drafts.map((d) => worded[d.key] ?? d.text).join(' ') : null,
+          /* One claim per line, kept as lines: joined into a paragraph it read as a wall of prose. */
+          pictureLines,
+          sharedPicture: drafts.length ? pictureLines.join(' ') : null,
           pictureBasis: drafts.length ? 'engines' : 'none',
           theConversationWorthHaving: question ? (wordedQ.question ?? question.text) : null,
           whyNoQuestion: question ? null : WHY_NO_QUESTION,
@@ -3257,8 +3264,24 @@ happened, and what is in the way.`;
       /* And the library's own sentences about the kind of blocker, which are claims, not wording. */
       ...Object.values(WHAT_IT_MEANS), ...Object.values(WHO_CAN_MOVE_IT),
     ];
+    /*
+     * THE ROLE MAP IS CONTEXT FOR WHAT TO SAY, NOT A QUOTATION.
+     *
+     * The first version held the map's sentences verbatim through the wording pass, so every person
+     * in the same function read the same paragraph and the box read as a quotation from a manual.
+     * Read back: "seems to be quoting directly from the role map instead of using it as context".
+     * The claims are unchanged - what on track means, what going wrong looks like, what this work
+     * gets read as unfairly - and the words are now the model's, under the same guard as every other
+     * line. Only the ROWS - what somebody is waiting for - stay held word for word, because those are
+     * somebody's own words for the thing they are owed.
+     */
     const said = await this.phrase('the coaching note', [
-      { key: 'whyItMatters', text: note.whyItMatters, mustKeep: map ? [map.onTrackMeans] : [] },
+      { key: 'whyItMatters', text: note.whyItMatters },
+      ...(note.role ? [
+        { key: 'onTrack', text: note.role.onTrack },
+        { key: 'goingWrong', text: note.role.goingWrong },
+        { key: 'protectAgainst', text: note.role.protectAgainst },
+      ] : []),
       ...note.beforeNextTime.map((t, n) => ({
         key: `a${n}`,
         text: t,
@@ -3268,6 +3291,12 @@ happened, and what is in the way.`;
     return {
       ...note,
       whyItMatters: said.whyItMatters ?? note.whyItMatters,
+      role: note.role ? {
+        ...note.role,
+        onTrack: said.onTrack ?? note.role.onTrack,
+        goingWrong: said.goingWrong ?? note.role.goingWrong,
+        protectAgainst: said.protectAgainst ?? note.role.protectAgainst,
+      } : null,
       beforeNextTime: note.beforeNextTime.map((t, n) => said[`a${n}`] ?? t),
     };
   }
@@ -3586,15 +3615,16 @@ happened, and what is in the way.`;
       return (label ? coachNames.get(label) : undefined) ?? label ?? fallback;
     };
 
-    const coaching = participant
-      ? await this.coachingNoteFor(groundId, ground as any, participant as any, nameOf).catch((err) => {
+    /* Started now, awaited beside the probe list below: neither wording call needs the other. */
+    const coachingPending = participant
+      ? this.coachingNoteFor(groundId, ground as any, participant as any, nameOf).catch((err) => {
           /* A NOTE THAT CANNOT BE BUILT MUST NOT TAKE THE REPORT DOWN. The report is the thing
              somebody came for; the coaching note is an addition to it. Same rule as the record
              read and the guide above. */
           this.logger.warn(`Could not build the coaching note for ${participant.id}: ${err?.message}`);
           return null;
         })
-      : null;
+      : Promise.resolve(null);
 
     const soloArtifact = participant?.soloArtifact
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
@@ -3612,6 +3642,13 @@ happened, and what is in the way.`;
      * own-reads-only.ts for what that looked like on a real report and why it
      * is worse than it appears.
      */
+    const [coaching, probes] = await Promise.all([
+      coachingPending,
+      this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
+        this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
+        return null;
+      }),
+    ]);
     const base: any = {
       ...withoutOtherPeoplesReads(
         this.applyNames(ground.report as any, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin, this.peersAreNamed(ground as any)) as any,
@@ -3656,11 +3693,7 @@ happened, and what is in the way.`;
        * than by this caller remembering to ask - a lead-only surface guarded at the call site is
        * one refactor away from not being lead-only.
        */
-      probes: await this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf)
-        .catch((err) => {
-          this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
-          return null;
-        }),
+      probes,
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not

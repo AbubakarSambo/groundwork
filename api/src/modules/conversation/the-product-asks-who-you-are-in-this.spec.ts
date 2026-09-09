@@ -30,6 +30,16 @@ describe('the product asks who you are in this', () => {
     expect(SERVICE.slice(at, at + 200)).toContain('!(checkIn as any).isFinal');
   });
 
+  it('and only on a first session, reading the scenario from the ground that was actually loaded', () => {
+    /* Found live: the guard read `checkIn.ground`, which is never included, so it was always false
+       and the model wrote the opener. And session two already has the answer in session one. */
+    const at = SERVICE.indexOf('const startsSomething = STARTING_SCENARIOS.has(');
+    expect(SERVICE.slice(at, at + 120)).toContain('ground?.scenario');
+    expect(SERVICE.slice(at, at + 120)).not.toContain('checkIn as any).ground');
+    expect(SERVICE).toContain('const firstSession = checkIn.sessionNumber === 1;');
+    expect(SERVICE).toMatch(/startsSomething && notTheLead && firstSession/);
+  });
+
   it('covers every scenario whose pack has role-specific questions', () => {
     for (const s of ['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']) {
       expect(STARTING_SCENARIOS.has(s)).toBe(true);
