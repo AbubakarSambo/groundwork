@@ -74,8 +74,8 @@ describe('and the streamed reply is held to the same rule', () => {
 
 describe('and the check-in knows who is reading', () => {
   it('passes the reader to both paths', () => {
-    expect(SERVICE).toContain('screen(stripped.text, known, readerName)');
-    expect(SERVICE).toMatch(/new SentenceGate\(streamKnown, streamReaderName\)/);
+    expect(SERVICE).toContain('screen(stripped.text, known, readerName, conversationSoFar)');
+    expect(SERVICE).toMatch(/new SentenceGate\(streamKnown, streamReaderName, turns\.map/);
   });
 
   it('from the row it already loads, not a second query', () => {

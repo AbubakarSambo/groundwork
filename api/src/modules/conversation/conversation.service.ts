@@ -925,7 +925,8 @@ export class ConversationService {
       const readerName = (checkIn as any).participant?.user?.firstName ?? null;
       const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
       this.knownForThisTurn.delete(checkIn.id);
-      let screened = screen(stripped.text, known, readerName);
+      const conversationSoFar = turns.map((t) => t.content ?? '');
+      let screened = screen(stripped.text, known, readerName, conversationSoFar);
       if (screened.hits.length) {
         /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
            the hit named. One time. If the second try is clean it replaces the first; if not, the
@@ -1060,7 +1061,7 @@ export class ConversationService {
       for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
       return null;
     }
-    const screened = screen(withoutQuotesTheyDidNotSay(forHumans(second), theirWords), known, readerName);
+    const screened = screen(withoutQuotesTheyDidNotSay(forHumans(second), theirWords), known, readerName, history.map((h) => h.content));
     const clean = screened.hits.length === 0 && !!screened.text;
     for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, clean ? 'regenerated, clean' : 'regenerated, still hit'));
     if (!clean) {
@@ -1202,7 +1203,7 @@ export class ConversationService {
       const streamKnown = streamPersonWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
       this.knownForThisTurn.delete(checkIn.id);
       const streamReaderName = (checkIn as any).participant?.user?.firstName ?? null;
-      const gate = new SentenceGate(streamKnown, streamReaderName);
+      const gate = new SentenceGate(streamKnown, streamReaderName, turns.map((t) => t.content ?? ''));
       let shown = '';
 
       /*
