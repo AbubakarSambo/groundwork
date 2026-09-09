@@ -112,11 +112,16 @@ describe('an invited person reads the disclosure before they commit, once', () =
     expect(onSuccess).toMatch(/localStorage\.setItem\('gw_privacy_seen', '1'\)/)
   })
 
-  it('the chat still shows it to anyone who did NOT come through this page', () => {
-    /** The control. Removing a gate must not remove the disclosure for a returning participant. */
+  it('the chat no longer shows it to anybody, by decision', () => {
+    /*
+     * This pinned the opposite: that ChatPage kept a full-page disclosure gate for anyone who had not
+     * come through the invitation. "The nobody sees what you write page should be deleted." It is.
+     * The disclosure lives where somebody decides whether to take part - this page and the admin's
+     * guide - not in front of every session.
+     */
     const CHAT = read('../chat/ChatPage.tsx')
-    expect(CHAT).toMatch(/gw_privacy_seen/)
-    expect(CHAT).toMatch(/showPrivacyFirst/)
+    expect(CHAT).not.toMatch(/showPrivacyFirst/)
+    expect(CHAT).not.toMatch(/WHAT_HAPPENS_TO_WHAT_YOU_WRITE/)
   })
 })
 
