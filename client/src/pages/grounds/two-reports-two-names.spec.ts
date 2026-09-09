@@ -20,7 +20,7 @@ import { join } from 'path'
  * WHERE THE TWO NAMES LIVE NOW. The reveal panel went with the report tab's body. The same two
  * things still exist and still need distinguishing, one file apart: the check-in header speaks for
  * the SHARED report, and the per-session report's own rows speak for each person's private one -
- * "answered" against "answered, and shown theirs". Neither of them says a bare "report".
+ * "not answered yet" against "answered". Neither of them says a bare "report".
  */
 const CODE = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -31,9 +31,12 @@ describe('two reports do not share one name', () => {
     expect(CODE.length).toBeGreaterThan(5000)
   })
 
-  it('the reveal state says which report it is about', () => {
+  it('the answered state says which report it is about', () => {
     const VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
-    expect(VIEW).toContain('Answered, and shown theirs')
+    /* This distinguished somebody who had answered from somebody who had also pressed the reveal.
+       The reveal is gone, so there is one state left and it is whether they answered. */
+    expect(VIEW).toContain("c.answered ? 'Answered' : 'Not answered yet'")
+    expect(VIEW).not.toContain('shown theirs')
     /* The wording that named neither. */
     expect(CODE).not.toMatch(/Report reveal status \{/)
     expect(CODE).not.toMatch(/allActivated/)

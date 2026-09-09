@@ -1,9 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { Sec } from './kit'
 import { howCheckable } from './how-checkable-was-that-session'
-import { reportsApi } from '@/api/reports'
 
 /**
  * THE SHARED REPORT, AS A PARTY READS IT.
@@ -36,40 +33,15 @@ export interface SharedReportForAPartyProps {
 }
 
 export function SharedReportForAParty({
-  groundId,
+  /* `groundId` stays on the props so callers do not change; nothing in here needs it any more,
+     which is what removing the reveal took out. */
   report,
   ground,
   onOpenBoard,
   specificityBySession,
   viewerUserId,
 }: SharedReportForAPartyProps) {
-  const qc = useQueryClient()
   const navigate = useNavigate()
-  /**
-   * SHOWING YOUR REPORT TO THE OTHERS, which came across with the button that does it.
-   *
-   * It lived on the page with the other mutations while the only button calling it was here. The
-   * same split that put the solo-report share button, its modal and its mutation in three places.
-   */
-  const activateMutation = useMutation({
-    mutationFn: () => reportsApi.activate(groundId),
-    onSuccess: (res: any) => {
-      qc.invalidateQueries({ queryKey: ['report', groundId] })
-      /* The ground too: the report query is gated on `ground.report`, so refreshing only the
-         report would leave the gate shut and the new report unfetched. */
-      qc.invalidateQueries({ queryKey: ['ground', groundId] })
-      /*
-       * "REPORT REVEALED" WAS NOT TRUE FOR ANYBODY BUT THE LAST PERSON.
-       *
-       * Showing yours takes effect only when everyone has done the same, so for all but the final
-       * person this said something had happened that had not. The response already carries
-       * `allActivated`, so it can say which of the two actually occurred.
-       */
-      if (res?.allActivated) toast.success('Everyone has shown theirs. You can all read them now.')
-      else toast.success('Noted. Yours becomes visible when everyone has done the same.')
-    },
-    onError: () => toast.error('That did not go through. Nothing has changed - try again.'),
-  })
 
   /**
    * THE SESSIONS OF YOUR OWN THAT ARE FINISHED, newest first.
@@ -210,38 +182,19 @@ export function SharedReportForAParty({
               that. Two screens describing the same half-built report, one of them in prose.
             */
             null
-          ) : !report.activated ? (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', textAlign: 'center' }}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>The shared report is ready</div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
-                Each of you shows your own when you are ready. Once everyone has, you can all read them - this cannot be undone.
-              </div>
-              {/*
-                AND WHO IT IS WAITING ON.
-
-                The mechanism was explained and nobody was named, so two people sit either side of
-                this button each believing the other has stalled. Seen on a real check-in: report
-                released, both parties emailed, neither had pressed it, and nothing on the screen
-                said who the other person was or that they had been sent the same thing.
-              */}
-              {((report as any).waitingToShow ?? []).length > 0 && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 8 }}>
-                  Waiting on {((report as any).waitingToShow as string[]).join(' and ')}
-                  {(report as any).everyoneWasTold ? ' - they have been told it is ready too.' : '.'}
-                </div>
-              )}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 16, background: 'var(--gw-paper-2)', borderRadius: 8, padding: '8px 12px' }}>
-                The report shows where people agree and where they differ. It does not quote anyone.
-              </div>
-              <button
-                onClick={() => activateMutation.mutate()}
-                disabled={activateMutation.isPending}
-                style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: activateMutation.isPending ? 0.6 : 1 }}
-              >
-                {activateMutation.isPending ? 'Confirming…' : 'Show mine'}
-              </button>
-            </div>
           ) : (
+            /*
+              THE REVEAL IS GONE FROM HERE TOO.
+
+              A branch on `!report.activated` held "The shared report is ready... Each of you shows
+              your own when you are ready... this cannot be undone" over a "Show mine" button. The
+              server no longer withholds anything for it to unlock: the gate in reports.service
+              get() is removed, because the per-session read handed the same person the same
+              content one request later, and the empty payload it returned made the card beneath it
+              say "0 areas settled" about a full three-party report.
+
+              "Report updates as people check in, that's all it is."
+            */
             /*
               ONCE EVERYONE HAS SHOWN THEIRS, THIS SECTION HAS NOTHING TO DO.
 

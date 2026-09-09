@@ -61,11 +61,12 @@ describe('and the body they came out of is really gone', () => {
     expect(PARTY).not.toContain('<ReportBody')
   })
 
-  it('but still holds the reveal, which is an act rather than a reading surface', () => {
-    /* Showing yours cannot be undone. It belongs on the tab a person opens expecting the report,
-       not on a page about one session. */
-    expect(PARTY).toContain('Show mine')
-    expect(PARTY).toContain('activateMutation.mutate()')
+  it('and holds no reveal either, because there is no longer one to hold', () => {
+    /* This used to require it: "showing yours cannot be undone, it belongs on the tab a person
+       opens expecting the report". Nothing is undone and nothing was ever gated - see
+       there-is-no-reveal.spec.ts for what the button was actually doing. */
+    expect(PARTY).not.toContain('Show mine')
+    expect(PARTY).not.toContain('activateMutation')
   })
 
   it('says nothing at all while the report is still forming', () => {

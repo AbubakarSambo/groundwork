@@ -82,7 +82,9 @@ const OPERATIONS: Record<string, string[]> = {
    * instead of being joined against the roster on the page. `reportsApi.sessionReport(` is the
    * call that answers it, and the endpoint itself still exists.
    */
-  reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.activate(', 'reportsApi.sessionReport('],
+  /* `reportsApi.activate(` was here. The reveal it belonged to is deleted - see
+     there-is-no-reveal.spec.ts - so requiring a caller for it would require the button back. */
+  reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.sessionReport('],
   nudging: ['conversationApi.remind('],
   'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared(', 'getMyCheckinStatus('],
   /*
@@ -139,9 +141,10 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
      * or the next merge loses it without anybody noticing.
      */
     /* 43 until `signOff` was removed with the control that called it - a capability dropped on
-       purpose, which is the one reason this number is allowed to go down. */
+       purpose, which is the one reason this number is allowed to go down. 42 until `activate`
+       went the same way with the reveal: see there-is-no-reveal.spec.ts. */
     const total = Object.values(OPERATIONS).reduce((n, c) => n + c.length, 0)
-    expect(total).toBe(42)
+    expect(total).toBe(41)
   })
 })
 

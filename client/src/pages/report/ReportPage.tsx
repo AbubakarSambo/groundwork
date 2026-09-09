@@ -19,7 +19,6 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
-import { TheReveal } from './the-reveal-is-both-sides-at-once'
 
 type ViewTab = 'shared' | 'own'
 
@@ -894,21 +893,14 @@ export function ReportBody({
   }
 
   /*
-   * WAITING ON THEM, NOT ON EVERYBODY ELSE.
+   * THERE IS NO REVEAL. "Report updates as people check in, that's all it is."
    *
-   * `activated: false` means the report exists and this party has not agreed to the exchange yet.
-   * Without this branch the page fell through below and said the report "appears once everybody has
-   * checked in" — untrue at that point, and nothing they could act on. See
-   * the-reveal-is-both-sides-at-once.tsx.
+   * A branch here returned a whole screen instead of the report whenever the server said
+   * `activated: false`, and the server no longer says it - the gate that produced it is gone from
+   * reports.service.get(), because it withheld nothing (the per-session read handed the same
+   * person the same content one request later) and made the product tell somebody their session
+   * had produced nothing when it had produced a full three-party synthesis.
    */
-  if (report && (report as any).activated === false) {
-    return (
-      <div style={{ ...PAGE_STYLE, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <TheReveal groundId={id!} />
-      </div>
-    )
-  }
-
   if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>

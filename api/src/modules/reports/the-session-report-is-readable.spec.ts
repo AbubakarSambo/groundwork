@@ -72,21 +72,30 @@ describe('the four reads', () => {
 
   it('says all four, always', () => {
     const out = theSessionReport(base);
-    expect(out.atAGlance.map((r) => r.label)).toEqual(['Aligned?', 'Moving?', 'Stuck?', 'Solid?']);
+    /*
+     * NAMED THINGS, NOT QUESTIONS. "Aligned? 1 open" was read back off the page: the label asks a
+     * question and the value answers a different one, so the reader cannot tell whether 1 open is
+     * good. The board's four tiles had the same fault and were fixed months ago (see
+     * a-heading-over-nothing.spec.ts); this surface kept the question marks.
+     */
+    expect(out.atAGlance.map((r) => r.label)).toEqual(['Misalignment', 'Moving', 'Stuck', 'Solid']);
+    for (const r of out.atAGlance) expect(r.label).not.toContain('?');
   });
 
   it('never lets "no targets set" read as "nothing moved"', () => {
     /* The difference between a run with nothing to measure and a run that did not move. A zero
        standing for the first is read as the second, and that is a false finding. */
-    expect(read(theSessionReport(base), 'Moving?').value).toBe('no targets set');
-    expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Moving?').value).toBe('no change');
-    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Moving?').value).toBe('+14');
+    expect(read(theSessionReport(base), 'Moving').value).toBe('no set target');
+    expect(read(theSessionReport({ ...base, movedOnTargets: 0 }), 'Moving').value).toBe('target has not moved');
+    /* A bare "+14" is a number with no unit and no direction stated. What the reader needs is
+       whether the thing they agreed is happening. */
+    expect(read(theSessionReport({ ...base, movedOnTargets: 14 }), 'Moving').value).toBe('target on track');
   });
 
-  it('and does not call one account "no gaps open"', () => {
+  it('and does not call one person\'s side "none unresolved"', () => {
     /* Nothing to compare with is not agreement. */
-    expect(read(theSessionReport(base), 'Aligned?').value).toBe('nothing to compare yet');
-    expect(read(theSessionReport({ ...base, divergences: [{}, {}] }), 'Aligned?').value).toBe('2 open');
+    expect(read(theSessionReport(base), 'Misalignment').value).toBe('nothing to compare yet');
+    expect(read(theSessionReport({ ...base, divergences: [{}, {}] }), 'Misalignment').value).toBe('2 unresolved');
   });
 
   it('counts what is document-backed rather than describing it', () => {
@@ -97,8 +106,8 @@ describe('the four reads', () => {
         entry(RecordEntryType.COMMITMENT, 'From memory'),
       ],
     });
-    expect(read(out, 'Solid?').value).toBe('50% backed');
-    expect(read(theSessionReport(base), 'Solid?').value).toBe('nothing on record yet');
+    expect(read(out, 'Solid').value).toBe('50% evidence backed');
+    expect(read(theSessionReport(base), 'Solid').value).toBe('nothing on record yet');
   });
 });
 

@@ -279,17 +279,31 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * THE FOUR READS, and each one says plainly when it cannot be computed rather than showing a
    * zero. "No targets set" and "nothing moved" are different facts, and a zero that means the
    * first reads as the second.
+   *
+   * THEY WERE QUESTIONS ANSWERED BY A NUMBER, AND THAT IS NOT A READ.
+   *
+   * "Aligned? 1 open" was the one that got picked out, and all four had the same fault: a
+   * question word as the label, a bare count as the answer, and nothing saying what was open or
+   * between whom. A person reads "Aligned? 1 open" and cannot tell whether that is good.
+   *
+   * Named things now, with the count as the state of that thing: Misalignment, Moving, Stuck,
+   * Solid. The label says what is being read and the value says where it stands, which is the
+   * order somebody reads them in.
    */
   const documented = input.entries.filter((e) => !e.recallBased).length;
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
   const atAGlance: AGlanceRead[] = [
     {
-      label: 'Aligned?',
-      value: stillOpen ? `${stillOpen} open` : agreed ? 'no gaps open' : 'nothing to compare yet',
-      sub: 'differences between accounts',
+      label: 'Misalignment',
+      value: stillOpen
+        ? `${stillOpen} unresolved`
+        : agreed ? 'none unresolved' : 'nothing to compare yet',
+      sub: stillOpen
+        ? 'where what people said does not line up'
+        : agreed ? 'what people said lines up' : 'one side only so far',
     },
     {
-      label: 'Moving?',
+      label: 'Moving',
       /*
        * "NO TARGETS SET" WAS TRUE AND USELESS.
        *
@@ -307,8 +321,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
        * number has been said, nothing is tracking it, and one person can fix that in a minute.
        */
       value: input.movedOnTargets == null
-        ? aNumberWasSaid(input) ? 'a number was said' : 'no targets set'
-        : input.movedOnTargets > 0 ? `+${input.movedOnTargets}` : 'no change',
+        ? aNumberWasSaid(input) ? 'a number was said' : 'no set target'
+        : input.movedOnTargets > 0 ? 'target on track' : 'target has not moved',
       sub: input.movedOnTargets == null
         ? aNumberWasSaid(input)
           ? 'somebody named a number and nothing is tracking it'
@@ -316,14 +330,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
         : 'across targets this session',
     },
     {
-      label: 'Stuck?',
-      value: input.blocked ? `${input.blocked} blocked` : 'clear',
-      sub: input.blocked ? 'waiting on somebody else' : 'nothing recorded as blocked',
+      label: 'Stuck',
+      value: input.blocked ? `${input.blocked} blocked` : 'no blockers noted',
+      sub: input.blocked ? 'waiting on somebody else' : 'nobody said they were held up',
     },
     {
-      label: 'Solid?',
-      value: backedPct == null ? 'nothing on record yet' : `${backedPct}% backed`,
-      sub: backedPct == null ? 'no answers to read' : 'anchored to a document rather than recalled',
+      label: 'Solid',
+      value: backedPct == null ? 'nothing on record yet' : `${backedPct}% evidence backed`,
+      sub: backedPct == null ? 'no answers to read' : 'check-ins anchored to a document rather than recalled',
     },
   ];
 
@@ -455,12 +469,14 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
 function howClear(level: string | null, recall: string | null): string {
   const clarity =
     level === 'HIGH' || level === 'high'
-      ? 'The accounts were specific: dates, numbers and named work rather than impressions.'
+      /* "Accounts" is the login word to a reader. What is meant is what people said, so it says
+         that. Three visible sentences at the foot of every shared report. */
+      ? 'What people said was specific: dates, numbers and named work rather than impressions.'
       : level === 'LOW' || level === 'low'
-        ? 'The accounts stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
+        ? 'What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
         : level
-          ? 'The accounts were specific in places and general in others.'
-          : 'How specific the accounts were has not been read for this session yet.';
+          ? 'What people said was specific in places and general in others.'
+          : 'How specific this session was has not been read yet.';
   const memory =
     recall === 'LOW' || recall === 'low'
       ? ' Much of it was recalled rather than checked against anything.'

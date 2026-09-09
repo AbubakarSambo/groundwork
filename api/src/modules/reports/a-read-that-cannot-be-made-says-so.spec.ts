@@ -90,9 +90,9 @@ describe('when the record does thread', () => {
  * the thing somebody is measured against is the inference this product refuses everywhere else.
  * What changed is that the tile names the gap instead of reporting an empty table.
  */
-describe('the Moving? read when a number has been said but nothing tracks it', () => {
+describe('the Moving read when a number has been said but nothing tracks it', () => {
   const glance = (entries: SessionReportInputs['entries']) =>
-    theSessionReport(base({ entries, movedOnTargets: null })).atAGlance.find((g) => g.label === 'Moving?')!;
+    theSessionReport(base({ entries, movedOnTargets: null })).atAGlance.find((g) => g.label === 'Moving')!;
 
   it('names the gap when somebody put a number on what they are aiming at', () => {
     const g = glance([{ type: RecordEntryType.SUCCESS_DEFINITION, text: 'Each of them at eight closed deals.', who: 'Tunde', recallBased: true, threadKey: null }]);
@@ -105,21 +105,21 @@ describe('the Moving? read when a number has been said but nothing tracks it', (
       .toBe('a number was said');
   });
 
-  it('and still says no targets set when nobody has named one', () => {
+  it('and still says no set target when nobody has named one', () => {
     const g = glance([{ type: RecordEntryType.SUCCESS_DEFINITION, text: 'Margaret running her own pipeline.', who: 'T', recallBased: true, threadKey: null }]);
-    expect(g.value).toBe('no targets set');
+    expect(g.value).toBe('no set target');
   });
 
   /** A worry with a number in it is not an aim. Only a stated aim counts. */
   it('and does not count a number in something that is not an aim', () => {
     expect(glance([{ type: RecordEntryType.WORRY, text: 'We are 3 weeks behind.', who: 'T', recallBased: true, threadKey: null }]).value)
-      .toBe('no targets set');
+      .toBe('no set target');
   });
 
   /** Where a target genuinely exists, the tile reports movement as it always did. */
   it('and steps aside once there is a real target', () => {
-    const g = theSessionReport(base({ movedOnTargets: 2, entries: [] })).atAGlance.find((x) => x.label === 'Moving?')!;
-    expect(g.value).toBe('+2');
+    const g = theSessionReport(base({ movedOnTargets: 2, entries: [] })).atAGlance.find((x) => x.label === 'Moving')!;
+    expect(g.value).toBe('target on track');
   });
 });
 

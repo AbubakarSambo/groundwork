@@ -72,6 +72,22 @@ const WHAT_A_PARTICIPANT_READS = [
  * what this stops, and coming back is what kept happening.
  */
 const THE_WRONG_SENSE = [
+  /*
+   * FOUND BY READING THE PAGE, NOT BY THIS FILE. Two survivors on the session report:
+   * "How complete your account is" as a section heading over somebody's own side, and
+   * "On record: your account." under it. Neither phrase was in this list, which is the known
+   * limit of a list - it stops the word coming BACK and cannot catch a new way of saying it.
+   * Both are here now, with a third found while adding them: "Your account is on record" at the
+   * end of the entry flow.
+   *
+   * NARROW ON PURPOSE. The first draft matched "your account is", which caught "your account is
+   * set up", "your account is created" and "your account is live" - all the LOGIN sense, all
+   * correct, all staying. The rule is the sense and not the string, so the phrase has to be the
+   * one that carries the wrong sense and no wider.
+   */
+  'account is on record',
+  'On record: your account',
+  "everybody's accounts",
   'their own account',
   'your own account',
   'your account and theirs',

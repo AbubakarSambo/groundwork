@@ -114,7 +114,8 @@ export function TheReportYouSawAtTheEnd({
 
         {/* How complete your account is (one-sided until others check in) */}
         <div style={{ marginBottom: 16 }}>
-          <Sec title="How complete your account is" />
+          {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
+          <Sec title="How complete your side of this is" />
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--gw-text)' }}>{STATUS_DISPLAY[report.alignmentStatus] ?? report.alignmentStatus}</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{report.alignmentBasis}</div>
           <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>

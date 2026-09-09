@@ -31,10 +31,30 @@ describe('the report that opens is the report they read', () => {
     expect(PAGE).toContain('<TheReportYouSawAtTheEnd')
   })
 
-  it('falls back to the card a signed-in session actually ended on, rather than an apology', () => {
-    /* Only the entry flow builds the full report. A session run inside the app ends on
-       SessionReportCard, so that is what "the report you saw" means for that person. */
-    expect(PAGE).toContain('<SessionReportCard')
+  it('falls back to what that session privately produced, rather than to a second shared report', () => {
+    /*
+     * IT USED TO FALL BACK TO `SessionReportCard`, on the grounds that a signed-in session ends on
+     * that card so it is "the report you saw". True at the end of a session, where the card is the
+     * only thing on the screen. False here, because this page also carries the shared report a few
+     * lines down - and once a round closes the card's own state IS the cross reference, so the top
+     * of the page drew "WHERE THIS STANDS, ACROSS EVERYONE" and the bottom drew it again.
+     *
+     * Read back on the rendered page: "there's my report which is not even a shared report and
+     * then the whole report, I have no fucking clue what is happening."
+     *
+     * So the private half falls back to the one private thing the session produced - the solo
+     * record written for this person when their own check-in completed - and the shared half stays
+     * the only place the cross reference appears.
+     */
+    expect(PAGE).not.toContain('<SessionReportCard')
+    expect(PAGE).toContain('soloArtifact')
+    expect(PAGE).toContain('<TheSessionsReport')
+  })
+
+  it('and each half says whose it is', () => {
+    /* Two reports on one page is fine. Two reports on one page both called "report" is not. */
+    expect(PAGE).toContain('Your own report')
+    expect(PAGE).toContain('The shared report')
   })
 
   it('can be corrected from the page that shows it', () => {

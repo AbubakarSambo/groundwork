@@ -1,0 +1,61 @@
+/**
+ * HOW SPECIFIC THIS SESSION WAS, AS A BAR, ON YOUR OWN HALF OF THE PAGE.
+ *
+ * "The specificity bar etc was good, simple and visual", asked for twice and not on this page.
+ *
+ * IT DELIBERATELY DOES NOT GO ON THE SHARED HALF. The shared report already carries the same read
+ * as a muted sentence at its foot, and the comment above it argues the case: given equal billing
+ * with the substance, in a document other people read, a level reads as a mark out of five for a
+ * person, and this product does not mark people.
+ *
+ * None of that objection survives on your own half. Here it is one person looking at their own
+ * session, nobody else can see it, and the thing it answers is the only question worth asking
+ * about your own record: is there enough in this for it to be worth anything. So it is a bar
+ * here and a sentence there, on purpose, and the words underneath say what would move it.
+ */
+const STEPS = ['General', 'Some of both', 'Specific'] as const
+
+/** Where a level sits on the bar. Unread is not zero, and is drawn as nothing rather than as low. */
+export function whereItSits(level: string | null | undefined): number | null {
+  const l = (level ?? '').toLowerCase()
+  if (l === 'low') return 0
+  if (l === 'high') return 2
+  return l ? 1 : null
+}
+
+export function HowSpecificThisSessionWas({ level, recall }: { level?: string | null; recall?: string | null }) {
+  const at = whereItSits(level)
+  if (at == null) return null
+  const anchored = (recall ?? '').toLowerCase() === 'high'
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+        How specific this session was
+      </div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {STEPS.map((s, i) => (
+          <div
+            key={s}
+            style={{
+              flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase',
+              padding: '5px 2px', borderRadius: 5, fontWeight: 700,
+              background: i <= at ? 'var(--gw-navy)' : 'var(--gw-bg)',
+              color: i <= at ? 'white' : 'var(--gw-muted)',
+            }}
+          >
+            {s}
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
+        {/* What would move it, rather than what it is. A bar with no next step is a grade. */}
+        {at === 2
+          ? 'Dates, numbers and named work, rather than impressions.'
+          : at === 1
+            ? 'Specific in places. One date, one number or one document in the general parts would fill it.'
+            : 'Mostly general. A date, a number, or what you were waiting on and from whom would fill it.'}
+        {anchored ? ' Most of it was anchored to something written down.' : ''}
+      </div>
+    </div>
+  )
+}

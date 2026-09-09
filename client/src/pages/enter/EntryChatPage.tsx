@@ -3030,7 +3030,7 @@ export function EntryChatPage() {
             {closed && !showSave ? (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{skippedCheckin ? 'Ready to hand off.' : 'Your account is on record.'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{skippedCheckin ? 'Ready to hand off.' : 'What you said is on record.'}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'Your lead runs the first check-in; you\'ll see the check-in as its coordinator.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
                 </div>
                 <button
@@ -3113,7 +3113,7 @@ export function EntryChatPage() {
           {/* Report header */}
           <div style={{ background: 'var(--gw-dark)', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New check-in, run by your lead' : 'Session 1 · your private report'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your org account.' : 'Your account is on record.')}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your org account.' : 'What you said is on record.')}</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
@@ -3210,7 +3210,7 @@ export function EntryChatPage() {
                 onRecordLine={
                   uploadedDoc
                     ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
-                    : 'On record: your account. No documents uploaded yet.'
+                    : 'On record: what you said this session. No documents uploaded yet.'
                 }
                 renderAdd={(key, label) =>
                   queuedFromSuggestion.has(key) ? (

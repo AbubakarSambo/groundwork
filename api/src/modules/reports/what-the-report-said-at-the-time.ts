@@ -69,7 +69,7 @@ function whatChanged(now: RoundPicture, kept: Kept): string {
   const moved: string[] = [];
   if (now.sharedPicture.trim() !== kept.sharedPicture.trim()) moved.push('the shared picture');
   if (JSON.stringify(now.agreements ?? null) !== JSON.stringify(kept.agreements ?? null)) moved.push('what was agreed');
-  if (JSON.stringify(now.divergences ?? null) !== JSON.stringify(kept.divergences ?? null)) moved.push('where the accounts differed');
+  if (JSON.stringify(now.divergences ?? null) !== JSON.stringify(kept.divergences ?? null)) moved.push('where what people said differed');
   if (now.centralQuestion.trim() !== kept.centralQuestion.trim()) moved.push('the question it left open');
 
   const list = moved.length > 1

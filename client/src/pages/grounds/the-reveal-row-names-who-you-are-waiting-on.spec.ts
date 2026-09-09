@@ -33,10 +33,12 @@ describe('who the report is counting', () => {
     expect(strip(VIEW)).toContain('{c.isYou ? `${c.who} (you)` : c.who}')
   })
 
-  it('distinguishes not answered, answered, and shown theirs', () => {
+  it('says whether each person has answered, which is the only state left', () => {
     const code = strip(VIEW)
     expect(code).toContain('Not answered yet')
-    expect(code).toContain('Answered, and shown theirs')
+    /* Was 'Answered, and shown theirs'. That second state existed only to report who had pressed
+       the reveal, which is deleted - see there-is-no-reveal.spec.ts. */
+    expect(code).toContain("c.answered ? 'Answered' : 'Not answered yet'")
   })
 
   it('takes the label from the report rather than joining a roster on the page', () => {

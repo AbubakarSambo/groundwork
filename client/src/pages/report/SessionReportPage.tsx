@@ -4,11 +4,12 @@ import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
-import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
+import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
+import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -118,10 +119,16 @@ export default function SessionReportPage() {
       <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
         {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
       </div>
+      {/*
+        THE PAGE HAS TWO REPORTS ON IT AND THIS LINE DESCRIBED ONE OF THEM.
+        "Nobody else can see it" is true of your own half and false of the shared half directly
+        below it, so read as the page's subtitle it was a privacy claim over a shared document. It
+        says what the page holds; each half now carries its own line about who reads it.
+      */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
         {data?.finishedAt
-          ? `The report you read when you finished, on ${new Date(data.finishedAt).toLocaleDateString()}. Nobody else can see it.`
-          : 'The report you read when you finished. Nobody else can see it.'}
+          ? `Everything about this session, on ${new Date(data.finishedAt).toLocaleDateString()}. Yours first, then everybody's.`
+          : "Everything about this session. Yours first, then everybody's."}
       </div>
 
       {isLoading && (
@@ -165,20 +172,73 @@ export default function SessionReportPage() {
         on `SessionReportCard`, under the transcript. So when there is no kept report, this shows
         the card - which is what that person actually read - rather than an apology.
       */}
-      {!isLoading && !isError && !data?.report && data?.groundId && data?.sessionNumber && (
-        <SessionReportCard
-          checkInId={checkInId!}
-          groundId={data.groundId}
-          sessionNumber={data.sessionNumber}
-          isInitiator={!!data.isInitiator}
-        />
+      {/*
+        SAYING WHOSE THIS ONE IS, BEFORE IT STARTS.
+        Both halves of this page were headed with the word report and neither said whose, so the
+        reader could not tell where one ended and the other began. This one is yours.
+      */}
+      {!isLoading && !isError && (
+        <>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>Your own report</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
+            What you said this session and what it means for you. Nobody else can see this half.
+          </div>
+        </>
+      )}
+
+      {(groundReport as any)?.postReportGuide && (
+        <WhatToWalkInWith guide={(groundReport as any).postReportGuide} />
+      )}
+      {/* Simple and visual, and only on this half. See the component's own note for why. */}
+      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} recall={shape?.howClearThisWas?.recall} />
+
+      {/*
+        THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
+
+        `SessionReportCard` draws whatever state the ground's report is in, and once a round closes
+        that state is the cross reference. So on this page, under a band saying "My report", a
+        participant read "WHERE THIS STANDS, ACROSS EVERYONE" and a summary of all three people -
+        and then read the same thing again forty lines down under "The shared report". "I have no
+        fucking clue what is happening" is the correct response to that page.
+
+        The card is right where it is used at the end of a session, which is a screen with only one
+        report on it. Here there are two, so the private half draws the one private thing this
+        session produced: the solo record, written for this person alone when their own check-in
+        completed. Never the cross reference, which is what the half below is for.
+      */}
+      {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-paper)', padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+            {(groundReport as any).soloArtifact.summary}
+          </div>
+          {(groundReport as any).soloArtifact.whatToCarry && (
+            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', marginTop: 8, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
+              <b style={{ color: 'var(--gw-text)' }}>What to carry into the next one. </b>
+              {(groundReport as any).soloArtifact.whatToCarry}
+            </div>
+          )}
+        </div>
       )}
 
       {data?.report && (
         <>
+          {/*
+            THE COACHING NOTE, ON THE HALF OF THE PAGE THAT IS ACTUALLY YOURS.
+
+            "My report can have a coaching note." It already exists and is already paid for:
+            `postReportGuide` is three lines written for one person at each release - a way to
+            open, a question worth carrying, and something the other side said worth taking
+            seriously - sanitised so it can never name or quote anybody. It was rendered on My
+            record and on the shared report page and not here, which is the page somebody lands on
+            straight after finishing.
+
+            It goes above the record rather than below it, because it is the part you act on and
+            the record is the part you refer back to.
+          */}
           <TheReportYouSawAtTheEnd
             report={data.report}
-            onRecordLine="On record: your account."
+            /* "Account" is the login word. Here it meant what this person said, so it says that. */
+            onRecordLine="On record: what you said this session."
             stillNeeded={
               /*
                * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
@@ -266,9 +326,18 @@ export default function SessionReportPage() {
       */}
       {data?.groundId && data?.sessionNumber && (
         <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What everyone said, for this session</div>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>The shared report</div>
+          {/*
+            "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.
+            The section below is right and the line was wrong. What the product actually protects,
+            and has said carefully for a long time in what-happens-to-what-you-write.ts, is the
+            other half: your own words about your own work can appear here, what you said about
+            somebody else never does.
+          */}
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            What everybody said, together. It never quotes anyone.
+            Everybody's side of this session, together, and it updates as people check in. What
+            each person said about their own work can appear here. What anyone said about somebody
+            else never does.
           </div>
           <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
         </div>

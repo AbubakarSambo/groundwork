@@ -2934,59 +2934,34 @@ happened, and what is in the way.`;
       };
     }
 
-    // Per-party reveal gate: each participant must activate before seeing
-    // content, but only their own activation is checked here - this is not
-    // mutual. The initiator is exempt - they released the report and can
-    // always read it.
-    if (participant && !isInitiator) {
-      const activation = await this.prisma.reportActivation.findUnique({
-        where: { groundId_participantId: { groundId, participantId: participant.id } },
-      });
-      if (!activation || activation.status !== ReportActivationStatus.ACTIVATED) {
-        /*
-         * AND WHO IT IS WAITING ON, WHICH THE STUB DID NOT SAY.
-         *
-         * The report releases, everybody is emailed "your shared record is ready", everybody clicks
-         * through and meets a button. The screen explains the mechanism - each of you shows your
-         * own - and names nobody, so two people can sit either side of it each believing the other
-         * has stalled. Read on a real new-hire check-in: released, both notified, neither activated,
-         * and nothing anywhere saying who the other party was or that they had been told the same.
-         *
-         * Names only where this reader is entitled to them, through the same resolver as
-         * everything else here.
-         */
-        const labels = labelsForParties(ground.participants as any);
-        const nameByLabel = namesVisibleTo(participant?.id ?? null, ground.participants as any);
-        const activationsNow = await this.prisma.reportActivation.findMany({
-          where: { groundId },
-          select: { participantId: true, status: true },
-        });
-        const shownIds = new Set(
-          activationsNow.filter((a) => a.status === ReportActivationStatus.ACTIVATED).map((a) => a.participantId),
-        );
-        const stillToShow = ground.participants
-          .filter((x: any) => !x.managingOnly && x.id !== participant?.id && !shownIds.has(x.id))
-          .map((x: any, i: number) => {
-            const label = labels.get(x.id);
-            return (label ? nameByLabel.get(label) : undefined) ?? label ?? `Party ${i + 1}`;
-          });
-        return {
-          id: ground.report.id,
-          groundId,
-          /* Named, and the fact they were told too - so nobody chases somebody who is waiting on
-             them for the same reason. */
-          waitingToShow: stillToShow,
-          everyoneWasTold: true,
-          createdAt: ground.report.createdAt,
-          /* When it was last WRITTEN. The page compares this against the newest completed check-in
-             to decide whether somebody is reading a stale version; against `createdAt` that was
-             permanently true after any regeneration. */
-          updatedAt: (ground.report as any).updatedAt,
-          releasedAt: ground.report.releasedAt,
-          activated: false,
-        };
-      }
-    }
+    /**
+     * THERE IS NO REVEAL. THE REPORT UPDATES AS PEOPLE CHECK IN, AND THAT IS ALL IT IS.
+     *
+     * What stood here was a per-party gate: a released report was withheld from every participant
+     * until they pressed a button, and the lead was exempt. Walked as a real participant and it
+     * was theatre on both sides of the screen.
+     *
+     * It withheld nothing. `sessionReport` - the per-session read the report page actually makes -
+     * walls on `released || viewerIsLead` and had never heard of activation, so the same person
+     * blocked here was handed the whole thing, every party's own words included, one request
+     * later. The button sat above the record it claimed to be protecting, saying "this cannot be
+     * undone" about a door that was already open.
+     *
+     * And it made the product lie about itself. `get()` returned `{ activated: false }` with no
+     * content, so the card that renders it printed "Not enough has been said yet to draw one.
+     * Too little to say. 0 areas settled." to somebody whose session had produced a full
+     * three-party synthesis. The one screen that tells a participant what their ten minutes were
+     * worth told them it was worth nothing.
+     *
+     * The independence this product rests on is protected in the place it actually lives: nobody
+     * reads a forming picture before giving their own account - see the branch above, which is
+     * about having ANSWERED, not about having pressed anything. Once a report is released it is
+     * released, and it shows.
+     *
+     * The `ReportActivation` rows and `activate()` are left where they are rather than dropped in
+     * the same change: nothing reads them to decide what anybody may see any more, and removing a
+     * table is a migration that has no business riding along with a fix to what people see.
+     */
 
     const engagement = ground.report.engagement && typeof ground.report.engagement === 'object'
       ? (ground.report.engagement as Record<string, any>)
