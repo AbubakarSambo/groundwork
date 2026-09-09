@@ -3650,6 +3650,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const differs = (result?.readsDifferently ?? []).filter((d) => Number.isInteger(d.line) && Number.isInteger(d.document) && entries[d.line] && docs[d.document] && d.says?.trim());
     for (const d of differs) {
+      this.logger.log(`anchoring-decision kind=reads-differently participant=${participantId} line=${JSON.stringify(entries[d.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[d.document].fileName)} says=${JSON.stringify(d.says.trim().slice(0, 200))}`);
       await this.prisma.recordEntry
         .update({ where: { id: entries[d.line].id }, data: { documentSays: d.says.trim().slice(0, 300), documentSaysId: docs[d.document].id } })
         .catch(() => undefined);
