@@ -360,7 +360,7 @@ export class BoardService {
       // when it disagrees with the lead's number, and let them accept it in one
       // click. The board never silently overwrites what a person set.
       const objectiveEvidence = await this.prisma.recordEntry.findMany({
-        where: { participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION'] as any } },
         select: { text: true },
       });
       const suggestFor = (name: string): number | null => {
@@ -452,7 +452,7 @@ export class BoardService {
 
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
-        where: { participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT'] } },
+        where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT'] } },
         select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       });
@@ -747,7 +747,7 @@ export class BoardService {
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { participant: { groundId: ground.id } },
+        where: { disputedAt: null, participant: { groundId: ground.id } },
         select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
       }),
       this.prisma.workMention.findMany({

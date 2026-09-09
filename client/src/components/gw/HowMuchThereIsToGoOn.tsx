@@ -21,6 +21,7 @@ export interface ConfidenceRead {
   band: 'thin' | 'partial' | 'solid'
   saying: string
   reasons: string[]
+  note?: string | null
 }
 
 const BAND_LABEL: Record<ConfidenceRead['band'], string> = {
@@ -63,6 +64,9 @@ export function HowMuchThereIsToGoOn({ read }: { read: ConfidenceRead }) {
         <ul style={{ margin: '10px 0 0', paddingLeft: 17, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7, maxWidth: '68ch' }}>
           {read.reasons.map((r, i) => <li key={i}>{r}</li>)}
         </ul>
+      )}
+      {read.note && (
+        <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, maxWidth: '68ch' }}>{read.note}</p>
       )}
     </section>
   )

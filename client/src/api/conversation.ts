@@ -125,4 +125,8 @@ export const conversationApi = {
     // Without this the blob is held for the life of the document.
     URL.revokeObjectURL(url)
   },
+
+  /** "This is not what I said." Owner-scoped. Nothing is deleted; the row stops counting. */
+  disputeEntry: (checkInId: string, entryId: string) =>
+    apiClient.post<{ id: string; disputedAt: string }>(`/check-ins/${checkInId}/entries/${entryId}/dispute`).then(r => r.data),
 }

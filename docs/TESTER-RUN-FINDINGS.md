@@ -471,3 +471,43 @@ all along, in `what-happens-to-what-you-write.ts`, calibrated line by line and c
 "the part we are not going to dress up": your own words about your own work can appear in the
 report, what you say about somebody else never does, and it never says who said what about whom.
 Both doors now say that, and so do the four claims below them.
+
+---
+
+# Where every finding stands, 9 September
+
+| # | Finding | Status |
+| --- | --- | --- |
+| 1 | The engine gave a verdict on somebody who had not answered | Open. The check-in conversation is model-written free text by design, and no structural strip can tell a verdict from a summary without over-stripping. The prompt rule against introducing the other side is sharper; the shared report no longer carries model prose that could repeat it. |
+| 2 | The report attributed a statement to somebody who never used the product | Reframed. It was the lead's own report restating the lead's account as Zainab's statement. The stored synthesis is now checked against the corpus for invented names and numbers, and the session page's picture is drafted from engines rather than written over the transcript. |
+| 3 | "Everyone receives the shared report at the same time" | Withdrawn. True: release is one atomic stamp. |
+| 4, 5 | Two readings of the same session, six lines apart | Fixed. One meter per person on the private half; the five-rung ladder yields to the engine's specificity read wherever both exist. |
+| 6 | Enter does not send in the entry chat | Withdrawn. My tool. |
+| 7 | "You said you are one of the people involved" | Fixed. It was extracted from their text; the line now says so. |
+| 8 | "Account" in three headings | Fixed, and the guard's phrase list now holds the three that slipped it. |
+| 9 | A setting reported unset one screen after being asked | Already fixed before this pass; extraction sets the chosen flag. |
+| 10 | "Settled", with one person in | Fixed earlier ("Clear on your side"). |
+| 11 | "Want take the on-call escalations off me" | Fixed. Label is "Aim", value is capitalised. |
+| 12 | The test-build banner is not in the brief | Fixed in the brief, with the sign-up order and the 23-cards-versus-22-rows explanation. |
+| 13, 18, 31, 34 | The false privacy promises and the contradictory release lines | Fixed. Both doors say what the four claims say; the reveal is gone everywhere. |
+| 14 | The participant read the lead's account before release | Reframed and fixed as a label: the data was right for the state; the line above it was wrong. |
+| 15 | The report page crashed with two people in | Fixed, spec bites. |
+| 16, 35 | Adding a person rewinds the session counter | Fixed as an explanation of a correct rule. |
+| 17 | A typed address at Save & invite was dropped | Fixed. Save drains the open field; a bad address says so. |
+| 19 | A second admin's home named after somebody else | Fixed. A rollout step to name the workspace while it is still the fallback. |
+| 20 | Enter does not send in the participant check-in | Withdrawn. My tool. |
+| 21 | The private report headed as if it covered everyone | Fixed by the page rebuild. |
+| 22 | "She" guessed from a name | Fixed. Prompt rule plus the attribution rule that was already being broken. |
+| 23 | Sessions tab says two opposite things | Fixed. The second line names its subject; the bare numerals have a label. |
+| 24, 27 | Somebody from one check-in appears as a full member | Fixed as disclosure: the Setup panel says what actually happens, and the People page marks anybody who came in through a check-in. The gate was never broken. |
+| 25 | Unlabelled fields | Fixed on the two screens where it was true; withdrawn for the third. |
+| 26 | The outside-organisation gate | Not broken. The panel described the rule from the one place it is exempt; it now says so. |
+| 28 | Cadence hidden, no dates | Fixed. The end-of-session block asks about whatever is unset, including start date and timeline. |
+| 29 | "Correct it" looked like it did nothing | Fixed. The framing was written and nested where it could not fire. |
+| 30 | An empty report after a specific session | Fixed. The activation gate produced the empty payload; the gate is gone. |
+| 32 | A reply lost its middle on screen | Root cause found and fixed: the stream skipped every part flagged as a thought, and a thinking model interleaves them with the answer. Thoughts are skipped only until the answer begins. Spec pins it. |
+| 33 | An outsider was asked the hire's question, then the lead's | Fixed. For anyone who is not the lead in a starting scenario, the product writes the first line itself and asks who they are in this; the pack has a block for the answer that is not "the hire". |
+
+Also done in this pass, from the audit rather than the runs: the phrasing layer now words the coaching note, the probe list, the assembler's own lines, the round history and the board's reason lines, with the assistant's guard on every line and the draft shipping on refusal; the role map decides the coaching and `detectedFunction` decides the map, degrading to stage-only guidance below the confidence threshold; surfaced patterns are a section on the shared report and no longer a suggestion to the model; the picture and the conversation question are drafted from the engines and worded by the model, and are empty rather than model-written when there is no engine basis; the tiles say whose reading they count; a person can mark a line taken from what they said as not what they said, after which it counts toward nothing, and the confidence read says its inputs are extracted lines.
+
+Not done: the stored synthesis picture on the ground report and board is guarded but still model-written over the corpus; the invite email has never been sent locally; a cohort of strangers and the broadcast link's full path are untested; the tester brief's PDFs are not regenerated from the corrected HTML.

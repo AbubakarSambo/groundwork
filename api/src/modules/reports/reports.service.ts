@@ -395,7 +395,7 @@ export class ReportsService {
 
       const [rows, docs, closing] = await Promise.all([
         this.prisma.recordEntry.findMany({
-          where: { participant: { groundId } },
+          where: { disputedAt: null, participant: { groundId } },
           select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
         }),
         this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } }),
@@ -655,7 +655,7 @@ export class ReportsService {
       for (const pid of acceptedIds) {
         const [entries, sessions, docs] = await Promise.all([
           this.prisma.recordEntry.findMany({
-            where: { participantId: pid, checkInId: { not: null } },
+            where: { disputedAt: null, participantId: pid, checkInId: { not: null } },
             select: { type: true, recallBased: true, dimensionThreadKey: true, checkIn: { select: { sessionNumber: true } } },
           }),
           this.prisma.checkIn.findMany({
@@ -706,7 +706,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const labelById = labelsForParties(parties as any);
 
     const records = await this.prisma.recordEntry.findMany({
-      where: { participant: { groundId } },
+      where: { disputedAt: null, participant: { groundId } },
       include: {
         participant: { select: { id: true } },
         checkIn: { select: { sessionNumber: true } },
@@ -1263,7 +1263,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       parties.map(async (p) => {
         const [sessions, allEntries, documentsAttached] = await Promise.all([
           this.prisma.checkIn.count({ where: { participantId: p.id, status: CheckInStatus.COMPLETED } }),
-          this.prisma.recordEntry.findMany({ where: { participantId: p.id }, select: { text: true } }),
+          this.prisma.recordEntry.findMany({ where: { disputedAt: null, participantId: p.id }, select: { text: true } }),
           this.prisma.groundDocument.count({ where: { groundId, participantId: p.id } }),
         ]);
         const recordEntries = allEntries.length;
@@ -1318,7 +1318,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     // difficultyDisclosures: true if any record entry for this ground contains a difficulty keyword.
     const allGroundTexts = await this.prisma.recordEntry.findMany({
-      where: { participant: { groundId } },
+      where: { disputedAt: null, participant: { groundId } },
       select: { text: true, evidenceType: true },
     });
     const lowerTexts = allGroundTexts.map((e) => e.text.toLowerCase());
@@ -1510,9 +1510,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const [groundDocsAll, annotatedEntries, tensionEntries] = await Promise.all([
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { id: true } }),
-      this.prisma.recordEntry.findMany({ where: { participant: { groundId }, recallBased: false }, select: { id: true } }),
+      this.prisma.recordEntry.findMany({ where: { disputedAt: null, participant: { groundId }, recallBased: false }, select: { id: true } }),
       this.prisma.recordEntry.findMany({
-        where: { participant: { groundId }, recallBased: false, type: { in: ['TENSION', 'WORRY'] } },
+        where: { disputedAt: null, participant: { groundId }, recallBased: false, type: { in: ['TENSION', 'WORRY'] } },
         select: { text: true, participant: { select: { id: true } } },
       }),
     ]);
@@ -1876,7 +1876,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { participantId: { in: readableParticipantIds } },
+        where: { disputedAt: null, participantId: { in: readableParticipantIds } },
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
       }),
@@ -1962,12 +1962,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
-        where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
+        where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
         select: { type: true, text: true, recallBased: true, dimensionThreadKey: true, participantId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
-          where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
+          where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
           select: { type: true, text: true, dimensionThreadKey: true },
         })
         : Promise.resolve([]),
@@ -2185,7 +2185,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * the report.
      */
     const everyEntrySoFar = await this.prisma.recordEntry.findMany({
-      where: { participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
+      where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: { lte: sessionNumber } } },
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
     });
@@ -2510,7 +2510,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const [anchored, deliveries, records] = await Promise.all([
       /* Entries anchored to a document rather than recalled - the model already records which. */
       this.prisma.recordEntry.findMany({
-        where: { participant: { groundId }, recallBased: false },
+        where: { disputedAt: null, participant: { groundId }, recallBased: false },
         select: { participantId: true },
       }),
       /* Somebody's recorded progress against a specific objective, with evidence named. */
@@ -2520,7 +2520,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }),
       /* Everybody's own entries, so "somebody else said something too" can be answered per party. */
       this.prisma.recordEntry.findMany({
-        where: { participant: { groundId } },
+        where: { disputedAt: null, participant: { groundId } },
         select: { participantId: true },
       }),
     ]);
@@ -2775,7 +2775,7 @@ happened, and what is in the way.`;
     if (!initiatorParticipant) return;
 
     const entries = await this.prisma.recordEntry.findMany({
-      where: { participantId: initiatorParticipant.id },
+      where: { disputedAt: null, participantId: initiatorParticipant.id },
       select: { type: true, text: true },
       orderBy: { createdAt: 'asc' },
       take: 30,
@@ -3115,7 +3115,7 @@ happened, and what is in the way.`;
     const start = <T,>(f: () => Promise<T>): Promise<T> => Promise.resolve().then(f);
     const [rows, docs, done] = await Promise.all([
       start(() => this.prisma.recordEntry.findMany({
-        where: { participant: { groundId } },
+        where: { disputedAt: null, participant: { groundId } },
         select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
       })),
       start(() => this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } })),
@@ -3146,7 +3146,7 @@ happened, and what is in the way.`;
         },
       }),
       this.prisma.recordEntry.findMany({
-        where: { participant: { groundId } },
+        where: { disputedAt: null, participant: { groundId } },
         select: { participantId: true, type: true, text: true, recallBased: true },
       }),
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true } }),
@@ -3624,6 +3624,29 @@ happened, and what is in the way.`;
       activated: true,
       postReportGuide,
       coaching,
+      /*
+       * THE LINES TAKEN FROM WHAT YOU SAID, AS ROWS, WITH THE PRESS THAT DISPUTES ONE.
+       *
+       * The person had never seen these as rows. They saw the text, on the shared report, under
+       * their name, with nothing saying it was extracted rather than typed. This is theirs alone, on
+       * their own half, labelled as what it is. Disputed rows are returned too, so the page can show
+       * the dispute; every read that COUNTS rows filters them out.
+       */
+      myRows: participant
+        ? await Promise.resolve()
+            /* Started inside a promise, so a client without this table rejects instead of throwing
+               synchronously while the object is being built. Same shape as myOwnSoftSpots. */
+            .then(() => this.prisma.recordEntry.findMany({
+              where: { participantId: participant.id },
+              orderBy: [{ createdAt: 'asc' }],
+              select: { id: true, type: true, text: true, disputedAt: true, checkIn: { select: { id: true, sessionNumber: true } } },
+            }))
+            .then((rows) => rows.map((r) => ({
+              id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
+              checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
+            })))
+            .catch(() => [])
+        : [],
       /* The reader's own thin spots, with the fix for each. Never anybody else's. */
       mySoftSpots: participant
         ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
@@ -3857,7 +3880,7 @@ happened, and what is in the way.`;
       participantIds.map(async (participantId) => {
         try {
           const entries = await this.prisma.recordEntry.findMany({
-            where: { participantId },
+            where: { disputedAt: null, participantId },
             orderBy: { createdAt: 'asc' },
             select: { type: true, text: true },
           });

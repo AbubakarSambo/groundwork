@@ -9,6 +9,7 @@ import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
+import { WhatWasTakenFromWhatYouSaid } from '@/components/gw/WhatWasTakenFromWhatYouSaid'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
@@ -327,6 +328,10 @@ export default function SessionReportPage() {
         </>
       )}
 
+          {/* Your own rows, before the coaching that is built from them. */}
+          {data?.groundId && data?.sessionNumber && (
+            <WhatWasTakenFromWhatYouSaid rows={(groundReport as any)?.myRows} groundId={data.groundId} sessionNumber={data.sessionNumber} />
+          )}
           {/*
             5. THE COACHING BOX, LAST IN THE PRIVATE HALF.
 

@@ -4423,6 +4423,34 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * "THIS IS NOT WHAT I SAID." THE ONE PRESS THAT MAKES THE EXTRACTION WALL VISIBLE.
+   *
+   * Nine model extractors write record entries and every engine downstream counts them as record.
+   * Nothing compared a row against the words it came from, and the person never saw the row as a
+   * row - only their manager did, on the shared report. Correcting added a contradicting row beside
+   * the wrong one, and both then counted equally.
+   *
+   * Owner-scoped: the check-in has to be this person's, and the entry has to be theirs. Nothing is
+   * deleted or edited. The row stays, the dispute stays, and from this moment the row counts toward
+   * nothing - every read filters `disputedAt: null`.
+   */
+  async disputeEntry(checkInId: string, entryId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    const entry = await this.prisma.recordEntry.findFirst({
+      where: { id: entryId, participantId: checkIn.participantId },
+      select: { id: true, disputedAt: true },
+    });
+    if (!entry) throw new NotFoundException('That line is not on your record');
+    if (entry.disputedAt) return { id: entry.id, disputedAt: entry.disputedAt };
+    const updated = await this.prisma.recordEntry.update({
+      where: { id: entry.id },
+      data: { disputedAt: new Date() },
+      select: { id: true, disputedAt: true },
+    });
+    return updated;
+  }
+
+  /**
    * THE REPORT THIS SESSION ENDED ON, exactly as it was read.
    *
    * Owner-scoped, and returned untouched: the point of it is sameness. `null` when this session

@@ -46,6 +46,12 @@ export interface Confidence {
   saying: string;
   /** The specific things holding it down, each phrased as the thing to go and do. */
   reasons: string[];
+  /**
+   * WHAT THIS IS COUNTING, SAID. Every input here is a line a model took from what somebody said,
+   * not a line they wrote, and nothing downstream had said so. Not a reason - there is nothing to
+   * go and fix - so it is a note, and it is always there while there is anything to count.
+   */
+  note: string | null;
 }
 
 /**
@@ -107,5 +113,10 @@ export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
     reasons.push('Everybody answered, what was said is anchored to documents, and the commitments have owners and dates.');
   }
 
-  return { score, band, saying, reasons };
+  return {
+    score, band, saying, reasons,
+    note: r.saidInAll > 0
+      ? 'These are lines taken from what people said, not lines they wrote. Anyone can mark one of their own as not what they said, and it stops counting.'
+      : null,
+  };
 }
