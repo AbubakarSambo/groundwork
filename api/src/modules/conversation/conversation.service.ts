@@ -46,7 +46,7 @@ import { mayCoach } from './participation-timeline';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
+import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
@@ -1105,7 +1105,10 @@ export class ConversationService {
           where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
         })) > 0
       : false;
-    const last = personSaid[personSaid.length - 1] ?? '';
+    /* Read the last thing they SAID, not the last thing they typed. Driven live: "over the next 3
+       months", then "no, we are good" to the closing question, and the bar read the acknowledgement,
+       found nothing in it, and asked for a date they had just given. */
+    const last = lastSubstantiveTurn(personSaid);
     const concrete = whatIsConcreteIn(last, attached);
     const verdict = closeReadiness(personSaid, false, minTurns);
     if (concrete.length && verdict.ready) return { ready: true };
@@ -3257,6 +3260,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * missing button. The button was fine; there was no session for it to open.
    */
   async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
+    /* A managing-only lead checks in once, to set the context. After that only the people they
+       invited check in, so no second session is made for them. */
+    const me = await this.prisma.groundParticipant.findUnique({ where: { id: participantId }, select: { managingOnly: true } }).catch(() => null);
+    if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { cadence: true, cadenceAnchorDay: true, endsAt: true },

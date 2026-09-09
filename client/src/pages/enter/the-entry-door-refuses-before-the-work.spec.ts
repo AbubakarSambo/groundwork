@@ -34,7 +34,8 @@ describe('the entry door refuses before the work, not after it', () => {
     /* Two copies of a permission rule in two languages is how the rail came to show a button that
        the server then refused. The component reads one field the server computed. */
     expect(APP).toMatch(/function MayOpenCheckIns[\s\S]{0,200}user\?\.mayOpenCheckIns !== false/)
-    expect(APP).toMatch(/path="\/grounds\/new"[\s\S]{0,120}<MayOpenCheckIns>/)
+    /* /grounds/new is a redirect to /start now; the one guard on /start is the one that counts. */
+    expect(APP).toMatch(/path="\/grounds\/new" element=\{<Navigate to="\/start" replace \/>\}/)
   })
 
   it('still lets a stranger with no account through, which is what this door is for', () => {

@@ -26,7 +26,9 @@ function route(path: string): string {
 
 describe('a member is refused at the door, not on submit', () => {
   it('opening a check-in is behind the permission that decides it', () => {
-    expect(route('/grounds/new')).toContain('<MayOpenCheckIns>');
+    /* The wizard route redirects to the chat; the chat route carries the guard. */
+    expect(route('/start')).toContain('<MayOpenCheckIns>');
+    expect(route('/grounds/new')).toContain('<Navigate to="/start"');
   });
 
   it('adding people is behind being an admin', () => {
@@ -49,7 +51,7 @@ describe('a member is refused at the door, not on submit', () => {
   });
 
   it('and the org setup gate is still there, because it answers a different question', () => {
-    for (const p of ['/grounds/new', '/org/members']) {
+    for (const p of ['/org/members']) {
       expect(route(p)).toContain('<RequireOrgSetup>');
     }
   });

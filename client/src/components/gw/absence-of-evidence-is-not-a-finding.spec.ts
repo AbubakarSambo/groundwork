@@ -60,7 +60,9 @@ describe('and the card no longer decides this itself', () => {
   })
 
   it('both views ask the same function', () => {
-    expect((SRC.match(/whatToCallIt\(engagement\?\.coverage, closed\)/g) ?? []).length).toBe(2)
+    /* The participant view no longer calls a status at all: it shows what is settled and what is
+       still open, from the session report's engines. The admin view still asks the function. */
+    expect((SRC.match(/whatToCallIt\(engagement\?\.coverage, closed\)/g) ?? []).length).toBe(1)
   })
 
   it('and a thin record shows neither a count of agreements nor the alignment ladder', () => {
