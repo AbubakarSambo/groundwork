@@ -23,7 +23,19 @@ export function whereItSits(level: string | null | undefined): number | null {
   return l ? 1 : null
 }
 
-export function HowSpecificThisSessionWas({ level, recall }: { level?: string | null; recall?: string | null }) {
+export function HowSpecificThisSessionWas({ level, recall, spots }: {
+  level?: string | null
+  recall?: string | null
+  /**
+   * WHAT IS THIN AND WHAT WOULD FIX IT, FROM THE ENGINE THAT COMPUTES IT.
+   *
+   * `softSpots` and `whatWouldRaiseIt` rendered on the ground report for the lead, per participant,
+   * and this meter said the same thing with a hand-written sentence. The person never saw the
+   * engine's read of their own account, only their manager did. When the engine has a read, it
+   * replaces the sentence; when it has none, the sentence stays.
+   */
+  spots?: { line: string; wouldRaiseIt: string }[] | null
+}) {
   const at = whereItSits(level)
   if (at == null) return null
   const anchored = (recall ?? '').toLowerCase() === 'high'
@@ -47,6 +59,16 @@ export function HowSpecificThisSessionWas({ level, recall }: { level?: string | 
           </div>
         ))}
       </div>
+      {spots && spots.length > 0 ? (
+        <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+          {spots.map((sp, i) => (
+            <div key={i} style={{ fontSize: 11.5, lineHeight: 1.55, maxWidth: '68ch' }}>
+              <span style={{ color: 'var(--gw-text)' }}>{sp.line}</span>{' '}
+              <span style={{ color: 'var(--gw-muted)' }}>{sp.wouldRaiseIt}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
         {/* What would move it, rather than what it is. A bar with no next step is a grade. */}
         {at === 2
@@ -56,6 +78,7 @@ export function HowSpecificThisSessionWas({ level, recall }: { level?: string | 
             : 'Mostly general. A date, a number, or what you were waiting on and from whom would fill it.'}
         {anchored ? ' Most of it was anchored to something written down.' : ''}
       </div>
+      )}
     </div>
   )
 }

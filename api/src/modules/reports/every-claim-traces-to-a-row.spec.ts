@@ -2,6 +2,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, sameShape } from './the-engine-drafts-it-the-model-words-it';
 import { ROLE_MAPS, RoleFunction } from '../board/role-maps';
+import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT } from '../board/what-kind-of-thing-is-in-the-way';
 
 /**
  * ENGINES PRODUCE THE CLAIMS. THE MODEL CHOOSES THE WORDS. NEITHER DOES THE OTHER'S JOB.
@@ -110,6 +111,29 @@ describe('every claim traces to a row or a field', () => {
     for (const r of rows) expect(said).toContain(r);
     /* And nothing about a fourth thing nobody recorded. */
     expect(said).not.toMatch(/handover|deployment|invoice/i);
+  });
+});
+
+describe('what kind of thing is in the way, said once and in the library\'s words', () => {
+  const decision = three.map((d) => ({ ...d, kind: 'DECISION' as const }));
+
+  it('adds one sentence for a group that agrees on its kind, and it is the library\'s', () => {
+    const out = whatToProbe({ ...lead, waitingOn: decision });
+    const kindLine = out.probe.find((l) => l.startsWith(WHAT_IT_MEANS.DECISION));
+    expect(kindLine).toBe(`${WHAT_IT_MEANS.DECISION} ${WHO_CAN_MOVE_IT.DECISION}`);
+    expect(out.probe).toHaveLength(2);
+  });
+
+  it('and says nothing about kind when the group is mixed, rather than picking one', () => {
+    const mixed = [{ ...three[0], kind: 'DECISION' as const }, { ...three[1], kind: 'NOT_BUILT' as const }];
+    const out = whatToWorkOnNext({ ...member, waitingOn: mixed });
+    expect(out.beforeNextTime.join(' ')).not.toContain(WHAT_IT_MEANS.DECISION);
+    expect(out.beforeNextTime.join(' ')).not.toContain(WHAT_IT_MEANS.NOT_BUILT);
+  });
+
+  it('and nothing when the rows carry no kind', () => {
+    const out = whatToWorkOnNext(member);
+    for (const v of Object.values(WHAT_IT_MEANS)) expect(out.beforeNextTime.join(' ')).not.toContain(v);
   });
 });
 

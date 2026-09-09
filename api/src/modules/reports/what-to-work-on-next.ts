@@ -1,5 +1,6 @@
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
+import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
 
 /**
  * THE COACHING NOTE. THE ONE PART OF A REPORT THAT SPEAKS TO THE PERSON READING IT.
@@ -68,6 +69,8 @@ export interface Dependency {
   /** Whole days since it was first recorded. */
   daysOld: number;
   escalated: boolean;
+  /** What kind of thing is in the way, where the person waiting said. Decides who can move it. */
+  kind?: Kind | null;
 }
 
 export interface CoachingInputs {
@@ -167,6 +170,21 @@ const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` f
 /** `what` is text somebody said, so nothing is concatenated onto the front of it. */
 const theThing = (what: string) => what.replace(/[.\s]+$/, '');
 
+/**
+ * WHAT KIND OF THING IS IN THE WAY, SAID ONCE FOR THE GROUP.
+ *
+ * Both surfaces said "waiting on X" when the row already knew whether X is a thing that does not
+ * exist yet, two parts that do not fit, a decision nobody has made, or something seen coming. The
+ * kind decides who can move it, which is the actionable part. One sentence per group, in the
+ * library's own words - never composed here - and only when every item in the group agrees, because
+ * a mixed group has no single kind and inventing one is worse than saying nothing.
+ */
+export const whatKindOfThing = (xs: { kind?: Kind | null }[]): string | null => {
+  const kinds = [...new Set(xs.map((x) => x.kind).filter(Boolean))] as Kind[];
+  if (kinds.length !== 1) return null;
+  return `${WHAT_IT_MEANS[kinds[0]]} ${WHO_CAN_MOVE_IT[kinds[0]]}`;
+};
+
 /** Two things are "a and b", three are "a, b and c". One list, not one sentence each. */
 export const andList = (xs: string[]): string =>
   xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
@@ -247,6 +265,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     actions.push(
       `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you${howLong(oldest)} for ${andList(items)}. Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`,
     );
+    const kind = whatKindOfThing(i.holdingUp);
+    if (kind) actions.push(kind);
   }
 
   if (i.waitingOn.length) {
@@ -261,6 +281,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
           ? `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, without escalating. Put the request in writing with a date, or take it to whoever is above them.`
           : `Put ${items} in writing${from.length ? ` to ${andList(from)}` : ''}, with the date you need ${notYet.length > 1 ? 'them' : 'it'} by.`,
       );
+      const kind = whatKindOfThing(notYet);
+      if (kind) actions.push(kind);
     }
     if (escalated.length) {
       actions.push(

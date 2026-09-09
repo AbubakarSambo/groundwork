@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
-import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND } from '../board/what-kind-of-thing-is-in-the-way';
+import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND, WHAT_IT_MEANS, WHO_CAN_MOVE_IT } from '../board/what-kind-of-thing-is-in-the-way';
 import { howItReads, WHAT_A_NUMBER_IS_NOT, NEVER_CONCLUDE_FROM_A_NUMBER } from '../public-api/a-number-does-not-argue';
 import { whatTheRecordsReach, NEVER_CONCLUDE_ABOUT_SHIPPING } from '../public-api/what-shipped-actually-means';
 import { whatCouldBeChecked, AClaim, COULD_NOT_WORK_IT_OUT } from './what-nothing-here-could-check';
@@ -2901,6 +2901,43 @@ happened, and what is in the way.`;
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
   }
 
+  /**
+   * WHAT IS THIN IN YOUR OWN ACCOUNT, AND WHAT WOULD FIX IT. YOURS, TO YOU.
+   *
+   * `softSpots` and `whatWouldRaiseIt` already existed and rendered on the ground report for the
+   * lead, per participant (G34: the lead's, and nobody else's). The specificity meter on the session
+   * page gestured at the same thing with a hand-written sentence. So the person themselves never saw
+   * the engine's read of their own thinness, only their manager did.
+   *
+   * G34 is about not showing one person's spots to another. Showing yours to you is the opposite
+   * case, and it is not behind CONFIDENCE_ENABLED because that flag gates what a lead may read
+   * about others, not what you may read about yourself. Every spot travels with what would raise
+   * it, which is G34's own guarantee, kept here.
+   */
+  private async myOwnSoftSpots(groundId: string, participantId: string) {
+    /*
+     * EACH READ STARTS INSIDE A PROMISE. A missing method on the client throws synchronously while
+     * the array is still being built, which leaves a sibling read that has already started - and
+     * already rejected - with no handler. Node treats that as fatal. Seen as a jest worker dying
+     * under the-record-read-reaches-the-payload.spec, whose whole point is that a failing read must
+     * never take the report down.
+     */
+    const start = <T,>(f: () => Promise<T>): Promise<T> => Promise.resolve().then(f);
+    const [rows, docs, done] = await Promise.all([
+      start(() => this.prisma.recordEntry.findMany({
+        where: { participant: { groundId } },
+        select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
+      })),
+      start(() => this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } })),
+      start(() => this.prisma.checkIn.count({ where: { participantId, status: CheckInStatus.COMPLETED } })),
+    ]);
+    const entries: EntryRow[] = rows
+      .filter((r) => !!r.participantId)
+      .map((r) => ({ participantId: r.participantId as string, type: String(r.type), text: r.text, sessionNumber: r.checkIn?.sessionNumber ?? 1 }));
+    const shape = accountShapeFor(participantId, entries, docs.map((d) => ({ participantId: d.participantId, name: d.fileName })), done);
+    return softSpots(shape).map((f) => ({ line: f.line, wouldRaiseIt: whatWouldRaiseIt(f.spot) }));
+  }
+
   private async whatTheRecordHoldsFor(groundId: string, ground: any) {
     const [detections, dependencies, entries, docs, sessions] = await Promise.all([
       this.prisma.patternDetection.findMany({
@@ -2913,6 +2950,9 @@ happened, and what is in the way.`;
         select: {
           fromParticipantId: true, onParticipantId: true, onLabel: true,
           what: true, createdAt: true, escalatedAt: true,
+          /* What kind of thing is in the way, and therefore who can move it. The row has carried
+             this all along and both coaching surfaces said "waiting on X" without reading it. */
+          blockerKind: true,
         },
       }),
       this.prisma.recordEntry.findMany({
@@ -2993,6 +3033,7 @@ happened, and what is in the way.`;
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
           daysOld: held.wholeDays(d.createdAt),
           escalated: !!d.escalatedAt,
+          kind: (d.blockerKind as any) ?? null,
         })),
       holdingUp: held.dependencies
         .filter((d) => d.onParticipantId === participant.id)
@@ -3001,6 +3042,7 @@ happened, and what is in the way.`;
           who: nameOf(d.fromParticipantId, null),
           daysOld: held.wholeDays(d.createdAt),
           escalated: !!d.escalatedAt,
+          kind: (d.blockerKind as any) ?? null,
         })),
       saidSomethingSpecific: mine.length > 0,
       anythingDocumented: mine.some((e) => !e.recallBased),
@@ -3020,7 +3062,11 @@ happened, and what is in the way.`;
      * Hafsah ... a named on-call person": the cadence moved from the item to the action, which is a
      * different claim, and no number or name changed so nothing caught it.
      */
-    const rows = [...held.dependencies.map((d) => d.what.replace(/[.\s]+$/, ''))];
+    const rows = [
+      ...held.dependencies.map((d) => d.what.replace(/[.\s]+$/, '')),
+      /* And the library's own sentences about the kind of blocker, which are claims, not wording. */
+      ...Object.values(WHAT_IT_MEANS), ...Object.values(WHO_CAN_MOVE_IT),
+    ];
     const said = await this.phrase('the coaching note', [
       { key: 'whyItMatters', text: note.whyItMatters, mustKeep: map ? [map.onTrackMeans] : [] },
       ...note.beforeNextTime.map((t, n) => ({
@@ -3094,6 +3140,7 @@ happened, and what is in the way.`;
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
               daysOld: held.wholeDays(d.createdAt),
               escalated: !!d.escalatedAt,
+              kind: (d.blockerKind as any) ?? null,
             })),
           holdingUp: held.dependencies
             .filter((d) => d.onParticipantId === p.id)
@@ -3101,6 +3148,7 @@ happened, and what is in the way.`;
               what: d.what,
               who: nameOf(d.fromParticipantId, null),
               daysOld: held.wholeDays(d.createdAt),
+              kind: (d.blockerKind as any) ?? null,
             })),
           concrete: mine
             .filter((e) => e.type === RecordEntryType.SUCCESS_DEFINITION || !e.recallBased)
@@ -3116,7 +3164,10 @@ happened, and what is in the way.`;
     /* One call for the whole list rather than one per person: the same guard, a tenth of the
        calls, and the model sees the section as a section. */
     const drafts: Drafted[] = [];
-    const rowWords = held.dependencies.map((d) => d.what.replace(/[.\s]+$/, ''));
+    const rowWords = [
+      ...held.dependencies.map((d) => d.what.replace(/[.\s]+$/, '')),
+      ...Object.values(WHAT_IT_MEANS), ...Object.values(WHO_CAN_MOVE_IT),
+    ];
     const keeping = (t: string) => rowWords.filter((r) => t.includes(r));
     reads.forEach((r: any, i: number) => {
       r.probe.forEach((t: string, n: number) => drafts.push({ key: `p${i}.${n}`, text: t, mustKeep: keeping(t) }));
@@ -3383,6 +3434,10 @@ happened, and what is in the way.`;
       activated: true,
       postReportGuide,
       coaching,
+      /* The reader's own thin spots, with the fix for each. Never anybody else's. */
+      mySoftSpots: participant
+        ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
+        : [],
       /*
        * AND THE LEAD'S OWN SECTION. Null for everybody else, decided inside `whatToProbeOn` rather
        * than by this caller remembering to ask - a lead-only surface guarded at the call site is

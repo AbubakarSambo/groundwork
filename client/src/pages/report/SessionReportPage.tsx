@@ -375,7 +375,11 @@ export default function SessionReportPage() {
         point: a lead-only surface guarded by a caller remembering to check is one refactor away
         from not being lead-only.
       */}
-      <WhatToProbeThemOn reads={(groundReport as any)?.probes} />
+      <WhatToProbeThemOn
+            reads={(groundReport as any)?.probes}
+            weigh={(groundReport as any)?.whatTheGroundCanTellYou}
+            weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
+          />
 
       {/*
         15. ACTION, AFTER BOTH HALVES.

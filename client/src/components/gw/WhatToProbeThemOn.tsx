@@ -41,8 +41,30 @@ function Block({ title, lines }: { title: string; lines: string[] }) {
   )
 }
 
-export function WhatToProbeThemOn({ reads }: { reads?: ProbeRead[] | null }) {
-  if (!reads?.length) return null
+/** `whatALeaderCanWeigh`, as the server sends it. Lead-only, like everything on this surface. */
+export interface WeighSection {
+  whatYouSaidGoodMeans: { text: string; session: number }[]
+  whatTheRecordHolds: { kind: string; text: string; session: number }[]
+  whatNobodyHasEvidenceFor: string[]
+  note: string
+}
+
+export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
+  reads?: ProbeRead[] | null
+  /**
+   * WHAT YOU SAID GOOD MEANS, AND WHAT THE RECORD HOLDS AGAINST IT.
+   *
+   * Computed by what-a-leader-can-weigh.ts and rendered on the ground report. It is about the whole
+   * ground, so it belongs on both pages: there because that is the ground's report, here because
+   * this is where a lead lands after a session and decides what to say to each person. Same
+   * object, same words, nothing recomputed.
+   */
+  weigh?: WeighSection | null
+  weighNote?: string | null
+}) {
+  /* Nothing to ask AND nothing to weigh is the only empty state. The weigh section can stand on
+     its own at a closing session when nobody is left to probe. */
+  if (!reads?.length && !weigh) return null
   return (
     <section
       style={{
@@ -60,7 +82,24 @@ export function WhatToProbeThemOn({ reads }: { reads?: ProbeRead[] | null }) {
       </div>
 
       <div style={{ display: 'grid', gap: 18, marginTop: 14 }}>
-        {reads.map((r) => (
+      {weigh && (
+        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>What you said you were looking for, and what the record holds</div>
+          {weigh.whatYouSaidGoodMeans.length > 0 && (
+            <Block title="What you said good would mean" lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} />
+          )}
+          {weigh.whatTheRecordHolds.length > 0 && (
+            <Block title="What the record holds on that" lines={weigh.whatTheRecordHolds.map(x => x.text)} />
+          )}
+          {weigh.whatNobodyHasEvidenceFor.length > 0 && (
+            <Block title="What nobody has evidence for yet" lines={weigh.whatNobodyHasEvidenceFor} />
+          )}
+          {(weighNote ?? weigh.note) && (
+            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6, maxWidth: '68ch' }}>{weighNote ?? weigh.note}</div>
+          )}
+        </div>
+      )}
+        {(reads ?? []).map((r) => (
           <div key={r.participantId} style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{r.who}</div>
             <Block title="Worth asking" lines={r.probe} />

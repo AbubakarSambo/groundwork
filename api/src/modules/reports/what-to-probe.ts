@@ -31,9 +31,9 @@ export interface ProbeInput {
   /** Surfaced patterns for this person. Recurrence is carried, because it is the finding. */
   patterns: { code: string; periodsObserved: number; signal: string; probe?: string }[];
   /** What they say they are waiting on. */
-  waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean }[];
+  waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean; kind?: Kind | null }[];
   /** What somebody else's record says they are waiting on from this person. */
-  holdingUp: { what: string; who: string | null; daysOld: number }[];
+  holdingUp: { what: string; who: string | null; daysOld: number; kind?: Kind | null }[];
   /** Anything concrete they put on record: a target, a number, an attached document. */
   concrete: string[];
   documentsAttached: number;
@@ -52,6 +52,7 @@ export interface WhatToProbe {
   /** What the record shows they did about being stuck. Never whether it was enough. */
   triedToUnblock: string;
 }
+import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
 
 /**
  * HOW LONG, IN WORDS SOMEBODY WOULD USE.
@@ -70,6 +71,21 @@ const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` f
  * onto captured text will do this eventually. A colon takes whatever the text is.
  */
 const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+
+/**
+ * WHAT KIND OF THING IS IN THE WAY, SAID ONCE FOR THE GROUP.
+ *
+ * Both surfaces said "waiting on X" when the row already knew whether X is a thing that does not
+ * exist yet, two parts that do not fit, a decision nobody has made, or something seen coming. The
+ * kind decides who can move it, which is the actionable part. One sentence per group, in the
+ * library's own words - never composed here - and only when every item in the group agrees, because
+ * a mixed group has no single kind and inventing one is worse than saying nothing.
+ */
+export const whatKindOfThing = (xs: { kind?: Kind | null }[]): string | null => {
+  const kinds = [...new Set(xs.map((x) => x.kind).filter(Boolean))] as Kind[];
+  if (kinds.length !== 1) return null;
+  return `${WHAT_IT_MEANS[kinds[0]]} ${WHO_CAN_MOVE_IT[kinds[0]]}`;
+};
 
 /** Two things are "a and b", three are "a, b and c". One list, not one sentence each. */
 const andList = (xs: string[]): string =>
@@ -106,6 +122,8 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     probe.push(
       `${who} ${named.length > 1 ? 'are' : 'is'} waiting on them${howLong(oldest)} for ${andList(i.holdingUp.map((d) => theThing(d.what)))}. Ask what that is waiting on.`,
     );
+    const kind = whatKindOfThing(i.holdingUp);
+    if (kind) probe.push(kind);
   }
 
   if (i.waitingOn.length) {
@@ -126,6 +144,8 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
           ? `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. This early that is worth showing them rather than asking about.`
           : `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. Ask what has stopped them raising it.`,
       );
+      const kind = whatKindOfThing(notYet);
+      if (kind) probe.push(kind);
     }
   }
 
