@@ -17,6 +17,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
+import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -1963,7 +1964,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
-        select: { type: true, text: true, recallBased: true, dimensionThreadKey: true, participantId: true },
+        select: { type: true, text: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, participantId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
@@ -1993,7 +1994,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const docs = await this.prisma.groundDocument.findMany({
       where: { groundId, participantId: { in: readableParticipantIds } },
-      select: { fileName: true, participantId: true },
+      select: { fileName: true, participantId: true, origin: true },
     });
 
     /*
@@ -2077,6 +2078,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         text: cleanText(e.text),
         who: whoOf(e.participantId),
         recallBased: e.recallBased,
+        backedBy: (e as any).anchoredOrigin ?? null,
         threadKey: e.dimensionThreadKey ?? null,
       })),
       previousEntries: previousEntries.map((e) => ({
@@ -2088,7 +2090,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       startingPoint: startingPoint?.text ?? null,
       previousSharedPicture: previousSnapshot?.sharedPicture ?? null,
       /* A document with no participant belongs to the check-in rather than to a person. */
-      evidence: docs.map((d) => ({ text: d.fileName, who: d.participantId ? whoOf(d.participantId) : null })),
+      /* Named for what kind of thing it is: a typed document, a photo, notes written with a model. */
+      evidence: docs.map((d) => ({ text: originLabel((d as any).origin) ? `${d.fileName} · ${originLabel((d as any).origin)}` : d.fileName, who: d.participantId ? whoOf(d.participantId) : null })),
       specificityLevel: checkIn?.specificityLevel ?? null,
       recallConfidence: checkIn?.recallConfidence ?? null,
       centralQuestion: snapshot?.centralQuestion ?? ground.report?.centralQuestion ?? null,

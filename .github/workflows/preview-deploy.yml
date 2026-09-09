@@ -19,13 +19,14 @@ on:
       - ".github/workflows/preview-deploy.yml"
 
 concurrency:
-  # Shared with staging-deploy.yml: both hit the same Vercel project/token,
-  # and the Hobby plan allows only one concurrent build. Without a shared
-  # group, a merge that fires both workflows at once leaves one deploy
-  # queued server-side on Vercel with no client-side timeout, until this
-  # job's own 15-minute timeout kills it.
-  group: vercel-deploy
-  cancel-in-progress: false
+  # Scoped per-PR (not shared with staging-deploy.yml) so a burst of pushes
+  # to the same PR - e.g. 55 pushes to one branch in a day - cancels the
+  # stale in-flight deploy instead of letting every single one reach
+  # `vercel deploy` and burn the Hobby plan's 100-deployments-per-day cap.
+  # Deliberately NOT the shared "vercel-deploy" group: cancel-in-progress
+  # here must never be able to cancel a staging-deploy.yml run.
+  group: vercel-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   deploy-preview:

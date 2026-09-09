@@ -1271,6 +1271,7 @@ model RecordEntry {
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
   anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
   anchoredPassage      String?         @map("anchored_passage") @db.Text // the document's words that back it, quoted short, so a false match can be seen
+  anchoredOrigin       String?         @map("anchored_origin") @db.VarChar(24) // the backing document's origin, so generated notes do not count as a source
   documentSays         String?         @map("document_says") @db.Text // when a document they can see states the same thing differently: what it says, quoted short
   documentSaysId       String?         @map("document_says_id") // which document
   dimensionThreadKey   String?         @map("dimension_thread_key") // groups entries across sessions by theme
@@ -3687,6 +3688,12 @@ model GroundDocument {
   /// into; on the Context tab there was nowhere to put it, so a forty page architecture document
   /// went in mute. This is that sentence, kept with the document rather than turned into a turn.
   uploaderNote  String? @map("uploader_note") @db.Text
+  // WHAT KIND OF THING THIS IS. typed | photo | scan | screenshot | generated | pasted | conversation.
+  // A typed contract is a source. A photo of a whiteboard is a source but partial. Model-generated
+  // notes are somebody's recollection one step removed, and do not raise a band the way a source does.
+  origin        String? @db.VarChar(24)
+  // The uploader described it; this is whether the file reads as what they said: { matches, reads, checkedAt }.
+  descriptionCheck Json? @map("description_check")
 
   // WHO CAN SEE THIS. Nobody decided the current behaviour: documents.list
   // filters on participantId, so every document is private to whoever uploaded
