@@ -34,6 +34,7 @@ import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
+import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -849,8 +850,9 @@ export class GroundsService {
       };
     }
 
-    const local = email.split('@')[0] ?? 'there';
-    const firstName = name ?? local.charAt(0).toUpperCase() + local.slice(1);
+    /* `anna+chidi@gmail.com` was becoming "Anna+chidi" on the roster and in every sentence the
+       check-in wrote about them. Sign-up already got this right; this door did not. */
+    const firstName = name ?? aNameOutOfAnAddress(email);
     const created = await db.user.create({
       data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
     });
