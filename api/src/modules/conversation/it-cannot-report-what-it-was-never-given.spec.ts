@@ -18,7 +18,7 @@ import { join } from 'path';
  * was produced from an input that contained none of it.
  *
  * `labelsForParties` never emits "2nd" either - it produces letter suffixes, "lead A" and
- * "participant B". So the label was not a leak from the labelling code. It was invented.
+ * "Participant B". So the label was not a leak from the labelling code. It was invented.
  *
  * The existing tally detector DID catch this sentence - `countsAccounts` returns "Two of the three"
  * for it - and shipped it anyway, because that detector is deliberately advisory: cutting a tally

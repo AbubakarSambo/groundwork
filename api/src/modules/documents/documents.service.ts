@@ -11,6 +11,7 @@ import { documentWhereFor, whoCanSeeItInWords } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { ConversationService } from '../conversation/conversation.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
@@ -95,37 +96,7 @@ const ASSESSMENT_TOOL = {
   },
 };
 
-const CLAIMS_EXTRACTION_PROMPT = `You are extracting structured claims from a document a party has uploaded before a check-in session.
 
-Extract every concrete, verifiable claim - commitments made, asks raised, worries flagged, intentions stated, tensions described, and any defined success criteria. Skip preamble, small talk, and boilerplate.
-
-For each claim:
-- "text": the person's exact words or a minimal faithful paraphrase (1–2 sentences max)
-- "type": one of COMMITMENT, ASK, WORRY, INTENT, TENSION, SUCCESS_DEFINITION
-
-Only extract claims that are specific enough to be verified or tracked over time. Skip vague statements.`;
-
-const CLAIMS_TOOL = {
-  name: 'extract_claims',
-  description: 'Extract structured record-worthy claims from a document',
-  input_schema: {
-    type: 'object',
-    properties: {
-      claims: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            text: { type: 'string' },
-            type: { type: 'string', enum: ['COMMITMENT', 'ASK', 'WORRY', 'INTENT', 'TENSION', 'SUCCESS_DEFINITION'] },
-          },
-          required: ['text', 'type'],
-        },
-      },
-    },
-    required: ['claims'],
-  },
-};
 
 function toDocShape(
   doc: { id: string; fileName: string; mimeType: string; createdAt: Date; assessment?: any; visibility?: any; participantId?: string | null },
@@ -170,7 +141,19 @@ export class DocumentsService {
     @Inject(forwardRef(() => AnthropicService))
     private anthropic: AnthropicService,
     private config: ConfigService,
+    @Inject(forwardRef(() => ConversationService))
+    private conversation: ConversationService,
   ) {}
+
+  /**
+   * AN UPLOAD HAS TO CHANGE SOMETHING. The person's record lines are read against what they just
+   * attached, so a line the document backs stops being recall. Best effort, after the row exists.
+   */
+  private anchorAfterUpload(participantId: string, groundId: string) {
+    this.conversation.anchorRecordToDocuments(participantId, groundId).catch((err) =>
+      this.logger.warn(`Anchoring after upload failed for participant ${participantId}: ${err?.message}`),
+    );
+  }
 
   /**
    * Extract readable content from any supported file type. Images and
@@ -331,9 +314,7 @@ export class DocumentsService {
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
-    this.extractAndStoreClaims(content, participant.id, file.originalname).catch((err) =>
-      this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
-    );
+    this.anchorAfterUpload(participant.id, groundId);
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
@@ -392,49 +373,14 @@ export class DocumentsService {
     }
   }
 
-  private async extractAndStoreClaims(content: string, participantId: string, fileName: string): Promise<void> {
-    // Skip placeholder content for non-extractable file types
-    if (content.startsWith('[Attached:')) return;
-
-    const truncated = content.slice(0, 12000); // keep within a reasonable token budget
-
-    const result = await this.anthropic.extract<{ claims: { text: string; type: string }[] }>(
-      CLAIMS_EXTRACTION_PROMPT,
-      [{ role: 'user', content: `Document: "${fileName}"\n\n${truncated}` }],
-      CLAIMS_TOOL,
-    );
-
-    if (!result?.claims?.length) return;
-
-    const VALID_TYPES = new Set(Object.values(RecordEntryType));
-    const entries = result.claims
-      .filter((c) => c.text?.trim() && VALID_TYPES.has(c.type as RecordEntryType))
-      .map((c) => ({
-        participantId,
-        type: c.type as RecordEntryType,
-        evidenceType: EvidenceType.DOCUMENT_AT_AGREEMENT,
-        text: c.text.trim(),
-        recallBased: false,
-      }));
-
-    if (entries.length) {
-      await this.prisma.recordEntry.createMany({ data: entries });
-      this.logger.log(`Extracted ${entries.length} claims from "${fileName}" for participant ${participantId}`);
-    }
-  }
-
-  /**
-   * WHAT THIS READER CAN SEE, WHICH USED TO BE ONE ANSWER FOR THREE QUESTIONS.
-   *
-   * `participantId: participant.id` meant every document was private to whoever
-   * uploaded it - including from the lead. Nobody chose that; it is a participant
-   * guard that ended up in a list query. Right for a participant's own evidence,
-   * backwards for the lead's brief or a grant's terms, which reach nobody and are
-   * exactly the things everybody should be working from.
-   *
-   * documentWhereFor answers it properly and carries the CONTEXT_ENABLED flag
-   * inside it, so with the flag off this query is byte-for-byte the old one. See
-   * who-can-see-a-document.ts.
+  /*
+   * THERE USED TO BE A WRITER HERE, extractAndStoreClaims, and it was a category error. It read the
+   * uploaded document and wrote the document's own claims into record_entries under the uploader's
+   * participantId, with no check-in, marked document-backed. A document then backed lines the
+   * document itself had written, and those 23 rows were the entire documented count before
+   * anchoring existed. Everything downstream read them as things a person had said. The writer is
+   * gone and its rows were purged; the document's content reaches the record only through
+   * anchorRecordToDocuments, which backs what a PERSON said with what a DOCUMENT says.
    */
   async list(groundId: string, userId: string) {
     const participant = await this.assertParticipant(groundId, userId);
@@ -511,9 +457,7 @@ export class DocumentsService {
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
     });
 
-    this.extractAndStoreClaims(content, participant.id, file.originalname).catch((err) =>
-      this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
-    );
+    this.anchorAfterUpload(participant.id, participant.groundId);
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */

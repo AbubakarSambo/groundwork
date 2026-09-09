@@ -15,6 +15,7 @@ export interface ParticipantSession {
 
 export interface EntryReport {
   whatGroundworkSaw: string
+  yourRole?: string | null
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned'
   alignmentBasis: string
   areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[]

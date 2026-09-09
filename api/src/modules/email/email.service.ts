@@ -295,8 +295,18 @@ export class EmailService {
     }, undefined, 'sendVerificationEmail');
   }
 
-  async sendMagicLinkEmail(email: string, firstName: string, token: string): Promise<void> {
-    const url = `${this.frontendUrl}/verify-email?token=${token}`;
+  /**
+   * @param next Where to land after signing in. The link carries no destination without it, and the
+   * client falls back to the check-in list - so somebody who clicked an invite to one check-in,
+   * was emailed a sign-in link because they were in a different browser, and signed in, arrived on
+   * a list of everything and had to find their way back. Reported exactly that way: "when i sign-in,
+   * it just takes me to the general checkins page."
+   *
+   * The flow that sends it already knows the check-in id at that moment. Optional, because five of
+   * the six callers are an ordinary sign-in with nowhere particular to be.
+   */
+  async sendMagicLinkEmail(email: string, firstName: string, token: string, next?: string): Promise<void> {
+    const url = `${this.frontendUrl}/verify-email?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
     await this.sendEmail({
       to: email,
       subject: 'Activate your Groundwork account',

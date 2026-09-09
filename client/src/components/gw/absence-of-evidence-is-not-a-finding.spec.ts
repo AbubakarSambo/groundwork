@@ -67,12 +67,21 @@ describe('and the card no longer decides this itself', () => {
     /* "1 agreed" reads as a finding drawn from a conversation; here it is one sentence somebody
        typed. And the ladder places the round on a scale from unresolved to aligned, which this
        round is not on yet. */
+    /*
+     * AND THEN THE LADDER WENT ENTIRELY, WHICH IS THIS RULE CARRIED THE REST OF THE WAY.
+     *
+     * It was hidden under a thin record because a round with one sentence in it is not on a scale
+     * from unresolved to aligned. Neither is a round with ten - where it lands depends on whether
+     * somebody else has answered, so it was never progress the reader could make. It is the last of
+     * the marks-on-an-invisible-scale that came off My record, and it was the worst of them: a
+     * five-rung ladder with a person standing on the second rung, on their own session's report.
+     *
+     * The word survives. "Emerging" is one word from the synthesis's own enum and it is still shown.
+     */
     const at = SRC.indexOf('called.note ?')
     expect(at).toBeGreaterThan(-1)
-    const block = SRC.slice(at, at + 900)
-    expect(block).toContain('called.note')
-    const laddersAfterTheNote = block.indexOf('AlignmentLadder')
-    const elseBranch = block.indexOf(') : (')
-    expect(laddersAfterTheNote).toBeGreaterThan(elseBranch)
+    expect(SRC.slice(at, at + 900)).toContain('called.note')
+    expect(SRC).not.toContain('<AlignmentLadder')
+    expect(SRC).not.toContain('LADDER_INDEX')
   })
 })

@@ -19,7 +19,6 @@ import { VennIcon } from '@/components/gw/VennIcon'
 import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
-import { TheReveal } from './the-reveal-is-both-sides-at-once'
 
 type ViewTab = 'shared' | 'own'
 
@@ -335,7 +334,7 @@ function WhereTheRecordIsThin({ spots, nameFor }: {
       {people.map(([participantId, list]) => (
         <div key={participantId} style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>
-            On {nameFor(participantId)}&rsquo;s account
+            In what {nameFor(participantId)} said
           </div>
           {list.map((s, i) => (
             <div key={i} style={{ borderLeft: '3px solid var(--gw-border)', paddingLeft: 10, marginBottom: 7 }}>
@@ -408,7 +407,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
     {
       h: 'What nobody has evidence for',
       items: section.whatNobodyHasEvidenceFor,
-      empty: 'Everything you named was reached by somebody\'s account.',
+      empty: 'Everything you named was reached by something somebody said.',
     },
   ]
   return (
@@ -894,28 +893,21 @@ export function ReportBody({
   }
 
   /*
-   * WAITING ON THEM, NOT ON EVERYBODY ELSE.
+   * THERE IS NO REVEAL. "Report updates as people check in, that's all it is."
    *
-   * `activated: false` means the report exists and this party has not agreed to the exchange yet.
-   * Without this branch the page fell through below and said the report "appears once everybody has
-   * checked in" — untrue at that point, and nothing they could act on. See
-   * the-reveal-is-both-sides-at-once.tsx.
+   * A branch here returned a whole screen instead of the report whenever the server said
+   * `activated: false`, and the server no longer says it - the gate that produced it is gone from
+   * reports.service.get(), because it withheld nothing (the per-session read handed the same
+   * person the same content one request later) and made the product tell somebody their session
+   * had produced nothing when it had produced a full three-party synthesis.
    */
-  if (report && (report as any).activated === false) {
-    return (
-      <div style={{ ...PAGE_STYLE, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <TheReveal groundId={id!} />
-      </div>
-    )
-  }
-
   if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
       <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         {/*
           IT SAID "once at least one person has checked in" TO SOMEBODY WHO HAD.
           This is the SHARED report, which needs every party in before it can show
-          where accounts agree or differ - so the old sentence was measuring the
+          where people agree and where they differ - so the old sentence was measuring the
           wrong thing, and on a ground where session 1 was complete it read as the
           product having lost the check-in.
         */}
@@ -1050,7 +1042,7 @@ export function ReportBody({
   const sessionPhrase = !statusLabel
     ? (oneSided
       ? 'One person has checked in so far. The second is what makes it a comparison.'
-      : 'The accounts are in. This has not yet named an area they agree or differ on.')
+      : 'Everyone has answered. This has not yet named an area they agree or differ on.')
     : oneSided
       ? 'One person has checked in so far. The second is what makes it a comparison.'
       : divergences.length === 0
@@ -1108,7 +1100,7 @@ export function ReportBody({
               will otherwise fill the gap themselves, and the whole standing of this report is that it
               does not do that either.
             */}
-            What follows is built from the accounts that were given. It does not infer anything about
+            What follows is built from what people actually wrote. It does not infer anything about
             {declined.length === 1 ? ' the one that was not.' : ' the ones that were not.'}
           </div>
         </div>
@@ -1146,7 +1138,7 @@ export function ReportBody({
               // This said "every report OPENS with what runs across everyone's answers".
               // It does not any more, and a legend that describes a different page is worse
               // than no legend. W13-7.
-              { h: 'What is open, first', p: "Every report leads with what is still unresolved and what everyone already agrees on. The full account of what runs across everyone's answers follows it." },
+              { h: 'What is open, first', p: "Every report leads with what is still unresolved and what everyone already agrees on. The full read of what runs across everyone's answers follows it." },
               // This used to promise "a recommended move" for every area. The
               // engine has never produced one: a divergence carries a topic,
               // each party's position, the evidence behind it, and what is at
@@ -1381,7 +1373,7 @@ export function ReportBody({
                 <div style={{ marginTop: 16, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
                   <SecH>This is closing</SecH>
                   <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 8 }}>
-                    Every account is in. The choice now in front of you, together:
+                    Everyone has answered. The choice now in front of you, together:
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                     {((report as any).finalSynthesis.endStates ?? []).map((es: any) => (
@@ -1423,7 +1415,7 @@ export function ReportBody({
                   {((report as any).updates as any[]).map((u, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
                       <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
-                        {personLabel(u)} updated their account
+                        {personLabel(u)} updated what they said
                         {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
                       </div>
                       {u.isPostSignOff && (
@@ -1470,7 +1462,7 @@ export function ReportBody({
                 )}
 
                 {statusShort && <div style={{ marginBottom: 16 }}>
-                  <SecH>Your account, so far</SecH>
+                  <SecH>Where this has got to</SecH>
                   <div style={{ fontSize: 18, fontWeight: 800 }}>{statusShort}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
                     {sessionPhrase}
@@ -1545,7 +1537,7 @@ export function ReportBody({
                       * screen reader announces by default. Read on the page it says: here is how
                       * well your colleague did.
                       *
-                      * The report's own promise is that it shows where accounts agree or differ,
+                      * The report's own promise is that it shows where people agree and where they differ,
                       * never anybody's raw answers. How concrete one person was is neither: it is
                       * an assessment of them, published to the people they work with.
                       *
@@ -1577,7 +1569,7 @@ export function ReportBody({
               ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix that specific claim. '
               : ''}
             {myLatestCompletedSession != null
-              ? 'For anything else in your own account, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
+              ? 'For anything else you said, revisit your last session below. It opens a short follow-up that corrects or adds to your record. Your original answers are kept as they were, and the update flows into the next report.'
               : 'To correct something you said, reopen a session you have already finished here.'}
           </div>
           {myLatestCompletedSession != null && (
@@ -1628,7 +1620,7 @@ export function ReportBody({
             </span>
           </div>
           <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
-            {tab === 'own' ? 'What your own account holds.' : "Where everyone's accounts agree or differ."}
+            {tab === 'own' ? 'What you said.' : "Where everyone agrees and where they differ."}
           </h1>
           {/*
             THE HERO WAS STILL THE PROSE. W13-7, second half.
@@ -1648,7 +1640,7 @@ export function ReportBody({
               ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
               : divergences.length + agreements.length > 0
                 ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
-                : 'Everyone has checked in. This is what runs across their accounts.'}
+                : 'Everyone has checked in. This is what runs across what they said.'}
           </p>
           <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[

@@ -69,9 +69,13 @@ describe('what it must never become', () => {
     expect(strip(PANEL)).not.toMatch(/improv|declin|better|worse|trend|score|tier|↑|↓|→/i)
   })
 
-  it('counts differing accounts without characterising them', () => {
+  it('counts where people differed without characterising it', () => {
+    /* "accounts differed" - "account" is banned in copy a person reads; it means what somebody said
+       and everywhere else in a product it means a login. The count and the refusal to characterise
+       it are what this protects. */
     const near = strip(PANEL).slice(strip(PANEL).indexOf('m.differences'))
-    expect(near).toContain('accounts differed')
+    expect(near).toContain('reads differed')
+    expect(near).not.toContain('accounts differed')
     expect(near).not.toMatch(/\b(concern|problem|risk|bad)\b/i)
   })
 })

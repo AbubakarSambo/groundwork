@@ -33,10 +33,12 @@ describe('who the report is counting', () => {
     expect(strip(VIEW)).toContain('{c.isYou ? `${c.who} (you)` : c.who}')
   })
 
-  it('distinguishes not answered, answered, and shown theirs', () => {
+  it('says whether each person has answered, which is the only state left', () => {
     const code = strip(VIEW)
     expect(code).toContain('Not answered yet')
-    expect(code).toContain('Answered, and shown theirs')
+    /* Was 'Answered, and shown theirs'. That second state existed only to report who had pressed
+       the reveal, which is deleted - see there-is-no-reveal.spec.ts. */
+    expect(code).toContain("c.answered ? 'Answered' : 'Not answered yet'")
   })
 
   it('takes the label from the report rather than joining a roster on the page', () => {
@@ -44,7 +46,10 @@ describe('who the report is counting', () => {
        name comes from `namesVisibleTo`, which is the same rule the report body uses to decide
        whose name this particular reader may resolve - not a second guess at that rule. */
     expect(strip(VIEW)).not.toMatch(/participants\s*\?\?\s*\[\]/)
-    expect(API).toContain('namesVisibleTo(me?.id ?? null, ground.participants as any)')
+    /* Same rule, now also passed what the check-in's own setting says about naming peers, so the
+       report cannot disagree with the roster above it. See
+       the-report-names-people-the-way-the-setting-says.spec.ts. */
+    expect(API).toContain('namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any))')
     expect(API).toContain('nameByLabel.get(label)')
   })
 

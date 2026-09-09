@@ -198,6 +198,8 @@ export const groundsApi = {
       label: string
       trend: 'rising' | 'steady' | 'falling' | 'new'
       whatWouldHelp: string | null
+      /** Which of the five would move them most, so the row itself can carry the mark. */
+      mostUseful: { dimension: string; says: string } | null
       strongest: string | null
     }>(`/grounds/${groundId}/my-specificity`).then(r => r.data),
 
@@ -220,17 +222,9 @@ export const groundsApi = {
   // for corrections, in place of a timer. Does not block later corrections;
   // it just flags any that come after as "updated after sign-off" on the
   // shared report.
-  signOff: (groundId: string) =>
-    apiClient.post<{ signedOffAt: string }>(`/grounds/${groundId}/sign-off`).then(r => r.data),
-
-  /**
-   * The current invite link for someone who has not joined yet.
-   *
-   * This existed on the API with no caller, which made "I never got the email"
-   * a support request instead of a click. Initiator only, and it returns the
-   * live link rather than minting a new one - so reading it cannot invalidate
-   * the link already sitting in someone's inbox.
-   */
+  /* `signOff` removed with the control that called it. The confirmation step at the foot of My
+     record was furniture on a page nobody had been asked to confirm anything on; the column and the
+     server route stay, so a corrected-after-sign-off record still reads correctly. */
   getParticipantInviteUrl: (groundId: string, participantId: string) =>
     apiClient
       .get<{ inviteUrl: string }>(`/grounds/${groundId}/participants/${participantId}/invite-url`)

@@ -72,7 +72,7 @@ describe('the two views of a check-in are a pair', () => {
     expect(ADMIN).not.toMatch(/My check-ins →/)
     /* And what replaced it: the things that used to be a page away. */
     expect(ADMIN).toMatch(/<MyRecord/)
-    expect(ADMIN).toMatch(/<MyPrivateReport/)
+    expect(ADMIN).toMatch(/<WhatYouAreCarryingForward/)
     expect(ADMIN).toMatch(/<MyParticipation/)
   })
 

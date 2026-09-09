@@ -7,7 +7,7 @@ import { PartyType } from '@prisma/client';
  * THE BOARD SAYS NAMES, ON THE SAME RULE AS THE REPORT. W8-73.
  *
  * The board reads the report's own sentences. Those sentences are written by the model in
- * LABELS - "the initiator", "the participant", "participant A" - because the model is
+ * LABELS - "the initiator", "the participant", "Participant A" - because the model is
  * explicitly told never to write a personal name. `reports.service.ts` swaps them for real
  * names on the way out, per reader, by what that reader may see.
  *
