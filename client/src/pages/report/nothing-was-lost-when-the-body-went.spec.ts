@@ -28,6 +28,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const read = (...p: string[]) => readFileSync(path.join(__dirname, ...p), 'utf8')
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
+const MY_RECORD = strip(read('../../components/gw/MyPrivateReport.tsx'))
 const GUIDE = strip(read('../../components/gw/WhatToWalkInWith.tsx'))
 const SESSION = strip(read('SessionReportPage.tsx'))
 const BOARD = strip(read('../board/BoardPage.tsx'))
@@ -37,11 +38,7 @@ describe('the three things that had nowhere else to be', () => {
   it('the private lines for the conversation ahead are on My record', () => {
     expect(GUIDE).toContain('Before you talk to them')
     expect(GUIDE).toContain('Yours alone, and not part of the shared report')
-    /* Rendered by the page rather than inside WhatYouAreCarryingForward now: her order puts it last, after
-       sign-off, because it is private prep for a conversation rather than part of reading your
-       record. Having it third pushed the reading down the page. */
-    const PARTY_PAGE = strip(read('../grounds/GroundParticipantPage.tsx'))
-    expect(PARTY_PAGE).toContain('<WhatToWalkInWith')
+    expect(MY_RECORD).toContain('<WhatToWalkInWith')
   })
 
   it('the inferred claims are on the page that already corrects the record', () => {
@@ -61,43 +58,17 @@ describe('and the body they came out of is really gone', () => {
     expect(PARTY).not.toContain('<ReportBody')
   })
 
-  it('and holds no reveal either, because there is no longer one to hold', () => {
-    /* This used to require it: "showing yours cannot be undone, it belongs on the tab a person
-       opens expecting the report". Nothing is undone and nothing was ever gated - see
-       there-is-no-reveal.spec.ts for what the button was actually doing. */
-    expect(PARTY).not.toContain('Show mine')
-    expect(PARTY).not.toContain('activateMutation')
+  it('but still holds the reveal, which is an act rather than a reading surface', () => {
+    /* Showing yours cannot be undone. It belongs on the tab a person opens expecting the report,
+       not on a page about one session. */
+    expect(PARTY).toContain('Show mine')
+    expect(PARTY).toContain('activateMutation.mutate()')
   })
 
-  it('says nothing at all while the report is still forming', () => {
-    /*
-     * IT WENT FROM A DEAD END, TO A MESSAGE WITH DOORS, TO NOTHING - AND NOTHING IS RIGHT.
-     *
-     * Three sentences announcing that a picture was forming, over two buttons to the board and to
-     * My record, on a tab whose first row is already a door to the board. My record's coverage bars
-     * now say how far off a full report is, in one row, on the page that is about the record.
-     */
-    expect(PARTY).not.toContain('See what has emerged so far')
-    expect(PARTY).not.toContain('Not everyone has checked in yet, so this is not final')
-  })
-
-  it('and once everyone has shown theirs, says nothing at all', () => {
-    /*
-     * IT BRIEFLY SAID WHERE EVERYTHING HAD GONE, AND THAT WAS ALSO WRONG.
-     *
-     * Replacing the deleted body, this section carried three sentences of directions - "Where the
-     * accounts agree and where they differ... is on the team board. Your own account of each
-     * session... on My record" - over two buttons to those places. Read back: "remove".
-     *
-     * Right. The tab already opens with a door to the board and a door to your sessions. A
-     * paragraph naming the same two rooms is a third and fourth door to them, and it reads as an
-     * apology for the page not holding what it used to.
-     */
-    expect(PARTY).not.toContain('Read it on the board')
-    /* The heading and the directions under it. Not the phrase itself - the toast fired when the
-       last person reveals still says "Everyone has shown theirs", which is the right words in the
-       right place: a thing that just happened, said once, rather than a standing signpost. */
-    expect(PARTY).not.toContain('is on the team board')
-    expect(PARTY).not.toMatch(/fontWeight: 700, marginBottom: 5 \}\}>Everyone has shown theirs/)
+  it('and offers somewhere real to go in both states', () => {
+    /* Forming and released. A message with nothing to open is the dead end that
+       GroundParticipantPage.formingReport.spec was written for. */
+    expect(PARTY).toContain('See what has emerged so far')
+    expect(PARTY).toContain('Read it on the board')
   })
 })

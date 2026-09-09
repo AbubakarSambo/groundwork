@@ -49,22 +49,8 @@ describe('the three questions, in the order somebody has them', () => {
 })
 
 describe('what it promises them', () => {
-  it('the same report the person running it gets, released to everybody at once', () => {
-    /*
-     * THE TIMING CLAIM IS TRUE AND THE SCREEN LEFT OUT WHAT HAPPENS NEXT.
-     *
-     * `releasedAt` is stamped once, atomically, so "released to everybody at once" is exactly
-     * right and stays. What this page never mentioned is that a party then meets an activation
-     * gate the lead is exempt from: reports.service.ts checks each participant's own
-     * ReportActivation before returning content. So somebody promised the report at the same
-     * moment as their manager clicks through and finds a button, which reads as the promise being
-     * withdrawn at the last step.
-     *
-     * The phrase "at the same moment" is no longer matched literally, because the sentence now
-     * carries the press as well and would fail on wording rather than on the promise.
-     */
-    expect(SRC).toMatch(/released to\s+everybody at once/)
-    expect(SRC).toMatch(/open your copy with one press/)
+  it('the same report the person running it gets, at the same moment', () => {
+    expect(SRC).toMatch(/at the same moment/)
   })
 
   it('and their own private note', () => {

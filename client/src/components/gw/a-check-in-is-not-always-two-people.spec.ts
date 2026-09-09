@@ -43,14 +43,7 @@ describe('nothing that describes the mechanism assumes two parties', () => {
   it('and the report card says everyone, which is true at any size', () => {
     const code = strip(readFileSync(join(__dirname, '../../components/gw/SessionReportCard.tsx'), 'utf8'))
     expect(code).toMatch(/everyone reads the same report at the same moment/)
-    /*
-     * "once everyone has opened the report" went with the sentence around it, which said "You can
-     * still only see your own" on a card that was at that moment displaying a cross reference of
-     * what everybody had said. What this file protects is that the wording holds at any number of
-     * people, and the replacement does: "everyone in this round has answered".
-     */
-    expect(code).toMatch(/Everyone in this round has answered/)
-    expect(code).not.toMatch(/only see your own/)
+    expect(code).toMatch(/once everyone has opened the report/)
   })
 
   it('the check-in page too', () => {

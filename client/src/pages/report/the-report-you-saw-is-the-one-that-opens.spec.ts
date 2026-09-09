@@ -31,30 +31,10 @@ describe('the report that opens is the report they read', () => {
     expect(PAGE).toContain('<TheReportYouSawAtTheEnd')
   })
 
-  it('falls back to what that session privately produced, rather than to a second shared report', () => {
-    /*
-     * IT USED TO FALL BACK TO `SessionReportCard`, on the grounds that a signed-in session ends on
-     * that card so it is "the report you saw". True at the end of a session, where the card is the
-     * only thing on the screen. False here, because this page also carries the shared report a few
-     * lines down - and once a round closes the card's own state IS the cross reference, so the top
-     * of the page drew "WHERE THIS STANDS, ACROSS EVERYONE" and the bottom drew it again.
-     *
-     * Read back on the rendered page: "there's my report which is not even a shared report and
-     * then the whole report, I have no fucking clue what is happening."
-     *
-     * So the private half falls back to the one private thing the session produced - the solo
-     * record written for this person when their own check-in completed - and the shared half stays
-     * the only place the cross reference appears.
-     */
-    expect(PAGE).not.toContain('<SessionReportCard')
-    expect(PAGE).toContain('soloArtifact')
-    expect(PAGE).toContain('<TheSessionsReport')
-  })
-
-  it('and each half says whose it is', () => {
-    /* Two reports on one page is fine. Two reports on one page both called "report" is not. */
-    expect(PAGE).toContain('Your own report')
-    expect(PAGE).toContain('The shared report')
+  it('falls back to the card a signed-in session actually ended on, rather than an apology', () => {
+    /* Only the entry flow builds the full report. A session run inside the app ends on
+       SessionReportCard, so that is what "the report you saw" means for that person. */
+    expect(PAGE).toContain('<SessionReportCard')
   })
 
   it('can be corrected from the page that shows it', () => {
@@ -63,34 +43,31 @@ describe('the report that opens is the report they read', () => {
 
   it('is where a finished session links, from every list of sessions', () => {
     /*
-     * THE LIST HAS MOVED TWICE AND THE PROMISE HAS NOT MOVED AT ALL.
+     * TWO LISTS, NOT THREE, AND THE PROMISE IS UNCHANGED.
      *
-     * It was on the Report tab and on My record, byte-for-byte the same rows. I removed one copy,
-     * and removed the wrong one: "your sessions on the report page should go to reports." A
-     * session's report is a report. My record links across to it rather than holding a second copy.
+     * This used to name three: the party's report view, the session list that replaced the lead's
+     * report tab, and My record. The first two were the same rows twice - the party's was
+     * byte-for-byte My record's block, two tabs apart - which is part of what "the participant
+     * seems to be looking at too many reports" turned out to be. The party's copy is gone; its tab
+     * points at My record, where the richer of the two lives.
      *
      * What this file protects is that a finished session opens the REPORT and not the transcript.
-     * That holds for every list there is, which is the assertion - the count and the location never
-     * were.
+     * That still holds for every list there is. The count was never the point.
      */
     const LIST = read('..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx')
-    const MINE = read('..', '..', 'components', 'gw', 'WhatYouAreCarryingForward.tsx')
+    const MINE = read('..', '..', 'components', 'gw', 'MyPrivateReport.tsx')
     expect(LIST).toContain('/report`)')
-    expect(PARTY).toContain('/report`)')
+    expect(MINE).toContain('/report`)')
     for (const src of [PARTY, LIST, MINE]) {
       expect(src).not.toMatch(/navigate\(`\/checkin\/\$\{(ci|r)\.id\}`\)/)
     }
   })
 
-  it('and My record does not keep a second copy of it', () => {
-    /* The duplicate came back once already by being convenient. Two identical lists two tabs apart,
-       with nothing on either screen saying they are the same, is what "the participant seems to be
-       looking at too many reports" partly was. */
-    /* And no line pointing at it either: the Report tab is in the tab bar, and a page that ends by
-       naming its neighbours has run out of things to say about itself. */
-    const MINE = read('..', '..', 'components', 'gw', 'MyRecord.tsx')
-    expect(MINE).not.toMatch(/mySessions\.map\(/)
-    expect(MINE).not.toContain('are on Report')
+  it('and the party view does not grow a second copy of that list', () => {
+    /* The duplicate arrived once by being convenient. A row per session here means the same rows in
+       two tabs again, with nothing on either screen saying they are the same. */
+    expect(PARTY).not.toMatch(/mySessions\.map\(/)
+    expect(PARTY).toContain('onGoToMyRecord()')
   })
 
   it('and the end of a signed-in session offers it directly', () => {

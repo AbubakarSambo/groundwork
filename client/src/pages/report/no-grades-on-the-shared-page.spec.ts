@@ -54,34 +54,9 @@ describe('no grades on the shared page', () => {
      * which session was which. What is left under a heading here is the part that IS about the run
      * - the trend, and the one thing that would make the next session land harder.
      */
-    /*
-     * IT MOVED A THIRD TIME - to the top of the page, in sentences. What this file guards is that
-     * the read still reaches the person it is about, not which component holds it, so it reads the
-     * card that holds it now.
-     */
-    const AT_THE_TOP = readFileSync(
-      join(__dirname, '..', '..', 'components', 'gw', 'WhatYourRecordCanSupport.tsx'),
-      'utf8',
-    )
-    expect(AT_THE_TOP).toContain('Where your record stands')
-    /* And the read itself, which is the point: how specific each session was, in bars a person can
-       act on because the sentence under them names what fills one. */
-    expect(AT_THE_TOP).toContain('How specific each session was')
-    /* And the actionable half - the one thing that would make the next session land harder - moved
-       with the specificity read it belongs to. */
-    const FIVE = readFileSync(
-      join(__dirname, '..', '..', 'components', 'gw', 'TheFiveThingsThatMakeItCheckable.tsx'),
-      'utf8',
-    )
-    /* Named as a dimension now, so the row itself can carry the mark rather than the person
-       having to work out which of five a sentence was about. */
-    expect(FIVE).toContain('mostUseful')
-    /* The per-session phrase moved to its own file when the session list moved to the Report tab
-       and two surfaces needed the same reading. */
-    const PHRASE = readFileSync(
-      join(__dirname, '..', '..', 'components', 'gw', 'how-checkable-was-that-session.ts'),
-      'utf8',
-    )
-    expect(PHRASE).toContain('specific enough to check')
+    expect(MY_RECORD).toContain('How your answers are going')
+    expect(MY_RECORD).toContain('What would make the next one land harder')
+    const PRIVATE_REPORT = readFileSync(join(__dirname, '../../components/gw/MyPrivateReport.tsx'), 'utf8')
+    expect(PRIVATE_REPORT).toContain('specific enough to check')
   })
 })

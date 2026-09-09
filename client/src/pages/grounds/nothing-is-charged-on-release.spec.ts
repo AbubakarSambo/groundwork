@@ -35,18 +35,12 @@ describe('nothing is charged on release', () => {
   })
 
   it('and still says the two things that are true about it', () => {
-    /*
-     * IRREVERSIBLE, AND SOMEBODY LOSES THEIR TURN. Those two are the facts worth carrying into the
-     * decision, and they are what this asserts.
-     *
-     * "Everybody reads the same thing at the same moment" was the third, and it was not true.
-     * Everyone is emailed, but each person has to press a button to show theirs before they can
-     * read it, and the lead does not. A reassurance that is false is worse than a missing one
-     * anywhere, and worst of all in the confirmation for something that cannot be undone.
-     */
+    /* Irreversible, and simultaneous. Those are the facts worth carrying into the decision.
+       Reworded with the control: releasing is no longer the headline action, because it happens by
+       itself when the last person answers - so the confirmation now describes what pressing it
+       EARLY does, which is the only reason to press it. Same two facts. */
     expect(SRC).toContain('This cannot be undone')
-    expect(SRC).toContain('Everybody is emailed')
-    expect(SRC).not.toMatch(/at the same moment/)
+    expect(SRC).toMatch(/at the same moment/)
     expect(SRC).toContain('loses their turn on')
   })
 })

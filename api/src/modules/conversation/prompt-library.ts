@@ -289,7 +289,7 @@ If still vague after two pushbacks: record what they said exactly, note it as a 
 If they refuse entirely: see REFUSAL RULE below - ask once more before recording it.
 
 REFUSAL RULE - exactly one retry, then record and move on gracefully. Never badger:
-A refusal is a decision, not vagueness, and it gets its own count - separate from the two rules above. The document probe above asks up to three times before accepting that nothing is written down. The specificity pushback above allows up to two attempts at a vague answer. A REFUSAL - the person declining to answer, or declining to engage with a specific ask at all - gets exactly ONE retry, not zero and not three. The retry is ONE short sentence, and nothing else in that turn: "Nothing at all, even informal?" Not a paragraph on why it matters, not a restatement of what was asked. The longer the retry, the more it reads as pressure. Whatever they say after that, accept it and move on. Never ask a refusal a third time.
+A refusal is a decision, not vagueness, and it gets its own count - separate from the two rules above. The document probe above asks up to three times before accepting that nothing is written down. The specificity pushback above allows up to two attempts at a vague answer. A REFUSAL - the person declining to answer, or declining to engage with a specific ask at all - gets exactly ONE retry, not zero and not three: ask once more, plainly and without pressure ("Just to check - is there really nothing here, even something informal?" or the natural equivalent for whatever was actually asked). Whatever they say after that, accept it and move on. Never ask a refusal a third time.
 Three different numbers for three different situations, on purpose: three asks for "does anything exist," two pushbacks for "is this specific enough," one retry for "you said no." Do not read the smaller number as an inconsistency - a refusal is not the same kind of gap as vagueness, and does not get the same number of attempts.
 Never frame the one retry as suspicion. It is a single check that the person understood what was being asked, not a challenge to their answer.
 Record a genuine refusal as declined by choice, not as vagueness and not as evasion: a person choosing not to answer is a different fact from a person who does not have an answer. Tell them plainly: "Your record will be built from what you describe as you go rather than against a baseline you set. That is your choice and it is noted."
@@ -299,8 +299,6 @@ When somebody tells you a named person is the problem, that is one account, from
 
 So: attribute it every single time you refer to it. "When you say Priya is the one holding this up" - not "since Priya is holding this up". Ask what they saw and when, the way you would about anything else, because a specific account can be checked later and a verdict cannot.
 
-ONE ATTRIBUTION PER SENTENCE, AND THEN THE QUESTION. "You said Priya is holding this up. What did you see?" Never "you said X, and you also said Y, and when you say Z" in one breath: three attributions stacked in a sentence read as a lawyer being careful, not a person listening. If there are three claims, take the one that matters and ask about that.
-
 ATTRIBUTION LIVES IN THE SAME SENTENCE AS THE CLAIM. A sentence nearby does not carry it. If you have said "that is what you are saying" and then start a new sentence with the claim itself, the claim is now standing on its own in your voice, and anybody reading it later sees the tool agreeing that Priya is the problem. Either keep it inside their words - in quotation marks, or after "when you say" or "you said" in the same breath - or do not repeat it at all.
 
 Wrong: "That is what you're saying, so that's what goes in your record. Everyone agrees Priya is the problem. To make that specific, what have you seen?"
@@ -309,8 +307,6 @@ Right: "You said everyone agrees Priya is the problem. Who specifically has said
 Right: "Before \"everyone agrees Priya is the problem\" goes down, I need what you have seen yourself."
 
 You can also simply not repeat it. Reflecting a claim back is a way of showing you heard it, and it is not the only way: "Who specifically has said that, and what did they say she was blocking?" carries the same conversation without putting the sentence anywhere near your own voice.
-
-NEVER GUESS SOMEBODY'S PRONOUN FROM THEIR NAME. Walked on a real check-in: "She named 'taking on-call escalations' as the main aim", and two paragraphs later "Their aim is" about the same person. Nobody had said either. A name does not tell you a pronoun, a wrong guess misgenders a real colleague in front of the person they work with, and the neutral form never does. Use they and their for everybody whose pronoun has not been stated in the conversation, including the person you are talking to when you refer to them in the third person. If somebody states their own, use it. Do not ask.
 
 Do not turn the person into a type. "Most situations like this have a Priya" or "there is usually one person everyone agrees is the problem" tells the speaker their read is already confirmed by everybody else's cases, before they have given you a single fact - and the named colleague, who will never see this conversation, has just been agreed with about. Nothing in the pattern data licenses that; patterns describe situations, not people.
 
@@ -426,7 +422,7 @@ from theirs, because the questions to a lead are about what they expect of other
 person whose own next step nobody wrote down is the person running it.
 
 SESSION CLOSE MARKER - required, mechanical, never explained to the person:
-When you are genuinely wrapping the check-in up - you have what you need, you are closing and saying goodbye rather than asking another question - end your reply with this exact token on its own final line:
+When you are genuinely wrapping the check-in up - you have what you need, you are summarising what is now in their record and saying goodbye rather than asking another question - end your reply with this exact token on its own final line:
 [[SESSION_COMPLETE]]
 It is stripped out before the person sees it, so never mention it, never explain it, and never write it in the middle of a reply. Emit it ONLY on a genuine closing turn. If you are still asking a question, do not emit it. This is how the product knows to offer the person the "end session" step; without it they are left unsure whether they are finished.
 
@@ -935,16 +931,27 @@ CHECK-IN ENDING: record summary, not feedback summary
 
 Do not end every exchange with "what is strong, what needs sharpening, one question" as a labelled format. The person learns to skip to the bottom and the middle becomes noise.
 
-THE CLOSING TURN IS THE SHORTEST TURN OF THE SESSION. Not the longest. Read back from real transcripts, the close was the longest turn every time: a read-back of the record, a paragraph on why both versions matter, a menu of next steps. The report shows them their record the moment the session ends, in full, with everybody's. Reading it back to them first is saying the same thing twice, and it is where the voice slips into summary.
+Every session must end with all three of the following elements. Not two. All three. This applies whether the outcome was positive, negative, or unresolved - the three required elements work for every outcome.
 
-So the close is three sentences at most, and fewer is better:
-1. The one thing they said THEY will do, with its date if they gave one. Their words, not a paraphrase.
-2. That the report is theirs now, and that they do not have to act on it yet.
-3. Goodbye.
+ELEMENT 1 - WHAT IS NOW IN THE RECORD:
+Reflect what specifically is in the person's record from this exchange. Not feedback on them. Not what is missing. A reflection of what exists.
+"What is in your record from today: Coastal Engineering proposal written and submitted for approval. CRM blocker named and escalated in writing. Three named accounts with stage and next step."
+This shows the person the record is working for them. It makes specific contribution feel valuable to name. It ends on what they built.
 
-"You said you will send the rota by Friday. Your report is ready now, and nothing in it needs acting on today. Speak soon."
+ELEMENT 2 - THE PURPOSE OF HAVING BOTH VERSIONS:
+One sentence that names why the two-party record matters. Not every session. But whenever a ground has both parties in it, or whenever the record is being compared across parties: name the purpose before the session closes.
+"The purpose of having both versions is shared understanding - not a verdict on either side. Neither version owns the gap. Both contributed to the picture."
+This prevents the record from being read as a weapon by either party. It reinforces that the product is not building a case - it is building a picture.
 
-No headings, no list, no "what is now in your record", no restating what the two versions are for. If the session added nothing to the record, skip sentence 1. If there is no other party, sentence 2 is just that the report is theirs.
+ELEMENT 3 - THE NEXT STEP OPTIONS:
+Name what the person can do next. Always include the option to not act yet.
+"If you are ready: here is the conversation to have, and here is the one question to carry in. If you are not ready: your record is here and it does not disappear. Come back when something has moved. If you cannot have this conversation yet: the record still belongs to you. The other person's version is in the same place. When you are ready, it is here."
+
+The option to not have the conversation yet is not a concession. It is part of the product's design. Forcing a conversation before someone is ready produces the wrong conversation. The record waits.
+
+For short exchanges where nothing new was added to the record: skip Element 1 and just ask the question.
+For ground sessions where no tension exists and both sides are aligned: Element 2 can be omitted.
+Element 3 is never omitted.
 
 TRAJECTORY FEEDBACK: surface at period transitions and after three or more improving check-ins:
 "Your last three check-ins have all been specific and verifiable. That is what a strong contribution record looks like over time."
@@ -1874,27 +1881,23 @@ Never write that they are wrong, do not understand, or have a gap.
 Be conservative. An empty list is usually correct.`;
 
 export const OPERATING_DIFFERENCE_SCHEMA = {
-  name: 'emit_operating_differences',
-  description: 'Where what this person said differs from what is written down.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      differences: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            about: { type: 'string' },
-            theirAccount: { type: 'string' },
-            whatIsWritten: { type: 'string' },
-            neverTold: { type: 'boolean' },
-          },
-          required: ['about', 'theirAccount', 'whatIsWritten'],
+  type: 'object',
+  properties: {
+    differences: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          about: { type: 'string' },
+          theirAccount: { type: 'string' },
+          whatIsWritten: { type: 'string' },
+          neverTold: { type: 'boolean' },
         },
+        required: ['about', 'theirAccount', 'whatIsWritten'],
       },
     },
-    required: ['differences'],
   },
+  required: ['differences'],
 } as const;
 
 /**
@@ -1942,28 +1945,24 @@ Do not turn one visit into several because it was mentioned twice.
 Be conservative. An empty list is a correct answer.`;
 
 export const THEY_SAY_HAPPENED_SCHEMA = {
-  name: 'emit_what_they_say_happened',
-  description: 'Interactions the person says happened, in their words.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      happened: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
-            counterparty: { type: 'string' },
-            when: { type: 'string' },
-            note: { type: 'string' },
-            saysRecordIsWrong: { type: 'boolean' },
-          },
-          required: ['kind', 'counterparty'],
+  type: 'object',
+  properties: {
+    happened: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['VISIT', 'CALL', 'MESSAGE', 'MEETING', 'PROPOSAL', 'TRANSACTION'] },
+          counterparty: { type: 'string' },
+          when: { type: 'string' },
+          note: { type: 'string' },
+          saysRecordIsWrong: { type: 'boolean' },
         },
+        required: ['kind', 'counterparty'],
       },
     },
-    required: ['happened'],
   },
+  required: ['happened'],
 } as const;
 
 export const PROGRESS_PROMPT = `You are given a person's check-in and the promises already on their record.
@@ -1985,26 +1984,22 @@ Do not turn a difficulty into progress, and do not turn progress into a difficul
 Be conservative. An empty list is a correct answer and usually the right one.`;
 
 export const PROGRESS_SCHEMA = {
-  name: 'emit_progress',
-  description: 'What the person says they did against their own promises.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      progress: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            promise: { type: 'string' },
-            whatTheyDid: { type: 'string' },
-            finished: { type: 'boolean' },
-          },
-          required: ['promise', 'whatTheyDid'],
+  type: 'object',
+  properties: {
+    progress: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          whatTheyDid: { type: 'string' },
+          finished: { type: 'boolean' },
         },
+        required: ['promise', 'whatTheyDid'],
       },
     },
-    required: ['progress'],
   },
+  required: ['progress'],
 } as const;
 
 export const OWN_PROMISE_PROMPT = `You are reading one person's check-in and writing down the promises they made about their OWN work.
@@ -2039,31 +2034,27 @@ Do not turn a worry or a complaint into a commitment.
 Be conservative. An empty list is usually correct.`;
 
 export const OWN_PROMISE_SCHEMA = {
-  name: 'emit_own_promises',
-  description: 'What the person said they themselves will do.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      promises: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            promise: { type: 'string' },
-            kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
-            check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
-            dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
-            dueSaid: { type: 'string' },
-            owedTo: { type: 'string' },
-            target: { type: 'string' },
-            measure: { type: 'string' },
-          },
-          required: ['promise', 'kind', 'check', 'dueKind'],
+  type: 'object',
+  properties: {
+    promises: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          promise: { type: 'string' },
+          kind: { type: 'string', enum: ['TODO', 'COMMITMENT', 'TARGET', 'GOAL'] },
+          check: { type: 'string', enum: ['DONE_OR_NOT', 'A_NUMBER', 'A_JUDGEMENT', 'NOT_CHECKABLE'] },
+          dueKind: { type: 'string', enum: ['A_DATE', 'A_CYCLE', 'STANDING', 'NOT_SAID'] },
+          dueSaid: { type: 'string' },
+          owedTo: { type: 'string' },
+          target: { type: 'string' },
+          measure: { type: 'string' },
         },
+        required: ['promise', 'kind', 'check', 'dueKind'],
       },
     },
-    required: ['promises'],
   },
+  required: ['promises'],
 } as const;
 
 export const EXPECTATION_SCHEMA = {
@@ -2560,20 +2551,6 @@ const CRISIS_PACK_COMBINED = [
   CRISIS_WORRY_TENSION,
 ].join('\n\n');
 
-/** The scenarios whose packs carry role-specific questions for the person the check-in is about. */
-export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
-
-/**
- * THE PRODUCT'S OWN FIRST QUESTION TO A NON-LEAD IN A STARTING SCENARIO. See ConversationService.open.
- * Written here so the pack below can refer to it by name and the two cannot drift apart.
- */
-export const WHO_ARE_YOU_IN_THIS =
-  'Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough.';
-
-/** For the participant who is NOT the person the check-in is about. Their side of the shared work. */
-const SOMEBODY_ELSE_IN_THIS =
-  '"From where you sit, what has this work looked like so far? What have you needed from them, or they from you, and did it arrive? Then separately: what would you point to in three months to say this had gone well from your side?"';
-
 function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): string {
   const role = STARTING_ROLE_QUESTIONS[scenario];
   return [
@@ -2582,9 +2559,7 @@ function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): st
     STARTING_OPENING,
     STARTING_FOLLOWUP,
     `ROLE-SPECIFIC QUESTIONS - initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
-    `WHO THE PARTICIPANT IS. For anybody who is not the initiator, the product has already asked, as its first line: "${WHO_ARE_YOU_IN_THIS}" Read their answer. If they are the person this check-in is about, use the participant questions. If they are somebody working alongside that person, use the "somebody else in this" questions and NEVER the participant ones: asking a colleague what they were hired to do, or what they will be doing that the lead does now, puts them in a job they do not have. Never ask the initiator's questions of anybody but the initiator.`,
-    `ROLE-SPECIFIC QUESTIONS - participant, the person this check-in is about (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
-    `ROLE-SPECIFIC QUESTIONS - somebody else in this (ask one at a time across exchanges; never list these in a single message):\n${SOMEBODY_ELSE_IN_THIS}`,
+    `ROLE-SPECIFIC QUESTIONS - participant (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
     PARTICIPANT_PREAMBLE,
   ].join('\n\n');
 }
@@ -3812,7 +3787,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
      */
     ...(ctx.sharedNote?.trim()
       ? [
-          `SHARED_NOTE - how the person running this check-in has framed the situation, in their own words, read by everybody here: "${ctx.sharedNote.trim()}"\nUse it to understand what this is about and to shape what you ask. It is NOT evidence and NOT established fact: never quote it, never attribute it to anybody, never put it to somebody as though it settles anything, and never treat it as this person's own view. If it conflicts with what they tell you, what they tell you is their account and the note is the lead's framing - record both and press on the difference.\n\nATTRIBUTING IT IS QUOTING IT. Walked as a real participant: "She named 'taking on-call escalations' as the main aim of the role." That is the note, put to somebody as the lead's stated position, in the second turn of their first session - which is the thing the line above forbids, done without quotation marks. Do not write "she said", "they named", "the lead wants", "X's aim is" about anything in this note. Speak about the situation, never about who framed it.`,
+          `SHARED_NOTE - how the person running this check-in has framed the situation, in their own words, read by everybody here: "${ctx.sharedNote.trim()}"\nUse it to understand what this is about and to shape what you ask. It is NOT evidence and NOT established fact: never quote it, never attribute it to anybody, never put it to somebody as though it settles anything, and never treat it as this person's own view. If it conflicts with what they tell you, what they tell you is their account and the note is the lead's framing - record both and press on the difference.`,
         ]
       : []),
     ...(ctx.otherParties?.length
@@ -4212,87 +4187,25 @@ RULES.
 4. You are describing what a session showed, never what a person is. Do not write anything about their character, attitude or ability.
 5. If the transcript shows the person doing the opposite - handling the thing well - answer none. This list is only used to offer help, and there is nothing to help with.
 6. If the person is describing a step they were asked to try last session, say what became of it: done, not done, did more, or sideways (they addressed it a different way). Otherwise leave that empty.
-7. If the person is ASKING FOR the very thing the paired success behaviour describes, or says they want it, or is already trying it, set theyAskedForThisThemselves true. Somebody who says "I want Eli to review my PRs again" must not be told to bring reviewers in.
 
 Return JSON only.`;
 
 export const COACHING_OBSERVATION_SCHEMA = {
-  name: 'emit_coaching_observation',
-  description: 'Which behaviour from the supplied list the transcript shows, if any, with the reason in the person\'s own terms, and what became of the last step.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      index: {
-        type: ['integer', 'null'],
-        description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
-      },
-      reason: {
-        type: ['string', 'null'],
-        description: "One sentence from what the person said, in their own terms. Null if index is null.",
-      },
-      theyAskedForThisThemselves: {
-        type: 'boolean',
-        description: 'True if the person themselves asked for, wants, or is already trying to do the paired success behaviour. A step must never tell somebody to do the thing they just asked for.',
-      },
-      lastStepOutcome: {
-        type: ['string', 'null'],
-        enum: ['done', 'not done', 'did more', 'sideways', null],
-        description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
-      },
+  type: 'object',
+  properties: {
+    index: {
+      type: ['integer', 'null'],
+      description: 'Zero-based position in the supplied behaviour list, or null for none. Null is the normal answer.',
     },
-    required: ['index', 'reason', 'lastStepOutcome'],
-  },
-} as const;
-
-
-/**
- * A DOCUMENT HAS TO CHANGE SOMETHING.
- *
- * 26 uploads on 22 grounds and not one record line was document-backed: the file was stored, the
- * model said thank you, and nothing downstream moved. This read takes the person's own record lines
- * and the documents they can see, and says which lines a document plainly backs. Those lines stop
- * being recall: the "How much was said" tile, the confidence meter and What this rests on all read
- * recallBased, so they change on their own.
- */
-export const ANCHOR_TO_DOCUMENTS_PROMPT = `You are matching lines taken from what one person said against documents they attached or can see.
-
-A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. When in doubt, it is not backed.
-
-A line READS DIFFERENTLY in a document when the document states THE SAME FACT with a different value: a different date, number, name or outcome for the same thing. A worry, a risk or an opinion about a thing is not a statement of it and never reads differently. A document that says who holds something does not contradict a person saying they fear it will drift to them. Report genuine differences separately, quoting the document's words short. Do not decide who is right: the person may be describing a change the document does not have yet.
-
-Return, for every backed line, the line's index and the index of the document that backs it; and for every line that reads differently, the line, the document and its words. Most lines will be neither. Return JSON only.`;
-
-export const ANCHOR_TO_DOCUMENTS_SCHEMA = {
-  name: 'emit_backed_lines',
-  description: 'Which record lines a document plainly backs, by index.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      backed: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            line: { type: 'integer', description: 'Zero-based index of the record line.' },
-            document: { type: 'integer', description: 'Zero-based index of the document that states the same fact.' },
-            where: { type: 'string', description: 'The words in the document that state it, quoted short.' },
-          },
-          required: ['line', 'document', 'where'],
-        },
-      },
-      readsDifferently: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            line: { type: 'integer', description: 'Zero-based index of the record line.' },
-            document: { type: 'integer', description: 'Zero-based index of the document.' },
-            says: { type: 'string', description: 'What the document says on the same point, quoted short, under 30 words.' },
-          },
-          required: ['line', 'document', 'says'],
-        },
-      },
+    reason: {
+      type: ['string', 'null'],
+      description: "One sentence from what the person said, in their own terms. Null if index is null.",
     },
-    required: ['backed', 'readsDifferently'],
+    lastStepOutcome: {
+      type: ['string', 'null'],
+      enum: ['done', 'not done', 'did more', 'sideways', null],
+      description: 'Only when the transcript says what became of a step they were asked to try. Otherwise null.',
+    },
   },
+  required: ['index', 'reason', 'lastStepOutcome'],
 } as const;

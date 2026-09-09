@@ -89,7 +89,7 @@ describe('one row per person, one cell per session', () => {
 
   /** The expectation state on the row - and the words themselves live on Context, not here. */
   it('each row says whether anything is expected of them, and whether they have seen it', () => {
-    expect(CODE).toContain(/* Names its subject now: it sat under a sessions line and read as contradicting it. */ 'no expectation set for them yet')
+    expect(CODE).toContain('nothing expected of them yet')
     expect(CODE).toContain('expectation set, they have seen it')
     expect(CODE).toContain('expectation set, not seen yet')
   })

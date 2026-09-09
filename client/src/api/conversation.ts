@@ -13,7 +13,7 @@ export interface OpenCheckInResponse { reply: string; groundId?: string; brief?:
 export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
 export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }
-export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null }
+export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[] }
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -125,8 +125,4 @@ export const conversationApi = {
     // Without this the blob is held for the life of the document.
     URL.revokeObjectURL(url)
   },
-
-  /** "This is not what I said." Owner-scoped. Nothing is deleted; the row stops counting. */
-  disputeEntry: (checkInId: string, entryId: string) =>
-    apiClient.post<{ id: string; disputedAt: string }>(`/check-ins/${checkInId}/entries/${entryId}/dispute`).then(r => r.data),
 }

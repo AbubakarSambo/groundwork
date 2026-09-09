@@ -9,7 +9,6 @@ import { ScimService } from '../people/scim.service';
 import { DocumentsService } from '../documents/documents.service';
 import { askWhoItIsFor } from '../assistant/a-document-is-private-until-you-say-otherwise';
 import { whoThePanelIsSignedInAs } from './who-the-panel-is-signed-in-as';
-import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 
 /**
  * RUNNING A CHECK-IN FROM SOMEBODY ELSE'S APPLICATION.
@@ -321,7 +320,7 @@ export class ACheckInACustomerCanRunService {
     if (!email || !email.includes('@')) {
       throw new BadRequestException('An email address is needed. It is how they are invited and how they sign in.');
     }
-    const name = dto?.displayName?.trim() || aNameOutOfAnAddress(email);
+    const name = dto?.displayName?.trim() || email.split('@')[0];
     const [givenName, ...rest] = name.split(/\s+/);
 
     return this.scim.upsert(organizationId, 'panel', {

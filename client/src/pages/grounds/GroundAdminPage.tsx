@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
+import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -27,9 +28,6 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
-import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
-import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
-import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
@@ -814,18 +812,6 @@ export function GroundAdminPage() {
        * what the plan covers and who has to act. See added-but-waiting-for-a-seat.ts.
        */
       setWhyItWaits((added as { saying?: string }).saying ?? null)
-      /*
-        AND WHETHER THEY BELONG SOMEWHERE ELSE, WHICH NOBODY WAS TOLD.
-
-        "She wasn't told that I was not part of her org when I was added." The join works - they get
-        a guest membership and every org-scoped read still refuses them - so the person adding is
-        the only one left in the dark, and they are the one who will wonder later why this person
-        cannot see the rest of the workspace.
-      */
-      const guestFrom = (added as { guestFrom?: string }).guestFrom
-      if (guestFrom) {
-        toast.info(`${newParticipantEmail.trim()} is at ${guestFrom}, not here. They join this check-in as a guest and see nothing else in your workspace.`)
-      }
       setLastInvitedEmail(newParticipantEmail.trim())
       setAddingParticipant(false)
       setNewParticipantEmail('')
@@ -980,7 +966,7 @@ export function GroundAdminPage() {
           </p>
           <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
             You will see who has checked in, and the shared report once it releases. You will
-            not see what anyone wrote - what people write stays private until the report is ready.
+            not see what anyone wrote - accounts stay private until the report is ready.
           </div>
           {/*
             A real control, not a promise. The first version of this waiting
@@ -1144,21 +1130,6 @@ export function GroundAdminPage() {
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
     (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
   ).length
-  /* One dot per session of mine. The same read the party's page makes - the two views of a check-in
-     have to move together, which is what the-two-views-are-a-pair protects. */
-  const mySessionDots = ((ground?.checkIns ?? []) as any[])
-    .filter((c) => (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
-    .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
-    .map((c) => ({
-      sessionNumber: c.sessionNumber ?? 0,
-      state: (c.status === 'COMPLETED'
-        ? (c.isSelfCorrection ? 'corrected' : 'done')
-        : 'todo') as 'done' | 'corrected' | 'todo',
-      /* `specificityHistory` is one score per finished session, in order, so the nth score belongs
-         to the nth session. The bar is what she asked for back - "simple and visual" - and the
-         session number under it is the thing the old one was missing. */
-      checkable: ((mySpecificity?.scores ?? []) as number[])[(c.sessionNumber ?? 1) - 1] ?? null,
-    }))
   /**
    * How many people have finished the round that is currently open. The round is
    * `sessionsDone + 1` - the one the header already names - so this and the
@@ -1168,26 +1139,6 @@ export function GroundAdminPage() {
   const roundDone = (ground.checkIns ?? []).filter(
     (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
   ).length
-  /**
-   * WHY THE SESSION NUMBER JUST WENT DOWN.
-   *
-   * Walked twice on a real check-in. Header read "Session 2 of 3, 0 of 1 checked in for session 2".
-   * A person was invited. Nothing else happened. The header then read "Session 1 of 3, 2 of 3
-   * checked in for session 1", and the second time somebody was added it went back again.
-   *
-   * The rule behind it is right and is stated in whichSessionIsThisCheckInOn: a round is open until
-   * EVERYBODY has finished it, so it is one past the lowest number anybody has done. Adding somebody
-   * who has done none puts the lowest back to zero.
-   *
-   * What is wrong is that a counter which only ever goes up is the one thing on the screen a person
-   * reads as a position, so it going backwards reads as the product losing two people's work. It is
-   * a fact about arithmetic that nobody can be expected to reconstruct, and it takes one sentence to
-   * say. Shown only when it has actually happened: somebody here has finished more sessions than the
-   * open round, which cannot be true unless the round moved back under them.
-   */
-  const roundWentBack = (ground.participants ?? []).some((p: any) =>
-    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length >= openRound,
-  )
   /**
    * The report has three states worth telling apart, and only the last is good
    * news. "Waiting" is not a failure and does not get a warning colour - it is
@@ -1438,12 +1389,6 @@ export function GroundAdminPage() {
                   {roundDone} of {(ground.participants ?? []).length} checked in for session {openRound}
                 </span>
               )}
-              {roundWentBack && (
-                <span style={{ color: 'var(--gw-muted)' }}>
-                  back to session {openRound} because somebody new was added - a session stays open
-                  until everybody has done it, and nothing anybody wrote is lost
-                </span>
-              )}
             </>
           )}
           <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>
@@ -1615,9 +1560,6 @@ export function GroundAdminPage() {
               openSessionNumber={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.sessionNumber : null}
               totalSessions={plannedSessions ?? null}
               nextOpensAt={myOpenOpensLater ? myOpenAvailableFrom : null}
-              /* Only the person who runs it can change the rhythm, so only they are told they can. */
-              canChangeTheRhythm={true}
-              onGoToSetup={() => goTab('settings' as Tab)}
               onOpenSession={() => navigate(`/grounds/${id}/p?open=1`)}
               openPending={false}
               /**
@@ -1724,58 +1666,31 @@ export function GroundAdminPage() {
               yours, so it sits here rather than above the shared report - which otherwise made that
               tab mean two things at once.
             */}
-            {/* The summary first, then the reads of it. The two views move together. */}
-            <WhatYouAreCarryingForward
+            <MyPrivateReport
               groundId={id!}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
+              myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
               otherParties={(ground.participants ?? [])
                 .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
+                .map((p: any) => ({ id: p.id, name: nameOfParticipant(p.id) ?? 'A participant', email: p.email }))}
+              mySessions={mySessions}
+              /* Per-session specificity, so each row can say how checkable that account was. The
+                 same read the trend card uses; it just belongs on the session it is about. */
+              specificityBySession={Object.fromEntries(((mySpecificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
             />
-
-            {/* The same cards the party's view opens My record with. */}
-            <WhatYourRecordCanSupport
-              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
-              trend={mySpecificity?.trend}
-              sessions={mySessionDots}
-              totalSessions={plannedSessions ?? null}
-              coverage={{
-                iHaveCheckedIn: mySessionsDone > 0,
-                answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
-                parties: (ground as any)?.sessionProgress?.total
-                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
-                /* The lead sees who is on their own check-in, so no fallback is needed here. */
-                waitingOn: (ground.participants ?? [])
-                  .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
-                  .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
-                  .map((p: any) => personLabel(p)),
-                /* The lead's page does not fetch the shared report, and these two rows are about
-                   what it can say. Left null, so they read as not-yet rather than as absent. */
-                corroborated: null,
-                documentBackedPct: null,
-                roundsFinished: mySessionsDone,
-              }}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
-            <TheFiveThingsThatMakeItCheckable
-              dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
-              sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}
-              mostUseful={(myRecord as any)?.insightsLocked ? null : mySpecificity?.mostUseful}
-              strongest={(myRecord as any)?.insightsLocked ? null : mySpecificity?.strongest}
-            />
-            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
-                list to Report, and sign-off and the two signposts were removed - what was left was an
-                empty grey box and a modal whose button had moved out from under it. */}
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
             groundId={id}
             ground={ground}
             myRecord={myRecord}
+            viewerUserId={user?.id}
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
+            specificity={mySpecificity}
+            /* This page calls the material tab `docs`; the component asks to be sent and the page
+               decides where that is. */
+            onGoToTab={(t) => goTab((FROM_TAB_KEY[t] ?? 'docs') as Tab)}
             />
           </div>
         )}
@@ -2007,9 +1922,6 @@ export function GroundAdminPage() {
                       */}
                       {theirSessions.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 40, flexWrap: 'wrap' }}>
-                          {/* Two bare numerals sat under a person's name with the meaning in a tooltip nobody hovers.
-   The row says what it is. */}
-                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>sessions</span>
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
@@ -2071,12 +1983,8 @@ export function GroundAdminPage() {
                             title="Read the expectations, on the Context tab"
                             style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline dotted' }}
                           >
-                            {/* Read on the Sessions tab, directly under "Some sessions done, some still
-                                open": "nothing expected of them yet". Two facts about two different
-                                things, and the second did not say which thing. It is about the
-                                EXPECTATION, so it says so. */}
                             {!p.objective?.text?.trim()
-                              ? 'no expectation set for them yet'
+                              ? 'nothing expected of them yet'
                               : p.objective.seenBySubject
                                 ? 'expectation set, they have seen it'
                                 : 'expectation set, not seen yet'}
@@ -2234,7 +2142,7 @@ export function GroundAdminPage() {
                   <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px' }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
                     <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
-                      Everyone's next check-in becomes their final one - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                      Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
@@ -2385,12 +2293,9 @@ export function GroundAdminPage() {
                 ) : (
                   <div style={{ marginTop: 10, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '11px 13px' }}>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, marginBottom: 10 }}>
-                      {/* "Everybody reads the same thing at the same moment" was here and is not
-                          true: everyone is emailed, but each person has to show theirs before they
-                          can read it, and the lead does not. A false reassurance in the
-                          confirmation for something that cannot be undone. */}
-                      Everybody is emailed. This cannot be undone, and
-                      anybody who has not answered loses their turn on this round.
+                      Everybody is emailed and everybody reads the same thing at the same moment.
+                      This cannot be undone, and anybody who has not answered loses their turn on
+                      this round.
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button
@@ -2476,7 +2381,7 @@ export function GroundAdminPage() {
               })()}
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
-                They give their own version of the same work. You cannot see what they write until the report releases.
+                They give their own account of the same work. You cannot see what they write until the report releases.
               </div>
               {/*
                 THE APPROVAL RULE, SAID BEFORE SOMEBODY IS ADDED RATHER THAN DISCOVERED AFTERWARDS.
@@ -2493,48 +2398,17 @@ export function GroundAdminPage() {
                 everybody and discloses nothing.
               */}
               <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 7, padding: '8px 10px', marginBottom: 10, lineHeight: 1.55 }}>
-                {/*
-                  THE RULE WAS TRUE AND THIS WAS THE ONE SCREEN WHERE IT DOES NOT APPLY.
-
-                  Walked with a real outside address, from a different domain, added here: no
-                  approval was asked for, the person went straight into a check-in, their invite
-                  page said nothing about being from outside, and there was no row to see it on.
-
-                  Nothing is broken. `whyTheyDoNotNeedApproval` returns "an admin of this
-                  organisation added them, which is the approval" - see
-                  nobody-joins-your-company-by-being-invited-to-a-check-in.ts, which is deliberate
-                  and right, because asking an admin to approve their own action is a queue with
-                  one item in it that they put there.
-
-                  So the panel was describing the rule from the one place it is exempt. An admin
-                  reading it expects a queue that will never appear, and misses the thing that
-                  actually happens: the person gets a login here and shows up on People.
-                */}
-                {isOrgAdmin
-                  ? 'You are an admin here, so adding somebody is the approval - there is no queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
-                  : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name on the Sessions tab.'}
+                Somebody from outside your organisation is invited straight away, and an admin here
+                has to let them in before they can check in. You will see that on their row, and
+                they are told the same thing.
               </div>
-              {/*
-                AND WHERE THE ROWS ARE. "You will see that on their row" was said on a panel with
-                no rows on it: this fold is an add form and a toast, and after adding two people it
-                still showed neither of them. The roster itself is real, complete and better than
-                anything a second copy here would be - delivery state, waiting for a seat, waiting
-                on your organisation, remind, fix a bounced address - and it lives on Sessions. So
-                this points at it rather than growing a rival list that would drift.
-              */}
-              <button
-                onClick={() => setTab('checkins')}
-                style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                See who is in it, and where each of them has got to &rarr;
-              </button>
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
                 value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
               />
               <input
-                type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
+                type="text" placeholder="What do you want them to account for? (optional)" aria-label="What they are accountable for"
                 value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
               />
@@ -2694,8 +2568,8 @@ export function GroundAdminPage() {
                 <label className="gw-label">Do these people work together?</label>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
                   Can they see each other's work day to day? If they cannot, nobody here is in a position
-                  to confirm what anyone else said, and the board says so rather than reading somebody
-                  being quiet as work going missing.
+                  to confirm anyone else's account, and the board says so rather than reading a quiet
+                  account as work going missing.
                 </div>
                 <div role="radiogroup" aria-label="Do these people work together?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {[
@@ -2858,23 +2732,6 @@ export function GroundAdminPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
                   {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} sessions over {timelineDaysDraft} days.
                   {' '}Sessions already completed are never removed.
-                </div>
-                {/*
-                  AND WHAT HAPPENS AT THE END OF THEM, WHICH NOTHING SAID.
-
-                  A check-in does not just run out. On the last session everybody is asked how it
-                  closes, and it ends on an agreed answer. That screen is the point of the whole
-                  thing for some scenarios, and the only way to learn it exists was to reach it -
-                  which on a three-month run means three months. So the number of sessions was a
-                  countdown to something nobody had been told about.
-
-                  Here, next to the control that sets the number, because this is the moment a
-                  person is deciding how long it should be and the ending is what they are deciding
-                  the length of.
-                */}
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.55 }}>
-                  On the last one, everybody is asked how this should close, and it ends on the
-                  answer you agree.
                 </div>
                 <button
                   disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}
@@ -3058,7 +2915,7 @@ export function GroundAdminPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                   For the ones you started to see how this works. It goes completely - the
                   conversation, the sessions and anything uploaded. If somebody else has already
-                  answered, this refuses and tells you: that is a record, not a test, and
+                  given their account, this refuses and tells you: that is a record, not a test, and
                   closing is the thing to do with it.
                 </div>
                 {deleteError && (
@@ -3202,7 +3059,7 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
         </p>
 
         <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-          Groundwork records what each person says about a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - what people write stays private until the report is ready.
+          Groundwork records each person's account of a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - accounts stay private until the report is ready.
         </div>
 
         <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Context (edit if needed)</div>
@@ -3266,14 +3123,14 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
             <input type="radio" checked={alsoCheckingIn} onChange={() => setAlsoCheckingIn(true)} style={{ marginTop: 3 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>I'm also checking in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You answer too, same as everyone else. Recommended - most leads are also a party to the situation.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You give your own account, same as everyone else. Recommended - most leads are also a party to the situation.</div>
             </div>
           </label>
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', cursor: 'pointer', background: !alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
             <input type="radio" checked={!alsoCheckingIn} onChange={() => setAlsoCheckingIn(false)} style={{ marginTop: 3 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Managing only</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this check-in but do not answer yourself. You'll still see who has checked in and the shared report once it releases - you're just not one of the people being compared.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this check-in but won't give your own account. You'll still see who has checked in and the shared report once it releases - you're just not one of the accounts being compared.</div>
             </div>
           </label>
         </div>

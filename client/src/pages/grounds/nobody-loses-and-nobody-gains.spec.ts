@@ -29,22 +29,14 @@ describe('nobody loses and nobody gains', () => {
   it('NOBODY LOSES: both views still render the private report, on My record', () => {
     /* Sliced from the RENDER, not from the first mention: both files name these keys in their
        url maps long before they render anything. */
-    /*
-     * BOUNDED BY THE NEXT TAB, NOT BY A CHARACTER COUNT.
-     *
-     * It was `at + 1600`, and My record grew two cards above the private report - so the slice
-     * stopped short of it and the spec failed on code that still does exactly what it promises.
-     * The same trap `a-page-you-cannot-change-says-so` already wrote down, hit again.
-     */
     const renderOf = (src: string) => {
       const at = src.search(/\{tab === '(?:myrecord|record)' &&/)
       expect(at).toBeGreaterThan(-1)
-      const next = src.slice(at + 1).search(/\n\s*\{tab === '/)
-      return src.slice(at, next > -1 ? at + 1 + next : src.length)
+      return src.slice(at, at + 1600)
     }
     for (const [name, src] of [['runs it', RUNS_IT], ['party', PARTY]] as const) {
-      expect(src, `${name} must still render it`).toMatch(/<WhatYouAreCarryingForward/)
-      expect(renderOf(src), `${name} must render it on My record`).toMatch(/<WhatYouAreCarryingForward/)
+      expect(src, `${name} must still render it`).toMatch(/<MyPrivateReport/)
+      expect(renderOf(src), `${name} must render it on My record`).toMatch(/<MyPrivateReport/)
     }
   })
 
@@ -52,7 +44,7 @@ describe('nobody loses and nobody gains', () => {
     for (const src of [RUNS_IT, PARTY]) {
       const report = src.slice(src.indexOf("tab === 'report'"))
       const untilNext = report.slice(0, report.indexOf("tab === '", 20) + 1 || 2000)
-      expect(untilNext).not.toMatch(/<WhatYouAreCarryingForward/)
+      expect(untilNext).not.toMatch(/<MyPrivateReport/)
     }
   })
 

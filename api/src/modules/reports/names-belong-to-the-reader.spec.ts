@@ -6,12 +6,12 @@ import { labelsForParties, namesVisibleTo, withNames } from './party-labels';
  *
  * Reports are stored with no personal names in them. The synthesis prompt is
  * told never to use one, and the parties reach the model as "the initiator" and
- * "Participant A". Keeping that is worth something real: an artefact with no
+ * "participant A". Keeping that is worth something real: an artefact with no
  * names cannot leak a name, wherever it is copied or whoever eventually opens it.
  *
  * What it cost was readability, and badly. A manager opening a report about her
  * own new hire, on a page already showing both their names in the header, was
- * reading "the initiator" and "Participant A" describing a conversation she had
+ * reading "the initiator" and "participant A" describing a conversation she had
  * been in. Anonymising two colleagues from each other protects nobody and makes
  * the report unusable, which is what it had become.
  *
@@ -56,8 +56,8 @@ describe('labels are stable and shared with the write path', () => {
   it('labels the lead and the participants the way the report was written', () => {
     const labels = labelsForParties(parties);
     expect(labels.get('p-lead')).toBe('the initiator');
-    expect(labels.get('p-hire')).toBe('Participant A');
-    expect(labels.get('p-colleague')).toBe('Participant B');
+    expect(labels.get('p-hire')).toBe('participant A');
+    expect(labels.get('p-colleague')).toBe('participant B');
   });
 
   it('uses the role when people have one, and distinguishes people who share it', () => {
@@ -97,8 +97,6 @@ describe('what a participant sees', () => {
     // person it is about is a colleague's account handed over as evidence.
     const visible = namesVisibleTo('p-hire', parties);
     const out = withNames('participant B said the handover was late.', visible);
-    /* Untouched here: with no label list passed there is nothing to normalise against, and this
-       call is about the name never appearing rather than about casing. */
     expect(out).toBe('participant B said the handover was late.');
     expect(out).not.toContain('Kavon');
   });
@@ -111,9 +109,6 @@ describe('what a participant sees', () => {
     );
     expect(out).toContain('Hafsah Jumare');
     expect(out).toContain('Abubakar B');
-    /* Untouched: the label a reader may not resolve stays exactly as the prose carried it. The
-       casing of a label inside model prose is not this file's business - that it is not swapped
-       for a name is. */
     expect(out).toContain('participant B');
     expect(out).not.toContain('Kavon');
   });

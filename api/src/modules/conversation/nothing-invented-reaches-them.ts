@@ -18,8 +18,6 @@
  * because putting their word back is strictly better than losing the sentence. Only what cannot be
  * repaired - a name with nothing of theirs underneath it - reaches this.
  */
-
-import { OneQuestionPerTurn } from './one-question-per-turn';
 import { namesWorthReporting, restoreTheirWords } from './the-record-holds-what-was-said';
 
 /**
@@ -53,52 +51,7 @@ export type Screened = {
   text: string;
   /** The sentences that did not survive, for the log. Never shown to anybody. */
   dropped: string[];
-  /** Why each one went, and the word or figure that did it. */
-  hits: Hit[];
 };
-
-export type Hit = {
-  sentence: string;
-  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | 'a second question';
-  offending: string[];
-};
-
-/**
- * A NUMBER NOBODY SAID IS AN INVENTION TOO.
- *
- * The name check has been on the stream since the first invented colleague. Numbers went
- * unchecked, and a made-up "30 August" travels the same road: reply, extractor, record row, tile.
- * So every run of digits in a sentence is looked for in what is already on the table, digits only,
- * so "2,000" matches "2000" and "2am" matches "2". A list marker ("1." on its own) is not a claim
- * and is let through.
- */
-export function numbersNobodySaid(sentence: string, known: string[]): string[] {
-  const table = known.join(' ').replace(/[^0-9]+/g, ' ');
-  const have = new Set(table.split(' ').filter(Boolean));
-  const out: string[] = [];
-  for (const raw of sentence.match(/\d[\d,.:]*\d|\d/g) ?? []) {
-    if (/^\d+$/.test(raw) && new RegExp(`(^|\\s)${raw}[.)](\\s|$)`).test(sentence)) continue;
-    const digits = raw.replace(/[^0-9]/g, '');
-    if (!digits || have.has(digits)) continue;
-    const parts = raw.split(/[,.:]/).map((x) => x.replace(/[^0-9]/g, '')).filter(Boolean);
-    if (parts.length > 1 && parts.every((x) => have.has(x))) continue;
-    out.push(raw);
-  }
-  return [...new Set(out)];
-}
-
-export function whyItFails(
-  sentence: string,
-  personSaid: string[],
-  readerName?: string | null,
-): Omit<Hit, 'sentence'> | null {
-  const names = namesWorthReporting(sentence, personSaid);
-  if (names.length) return { check: 'a name nobody said', offending: names };
-  if (callsTheReaderByName(sentence, readerName)) return { check: 'called the reader by name', offending: [readerName ?? ''] };
-  const numbers = numbersNobodySaid(sentence, personSaid);
-  if (numbers.length) return { check: 'a number nobody said', offending: numbers };
-  return null;
-}
 
 /**
  * Repair what can be repaired, drop what cannot.
@@ -141,23 +94,11 @@ function callsTheReaderByName(sentence: string, readerName?: string | null): boo
 export function screen(reply: string, personSaid: string[], readerName?: string | null): Screened {
   const repaired = restoreTheirWords(reply, personSaid);
   const dropped: string[] = [];
-  const hits: Hit[] = [];
   const kept: string[] = [];
-  /* One per reply, never shared between them. See one-question-per-turn.ts. */
-  const questions = new OneQuestionPerTurn();
 
   for (const sentence of intoSentences(repaired)) {
-    const why = whyItFails(sentence, personSaid, readerName);
-    if (why) {
+    if (namesWorthReporting(sentence, personSaid).length || callsTheReaderByName(sentence, readerName)) {
       dropped.push(sentence);
-      hits.push({ sentence, ...why });
-      continue;
-    }
-    /* A second question standing on its own. The person answers the last thing they were asked, so
-       the first ask is what gets lost - and a turn that reads as a list is answered as a list. */
-    if (questions.isASecondQuestion(sentence)) {
-      dropped.push(sentence);
-      hits.push({ sentence, check: 'a second question', offending: [] });
       continue;
     }
     kept.push(sentence);
@@ -165,7 +106,7 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
 
   /* Already carry their own spacing, so joining with nothing is right - joining with a space would
      double every gap and break the line breaks in a list. */
-  return { text: kept.join('').trim(), dropped, hits };
+  return { text: kept.join('').trim(), dropped };
 }
 
 /**
@@ -182,9 +123,6 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
 export class SentenceGate {
   private buffer = '';
   private readonly droppedSentences: string[] = [];
-  private readonly hitRows: Hit[] = [];
-  /* Stateful across the whole stream, because each sentence is judged with no view of the rest. */
-  private readonly questions = new OneQuestionPerTurn();
 
   constructor(
     private readonly personSaid: string[],
@@ -220,23 +158,12 @@ export class SentenceGate {
     return [...this.droppedSentences];
   }
 
-  get hits(): Hit[] {
-    return [...this.hitRows];
-  }
-
   private check(sentences: string[]): string {
     const out: string[] = [];
     for (const s of sentences) {
       const repaired = restoreTheirWords(s, this.personSaid);
-      const why = whyItFails(repaired, this.personSaid, this.readerName);
-      if (why) {
+      if (namesWorthReporting(repaired, this.personSaid).length || callsTheReaderByName(repaired, this.readerName)) {
         this.droppedSentences.push(s);
-        this.hitRows.push({ sentence: s, ...why });
-        continue;
-      }
-      if (this.questions.isASecondQuestion(repaired)) {
-        this.droppedSentences.push(s);
-        this.hitRows.push({ sentence: s, check: 'a second question', offending: [] });
         continue;
       }
       out.push(repaired);
@@ -253,20 +180,3 @@ export class SentenceGate {
  * again. Telling them the model hallucinated is both alarming and useless to them.
  */
 export const ASK_AGAIN = 'That did not come out right. Say that again and I will pick it up.';
-
-/**
- * WHAT THE MODEL IS TOLD WHEN IT IS ASKED AGAIN. Named, not described: "you wrote 30 August" lets
- * it see the exact thing. And the way out is always the same: ask about it rather than state it.
- */
-export function askInsteadOfInventing(hits: Hit[]): string {
-  const named = [...new Set(hits.flatMap((h) => h.offending).filter(Boolean))];
-  const what = named.length ? named.map((n) => `"${n}"`).join(', ') : 'something nobody in this conversation said';
-  return `YOUR LAST REPLY WAS NOT SHOWN. It used ${what}, which appears nowhere in what this person wrote, in who is in this check-in, or in anything shared with them. Do not state names, dates or figures they have not given you. If you need one, ask for it. Write the reply again.`;
-}
-
-export type HitOutcome = 'dropped live' | 'regenerated, clean' | 'regenerated, still hit' | 'whole reply, asked again';
-
-/** One greppable log line per hit, so the real rate can be read before anything is tuned. */
-export function hitLogLine(checkInId: string, hit: Hit, outcome: HitOutcome): string {
-  return `invention-gate check-in=${checkInId} check=${JSON.stringify(hit.check)} offending=${JSON.stringify(hit.offending)} outcome=${JSON.stringify(outcome)} sentence=${JSON.stringify(hit.sentence.trim())}`;
-}

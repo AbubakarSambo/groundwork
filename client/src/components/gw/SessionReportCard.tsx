@@ -7,24 +7,32 @@ import { conversationApi } from '@/api/conversation'
 import type { Report } from '@/types'
 import { whatToCallIt } from './absence-of-evidence-is-not-a-finding'
 
-/* The ladder's labels and its position table went with it. The five words are still the synthesis's
-   own enum and still reach a person one at a time; nothing needs to know which rung they are. */
+// ---------------------------------------------------------------------------
+// Alignment ladder labels + colours
+// ---------------------------------------------------------------------------
+const LADDER = ['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'] as const
+const LADDER_INDEX: Record<string, number> = {
+  Unresolved: 0, Mixed: 1, Emerging: 2, Clear: 3, Aligned: 4,
+  'Clear, trending to aligned': 3,
+}
 
-/*
- * THE LADDER IS GONE - the last of the scales nobody can see.
- *
- * UNRESOLVED · MIXED · EMERGING · CLEAR · ALIGNED, filled in up to your position. The same shape as
- * the specificity bars and the five-segment confidence meter, both of which came off My record for
- * the same reason: a mark on a scale whose steps are never defined, on a product that gives no
- * verdicts.
- *
- * It was worse here. Those were about a record; this was a five-rung ladder with a person standing
- * on the second rung, on the report of their own session. And it read as progress they could make,
- * which they cannot - where it lands depends on whether somebody else has answered yet.
- *
- * The word stays. "Emerging" is what the synthesis called it, it is one word, and it is above this.
- * What went is turning that word into a position out of five.
- */
+function AlignmentLadder({ status, closed }: { status: string; closed?: boolean }) {
+  const idx = LADDER_INDEX[status] ?? 0
+  return (
+    <div style={{ display: 'flex', gap: 3, marginTop: 8 }}>
+      {LADDER.map((l, i) => {
+        const on = i <= idx
+        const bg = on ? (closed ? 'var(--gw-green-b)' : 'var(--gw-navy)') : 'var(--gw-bg)'
+        const color = on ? '#fff' : 'var(--gw-muted)'
+        return (
+          <div key={l} style={{ flex: 1, textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.03em', textTransform: 'uppercase', padding: '4px 2px', borderRadius: 4, background: bg, color }}>
+            {l}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Honest close grid
@@ -135,26 +143,12 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 
   return (
     <div>
-      {/*
-        A HEADING OVER NOTHING READS AS A PAGE THAT FAILED TO LOAD.
-
-        Reported as "my private report didn't render". It had: the card drew, the status drew, "Too
-        little to say / 0 areas settled" drew. What was blank was this band - a heading promising a
-        summary with an empty paragraph under it, because `sharedPicture` is empty until enough has
-        been said to make one.
-
-        Both places print it, and both now say why it is empty instead of leaving the space. The
-        reason is never a fault in the product and is worth saying plainly: one person has spoken,
-        and a picture across the accounts needs more than one account.
-      */}
       {/* What we heard */}
       <div style={{ background: 'var(--gw-dark)', color: '#fff', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
           {closed ? 'What we heard across the check-in' : 'What we heard from you'}
         </div>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: report.sharedPicture ? 'rgba(255,255,255,.93)' : 'rgba(255,255,255,.62)' }}>
-          {report.sharedPicture || 'Not enough has been said yet to draw one. It fills in as people check in.'}
-        </p>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{report.sharedPicture}</p>
       </div>
 
       {/* Alignment status */}
@@ -177,6 +171,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
               {report.agreements?.length ?? 0} agreed
               {report.divergences?.length ? `, ${report.divergences.length} still open` : ''}.
             </div>
+            <AlignmentLadder status={status} closed={closed} />
           </>
         )}
       </div>
@@ -264,8 +259,8 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
         </div>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>
           {closed
-            ? `Over ${report.agreements?.length ?? 0} agreed area${(report.agreements?.length ?? 0) !== 1 ? 's' : ''}, what you wrote turned assumptions into written agreements. That record is yours.`
-            : report.sharedPicture || 'Not enough has been said yet to draw one. It fills in as people check in.'}
+            ? `Over ${report.agreements?.length ?? 0} agreed area${(report.agreements?.length ?? 0) !== 1 ? 's' : ''}, your account turned assumptions into written agreements. That record is yours.`
+            : report.sharedPicture}
         </p>
       </div>
 
@@ -308,32 +303,18 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
             </div>
           )}
           <div style={{ marginBottom: 14 }}>
-            {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
-            <SecH>Where this has got to</SecH>
+            <SecH>Your account, so far</SecH>
             <div style={{ fontSize: 17, fontWeight: 800 }}>{status}</div>
             <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
               {report.agreements?.length ?? 0} area{(report.agreements?.length ?? 0) !== 1 ? 's' : ''} settled.
-              {report.divergences?.length ? ` ${report.divergences.length} still open.` : ''}
+              {report.divergences?.length ? ` ${report.divergences.length} still need your clearest account.` : ''}
             </div>
+            <AlignmentLadder status={status} />
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
-            {/*
-              THE LINE SAID THE OPPOSITE OF WHAT WAS ON THE SCREEN ABOVE IT.
-
-              Walked as a real participant, on a card that was showing a cross reference of what
-              everybody had said: "You can still only see your own. The full comparison opens once
-              everyone has opened the report." Two lines above it, a paragraph naming the other
-              party and describing their account of the same events.
-
-              Both were correct about the data. This card only ever renders a cross reference once
-              everybody in the round has answered, and until the report is released that picture is
-              still forming. What was wrong is the label, which described a state the reader had
-              already left. A person who can see the thing being denied stops believing the next
-              promise too, and the next promise is the one about their wording.
-            */}
             {report.releasedAt
               ? 'The full comparison is now open, and everyone reads the same report at the same moment.'
-              : 'Everyone in this round has answered, so this picture is forming from all of it. It is not final until the report is released.'}
+              : 'You can still only see your own. The full comparison opens once everyone has opened the report.'}
           </div>
         </>
       )}
@@ -415,15 +396,7 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
   if (state === 'loading') return null
 
   const headerBg = isInitiator ? 'var(--gw-navy)' : 'var(--gw-green-t)'
-  /*
-    IT IS THIS PERSON'S REPORT, SO IT SAYS SO.
-
-    "Admin report" and "Participant report" name the reader's ROLE on a document that is theirs
-    alone - the subtitle directly under it says "the report you read when you finished, nobody else
-    can see it". Being told you are the participant, on your own private page, is the product
-    describing its own data model at somebody.
-  */
-  const headerLabel = 'My report'
+  const headerLabel = isInitiator ? 'Admin report' : 'Participant report'
   const closingLabel = isInitiator ? 'Resolution record' : 'Resolution record'
 
   return (

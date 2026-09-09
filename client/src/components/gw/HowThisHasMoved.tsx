@@ -51,7 +51,7 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
               <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
                 {m.takenAt}
                 {/* A count, never a characterisation. What it means is the reader's. */}
-                {m.differences > 0 && ` · ${m.differences} ${m.differences === 1 ? 'read differed' : 'reads differed'}`}
+                {m.differences > 0 && ` · ${m.differences} ${m.differences === 1 ? 'account differed' : 'accounts differed'}`}
               </span>
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>

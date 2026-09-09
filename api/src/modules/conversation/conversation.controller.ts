@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { Response } from 'express';
@@ -112,17 +112,6 @@ export class ConversationController {
   @ApiOperation({ summary: 'Decline to take part - penalty-free (owner only)' })
   async decline(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.conversation.decline(id, userId);
-  }
-
-  @Post(':id/entries/:entryId/dispute')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Say a line taken from what you said is not what you said. Owner-scoped; nothing is deleted.' })
-  async disputeEntry(
-    @Param('id') id: string,
-    @Param('entryId') entryId: string,
-    @CurrentUser('id') userId: string,
-  ) {
-    return this.conversation.disputeEntry(id, entryId, userId);
   }
 
   @Get(':id/session-report')

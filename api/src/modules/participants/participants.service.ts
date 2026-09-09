@@ -103,12 +103,6 @@ export class ParticipantsService {
 
       // A different browser. Send them a way in rather than a refusal.
       const user = await this.prisma.user.findUnique({ where: { id: participant.userId } });
-      /* Which check-in the link they clicked was for, so the mail can bring them back to it. */
-      const theirOpenCheckIn = await this.prisma.checkIn.findFirst({
-        where: { participantId: participant.id, status: { not: CheckInStatus.COMPLETED } },
-        orderBy: { sessionNumber: 'asc' },
-        select: { id: true },
-      });
       if (user) {
         const magicToken = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
@@ -121,17 +115,7 @@ export class ParticipantsService {
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
           },
         });
-        /* WITH SOMEWHERE TO GO. This is the returning-user branch of an invite: they clicked a link
-           to ONE check-in from a browser that holds no session, so the mail that brings them back
-           has to bring them back HERE. Without it they sign in and land on a list of everything. */
-        this.email
-          .sendMagicLinkEmail(
-            user.email,
-            user.firstName || '',
-            magicToken,
-            theirOpenCheckIn ? `/checkin/${theirOpenCheckIn.id}` : `/grounds/${participant.groundId}/p`,
-          )
-          .catch(() => null);
+        this.email.sendMagicLinkEmail(user.email, user.firstName || '', magicToken).catch(() => null);
       }
       return { emailed: true as const, email: participant.email };
     }

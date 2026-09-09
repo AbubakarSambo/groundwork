@@ -69,9 +69,7 @@ describe('a round already kept', () => {
        disagreement moved. */
     const answer = decide(picture({ divergences: [{ about: 'pricing authority' }] }), kept()) as any;
     expect(answer.keep).toBe(true);
-    /* "accounts" is the login word to a reader; this note is shown at the top of every amended
-       report. It says what it means: where what people said differed. */
-    expect(answer.note).toContain('where what people said differed');
+    expect(answer.note).toContain('where the accounts differed');
   });
 
   it('never says why it changed', () => {

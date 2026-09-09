@@ -49,7 +49,7 @@ export function JoinPage() {
    * the work.
    */
   async function join() {
-    if (!email.trim().includes('@') || !role.trim() || joining) return
+    if (!email.trim().includes('@') || joining) return
     setJoining(true)
     try {
       const res = await joinApi.accept({
@@ -57,7 +57,7 @@ export function JoinPage() {
         email: email.trim(),
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
-        roleAsDescribed: role.trim(),
+        roleAsDescribed: role.trim() || undefined,
       })
       setSentTo(res.to)
       setSentSays(res.says)
@@ -99,37 +99,21 @@ export function JoinPage() {
 
   return (
     <Shell>
-      {/* "invited your check-in" is not a sentence. It is an invitation to a person, so say that. */}
-      <h1 className="gw-ttl">{ground.initiatorName} has asked for your side of this</h1>
+      <h1 className="gw-ttl">{ground.initiatorName} invited your check-in</h1>
       <div className="gw-sub-t">A Groundwork session about: <strong>{ground.groundLabel}</strong>.</div>
 
-      {/* The same false promise as InvitePage carried, kept in step with it deliberately: these are
-          the two doors an invited person can arrive through and they must say the same true thing. */}
       <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>
-        What you write is used to build the shared report and nothing else. It shows{' '}
-        <strong>where people agree and where they differ</strong>. Your own words about your own
-        work can appear in it. Anything you say about somebody else never does, and it never says
-        who said what about whom.
+        Nobody ever reads what you write - not {ground.initiatorName}, not anyone. The shared report shows <strong>where accounts agree or differ</strong>, never your raw answers. Your account stays private.
       </div>
 
       <form onSubmit={e => { e.preventDefault(); join() }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
-          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-first">First name</label><input id="join-first" className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
-          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label" htmlFor="join-last">Last name</label><input id="join-last" className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
+          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label">First name</label><input className="gw-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Optional" /></div>
+          <div className="gw-fld" style={{ margin: 0 }}><label className="gw-label">Last name</label><input className="gw-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Optional" /></div>
         </div>
-        <div className="gw-fld"><label className="gw-label" htmlFor="join-email">Email</label><input id="join-email" className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
-        {/*
-          ONE LINE ON THEIR PART IN THIS, AND IT IS NOT OPTIONAL ANY MORE.
-          205 of 223 people skipped it while it said "(optional)", and that one line is what the
-          questions get shaped by: the role map, the coaching read and the lead's probe list all key
-          on it. No asterisk; the copy says why it is asked and the button waits for it.
-        */}
-        <div className="gw-fld">
-          <label className="gw-label" htmlFor="join-role">Your part in this</label>
-          <input id="join-role" className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. I run the clinic that St Mary's refers into" />
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.5 }}>One line on what you do here. The questions you get asked are shaped by it.</div>
-        </div>
-        <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@') || !role.trim()} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@') || !role.trim()) ? 0.6 : 1 }}>
+        <div className="gw-fld"><label className="gw-label">Email</label><input className="gw-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" /></div>
+        <div className="gw-fld"><label className="gw-label">Your role <span style={{ fontWeight: 400, color: 'var(--gw-muted)' }}>(optional)</span></label><input className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Engineering lead" /></div>
+        <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@')} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@')) ? 0.6 : 1 }}>
           {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
         </button>
       </form>

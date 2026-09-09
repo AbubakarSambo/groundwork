@@ -45,40 +45,9 @@ function fetchRollout(): Promise<RolloutFacts> {
   return apiClient.get('/users/rollout').then(r => r.data.data ?? r.data)
 }
 
-/**
- * IS THE WORKSPACE STILL CALLED WHATEVER WE GUESSED?
- *
- * Signing up types no company name, so `verifyEmail` falls back to `${firstName}'s workspace` -
- * deliberately, because naming an organisation after the domain of an unverified address is worse
- * (GW-001). What nobody then does is ask.
- *
- * Walked as a second admin: their own home page said "Setting up Hafsah's workspace", and the
- * progress line underneath was about Hafsah too. Neither was wrong. The organisation really is
- * called that, and it is called that because a fallback named it and no screen has mentioned it
- * since. A person reading somebody else's name where their company should be does not conclude
- * "the name is unset", they conclude the product thinks they are somebody else.
- *
- * No column records whether a name was chosen, and this does not need one: the fallback produces
- * exactly one string and it can be recognised. Somebody who genuinely wants their workspace called
- * that gets one step they can complete by retyping it.
- */
-export function theNameIsStillTheOneWeGuessed(orgName: string | undefined, firstName: string | undefined): boolean {
-  if (!orgName || !firstName) return false
-  return orgName.toLowerCase() === `${firstName.trim().toLowerCase()}'s workspace`
-}
-
-/*
- * Mirrors the server's own list. Kept in one place here: see `where-a-rollout-has-got-to.ts`.
- *
- * The `name` step is the one exception and is deliberately client-only: whether the workspace name
- * is still the fallback is decided by comparing it against the reader's own first name, which is
- * already in the auth store here and would be a second query there. Nothing renders the server's
- * list - `users.service.ts` imports only the facts type - so adding a step to it would be adding a
- * step nobody sees.
- */
-function theRollout(f: RolloutFacts, nameStillGuessed: boolean): Step[] {
+/* Mirrors the server's own list. Kept in one place here: see `where-a-rollout-has-got-to.ts`. */
+function theRollout(f: RolloutFacts): Step[] {
   return [
-    { key: 'name', title: 'Name your workspace', body: 'It is called after whoever signed up, because nobody has said otherwise. Everyone here reads that name.', to: '/settings', done: !nameStillGuessed },
     { key: 'people', title: 'Get your people in', body: 'Paste your list. Nobody is emailed until you have seen what will happen.', to: '/org/members', done: f.people > 1 },
     { key: 'pilot', title: 'Run one with somebody', body: 'Pick something real and small. You see what it produces before your team does.', to: '/grounds/new', done: f.checkIns > 0 },
     { key: 'second-admin', title: 'Give somebody else the keys', body: 'A second admin approves check-ins and adds people when you are not there.', to: '/org/members', done: f.admins > 1 },
@@ -97,8 +66,7 @@ export function AdminFirstRun() {
   if (!isAdmin) return null
 
   const orgName = user.organization?.name?.trim()
-  const nameStillGuessed = theNameIsStillTheOneWeGuessed(orgName, user.firstName)
-  const steps = data ? theRollout(data, nameStillGuessed) : []
+  const steps = data ? theRollout(data) : []
   const counted = steps.filter(s => !s.optional)
   const done = counted.filter(s => s.done).length
   const finished = counted.length > 0 && done === counted.length

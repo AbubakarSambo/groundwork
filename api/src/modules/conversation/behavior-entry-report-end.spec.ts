@@ -63,19 +63,16 @@ describe('GW-BEHAVIOR-END-D: end-detection is locked AND its cross-path inconsis
     undefined as any, undefined as any, undefined as any, undefined as any, undefined as any,
     undefined as any, undefined as any, undefined as any, undefined as any, undefined as any,
   );
-  const authDetects = (reply: string, lastPersonTurn = 'ok'): boolean => (svc as any).closesInOtherWords(reply, lastPersonTurn);
+  const authDetects = (reply: string): boolean => (svc as any).detectSessionComplete(reply);
 
-  /* The nine phrases are gone. Without the marker, the only other close is: the person asked to
-     finish and the reply asks nothing. */
-  it('the AUTH detector closes when they asked to finish and the reply asks nothing', () => {
-    expect(authDetects('Speak soon.', "that's it from me")).toBe(true);
-    expect(authDetects('Your report is ready now. Speak soon.', 'I need to go')).toBe(true);
+  it('the AUTH detector recognises its own completion phrasings', () => {
+    expect(authDetects('Here is what is now in your record, and the next steps.')).toBe(true);
+    expect(authDetects('Your account is now on record.')).toBe(true);
   });
 
-  it('the AUTH detector does NOT fire on a phrase, on a question, or when they did not ask to finish', () => {
-    expect(authDetects('Here is what is now in your record, and the next steps.', 'the rota went out')).toBe(false);
-    expect(authDetects('Your account is now on record. What will you do by Friday?', "that's it")).toBe(false);
+  it('the AUTH detector does NOT fire on ordinary conversation', () => {
     expect(authDetects('Thanks, that is helpful. What else should I think about?')).toBe(false);
+    expect(authDetects('Okay, goodbye for now.')).toBe(false);
   });
 
   // THE LATENT BUG (surfaced, not hidden): the ENTRY flow and the AUTH flow use different
@@ -83,12 +80,14 @@ describe('GW-BEHAVIOR-END-D: end-detection is locked AND its cross-path inconsis
   // ends an ENTRY session but is INVISIBLE to the auth detector. If these are ever unified
   // to one source (task_35534866), this test flips red and must be updated to the unified set.
   it('SURFACES the divergence: entry completion phrases the AUTH detector fails to recognise', () => {
-    const notRecognisedByAuth = ENTRY_COMPLETION_PHRASES.filter((p) => !authDetects(`AI says: ${p}`, 'the rota went out'));
-    // The AUTH path no longer has a phrase list at all: every entry phrase is invisible to it unless
-    // the person asked to finish. The divergence is total, and it is surfaced here on purpose.
-    expect(notRecognisedByAuth).toEqual(ENTRY_COMPLETION_PHRASES);
-    // and the same statement closes the moment the person has asked to finish (proves the test discriminates)
-    expect(authDetects('Your account is now on record.', "that's all from me")).toBe(true);
+    const notRecognisedByAuth = ENTRY_COMPLETION_PHRASES.filter((p) => !authDetects(`AI says: ${p}`));
+    // Today the two lists overlap on only 'your account is now on record'; the rest diverge.
+    expect(notRecognisedByAuth).toEqual(expect.arrayContaining([
+      'your record is here',
+      '[session complete]',
+    ]));
+    // and the one point of agreement is genuinely shared (proves the test discriminates)
+    expect(authDetects('Your account is now on record.')).toBe(true);
   });
 });
 

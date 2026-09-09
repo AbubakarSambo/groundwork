@@ -41,7 +41,7 @@ const PARTY = [
 describe('a party sees their own and only their own', () => {
   it('their sessions come from their own record, not the whole roster', () => {
     /*
-     * THE LIST MOVED AND THE RULE DID NOT. `MyRecord` had a sessions list and `WhatYouAreCarryingForward`
+     * THE LIST MOVED AND THE RULE DID NOT. `MyRecord` had a sessions list and `MyPrivateReport`
      * had another one - the same sessions, the same dates, one of them with a way into each
      * session's report. Two lists of one thing on one page, which is what "my record page is
      * doing too much" was about. The one that survives is the one you can act from, and it is
@@ -52,21 +52,17 @@ describe('a party sees their own and only their own', () => {
   })
 
   it('and they can read what is expected of them', () => {
-    /*
-     * IT WAS A CARD WHOSE USUAL CONTENT WAS "Nothing yet", above a button that opened Context - a
-     * heading, an absence and a link, where the link alone says all three. The words are published
-     * on Context for everybody including the person they are about, which is the point of
-     * publishing them.
-     *
-     * The rule is unchanged and is what is asserted: a party can reach what they are read against.
-     */
-    /* On the Context tab itself, which is in this page's own tab bar - not behind a line on My
-       record telling them a neighbouring tab exists. */
-    expect(PARTY).toContain('<ContextPage')
+    expect(PARTY).toContain('What is expected of you')
   })
-  /* The follow-up "which opens Context rather than restating it here" went with the line it was
-     about. The rule it protected - the record does not restate the material - is stronger now:
-     there is nothing on My record to restate it with. */
+
+  /** The words live in one published place; this points there rather than keeping a second copy. */
+  it('which opens Context rather than restating it here', () => {
+    /* Was `setTab('docs')`, a call on the page's own state. `MyRecord` is rendered by two pages
+       that name their tabs differently, so it asks to be sent and the page decides where that is.
+       The rule is unchanged: the record LINKS to the material, it does not restate it. */
+    expect(PARTY).toMatch(/onGoToTab\('docs'\)/)
+    expect(PARTY).toMatch(/onGoToTab=\{/)
+  })
 
   /**
    * THE DECISION THIS MUST NOT DRIFT BACK FROM. "Participants should not be able to rewrite their

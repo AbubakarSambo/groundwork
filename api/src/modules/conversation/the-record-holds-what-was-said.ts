@@ -111,10 +111,7 @@ export function namesWorthReporting(reply: string, personSaid: string[]): string
        * the tool rather than a name that was invented.
        */
       const trimmed = name === opener ? '' : name.replace(new RegExp(`^${opener}\\s+`), '');
-      /* "Did Hafsah reply?" arrives as one capitalised run, "Did Hafsah", which the person never
-         typed as a phrase. Once the opener is off, what is left is checked against their words
-         again: a name they did say is theirs, whatever word the sentence started with. */
-      if (trimmed && !personSaid.map(norm).join(' ').includes(norm(trimmed))) out.add(trimmed);
+      if (trimmed) out.add(trimmed);
     }
   }
   return [...out];

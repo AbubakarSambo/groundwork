@@ -33,32 +33,13 @@ describe('two documents and one record', () => {
     expect(BOARD.length).toBeGreaterThan(3000)
   })
 
-  /**
-   * AND THEN THERE WAS ONE, WHICH SETTLES IT BETTER THAN THE SENTENCE DID.
-   *
-   * This required the board to carry a precedence rule: "the report is where that is set out in
-   * full. If the two ever read differently, the report is the record." That was the right answer
-   * while there were two shared pictures of one check-in.
-   *
-   * There is one now. The report body a participant could open has gone - it was a fourth place to
-   * read the same three findings - and each difference on the board carries both accounts and what
-   * is at stake underneath it. So the sentence became a pointer to a page that is not there, which
-   * is a worse fault than the ambiguity it was written to remove.
-   *
-   * The fault this file names is unchanged and is what is asserted: a reader must never be left
-   * with two shared pictures and no idea which to trust. It is now impossible rather than
-   * explained.
-   */
-  it('the board does not send a reader to a second document', () => {
-    expect(BOARD).not.toContain('the report is the record')
-    expect(BOARD).not.toMatch(/report is where that is set out in full/)
-    expect(BOARD).not.toContain('holds the detail of what each account said')
+  it('the board says the report is the record', () => {
+    expect(BOARD).toContain('the report is the record')
   })
 
-  it('and says outright that it is the whole picture, not a summary of one', () => {
-    expect(BOARD).toContain('not a summary of one held somewhere else')
-    /* And what a reader still needs, which the precedence rule never told them: it moves. */
-    expect(BOARD).toContain('it changes as people check in')
+  it('and says the board is the delivery-relevant part of it, not a second opinion', () => {
+    expect(BOARD).toContain('the parts that bear on')
+    expect(BOARD).toMatch(/report is where that is set out in full/)
   })
 
   it('the prompt tools live under /admin', () => {

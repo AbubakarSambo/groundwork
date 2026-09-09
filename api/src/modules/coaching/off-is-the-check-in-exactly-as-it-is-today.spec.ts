@@ -51,8 +51,6 @@ function makeService(
     groundParticipant: { count: jest.fn(async () => 2) },
     adminProfile: { findUnique: jest.fn(async () => null) },
     groundDocument: { findMany: jest.fn(async () => []) },
-    /* The gate: the block reaches a live prompt only when coaching_live is true. These specs are about the block, so it is. */
-    platformSetting: { findUnique: jest.fn(async () => ({ key: 'coaching_live', value: true })) },
     coachingState,
   };
   const prompts: any = { getActiveContent: jest.fn(async (k: string) => (k === 'system' ? 'BASE' : Promise.reject(new Error('none')))) };

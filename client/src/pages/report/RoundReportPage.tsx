@@ -23,7 +23,7 @@ export default function RoundReportPage() {
       </button>
       <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>Session {n}</div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
-        What everyone said, for this session. It never quotes anyone.
+        What the accounts show for this session. It never quotes anyone.
       </div>
       {!!id && Number.isFinite(n) && <TheSessionsReport groundId={id} sessionNumber={n} />}
     </div>
