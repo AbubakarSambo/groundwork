@@ -48,6 +48,41 @@ export function roundCompletedPayload(args: {
   };
 }
 
+export interface CheckInOpenedPayload {
+  groundId: string;
+  checkInId: string;
+  roundNumber: number;
+  /** The customer's own id for the person this is open to. Null when the roster does not know them. */
+  personExternalId: string | null;
+  openedAt: string;
+  /** Where they can do it in the product; the panel does it in place. */
+  permalink: string;
+}
+
+/**
+ * THE ONE EVENT THAT NAMES A PERSON, AND WHY. checkin.completed carries no participant so that a
+ * webhook log cannot become "who finished at what time". An opening is the opposite kind of fact:
+ * it is FOR somebody, and the whole point of sending it is so the receiver can tell them. What it
+ * still does not carry is anything they said.
+ */
+export function checkInOpenedPayload(args: {
+  groundId: string;
+  checkInId: string;
+  roundNumber: number;
+  personExternalId: string | null;
+  openedAt: Date;
+  appUrl: string;
+}): CheckInOpenedPayload {
+  return {
+    groundId: args.groundId,
+    checkInId: args.checkInId,
+    roundNumber: args.roundNumber,
+    personExternalId: args.personExternalId,
+    openedAt: args.openedAt.toISOString(),
+    permalink: `${args.appUrl.replace(/\/$/, '')}/check-in/${args.checkInId}`,
+  };
+}
+
 export interface CheckInCompletedPayload {
   groundId: string;
   roundNumber: number;

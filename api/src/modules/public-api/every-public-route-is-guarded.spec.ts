@@ -82,6 +82,7 @@ const PANEL_AUTHENTICATED = [
   "@Get('check-ins/mine')",
   "@Post('check-ins/:id/open')",
   "@Post('check-ins/:id/messages')",
+  "@Get('check-ins/:id/report')",
   /*
    * ATTACHING A DOCUMENT IS THE SAME ACT AS ANSWERING, and belongs on the same side of this line.
    * A document here is one party's evidence for one record - read against what is being discussed

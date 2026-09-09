@@ -245,6 +245,18 @@ export class ACheckInACustomerCanRunService {
     return this.conversation.complete(checkInId, await this.actingAs(organizationId, personId));
   }
 
+  /**
+   * THEIR OWN SESSION REPORT, FROM THE PANEL.
+   *
+   * A member could finish a check-in here and had nowhere to read what came of it: the only report
+   * route on this API is the lead's, under a machine credential. This is the same report the app
+   * shows under the transcript, read as the person the session belongs to, through the same owner
+   * check the app applies.
+   */
+  async report(organizationId: string, personId: string, checkInId: string) {
+    return this.conversation.getSessionReport(checkInId, await this.actingAs(organizationId, personId));
+  }
+
   async transcript(organizationId: string, personId: string, checkInId: string) {
     return this.conversation.getTranscript(checkInId, await this.actingAs(organizationId, personId));
   }

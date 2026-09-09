@@ -3,8 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WebhooksService } from './webhooks.service';
-import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, BlockerEvent, HandoverReadyEvent, ScenarioProposedEvent } from '../../common/events';
-import { roundCompletedPayload, checkInCompletedPayload, blockerPayload, handoverReadyPayload, scenarioProposedPayload } from './what-a-webhook-may-carry';
+import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, CheckInOpenedEvent, BlockerEvent, HandoverReadyEvent, ScenarioProposedEvent } from '../../common/events';
+import { roundCompletedPayload, checkInCompletedPayload, checkInOpenedPayload, blockerPayload, handoverReadyPayload, scenarioProposedPayload } from './what-a-webhook-may-carry';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
 
 /**
@@ -75,6 +75,28 @@ export class WebhooksListener {
         .catch((err) => this.logger.warn(`Workspace notice failed for ${e.groundId}: ${err?.message}`));
     } catch (err: any) {
       this.logger.warn(`Could not queue round.completed for ${e.groundId}: ${err.message}`);
+    }
+  }
+
+  @OnEvent(GroundworkEvents.CHECK_IN_OPENED)
+  async onCheckInOpened(e: CheckInOpenedEvent) {
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true } });
+      if (!ground) return;
+      await this.webhooks.emit(
+        ground.organizationId,
+        'checkin.opened',
+        checkInOpenedPayload({
+          groundId: e.groundId,
+          checkInId: e.checkInId,
+          roundNumber: e.sessionNumber,
+          personExternalId: e.personExternalId,
+          openedAt: new Date(),
+          appUrl: this.appUrl(),
+        }) as any,
+      );
+    } catch (err: any) {
+      this.logger.warn(`Could not queue checkin.opened for ${e.checkInId}: ${err.message}`);
     }
   }
 

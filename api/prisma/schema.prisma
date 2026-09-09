@@ -1159,6 +1159,7 @@ model CheckIn {
   completedAt                 DateTime?     @map("completed_at")
   warningFiredAt              DateTime?     @map("warning_fired_at")
   sessionReadyNotifiedAt      DateTime?     @map("session_ready_notified_at") // one-shot: "your check-in is now open" email sent
+  openedAnnouncedAt           DateTime?     @map("opened_announced_at") // one-shot: checkin.opened went to the organisation's webhooks
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
   nextCommitment              String?       @map("next_commitment")
   closedReason                String?       @map("closed_reason") // e.g. "willingness_declined"

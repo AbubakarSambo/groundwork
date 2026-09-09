@@ -724,6 +724,14 @@ export class PublicApiController {
   }
 
   /** Finish it. What was said is released with everybody else's, not before. */
+  /** What came of it, for the person it belongs to. Session reports are per check-in; the shared report is under grounds. */
+  @Get('check-ins/:id/report')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "This person's own session report for a check-in they completed" })
+  async myCheckInReport(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.report(req.panel.organizationId, req.panel.personId, id);
+  }
+
   @Post('check-ins/:id/complete')
   @HttpCode(200)
   @UseGuards(EmbedSessionGuard)
