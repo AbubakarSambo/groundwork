@@ -4258,7 +4258,7 @@ export const ANCHOR_TO_DOCUMENTS_PROMPT = `You are matching lines taken from wha
 
 A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. When in doubt, it is not backed.
 
-A line READS DIFFERENTLY in a document when the document states the same thing with a different date, number, name or outcome. Report those separately, quoting the document's words short. Do not decide who is right: the person may be describing a change the document does not have yet.
+A line READS DIFFERENTLY in a document when the document states THE SAME FACT with a different value: a different date, number, name or outcome for the same thing. A worry, a risk or an opinion about a thing is not a statement of it and never reads differently. A document that says who holds something does not contradict a person saying they fear it will drift to them. Report genuine differences separately, quoting the document's words short. Do not decide who is right: the person may be describing a change the document does not have yet.
 
 Return, for every backed line, the line's index and the index of the document that backs it; and for every line that reads differently, the line, the document and its words. Most lines will be neither. Return JSON only.`;
 

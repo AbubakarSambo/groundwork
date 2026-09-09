@@ -3613,9 +3613,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         orderBy: { createdAt: 'desc' },
         take: 12,
       }),
+      /* Every line of theirs, backed or not: a line one document backs can still be read differently
+         by a newer one (the revised offer letter that moves the start date), and that is the case that
+         matters most. Only an unbacked line can become backed here. */
       this.prisma.recordEntry.findMany({
-        where: { participantId, recallBased: true, disputedAt: null },
-        select: { id: true, text: true },
+        where: { participantId, disputedAt: null },
+        select: { id: true, text: true, recallBased: true },
         orderBy: { createdAt: 'asc' },
         take: 120,
       }),
@@ -3628,7 +3631,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
       ANCHOR_TO_DOCUMENTS_SCHEMA,
     ).catch(() => null);
-    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line] && docs[b.document]);
+    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && docs[b.document]);
     let backed = 0;
     for (const b of rows) {
       await this.prisma.recordEntry
