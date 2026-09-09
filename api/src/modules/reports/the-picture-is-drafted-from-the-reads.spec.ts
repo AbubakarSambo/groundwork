@@ -51,17 +51,12 @@ describe('what the picture is made of', () => {
     expect((block[0].text.match(new RegExp(WHO_CAN_MOVE_IT.DECISION.slice(0, 20), 'g')) ?? []).length).toBe(1);
   });
 
-  it('says only the tiles that want attention, in prose', () => {
-    const reads = lines.find((l) => l.key === 'reads')!;
-    expect(reads.text).toContain('Differences');
-    expect(reads.text).not.toContain('Blockers');
-  });
-
-  it('labels the written report\'s own items as its, rather than as measurement', () => {
-    const w = lines.find((l) => l.key === 'written')!;
-    expect(w.text).toMatch(/^As the written report reads it/);
-    expect(w.text).toContain('still open on the responsibilities of the new ward coordinator role');
-    expect(w.text).toContain('settled on a clear, written, and published rota');
+  it('does not restate the tiles or the settled-and-open row, which have their own place on the page', () => {
+    expect(lines.map((l) => l.key)).not.toContain('reads');
+    expect(lines.map((l) => l.key)).not.toContain('written');
+    const all = lines.map((l) => l.text).join(' ');
+    expect(all).not.toMatch(/Differences: /);
+    expect(all).not.toMatch(/As the written report reads it/);
   });
 
   it('is not a mail merge', () => {

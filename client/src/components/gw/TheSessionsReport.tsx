@@ -63,7 +63,7 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
       {items.map((it, i) => (
         <div key={i}>
           <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{it.text}</div>
-          <Cite who={it.who ?? (yourName ? `${yourName} (you)` : 'You')} documented={it.documented} />
+          <Cite who={it.who == null || it.who === yourName ? (yourName ? `${yourName} (you)` : 'You') : it.who} documented={it.documented} />
         </div>
       ))}
     </div>
@@ -238,31 +238,26 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         ) : null}
 
         {/*
-          WHAT GOOD LOOKS LIKE. The honest line about whether there is anything to read against
-          stays visible. The four "X says it is..." lines used to sit under it in the open, saying
-          the same thing a second way; they fold, and the count on the fold says how many there are.
+          WHAT GOOD LOOKS LIKE. The four versions people gave are shown as quotes, and the line about
+          the standard is said once above them: either what is set, or that nothing is. Not both as
+          competing statements, and not the same four lines twice.
         */}
         {d.againstSuccess && (
           <Row label="Against what good looks like">
             {/* The definitions render folded below, once; the component's own copy of them is switched off. */}
             <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} dense />
             {definitions.length > 0 && (
-              <details style={{ marginTop: 10 }}>
-                <summary style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-navy)' }}>
-                  What each person says success is ({definitions.length})
-                </summary>
-                <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-                  {definitions.map((def, i) => {
-                    const who = def.who === null || (yourName && def.who === yourName) ? (yourName ? `${yourName} (you)` : 'You') : def.who
-                    return (
-                      <div key={i}>
-                        <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
-                        <Cite who={who!} />
-                      </div>
-                    )
-                  })}
-                </div>
-              </details>
+              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                {definitions.map((def, i) => {
+                  const who = def.who === null || (yourName && def.who === yourName) ? (yourName ? `${yourName} (you)` : 'You') : def.who
+                  return (
+                    <div key={i}>
+                      <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
+                      <Cite who={who!} />
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </Row>
         )}

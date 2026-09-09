@@ -2018,7 +2018,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * not. Defined after `nameByLabel` for that reason.
      */
     const whoOf = (participantId: string) => {
-      if (mine.has(participantId)) return null;
+      /* The reader's own rows carried no name, so the list read as three voices and one anonymous
+         one. They get the same name everybody else's rows get; the page adds "(you)". */
       const label = labels.get(participantId);
       if (!label) return null;
       const named = nameByLabel.get(label);
@@ -2317,7 +2318,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * See the-picture-is-drafted-from-the-reads.ts.
        */
       ...(await (async () => {
-        const nameFor = (pid: string) => whoOf(pid) ?? (me && pid === me.id ? 'You' : null);
+        /* The reader is 'you' in the picture, whatever whoOf calls them in a cite. */
+        const nameFor = (pid: string) => (me && pid === me.id ? 'You' : whoOf(pid) ?? null);
         const readInput = {
           participants: ground.participants.map((p: any) => ({
             id: p.id, roleAsDescribed: p.roleAsDescribed ?? null, managingOnly: !!p.managingOnly,

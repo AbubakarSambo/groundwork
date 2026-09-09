@@ -47,7 +47,7 @@ const lower = (s: string) => (/^[A-Z]([a-z]|\s)/.test(s) && !/^I\b/.test(s) ? s[
  * the tile line, which outranks the settled-and-open line. The basis line never leads; it goes
  * underneath the finding, small.
  */
-const FINDING_RANK: [RegExp, number][] = [[/^block-/, 0], [/^(cov|con)-/, 1], [/^pattern-/, 2], [/^reads$/, 3], [/^written$/, 4]];
+const FINDING_RANK: [RegExp, number][] = [[/^block-/, 0], [/^(cov|con)-/, 1], [/^pattern-/, 2]];
 export function pickTheFinding(keys: string[]): string | null {
   const ranked = keys
     .map((k) => ({ k, r: FINDING_RANK.find(([re]) => re.test(k))?.[1] ?? 9 }))
@@ -72,16 +72,9 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   });
 
   /* The four reads, only where one wants attention. A row of "None" is the tiles' job, not prose. */
-  const attention = i.tiles.filter((t) => t.tone === 'warn' || t.tone === 'bad');
-  if (attention.length) {
-    out.push({
-      key: 'reads',
-      text: attention.map((t) => `${t.label}: ${t.value}, ${t.sub}.`).join(' '),
-      mustKeep: attention.flatMap((t) => [t.value, t.sub]),
-    });
-  }
-
-  /* What is in the way, grouped by kind so who-can-move-it is said once. */
+  /* The tiles say what the tiles say. A line restating them ("Differences: 1, still open. How much was
+     said: All from memory") was the mail merge in paragraph form, and it went. Same for the
+     settled-and-open line: those rows have their own place. */
   if (i.blockers.length) {
     const byKind = new Map<string, typeof i.blockers>();
     for (const b of i.blockers) byKind.set(b.kind ?? '', [...(byKind.get(b.kind ?? '') ?? []), b]);
@@ -150,20 +143,6 @@ export function draftThePicture(i: PictureInput): Drafted[] {
    * THE WRITTEN REPORT'S OWN ITEMS, LABELLED AS ITS. No engine produces "agreed" and "open", so they
    * stay the model's - but the picture says so, rather than presenting them as measurement.
    */
-  if (i.settled.length || i.open.length) {
-    const parts: string[] = [];
-    /* "settled on A clear, written rota": a row that was a sentence of its own starts lower-case
-       once it sits inside one. */
-    const settled = i.settled.map((t) => lower(theThing(t)));
-    const open = i.open.map((t) => lower(theThing(t)));
-    if (settled.length) parts.push(`settled on ${andList(settled)}`);
-    if (open.length) parts.push(`still open on ${andList(open)}`);
-    out.push({
-      key: 'written',
-      text: `As the written report reads it, this is ${parts.join(' and ')}.`,
-      mustKeep: [...settled, ...open],
-    });
-  }
   return out;
 }
 
