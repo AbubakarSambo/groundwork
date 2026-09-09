@@ -385,6 +385,9 @@ export class DocumentsService {
     if (fromFile) return fromFile;
     if (content.startsWith('[Attached:')) return 'typed';
     const cheap = looksGeneratedByAModel(content);
+    /* A 74-character offer letter stub came back "generated" from the model on one of three identical
+       copies. Too short to judge is typed unless the text itself carries the tells. */
+    if (content.trim().length < 400) return cheap ? 'generated' : 'typed';
     try {
       const read = await this.anthropic.extract<{ origin: DocumentOrigin; because: string }>(DOCUMENT_ORIGIN_PROMPT, [{ role: 'user', content: content.slice(0, 6000) }], DOCUMENT_ORIGIN_SCHEMA);
       if (read?.origin === 'generated' || cheap) return 'generated';
