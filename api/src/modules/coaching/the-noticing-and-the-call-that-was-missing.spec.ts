@@ -1,4 +1,4 @@
-import { RoleFunction } from '../board/role-maps';
+import { roleMapFor, RoleFunction } from '../board/role-maps';
 import { ConversationService } from '../conversation/conversation.service';
 
 /**
@@ -29,6 +29,9 @@ function makeService({
   joinedAt = null,
   leftAt = null,
   leavePeriods = null,
+  /* Recurrence: a step is offered only when the same thing was seen in two distinct sessions. The
+     default harness has seen it once before, in session 3, so session 4 is the second time. */
+  priorObservations = [{ sessionNumber: 3, noticed: roleMapFor(RoleFunction.MANAGEMENT)!.failureSignals[0], reason: 'seen before' }],
 }: any = {}) {
   const upserts: any[] = [];
   const prisma: any = {
@@ -40,7 +43,7 @@ function makeService({
       ]),
     },
     coachingState: {
-      findUnique: jest.fn(async () => null),
+      findUnique: jest.fn(async () => (priorObservations ? { observations: priorObservations } : null)),
       upsert: jest.fn(async (a: any) => { upserts.push(a); return a.create; }),
     },
   };
@@ -57,6 +60,21 @@ function makeService({
 const observe = (s: any) => (s as any).observeForCoaching('ci1', 'p1', 4);
 
 describe('what the session showed', () => {
+  it('waits when this is the first session the behaviour was seen in: one instance is not a pattern', async () => {
+    const { service, upserts } = makeService({ priorObservations: null });
+    await observe(service);
+    expect(upserts[0].create.currentStep).toBeNull();
+    expect(upserts[0].create.observations).toHaveLength(1);
+    expect(upserts[0].create.lastInput.observed.recurring).toBe(false);
+  });
+
+  it('never offers the thing the person asked for themselves', async () => {
+    const { service, upserts } = makeService({ observed: { index: 0, reason: 'they said it', theyAskedForThisThemselves: true, lastStepOutcome: null } });
+    await observe(service);
+    expect(upserts[0].create.currentStep).toBeNull();
+    expect(upserts[0].create.lastInput.observed.inverted).toBe(true);
+  });
+
   it('turns an observed behaviour into one step, from that person\'s own map', async () => {
     const { service, upserts } = makeService();
     await observe(service);

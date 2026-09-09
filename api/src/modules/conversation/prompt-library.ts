@@ -4212,6 +4212,7 @@ RULES.
 4. You are describing what a session showed, never what a person is. Do not write anything about their character, attitude or ability.
 5. If the transcript shows the person doing the opposite - handling the thing well - answer none. This list is only used to offer help, and there is nothing to help with.
 6. If the person is describing a step they were asked to try last session, say what became of it: done, not done, did more, or sideways (they addressed it a different way). Otherwise leave that empty.
+7. If the person is ASKING FOR the very thing the paired success behaviour describes, or says they want it, or is already trying it, set theyAskedForThisThemselves true. Somebody who says "I want Eli to review my PRs again" must not be told to bring reviewers in.
 
 Return JSON only.`;
 
@@ -4229,6 +4230,10 @@ export const COACHING_OBSERVATION_SCHEMA = {
         type: ['string', 'null'],
         description: "One sentence from what the person said, in their own terms. Null if index is null.",
       },
+      theyAskedForThisThemselves: {
+        type: 'boolean',
+        description: 'True if the person themselves asked for, wants, or is already trying to do the paired success behaviour. A step must never tell somebody to do the thing they just asked for.',
+      },
       lastStepOutcome: {
         type: ['string', 'null'],
         enum: ['done', 'not done', 'did more', 'sideways', null],
@@ -4236,5 +4241,44 @@ export const COACHING_OBSERVATION_SCHEMA = {
       },
     },
     required: ['index', 'reason', 'lastStepOutcome'],
+  },
+} as const;
+
+
+/**
+ * A DOCUMENT HAS TO CHANGE SOMETHING.
+ *
+ * 26 uploads on 22 grounds and not one record line was document-backed: the file was stored, the
+ * model said thank you, and nothing downstream moved. This read takes the person's own record lines
+ * and the documents they can see, and says which lines a document plainly backs. Those lines stop
+ * being recall: the "How much was said" tile, the confidence meter and What this rests on all read
+ * recallBased, so they change on their own.
+ */
+export const ANCHOR_TO_DOCUMENTS_PROMPT = `You are matching lines taken from what one person said against documents they attached or can see.
+
+A line is BACKED by a document only when the document plainly states the same fact: the same date, the same number, the same named thing, the same event or decision. Close is not backed. A document that talks about the same topic without stating the fact does not back it. When in doubt, it is not backed.
+
+Return, for every backed line, the line's index and the index of the document that backs it. Most lines will not be backed. Return JSON only.`;
+
+export const ANCHOR_TO_DOCUMENTS_SCHEMA = {
+  name: 'emit_backed_lines',
+  description: 'Which record lines a document plainly backs, by index.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      backed: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            line: { type: 'integer', description: 'Zero-based index of the record line.' },
+            document: { type: 'integer', description: 'Zero-based index of the document that states the same fact.' },
+            where: { type: 'string', description: 'The words in the document that state it, quoted short.' },
+          },
+          required: ['line', 'document', 'where'],
+        },
+      },
+    },
+    required: ['backed'],
   },
 } as const;

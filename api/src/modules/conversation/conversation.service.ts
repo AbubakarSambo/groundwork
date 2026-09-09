@@ -47,6 +47,8 @@ import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
+import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
+import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
 /** The coaching block reaches a live prompt only when this platform setting is true. See coachingIsLive(). */
 export const COACHING_LIVE_KEY = 'coaching_live';
@@ -2586,6 +2588,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const observed = await this.anthropic.extract<{
       index: number | null;
       reason: string | null;
+      theyAskedForThisThemselves?: boolean;
       lastStepOutcome: string | null;
     }>(
       COACHING_OBSERVATION_PROMPT,
@@ -2627,7 +2630,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // Every step here comes from a role map so this should never fire, which is
     // exactly why it is cheap to keep: if a map entry is ever edited into
     // something generic, nothing offers it.
-    const offerable = read && !isGenericStep(read.lookingLike);
+    /*
+     * TWO CHECKS BEFORE ANYTHING IS OFFERED, both from the first batch that was ever read.
+     * Recurrence: this session's observation is kept, and a step is offered only when the same thing
+     * was seen in two distinct sessions (SESSIONS_BEFORE_A_STEP). Inversion: never a step the person
+     * asked for themselves, by their own words and by the model's own field.
+     */
+    const prior = await this.prisma.coachingState.findUnique({ where: { participantId }, select: { observations: true } }).catch(() => null);
+    const observations: Observation[] = Array.isArray((prior as any)?.observations) ? ((prior as any).observations as Observation[]) : [];
+    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === sessionNumber && o.noticed === read.noticed)) {
+      observations.push({ sessionNumber, noticed: read.noticed, reason: read.reason.trim() });
+    }
+    const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
+    const inverted = !!read && (observed?.theyAskedForThisThemselves === true || theyAskedForItThemselves(read.lookingLike, personSaid));
+    if (read && inverted) this.logger.log(`Coaching: not offering "${read.lookingLike}" to ${participantId}, they asked for it themselves.`);
+    if (read && !recurring) this.logger.log(`Coaching: "${read.noticed}" seen once for ${participantId}, waiting for recurrence.`);
+    const offerable = read && !isGenericStep(read.lookingLike) && recurring && !inverted;
 
     await this.recordCoachingStep(
       participantId,
@@ -2636,6 +2654,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         noticed: offerable ? read!.noticed : null,
         lookingLike: offerable ? read!.lookingLike : null,
         reason: offerable ? read!.reason : null,
+        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted } : null,
+        observations,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
         hadSubstance: personSaid.some((t) => countCheckableSpecifics(t) > 0),
@@ -2661,7 +2681,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async recordCoachingStep(
     participantId: string,
     sessionNumber: number,
-    read: { noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean },
+    read: {
+      noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean;
+      /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
+      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean } | null;
+      observations?: Observation[];
+    },
     outcomeOfLastStep?: StepOutcome | null,
   ): Promise<{ offered: string | null }> {
     if (!this.coachingEnabled()) return { offered: null };
@@ -2679,7 +2704,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
       if (outcomeOfLastStep && state.currentStep) state = afterOutcome(state, outcomeOfLastStep);
 
-      const move = nextMove(state, { ...read, sessionNumber });
+      const { observed, observations, ...forTheMove } = read;
+      const move = nextMove(state, { ...forTheMove, sessionNumber });
       let offered: string | null = null;
       if (move.move === 'offer') {
         offered = move.step;
@@ -2687,7 +2713,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       }
 
       /* The read that produced this, kept beside it: the first outputs are to be read against their input. */
-      const lastInput = { ...read, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
+      const lastInput = { ...forTheMove, observed: observed ?? null, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
       await this.prisma.coachingState.upsert({
         where: { participantId },
         create: {
@@ -2698,6 +2724,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           staircasePosition: state.staircasePosition,
           history: state.history as any,
           lastInput,
+          observations: (observations ?? []) as any,
         },
         update: {
           currentStep: state.currentStep,
@@ -2706,6 +2733,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           staircasePosition: state.staircasePosition,
           history: state.history as any,
           lastInput,
+          ...(observations ? { observations: observations as any } : {}),
         },
       });
       return { offered };
@@ -3012,6 +3040,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // is still fire-and-forget. Both are best-effort.
     await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
+    );
+    /* The lines just taken are read against the documents this person can see. Best effort, after
+       the extraction they depend on, before the report reads recallBased. */
+    await this.anchorRecordToDocuments(checkIn.participantId, checkIn.groundId).catch((err) =>
+      this.logger.warn(`Document anchoring failed for participant ${checkIn.participantId}: ${err.message}`),
     );
 
     // Handoffs are a board object, so this only runs on SHARED-mode grounds.
@@ -3549,6 +3582,50 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       + 'repeat it back to them, never describe them with it, never ask about it by name. Ask about the work.\n'
       + rows.map((p) => `- ${p.observationText!.trim()} (seen across ${p.periodsObserved} periods)`).join('\n')
     );
+  }
+
+  /**
+   * A DOCUMENT HAS TO CHANGE SOMETHING. See ANCHOR_TO_DOCUMENTS_PROMPT.
+   *
+   * Every record line of this person's that is still recall is read against the documents they can
+   * see: their own, and any on the ground marked OPEN. A line a document plainly backs becomes
+   * recallBased=false and names the document. Nothing else is touched; the tiles, the confidence
+   * meter and What this rests on already read recallBased, so they move on their own. Runs at
+   * complete() and again when a document is uploaded, so an upload after the session still counts.
+   */
+  async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number }> {
+    const [docs, entries] = await Promise.all([
+      this.prisma.groundDocument.findMany({
+        where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
+        select: { id: true, fileName: true, content: true },
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+      }),
+      this.prisma.recordEntry.findMany({
+        where: { participantId, recallBased: true, disputedAt: null },
+        select: { id: true, text: true },
+        orderBy: { createdAt: 'asc' },
+        take: 120,
+      }),
+    ]);
+    if (!docs.length || !entries.length) return { backed: 0, of: entries.length };
+    const documents = docs.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
+    const lines = entries.map((e, i) => `[${i}] ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
+    const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[] }>(
+      ANCHOR_TO_DOCUMENTS_PROMPT,
+      [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
+      ANCHOR_TO_DOCUMENTS_SCHEMA,
+    ).catch(() => null);
+    const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line] && docs[b.document]);
+    let backed = 0;
+    for (const b of rows) {
+      await this.prisma.recordEntry
+        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id } })
+        .then(() => { backed++; })
+        .catch(() => undefined);
+    }
+    if (backed) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document.`);
+    return { backed, of: entries.length };
   }
 
   async reviseDetectedFunction(participantId: string) {

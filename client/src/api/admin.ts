@@ -53,6 +53,9 @@ export interface ApiAccessRequest {
 }
 
 export const adminApi = {
+  /** Zero-row detection: which writers have never written. */
+  writers: () =>
+    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; error?: string }[] }>('/admin/writers').then(r => r.data),
   /** Every organisation that has asked for the API — ours among them. */
   getApiAccessRequests: () =>
     apiClient.get<ApiAccessRequest[]>('/admin/api-access').then(r => r.data),

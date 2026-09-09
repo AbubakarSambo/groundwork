@@ -970,6 +970,9 @@ model CoachingState {
   // What the last observation read: noticed, lookingLike, reason, the session, the outcome of the
   // last step. Kept so the first outputs can be read against the input that produced them.
   lastInput         Json?   @map("last_input")
+  // Every observation ever made, one per session: { sessionNumber, noticed, reason }. Recurrence is
+  // what makes a pattern; a step is offered only when the same thing was seen in two sessions.
+  observations      Json?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1266,6 +1269,7 @@ model RecordEntry {
   evidenceType         EvidenceType    @default(CHECK_IN)
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
+  anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does
   dimensionThreadKey   String?         @map("dimension_thread_key") // groups entries across sessions by theme
   anchored_question_id String?         @map("anchored_question_id") // which verbatim question produced this entry
   createdAt            DateTime        @default(now()) @map("created_at")

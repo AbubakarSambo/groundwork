@@ -11,6 +11,7 @@ import { documentWhereFor, whoCanSeeItInWords } from './who-can-see-a-document';
 import { defaultVisibilityForUpload } from './a-document-is-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { ConversationService } from '../conversation/conversation.service';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
@@ -170,7 +171,19 @@ export class DocumentsService {
     @Inject(forwardRef(() => AnthropicService))
     private anthropic: AnthropicService,
     private config: ConfigService,
+    @Inject(forwardRef(() => ConversationService))
+    private conversation: ConversationService,
   ) {}
+
+  /**
+   * AN UPLOAD HAS TO CHANGE SOMETHING. The person's record lines are read against what they just
+   * attached, so a line the document backs stops being recall. Best effort, after the row exists.
+   */
+  private anchorAfterUpload(participantId: string, groundId: string) {
+    this.conversation.anchorRecordToDocuments(participantId, groundId).catch((err) =>
+      this.logger.warn(`Anchoring after upload failed for participant ${participantId}: ${err?.message}`),
+    );
+  }
 
   /**
    * Extract readable content from any supported file type. Images and
@@ -331,6 +344,7 @@ export class DocumentsService {
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.
     // Fire-and-forget - a failure here must not block the upload response.
+    this.anchorAfterUpload(participant.id, groundId);
     this.extractAndStoreClaims(content, participant.id, file.originalname).catch((err) =>
       this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
     );
@@ -511,6 +525,7 @@ export class DocumentsService {
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, visibility: true, participantId: true },
     });
 
+    this.anchorAfterUpload(participant.id, participant.groundId);
     this.extractAndStoreClaims(content, participant.id, file.originalname).catch((err) =>
       this.logger.warn(`Claims extraction failed for doc ${doc.id}: ${err?.message}`),
     );
