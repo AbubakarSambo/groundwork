@@ -1493,6 +1493,20 @@ export function EntryChatPage() {
   // Self path: this is the person's own situation - straight into the check-in
   // (no interstitial page). The "~10 min" estimate and the two-report framing
   // live at the top of the check-in itself.
+  /**
+   * A WAY BACK FOR THE LEAD. The cards are gone, but the lead can still put the description back to
+   * the opening question and say it again, before a check-in has started.
+   */
+  function pickADifferentSituation() {
+    setPickedSituation(null)
+    /* Or the next situation is set up with the last one's first question. */
+    setPickedScenario(null)
+    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
+    setOnboardingSelections(defaultSels)
+    setOnboardingReady(false)
+    setInput('')
+  }
+
   function startSelfPath() {
     setFlowPath('self')
     setOnboardingStep(ONBOARDING_STEPS + 1)
@@ -2395,7 +2409,14 @@ export function EntryChatPage() {
                 * because the flag they had set was gone. Asking about the transcript covers the
                 * click and the reload with one question.
                 */}
-              {/* 'Pick a different situation' is gone: the chat confirms its read in one line, and that is where it is corrected. */}
+              {phase === 'onboarding' && onboardingHistory.length > 1 && (
+                <button
+                  onClick={pickADifferentSituation}
+                  style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                >
+                  ← Describe it again
+                </button>
+              )}
               {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
                   organisation name and anybody queued to be invited - cheap to confirm, expensive
                   to undo. On the picker with nothing said yet there is nothing to lose, so it goes
