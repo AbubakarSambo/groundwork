@@ -487,7 +487,9 @@ export class GroundsService {
           participantId: participant.id,
           sessionNumber: 1,
           status: CheckInStatus.NOT_STARTED,
-          isSetup: managingOnly,
+          /* Everyone does a first check-in, managing-only or not. What managingOnly changes is that no later
+             session is created for them (see createNextIfAbsent). */
+          isSetup: false,
           availableFrom: dto.startsAt ? new Date(dto.startsAt) : null,
         },
       });
@@ -766,7 +768,7 @@ export class GroundsService {
             participantId: participant.id,
             sessionNumber: 1,
             status: CheckInStatus.NOT_STARTED,
-            isSetup: true,
+            isSetup: false,
           },
         }),
       ]);
@@ -4264,10 +4266,12 @@ export class GroundsService {
      * others are not held hostage. The ground waits exactly as long as the
      * invitation is good for and not a day longer.
      */
+    /* EVERYONE DOES A FIRST CHECK-IN. A managing-only lead gives session 1 like everybody else and is
+       a party to that round; from session 2 they have no check-in and are not waited on. */
     const active = await this.prisma.groundParticipant.findMany({
       where: {
         groundId,
-        managingOnly: false,
+        ...(sessionNumber > 1 ? { managingOnly: false } : {}),
         OR: [
           { userId: { not: null } },
           { checkIns: { some: { sessionNumber, status: CheckInStatus.COMPLETED } } },

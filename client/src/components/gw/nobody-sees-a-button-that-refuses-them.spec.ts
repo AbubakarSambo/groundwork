@@ -35,7 +35,7 @@ describe('the button is not shown to somebody it would refuse', () => {
      * second one through unnoticed.
      */
     const near = strip(LIST)
-    const needle = "navigate('/grounds/new')"
+    const needle = "navigate('/start')"
     let i = near.indexOf(needle)
     let count = 0
     while (i !== -1) {

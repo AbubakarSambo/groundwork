@@ -23,7 +23,6 @@ function ChatRedirect() {
   return <Navigate to={`/checkin/${checkInId}`} replace />
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
-import { CreateGroundPage } from '@/pages/grounds/CreateGroundPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
@@ -379,7 +378,8 @@ export default function App() {
               * See a-door-you-cannot-open-says-so.tsx. The API refuses these again on the request
               * itself - this is a courtesy to the person, never the permission.
               */}
-            <Route path="/grounds/new" element={<RequireOrgSetup><MayOpenCheckIns><CreateGroundPage /></MayOpenCheckIns></RequireOrgSetup>} />
+            {/* The card wizard is retired: Setup is the chat at /start, which reads the situation from what the person says. Old links keep working. */}
+            <Route path="/grounds/new" element={<Navigate to="/start" replace />} />
             {/**
               * ONE URL, AND IT LANDS YOU ON YOUR OWN VIEW.
               *

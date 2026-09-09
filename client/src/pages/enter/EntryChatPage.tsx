@@ -1035,20 +1035,10 @@ export function EntryChatPage() {
     window.location.reload()
   }
 
+
   /**
-   * BACK TO THE CARDS, WITHOUT THROWING EVERYTHING AWAY.
-   *
-   * The cards render only while `!pickedSituation` and the history is one turn long, so picking a
-   * situation removed them for good. The only route back was "Start over", which calls
-   * `clearEntrySession()` and reloads: it discards the organisation name, the check-in name,
-   * anybody queued to be invited, and the whole conversation. So somebody who clicked the wrong
-   * card - or realised two questions in that this is a contract, not a new hire - had to choose
-   * between the wrong situation and typing everything again. Retrying was the expensive option,
-   * which is backwards: nothing has been set up yet.
-   *
-   * The TRANSCRIPT does go, and that is deliberate rather than lazy. Two questions and two answers
-   * about a new hire are actively misleading context for a contract review, and the classifier
-   * reads that history. What is kept is everything that is not about the situation.
+   * A WAY BACK FOR THE LEAD. Clears the read and puts the conversation back to the opening question,
+   * where the situation cards show again, so they can pick another one or describe it differently.
    */
   function pickADifferentSituation() {
     setPickedSituation(null)
@@ -1537,16 +1527,17 @@ export function EntryChatPage() {
    * this person had a session, because they did not, and the next screen is the one that invites
    * the people who will actually give the accounts.
    */
+  /**
+   * EVERYONE DOES A FIRST CHECK-IN. This answer used to skip it: the session closed on the spot with
+   * an empty history, and the save then failed with NO_ENTRY_SESSION because there was nothing to
+   * save. Now it goes into the same first check-in as the other answer. What it changes is later: a
+   * managing-only lead is given no second session, only the people they invite are.
+   */
   function othersGiveTheAccounts() {
     setFlowPath('lead')
     setOnboardingStep(ONBOARDING_STEPS + 1)
-    setPhase('checkin')
-    setClosed(true)
-    setShowSave(true)
-    saveSession({
-      scenario, history: [], closed: true, onboardingStep: ONBOARDING_STEPS, onboardingSelections,
-      flowPath: 'lead',
-    } as any)
+    persistOnboarding([], { ...onboardingSelections }, ONBOARDING_STEPS)
+    startCheckin.mutate()
   }
 
   // AI-driven onboarding send
@@ -2344,14 +2335,15 @@ export function EntryChatPage() {
       {/* Phase stepper: makes which phase you are in legible at a glance.
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
       {(() => {
-        const step = phase === 'onboarding' ? (flowPath === 'lead' ? 2 : 1) : (closed || showSave ? 3 : 2)
+        /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
+        const step = phase === 'onboarding' ? 1 : (closed || showSave ? 3 : 2)
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
            was being promised a hand-off screen they would never reach. */
-        const labels = ['Describe the situation', flowPath === 'lead' ? 'Setting it up' : 'Your check-in', 'Save & invite']
+        const labels = ['Describe the situation', 'Your check-in', 'Save & invite']
         const hints = [
           "You're describing the situation. Nothing is saved to an account yet.",
-          flowPath === 'lead' ? "You're adding the people who check in." : "You're saying how you see it. It stays private until the report.",
+          "You're saying how you see it. It stays private until the report.",
           'Save this and invite the people involved.',
         ]
         return (
@@ -2788,7 +2780,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    I set this check-in up only
+                    I check in once to set the context, then only they check in
                   </button>
                 </div>
               )}
@@ -3039,8 +3031,8 @@ export function EntryChatPage() {
             {closed && !showSave ? (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{skippedCheckin ? 'Ready to hand off.' : 'What you said is on record.'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'Your lead runs the first check-in; you\'ll see the check-in as its coordinator.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{'What you said is on record.'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
                 </div>
                 <button
                   onClick={() => setShowSave(true)}
@@ -3121,8 +3113,8 @@ export function EntryChatPage() {
 
           {/* Report header */}
           <div style={{ background: 'var(--gw-dark)', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New check-in, run by your lead' : 'Session 1 · your private report'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your org account.' : 'What you said is on record.')}</div>
+            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'Session 1 · you set the context' : 'Session 1 · your private report'}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'What you said is on record.'}</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
@@ -3341,11 +3333,16 @@ export function EntryChatPage() {
               <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[
-                    'Save your email below to keep access to this report.',
-                    'Open the confirmation link we email you - that saves it and sends your invites.',
-                    'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
-                  ].map((step, i) => (
+                  {(user
+                    ? [
+                      'Save this. Your invites go out straight away.',
+                      'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                    ]
+                    : [
+                      'Save your email below to keep access to this report.',
+                      'Open the confirmation link we email you - that saves it and sends your invites.',
+                      'Once they check in, everyone receives the shared report at the same time. It shows where you agree and where the conversation still needs to happen.',
+                    ]).map((step, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
                       <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55 }}>{step}</div>

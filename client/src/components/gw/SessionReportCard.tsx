@@ -105,7 +105,32 @@ function SecH({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 // Admin cross-reference view - built from the shared report data
 // ---------------------------------------------------------------------------
-function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) {
+/**
+ * THE PICTURE COMES FROM THE SESSION REPORT'S ENGINES, NOT THE STORED PROSE.
+ *
+ * Walked live as the second person to check in: this card said "Only Abubak Sambo has checked in so
+ * far" with his success definition and deadline, under a line saying everyone had answered. The band
+ * was printing the ground report's sharedPicture, model prose written when the first person finished
+ * and never rewritten, naming the other party. The session report drafts its picture from the reads,
+ * keys every line, and names nobody the reader may not see. That is what the card shows now.
+ */
+type Picture = { finding: { text: string; basis: string | null } | null; lines: string[]; settled: string[]; open: string[]; answered: number; of: number }
+function ThePicture({ picture, dark }: { picture: Picture | null; dark: boolean }) {
+  const dim = dark ? 'rgba(255,255,255,.62)' : 'var(--gw-muted)'
+  const ink = dark ? 'rgba(255,255,255,.93)' : 'var(--gw-text)'
+  if (!picture || (!picture.finding && !picture.lines.length)) {
+    return <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: dim }}>Not enough has been said yet to draw one. It fills in as people check in.</p>
+  }
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {picture.finding && <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, fontWeight: 600, color: ink }}>{picture.finding.text}</p>}
+      {picture.finding?.basis && <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: dim }}>{picture.finding.basis}</p>}
+      {picture.lines.map((l, i) => <p key={i} style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: ink }}>{l}</p>)}
+    </div>
+  )
+}
+
+function AdminCrossRef({ report, closed, picture }: { report: Report; closed: boolean; picture: Picture | null }) {
   const engagement = report.engagement as any
   /* See absence-of-evidence-is-not-a-finding.ts: a thin record used to render as "Mixed", which is
      a word about whether the accounts agree. It cannot be, because barely anything was said. */
@@ -152,9 +177,7 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
           {closed ? 'What we heard across the check-in' : 'What we heard from you'}
         </div>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: report.sharedPicture ? 'rgba(255,255,255,.93)' : 'rgba(255,255,255,.62)' }}>
-          {report.sharedPicture || 'Not enough has been said yet to draw one. It fills in as people check in.'}
-        </p>
+        <ThePicture picture={picture} dark />
       </div>
 
       {/* Alignment status */}
@@ -223,14 +246,9 @@ function AdminCrossRef({ report, closed }: { report: Report; closed: boolean }) 
 // ---------------------------------------------------------------------------
 // Participant cross-reference view
 // ---------------------------------------------------------------------------
-function ParticipantCrossRef({ report, closed }: { report: Report; closed: boolean }) {
-  const engagement = report.engagement as any
+function ParticipantCrossRef({ report, closed, picture }: { report: Report; closed: boolean; picture: Picture | null }) {
   /* The same rule as the admin view. This variant reads "Clear, trending to aligned" where the
      record is strong; a thin one says what it is instead of guessing at alignment. */
-  const called = whatToCallIt(engagement?.coverage, closed)
-  const status = called.aboutTheEvidence
-    ? called.status
-    : closed ? 'Aligned' : engagement?.coverage === 'strong' ? 'Clear, trending to aligned' : 'Emerging'
 
   /**
    * ONE LIST, NOT THREE.
@@ -262,11 +280,9 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
         <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 7 }}>
           {closed ? 'What your contribution secured' : 'Where this stands, across everyone'}
         </div>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>
-          {closed
-            ? `Over ${report.agreements?.length ?? 0} agreed area${(report.agreements?.length ?? 0) !== 1 ? 's' : ''}, what you wrote turned assumptions into written agreements. That record is yours.`
-            : report.sharedPicture || 'Not enough has been said yet to draw one. It fills in as people check in.'}
-        </p>
+        {closed
+          ? <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>{`Over ${report.agreements?.length ?? 0} agreed area${(report.agreements?.length ?? 0) !== 1 ? 's' : ''}, what you wrote turned assumptions into written agreement.`}</p>
+          : <ThePicture picture={picture} dark />}
       </div>
 
       {closed ? (
@@ -309,12 +325,13 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
           )}
           <div style={{ marginBottom: 14 }}>
             {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
-            <SecH>Where this has got to</SecH>
-            <div style={{ fontSize: 17, fontWeight: 800 }}>{status}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
-              {report.agreements?.length ?? 0} area{(report.agreements?.length ?? 0) !== 1 ? 's' : ''} settled.
-              {report.divergences?.length ? ` ${report.divergences.length} still open.` : ''}
-            </div>
+            <SecH>Where this stands</SecH>
+            {(picture?.settled.length || picture?.open.length)
+              ? <div style={{ display: 'grid', gap: 6 }}>
+                  {picture!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
+                  {picture!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
+                </div>
+              : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing settled or in dispute yet. {picture ? `${picture.answered} of ${picture.of} answered.` : ''}</div>}
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
             {/*
@@ -358,7 +375,21 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
   const [soloArtifact, setSoloArtifact] = useState<{ summary: string; whatToCarry?: string } | null>(null)
   const [report, setReport] = useState<Report | null>(null)
   const [sessionTag, setSessionTag] = useState('')
+  const [picture, setPicture] = useState<Picture | null>(null)
   const navigate = useNavigate()
+  useEffect(() => {
+    if (!groundId || !sessionNumber) return
+    reportsApi.sessionReport(groundId, sessionNumber)
+      .then((d: any) => setPicture({
+        finding: d?.finding ? { text: d.finding.text, basis: d.finding.basis ?? null } : null,
+        lines: ((d?.picture as { key: string; text: string }[] | undefined) ?? []).filter((l) => !['basis', 'reads', 'written'].includes(l.key) && l.key !== d?.finding?.key).map((l) => l.text),
+        settled: d?.whereThingsStand?.settled ?? [],
+        open: d?.whereThingsStand?.open ?? [],
+        answered: (d?.counting ?? []).filter((c: any) => c.answered).length,
+        of: (d?.counting ?? []).length,
+      }))
+      .catch(() => setPicture(null))
+  }, [groundId, sessionNumber])
   /** The same call the report page and the ground chat make: a fresh session, in correction mode. */
   const correct = useMutation({
     mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
@@ -467,8 +498,8 @@ export function SessionReportCard({ checkInId, groundId, sessionNumber, isInitia
         {/* STATE: cross reference or closed */}
         {(state === 'cross_ref' || state === 'closed') && report && (
           isInitiator
-            ? <AdminCrossRef report={report} closed={state === 'closed'} />
-            : <ParticipantCrossRef report={report} closed={state === 'closed'} />
+            ? <AdminCrossRef report={report} closed={state === 'closed'} picture={picture} />
+            : <ParticipantCrossRef report={report} closed={state === 'closed'} picture={picture} />
         )}
 
         {/*

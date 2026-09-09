@@ -24,20 +24,22 @@ describe('GW-EXP-6: the conversation exists either way', () => {
   it('create() no longer skips the row for a managing-only lead', () => {
     const create = SERVICE.slice(SERVICE.indexOf('async create('), SERVICE.indexOf('async createForLead('));
     expect(create).not.toMatch(/if \(!managingOnly\) \{/);
-    expect(create).toMatch(/isSetup: managingOnly/);
+    /* Everyone does a first check-in: the managing-only lead's session 1 is a real session. */
+    expect(create).toMatch(/isSetup: false/);
   });
 
   it('confirmLead() returns an id to open rather than null', () => {
     const confirm = SERVICE.slice(SERVICE.indexOf('async confirmLead('), SERVICE.indexOf('async confirmLead(') + 4000);
-    expect(confirm).toMatch(/isSetup: true/);
+    expect(confirm).toMatch(/isSetup: false/);
     expect(confirm).not.toMatch(/checkInId: null/);
   });
 
   it('and a lead who IS a party gets an ordinary session, not a setup one', () => {
     /** The other half. `isSetup: managingOnly` is false for them, which is the whole point of it. */
     const create = SERVICE.slice(SERVICE.indexOf('async create('), SERVICE.indexOf('async createForLead('));
-    expect(create).toMatch(/isSetup: managingOnly/);
-    expect(create).not.toMatch(/isSetup: true/);
+    /* Everyone does a first check-in: the managing-only lead's session 1 is a real session. */
+    expect(create).toMatch(/isSetup: false/);
+    expect(create).not.toMatch(/isSetup: managingOnly/);
   });
 });
 

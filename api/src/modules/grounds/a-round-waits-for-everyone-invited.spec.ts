@@ -141,15 +141,21 @@ describe('it still does not wait forever', () => {
     expect(await service(withANoShow).isSessionReadyForReport('g', 1)).toBe(true);
   });
 
-  it('a managing-only lead is still not a party to the comparison', async () => {
-    // They were deliberately never given a check-in, so counting them would make
-    // the round unreachable forever.
-    const withManagingLead = [
+  it('everyone does a first check-in: session 1 waits for the managing-only lead, and only session 1', async () => {
+    const leadNotYet = [
       person('lead', { managingOnly: true }),
       person('ejiro', { completedSessions: [1] }),
       person('maureen', { completedSessions: [1] }),
     ];
-    expect(await service(withManagingLead).isSessionReadyForReport('g', 1)).toBe(true);
+    expect(await service(leadNotYet).isSessionReadyForReport('g', 1)).toBe(false);
+    const leadDone = [
+      person('lead', { managingOnly: true, completedSessions: [1] }),
+      person('ejiro', { completedSessions: [1, 2] }),
+      person('maureen', { completedSessions: [1, 2] }),
+    ];
+    expect(await service(leadDone).isSessionReadyForReport('g', 1)).toBe(true);
+    /* From session 2 they have no check-in and are not a party to the comparison. */
+    expect(await service(leadDone).isSessionReadyForReport('g', 2)).toBe(true);
   });
 });
 

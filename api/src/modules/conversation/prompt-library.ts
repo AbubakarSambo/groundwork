@@ -944,6 +944,8 @@ So the close is three sentences at most, and fewer is better:
 
 "You said you will send the rota by Friday. Your report is ready now, and nothing in it needs acting on today. Speak soon."
 
+Say "speak soon" or "see you in two weeks", in the first person plural or with no subject. Never "you'll speak soon": they are not speaking to themselves.
+
 No headings, no list, no "what is now in your record", no restating what the two versions are for. If the session added nothing to the record, skip sentence 1. If there is no other party, sentence 2 is just that the report is theirs.
 
 TRAJECTORY FEEDBACK: surface at period transitions and after three or more improving check-ins:

@@ -65,7 +65,8 @@ describe('confirmLead: managing-only choice', () => {
      * so never sees this row at all.
      */
     expect(checkInCreate).toHaveBeenCalled();
-    expect((checkInCreate.mock.calls[0][0] as any).data.isSetup).toBe(true);
+    /* A real session 1, not a setup conversation: everyone does a first check-in. */
+    expect((checkInCreate.mock.calls[0][0] as any).data.isSetup).toBe(false);
     expect(groundParticipantUpdate).toHaveBeenCalledWith({ where: { id: 'p-lead' }, data: { managingOnly: true } });
     /** No longer null: there is a conversation to open, and the client needs its id to open it. */
     expect(res.checkInId).toBeTruthy();
@@ -116,14 +117,14 @@ describe('isSessionReadyForReport: a managing-only lead must not block release',
     };
   }
 
-  it('with a managing-only lead present: 2 real participants completed -> report IS ready (release is not blocked)', async () => {
+  it('everyone does a first check-in: session 1 waits for the managing-only lead; session 2 does not', async () => {
     const prisma: any = prismaForReadiness(true);
     const service = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
       // 7th dep: the model, for the context chat (G37/G23). Unused here.
       { respond: async () => '' } as any,
     );
-    const ready = await service.isSessionReadyForReport('g1', 1);
-    expect(ready).toBe(true);
+    expect(await service.isSessionReadyForReport('g1', 1)).toBe(false);
+    expect(await service.isSessionReadyForReport('g1', 2)).toBe(true);
   });
 
   it('sanity: without the managing-only lead in the mix, the same 2 real participants still make it ready (unaffected)', async () => {
