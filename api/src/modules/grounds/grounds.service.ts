@@ -59,7 +59,23 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   CRISIS_ALIGNMENT: 60,
   OKR_ALIGNMENT: 90,
   WORKPLAN_BUDGET: 90,
-  PULSE_CHECK: 30,
+  /**
+   * A YEAR, BECAUSE "REGULAR" IS THE WHOLE POINT OF THIS ONE.
+   *
+   * It was 30 days, which gave a regular read on live work four weekly sessions and then ended it.
+   * A month of a weekly team check-in is not a regular read on live work; it is a month. Her words:
+   * "regular read can run for 12 months."
+   *
+   * The distinction this rests on already exists and is already correct in the picker. PULSE_CHECK is
+   * the recurring read; SNAPSHOT is the one-off - "a pulse check", one session, no target, no second
+   * round. They were one card once, which is why neither could be found. What was left over is that
+   * the recurring one kept the short clock.
+   *
+   * 12 months is already an option on the Setup tab, so nothing new is reachable - what changes is
+   * what somebody gets without touching it. Weekly over a year is 52 sessions, which is what a
+   * weekly team check-in for a year actually is; a lead who wants fewer sets a cadence.
+   */
+  PULSE_CHECK: 365,
   REALIGN_TEAM: 60,
   PIP: 90,
   BOARD_STRATEGY: 90,
@@ -179,7 +195,19 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Monthly: a budget moves on a monthly rhythm, and asking fortnightly invents movement. */
   WORKPLAN_BUDGET: Cadence.MONTHLY,
   /** Weekly, because "what is your team actually doing" is a weekly question or it is not one. */
-  PULSE_CHECK: Cadence.WEEKLY,
+  /**
+   * MONTHLY, BECAUSE THIS ONE NOW RUNS FOR A YEAR.
+   *
+   * Weekly was right against a 30-day clock. Against 365 it is 52 rounds, and
+   * `every-situation-has-a-rhythm` already refuses more than twenty - "never so many that a
+   * check-in becomes a chore". That cap is a decision somebody made and it is the right one; a
+   * weekly check-in somebody has to do fifty-two times is not a read on live work, it is a rota.
+   *
+   * Monthly over a year is twelve, which is where NEW_ADVISOR already sits on the same clock. A lead
+   * who wants it tighter sets a cadence on Setup, and 12 months at fortnightly is 26 - over the cap,
+   * so that is a decision to take deliberately rather than by default.
+   */
+  PULSE_CHECK: Cadence.MONTHLY,
   /** Weekly: a gap that is being closed has to be read often enough to tell closing from holding. */
   DRIFT: Cadence.WEEKLY,
   CRISIS_ALIGNMENT: Cadence.FORTNIGHTLY,
