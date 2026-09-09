@@ -107,8 +107,9 @@ export function JoinPage() {
           the two doors an invited person can arrive through and they must say the same true thing. */}
       <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>
         What you write is used to build the shared report and nothing else. It shows{' '}
-        <strong>where people agree and where they differ</strong>, in its own words, never your raw
-        answers. Your wording is never shown to {ground.initiatorName} or to anyone else.
+        <strong>where people agree and where they differ</strong>. Your own words about your own
+        work can appear in it. Anything you say about somebody else never does, and it never says
+        who said what about whom.
       </div>
 
       <form onSubmit={e => { e.preventDefault(); join() }}>

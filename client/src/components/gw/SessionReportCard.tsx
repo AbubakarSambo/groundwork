@@ -333,7 +333,7 @@ function ParticipantCrossRef({ report, closed }: { report: Report; closed: boole
             */}
             {report.releasedAt
               ? 'The full comparison is now open, and everyone reads the same report at the same moment.'
-              : 'Everyone in this round has answered, so this picture is forming from all of it. It is not final until the report is released, and nobody\'s wording is in it.'}
+              : 'Everyone in this round has answered, so this picture is forming from all of it. It is not final until the report is released.'}
           </div>
         </>
       )}

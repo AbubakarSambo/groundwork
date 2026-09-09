@@ -218,18 +218,21 @@ export function InvitePage() {
           because the moment somebody works out what the product actually does, everything else on
           this page stops counting.
 
-          So it says the true thing, which is still a strong thing: your words build the report and
-          the report does not carry them. What is protected is the wording, not the substance, and
-          that is exactly the promise the product keeps.
+          So it says the true thing, and the true thing is already written down: this is the first
+          of the four claims in what-happens-to-what-you-write.ts, which is calibrated line by line
+          and even carries a "the part we are not going to dress up". That file was the standard
+          this box should always have met. Your own words about your own work can appear in the
+          report; what you say about somebody else never does. Saying "your wording is never shown"
+          would have been a second false promise pointing the other way.
 
           "Your account stays private" went with it. Here it means somebody's version of events and
           in a product it reads as a login, and it was carrying the false claim anyway.
         */}
         <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
           What you write is used to build the shared report and nothing else. It shows{' '}
-          <strong>where what you said and what they said agree or differ</strong>, in its own words.
-          Your wording is never shown to {preview.initiatorName} or to anyone else, in this session
-          or any later one.
+          <strong>where what you said and what they said agree or differ</strong>. Your own words
+          about your own work can appear in it. Anything you say about somebody else never does,
+          and it never says who said what about whom.
         </div>
 
         {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.
