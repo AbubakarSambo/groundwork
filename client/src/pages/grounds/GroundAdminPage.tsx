@@ -1169,6 +1169,26 @@ export function GroundAdminPage() {
     (c: any) => c.sessionNumber === openRound && c.status === 'COMPLETED',
   ).length
   /**
+   * WHY THE SESSION NUMBER JUST WENT DOWN.
+   *
+   * Walked twice on a real check-in. Header read "Session 2 of 3, 0 of 1 checked in for session 2".
+   * A person was invited. Nothing else happened. The header then read "Session 1 of 3, 2 of 3
+   * checked in for session 1", and the second time somebody was added it went back again.
+   *
+   * The rule behind it is right and is stated in whichSessionIsThisCheckInOn: a round is open until
+   * EVERYBODY has finished it, so it is one past the lowest number anybody has done. Adding somebody
+   * who has done none puts the lowest back to zero.
+   *
+   * What is wrong is that a counter which only ever goes up is the one thing on the screen a person
+   * reads as a position, so it going backwards reads as the product losing two people's work. It is
+   * a fact about arithmetic that nobody can be expected to reconstruct, and it takes one sentence to
+   * say. Shown only when it has actually happened: somebody here has finished more sessions than the
+   * open round, which cannot be true unless the round moved back under them.
+   */
+  const roundWentBack = (ground.participants ?? []).some((p: any) =>
+    (ground.checkIns ?? []).filter((c: any) => c.participantId === p.id && c.status === 'COMPLETED').length >= openRound,
+  )
+  /**
    * The report has three states worth telling apart, and only the last is good
    * news. "Waiting" is not a failure and does not get a warning colour - it is
    * the normal condition of a ground that is running.
@@ -1416,6 +1436,12 @@ export function GroundAdminPage() {
                     * strings and "round" in 25. One word, and it is session.
                     */}
                   {roundDone} of {(ground.participants ?? []).length} checked in for session {openRound}
+                </span>
+              )}
+              {roundWentBack && (
+                <span style={{ color: 'var(--gw-muted)' }}>
+                  back to session {openRound} because somebody new was added - a session stays open
+                  until everybody has done it, and nothing anybody wrote is lost
                 </span>
               )}
             </>

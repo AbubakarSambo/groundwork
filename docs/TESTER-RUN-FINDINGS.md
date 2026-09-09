@@ -433,3 +433,41 @@ session 1".
 | Person from another organisation | Yes |
 | Broadcast link, no invite | Yes |
 | The invite email itself | No - nothing sends locally |
+
+---
+
+# Two of my findings were wrong, and one was wrong in the other direction
+
+## 20 was my tool, not the product
+
+Enter does send in the participant composer. `handleKeyDown` in ChatPage is correct and was proved
+at the output: typed an answer, dispatched a real Enter keydown, the textarea cleared and the reply
+came back. The browser tool's "Return" press was not reaching the textarea. Withdrawn.
+
+## 25 was right about two screens and wrong about the third
+
+The invite page and the join page really did have labels that named no field, and the People page
+role dropdown really had no accessible name. All three are fixed. The password screen was already
+labelled properly with `htmlFor` and matching ids, and the skipped confirm field was my Tab press
+going somewhere else. That half is withdrawn.
+
+## 14 was a leak of the label, not of the record
+
+The paragraph Zainab read really did retell Hafsah's account. What I got wrong was the mechanism.
+`reports.service.ts` already withholds the forming picture from a party who has not answered, on
+exactly these grounds, and Zainab had answered - so had Hafsah, so the round was complete and the
+picture was legitimately forming for both of them. The data was right for the state.
+
+What was wrong is that the card said "You can still only see your own. The full comparison opens
+once everyone has opened the report" directly above a paragraph describing everyone's accounts. A
+person who can see the thing being denied stops believing the next promise too, and the next
+promise is the one about their wording. Fixed as a label, not as a gate.
+
+## And what I nearly shipped
+
+The replacement I first wrote for the invite page said "your wording is never shown to anyone".
+That is a second false promise pointing the other way. The honest version has been in the codebase
+all along, in `what-happens-to-what-you-write.ts`, calibrated line by line and carrying its own
+"the part we are not going to dress up": your own words about your own work can appear in the
+report, what you say about somebody else never does, and it never says who said what about whom.
+Both doors now say that, and so do the four claims below them.

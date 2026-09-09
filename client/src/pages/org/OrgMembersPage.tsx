@@ -663,6 +663,10 @@ export function OrgMembersPage() {
                     }}>{iAmTheOwner ? 'You · account holder' : 'You'}</span>
                   ) : m.id === ownerId ? null : (
                     <select
+                      /* An unnamed control. A screen reader reached this row and announced a
+                         combo box with no name, on the one page where the choice decides whether
+                         somebody can see your organisation's people and billing. */
+                      aria-label={`What ${m.firstName || m.email} can do here`}
                       value={m.role}
                       disabled={roleMut.isPending}
                       onChange={e => roleMut.mutate({ id: m.id, what: e.target.value as 'MEMBER' | 'LEAD' | 'ADMIN' })}

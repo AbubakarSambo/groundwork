@@ -35,10 +35,25 @@ const SESSION = read('../../pages/report/SessionReportPage.tsx')
 const SERVICE = read('../../../../api/src/modules/grounds/grounds.service.ts')
 
 describe('what the check-in still needs', () => {
-  it('disappears entirely when neither answer is missing', () => {
+  it('disappears entirely when nothing is missing', () => {
     /* A block that shows for everybody becomes furniture, and telling somebody who chose a weekly
-       cadence that they have not chosen one is worse than saying nothing. */
-    expect(BLOCK).toContain('if (!cadenceUnset && !standardUnset) return null')
+       cadence that they have not chosen one is worse than saying nothing.
+     *
+     * THE RULE HELD AND THE QUESTION WAS TOO NARROW. Gated on the cadence alone, and the opening
+     * conversation always picks one, so on any check-in born through the door this block never
+     * rendered at all - including for the start date and the timeline, which it never asked about
+     * and which are unset on every one of them. It counts what is missing now, and still vanishes
+     * at zero, which was always the point. */
+    expect(BLOCK).toContain('if (!missing) return null')
+    expect(BLOCK).toContain('const missing = [cadenceUnset, standardUnset, startDateUnset, timelineUnset]')
+  })
+
+  it('and asks about the start date and how long it runs, not only how often', () => {
+    /* "Meeting cadence at the end of the report does not show up and does not have start dates." */
+    expect(BLOCK).toContain('When does this start?')
+    expect(BLOCK).toContain('How long does it run?')
+    /* Both send you to the one control that already exists rather than growing a second one here. */
+    expect(BLOCK).toContain('Set a start date on Setup')
   })
 
   it('says the rhythm is a default rather than a decision', () => {
