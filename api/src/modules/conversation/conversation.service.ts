@@ -2506,7 +2506,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const map = roleMapFor(participant?.detectedFunction);
     const confident = (participant?.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
-    if (!map?.failureSignals?.length || !confident) return;
+    if (!map?.failureSignals?.length || !confident) {
+      /* A WRITER THAT RAN AND COULD NOT COACH STILL WRITES. 95 of the first 100 backfilled sessions
+         left no row here, which is the same dark shape as a writer that never ran. The row says why. */
+      await this.recordCoachingStep(participantId, sessionNumber, {
+        noticed: null, lookingLike: null, reason: null, hadSubstance: false,
+        observed: null,
+        observations: undefined,
+        why: !map?.failureSignals?.length ? `no role map for function ${participant?.detectedFunction ?? 'none'}` : `function ${participant?.detectedFunction} at confidence ${participant?.detectedFunctionConfidence ?? 0}, below ${MIN_COACHING_CONFIDENCE}`,
+      } as any).catch(() => undefined);
+      return;
+    }
 
     const turns = await this.prisma.conversationTurn.findMany({
       where: { checkInId },
@@ -2698,6 +2708,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
       observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean } | null;
       observations?: Observation[];
+      /** Why nothing could be read this session, when that is the case. */
+      why?: string;
     },
     outcomeOfLastStep?: StepOutcome | null,
   ): Promise<{ offered: string | null }> {
@@ -2716,7 +2728,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
       if (outcomeOfLastStep && state.currentStep) state = afterOutcome(state, outcomeOfLastStep);
 
-      const { observed, observations, ...forTheMove } = read;
+      const { observed, observations, why, ...forTheMove } = read;
       const move = nextMove(state, { ...forTheMove, sessionNumber });
       let offered: string | null = null;
       if (move.move === 'offer') {
@@ -2725,7 +2737,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       }
 
       /* The read that produced this, kept beside it: the first outputs are to be read against their input. */
-      const lastInput = { ...forTheMove, observed: observed ?? null, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
+      const lastInput = { ...forTheMove, observed: observed ?? null, why: why ?? null, sessionNumber, outcomeOfLastStep: outcomeOfLastStep ?? null, move: move.move, offered, at: new Date().toISOString() } as any;
       await this.prisma.coachingState.upsert({
         where: { participantId },
         create: {

@@ -88,7 +88,11 @@ describe('what the session showed', () => {
     const { service, anthropic, upserts } = makeService({ confidence: 0.2 });
     await observe(service);
     expect(anthropic.extract).not.toHaveBeenCalled();
-    expect(upserts).toHaveLength(0);
+    /* It still writes a row, with no step and the reason it could not read: a writer that ran and
+       could not coach must not look like a writer that never ran. */
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0].create.currentStep).toBeNull();
+    expect(upserts[0].create.lastInput.why).toMatch(/below 0.5|no role map/);
   });
 
   it('offers nothing when the read says none, which is the normal answer', async () => {
