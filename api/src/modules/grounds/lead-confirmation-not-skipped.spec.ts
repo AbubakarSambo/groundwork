@@ -88,7 +88,7 @@ describe('the lead keeps the confirmation that creates their own check-in', () =
      * on it: the readiness check filters participants on `managingOnly: false` and never sees it.
      */
     expect(CONFIRM).toMatch(/if \(managingOnly\) \{/);
-    expect(CONFIRM).toMatch(/isSetup: true/);
+    expect(CONFIRM).toMatch(/isSetup: false/);
     expect(CONFIRM).toMatch(/return \{ groundId, checkInId: setup\.id \};/);
     expect(CONFIRM).not.toMatch(/checkInId: null/);
   });

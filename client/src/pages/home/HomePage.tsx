@@ -44,7 +44,7 @@ export function HomePage() {
       return
     }
 
-    navigate(`/start?mode=${mode}&initial=${encodeURIComponent(trimmed)}`)
+    navigate(`/start?initial=${encodeURIComponent(trimmed)}`)
   }
 
   useEffect(() => {
@@ -97,29 +97,7 @@ export function HomePage() {
             Name the situation and who is involved. Groundwork builds a record from both sides.
           </p>
 
-          <div className="gw-mode-pills">
-            {MODES.map(m => (
-              <button
-                key={m.id}
-                onClick={() => { setMode(m.id); setFaqAnswer('') }}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  fontWeight: mode === m.id ? 700 : 400,
-                  border: mode === m.id ? '1.5px solid var(--gw-navy)' : '1px solid var(--gw-border)',
-                  background: mode === m.id ? 'var(--gw-navy)' : 'white',
-                  color: mode === m.id ? 'white' : 'var(--gw-text)',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  transition: 'all 0.12s',
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
+          {/* The mode pills went with the situation cards: Setup asks whether this is starting or underway itself. */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <textarea
               ref={taRef}
@@ -175,65 +153,12 @@ export function HomePage() {
               {faqAnswer}
             </div>
           )}
-
-          <div style={{ marginTop: 28 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>What you can do</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {[
-                /**
-                 * THE LABEL IS WHAT A PERSON READS. THE PARAM IS WHAT ROUTES.
-                 *
-                 * These two used to be the same string: the label was lowercased
-                 * and sent as ?scenario=, resolved by SCENARIO_FROM_LABEL in
-                 * CreateGroundPage. So the wording could not be improved without
-                 * either breaking the route or adding another key to that map, and
-                 * the result was predictable - this list drifted out of step with
-                 * the /entry picker, which had already been reworded. Somebody met
-                 * "New partner or co-founder" here and "A new partner, cofounder,
-                 * or manager" there, for the same thing.
-                 *
-                 * Splitting them means the copy is free to change and the links
-                 * that exist in the wild keep working. The guard next door holds
-                 * both halves: every param resolves, and every scenario is
-                 * reachable from this list.
-                 */
-                { param: 'new hire',               label: 'New hire starting',        desc: 'Get you and a new hire on the same page about the role and what early success looks like.' },
-                { param: 'role handover',          label: 'A role changing hands',    desc: 'Get what is outstanding, what is fragile, and who relies on the role written down while the person leaving is still here.' },
-                { param: 'new project',            label: 'New project',              desc: 'Line everyone up on scope, ownership, and what "done" means before the work starts.' },
-                { param: 'new advisor or board member', label: 'New advisor or board member', desc: 'Pin down what the advisor will actually contribute, on what terms.' },
-                { param: 'new partner or co-founder', label: 'A new partner or co-founder', desc: 'Put what each of you expects to build, own, and contribute in writing, before assumptions collide.' },
-                { param: 'new manager or lead',    label: 'A new manager or lead',    desc: 'Get clear on scope, reporting, and success for someone stepping into an existing team.' },
-                { param: 'contract or renewal',    label: 'Contract or renewal',      desc: 'Both sides say honestly how the term actually went, and what a fair next one looks like.' },
-                { param: 'agreement before signing', label: 'An agreement before it is signed', desc: 'Each side writes down what it thinks the agreement means, before anybody signs it.' },
-                { param: 'agreement that is running', label: 'An agreement that is running', desc: 'A quiet monthly read that mostly says the numbers reconcile and nothing needs anybody.' },
-                { param: 'raise, promotion, or recognition', label: 'Raise, promotion, or recognition', desc: 'Build the evidence behind the ask before the conversation.' },
-                { param: 'performance improvement plan', label: 'Performance improvement plan', desc: 'Run a fair plan with both sides on the concern, the support, and what success looks like.' },
-                { param: 'goals & planning',       label: 'Setting shared goals',     desc: 'Check everyone is genuinely on the same goals and plan before the cycle locks in.' },
-                { param: 'workplan & budget',      label: 'Workplan and budget',      desc: 'Check each person\'s plan and budget holds up against the resources available.' },
-                { param: 'quick check-in',         label: 'A regular read on live work', desc: 'A fast, repeatable read from each person. What is moving, what is stuck, what has changed.' },
-                { param: 'a big decision',         label: 'A big decision',           desc: 'A group making a real choice. Each person\'s honest read before you commit.' },
-                { param: 'something\'s off track', label: 'A project is off track',   desc: 'Name what was agreed, what actually happened, and the exact gap, so you can act on it.' },
-                { param: 'board & leadership strategy', label: 'Board and leadership strategy', desc: 'Each leader gives their own read on strategy before the room debates it.' },
-                { param: 'cohort check-in',        label: 'Many people in the same role', desc: 'Many people in the same role check in against a shared question, on a recurring cadence.' },
-                { param: 'a shock just hit',       label: 'A shock just hit',         desc: 'A jarring event just happened. Get everyone\'s honest read before anyone decides anything.' },
-                { param: 'get a team back on the same page', label: 'Get a team back on the same page', desc: 'Each person gives their honest read before the group talks, so the conversation starts from a shared picture.' },
-                { param: 'describe your own situation', label: 'Describe your own situation', desc: 'Not sure which fits? Describe it in your own words and we will set up the right check-in for you.' },
-              ].map(c => (
-                <div
-                  key={c.param}
-                  onClick={() => navigate(`/grounds/new?scenario=${encodeURIComponent(c.param)}`)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{c.desc}</div>
-                  </div>
-                  <div style={{ fontSize: 14, color: 'var(--gw-muted)', flexShrink: 0, marginTop: 2 }}>→</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
+          {/*
+            THE SITUATION CARDS ARE GONE. Sixteen cards asked the person to classify their own
+            situation before the conversation that exists to do it. The Setup chat reads the situation
+            from what they type and confirms it in one line, which is where a wrong read gets corrected.
+            The card texts live on as the classifier's definitions.
+          */}
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
               No account needed to start. Your words stay private until you save them.

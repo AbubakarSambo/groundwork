@@ -49,7 +49,8 @@ describe('the create path honours managingOnly', () => {
      * file was really protecting.
      */
     const create = CODE.slice(CODE.indexOf('async create('), CODE.indexOf('async createForLead('));
-    expect(create).toMatch(/isSetup: managingOnly/);
+    /* Everyone does a first check-in: the managing-only lead's session 1 is a real session. */
+    expect(create).toMatch(/isSetup: false/);
     expect(create).toMatch(/tx\.checkIn\.create/);
     expect(create).not.toMatch(/if \(!managingOnly\) \{/);
   });

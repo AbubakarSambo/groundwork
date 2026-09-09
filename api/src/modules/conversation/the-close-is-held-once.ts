@@ -37,3 +37,20 @@ export const THE_ONE_CONCRETE_THING =
 /** The line the model gets on the turn after the hold, so it does not ask a second time. */
 export const THE_CLOSE_WAS_HELD =
   'THE CLOSE WAS HELD ONCE, by the product, for a date, a number or a document. They have now answered that. Whatever they gave, do not ask for it again: it is recorded as what they said. If you were closing, close now, in the shortest turn of the session, with the marker.';
+
+/**
+ * THE LAST THING THEY SAID, NOT THE LAST THING THEY TYPED. A closing turn is usually "no, we are good"
+ * or "yes that's everything", which carries no date because it is not an answer to anything. The bar
+ * reads back past those to the last turn with something in it.
+ */
+const AN_ACKNOWLEDGEMENT = /^\s*(no|yes|yeah|yep|ok|okay|sure|fine|good|done|that'?s (it|all|everything)|we are good|we're good|i'?m good|nothing (else|more)|no,? (we are|we're|that'?s) (good|it|all|fine)|nope|all good|ready|let'?s close( it)?)[\s.!,]*$/i;
+export function lastSubstantiveTurn(personSaid: string[]): string {
+  for (let i = personSaid.length - 1; i >= 0; i--) {
+    const t = (personSaid[i] ?? '').trim();
+    if (!t) continue;
+    if (AN_ACKNOWLEDGEMENT.test(t)) continue;
+    if (t.split(/\s+/).length <= 3 && !/\d/.test(t)) continue;
+    return t;
+  }
+  return personSaid[personSaid.length - 1] ?? '';
+}

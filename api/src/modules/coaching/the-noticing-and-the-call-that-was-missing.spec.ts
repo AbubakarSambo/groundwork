@@ -68,11 +68,19 @@ describe('what the session showed', () => {
     expect(upserts[0].create.lastInput.observed.recurring).toBe(false);
   });
 
-  it('never offers the thing the person asked for themselves', async () => {
-    const { service, upserts } = makeService({ observed: { index: 0, reason: 'they said it', theyAskedForThisThemselves: true, lastStepOutcome: null } });
+  it('never offers the thing the person asked for themselves, by their own words', async () => {
+    const step = roleMapFor(RoleFunction.MANAGEMENT)!.successSignals![0];
+    const { service, upserts } = makeService({ personSays: `What I want is exactly this: ${step}. I have asked for it twice.` });
     await observe(service);
     expect(upserts[0].create.currentStep).toBeNull();
     expect(upserts[0].create.lastInput.observed.inverted).toBe(true);
+  });
+
+  it('the model saying they asked for it does not suppress on its own; it is kept for reading', async () => {
+    const { service, upserts } = makeService({ observed: { index: 0, reason: 'they said it', theyAskedForThisThemselves: true, lastStepOutcome: null } });
+    await observe(service);
+    expect(upserts[0].create.currentStep).toMatch(MANAGEMENT_STEP);
+    expect(upserts[0].create.lastInput.observed.modelSaidTheyAsked).toBe(true);
   });
 
   it('turns an observed behaviour into one step, from that person\'s own map', async () => {

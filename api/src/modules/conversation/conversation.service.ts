@@ -46,7 +46,7 @@ import { mayCoach } from './participation-timeline';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
+import { whatIsConcreteIn, lastSubstantiveTurn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
 
@@ -1105,7 +1105,10 @@ export class ConversationService {
           where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
         })) > 0
       : false;
-    const last = personSaid[personSaid.length - 1] ?? '';
+    /* Read the last thing they SAID, not the last thing they typed. Driven live: "over the next 3
+       months", then "no, we are good" to the closing question, and the bar read the acknowledgement,
+       found nothing in it, and asked for a date they had just given. */
+    const last = lastSubstantiveTurn(personSaid);
     const concrete = whatIsConcreteIn(last, attached);
     const verdict = closeReadiness(personSaid, false, minTurns);
     if (concrete.length && verdict.ready) return { ready: true };
@@ -2687,7 +2690,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       observations.push({ sessionNumber, noticed: read.noticed, reason: read.reason.trim() });
     }
     const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
-    const inverted = !!read && (observed?.theyAskedForThisThemselves === true || theyAskedForItThemselves(read.lookingLike, personSaid));
+    /* The word check decides. The model's own field said "they asked for it" on six cases the word
+       check rejected, including an unanswered email with no ask in it; zero cases where both agreed.
+       The field is kept on the row for reading, and it no longer suppresses anything. */
+    const inverted = !!read && theyAskedForItThemselves(read.lookingLike, personSaid);
+    const modelSaidTheyAsked = observed?.theyAskedForThisThemselves === true;
     if (read && inverted) this.logger.log(`Coaching: not offering "${read.lookingLike}" to ${participantId}, they asked for it themselves.`);
     if (read && !recurring) this.logger.log(`Coaching: "${read.noticed}" seen once for ${participantId}, waiting for recurrence.`);
     const offerable = read && !isGenericStep(read.lookingLike) && recurring && !inverted;
@@ -2699,7 +2706,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         noticed: offerable ? read!.noticed : null,
         lookingLike: offerable ? read!.lookingLike : null,
         reason: offerable ? read!.reason : null,
-        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted } : null,
+        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
         observations,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
@@ -2729,7 +2736,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     read: {
       noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean;
       /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
-      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean } | null;
+      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean; modelSaidTheyAsked?: boolean } | null;
       observations?: Observation[];
       /** Why nothing could be read this session, when that is the case. */
       why?: string;
@@ -3253,6 +3260,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * missing button. The button was fine; there was no session for it to open.
    */
   async ensureNextSession(groundId: string, participantId: string, sessionNumber: number) {
+    /* A managing-only lead checks in once, to set the context. After that only the people they
+       invited check in, so no second session is made for them. */
+    const me = await this.prisma.groundParticipant.findUnique({ where: { id: participantId }, select: { managingOnly: true } }).catch(() => null);
+    if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { cadence: true, cadenceAnchorDay: true, endsAt: true },

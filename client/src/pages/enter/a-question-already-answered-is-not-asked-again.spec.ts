@@ -77,7 +77,7 @@ describe('a question already answered is not asked again', () => {
      * file protects is unchanged: somebody the model read wrongly can still say so, because the
      * option is on the screen whatever `yourRole` says.
      */
-    expect(PAGE).toContain('I set this check-in up only')
+    expect(PAGE).toContain('I check in once to set the context, then only they check in')
   })
 
   /**
@@ -92,7 +92,7 @@ describe('a question already answered is not asked again', () => {
      * - can leave the card with nothing on it.
      */
     expect(PAGE).toContain('I set this up and check in myself')
-    expect(PAGE).toContain('I set this check-in up only')
+    expect(PAGE).toContain('I check in once to set the context, then only they check in')
     expect(PAGE).not.toContain('Who gives the accounts on this?')
     /* And the buttons are not inside the yourRole conditional, so an undefined role still gets both. */
     const branch = PAGE.indexOf("yourRole === 'a_party' ?")

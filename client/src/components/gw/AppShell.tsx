@@ -791,7 +791,7 @@ export function AppSidebar() {
             * to one, and everything they are in is on the list below.
             */}
           {user?.mayOpenCheckIns !== false && <button
-            onClick={() => navigate('/grounds/new')}
+            onClick={() => navigate('/start')}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: 7,
               padding: collapsed ? '8px' : '8px 12px', borderRadius: 8,
