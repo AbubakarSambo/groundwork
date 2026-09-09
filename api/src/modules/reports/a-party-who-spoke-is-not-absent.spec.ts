@@ -10,8 +10,8 @@ import { join } from 'path';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 
 const spoke = { label: 'the initiator', leads: true, recordEntries: 0, charsSaid: 123 };
-const silent = { label: 'participant B', leads: false, recordEntries: 0, charsSaid: 0 };
-const contributed = { label: 'participant A', leads: false, recordEntries: 3, charsSaid: 900 };
+const silent = { label: 'Participant B', leads: false, recordEntries: 0, charsSaid: 0 };
+const contributed = { label: 'Participant A', leads: false, recordEntries: 3, charsSaid: 900 };
 
 describe('a party whose answers produced no distinct claim', () => {
   it('is never described as missing, absent or not provided', () => {

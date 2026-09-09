@@ -81,8 +81,19 @@ export function labelsForParties(parties: LabelParty[]): Map<string, string> {
           labelById.set(p.id, role);
         }
       } else {
+        /*
+         * A PROPER NOUN, BECAUSE IT STANDS WHERE A NAME WOULD.
+         *
+         * Lowercase, this produced three registers in one list: "Hafsah", "participant A",
+         * "Tunde Okafor (you)". Two of them are names and the third reads as a system placeholder
+         * that failed to resolve, which is the wrong reading - it is the permission rule working,
+         * and somebody who may not see a name should still see a person.
+         *
+         * Substitution back into prose is case-insensitive (see withNames), so labels already
+         * written into stored report JSON keep resolving.
+         */
         const letter = String.fromCharCode(65 + participantIdx++);
-        labelById.set(p.id, `participant ${letter}`);
+        labelById.set(p.id, `Participant ${letter}`);
       }
     }
   }
@@ -169,9 +180,29 @@ export function readsWithNamesOf(
   return viewerParticipantId ?? null;
 }
 
+/**
+ * WHETHER PEOPLE IN THIS CHECK-IN ARE NAMED TO EACH OTHER, WHICH IS ALREADY A SETTING.
+ *
+ * This read gave a participant the lead's name, their own, and nobody else's, always - so a report
+ * carried three registers at once ("Hafsah", "Participant A", "Tunde Okafor (you)") and the middle
+ * one read as a placeholder that had failed to resolve.
+ *
+ * Meanwhile the product had already answered this question, deliberately, in a setting whose own
+ * copy says "each person sees the others by name": `Ground.peersVisibleToEachOther`, defaulting by
+ * scenario - hidden on an EVALUATION or COHORT check-in, where a roster tells people exactly who
+ * they are measured against, and shown everywhere else. The board reads it. The check-in page reads
+ * it. The report did not, so the one surface everybody opens disagreed with the setting and with
+ * the roster three inches above it.
+ *
+ * WHAT IS STILL WALLED IS THE WORDS. Knowing Zainab is in this and reading what Zainab wrote are
+ * different things, and only the second was ever protected here: whose lines reach a reader is
+ * decided by `readableParticipantIds` and by the release rules. Nothing about this changes that.
+ */
 export function namesVisibleTo(
   viewerParticipantId: string | null | undefined,
   parties: LabelParty[],
+  /** From the ground. Undefined keeps the old behaviour, for callers that have no ground to hand. */
+  peersVisibleToEachOther?: boolean,
 ): Map<string, string> {
   const labels = labelsForParties(parties);
   const visible = new Map<string, string>();
@@ -187,7 +218,7 @@ export function namesVisibleTo(
     const isSelf = p.id === viewerParticipantId;
     const isLead = p.partyType === PartyType.INITIATOR;
 
-    if (viewerIsLead || isSelf || isLead) visible.set(label, name);
+    if (peersVisibleToEachOther || viewerIsLead || isSelf || isLead) visible.set(label, name);
   }
 
   return visible;
@@ -418,6 +449,25 @@ export function withNames(
      */
         out = out.replace(new RegExp(`\\bthe ${escaped}\\b`, 'gi'), name);
     out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), name);
+  }
+
+  /**
+   * AND THE LABELS THAT STAY, IN THE FORM THE REST OF THE PAGE PRINTS THEM.
+   *
+   * A label this reader may not resolve is left in the prose, correctly. What it was left as was
+   * whatever casing the model happened to write: "a weekend participant A was thought to be on
+   * call", in a paragraph that had already resolved two other people to "Hafsah" and "you", above
+   * a table listing the same person as "Participant A". One person, three spellings, on one
+   * screen - which reads as the product not knowing who anybody is.
+   *
+   * Last, so it can only tidy what the substitutions above chose to leave. It never reveals
+   * anything: the text is identical apart from a capital letter.
+   */
+  for (const label of known) {
+    if (visible.has(label)) continue;
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'g'), label);
+    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), label);
   }
   return out;
 }

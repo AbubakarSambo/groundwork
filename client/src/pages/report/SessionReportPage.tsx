@@ -1,12 +1,18 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
+import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
-import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
+import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
+import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
+import { WhatWasTakenFromWhatYouSaid } from '@/components/gw/WhatWasTakenFromWhatYouSaid'
+import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
+import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
@@ -26,6 +32,8 @@ import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd
 export default function SessionReportPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const viewerUserId = useAuthStore(st => st.user?.id)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['session-report', checkInId],
@@ -54,6 +62,33 @@ export default function SessionReportPage() {
    * putting the record right is now in one place, rather than split between a shared document and
    * a private one.
    */
+  /*
+    THE CHECK-IN ITSELF, FOR THE TWO SETUP ANSWERS THE END OF A SESSION IS THE RIGHT MOMENT TO ASK.
+    See WhatThisCheckInStillNeeds. `cadenceChosen` is false when FORTNIGHTLY is a default nobody
+    picked, which the ground payload could not say until now.
+  */
+  const { data: ground } = useQuery({
+    queryKey: ['ground', data?.groundId],
+    queryFn: () => groundsApi.get(data!.groundId as string),
+    enabled: !!data?.groundId,
+    retry: false,
+  })
+
+  /* Only the person who runs the check-in is offered these: a party cannot change either, and
+     telling somebody about a setting they have no access to is worse than not mentioning it. */
+  const amTheInitiator = ((ground as any)?.participants ?? []).some(
+    (p: any) => p.userId === viewerUserId && p.partyType === 'INITIATOR',
+  )
+
+  const setCadence = useMutation({
+    mutationFn: (cadence: string) => groundsApi.update(data!.groundId as string, { cadence } as any),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ground', data?.groundId] })
+      toast.success('Saved. That is how often this runs now.')
+    },
+    onError: () => toast.error('That did not save. Nothing has changed - try again.'),
+  })
+
   const { data: groundReport } = useQuery({
     queryKey: ['report', data?.groundId],
     queryFn: () => reportsApi.get(data!.groundId as string),
@@ -86,10 +121,16 @@ export default function SessionReportPage() {
       <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
         {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
       </div>
+      {/*
+        THE PAGE HAS TWO REPORTS ON IT AND THIS LINE DESCRIBED ONE OF THEM.
+        "Nobody else can see it" is true of your own half and false of the shared half directly
+        below it, so read as the page's subtitle it was a privacy claim over a shared document. It
+        says what the page holds; each half now carries its own line about who reads it.
+      */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
         {data?.finishedAt
-          ? `The report you read when you finished, on ${new Date(data.finishedAt).toLocaleDateString()}. Nobody else can see it.`
-          : 'The report you read when you finished. Nobody else can see it.'}
+          ? `Everything about this session, on ${new Date(data.finishedAt).toLocaleDateString()}. Yours first, then everybody's.`
+          : "Everything about this session. Yours first, then everybody's."}
       </div>
 
       {isLoading && (
@@ -113,7 +154,7 @@ export default function SessionReportPage() {
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             {(error as any)?.response?.status === 403 || (error as any)?.response?.status === 404
-              ? 'A session report is only ever readable by the person who gave that account.'
+              ? 'A session report is only ever readable by the person who wrote it.'
               : 'Nothing is wrong with the report - the request did not get through. Try again.'}
           </div>
           {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
@@ -133,18 +174,111 @@ export default function SessionReportPage() {
         on `SessionReportCard`, under the transcript. So when there is no kept report, this shows
         the card - which is what that person actually read - rather than an apology.
       */}
-      {!isLoading && !isError && !data?.report && data?.groundId && data?.sessionNumber && (
-        <SessionReportCard
-          checkInId={checkInId!}
-          groundId={data.groundId}
-          sessionNumber={data.sessionNumber}
-          isInitiator={!!data.isInitiator}
-        />
+      {/*
+        THE PRIVATE HALF, ON ITS OWN SURFACE.
+
+        The two halves of this page are the product's whole proposition and they looked identical:
+        two headings in one column, same background, same card weight, so nothing said where one
+        ended and the other began. This half sits inset and tinted, says once at the top that it is
+        yours, and never repeats it per card.
+      */}
+      {!isLoading && !isError && (
+        <section
+          style={{
+            background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 14,
+            padding: '18px 20px', marginBottom: 34,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your own report</h2>
+            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Yours alone</span>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 16px', lineHeight: 1.55, maxWidth: '68ch' }}>
+            What you said this session, and what to do with it.
+          </div>
+
+      {/* Simple and visual, and only on this half. See the component's own note for why. */}
+      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} recall={shape?.howClearThisWas?.recall} />
+
+      {/*
+        THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
+
+        `SessionReportCard` draws whatever state the ground's report is in, and once a round closes
+        that state is the cross reference. So on this page, under a band saying "My report", a
+        participant read "WHERE THIS STANDS, ACROSS EVERYONE" and a summary of all three people -
+        and then read the same thing again forty lines down under "The shared report". "I have no
+        fucking clue what is happening" is the correct response to that page.
+
+        The card is right where it is used at the end of a session, which is a screen with only one
+        report on it. Here there are two, so the private half draws the one private thing this
+        session produced: the solo record, written for this person alone when their own check-in
+        completed. Never the cross reference, which is what the half below is for.
+      */}
+      {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
+        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-paper)', padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
+            {(groundReport as any).soloArtifact.summary}
+          </div>
+          {(groundReport as any).soloArtifact.whatToCarry && (
+            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', marginTop: 8, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
+              <b style={{ color: 'var(--gw-text)' }}>What to carry into the next one. </b>
+              {(groundReport as any).soloArtifact.whatToCarry}
+            </div>
+          )}
+        </div>
       )}
 
       {data?.report && (
         <>
-          <TheReportYouSawAtTheEnd report={data.report} onRecordLine="On record: your account." />
+          {/*
+            THE COACHING NOTE, ON THE HALF OF THE PAGE THAT IS ACTUALLY YOURS.
+
+            "My report can have a coaching note." It already exists and is already paid for:
+            `postReportGuide` is three lines written for one person at each release - a way to
+            open, a question worth carrying, and something the other side said worth taking
+            seriously - sanitised so it can never name or quote anybody. It was rendered on My
+            record and on the shared report page and not here, which is the page somebody lands on
+            straight after finishing.
+
+            It goes above the record rather than below it, because it is the part you act on and
+            the record is the part you refer back to.
+          */}
+          <TheReportYouSawAtTheEnd
+            report={data.report}
+            /* The engine's own meter is above this. Two meters about one session, six lines apart,
+               said "Thin" and "Clear" about the same ten minutes. See hideCompleteness. */
+            hideCompleteness={!!shape?.howClearThisWas?.level}
+            /* "Account" is the login word. Here it meant what this person said, so it says that. */
+            onRecordLine="On record: what you said this session."
+            stillNeeded={
+              /*
+               * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
+               *
+               * "Meeting cadence at the end of the report does not show up and does not have start
+               * dates." The whole block was gated on `cadenceChosen === false`, and the opening
+               * conversation picks a rhythm, so on any check-in born through the door this never
+               * rendered once - including the two answers it never asked about at all.
+               *
+               * The gate is now whether ANYTHING about how this runs is unset. The component still
+               * disappears when nothing is, which was always the rule; it just asks the whole
+               * question now.
+               */
+              (ground as any) && amTheInitiator ? (
+                <WhatThisCheckInStillNeeds
+                  cadenceUnset={(ground as any).cadenceChosen === false}
+                  cadence={(ground as any).cadence ?? 'FORTNIGHTLY'}
+                  onPickCadence={(c) => setCadence.mutate(c)}
+                  startDateUnset={(ground as any).startDateChosen === false}
+                  timelineUnset={(ground as any).timelineChosen === false}
+                  timelineDays={(ground as any).timelineDays ?? null}
+                  /* The board already says the standard is unset and links to Setup; what was
+                     missing was any route to Setup from here at all. */
+                  standardUnset={((ground as any).objectives ?? []).length === 0}
+                  onGoToSetup={() => navigate(`/grounds/${data.groundId}?tab=settings`)}
+                />
+              ) : null
+            }
+          />
           {/*
             THE CORRECTION CONTROL SAYS WHETHER IT IS STILL OPEN, BEFORE IT IS PRESSED.
 
@@ -194,6 +328,25 @@ export default function SessionReportPage() {
         </>
       )}
 
+          {/* Your own rows, before the coaching that is built from them. */}
+          {data?.groundId && data?.sessionNumber && (
+            <WhatWasTakenFromWhatYouSaid rows={(groundReport as any)?.myRows} groundId={data.groundId} sessionNumber={data.sessionNumber} />
+          )}
+          {/*
+            5. THE COACHING BOX, LAST IN THE PRIVATE HALF.
+
+            The final thing the member reads before the shared half begins, and the one place on
+            the page speaking to them rather than about the work. Its own treatment so it does not
+            read as another summary card, inside the private surface so its privacy is not in
+            question. See WhatToWorkOnNext.
+          */}
+          <WhatToWorkOnNext
+            note={(groundReport as any)?.coaching}
+            guide={(groundReport as any)?.postReportGuide}
+          />
+        </section>
+      )}
+
       {/*
         AND THIS SESSION'S SHARED REPORT, UNDER YOUR OWN.
         Two reports, one session, and they answer different questions: the one above is what you
@@ -201,61 +354,87 @@ export default function SessionReportPage() {
         show for this session - forming while people are still answering, final once the round
         closed. They belong on one page because that is how a person reads them: mine, then ours.
       */}
+      {/*
+        THE SHARED HALF IN A BOX OF ITS OWN, LIKE THE PRIVATE ONE.
+        Your own report sat on an inset surface and the shared report sat on the bare page, so one
+        read as a thing and the other as leftovers under it. Two boxes, two headers, same grammar.
+      */}
       {data?.groundId && data?.sessionNumber && (
-        <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>What the accounts show for this session</div>
+        <section
+          style={{
+            border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)',
+            padding: '18px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>The shared report</h2>
+            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Everybody's</span>
+          </div>
+          {/*
+            "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.
+            The section below is right and the line was wrong. What the product actually protects,
+            and has said carefully for a long time in what-happens-to-what-you-write.ts, is the
+            other half: your own words about your own work can appear here, what you said about
+            somebody else never does.
+          */}
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            Everybody's accounts together. It never quotes anyone.
+            Everybody's side of this session, together, and it updates as people check in. What
+            each person said about their own work can appear here. What anyone said about somebody
+            else never does.
           </div>
           <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
-        </div>
+        </section>
       )}
       {/*
-        AND "WHAT NOW?" AFTER BOTH OF THEM, NOT BETWEEN THEM.
+        AND THE LEAD'S OWN SECTION, AFTER THE SHARED REPORT.
 
-        It sat in the middle: your own report, then a heading saying "What now?" with two buttons
-        and a closing sentence, then - below all of that - this session's shared report. So the
-        page offered you somewhere to go before it had finished showing you the thing you came for,
-        and the half that says what everybody's accounts show together was under a call to action.
-
-        The order the page's own note argues for - mine, then ours - is unchanged. Only the buttons
-        moved, to after the reading rather than into the middle of it.
+        Nobody else can see this. The server returns null for anybody who is not the lead or an org
+        admin, before it reads a row, so there is nothing here to gate on the client - which is the
+        point: a lead-only surface guarded by a caller remembering to check is one refactor away
+        from not being lead-only.
       */}
+      <WhatToProbeThemOn
+            reads={(groundReport as any)?.probes}
+            weigh={(groundReport as any)?.whatTheGroundCanTellYou}
+            weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
+          />
+
       {/*
-        WHAT NOW? SOMETHING TO PRESS.
+        15. ACTION, AFTER BOTH HALVES.
 
-        Two buttons that came with the report body when it moved here. They were three paragraphs
-        under that heading once - "share the report", "act on the areas", "open a follow-up" -
-        telling somebody to act and handing them nothing to act with, one of them advising them to
-        "use the report link" on the page that IS the link.
+        It led with "Copy the link to this session", which then needed a caveat explaining that the
+        link is not a way to share - a primary control whose own label had to be walked back. And
+        it sat directly under the conversation worth having, offering nothing that served it.
 
-        The third of the three is still not a button and never could be: picking the gap that
-        matters and agreeing who owns it is work between people. It stays a sentence, below the
-        controls, so the page leads with what it can do.
+        The primary action is the question. Opening a follow-up is how that conversation gets a
+        time and a place in this product, so that is the button. The link stays, quieter.
       */}
-      <div style={{ marginTop: 22, borderTop: '1px solid var(--gw-border)', paddingTop: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>What now?</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>What now?</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11, maxWidth: '68ch' }}>
+          Pick the open thing that matters most and agree who owns it. Nobody can do that part for
+          you, and a follow-up is where it gets a date.
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={() => navigate('/grounds/new')}
+            style={{ padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Open a follow-up check-in
+          </button>
           <button
             onClick={() => {
               navigator.clipboard?.writeText(`${window.location.origin}/checkin/${checkInId}/report`)
                 .then(() => toast.success('Link copied'))
                 .catch(() => toast.error('Could not copy it. Select the address bar instead.'))
             }}
-            style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Copy the link to this session
-          </button>
-          <button
-            onClick={() => navigate('/grounds/new')}
-            style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Open a follow-up check-in
+            Copy the link
           </button>
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 9 }}>
-          The link only opens for people already entitled to read this - it is not a way to share
-          it. The part nobody can do for you: pick the gap that matters most and agree who owns it.
+          The link opens only for people already entitled to read this.
         </div>
       </div>
 

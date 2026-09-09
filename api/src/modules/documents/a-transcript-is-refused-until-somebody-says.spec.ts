@@ -22,6 +22,8 @@ const TRANSCRIPT = [
 const svc = (content: string) => {
   const written: any[] = [];
   const s = Object.create(DocumentsService.prototype) as any;
+  s.conversation = { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) };
+  s.logger = { warn: () => undefined, log: () => undefined };
   s.logger = { log: () => {}, warn: () => {} };
   s.assertParticipant = async () => ({ id: 'p1' });
   s.extractContent = async () => content;

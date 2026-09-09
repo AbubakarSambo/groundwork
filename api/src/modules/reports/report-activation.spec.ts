@@ -55,54 +55,59 @@ const releasedReport = {
 
 const unreleased = { ...releasedReport, releasedAt: null };
 
-// GW-PRI-ACT-01: get() returns pre-activation stub when not yet activated
-describe('GW-PRI-ACT-01 - get() returns stub before participant activates', () => {
-  it('returns activated:false stub when activation row is PENDING', async () => {
-    const ground = {
-      id: 'g1',
-      initiatorId: 'admin',
-      participants: [{ id: 'p1', userId: 'u1', soloArtifact: null }],
-      report: releasedReport,
-    };
-    const prisma: any = {
-    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
-       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
-       that list exists to stop. */
-    groundDocument: { findMany: jest.fn(async () => []) },
-      ground: { findUnique: jest.fn(async () => ground) },
-      /* `findMany` too: the pre-activation stub now says WHO it is waiting on, because the screen
-         explained the mechanism and named nobody - two people either side of one button, each
-         believing the other had stalled. */
-      reportActivation: {
-        findUnique: jest.fn(async () => ({ status: ReportActivationStatus.PENDING })),
-        findMany: jest.fn(async () => []),
-      },
-    };
-    const service = makeService(prisma);
-    const result = await service.get('g1', 'u1') as any;
-    expect(result.activated).toBe(false);
-    expect(result.sharedPicture).toBeUndefined();
+/**
+ * GW-PRI-ACT-01, INVERTED. THERE IS NO REVEAL.
+ *
+ * This pinned the opposite: a released report withheld from every participant until they pressed
+ * a button. It was removed, and this is now the guard that it stays removed.
+ *
+ * Two reasons, both walked on a real check-in. It protected nothing - `sessionReport`, the read
+ * the report page actually makes, walls on `released || viewerIsLead` and had never heard of
+ * activation, so the same person blocked here was handed the whole thing, every party's own words
+ * included, one request later. And the stub it returned had no content, so the card that renders
+ * it printed "Not enough has been said yet to draw one. Too little to say. 0 areas settled." to
+ * somebody whose session had produced a full three-party synthesis.
+ *
+ * "Report updates as people check in, that's all it is."
+ *
+ * The independence that matters is protected where it lives: nobody reads a forming picture before
+ * giving their own account. That is a test about having ANSWERED, in forming-report-symmetry.spec,
+ * and it is untouched.
+ */
+describe('GW-PRI-ACT-01 - a released report reaches a participant with nothing to press', () => {
+  const groundWith = (activationRow: any) => ({
+    id: 'g1',
+    initiatorId: 'admin',
+    participants: [{ id: 'p1', userId: 'u1', soloArtifact: null }],
+    report: releasedReport,
+    _row: activationRow,
   });
 
-  it('returns activated:false stub when no activation row exists', async () => {
-    const ground = {
-      id: 'g1',
-      initiatorId: 'admin',
-      participants: [{ id: 'p1', userId: 'u1', soloArtifact: null }],
-      report: releasedReport,
-    };
-    const prisma: any = {
-    /* The documents a report says it rests on. Stubbed because the report read asks for them now —
-       see what-this-record-rests-on.ts; a report that cannot say what it rests on is the fault
-       that list exists to stop. */
+  const prismaFor = (activationRow: any) => ({
     groundDocument: { findMany: jest.fn(async () => []) },
-      ground: { findUnique: jest.fn(async () => ground) },
-      reportActivation: { findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
-    };
-    const service = makeService(prisma);
-    const result = await service.get('g1', 'u1') as any;
-    expect(result.activated).toBe(false);
-    expect(result.sharedPicture).toBeUndefined();
+    ground: { findUnique: jest.fn(async () => groundWith(activationRow)) },
+    reportActivation: {
+      findUnique: jest.fn(async () => activationRow),
+      findMany: jest.fn(async () => []),
+    },
+  }) as any;
+
+  it('shows the report to somebody whose activation row is PENDING', async () => {
+    const result = await makeService(prismaFor({ status: ReportActivationStatus.PENDING })).get('g1', 'u1') as any;
+    expect(result.activated).toBe(true);
+    expect(result.sharedPicture).toBeTruthy();
+  });
+
+  it('and to somebody who has no activation row at all', async () => {
+    const result = await makeService(prismaFor(null)).get('g1', 'u1') as any;
+    expect(result.activated).toBe(true);
+    expect(result.sharedPicture).toBeTruthy();
+  });
+
+  it('and never answers with the empty stub that read as an empty report', async () => {
+    const result = await makeService(prismaFor(null)).get('g1', 'u1') as any;
+    expect(result.waitingToShow).toBeUndefined();
+    expect(result.everyoneWasTold).toBeUndefined();
   });
 });
 

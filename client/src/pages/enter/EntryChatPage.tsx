@@ -23,6 +23,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
+import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
 import { clearEntryHandover } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
@@ -353,6 +354,32 @@ export function withoutPickedOpener(
  * collects it. Listing "why now" as missing for somebody who was told to set this up would be
  * inventing a debt.
  */
+/**
+ * ONE WORD WHERE ONE WORD WILL DO.
+ *
+ * The summary card's labels are sentences - "What this is about", "People you mentioned", "What you
+ * want from it" - which is fine in a report and wrong on a card somebody is scanning to catch a
+ * mistake before clicking. Five sentence-labels down the left edge is five things to read before
+ * reaching the values, which are the point.
+ *
+ * Kept as a lookup rather than renamed at source: `summariseSetup` is read by other screens and by
+ * its own specs, and the long labels are right where there is room for them.
+ */
+function shortLabel(label: string): string {
+  switch (label) {
+    case 'What this is about': return 'About'
+    case 'People you mentioned': return 'People'
+    /* One word, like the rest: at the label column's width "Why now" wraps onto two lines and the
+       row it labels goes out of line with every other row. */
+    case 'Why now': return 'Why'
+    /* "Want" beside a bare clause read as a sentence: "Want take the on-call escalations off me".
+       "Aim" is a noun and frames the clause as the thing being aimed at. */
+    case 'What you want from it': return 'Aim'
+    case 'Sessions': return 'Sessions'
+    default: return label
+  }
+}
+
 export function summariseSetup(
   sels: { initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[] },
   /**
@@ -394,7 +421,9 @@ export function summariseSetup(
   const people = sels.peopleNamed?.filter((p) => p.trim()) ?? []
   if (people.length) have.push({ label: 'People you mentioned', value: people.join(', ') })
   if (sels.decision?.trim()) have.push({ label: 'Why now', value: sels.decision.trim() })
-  if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.join('; ') })
+  /* The goal is a clause the model lifted mid-sentence ("take the on-call escalations off me"). It is
+     the person's words, so nothing is added to them; it is capitalised because it now opens a line. */
+  if (sels.goals?.length) have.push({ label: 'What you want from it', value: sels.goals.map((g: string) => g.charAt(0).toUpperCase() + g.slice(1)).join('; ') })
   have.push({ label: 'Sessions', value: sessions === 1 ? 'One' : `${sessions}` })
 
   /*
@@ -564,7 +593,7 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'PIP',
     label: SCENARIO_LABELS.PIP,
-    detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
+    detail: "Deadlines or expectations are slipping. Both of you say honestly what is happening, so the conversation starts from the same facts, not one side's version.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
     timelineHint: 'typically 90 days',
     examples: [
@@ -745,11 +774,11 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'CONTRACT_RENEWAL',
     label: SCENARIO_LABELS.CONTRACT_RENEWAL,
-    detail: 'Both sides give an honest account of how the term actually went and what a fair next one looks like.',
-    message: 'A contract is coming up for renewal and I want both sides to give an honest account of how the term went before we agree the next one.',
+    detail: 'Both sides say honestly how the term actually went and what a fair next one looks like.',
+    message: 'A contract is coming up for renewal and I want both sides to say honestly how the term went before we agree the next one.',
     timelineHint: 'typically two weeks',
     examples: [
-      'A contractor whose term is ending and both of you want an honest account of how it went.',
+      'A contractor whose term is ending and both of you want an honest read of how it went.',
       'A renewal where you and they would describe the last year differently.',
     ],
   },
@@ -761,7 +790,7 @@ export const SITUATION_CARDS = [
     message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
     timelineHint: 'typically daily for two weeks',
     examples: [
-      'A client pulled out overnight and everyone has a different account of why.',
+      'A client pulled out overnight and everyone has a different version of why.',
       'A sudden departure or loss where you need the real picture fast.',
     ],
   },
@@ -1050,6 +1079,11 @@ export function EntryChatPage() {
   // the same inviteAdded contributor queue used below - they go out for real
   // once the ground is created at save time.
   const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
+  /* The note that travels with a queued address, remembered when the field opens so Save can
+     queue it too. `renderAdd` hands the label to the button, not to the save handler. */
+  const [addingContributorLabel, setAddingContributorLabel] = useState('')
+  /* Why it refused, beside the field. A silent return read as success. */
+  const [addingContributorError, setAddingContributorError] = useState('')
   const [addingContributorEmail, setAddingContributorEmail] = useState('')
   const [queuedFromSuggestion, setQueuedFromSuggestion] = useState<Set<string>>(new Set())
   // Anonymous correction: inline "what did we get wrong?" box on the report.
@@ -1807,6 +1841,8 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
+        // The setter's own part in this, as the interview extracted it. Lands on their participant row.
+        roleAsDescribed: sessionReport?.yourRole?.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
@@ -2001,6 +2037,18 @@ export function EntryChatPage() {
   }
 
   async function handleSave() {
+    /*
+     * WHATEVER IS STILL IN THE OPEN "ADD THEM" FIELD COUNTS AS ADDED.
+     *
+     * Somebody who has typed a colleague's address into the box beside that colleague's name and
+     * then pressed the big Save button has said what they want. Requiring a second, smaller press
+     * first is a rule the screen never states, and the cost of getting it wrong is an invitation
+     * that silently never happens. So Save queues it, and a bad address stops the save with the
+     * reason next to the field rather than being thrown away.
+     */
+    if (addingContributorFor && addingContributorEmail.trim()) {
+      if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
+    }
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
     // NOTE: a hard "set a date first" gate used to live here, but the date
@@ -2092,14 +2140,30 @@ export function EntryChatPage() {
   // Queues a recommended addition / mentioned person straight into the
   // contributor list, carrying their role/reason or name/context as the note -
   // the same shape addInviteEmail/submitInviteContext build by hand.
-  function queueSuggestedContributor(key: string, note: string) {
+  /**
+   * A HALF-TYPED ADDRESS IS NOT A DECISION TO INVITE NOBODY.
+   *
+   * Walked as a real lead. Zainab was named in the conversation, "+ Add them" was pressed, her
+   * address was typed into the field beside her name, and then Save was pressed. The panel
+   * answered "No one added yet. You can invite people whenever you're ready." and the board said
+   * one participant. The address was accepted, nothing was said, and the invitation was gone.
+   *
+   * Two faults, both here. Queueing needed a separate press of Add that Save knew nothing about,
+   * and a refusal was a silent `return` - so a typo produced exactly the same nothing as success.
+   */
+  function queueSuggestedContributor(key: string, note: string): boolean {
     const email = addingContributorEmail.trim()
-    if (!email || !email.includes('@')) return
+    if (!email || !email.includes('@')) {
+      setAddingContributorError(email ? 'That does not look like an email address.' : 'Add their email address, or close this to leave them out.')
+      return false
+    }
+    setAddingContributorError('')
     const entry = note ? `${email} - ${note}` : email
     setInviteAdded(prev => (prev.some(e => e === email || e.startsWith(`${email} - `)) ? prev : [...prev, entry]))
     setQueuedFromSuggestion(prev => new Set(prev).add(key))
     setAddingContributorFor(null)
     setAddingContributorEmail('')
+    return true
   }
 
   function submitInviteContext() {
@@ -2140,7 +2204,7 @@ export function EntryChatPage() {
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
           <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
-            Your check-in is the first account on this check-in. Here is what to expect.
+            Yours is the first one in. Here is what to expect.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
@@ -2161,7 +2225,7 @@ export function EntryChatPage() {
               <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
               <div>
                 <CardTitle weight={700}>The shared report - not your words</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where all accounts agree or differ. It does not quote anyone.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where everyone agrees and where they differ. It does not quote anyone.</div>
               </div>
             </div>
           </div>
@@ -2281,10 +2345,13 @@ export function EntryChatPage() {
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
       {(() => {
         const step = phase === 'onboarding' ? (flowPath === 'lead' ? 2 : 1) : (closed || showSave ? 3 : 2)
-        const labels = ['Describe the situation', flowPath === 'lead' ? 'Hand-off to your lead' : 'Your check-in', 'Save & invite']
+        /* "Hand-off to your lead" named a step that no longer exists - handing the context to
+           somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
+           was being promised a hand-off screen they would never reach. */
+        const labels = ['Describe the situation', flowPath === 'lead' ? 'Setting it up' : 'Your check-in', 'Save & invite']
         const hints = [
           "You're describing the situation. Nothing is saved to an account yet.",
-          flowPath === 'lead' ? "You're naming the lead who runs the first check-in." : "You're giving your own account. It stays private until the report.",
+          flowPath === 'lead' ? "You're adding the people who check in." : "You're saying how you see it. It stays private until the report.",
           'Save this and invite the people involved.',
         ]
         return (
@@ -2641,13 +2708,27 @@ export function EntryChatPage() {
                       const sum = summariseSetup(onboardingSelections, yourRole, sessions, needsPeople)
                       return (
                         <div style={{ marginBottom: 10 }}>
+                          {/*
+                            A CHECK, NOT A DOCUMENT.
+
+                            "WHAT I HAVE" in capitals, then five rows of full-sentence labels, the
+                            first of which held the whole paragraph the extraction wrote about the
+                            situation - four lines of the model's prose, directly above the two
+                            buttons a person is trying to choose between. Read at a live demo: too
+                            much to get through to make a two-word decision.
+
+                            Its job is to let somebody catch a mistake before it becomes the record.
+                            That needs the fields legible at a glance, not readable in full: the
+                            paragraph is the model's own writing and is in the chat three inches
+                            above. So one-word labels, and every value clipped to two lines.
+                          */}
                           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .3, color: 'var(--gw-sub)', marginBottom: 5 }}>
-                            WHAT I HAVE
+                            What I've got so far
                           </div>
                           {sum.have.map((h) => (
-                            <div key={h.label} style={{ fontSize: 12.5, lineHeight: 1.55, marginBottom: 2 }}>
-                              <span style={{ color: 'var(--gw-sub)' }}>{h.label}: </span>
-                              <span style={{ color: 'var(--gw-text)' }}>{h.value}</span>
+                            <div key={h.label} style={{ display: 'flex', gap: 7, fontSize: 12.5, lineHeight: 1.5, marginBottom: 3 }}>
+                              <span style={{ color: 'var(--gw-sub)', fontWeight: 700, flex: '0 0 56px' }}>{shortLabel(h.label)}</span>
+                              <span style={{ color: 'var(--gw-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{h.value}</span>
                             </div>
                           ))}
                           {sum.missing.length > 0 && (
@@ -2659,30 +2740,35 @@ export function EntryChatPage() {
                         </div>
                       )
                     })()}
+                    {/*
+                      THE EXPLANATION IS GONE, AND THE OPTIONS SAY IT INSTEAD.
+
+                      It asked "Who gives the accounts on this?" over two lines explaining what an
+                      account was, and offered "I am one of the people involved. Start my check-in
+                      now." against "They do. I read what comes back." Watched at a live demo and
+                      called confusing for everyone, which it was, for four separate reasons:
+
+                        - the two answers were not parallel. One was about me, the other about them,
+                          so neither could be read without re-reading the other.
+                        - "they" had no antecedent, on a card that names Bob James and Hafsah
+                          Abubakar two inches above.
+                        - one was an answer and the other was a command ("Start my check-in now").
+                        - the question was not the real branch. Everybody answers questions. The only
+                          thing being decided is whether the person setting it up does too.
+
+                      Her wording, and it needs nothing under it: both options open on the same three
+                      words, so the only thing to read is how they end. A choice screen that needs a
+                      paragraph explaining it has the wrong options on it.
+
+                      And the word "account" is gone rather than reworded. It is the login word to
+                      everybody outside this codebase, and it was carrying the whole explanation.
+                    */}
+                    {/* `yourRole` is EXTRACTED from what they typed, not something they said in so many
+                        words. "You said" put a sentence in their mouth; this attributes it to their text,
+                        and the button beside it is how they change it. */}
                     {yourRole === 'a_party' ? (
-                      /*
-                       * THEY ALREADY ANSWERED THIS. Say back what they said and move, rather than
-                       * asking it again with buttons - which is what happened when `yourRole` was
-                       * extracted and never read.
-                       *
-                       * It still takes a click, because the click starts the check-in and somebody
-                       * deserves to know that before it happens. And it can still be corrected: an
-                       * extraction is a reading of what they said, not a fact about them.
-                       */
-                      <>
-                        <div style={{ fontWeight: 700, marginBottom: 2 }}>
-                          You said you are one of the people involved.
-                        </div>
-                        So you give the first account, in your own words. That is what the record is
-                        made of.
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontWeight: 700, marginBottom: 2 }}>Who gives the accounts on this?</div>
-                        Everyone involved answers the questions in their own words. That is what the
-                        record is made of, so it matters who is doing it.
-                      </>
-                    )}
+                      <div style={{ fontWeight: 700 }}>From what you wrote, you are one of the people involved.</div>
+                    ) : null}
                   </div>
                   <button
                     onClick={startSelfPath}
@@ -2692,9 +2778,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    {yourRole === 'a_party'
-                      ? 'Start my check-in'
-                      : 'I am one of the people involved. Start my check-in now.'}
+                    I set this up and check in myself
                   </button>
                   <button
                     onClick={othersGiveTheAccounts}
@@ -2704,9 +2788,7 @@ export function EntryChatPage() {
                       color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     }}
                   >
-                    {yourRole === 'a_party'
-                      ? 'Actually, I do not check in. Others do.'
-                      : 'They do. I read what comes back.'}
+                    I set this check-in up only
                   </button>
                 </div>
               )}
@@ -2849,13 +2931,13 @@ export function EntryChatPage() {
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
-                  What you say from here is your own account, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
+                  What you say from here is yours, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
                   <VennIcon size={22} />
-                  <span>Your individual report is private. The shared report shows where everyone's accounts agree or differ.</span>
+                  <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
                 </div>
               )}
               {displayedHistory.map((m, i) => {
@@ -2957,7 +3039,7 @@ export function EntryChatPage() {
             {closed && !showSave ? (
               <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{skippedCheckin ? 'Ready to hand off.' : 'Your account is on record.'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{skippedCheckin ? 'Ready to hand off.' : 'What you said is on record.'}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'Your lead runs the first check-in; you\'ll see the check-in as its coordinator.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
                 </div>
                 <button
@@ -3040,13 +3122,13 @@ export function EntryChatPage() {
           {/* Report header */}
           <div style={{ background: 'var(--gw-dark)', color: 'white', padding: '20px 22px 16px' }}>
             <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'New check-in, run by your lead' : 'Session 1 · your private report'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your org account.' : 'Your account is on record.')}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || (skippedCheckin ? 'Set up your org account.' : 'What you said is on record.')}</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
                 {skippedCheckin
-                  ? <>Your lead runs the first check-in; you'll see it as its coordinator. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where their accounts agree or differ.</>
-                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone's accounts agree or differ.</>}
+                  ? <>Your lead runs the first check-in; you'll see it as its coordinator. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where they agree and where they differ.</>
+                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone agrees and where they differ.</>}
               </div>
             </div>
             {history.filter(m => m.role === 'user').length > 0 && !reportFailed && (() => {
@@ -3114,27 +3196,52 @@ export function EntryChatPage() {
               <TheReportYouSawAtTheEnd
                 report={sessionReport}
                 correctedNote={reportWasCorrected && !generatingReport}
+                /*
+                  HOW OFTEN THIS RUNS, ASKED WHERE SOMEBODY IS STILL THINKING ABOUT THE WORK.
+
+                  `cadenceChosen` already exists on this page for exactly this distinction - it was
+                  added because "a value nobody had chosen was indistinguishable" from one somebody
+                  picked. Until now nothing acted on it: the unchosen FORTNIGHTLY went into the
+                  commit payload as though it had been decided.
+
+                  The standard half is not offered here. There is no Setup tab yet - the check-in is
+                  not saved - so a link to it would be a link to nothing.
+                */
+                stillNeeded={
+                  <WhatThisCheckInStillNeeds
+                    cadenceUnset={!cadenceChosen}
+                    cadence={cadence}
+                    onPickCadence={(c) => { setCadence(c as typeof cadence); setCadenceChosen(true) }}
+                    standardUnset={false}
+                    onGoToSetup={() => { /* no ground yet on this path */ }}
+                  />
+                }
                 onRecordLine={
                   uploadedDoc
                     ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
-                    : 'On record: your account. No documents uploaded yet.'
+                    : 'On record: what you said this session. No documents uploaded yet.'
                 }
                 renderAdd={(key, label) =>
                   queuedFromSuggestion.has(key) ? (
                     <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
                   ) : addingContributorFor === key ? (
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                      <input
-                        type="email" autoFocus placeholder="their@email.com"
-                        value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
-                        style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
-                      />
-                      <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                    </div>
+                    <>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <input
+                          type="email" autoFocus placeholder="their@email.com"
+                          value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
+                          onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
+                          style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                        />
+                        <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                      </div>
+                      {addingContributorError && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', marginTop: 4 }}>{addingContributorError}</div>
+                      )}
+                    </>
                   ) : (
                     <button
-                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
                       style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                     >
                       + Add them
@@ -3454,7 +3561,7 @@ export function EntryChatPage() {
                 </div>
               )}
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
+                {cadence === 'ONE_TIME' ? 'Single session · one answer per person, no follow-up cadence.' :
                  cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
                  cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
                  cadence === 'MONTHLY' ? `Monthly${cadenceAnchorDay != null ? ` · on the ${cadenceAnchorDay}${cadenceAnchorDay === 1 ? 'st' : cadenceAnchorDay === 2 ? 'nd' : cadenceAnchorDay === 3 ? 'rd' : 'th'}` : ''} · typical resolution in 3-4 months.` :
@@ -3508,8 +3615,8 @@ export function EntryChatPage() {
               ].some(k => s.includes(k))
               const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isSensitive
-                ? 'Send them a link so they can give their own account of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
-                : 'Each person gives their own account of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When all the accounts are in, the report shows where people agree, where they differ, and what the gap means for the work.'
+                ? 'Send them a link so they can give their own version of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
+                : 'Each person gives their own version of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
               <FieldLabel>{inviteHeading}</FieldLabel>
@@ -3547,8 +3654,8 @@ export function EntryChatPage() {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
                 const notices: Record<string, string> = {
                   PIP: 'Performance improvement check-ins document a process. They do not replace formal HR procedures, employment policy, or legal obligation. Ensure your organisation\'s HR process is followed in parallel.',
-                  DRIFT: 'This check-in was opened on a situation that has already moved off course. Inviting people now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
-                  REALIGN_TEAM: 'Realignment check-ins surface disagreement directly. The other participants will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
+                  DRIFT: 'This check-in was opened on a situation that has already moved off course. Inviting people now means what they write will reflect the current state, not the original agreement. Make sure that is what you want on record.',
+                  REALIGN_TEAM: 'Realignment check-ins surface disagreement directly. The other participants will answer independently, and may differ significantly from yours. The report will show those gaps without filtering them.',
                 }
                 const notice = notices[s ?? '']
                 return notice ? (
@@ -3574,7 +3681,7 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{bulkQueue.length} more after this</div>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or account for?</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or cover?</div>
                   <textarea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}

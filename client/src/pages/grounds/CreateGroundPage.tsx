@@ -73,10 +73,10 @@ export const SCENARIOS: ScenarioCard[] = [
       'You want the incoming person to say what they would be guessing about, before they stop noticing.',
     ] },
   { cardKey: 'CONTRACT_REVIEW', scenario: 'CONTRACT_REVIEW', label: SCENARIO_LABELS.CONTRACT_REVIEW, tag: 'Starting', tagBg: 'var(--gw-green-bg)', tagColor: 'var(--gw-green-t)',
-    desc: "Before you sign, each side writes down its own expectations separately - what the numbers are actually of, who does what, and what happens if. Each check-in then tests the two accounts against each other, so a difference surfaces while changing it is still free.",
+    desc: "Before you sign, each side writes down its own expectations separately - what the numbers are actually of, who does what, and what happens if. Each check-in then tests the two versions against each other, so a difference surfaces while changing it is still free.",
     moment: 'You are two weeks from signing and both sides think it is clear.',
     agreed: 'Each side says, on its own, what it expects to give and to get, and what the numbers are actually of.',
-    tests: 'The check-ins compare the two accounts, so "twenty per cent of gross" and "twenty per cent of net" is found now rather than in a year.',
+    tests: 'The check-ins compare the two versions, so "twenty per cent of gross" and "twenty per cent of net" is found now rather than in a year.',
     examples: [
       'A revenue share where both sides are sure what the percentage applies to, and have never said it out loud.',
       'A licence where one side assumes a client list is fixed and the other assumes it grows.',
@@ -136,7 +136,7 @@ export const SCENARIOS: ScenarioCard[] = [
     tests: 'The check-ins across the renewal window test the real work against that, so you negotiate the next term from a record instead of from impressions.',
     examples: [
       'A contractor\'s term is ending and you are deciding whether to renew.',
-      'An agency engagement up for renewal and you want an honest account of what got delivered.',
+      'An agency engagement up for renewal and you want an honest read of what got delivered.',
     ] },
   { cardKey: 'RECOGNITION', scenario: 'RECOGNITION', label: SCENARIO_LABELS.RECOGNITION, tag: 'Recognition', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
     desc: "The person sets out their case and the evidence behind it; you set out what the decision actually turns on. Over the month the check-ins test that evidence against that bar, so the answer rests on the record rather than on who asked most recently.",
@@ -274,7 +274,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Trainees in different locations who never work together but are all learning the same job.',
     ] },
   { cardKey: 'ACUTE_SHOCK', scenario: 'ACUTE_SHOCK', label: SCENARIO_LABELS.ACUTE_SHOCK, tag: 'Urgent', tagBg: 'var(--gw-red-bg)', tagColor: 'var(--gw-red-t)',
-    desc: "Something has just happened that nobody planned for, and accounts of it are already diverging. The first check-in gets each person's version down while it is fresh and separates the facts everyone agrees on from the ones still contested, and a follow-up a week later tests what turned out different once the dust settled.",
+    desc: "Something has just happened that nobody planned for, and versions of it are already diverging. The first check-in gets each person's version down while it is fresh and separates the facts everyone agrees on from the ones still contested, and a follow-up a week later tests what turned out different once the dust settled.",
     moment: 'Your biggest client left on Tuesday and you want them back.',
     agreed: 'First the facts everyone actually has, separated from what is being repeated. Then what you are now trying to achieve, with a date on it.',
     tests: 'Each daily check-in tests what that person did against that objective, so a recovery that is stalling shows up on day three rather than at the end of the fortnight.',
@@ -284,7 +284,7 @@ export const SCENARIOS: ScenarioCard[] = [
       'Sudden bad news hit the team and you want honest reads before any decisions get made.',
     ] },
   { cardKey: 'REALIGN_TEAM', scenario: 'REALIGN_TEAM', label: SCENARIO_LABELS.REALIGN_TEAM, tag: 'Team', tagBg: 'var(--gw-amber-bg)', tagColor: 'var(--gw-amber-t)',
-    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the account. That first session sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
+    desc: "Each person gives their own read of the situation before the group talks, rather than the loudest version becoming the official one. That first session sets out what you do and do not agree on, and the check-ins after it test whether the gap closed or only went quiet.",
     moment: 'You and your ops lead have stopped agreeing on what matters.',
     agreed: 'Each person gives their own read of the situation before the group talks, and that first session sets out what you do and do not agree on.',
     tests: 'The check-ins after it test whether the gap closed or only went quiet.',
@@ -1396,7 +1396,7 @@ export function CreateGroundPage() {
                       * the trade rather than glossing it.
                     */}
                     We could not tell which of the situations above this is closest to, so we will open an
-                    <b> open read</b>: each person gives their own account privately and the report shows where
+                    <b> open read</b>: each person answers privately and the report shows where
                     they differ. That works when the shape is genuinely unclear. If one of the cards above does
                     fit, pick it instead - a named situation asks sharper questions than this one can.
                   </div>

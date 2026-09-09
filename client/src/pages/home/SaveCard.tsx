@@ -81,11 +81,11 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span>Your check-in is saved. Nobody reads your words directly. The report shows where accounts agree and where they differ.</span>
+              <span>Your check-in is saved. Nobody reads your words directly. The report shows where people agree and where they differ.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>
-              <span>Everyone else checks in independently. Their accounts are cross-referenced to show where there is alignment and where there are gaps.</span>
+              <span>Everyone else checks in independently. What they say is compared with what you said, to show where there is alignment and where there are gaps.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>3</span>
@@ -242,7 +242,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         </div>
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 12 }}>
-          Each person checks in independently without seeing what you wrote. Their account is cross-referenced against yours to show where you agree, where you differ, and what the gap means.
+          Each person checks in independently without seeing what you wrote. What they say is compared with what you said to show where you agree, where you differ, and what the gap means.
         </div>
 
         <div className="gw-fld" style={{ marginBottom: 0 }}>

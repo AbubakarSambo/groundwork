@@ -47,8 +47,9 @@ describe('ONE-PATH: join lands in the real engine', () => {
 
   it('asking sends a link and goes nowhere', async () => {
     renderJoin()
-    await screen.findByText(/invited your check-in/i)
+    await screen.findByText(/has asked for your side of this/i)
     fireEvent.change(screen.getByPlaceholderText(/you@company.com/i), { target: { value: 'cohort@acme.test' } })
+    fireEvent.change(screen.getByPlaceholderText(/I run the clinic/i), { target: { value: 'Ward pharmacist' } })
     fireEvent.click(screen.getByRole('button', { name: /Join and start my check-in/i }))
     await screen.findByText(/Check your email/i)
     /* The whole point: no session, and no navigation into somebody's check-in. */
@@ -57,8 +58,9 @@ describe('ONE-PATH: join lands in the real engine', () => {
 
   it('and says the same thing whoever that address belongs to', async () => {
     renderJoin()
-    await screen.findByText(/invited your check-in/i)
+    await screen.findByText(/has asked for your side of this/i)
     fireEvent.change(screen.getByPlaceholderText(/you@company.com/i), { target: { value: 'admin@acme.test' } })
+    fireEvent.change(screen.getByPlaceholderText(/I run the clinic/i), { target: { value: 'Org admin' } })
     fireEvent.click(screen.getByRole('button', { name: /Join and start my check-in/i }))
     const said = await screen.findByText(/We have sent a link/i)
     expect(said.textContent).not.toMatch(/welcome back|already have|not registered/i)
@@ -66,14 +68,28 @@ describe('ONE-PATH: join lands in the real engine', () => {
 
   it('requires an email (button disabled until a valid email is entered)', async () => {
     renderJoin()
-    await screen.findByText(/invited your check-in/i)
+    await screen.findByText(/has asked for your side of this/i)
     expect((screen.getByRole('button', { name: /Join and start my check-in/i }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('keeps the privacy assurance', async () => {
     renderJoin()
-    await screen.findByText(/invited your check-in/i)
-    expect(screen.getByText(/Nobody ever reads what you write/i)).toBeTruthy()
+    await screen.findByText(/has asked for your side of this/i)
+    /*
+     * THE PROMISE CHANGED BECAUSE IT WAS NOT TRUE, AND WHAT REPLACED IT IS ALREADY WRITTEN DOWN.
+     *
+     * This asserted "Nobody ever reads what you write". What is written is read: it is summarised
+     * and cross referenced, and the result goes in front of the other people in the check-in. The
+     * honest version of this promise has existed for a long time in
+     * what-happens-to-what-you-write.ts, calibrated line by line - your own words about your own
+     * work can appear in the report, what you say about somebody ELSE never does.
+     *
+     * So this guards the two halves that make the promise mean anything, and the second half is the
+     * one that would be quietly dropped: without it the box is a boast, and with it it is a rule.
+     */
+    expect(screen.getByText(/used to build the shared report and nothing else/i)).toBeTruthy()
+    expect(screen.getByText(/Anything you say about somebody else never does/i)).toBeTruthy()
+    expect(screen.queryByText(/Nobody ever reads what you write/i)).toBeNull()
   })
 
   it('source-level: JoinPage runs no pipeline and signs nobody in', () => {

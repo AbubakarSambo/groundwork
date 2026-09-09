@@ -82,7 +82,14 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
   it('keeps the privacy assurance and frames sign-in as a benefit, not a toll', async () => {
     renderInvite()
     await screen.findByText(/wants to hear your version/i)
-    expect(screen.getByText(/Nobody ever reads what you write/i)).toBeTruthy()
+    /* See JoinPage.onePath: the promise was false and the true one is in
+       what-happens-to-what-you-write.ts. The two doors say the same thing. */
+    expect(screen.getByText(/used to build the shared report and nothing else/i)).toBeTruthy()
+    /* Twice on purpose: the box at the top and the four claims below it. They agreed once the box
+       stopped saying something the claims did not. Two copies that match is the point of this
+       assertion; the box saying its own thing is what it is guarding against. */
+    expect(screen.getAllByText(/Anything you say about somebody else never does/i).length).toBeGreaterThanOrEqual(2)
+    expect(screen.queryByText(/Nobody ever reads what you write/i)).toBeNull()
     expect(screen.getByText(/come back any time to add to/i)).toBeTruthy()
     expect(screen.getByText(/see the shared report once everyone has checked in/i)).toBeTruthy()
   })

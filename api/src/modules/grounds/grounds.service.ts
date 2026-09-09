@@ -34,6 +34,7 @@ import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
+import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -59,7 +60,23 @@ export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
   CRISIS_ALIGNMENT: 60,
   OKR_ALIGNMENT: 90,
   WORKPLAN_BUDGET: 90,
-  PULSE_CHECK: 30,
+  /**
+   * A YEAR, BECAUSE "REGULAR" IS THE WHOLE POINT OF THIS ONE.
+   *
+   * It was 30 days, which gave a regular read on live work four weekly sessions and then ended it.
+   * A month of a weekly team check-in is not a regular read on live work; it is a month. Her words:
+   * "regular read can run for 12 months."
+   *
+   * The distinction this rests on already exists and is already correct in the picker. PULSE_CHECK is
+   * the recurring read; SNAPSHOT is the one-off - "a pulse check", one session, no target, no second
+   * round. They were one card once, which is why neither could be found. What was left over is that
+   * the recurring one kept the short clock.
+   *
+   * 12 months is already an option on the Setup tab, so nothing new is reachable - what changes is
+   * what somebody gets without touching it. Weekly over a year is 52 sessions, which is what a
+   * weekly team check-in for a year actually is; a lead who wants fewer sets a cadence.
+   */
+  PULSE_CHECK: 365,
   REALIGN_TEAM: 60,
   PIP: 90,
   BOARD_STRATEGY: 90,
@@ -179,7 +196,19 @@ export const RECOMMENDED_CADENCE: Record<GroundScenario, Cadence> = {
   /** Monthly: a budget moves on a monthly rhythm, and asking fortnightly invents movement. */
   WORKPLAN_BUDGET: Cadence.MONTHLY,
   /** Weekly, because "what is your team actually doing" is a weekly question or it is not one. */
-  PULSE_CHECK: Cadence.WEEKLY,
+  /**
+   * MONTHLY, BECAUSE THIS ONE NOW RUNS FOR A YEAR.
+   *
+   * Weekly was right against a 30-day clock. Against 365 it is 52 rounds, and
+   * `every-situation-has-a-rhythm` already refuses more than twenty - "never so many that a
+   * check-in becomes a chore". That cap is a decision somebody made and it is the right one; a
+   * weekly check-in somebody has to do fifty-two times is not a read on live work, it is a rota.
+   *
+   * Monthly over a year is twelve, which is where NEW_ADVISOR already sits on the same clock. A lead
+   * who wants it tighter sets a cadence on Setup, and 12 months at fortnightly is 26 - over the cap,
+   * so that is a decision to take deliberately rather than by default.
+   */
+  PULSE_CHECK: Cadence.MONTHLY,
   /** Weekly: a gap that is being closed has to be read often enough to tell closing from holding. */
   DRIFT: Cadence.WEEKLY,
   CRISIS_ALIGNMENT: Cadence.FORTNIGHTLY,
@@ -821,8 +850,9 @@ export class GroundsService {
       };
     }
 
-    const local = email.split('@')[0] ?? 'there';
-    const firstName = name ?? local.charAt(0).toUpperCase() + local.slice(1);
+    /* `anna+chidi@gmail.com` was becoming "Anna+chidi" on the roster and in every sentence the
+       check-in wrote about them. Sign-up already got this right; this door did not. */
+    const firstName = name ?? aNameOutOfAnAddress(email);
     const created = await db.user.create({
       data: { organizationId, email, firstName, lastName: '', role: 'MEMBER', isEmailVerified: true, passwordHash: null },
     });
@@ -1123,6 +1153,8 @@ export class GroundsService {
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
+        /* For `guestIn`: whose workspace this check-in belongs to. */
+        organization: { select: { name: true } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -1167,6 +1199,9 @@ export class GroundsService {
           include: {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
+            /* Same as the primary read: this is the cross-org path, and it is the one where the
+               name is actually needed. */
+            organization: { select: { name: true } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -1645,6 +1680,47 @@ export class GroundsService {
       // the link without duplicating the scenario-family table. The server owns
       // that routing; the client just reads the answer.
       boardRenders: boardRendersFor(ground.scenario),
+      /*
+       * WHETHER A PERSON ACTUALLY CHOSE THE RHYTHM, WHICH ONLY THE GAPS READ KNEW.
+       *
+       * `cadence` cannot be empty - it defaults to FORTNIGHTLY - so the column alone cannot tell a
+       * chosen fortnightly from a fortnightly nobody was asked about. `cadenceStated` has recorded
+       * the difference all along and the gaps builder uses it, but the ground payload every screen
+       * reads did not carry it, so no screen could ask.
+       *
+       * Reported by a lead after a first session: "it didn't tell me how I should set my sessions
+       * cadence". The check-in was running fortnightly on a default.
+       */
+      cadenceChosen: (ground as any).cadenceStated ?? false,
+      /**
+       * AND THE SAME QUESTION ABOUT THE OTHER TWO. See WhatThisCheckInStillNeeds.
+       *
+       * "Meeting cadence at the end of the report does not show up and does not have start dates."
+       * The block that asks about the rhythm was gated on the rhythm alone, and the rhythm is
+       * always picked at the door - so it never appeared. Meanwhile the two answers nobody is ever
+       * asked for were both sitting unset: `startsAt` null on every check-in born through the
+       * door, and `timelineStated` false, which means the 90 days everything counts against is a
+       * default nobody chose.
+       *
+       * Same shape as `cadenceChosen` and for the same reason: the column has always known, and
+       * the payload every screen reads could not say.
+       */
+      startDateChosen: !!(ground as any).startsAt,
+      timelineChosen: (ground as any).timelineStated ?? false,
+      /**
+       * WHOSE CHECK-IN THIS IS, WHEN IT IS NOT THE READER'S OWN COMPANY.
+       *
+       * Somebody added to a check-in in another organisation can open it - the cross-org read a
+       * hundred lines above exists for exactly that - and nothing anywhere told them they had. They
+       * are a guest in somebody else's workspace, seeing one check-in and nothing around it, and
+       * the first they knew of it was that the rest of the product looked empty.
+       *
+       * The name, only when it differs. On a reader's own check-in this is null and no screen says
+       * anything, because "at your own company" is not information.
+       */
+      guestIn: ground.organizationId !== organizationId
+        ? ((ground as any).organization?.name ?? 'another organisation')
+        : null,
     };
   }
 
@@ -2672,6 +2748,24 @@ export class GroundsService {
     // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
     // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
     const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
+
+    /**
+     * WHETHER THE PERSON JUST ADDED BELONGS TO SOMEBODY ELSE'S ORGANISATION.
+     *
+     * Reported from the other side: "she wasn't told that I was not part of her org when I was
+     * added." The join itself is handled - `isASecondOrganisation` writes a GUEST membership, and
+     * every org-scoped read still refuses them - so nothing leaks. What was missing is that the
+     * person doing the adding had no idea, and typed an address believing it was a colleague's.
+     *
+     * It changes nothing about what happens. It is said because being a guest in another company's
+     * check-in is a real fact about this person, and the lead is the one who has to know it - they
+     * are the one who will wonder why this person cannot see the rest of the workspace.
+     */
+    const theirHome = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { organizationId: true, organization: { select: { name: true } } },
+    });
+    const fromAnotherOrg = !!theirHome && theirHome.organizationId !== organizationId;
     return {
       id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt,
       devUrl: emailResult?.devUrl,
@@ -2680,6 +2774,11 @@ export class GroundsService {
          see added-but-waiting-for-a-seat.ts for why this is a sentence and not a refusal. */
       awaitingSeat: !waitingForASeat.room,
       ...(waitingForASeat.room ? {} : { saying: waitingForASeat.saying }),
+      /* Named, because "somebody from another organisation" is not something a lead can act on and
+         a company name is. Never the person's other colleagues, only where they belong. */
+      ...(fromAnotherOrg
+        ? { guestFrom: theirHome!.organization?.name ?? 'another organisation' }
+        : {}),
     };
   }
 
@@ -3940,6 +4039,15 @@ export class GroundsService {
     label: string;
     trend: 'rising' | 'steady' | 'falling' | 'new';
     whatWouldHelp: string | null;
+    /**
+     * WHICH OF THE FIVE WOULD MOVE THEM MOST, as a key rather than only as prose.
+     *
+     * "with the one that would move you most marked" - marked in the list, which needs the list to
+     * know which one. The prose has always known: the three branches below are a number, a date and
+     * vague language, and the first two are the same dimension. The client was left to guess from a
+     * sentence, so it printed the sentence underneath and marked nothing.
+     */
+    mostUseful: { dimension: string; says: string } | null;
     strongest: string | null;
   }> {
     const participant = await this.prisma.groundParticipant.findFirst({
@@ -3976,24 +4084,35 @@ export class GroundsService {
       select: { text: true },
     });
     let whatWouldHelp: string | null = null;
+    let mostUseful: { dimension: string; says: string } | null = null;
     let strongest: string | null = null;
     if (entries.length) {
       const read = entries.map(e => ({ text: e.text, ...runIntake(e.text) }));
       const undated = read.filter(r => !/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|last week|this week|yesterday|\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2})\b/i.test(r.text)).length;
       const unnumbered = read.filter(r => !/\d/.test(r.text)).length;
       const vague = read.filter(r => r.vagueLanguage.length > 0).length;
+      /*
+       * PLAIN, AND SHORT. These were three sentences each, written from the engine's side: "one
+       * figure makes an account checkable that otherwise rests on memory". Read back on the screen
+       * that shows them: "you speak english like a robot". They are the one line somebody is meant
+       * to act on, so they say the thing and stop.
+       */
+      /* Her wording, and the dimension it belongs to, so the row can carry the mark. */
       if (unnumbered > entries.length / 2) {
-        whatWouldHelp = 'Most of your answers so far have no number in them. How many, how long, how often - one figure makes an account checkable that otherwise rests on memory.';
+        whatWouldHelp = 'Most of your answers have no number in them. How many? How long? How often? One number changes a lot.';
+        mostUseful = { dimension: 'evidence', says: 'a number. How many, how long, how often - one figure carries a lot.' };
       } else if (undated > entries.length / 2) {
-        whatWouldHelp = 'Most of your answers so far do not say when. A week, a date, "before the handover" - anything that places it in time lets the other accounts line up against it.';
+        whatWouldHelp = 'Most of your answers do not say when. A date, a week, even "before the handover" is enough.';
+        mostUseful = { dimension: 'evidence', says: 'a date. A week, a day, even "before the handover" is enough.' };
       } else if (vague > entries.length / 3) {
-        whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Naming what actually happened instead carries further than describing it.`;
+        whatWouldHelp = `Some answers lean on words like "${read.find(r => r.vagueLanguage.length)?.vagueLanguage[0]}". Saying what actually happened lands harder.`;
+        mostUseful = { dimension: 'delivery', says: 'saying what actually happened, rather than describing it.' };
       }
       const best = read.filter(r => r.specificity >= 0.5).sort((a, b) => b.specificity - a.specificity)[0];
       if (best) strongest = best.text.slice(0, 220);
     }
 
-    return { scores, label, trend, whatWouldHelp, strongest };
+    return { scores, label, trend, whatWouldHelp, mostUseful, strongest };
   }
 
   /**
