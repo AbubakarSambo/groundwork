@@ -2321,14 +2321,15 @@ export function EntryChatPage() {
       {/* Phase stepper: makes which phase you are in legible at a glance.
           1 Describe the situation -> 2 Your check-in (or Hand-off) -> 3 Save & invite. */}
       {(() => {
-        const step = phase === 'onboarding' ? (flowPath === 'lead' ? 2 : 1) : (closed || showSave ? 3 : 2)
+        /* Both answers at the fork lead into the same first check-in, so the step bar is the same for both. */
+        const step = phase === 'onboarding' ? 1 : (closed || showSave ? 3 : 2)
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
            was being promised a hand-off screen they would never reach. */
-        const labels = ['Describe the situation', flowPath === 'lead' ? 'Setting it up' : 'Your check-in', 'Save & invite']
+        const labels = ['Describe the situation', 'Your check-in', 'Save & invite']
         const hints = [
           "You're describing the situation. Nothing is saved to an account yet.",
-          flowPath === 'lead' ? "You're adding the people who check in." : "You're saying how you see it. It stays private until the report.",
+          "You're saying how you see it. It stays private until the report.",
           'Save this and invite the people involved.',
         ]
         return (
