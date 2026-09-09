@@ -72,10 +72,6 @@ import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
-const PATTERN_CODE_NAME = new Map<string, string>([
-  ...BAD_FAITH_CODES.map((c) => [c.code, c.name] as const),
-  ...POSITIVE_CODES.map((c) => [c.code, c.name] as const),
-]);
 
 /**
  * SOLO_ARTIFACT_SCHEMA and SOLO_ARTIFACT_PROMPT were defined here and used nowhere.
@@ -904,22 +900,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // Collaborator) is explicitly told NOT to go in concernFlags - that field's own
     // schema is scoped to reduced follow-through/thinner contribution, and forcing a
     // compliment into a "concern" field would mischaracterize it.
-    const surfacedPatternRows = await this.prisma.patternDetection.findMany({
-      where: { groundId, status: PatternStatus.SURFACED },
-      select: { participantId: true, code: true, observationText: true },
-    });
-    const patternNotices = surfacedPatternRows
-      .filter((p) => !ALIGNMENT_FEED_ONLY_CODES.has(p.code))
-      .map((p) => {
-        const label = labelById.get(p.participantId) ?? 'a party';
-        const name = PATTERN_CODE_NAME.get(p.code) ?? p.code;
-        const rawObservation = p.observationText ?? 'no further detail recorded';
-        const observation = rawObservation.trim().replace(/[.!?]+$/, '');
-        return isPositiveCode(p.code)
-          ? `NOTE [longitudinal pattern evidence - positive, code ${p.code} ${name}]: ${label} - ${observation}. This is a positive signal, not a concern. Reflect it in the narrative or hiddenContributors if the record supports it. Do NOT place this in concernFlags - that field is for reduced follow-through or thinner contribution only.`
-          : `NOTE [longitudinal pattern evidence - code ${p.code} ${name}]: ${label} - ${observation}. If the record itself corroborates this, note it in concernFlags as a plain factual observation about the record per synthesis rule 10 - never an accusation, never a judgement of the person, never speculation about motive. If the record does not corroborate it, do not include it.`;
-      });
-    const patternNotice = patternNotices.length ? patternNotices.join('\n') + '\n\n' : '';
+    /*
+     * THE PROMPT ROUTE FOR PATTERNS IS GONE. It read every surfaced detection and wrote the model a
+     * paragraph per row saying to note it "if the record corroborates this". The engine's finding
+     * became a suggestion the model could decline, and when it did not decline, the same fact reached
+     * the page twice - once here in the model's words and once in the section - and could disagree
+     * with itself. Patterns render as their own read in `sessionReport` now, in the library's words.
+     */
+    const patternNotice = '';
 
     // LEAD-SUPPLIED CONTEXT: private notes the initiator fed in about a participant or
     // the ground. Read from its OWN store (leadContextNote) - never RecordEntry, never
@@ -2171,6 +2159,39 @@ Close the report by framing - neutrally, without recommending one - the choice n
        */
       released: !!ground.report?.releasedAt,
       iHaveShownMine: !!me && shown.has(me.id),
+      /*
+       * WHAT KEEPS SHOWING UP, AS A SECTION AND NOT A SUGGESTION.
+       *
+       * The pattern engine has survived a three-period rule and has three hundred surfaced rows in
+       * this database, and its only route into the shared report was a paragraph telling the
+       * synthesis model to mention it "if the record corroborates". A model that may decline is a
+       * suggestion, not a section, and two routes for one fact can disagree on one page - so the
+       * prompt route is gone (see synthesize) and this is the route.
+       *
+       * SURFACED only: a CANDIDATE has been seen once and once is not a pattern. The alignment-feed
+       * codes stay out, as they do everywhere a person reads. The wording is the library's own
+       * `signal`, and who it is about follows the same naming rule as every other line here.
+       */
+      patterns: await this.prisma.patternDetection
+        .findMany({
+          where: { groundId, status: PatternStatus.SURFACED },
+          orderBy: [{ periodsObserved: 'desc' }, { lastSeenAt: 'desc' }],
+          select: { participantId: true, code: true, periodsObserved: true },
+        })
+        .then((rows) =>
+          rows
+            .filter((r) => !ALIGNMENT_FEED_ONLY_CODES.has(r.code) && patternCatalogue().has(r.code))
+            .map((r) => {
+              const lib = patternCatalogue().get(r.code)!;
+              return {
+                who: whoOf(r.participantId) ?? (me && r.participantId === me.id ? 'You' : 'Somebody'),
+                isYou: !!me && r.participantId === me.id,
+                signal: lib.signal,
+                positive: isPositiveCode(r.code),
+                periodsObserved: r.periodsObserved,
+              };
+            }),
+        ),
       /*
        * THE ONE SURFACE THAT HANDED OUT RAW LABELS.
        *

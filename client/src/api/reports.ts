@@ -77,6 +77,11 @@ export interface SessionShapedReport {
    * is about one person's own input and lives on the private half of the page.
    */
   confidence: { score: number; band: 'thin' | 'partial' | 'solid'; saying: string; reasons: string[] }
+  /**
+   * What keeps showing up, from the pattern engine. Surfaced only, in the library's own words. A
+   * section, not a suggestion to the model - see sessionReport on the server.
+   */
+  patterns: { who: string; isYou: boolean; signal: string; positive: boolean; periodsObserved: number }[]
   /** Each person's own lines this session, under their own name. */
   whatEachPersonSaid: { who: string; isYou: boolean; lines: string[]; saying?: string }[]
   /** Whether this session's account can still be corrected, and the sentence if it cannot. */

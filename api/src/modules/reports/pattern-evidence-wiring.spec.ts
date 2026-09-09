@@ -104,108 +104,60 @@ const PARTIES = [
   { id: 'p1', partyType: 'INITIATOR', roleAsDescribed: 'founder' },
   { id: 'p2', partyType: 'PARTICIPANT', roleAsDescribed: 'engineer' },
 ];
+/* The synthesis result the mocked model hands back. Shape only; nothing in it is under test. */
+const EXTRACT = {
+  sharedPicture: 'Both records describe the integration.',
+  agreements: ['It shipped on schedule.'],
+  divergences: [],
+  centralQuestion: 'What is next?',
+  engagement: { concernFlags: [] },
+};
 const RECORDS = [
   { participant: { id: 'p1' }, checkIn: { sessionNumber: 1 }, text: 'We shipped the integration on schedule.', type: 'CHECK_IN' },
   { participant: { id: 'p2' }, checkIn: { sessionNumber: 1 }, text: 'p1 credited my work on the migration explicitly.', type: 'CHECK_IN' },
 ];
 
-describe('GW-PATTERN-WIRE-B: surfaced patterns reach report synthesis as evidence', () => {
-  it('proof: a bad-faith code (D1), a positive code (R3), and an excluded code (E4) are all detected on this ground', async () => {
-    const { service, getCorpus, getUpsertedCreate } = makeService({
-      ground: GROUND,
-      parties: PARTIES,
-      records: RECORDS,
-      patternRows: [
-        { participantId: 'p1', code: 'D1', observationText: 'The record describes completion without downstream confirmation.' },
-        { participantId: 'p2', code: 'R3', observationText: 'p2 was credited by name for specific work on the migration.' },
-        { participantId: 'p1', code: 'E4', observationText: 'p1 consistently absorbs operational load relative to the other founder.' },
-      ],
-      extractResult: {
-        sharedPicture: 'Both parties describe the integration as shipped.',
-        agreements: ['The integration shipped on schedule.'],
-        divergences: [],
-        centralQuestion: 'Has the downstream team confirmed the integration works for them?',
-        concernFlags: [
-          { label: 'founder', observation: 'The record shows completion claimed without downstream confirmation from the team depending on it.' },
-        ],
-        hiddenContributors: [],
-      },
-    });
+/**
+ * GW-PATTERN-WIRE-B, INVERTED. PATTERNS ARE A SECTION, NOT A SUGGESTION TO THE MODEL.
+ *
+ * This block used to prove that every surfaced detection reached the synthesis corpus as a paragraph
+ * telling the model to "note it in concernFlags ... if the record itself corroborates this". That was
+ * the engine's finding handed to a model as a suggestion it could decline - and when it complied, the
+ * same fact could reach the page in the model's words AND in the engine's, and disagree.
+ *
+ * There is one route now: `sessionReport` renders surfaced detections as their own read, in the
+ * library's words (see a-pattern-is-a-section-not-a-suggestion.spec.ts). So the corpus carries NO
+ * pattern notice, whatever is detected. What this file still proves is the half that never changed:
+ * the alignment-feed-only codes reach nobody, on any route.
+ */
+describe('GW-PATTERN-WIRE-B: patterns do not reach the synthesis prompt at all', () => {
+  const rows = [
+    { participantId: 'p1', code: 'D1', observationText: 'The record describes completion without downstream confirmation.' },
+    { participantId: 'p2', code: 'R3', observationText: 'p2 was credited by name for specific work on the migration.' },
+    { participantId: 'p1', code: 'E4', observationText: 'absorbs operational load relative to the other founder' },
+    { participantId: 'p1', code: 'F5', observationText: 'operational absorption' },
+  ];
 
-    const report = await service.synthesize('g1');
-    const corpus = getCorpus();
-
-    // eslint-disable-next-line no-console
-    console.log('\n===== ASSEMBLED SYNTHESIS CORPUS (proof) =====\n' + corpus + '\n===== END CORPUS =====\n');
-    // eslint-disable-next-line no-console
-    console.log('===== RESULTING REPORT (proof) =====\n' + JSON.stringify(getUpsertedCreate(), null, 2) + '\n===== END REPORT =====\n');
-
-    // D1 (bad-faith): notice present, routed toward concernFlags per rule 10, phrased factually.
-    expect(corpus).toContain('NOTE [longitudinal pattern evidence - code D1 False Completion Reporting]');
-    expect(corpus).toContain('The record describes completion without downstream confirmation.');
-    expect(corpus).toContain('note it in concernFlags as a plain factual observation about the record per synthesis rule 10');
-    expect(corpus).toContain('never an accusation, never a judgement of the person, never speculation about motive');
-
-    // R3 (positive): notice present, explicitly kept OUT of concernFlags.
-    expect(corpus).toContain('NOTE [longitudinal pattern evidence - positive, code R3 Named Collaborator]');
-    expect(corpus).toContain('p2 was credited by name for specific work on the migration.');
-    expect(corpus).toContain('This is a positive signal, not a concern');
-    expect(corpus).toContain('Do NOT place this in concernFlags');
-
-    // E4 (alignment-feed-only): must not appear anywhere in the corpus - the
-    // report is read by the parties themselves, same rule as the live conversation.
-    expect(corpus).not.toContain('E4');
-    expect(corpus).not.toContain('Founder Burden Imbalance');
-    expect(corpus).not.toContain('absorbs operational load relative to the other founder');
-
-    // The final report actually carries the concern through to engagement.concernFlags.
-    expect((report as any).engagement.concernFlags).toEqual([
-      { label: 'founder', observation: 'The record shows completion claimed without downstream confirmation from the team depending on it.' },
-    ]);
-  });
-
-  it('guard: patternDetection.findMany is queried with status SURFACED, scoped to this ground', async () => {
-    const { service, service: _s } = makeService({
-      ground: GROUND,
-      parties: PARTIES,
-      records: RECORDS,
-      patternRows: [],
-      extractResult: { sharedPicture: '', agreements: [], divergences: [], centralQuestion: '' },
-    });
-    await service.synthesize('g1');
-    const prisma: any = (service as any).prisma;
-    expect(prisma.patternDetection.findMany).toHaveBeenCalledWith({
-      where: { groundId: 'g1', status: 'SURFACED' },
-      select: { participantId: true, code: true, observationText: true },
-    });
-  });
-
-  it('guard: a ground with no surfaced patterns produces no pattern-evidence notice at all', async () => {
+  it('a ground with surfaced patterns of every kind produces a corpus with none of them in it', async () => {
     const { service, getCorpus } = makeService({
       ground: GROUND,
       parties: PARTIES,
       records: RECORDS,
-      patternRows: [],
-      extractResult: { sharedPicture: '', agreements: [], divergences: [], centralQuestion: '' },
-    });
-    await service.synthesize('g1');
-    expect(getCorpus()).not.toContain('longitudinal pattern evidence');
-  });
-
-  it('guard: every ALIGNMENT_FEED_ONLY_CODES member is excluded from the corpus, not just E4', async () => {
-    const { service, getCorpus } = makeService({
-      ground: GROUND,
-      parties: PARTIES,
-      records: RECORDS,
-      patternRows: [
-        { participantId: 'p1', code: 'F5', observationText: 'One cofounder shows more operational absorption than the other.' },
-      ],
-      extractResult: { sharedPicture: '', agreements: [], divergences: [], centralQuestion: '' },
+      patternRows: rows,
+      extractResult: EXTRACT,
     });
     await service.synthesize('g1');
     const corpus = getCorpus();
-    expect(corpus).not.toContain('F5');
-    expect(corpus).not.toContain('Cofounder Burden Asymmetry');
-    expect(corpus).not.toContain('operational absorption');
+    expect(corpus).not.toContain('longitudinal pattern evidence');
+    expect(corpus).not.toContain('concernFlags as a plain factual observation');
+    for (const r of rows) expect(corpus).not.toContain(r.observationText!);
+  });
+
+  it('and the excluded codes reach nobody on the route that does exist', async () => {
+    /* The section filters ALIGNMENT_FEED_ONLY_CODES before anything is named. Pinned on the source,
+       because the mock above cannot reach sessionReport's own read. */
+    const src = require('fs').readFileSync(__dirname + '/reports.service.ts', 'utf8');
+    const at = src.indexOf('patterns: await this.prisma.patternDetection');
+    expect(src.slice(at, at + 1200)).toContain('ALIGNMENT_FEED_ONLY_CODES.has(r.code)');
   });
 });

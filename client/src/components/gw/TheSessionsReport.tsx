@@ -179,6 +179,34 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </section>
       )}
 
+      {/*
+        WHAT KEEPS SHOWING UP. The pattern engine, as a read of its own.
+
+        Its only route here used to be a note to the writing model saying to mention a pattern "if
+        the record corroborates". Now it is a section: the library's own sentence for the pattern,
+        who it is about, and how many sessions it was seen across, which is the fact that makes it
+        a pattern rather than an incident. Nothing here is a verdict on a person; every line is a
+        count over rows the engine kept.
+      */}
+      {d.patterns?.length > 0 && (
+        <section style={{ marginBottom: 22 }}>
+          <Sec title="What keeps showing up" />
+          <div style={{ display: 'grid', gap: 10 }}>
+            {d.patterns.map((p: any, i: number) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 140px) 1fr', gap: 12, alignItems: 'baseline' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>{p.isYou ? `${p.who} (you)` : p.who}</div>
+                <div>
+                  <div style={{ fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{p.signal}</div>
+                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 2 }}>
+                    Seen across {p.periodsObserved} session{p.periodsObserved === 1 ? '' : 's'}{p.positive ? ' · a good sign' : ''}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 9. The picture from the accounts. Carries weight: it is the thing the report is for. */}
       {d.sharedPicture && (
         <section style={{ marginBottom: 30 }}>
