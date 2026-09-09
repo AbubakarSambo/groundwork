@@ -2687,7 +2687,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       observations.push({ sessionNumber, noticed: read.noticed, reason: read.reason.trim() });
     }
     const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
-    const inverted = !!read && (observed?.theyAskedForThisThemselves === true || theyAskedForItThemselves(read.lookingLike, personSaid));
+    /* The word check decides. The model's own field said "they asked for it" on six cases the word
+       check rejected, including an unanswered email with no ask in it; zero cases where both agreed.
+       The field is kept on the row for reading, and it no longer suppresses anything. */
+    const inverted = !!read && theyAskedForItThemselves(read.lookingLike, personSaid);
+    const modelSaidTheyAsked = observed?.theyAskedForThisThemselves === true;
     if (read && inverted) this.logger.log(`Coaching: not offering "${read.lookingLike}" to ${participantId}, they asked for it themselves.`);
     if (read && !recurring) this.logger.log(`Coaching: "${read.noticed}" seen once for ${participantId}, waiting for recurrence.`);
     const offerable = read && !isGenericStep(read.lookingLike) && recurring && !inverted;
@@ -2699,7 +2703,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         noticed: offerable ? read!.noticed : null,
         lookingLike: offerable ? read!.lookingLike : null,
         reason: offerable ? read!.reason : null,
-        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted } : null,
+        observed: read ? { noticed: read.noticed, reason: read.reason, recurring, inverted, modelSaidTheyAsked } : null,
         observations,
         // The same substance test the completion gate uses, rather than a second
         // definition of "said something real".
@@ -2729,7 +2733,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     read: {
       noticed: string | null; lookingLike: string | null; reason: string | null; hadSubstance: boolean;
       /** What this session showed before the recurrence and inversion checks, for the reader at /admin/coaching. */
-      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean } | null;
+      observed?: { noticed: string; reason: string; recurring: boolean; inverted: boolean; modelSaidTheyAsked?: boolean } | null;
       observations?: Observation[];
       /** Why nothing could be read this session, when that is the case. */
       why?: string;
