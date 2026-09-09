@@ -62,8 +62,9 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
           <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5, lineHeight: 1.55 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ color: r.disputedAt ? 'var(--gw-muted)' : 'var(--gw-text)', textDecoration: r.disputedAt ? 'line-through' : 'none' }}>{r.text}</span>
-              <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>{KIND[r.type] ?? r.type.toLowerCase()}</span>
-              {r.disputedAt && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>you said this is not what you said</span>}
+              {/* A visible separator, not only a margin: read back off the page as "refers into.what you are working on". */}
+              <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· {KIND[r.type] ?? r.type.toLowerCase()}</span>
+              {r.disputedAt && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· you said this is not what you said</span>}
             </div>
             {!r.disputedAt && (
               <button

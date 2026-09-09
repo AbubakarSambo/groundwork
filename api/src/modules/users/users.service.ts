@@ -299,7 +299,7 @@ export class UsersService {
     const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
         where: { userId: { in: ids } },
-        select: { userId: true, joinedAt: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
+        select: { userId: true, createdAt: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
       })
       : [];
     const onCount = new Map<string, number>();
@@ -319,19 +319,22 @@ export class UsersService {
      * and the account has to exist for them to write their own record - so the fix is not a role
      * change, it is saying how they got here.
      *
-     * No column records it, and none is needed: `participants.accept()` creates the user inside the
-     * same transaction that stamps `joinedAt`, so the two timestamps sit within seconds. Somebody
-     * who signed up first and was added later has a `createdAt` well before any `joinedAt`.
+     * No column records it, and none is needed. An invitation creates the participant row first, and
+     * the person's account only when they accept; somebody put on the organisation, or who signed up
+     * themselves, exists before any check-in row names them. So: the earliest participant row for
+     * this person was created BEFORE their account was. Checked against the live rows - the two
+     * invited people had a row 40 and 70 seconds before their account, the lead the other way round.
+     * (`joinedAt` was the first idea and is never stamped by accept(), so it could never fire.)
      */
-    const firstJoined = new Map<string, number>();
+    const firstRow = new Map<string, number>();
     for (const m of memberships) {
-      if (!m.userId || !m.joinedAt) continue;
-      const t = new Date(m.joinedAt).getTime();
-      firstJoined.set(m.userId, Math.min(firstJoined.get(m.userId) ?? Infinity, t));
+      if (!m.userId) continue;
+      const t = new Date(m.createdAt).getTime();
+      firstRow.set(m.userId, Math.min(firstRow.get(m.userId) ?? Infinity, t));
     }
     const arrivedThroughACheckIn = (u: { id: string; createdAt: Date }) => {
-      const j = firstJoined.get(u.id);
-      return j != null && Math.abs(j - new Date(u.createdAt).getTime()) < 60_000;
+      const first = firstRow.get(u.id);
+      return first != null && first < new Date(u.createdAt).getTime();
     };
 
     return {
