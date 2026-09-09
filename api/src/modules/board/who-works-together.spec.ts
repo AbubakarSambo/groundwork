@@ -149,7 +149,7 @@ function serviceFor(scenario: GroundScenario, peopleWorkTogether: boolean | null
     groundDependency: { findMany: jest.fn(async () => []) },
     patternDetection: { findMany: jest.fn(async () => []) },
   };
-  return new BoardService(prisma) as any;
+  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any) as any;
 }
 
 describe('the service passes the lead\'s answer through', () => {

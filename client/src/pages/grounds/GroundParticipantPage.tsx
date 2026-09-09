@@ -15,7 +15,10 @@ import { apiClient } from '@/api/client'
 import { participantLabel } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
-import { MyPrivateReport } from '@/components/gw/MyPrivateReport'
+import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
+import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
+import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
+import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
@@ -284,6 +287,26 @@ export function GroundParticipantPage() {
     .filter((c) => c.status === 'COMPLETED')
     .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
     .sort((a, b) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
+  /**
+   * EVERY SESSION OF MINE AS A DOT, done and still to come.
+   *
+   * Replaces the alignment ladder and the row of specificity bars: both were marks on a scale the
+   * person could not see, and both cost a screen each. A dot per session and "3 of 6" is one row
+   * and says the thing anybody actually wanted from them.
+   */
+  const mySessionDots = (((ground as any)?.checkIns ?? []) as any[])
+    .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
+    .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))
+    .map((c) => ({
+      sessionNumber: c.sessionNumber ?? 0,
+      state: (c.status === 'COMPLETED'
+        ? (c.isSelfCorrection ? 'corrected' : 'done')
+        : 'todo') as 'done' | 'corrected' | 'todo',
+      /* `specificityHistory` is one score per finished session, in order, so the nth score belongs
+         to the nth session. The bar is what she asked for back - "simple and visual" - and the
+         session number under it is the thing the old one was missing. */
+      checkable: ((specificity?.scores ?? []) as number[])[(c.sessionNumber ?? 1) - 1] ?? null,
+    }))
   /** Whether this person runs the ground, and so has an admin view to switch to. */
   const isInitiator = myParticipant?.partyType === 'INITIATOR'
   /**
@@ -413,6 +436,21 @@ export function GroundParticipantPage() {
                   ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
                   : 'Just yours - only you see this until the report releases.'}
               </span>
+              {/*
+                WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
+
+                Somebody added to a check-in in another organisation can open it and nothing said
+                so. They are a guest in a workspace holding one check-in and nothing around it, and
+                the first they knew was that the rest of the product looked empty. Reported as: "I
+                was added to a check-in in one org and then didn't have a way to join the org."
+                
+                Null on a reader's own check-in, because "at your own company" is not information.
+              */}
+              {(ground as any).guestIn && (
+                <span style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+                  · A guest check-in at {(ground as any).guestIn}
+                </span>
+              )}
               {totalSessions != null && (
                 <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
               )}
@@ -499,6 +537,9 @@ export function GroundParticipantPage() {
             openSessionNumber={dueNow ? openCheckIn.sessionNumber : null}
             totalSessions={totalSessions ?? null}
             nextOpensAt={opensLater ? openAvailableFrom : null}
+            /* Only the person who runs it can change the rhythm, so only they are told they can. */
+            canChangeTheRhythm={isInitiator}
+            onGoToSetup={() => goTab('settings')}
             onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
             openPending={probeSession.isPending}
             brief={(ground as any).brief}
@@ -566,36 +607,95 @@ export function GroundParticipantPage() {
               My record is your part - the same whole-against-part split the two views' labels already
               use, rather than a second axis to learn.
             */}
-            <MyPrivateReport
+            {/*
+              THE SUMMARY IS THE FIRST THING ON THE PAGE. Her call.
+
+              It is the one block that says, in prose, what this person's record actually contains -
+              everything below it is a read OF that. It was fourth, under three cards assessing it,
+              so a person met three judgements before meeting the thing being judged.
+
+              It travels with "what to carry" and Share because they are one object: the summary is
+              the first half of the card the next session opens from.
+            */}
+            <WhatYouAreCarryingForward
               groundId={id!}
-              /* The private, forward-looking panel that used to sit inside the shared report. See
-                 WhatToWalkInWith - it is three lines for one person about a conversation they have
-                 not had yet, and My record is the tab that is theirs. */
-              walkInGuide={(report as any)?.postReportGuide ?? null}
               mySoloReport={mySoloReport}
               refetchSoloReport={refetchSoloReport}
-              myParticipant={myParticipant}
               otherParties={(ground.participants ?? [])
                 .filter((p: any) => p.userId !== user?.id)
                 .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
-              mySessions={myFinishedSessions}
-              /* Per-session specificity, so each row can say how checkable that account was. The
-                 same read the trend card uses; it just belongs on the session it is about. */
-              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
             />
+
+            {/*
+              THE TWO THINGS AT A GLANCE, ABOVE EVERYTHING THEY SUMMARISE.
+
+              "What your record can support" was a five-segment bar with a one-word label, three
+              screens down; "How your answers are going" was another card below that. Both were
+              buried under the thing they were meant to introduce, and both were marks out of a
+              scale nobody can see. One card now, at the top, in sentences.
+            */}
+            <WhatYourRecordCanSupport
+              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
+              trend={specificity?.trend}
+              sessions={mySessionDots}
+              totalSessions={totalSessions ?? null}
+              coverage={{
+                iHaveCheckedIn: completedCheckIns.length > 0,
+                answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
+                parties: (ground as any)?.sessionProgress?.total
+                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+                /* Empty where peers are hidden, and the component says "one person" instead. A page
+                   being private to its reader does not make somebody else's name theirs to know. */
+                waitingOn: (ground as any)?.peersVisibleEffective === false
+                  ? []
+                  : (ground.participants ?? [])
+                      .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
+                      .filter((p: any) => !((p.checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
+                      .map((p: any) => participantLabel(p)),
+                corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
+                documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
+                roundsFinished: completedCheckIns.length,
+              }}
+              alsoNoticed={(myRecord as any)?.insightsLocked
+                ? []
+                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
+            />
+
+            {/*
+              AND SPECIFICITY AS THE FIVE THINGS IT IS MADE OF, WHICH THE ENGINE HAS ALWAYS STORED
+              AND NO SCREEN HAS EVER SHOWN. `specificityDimensions` is written per check-in; the
+              product was averaging it into one word and printing the word.
+            */}
+            <TheFiveThingsThatMakeItCheckable
+              dimensions={(myFinishedSessions[0] as any)?.specificityDimensions ?? null}
+              sessionNumber={(myFinishedSessions[0] as any)?.sessionNumber ?? null}
+              mostUseful={(myRecord as any)?.insightsLocked ? null : specificity?.mostUseful}
+              strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
+            />
+            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
+                list to Report, and sign-off and the two signposts were removed - what was left was an
+                empty grey box and a modal whose button had moved out from under it. */}
             <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
             <MyRecord
             groundId={id}
             ground={ground}
             myRecord={myRecord}
-            viewerUserId={user?.id}
             totalSessions={totalSessions ?? null}
             completedCount={completedCheckIns.length}
-            specificity={specificity}
-            /* This page calls the material tab `docs`; the other calls it `context`. The component
-               should not have to know either, so it asks and the page translates. */
-            onGoToTab={(t) => goTab(t as any)}
             />
+
+            {/*
+              LAST, WHICH IS WHERE SHE PUT IT.
+
+              I had it third, on the argument that it is the only forward-looking thing here. Her
+              order settles it differently and better: the page runs from where the record stands,
+              to what to add next time, to what you are carrying, to signing off - and this is
+              private prep for a conversation, which is a different job from reading your record.
+              It is fine at the bottom, and putting it high pushed the reading down the page.
+            */}
+            {(report as any)?.postReportGuide && (
+              <WhatToWalkInWith guide={(report as any).postReportGuide} />
+            )}
           </div>
         )}
 
@@ -608,7 +708,9 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
-              onGoToMyRecord={() => goTab('record')}
+              /* Per-session specificity on the row it is about. Same read as the bars above it on
+                 My record; here it is the words, because a row is a line of text. */
+              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
               viewerUserId={user?.id}
             />
           </div>

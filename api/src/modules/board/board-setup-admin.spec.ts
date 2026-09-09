@@ -49,7 +49,7 @@ function serviceFor(ground: any = GROUND) {
     patternDetection: none,
     groundObjective: { ...none, create: jest.fn(async () => ({ id: 'o1' })) },
   };
-  return new BoardService(prisma);
+  return new BoardService(prisma, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any);
 }
 
 describe('the admin who set the ground up', () => {

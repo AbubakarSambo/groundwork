@@ -58,7 +58,7 @@ describe('a panel with nothing to say is a line', () => {
      * as one line saying so.
      */
     const VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
-    expect(VIEW).toContain('Answered, and shown theirs')
+    expect(VIEW).toContain("'Answered'")
     expect(VIEW).toContain('Not answered yet')
     expect(ADMIN).not.toMatch(/allActivated/)
   })

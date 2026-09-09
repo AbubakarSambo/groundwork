@@ -20,6 +20,8 @@ interface OrgMember {
   /** How many check-ins they are on, and how many of those they have given an account on. */
   checkInsOn?: number
   checkInsAnswered?: number
+  /** Came in by accepting a check-in invitation, not by being put on the organisation. */
+  arrivedThroughACheckIn?: boolean
 }
 
 /** What happened, or would happen, to one pasted address. */
@@ -598,6 +600,13 @@ export function OrgMembersPage() {
                   {(m.firstName || m.lastName) && (
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
                   )}
+                  {/* How they got here. Somebody who accepted one check-in's invitation looked identical
+                      to somebody hired, on the page with the dropdown that can make them an admin. */}
+                  {m.arrivedThroughACheckIn && (
+                    <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginTop: 2 }} title="Accepted an invitation to one check-in. Nobody put them on the organisation directly.">
+                      came in through a check-in
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   {/*
@@ -663,6 +672,10 @@ export function OrgMembersPage() {
                     }}>{iAmTheOwner ? 'You · account holder' : 'You'}</span>
                   ) : m.id === ownerId ? null : (
                     <select
+                      /* An unnamed control. A screen reader reached this row and announced a
+                         combo box with no name, on the one page where the choice decides whether
+                         somebody can see your organisation's people and billing. */
+                      aria-label={`What ${m.firstName || m.email} can do here`}
                       value={m.role}
                       disabled={roleMut.isPending}
                       onChange={e => roleMut.mutate({ id: m.id, what: e.target.value as 'MEMBER' | 'LEAD' | 'ADMIN' })}

@@ -1,12 +1,6 @@
 import { apiClient } from './client'
 import type { Report } from '@/types'
 
-export type ActivationStatus = {
-  groundId: string
-  parties: { participantId: string; activated: boolean }[]
-  allActivated: boolean
-}
-
 export const reportsApi = {
   get: (groundId: string) =>
     /* The 404 now carries the reason there is no report yet, and the page renders it. A toast
@@ -45,8 +39,10 @@ export const reportsApi = {
   release: (groundId: string) =>
     apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),
 
-  activate: (groundId: string) =>
-    apiClient.post<ActivationStatus>(`/grounds/${groundId}/report/activate`).then(r => r.data),
+  /* `activate` is gone with the reveal it belonged to. Nothing withholds a released report from
+     the person it is for any more, so there is nothing to activate - see there-is-no-reveal.spec.
+     The route still exists server-side; a client method nothing calls is how a deleted feature
+     gets wired back up by accident. */
 
   /* `activationStatus` HAD NO CALLER LEFT, and its answer now travels with the report.
      It told a page which parties had shown theirs, and the page joined that against the roster to
@@ -65,7 +61,7 @@ export const reportsApi = {
 export interface SessionShapedReport {
   sessionNumber: number
   state: 'forming' | 'final'
-  whereThingsStand: { agreed: number; stillOpen: number; saying: string }
+  whereThingsStand: { agreed: number; stillOpen: number; saying: string; settled: string[]; open: string[] }
   sections: {
     title: string
     about: string
@@ -74,20 +70,38 @@ export interface SessionShapedReport {
   }[]
   howClearThisWas: { level: string | null; recall: string | null; saying: string }
   theConversationWorthHaving: string | null
-  /** The four reads the front page shows when it shows a report. */
-  atAGlance: { label: string; value: string; sub: string }[]
+  /** The four reads the front page shows when it shows a report. Named the same as the board's. */
+  atAGlance: { label: string; value: string; sub: string; tone: 'good' | 'warn' | 'bad' | 'flat' }[]
+  /**
+   * How much basis there is to build a good shared report at all. Not the specificity meter, which
+   * is about one person's own input and lives on the private half of the page.
+   */
+  confidence: { score: number; band: 'thin' | 'partial' | 'solid'; saying: string; reasons: string[] }
+  /**
+   * What keeps showing up, from the pattern engine. Surfaced only, in the library's own words. A
+   * section, not a suggestion to the model - see sessionReport on the server.
+   */
+  patterns: { who: string; isYou: boolean; signal: string; positive: boolean; periodsObserved: number }[]
   /** Each person's own lines this session, under their own name. */
   whatEachPersonSaid: { who: string; isYou: boolean; lines: string[]; saying?: string }[]
   /** Whether this session's account can still be corrected, and the sentence if it cannot. */
   correctable: boolean
   whyNotCorrectable: string | null
   /** Everybody the report is counting for this session, named, with what each has done. */
-  counting: { who: string; isYou: boolean; answered: boolean; hasShownTheirs: boolean }[]
+  counting: { who: string; isYou: boolean; answered: boolean }[]
   everybodyHasShownTheirs: boolean
   /** Whether the shared report has gone out, and whether this reader has shown their own. */
   released: boolean
   iHaveShownMine: boolean
+  /** Drafted from the engines' reads and worded by the model. Null when there is no engine basis. */
   sharedPicture: string | null
+  /** The same picture, one claim per line, which is how the page draws it. */
+  pictureLines: string[]
+  pictureBasis: 'engines' | 'none'
+  /** The stored, model-written picture. Kept under its own name; this page does not render it. */
+  writtenPicture: string | null
+  /** Why there is no conversation question, when there is none. */
+  whyNoQuestion: string | null
   takenAt: string | null
   amendedAt: string | null
   amendedNote: string | null

@@ -34,6 +34,37 @@ export interface TheReportYouSawAtTheEndProps {
   renderAdd?: (key: string, label: string) => ReactNode
   /** The line under "Where this leaves you" saying what is on record. */
   onRecordLine?: ReactNode
+  /**
+   * WHAT THE CHECK-IN STILL NEEDS FROM THE PERSON WHO SET IT UP.
+   *
+   * Reported after a lead finished their first session: "the report only showed me where to add the
+   * two people I listed, not more. It didn't point me to the setup. It also didn't tell me how I
+   * should set my sessions cadence."
+   *
+   * Both true. This screen answers exactly one question - who else should be in this - and stops the
+   * moment it is answered. Meanwhile the check-in is running on a fortnightly rhythm nobody chose
+   * (`Ground.cadence` defaults to FORTNIGHTLY and `cadenceStated` records that nobody picked it),
+   * and the board is separately complaining that no standard was set for what success looks like.
+   *
+   * The end of a first session is the one moment where somebody has just been thinking about the
+   * work and has not yet been handed a dashboard. A slot rather than markup, because what is missing
+   * differs by caller and only the caller can answer it - the same reason `renderAdd` is a slot.
+   */
+  stillNeeded?: ReactNode
+  /**
+   * DROP THE FIVE-RUNG LADDER, BECAUSE A BETTER READ OF THE SAME THING IS ON THE PAGE.
+   *
+   * "How complete your side of this is" and the specificity meter answer one question: how much
+   * did you give this session. Read off the session report page they sat inches apart and
+   * disagreed - "Specificity: Thin" above "Clear" - which is two meters telling a person two
+   * different things about the same ten minutes.
+   *
+   * The rule for which survives is the architectural one. The ladder is `alignmentStatus`, a model's
+   * word for it. The meter is `specificityLevel`, computed at extraction. Where both exist the
+   * engine wins. Where only the model's exists - the end of an entry session, before extraction has
+   * run - the ladder is the only read there is and it stays.
+   */
+  hideCompleteness?: boolean
 }
 
 // Display labels for the alignmentStatus ladder. DISPLAY ONLY - the underlying
@@ -48,13 +79,40 @@ export const STATUS_DISPLAY: Record<'Unresolved' | 'Mixed' | 'Emerging' | 'Clear
   Aligned: 'Shared',
 }
 
+/**
+ * A REPORT THAT IS MISSING A LIST IS STILL A REPORT.
+ *
+ * This page crashed with "Cannot read properties of undefined (reading 'length')" the moment a
+ * second person had checked in: the Report tab's session row handed it a report whose
+ * `areasRequiringAlignment` and `alignmentReached` were simply not there, and the two `.length`
+ * reads below assumed the type. `honestClose` had the same hole one field deeper.
+ *
+ * The type says these are required, and for a freshly written report they are. What reaches this
+ * component is JSON off the wire, from more than one endpoint, and a shape a reader cannot control
+ * must not be able to take the whole screen down. So every list read goes through here first, and
+ * a report arriving without one renders without that section instead of not rendering at all.
+ */
+function everySectionCanBeAbsent(report: EntryReport): EntryReport {
+  const hc = report.honestClose ?? ({} as EntryReport['honestClose'])
+  return {
+    ...report,
+    areasRequiringAlignment: report.areasRequiringAlignment ?? [],
+    alignmentReached: report.alignmentReached ?? [],
+    mentionedPeople: report.mentionedPeople ?? [],
+    honestClose: { aligned: hc.aligned ?? '', open: hc.open ?? '', revisit: hc.revisit ?? '', risk: hc.risk ?? '' },
+  }
+}
+
 export function TheReportYouSawAtTheEnd({
-  report,
+  report: given,
   correctionSlot,
   correctedNote,
   renderAdd,
   onRecordLine,
+  stillNeeded,
+  hideCompleteness,
 }: TheReportYouSawAtTheEndProps) {
+  const report = everySectionCanBeAbsent(given)
   return (
     <>
         {/* What we heard from you */}
@@ -69,9 +127,11 @@ export function TheReportYouSawAtTheEnd({
           {correctionSlot}
         </div>
 
-        {/* How complete your account is (one-sided until others check in) */}
+        {/* How complete your side is, unless the engine's own meter is on the page. See above. */}
+        {!hideCompleteness && (
         <div style={{ marginBottom: 16 }}>
-          <Sec title="How complete your account is" />
+          {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
+          <Sec title="How complete your side of this is" />
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--gw-text)' }}>{STATUS_DISPLAY[report.alignmentStatus] ?? report.alignmentStatus}</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{report.alignmentBasis}</div>
           <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
@@ -90,6 +150,7 @@ export function TheReportYouSawAtTheEnd({
             Reading left to right: <b>Just started</b> (little saved yet) → <b>Taking shape</b> → <b>Getting there</b> → <b>Clear</b> (your side is well defined) → <b>Shared</b>. This is your side only. It becomes "Shared" once everyone else checks in too.
           </div>
         </div>
+        )}
 
         {/* What's still open */}
         {report.areasRequiringAlignment.length > 0 && (
@@ -125,7 +186,7 @@ export function TheReportYouSawAtTheEnd({
             <Sec title="Recommended additions" />
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', background: 'var(--gw-blue-bg)' }}>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                Based on this check-in, these roles would strengthen the check-in. Their account would change or confirm what is currently on record from one side only.
+                Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
               </div>
               {report.suggestedParties.map((p, i) => {
                 const key = `sug-${i}-${p.role}`
@@ -172,7 +233,7 @@ export function TheReportYouSawAtTheEnd({
                   names, no buttons, and no save. It is only true while you are still finishing.
                 */}
                 {renderAdd
-                  ? 'You named these people while you were talking. Add anyone who should give their own account of this, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.'
+                  ? 'You named these people while you were talking. Add anyone who should answer for this themselves, and they will be invited when you save. Adding here or below is the same list, so nobody is invited twice.'
                   : 'You named these people while you were talking. Adding somebody to this check-in is done on its Setup tab.'}
               </div>
               {report.mentionedPeople.map((p, i) => {
@@ -240,6 +301,9 @@ export function TheReportYouSawAtTheEnd({
             {onRecordLine}
           </div>
         </div>
+
+        {/* Last, because it is about the check-in rather than about the session just finished. */}
+        {stillNeeded}
     </>
   )
 }
