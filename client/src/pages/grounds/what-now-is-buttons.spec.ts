@@ -20,6 +20,12 @@ import path from 'path'
  * is the page a person is on when they have just read one. The copy-link button gained a line
  * saying what the link is not: a session report is owner-scoped, so the link is a way back to it
  * and never a way to share it.
+ *
+ * AND WHICH OF THEM LEADS. Copying a link was the primary control, and its own label had to be
+ * walked back by a caveat underneath it - a button whose caption needs a correction is not a
+ * primary action. It sat directly under "the conversation worth having now" and served none of it.
+ * The follow-up is how that conversation gets a date in this product, so the follow-up is the
+ * button and the link is a quiet link.
  */
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CODE = readFileSync(path.join(__dirname, '..', 'report', 'SessionReportPage.tsx'), 'utf8')
@@ -34,14 +40,21 @@ const BLOCK = (() => {
 
 describe('what now is buttons', () => {
   it('offers the link to the report, from the page that is the report', () => {
-    expect(BLOCK).toContain('Copy the link to this session')
+    expect(BLOCK).toContain('Copy the link')
     expect(BLOCK).toMatch(/\/checkin\/\$\{checkInId\}\/report/)
+  })
+
+  it('and the follow-up leads, because the link is not the thing to do next', () => {
+    const follow = BLOCK.indexOf('Open a follow-up check-in')
+    const link = BLOCK.indexOf('Copy the link')
+    expect(follow).toBeGreaterThan(-1)
+    expect(follow).toBeLessThan(link)
   })
 
   it('and says what that link is not', () => {
     /* Owner-scoped. Offering "copy the link" beside a private report without saying so invites
        somebody to send it to a colleague who will be told the record does not exist. */
-    expect(BLOCK).toContain('only opens for people already entitled to read this')
+    expect(BLOCK).toContain('opens only for people already entitled to read this')
   })
 
   it('and offers the follow-up check-in', () => {
@@ -59,8 +72,9 @@ describe('what now is buttons', () => {
    * The one thing that is genuinely not a control stays, and stays honest about being work rather
    * than a feature.
    */
-  it('keeps the part no button can do', () => {
-    expect(BLOCK).toMatch(/The part nobody can do for you/)
+  it('keeps the part no button can do, and now says it before the buttons rather than after', () => {
+    /* It was a caveat trailing two controls. It is the actual instruction, so it leads them. */
+    expect(BLOCK).toMatch(/Nobody can do that part for\s+you/)
   })
 
   /** A copy that silently fails is worse than no button: the person walks away with nothing. */

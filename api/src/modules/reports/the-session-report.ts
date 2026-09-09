@@ -1,4 +1,5 @@
 import { RecordEntryType } from '@prisma/client';
+import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
 
 /**
  * THE PER-SESSION REPORT, IN THE SHAPE WE PROMISED A CLIENT.
@@ -57,6 +58,14 @@ export interface AGlanceRead {
   value: string;
   /** What it is a read of, in half a sentence. */
   sub: string;
+  /**
+   * WHETHER THIS IS GOOD NEWS, BAD NEWS OR NEITHER.
+   *
+   * All four used to render identically, so "no blockers noted" and "1 unresolved" looked like the
+   * same kind of fact and the row read as four failures. No blockers is good news. Nothing to
+   * compare yet is neither.
+   */
+  tone: 'good' | 'warn' | 'bad' | 'flat';
 }
 
 /** What one person said they did this session, in their own lines. */
@@ -76,6 +85,9 @@ export interface SessionReportShape {
     agreed: number;
     stillOpen: number;
     saying: string;
+    /** What is settled and what is not, named. A count with no subject is what the tiles are for. */
+    settled: string[];
+    open: string[];
   };
   sections: SessionReportSection[];
   howClearThisWas: {
@@ -83,6 +95,11 @@ export interface SessionReportShape {
     recall: string | null;
     saying: string;
   };
+  /**
+   * HOW MUCH THERE IS TO GO ON, which is a reading on the document and not on a person.
+   * See how-much-there-is-to-go-on.ts for why this is not the specificity meter.
+   */
+  confidence: Confidence;
   /**
    * THE FOUR READS, which the report did not have and the front page promises.
    *
@@ -109,7 +126,13 @@ export interface SessionReportInputs {
   sessionNumber: number;
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
-  /** From the report: how many areas agree and how many are still open. */
+  /**
+   * From the report: what the records agree on and what is still open between them.
+   *
+   * The counts were all this took, and the section printed "1 area the accounts agree on, 1 still
+   * open" and named neither - beside a tile carrying the same two numbers. The tiles count; this
+   * says what.
+   */
   agreements: unknown[];
   divergences: unknown[];
   /** This session's entries, already typed at extraction. */
@@ -132,6 +155,28 @@ export interface SessionReportInputs {
   blocked: number;
   /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
   answeredThisSession: { who: string; isYou: boolean }[];
+  /** How many people the session counts in all, answered or not, for the confidence read. */
+  peopleInAll?: number;
+  /** Commitments this session that carry both somebody's name and a date. */
+  commitmentsWithOwnerAndDate?: number;
+}
+
+/**
+ * WHAT AN AGREEMENT OR A DIVERGENCE IS CALLED.
+ *
+ * They arrive as the report's own JSON, whose shape has changed twice, so this reads whichever of
+ * the three fields is filled rather than asserting one. Nothing is invented: an entry with no
+ * words in it is dropped instead of being printed as an empty bullet.
+ */
+function titleOf(x: unknown): string | null {
+  if (typeof x === 'string') return x.trim() || null;
+  if (!x || typeof x !== 'object') return null;
+  const o = x as Record<string, unknown>;
+  for (const k of ['topic', 'title', 'area', 'summary', 'text']) {
+    const v = o[k];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return null;
 }
 
 const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => ({
@@ -156,9 +201,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const standing =
     agreed === 0 && stillOpen === 0
       ? input.closed
-        ? 'The accounts are in and this has not yet named an area they agree or differ on.'
+        ? 'Everybody has answered and this has not yet named anything they agree or differ on.'
         : 'Not everyone has answered yet, so there is nothing to agree or differ with.'
-      : `${agreed} area${agreed === 1 ? '' : 's'} the accounts agree on, ${stillOpen} still open.`;
+      : `${agreed} settled, ${stillOpen} still open.`;
+  const settled = input.agreements.map(titleOf).filter(Boolean) as string[];
+  const openNow = input.divergences.map(titleOf).filter(Boolean) as string[];
 
   const commitmentsNow = ofTypes(input.entries, [RecordEntryType.COMMITMENT]);
 
@@ -197,7 +244,18 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     {
       title: 'Progress and priorities',
       about: 'what people said they are doing, and what they said matters most',
-      items: ofTypes(input.entries, [RecordEntryType.INTENT, RecordEntryType.SUCCESS_DEFINITION]),
+      /*
+       * SUCCESS_DEFINITION IS NOT SOMETHING THAT HAPPENED.
+       *
+       * It was in here, in the per-person lines, and in "What success looks like" - so "the rota
+       * in writing" and "a named on-call person published by Friday each week" were each printed
+       * three times on one page. They are answers to what good would look like, not accounts of
+       * the session, and two of the three printings dropped the question they answered, which is
+       * why the page ended on a bare "in September".
+       *
+       * One home, and it is the section named after the question.
+       */
+      items: ofTypes(input.entries, [RecordEntryType.INTENT]),
       saying: 'Nobody stated what they are working towards this session.',
     },
     {
@@ -244,6 +302,15 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       items: ofTypes(input.entries, [RecordEntryType.ASK]),
       saying: 'Nobody asked for anything this session.',
     },
+    /*
+     * THE TWO "WHAT CHANGED" SECTIONS DO NOT EXIST ON SESSION 1.
+     *
+     * On a first session they rendered two cards that both said nothing had happened - "this is
+     * the first session, so there is nothing before it to compare with" and "nothing was recorded
+     * at the start" - which is two thirds of the page's headings spent saying the page cannot
+     * answer a question nobody asked it. A section that can only be empty is not a finding.
+     */
+    ...(input.sessionNumber <= 1 ? [] : [
     {
       title: 'What changed since last session',
       about: 'what this session says that the one before it did not',
@@ -267,12 +334,23 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
           ? 'Nothing was recorded at the start, so there is no day one to measure against. Whoever runs this can still state it.'
           : 'Nothing this session moves what was agreed at the start.',
     },
-    {
+    ]),
+    /*
+     * "WHAT THIS RESTS ON" IS ABSORBED BY THE CONFIDENCE READING.
+     *
+     * "Every account this session was from memory. Nobody attached anything." is exactly the kind
+     * of fact that decides how much a report can be trusted, and it sat eight positions down as a
+     * section of its own. It is now a reason under the confidence meter at the top of the shared
+     * half, where somebody reads it before the content rather than after.
+     *
+     * The section survives only when there IS something to list, because a list of documents is a
+     * list and not a reason.
+     */
+    ...(input.evidence.length ? [{
       title: 'What this rests on',
-      about: 'the documents and evidence behind the accounts, rather than recollection',
+      about: 'the documents behind what people said, rather than recollection',
       items: input.evidence.map((e) => ({ text: e.text, who: e.who, documented: true })),
-      saying: 'Every account this session was from memory. Nobody attached anything.',
-    },
+    }] : []),
   ];
 
   /**
@@ -294,50 +372,58 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const backedPct = input.entries.length ? Math.round((documented / input.entries.length) * 100) : null;
   const atAGlance: AGlanceRead[] = [
     {
-      label: 'Misalignment',
-      value: stillOpen
-        ? `${stillOpen} unresolved`
-        : agreed ? 'none unresolved' : 'nothing to compare yet',
+      label: 'Differences',
+      value: stillOpen ? `${stillOpen}` : agreed ? 'None' : 'Nothing to compare yet',
       sub: stillOpen
-        ? 'where what people said does not line up'
-        : agreed ? 'what people said lines up' : 'one side only so far',
+        ? 'still open between what people said'
+        : agreed ? 'what people said does not disagree anywhere' : 'one side has answered so far',
+      tone: stillOpen ? 'warn' : agreed ? 'good' : 'flat',
     },
     {
-      label: 'Moving',
+      label: 'Movement',
       /*
        * "NO TARGETS SET" WAS TRUE AND USELESS.
        *
        * Read on a real twelve-session cohort whose entire purpose was who reaches eight closed
        * deals: the lead said "each of them at eight closed deals" in EVERY session, and this tile
-       * read "no targets set / nothing here carries a number yet" for the whole quarter. Both
-       * halves true about the target table, and the quarter's number was sitting in the transcript
-       * the tile is printed beside.
+       * read "no targets set" for the whole quarter. Both halves true about the target table, and
+       * the quarter's number was sitting in the transcript the tile is printed beside.
        *
        * It is deliberately not turned into a target automatically. Reading a number out of a
        * sentence and making it the thing somebody is measured against is exactly the inference this
        * product refuses everywhere else - the lead sets the yardstick, on purpose, in one place.
-       *
-       * What changes is that the tile stops reporting an empty table and starts naming the gap: a
-       * number has been said, nothing is tracking it, and one person can fix that in a minute.
        */
       value: input.movedOnTargets == null
-        ? aNumberWasSaid(input) ? 'a number was said' : 'no set target'
-        : input.movedOnTargets > 0 ? 'target on track' : 'target has not moved',
+        ? aNumberWasSaid(input) ? 'A number was said' : 'No target set'
+        : input.movedOnTargets > 0 ? `+${input.movedOnTargets}` : 'None',
       sub: input.movedOnTargets == null
         ? aNumberWasSaid(input)
           ? 'somebody named a number and nothing is tracking it'
-          : 'nothing here carries a number yet'
-        : 'across targets this session',
+          : 'nobody has set something to measure this against'
+        : input.movedOnTargets > 0 ? 'targets moved this session' : 'no target moved this session',
+      tone: input.movedOnTargets == null
+        ? aNumberWasSaid(input) ? 'warn' : 'flat'
+        : input.movedOnTargets > 0 ? 'good' : 'flat',
     },
     {
-      label: 'Stuck',
-      value: input.blocked ? `${input.blocked} blocked` : 'no blockers noted',
-      sub: input.blocked ? 'waiting on somebody else' : 'nobody said they were held up',
+      label: 'Blockers',
+      value: input.blocked ? `${input.blocked}` : 'None',
+      sub: input.blocked ? 'named as holding work up' : 'nobody named anything holding work up',
+      tone: input.blocked ? 'bad' : 'good',
     },
     {
-      label: 'Solid',
-      value: backedPct == null ? 'nothing on record yet' : `${backedPct}% evidence backed`,
-      sub: backedPct == null ? 'no answers to read' : 'check-ins anchored to a document rather than recalled',
+      /* "Solid - 0% evidence backed" put a positive label over a zero. This counts one thing and
+         says which. */
+      label: 'How much was said',
+      value: backedPct == null
+        ? 'Nothing on record yet'
+        : backedPct > 0 ? `${backedPct}% documented` : 'All from memory',
+      sub: backedPct == null
+        ? 'no answers to read'
+        : backedPct > 0
+          ? 'of what was said is anchored to a document'
+          : 'nothing said this session was anchored to a document',
+      tone: backedPct == null ? 'flat' : backedPct > 0 ? 'good' : 'warn',
     },
   ];
 
@@ -348,8 +434,31 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * the same one: whose lines reach this reader was decided before it got here. Somebody who
    * answered and named nothing specific keeps their line and says so, because that is the finding.
    */
+  /**
+   * THE SAME LINES THE THEMES SHOW, REGROUPED. NOT A WIDER SET.
+   *
+   * By-person and by-theme are two views of one set of facts, so anything in one and not the other
+   * is a bug the reader meets as a fragment. This drew from every entry regardless of type, so the
+   * by-person view carried two kinds of line the themes never show:
+   *
+   *   SUCCESS_DEFINITION - what good would look like, which belongs under the question it answers
+   *   and was being printed as though somebody had done it.
+   *
+   *   TIMEFRAME - a modifier on another entry. Read off the live page, a person's block ended on a
+   *   bare "in September", which is the whole of that entry's text. A fragment on a shared report
+   *   reads as a system fault, and it is: a timeframe is not something somebody said.
+   *
+   * Taken from the themes' own type list so the two views cannot drift apart again.
+   */
+  const IN_THE_THEMES: RecordEntryType[] = [
+    RecordEntryType.INTENT,
+    RecordEntryType.COMMITMENT,
+    RecordEntryType.WORRY,
+    RecordEntryType.TENSION,
+    RecordEntryType.ASK,
+  ];
   const said = new Map<string, string[]>();
-  for (const e of input.entries) {
+  for (const e of input.entries.filter((e) => IN_THE_THEMES.includes(e.type))) {
     const key = e.who ?? '';
     said.set(key, [...(said.get(key) ?? []), e.text]);
   }
@@ -365,10 +474,22 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     };
   });
 
+  const confidence = howMuchThereIsToGoOn({
+    answered: input.answeredThisSession.length,
+    ofPeople: input.peopleInAll ?? input.answeredThisSession.length,
+    documented: input.entries.filter((e) => !e.recallBased).length,
+    saidInAll: input.entries.length,
+    agreed,
+    stillOpen,
+    commitments: commitmentsNow.length,
+    commitmentsWithOwnerAndDate: input.commitmentsWithOwnerAndDate ?? 0,
+  });
+
   return {
     sessionNumber: input.sessionNumber,
     state: input.closed ? 'final' : 'forming',
-    whereThingsStand: { agreed, stillOpen, saying: standing },
+    confidence,
+    whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow },
     atAGlance,
     whatEachPersonSaid,
     sections,
@@ -484,4 +605,25 @@ function howClear(level: string | null, recall: string | null): string {
         ? ' Most of it was anchored to something written down.'
         : '';
   return `${clarity}${memory}`;
+}
+
+/**
+ * WHETHER A COMMITMENT CARRIES SOMEBODY'S NAME AND A DATE.
+ *
+ * Not a parse of who and when - that would be an inference, and getting it wrong would put a name
+ * against a promise nobody made. This only asks whether the sentence contains the two things that
+ * make a commitment checkable later: a person referred to, and a time it is due by. It feeds one
+ * of the four inputs to the confidence reading and nothing else reads it.
+ */
+export function hasOwnerAndDate(text: string): boolean {
+  const t = text.toLowerCase();
+  const aPerson = /\b(i|we|he|she|they|you)\b|\b[A-Z][a-z]{2,}\b/.test(text);
+  const aTime =
+    /\b(mon|tues|wednes|thurs|fri|satur|sun)day\b/.test(t) ||
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/.test(t) ||
+    /\b\d{1,2}[\/-]\d{1,2}\b/.test(t) ||
+    /\bby (the )?(end of|start of|next|this)\b/.test(t) ||
+    /\b(today|tomorrow|next week|this week|next month|by then|within \d+ (day|week|month))/.test(t) ||
+    /\bq[1-4]\b/.test(t);
+  return aPerson && aTime;
 }

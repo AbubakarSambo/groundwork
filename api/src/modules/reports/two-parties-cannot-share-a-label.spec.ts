@@ -52,8 +52,8 @@ describe('labels that were already correct do not move', () => {
     expect([...m.values()].filter(v => v.startsWith('Field officer')).sort()).toEqual(['Field officer A', 'Field officer B']);
   });
 
-  it('a party with no role at all is still "participant A"', () => {
-    expect(labelsForParties([initiator('Chief executive'), party('p1', null)]).get('p1')).toBe('participant A');
+  it('a party with no role at all is still "Participant A"', () => {
+    expect(labelsForParties([initiator('Chief executive'), party('p1', null)]).get('p1')).toBe('Participant A');
   });
 });
 

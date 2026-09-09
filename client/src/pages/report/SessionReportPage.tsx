@@ -8,7 +8,7 @@ import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillNeeds'
-import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
+import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
 
@@ -173,22 +173,28 @@ export default function SessionReportPage() {
         the card - which is what that person actually read - rather than an apology.
       */}
       {/*
-        SAYING WHOSE THIS ONE IS, BEFORE IT STARTS.
-        Both halves of this page were headed with the word report and neither said whose, so the
-        reader could not tell where one ended and the other began. This one is yours.
+        THE PRIVATE HALF, ON ITS OWN SURFACE.
+
+        The two halves of this page are the product's whole proposition and they looked identical:
+        two headings in one column, same background, same card weight, so nothing said where one
+        ended and the other began. This half sits inset and tinted, says once at the top that it is
+        yours, and never repeats it per card.
       */}
       {!isLoading && !isError && (
-        <>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>Your own report</div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            What you said this session and what it means for you. Nobody else can see this half.
+        <section
+          style={{
+            background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 14,
+            padding: '18px 20px', marginBottom: 34,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your own report</h2>
+            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Yours alone</span>
           </div>
-        </>
-      )}
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 16px', lineHeight: 1.55, maxWidth: '68ch' }}>
+            What you said this session, and what to do with it.
+          </div>
 
-      {(groundReport as any)?.postReportGuide && (
-        <WhatToWalkInWith guide={(groundReport as any).postReportGuide} />
-      )}
       {/* Simple and visual, and only on this half. See the component's own note for why. */}
       <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} recall={shape?.howClearThisWas?.recall} />
 
@@ -317,6 +323,21 @@ export default function SessionReportPage() {
         </>
       )}
 
+          {/*
+            5. THE COACHING BOX, LAST IN THE PRIVATE HALF.
+
+            The final thing the member reads before the shared half begins, and the one place on
+            the page speaking to them rather than about the work. Its own treatment so it does not
+            read as another summary card, inside the private surface so its privacy is not in
+            question. See WhatToWorkOnNext.
+          */}
+          <WhatToWorkOnNext
+            note={(groundReport as any)?.coaching}
+            guide={(groundReport as any)?.postReportGuide}
+          />
+        </section>
+      )}
+
       {/*
         AND THIS SESSION'S SHARED REPORT, UNDER YOUR OWN.
         Two reports, one session, and they answer different questions: the one above is what you
@@ -325,8 +346,8 @@ export default function SessionReportPage() {
         closed. They belong on one page because that is how a person reads them: mine, then ours.
       */}
       {data?.groundId && data?.sessionNumber && (
-        <div style={{ marginTop: 26, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 2 }}>The shared report</div>
+        <div>
+          <h2 style={{ fontSize: 15, fontWeight: 800, margin: '0 0 2px' }}>The shared report</h2>
           {/*
             "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.
             The section below is right and the line was wrong. What the product actually protects,
@@ -343,51 +364,41 @@ export default function SessionReportPage() {
         </div>
       )}
       {/*
-        AND "WHAT NOW?" AFTER BOTH OF THEM, NOT BETWEEN THEM.
+        15. ACTION, AFTER BOTH HALVES.
 
-        It sat in the middle: your own report, then a heading saying "What now?" with two buttons
-        and a closing sentence, then - below all of that - this session's shared report. So the
-        page offered you somewhere to go before it had finished showing you the thing you came for,
-        and the half that says what everybody's accounts show together was under a call to action.
+        It led with "Copy the link to this session", which then needed a caveat explaining that the
+        link is not a way to share - a primary control whose own label had to be walked back. And
+        it sat directly under the conversation worth having, offering nothing that served it.
 
-        The order the page's own note argues for - mine, then ours - is unchanged. Only the buttons
-        moved, to after the reading rather than into the middle of it.
+        The primary action is the question. Opening a follow-up is how that conversation gets a
+        time and a place in this product, so that is the button. The link stays, quieter.
       */}
-      {/*
-        WHAT NOW? SOMETHING TO PRESS.
-
-        Two buttons that came with the report body when it moved here. They were three paragraphs
-        under that heading once - "share the report", "act on the areas", "open a follow-up" -
-        telling somebody to act and handing them nothing to act with, one of them advising them to
-        "use the report link" on the page that IS the link.
-
-        The third of the three is still not a button and never could be: picking the gap that
-        matters and agreeing who owns it is work between people. It stays a sentence, below the
-        controls, so the page leads with what it can do.
-      */}
-      <div style={{ marginTop: 22, borderTop: '1px solid var(--gw-border)', paddingTop: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>What now?</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>What now?</div>
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11, maxWidth: '68ch' }}>
+          Pick the open thing that matters most and agree who owns it. Nobody can do that part for
+          you, and a follow-up is where it gets a date.
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={() => navigate('/grounds/new')}
+            style={{ padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Open a follow-up check-in
+          </button>
           <button
             onClick={() => {
               navigator.clipboard?.writeText(`${window.location.origin}/checkin/${checkInId}/report`)
                 .then(() => toast.success('Link copied'))
                 .catch(() => toast.error('Could not copy it. Select the address bar instead.'))
             }}
-            style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Copy the link to this session
-          </button>
-          <button
-            onClick={() => navigate('/grounds/new')}
-            style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Open a follow-up check-in
+            Copy the link
           </button>
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 9 }}>
-          The link only opens for people already entitled to read this - it is not a way to share
-          it. The part nobody can do for you: pick the gap that matters most and agree who owns it.
+          The link opens only for people already entitled to read this.
         </div>
       </div>
 

@@ -12,7 +12,8 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
-import { theSessionReport } from './the-session-report';
+import { theSessionReport, hasOwnerAndDate } from './the-session-report';
+import { whatToWorkOnNext } from './what-to-work-on-next';
 import { cleanText } from './what-the-record-actually-holds';
 import {
   CORRECTION_WINDOW_KEY,
@@ -2019,6 +2020,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
         ? targets.reduce((sum, o) => sum + (o.count - o.prevCount), 0)
         : null,
       blocked: blockedCount,
+      /* Everybody the session counts, not only those who answered: the confidence read is about
+         how much basis there is, and somebody who has not answered is the largest gap there is. */
+      peopleInAll: ground.participants.filter((p) => !p.managingOnly).length,
+      /*
+       * A COMMITMENT WITH A NAME AND A DATE ON IT IS A DIFFERENT OBJECT FROM ONE WITHOUT.
+       *
+       * Counted here rather than read from a model: an entry that mentions somebody and carries a
+       * month, a weekday or a date is checkable, and one that does not is an intention. It is one
+       * of the four things the confidence reading is built from.
+       */
+      commitmentsWithOwnerAndDate: entries.filter(
+        (e) => e.type === RecordEntryType.COMMITMENT && hasOwnerAndDate(cleanText(e.text)),
+      ).length,
       answeredThisSession: ground.participants
         .filter((p) => !p.managingOnly && answeredIds.has(p.id))
         .map((p, i) => ({
@@ -2140,7 +2154,27 @@ Close the report by framing - neutrally, without recommending one - the choice n
        */
       released: !!ground.report?.releasedAt,
       iHaveShownMine: !!me && shown.has(me.id),
-      sharedPicture: snapshot?.sharedPicture ?? null,
+      /*
+       * THE ONE SURFACE THAT HANDED OUT RAW LABELS.
+       *
+       * Read off the page: "a 2am call to the initiator for a bed shortage on a weekend
+       * participant A was thought to be on call... with participant B reporting delays" - to
+       * participant B, who is the person reading it. Three registers in one paragraph, one of them
+       * the reader described in the third person by a placeholder.
+       *
+       * Every other read runs the picture through `applyNames`, which resolves each label to a
+       * name where this reader may see one, leaves it where they may not, and turns the reader's
+       * own label into "you". This one returned the stored string. Same resolver, so the picture,
+       * the counting table and the attributions cannot disagree about what to call somebody.
+       */
+      sharedPicture: snapshot?.sharedPicture
+        ? this.applyNames(
+            { sharedPicture: snapshot.sharedPicture } as any,
+            ground.participants as any,
+            me?.id ?? null,
+            viewerIsLead,
+          ).sharedPicture
+        : null,
       takenAt: snapshot?.takenAt ?? null,
       amendedAt: snapshot?.amendedAt ?? null,
       amendedNote: snapshot?.amendedNote ?? null,
@@ -2785,6 +2819,46 @@ happened, and what is in the way.`;
    *
    * Visibility is `canSeeDocument`'s question and is asked of it rather than answered again here.
    */
+  /**
+   * WHAT THIS PERSON SHOULD WORK ON NEXT, built from their patterns, their role and their stage.
+   *
+   * SURFACED only. A CANDIDATE is the engine's first read and has not survived the three-period
+   * rule, and telling somebody a candidate observation about themselves as though it were settled
+   * is exactly the accusation this product refuses to make.
+   */
+  private async coachingNoteFor(
+    groundId: string,
+    ground: { scenario?: string | null; timelineDays?: number | null; checkIns?: { sessionNumber: number }[] },
+    participant: { id: string; roleAsDescribed?: string | null },
+  ) {
+    const [detections, mine, sessions] = await Promise.all([
+      this.prisma.patternDetection.findMany({
+        where: { groundId, participantId: participant.id, status: PatternStatus.SURFACED },
+        orderBy: { lastSeenAt: 'desc' },
+        select: { code: true },
+      }),
+      this.prisma.recordEntry.findMany({
+        where: { participantId: participant.id },
+        select: { recallBased: true },
+      }),
+      this.prisma.checkIn.findMany({
+        where: { participantId: participant.id, status: CheckInStatus.COMPLETED },
+        select: { sessionNumber: true },
+      }),
+    ]);
+    const sessionNumber = sessions.length ? Math.max(...sessions.map((c) => c.sessionNumber)) : 1;
+    const planned = (ground.checkIns ?? []).reduce((n, c) => Math.max(n, c.sessionNumber ?? 0), 0);
+    return whatToWorkOnNext({
+      confirmedCodes: detections.map((d) => d.code),
+      role: participant.roleAsDescribed ?? null,
+      sessionNumber,
+      totalSessions: planned > 0 ? planned : null,
+      scenario: ground.scenario ?? null,
+      saidSomethingSpecific: mine.length > 0,
+      anythingDocumented: mine.some((e) => !e.recallBased),
+    });
+  }
+
   private async whatItRestsOn(
     groundId: string,
     parties: any[],
@@ -2968,6 +3042,28 @@ happened, and what is in the way.`;
       : {};
     const postReportGuide = participant ? (engagement.postReportGuides?.[participant.id] ?? null) : null;
 
+    /**
+     * AND THE COACHING NOTE, WHICH IS THE ONE PART OF THIS THAT SPEAKS TO THE READER.
+     *
+     * `postReportGuide` is about the conversation to have next and is written from one session's
+     * text. This is about the person: what keeps showing up for them across sessions, what that
+     * means for somebody in their role at this point in the run, and the one thing to do before
+     * the next one. See what-to-work-on-next.ts.
+     *
+     * Only for a party, and only about themselves. A lead reading somebody else's report gets
+     * nothing here, because coaching somebody through a document they cannot reply to is the
+     * opposite of what this is for.
+     */
+    const coaching = participant
+      ? await this.coachingNoteFor(groundId, ground as any, participant as any).catch((err) => {
+          /* A NOTE THAT CANNOT BE BUILT MUST NOT TAKE THE REPORT DOWN. The report is the thing
+             somebody came for; the coaching note is an addition to it. Same rule as the record
+             read and the guide above. */
+          this.logger.warn(`Could not build the coaching note for ${participant.id}: ${err?.message}`);
+          return null;
+        })
+      : null;
+
     const soloArtifact = participant?.soloArtifact
       ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
       : null;
@@ -2995,6 +3091,7 @@ happened, and what is in the way.`;
       ),
       activated: true,
       postReportGuide,
+      coaching,
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not
