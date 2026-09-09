@@ -589,7 +589,7 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'PIP',
     label: SCENARIO_LABELS.PIP,
-    detail: "Deadlines or expectations are slipping. Both of you give your honest account of what's happening, so the conversation starts from the same facts, not one side's version.",
+    detail: "Deadlines or expectations are slipping. Both of you say honestly what is happening, so the conversation starts from the same facts, not one side's version.",
     message: 'A team member is not delivering and I need to address it. I want to make sure I have the full picture before we talk.',
     timelineHint: 'typically 90 days',
     examples: [
@@ -770,11 +770,11 @@ export const SITUATION_CARDS = [
     group: 'person',
     scenario: 'CONTRACT_RENEWAL',
     label: SCENARIO_LABELS.CONTRACT_RENEWAL,
-    detail: 'Both sides give an honest account of how the term actually went and what a fair next one looks like.',
-    message: 'A contract is coming up for renewal and I want both sides to give an honest account of how the term went before we agree the next one.',
+    detail: 'Both sides say honestly how the term actually went and what a fair next one looks like.',
+    message: 'A contract is coming up for renewal and I want both sides to say honestly how the term went before we agree the next one.',
     timelineHint: 'typically two weeks',
     examples: [
-      'A contractor whose term is ending and both of you want an honest account of how it went.',
+      'A contractor whose term is ending and both of you want an honest read of how it went.',
       'A renewal where you and they would describe the last year differently.',
     ],
   },
@@ -786,7 +786,7 @@ export const SITUATION_CARDS = [
     message: 'Something has just happened that we did not expect and I want everyone\'s honest read of where things actually stand before we decide anything.',
     timelineHint: 'typically daily for two weeks',
     examples: [
-      'A client pulled out overnight and everyone has a different account of why.',
+      'A client pulled out overnight and everyone has a different version of why.',
       'A sudden departure or loss where you need the real picture fast.',
     ],
   },
@@ -2165,7 +2165,7 @@ export function EntryChatPage() {
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
           <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
-            Your check-in is the first account on this check-in. Here is what to expect.
+            Yours is the first one in. Here is what to expect.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
@@ -2186,7 +2186,7 @@ export function EntryChatPage() {
               <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
               <div>
                 <CardTitle weight={700}>The shared report - not your words</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where all accounts agree or differ. It does not quote anyone.</div>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where everyone agrees and where they differ. It does not quote anyone.</div>
               </div>
             </div>
           </div>
@@ -2889,13 +2889,13 @@ export function EntryChatPage() {
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
-                  What you say from here is your own account, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
+                  What you say from here is yours, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
                   <VennIcon size={22} />
-                  <span>Your individual report is private. The shared report shows where everyone's accounts agree or differ.</span>
+                  <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
                 </div>
               )}
               {displayedHistory.map((m, i) => {
@@ -3085,8 +3085,8 @@ export function EntryChatPage() {
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
                 {skippedCheckin
-                  ? <>Your lead runs the first check-in; you'll see it as its coordinator. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where their accounts agree or differ.</>
-                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone's accounts agree or differ.</>}
+                  ? <>Your lead runs the first check-in; you'll see it as its coordinator. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where they agree and where they differ.</>
+                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone agrees and where they differ.</>}
               </div>
             </div>
             {history.filter(m => m.role === 'user').length > 0 && !reportFailed && (() => {
@@ -3514,7 +3514,7 @@ export function EntryChatPage() {
                 </div>
               )}
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-                {cadence === 'ONE_TIME' ? 'Single session · one account per party, no follow-up cadence.' :
+                {cadence === 'ONE_TIME' ? 'Single session · one answer per person, no follow-up cadence.' :
                  cadence === 'DAILY' ? 'Daily · a fresh check-in opens each day.' :
                  cadence === 'WEEKLY' ? `Weekly${cadenceAnchorDay != null ? ` · every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][cadenceAnchorDay]}` : ''} · typical resolution in 4-6 weeks.` :
                  cadence === 'MONTHLY' ? `Monthly${cadenceAnchorDay != null ? ` · on the ${cadenceAnchorDay}${cadenceAnchorDay === 1 ? 'st' : cadenceAnchorDay === 2 ? 'nd' : cadenceAnchorDay === 3 ? 'rd' : 'th'}` : ''} · typical resolution in 3-4 months.` :
@@ -3568,8 +3568,8 @@ export function EntryChatPage() {
               ].some(k => s.includes(k))
               const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isSensitive
-                ? 'Send them a link so they can give their own account of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
-                : 'Each person gives their own account of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When all the accounts are in, the report shows where people agree, where they differ, and what the gap means for the work.'
+                ? 'Send them a link so they can give their own version of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
+                : 'Each person gives their own version of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
               <FieldLabel>{inviteHeading}</FieldLabel>
@@ -3607,8 +3607,8 @@ export function EntryChatPage() {
                 const s = onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario
                 const notices: Record<string, string> = {
                   PIP: 'Performance improvement check-ins document a process. They do not replace formal HR procedures, employment policy, or legal obligation. Ensure your organisation\'s HR process is followed in parallel.',
-                  DRIFT: 'This check-in was opened on a situation that has already moved off course. Inviting people now means their account will reflect the current state, not the original agreement. Make sure that is what you want on record.',
-                  REALIGN_TEAM: 'Realignment check-ins surface disagreement directly. The other participants will give independent accounts that may differ significantly from yours. The report will show those gaps without filtering them.',
+                  DRIFT: 'This check-in was opened on a situation that has already moved off course. Inviting people now means what they write will reflect the current state, not the original agreement. Make sure that is what you want on record.',
+                  REALIGN_TEAM: 'Realignment check-ins surface disagreement directly. The other participants will answer independently, and may differ significantly from yours. The report will show those gaps without filtering them.',
                 }
                 const notice = notices[s ?? '']
                 return notice ? (
@@ -3634,7 +3634,7 @@ export function EntryChatPage() {
                       <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{bulkQueue.length} more after this</div>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or account for?</div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or cover?</div>
                   <textarea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}

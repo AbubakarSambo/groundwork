@@ -103,7 +103,7 @@ export function JoinPage() {
       <div className="gw-sub-t">A Groundwork session about: <strong>{ground.groundLabel}</strong>.</div>
 
       <div className="gw-box gw-box-blue" style={{ margin: '12px 0 16px' }}>
-        Nobody ever reads what you write - not {ground.initiatorName}, not anyone. The shared report shows <strong>where accounts agree or differ</strong>, never your raw answers. Your account stays private.
+        Nobody ever reads what you write - not {ground.initiatorName}, not anyone. The shared report shows <strong>where people agree and where they differ</strong>, never your raw answers. Your account stays private.
       </div>
 
       <form onSubmit={e => { e.preventDefault(); join() }}>

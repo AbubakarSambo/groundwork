@@ -980,7 +980,7 @@ export function GroundAdminPage() {
           </p>
           <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
             You will see who has checked in, and the shared report once it releases. You will
-            not see what anyone wrote - accounts stay private until the report is ready.
+            not see what anyone wrote - what people write stays private until the report is ready.
           </div>
           {/*
             A real control, not a promise. The first version of this waiting
@@ -2201,7 +2201,7 @@ export function GroundAdminPage() {
                   <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px' }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
                     <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
-                      Everyone's next check-in becomes their final account - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                      Everyone's next check-in becomes their final one - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
@@ -2443,7 +2443,7 @@ export function GroundAdminPage() {
               })()}
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
-                They give their own account of the same work. You cannot see what they write until the report releases.
+                They give their own version of the same work. You cannot see what they write until the report releases.
               </div>
               {/*
                 THE APPROVAL RULE, SAID BEFORE SOMEBODY IS ADDED RATHER THAN DISCOVERED AFTERWARDS.
@@ -2470,7 +2470,7 @@ export function GroundAdminPage() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
               />
               <input
-                type="text" placeholder="What do you want them to account for? (optional)" aria-label="What they are accountable for"
+                type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
                 value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
               />
@@ -2630,8 +2630,8 @@ export function GroundAdminPage() {
                 <label className="gw-label">Do these people work together?</label>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
                   Can they see each other's work day to day? If they cannot, nobody here is in a position
-                  to confirm anyone else's account, and the board says so rather than reading a quiet
-                  account as work going missing.
+                  to confirm what anyone else said, and the board says so rather than reading somebody
+                  being quiet as work going missing.
                 </div>
                 <div role="radiogroup" aria-label="Do these people work together?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {[
@@ -2994,7 +2994,7 @@ export function GroundAdminPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                   For the ones you started to see how this works. It goes completely - the
                   conversation, the sessions and anything uploaded. If somebody else has already
-                  given their account, this refuses and tells you: that is a record, not a test, and
+                  answered, this refuses and tells you: that is a record, not a test, and
                   closing is the thing to do with it.
                 </div>
                 {deleteError && (
@@ -3138,7 +3138,7 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
         </p>
 
         <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-          Groundwork records each person's account of a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - accounts stay private until the report is ready.
+          Groundwork records what each person says about a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - what people write stays private until the report is ready.
         </div>
 
         <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Context (edit if needed)</div>
@@ -3202,14 +3202,14 @@ function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groun
             <input type="radio" checked={alsoCheckingIn} onChange={() => setAlsoCheckingIn(true)} style={{ marginTop: 3 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>I'm also checking in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You give your own account, same as everyone else. Recommended - most leads are also a party to the situation.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You answer too, same as everyone else. Recommended - most leads are also a party to the situation.</div>
             </div>
           </label>
           <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', cursor: 'pointer', background: !alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
             <input type="radio" checked={!alsoCheckingIn} onChange={() => setAlsoCheckingIn(false)} style={{ marginTop: 3 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Managing only</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this check-in but won't give your own account. You'll still see who has checked in and the shared report once it releases - you're just not one of the accounts being compared.</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this check-in but do not answer yourself. You'll still see who has checked in and the shared report once it releases - you're just not one of the people being compared.</div>
             </div>
           </label>
         </div>

@@ -338,7 +338,7 @@ export function MagicVerifyPage() {
           {invited.length > 0 && (
             <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own account:</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own version:</div>
               {invited.map(e => (
                 <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', fontFamily: 'monospace' }}>{e}</div>
               ))}
@@ -378,7 +378,7 @@ export function MagicVerifyPage() {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
             {[
               { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
-              { n: '2', title: 'Their account comes in', body: 'Once they submit, Groundwork builds a picture across accounts. Nobody reads anyone else\'s words directly. The report shows where accounts agree and where they differ.' },
+              { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. Nobody reads anyone else\'s words directly. The report shows where people agree and where they differ.' },
               { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody at the same time. Nobody sees it before anybody else.' },
             ].map(s => (
               <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>

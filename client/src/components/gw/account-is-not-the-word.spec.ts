@@ -24,7 +24,18 @@ import path from 'path'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-/** What a participant reads. Not every file in the product - the ones on their path. */
+/**
+ * WHAT A PARTICIPANT READS, AND THEN EVERYTHING ELSE A CUSTOMER READS.
+ *
+ * The first version of this list stopped at the participant's own path, and the word survived on
+ * the help panel - the first screen somebody opens when they are confused, whose header told them
+ * the report shows "all the accounts side by side". Found by opening the panel to look at something
+ * else entirely, which is the argument for the list being the whole product rather than the part I
+ * happened to be working on.
+ *
+ * The sign-up, invite, marketing and report surfaces are now in it too. Several of them are the
+ * FIRST thing a person ever reads, so they were the worst place for it.
+ */
 const WHAT_A_PARTICIPANT_READS = [
   'GroundChat.tsx',
   'SharedReportForAParty.tsx',
@@ -40,6 +51,19 @@ const WHAT_A_PARTICIPANT_READS = [
   '../../pages/report/RoundReportPage.tsx',
   '../../pages/chat/ChatPage.tsx',
   '../../pages/board/BoardPage.tsx',
+  'HelpModal.tsx',
+  'ExpectationsPanel.tsx',
+  'TheReportYouSawAtTheEnd.tsx',
+  '../../pages/invite/InvitePage.tsx',
+  '../../pages/join/JoinPage.tsx',
+  '../../pages/home/SaveCard.tsx',
+  '../../pages/home/HomePage.tsx',
+  '../../pages/enter/EntryChatPage.tsx',
+  '../../pages/grounds/CreateGroundPage.tsx',
+  '../../pages/grounds/GroundAdminPage.tsx',
+  '../../pages/grounds/GroundsListPage.tsx',
+  '../../pages/report/ReportPage.tsx',
+  '../../pages/auth/MagicVerifyPage.tsx',
 ]
 
 /**
@@ -68,6 +92,24 @@ const THE_WRONG_SENSE = [
   'without your account',
   'not your account',
   'Your account, so far',
+  'accounts agree',
+  'accounts side by side',
+  'their own account',
+  'his own account',
+  'her own account',
+  'honest account of',
+  'the two accounts',
+  'accounts stay private',
+  'accounts are cross-referenced',
+  'accounts that were given',
+  'picture across accounts',
+  'account of a situation',
+  'account per party',
+  'different account of',
+  'accounts are in',
+  'accounts of it',
+  'independent accounts',
+  'account for?',
 ]
 
 describe('the word account, in the sense of what somebody said', () => {
@@ -85,5 +127,8 @@ describe('the word account, in the sense of what somebody said', () => {
     const AUTH = readFileSync(path.join(__dirname, '../../pages/auth/AuthPage.tsx'), 'utf8')
     expect(AUTH).toContain('Create your account')
     expect(AUTH).toContain('Already have an account')
+    /* And on the billing pages, where a seat per person with a Groundwork account is the plan. */
+    const BILLING = readFileSync(path.join(__dirname, '../../pages/billing/PricingPage.tsx'), 'utf8')
+    expect(BILLING).toMatch(/Groundwork account in your organisation/)
   })
 })

@@ -282,7 +282,7 @@ export function InvitePage() {
           <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>Nobody you work with reads it</div>
-              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing everyone's accounts. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.65, margin: 0 }}>Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>We cannot show it to ourselves either</div>
