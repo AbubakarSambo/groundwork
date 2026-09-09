@@ -3545,10 +3545,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
+        /* "November 12 2026" came back typed COMMITMENT and sat under Commitments on the shared
+           report. A line that is nothing but a date is a timeframe, whatever the extractor called it. */
+        const bareDate = /^\s*(?:by |on |until |before |from )?(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?(?:\s+\d{1,2}(?:st|nd|rd|th)?)?,?(?:\s+\d{4})?\s*\.?\s*$/i.test(e.text) || /^\s*(?:by |on |until |before )?\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/.test(e.text);
         return {
           participantId,
           checkInId,
-          type: e.type as RecordEntryType,
+          type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
           text: `[VERIFIABILITY:${v}] ${e.text.trim()}`,
         };
       }),

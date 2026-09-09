@@ -273,6 +273,12 @@ export default function SessionReportPage() {
                   timelineUnset={(ground as any).timelineChosen === false}
                   timelineDays={(ground as any).timelineDays ?? null}
                   briefStandard={(shape as any)?.briefStandard ?? null}
+                  alreadyStarted
+                  nextOpens={(() => {
+                    const mine = ((ground as any).participants ?? []).find((p: any) => p.userId === viewerUserId)
+                    const next = (((mine as any)?.checkIns ?? []) as any[]).filter((c) => c.status !== 'COMPLETED' && c.availableFrom && new Date(c.availableFrom).getTime() > Date.now()).sort((a, b) => new Date(a.availableFrom).getTime() - new Date(b.availableFrom).getTime())[0]
+                    return next?.availableFrom ?? null
+                  })()}
                   saidDate={(shape as any)?.myTimeframe ?? null}
                   /* The board already says the standard is unset and links to Setup; what was
                      missing was any route to Setup from here at all. */

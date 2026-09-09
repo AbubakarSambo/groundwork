@@ -70,7 +70,7 @@ export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
   if (r.ofPeople > 0 && r.answered < r.ofPeople) {
     const missing = r.ofPeople - r.answered;
     reasons.push(
-      `${missing} of ${r.ofPeople} ${missing === 1 ? 'person has' : 'people have'} not answered yet. Their side is not in this.`,
+      `${missing} of ${r.ofPeople} people ${missing === 1 ? 'has' : 'have'} not answered yet. Their side ${missing === 1 ? 'is' : 'are'} not in this.`,
     );
   }
 
