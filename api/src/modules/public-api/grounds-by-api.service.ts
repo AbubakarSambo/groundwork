@@ -124,10 +124,27 @@ export class GroundsByApiService {
       cadence?: string;
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
       leadRemit?: string;
+      /** When the first session opens (ISO date). Before it, nobody is asked anything. Omit for now. */
+      startsAt?: string;
+      /** No session is scheduled after this (ISO date). */
+      endsAt?: string;
+      /** What the lead wrote for everybody to work from. The standard the report reads against. */
+      brief?: string;
     },
     fence: Fence = { boundToPersonExternalIds: [] },
   ) {
     if (!dto?.actingPersonExternalId) throw new BadRequestException('actingPersonExternalId is required.');
+    /*
+     * A START DATE THE PRODUCT ALREADY HONOURED AND THIS ROUTE NEVER PASSED. The ground and its
+     * first check-in both read `startsAt`; the API dropped it, so "start on 1 October" had to be
+     * done by logging in. Checked here so a bad date is a 400 that names the field, not an insert
+     * that fails one layer down.
+     */
+    const startsAt = dto.startsAt ? new Date(dto.startsAt) : undefined;
+    if (startsAt && Number.isNaN(startsAt.getTime())) throw new BadRequestException('startsAt is not a date. Send an ISO date, e.g. 2026-10-01.');
+    const endsAt = dto.endsAt ? new Date(dto.endsAt) : undefined;
+    if (endsAt && Number.isNaN(endsAt.getTime())) throw new BadRequestException('endsAt is not a date. Send an ISO date.');
+    if (startsAt && endsAt && endsAt < startsAt) throw new BadRequestException('endsAt is before startsAt.');
     if (!dto?.label?.trim()) throw new BadRequestException('label is required - it is what people see.');
     if (!dto?.scenario) throw new BadRequestException('scenario is required. A check-in without a situation is a form.');
 
@@ -195,6 +212,9 @@ export class GroundsByApiService {
       ...(dto.timelineDays ? { timelineDays: dto.timelineDays } : {}),
       ...(dto.cadence ? { cadence: dto.cadence as any } : {}),
       ...(dto.leadRemit ? { leadRemit: dto.leadRemit } : {}),
+      ...(startsAt ? { startsAt: startsAt.toISOString() } : {}),
+      ...(endsAt ? { endsAt: endsAt.toISOString() } : {}),
+      ...(dto.brief?.trim() ? { brief: dto.brief.trim() } : {}),
       participants,
     } as any);
 
