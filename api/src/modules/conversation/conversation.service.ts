@@ -3634,8 +3634,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && docs[b.document]);
     let backed = 0;
     for (const b of rows) {
+      /* Every decision, greppable, with the line, the passage and the document: a false match is
+         something to see, not something to watch for. */
+      this.logger.log(`anchoring-decision participant=${participantId} line=${JSON.stringify(entries[b.line].text.replace(/^\[VERIFIABILITY:\w+\] /, ''))} document=${JSON.stringify(docs[b.document].fileName)} passage=${JSON.stringify((b.where ?? '').slice(0, 200))}`);
       await this.prisma.recordEntry
-        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id } })
+        .update({ where: { id: entries[b.line].id }, data: { recallBased: false, anchoredDocumentId: docs[b.document].id, anchoredPassage: (b.where ?? '').slice(0, 400) || null } })
         .then(() => { backed++; })
         .catch(() => undefined);
     }

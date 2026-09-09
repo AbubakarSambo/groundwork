@@ -105,7 +105,18 @@ export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
   const score = Math.round(
     (coverage * 45 + documented * 25 + (compared ? 1 : 0) * 15 + owned * 15),
   );
-  const band = score >= 67 ? 'solid' : score >= 34 ? 'partial' : 'thin';
+  /*
+   * SOLID MEANS "ENOUGH HERE TO ACT ON", AND THERE IS NOTHING TO ACT ON WITHOUT A COMMITMENT.
+   *
+   * One uploaded document took a session from 60 to 74, partial to solid, while the headline
+   * reason stayed "nobody committed to anything specific". Coverage, documents and a comparison
+   * can reach 85 between them, so solid was reachable with zero owned commitments, and that reads
+   * wrong: a well-evidenced description of a situation nobody has promised to move is still only
+   * something to talk about. The score stands as computed; the band is capped at partial until at
+   * least one commitment has an owner and a date.
+   */
+  const somethingToActOn = r.commitmentsWithOwnerAndDate > 0;
+  const band = score >= 67 && somethingToActOn ? 'solid' : score >= 34 ? 'partial' : 'thin';
 
   const saying =
     band === 'solid'
@@ -115,6 +126,9 @@ export function howMuchThereIsToGoOn(r: WhatItRestsOn): Confidence {
         : 'There is not much here yet. Treat it as a starting point rather than a finding.';
 
   /* A perfect report still says why it is one, rather than showing an empty list. */
+  if (score >= 67 && !somethingToActOn) {
+    reasons.push('Well evidenced, and still only something to talk about: nothing here has an owner and a date yet.');
+  }
   if (!reasons.length) {
     reasons.push('Everybody answered, what was said is anchored to documents, and the commitments have owners and dates.');
   }
