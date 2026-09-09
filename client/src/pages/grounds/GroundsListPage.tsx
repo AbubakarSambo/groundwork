@@ -12,6 +12,7 @@ import { alignmentLabel } from '@/lib/alignment'
 import { personLabel } from '@/lib/utils'
 import { Stat } from '@/components/gw/kit'
 import { toast } from 'sonner'
+import { useHelpStore } from '@/stores/help'
 
 
 const MODE_COLORS: Record<string, { bg: string; color: string }> = {
@@ -569,6 +570,29 @@ export function GroundsListPage() {
                   * buttons doing one thing, which is how a screen stops having a primary action.
                   * The words stay, because they say what a check-in is for. The button does not.
                   */}
+                {/*
+                  AND THE OTHER THING SOMEBODY CAN DO HERE, WHICH IS TRY IT FIRST.
+                  
+                  This screen has one instruction: open a check-in. For anybody who has just signed
+                  up that means asking real colleagues to write about real work before they have
+                  seen a single thing the product produces. A person who is not ready to do that
+                  either does it anyway and regrets it, or leaves.
+                  
+                  A check-in needs two people to produce a report, so trying it alone is not
+                  obvious. It is possible, and the Help panel now says how. A line rather than a
+                  second button: the screen has just been cleared of a third button for one action,
+                  and this is not the action.
+                */}
+                <button
+                  onClick={() => useHelpStore.getState().show(4)}
+                  style={{
+                    marginTop: 14, background: 'none', border: 'none', padding: 0,
+                    fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)',
+                    cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
+                  }}
+                >
+                  Or try it on your own first
+                </button>
               </div>
               </>
             )}

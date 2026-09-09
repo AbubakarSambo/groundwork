@@ -2,7 +2,17 @@ import { useHelpStore } from '@/stores/help'
 import { useAuthStore } from '@/stores/auth'
 import { HOW_TO_STEPS } from './how-a-check-in-is-run'
 
-const TABS = ['What it is', 'How to use it', 'Use cases', 'Reports'] as const
+/**
+ * FIVE, AND THE FIFTH IS THE ONLY ONE THAT SAYS WHAT TO DO NEXT.
+ *
+ * The four before it all answer "what is this". None answered "how do I see it work before I ask my
+ * team to put their work into it", which is the question somebody has after reading the other four.
+ *
+ * "Try it" rather than "Try it yourself": five labels share one row, and the row is the thing that
+ * gets bulky. At 12px the five come to roughly 340px of a 560px modal, so nothing is squeezed and
+ * none of the existing labels had to be shortened to make room.
+ */
+const TABS = ['What it is', 'How to use it', 'Use cases', 'Reports', 'Try it'] as const
 
 const RES_PILLS: { label: string; bg: string; color: string }[] = [
   { label: 'Alignment confirmed',            bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
@@ -103,7 +113,7 @@ const REPORT_ITEMS = [
   { title: 'The credential',              body: 'A shareable verified record. End state. Alignment status. Duration. Confirmed by everybody in it, and everybody keeps it permanently. It belongs to the people who built it.' },
 ]
 
-function Tab3({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+function Tab3({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 14 }}>What the report contains</div>
@@ -128,6 +138,72 @@ function Tab3({ onBack, onClose }: { onBack: () => void; onClose: () => void }) 
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
+        <button onClick={onNext} style={{ padding: '10px 24px', background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Try it</button>
+      </div>
+    </div>
+  )
+}
+
+
+/**
+ * SEEING IT WORK BEFORE ASKING ANYBODY ELSE TO.
+ *
+ * A check-in needs two people to produce anything, so somebody evaluating this alone cannot get to
+ * a report at all - and one session with nobody to compare against is the worst possible first
+ * impression of a product whose whole point is comparing two accounts of the same thing.
+ *
+ * Three facts unlock the whole trial, and none of them was anywhere in the product:
+ *
+ *   they can be both people from one inbox
+ *   a rhythm exists with no clock on it, so a second round can happen today
+ *   shortening the run is how you reach the ending, which is otherwise months away
+ *
+ * Everything else somebody needs is the product itself, and explaining the picker next to the
+ * picker is how a help screen turns into a manual nobody reads. So this tab is those three and
+ * nothing else.
+ */
+const TRY_IT = [
+  {
+    title: 'Be both people from one inbox',
+    body: 'Add anything after a + in your own address and it still arrives with you, but Groundwork treats it as somebody else. Invite you+sam@ as the second person, and open their invitation in a private window. You cannot be both people in one browser.',
+  },
+  {
+    title: 'Do the second round today',
+    body: 'On the Setup tab, set the rhythm to "When the lead checks in". There is no clock on that one, so the next round opens the moment you finish yours. The second round is where the product starts referring back to what was said the first time.',
+  },
+  {
+    title: 'See how it ends',
+    body: 'Also on Setup, shorten the timeframe so the run is two or three sessions. On the last one everybody is asked how it should close. Almost nobody reaches that screen on a trial, and it is the one that shows what you are left holding.',
+  },
+]
+
+function Tab4({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+  return (
+    <div style={{ padding: 24 }}>
+      <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 16 }}>
+        A check-in needs two people to produce a report, so trying it alone means being two. About an
+        hour, using a situation you actually have.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {TRY_IT.map((s, i) => (
+          <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <div style={{ width: 26, height: 26, background: 'var(--gw-navy)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'white', flexShrink: 0 }}>{i + 1}</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{s.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{s.body}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* The one thing that decides whether the hour was worth anything, and the easiest to get
+          wrong: answering as yourself twice produces two identical accounts and no report worth
+          reading. */}
+      <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 14, marginTop: 16, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        Answer as the other person would, not as yourself. If both sides say the same thing there is
+        nothing for the report to find.
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
+        <button onClick={onBack} style={{ padding: '10px 16px', background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', borderRadius: 7, cursor: 'pointer' }}>Back</button>
         <button onClick={onClose} style={{ padding: '10px 24px', background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', borderRadius: 7, cursor: 'pointer' }}>Got it</button>
       </div>
     </div>
@@ -139,7 +215,7 @@ export function HelpModal() {
 
   if (!open) return null
 
-  const go = (t: 0 | 1 | 2 | 3) => setTab(t)
+  const go = (t: 0 | 1 | 2 | 3 | 4) => setTab(t)
 
   return (
     <div
@@ -167,7 +243,7 @@ export function HelpModal() {
             * sides." Say what to do first. The philosophy is still here, one tab across.
             */}
           <div style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 8, letterSpacing: '-.02em' }}>How this works</div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Start a check-in, add the people in it, and everyone answers on their own. You get one report showing all the accounts side by side.</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>Start a check-in, add the people in it, and everyone answers on their own. You get one report showing where those versions agree and where they differ.</div>
           <button
             onClick={hide}
             style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.1)', border: 'none', color: 'white', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -179,7 +255,7 @@ export function HelpModal() {
           {TABS.map((label, i) => (
             <button
               key={label}
-              onClick={() => go(i as 0 | 1 | 2 | 3)}
+              onClick={() => go(i as 0 | 1 | 2 | 3 | 4)}
               style={{
                 flex: 1, padding: '10px 6px', fontSize: 12, fontWeight: tab === i ? 700 : 500,
                 color: tab === i ? 'var(--gw-navy)' : 'var(--gw-muted)',
@@ -195,7 +271,8 @@ export function HelpModal() {
         {tab === 0 && <Tab0 onNext={() => go(1)} />}
         {tab === 1 && <Tab1 onBack={() => go(0)} onNext={() => go(2)} />}
         {tab === 2 && <Tab2 onBack={() => go(1)} onNext={() => go(3)} />}
-        {tab === 3 && <Tab3 onBack={() => go(2)} onClose={hide} />}
+        {tab === 3 && <Tab3 onBack={() => go(2)} onNext={() => go(4)} />}
+        {tab === 4 && <Tab4 onBack={() => go(3)} onClose={hide} />}
       </div>
     </div>
   )
