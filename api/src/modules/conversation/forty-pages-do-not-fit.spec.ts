@@ -19,7 +19,7 @@ describe('what fits, and what is said about what does not', () => {
 
   it('cuts a document that does not fit and says which part it has', () => {
     const out = whatFitsInTheRoom([doc('architecture.pdf', 200_000)], 5_000);
-    expect(out.block).toContain('This document continues');
+    expect(out.block).toContain('This document is longer than this');
     expect(out.block).toMatch(/about \d+ percent/);
     expect(out.leftOut).toEqual(['architecture.pdf (partly)']);
   });
