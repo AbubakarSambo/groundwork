@@ -3275,12 +3275,14 @@ happened, and what is in the way.`;
      * line. Only the ROWS - what somebody is waiting for - stay held word for word, because those are
      * somebody's own words for the thing they are owed.
      */
+    const mapContext = note.role
+      ? `What on track looks like in ${note.role.label.toLowerCase()} work: ${note.role.onTrack} What going wrong looks like: ${note.role.goingWrong} How this work gets read unfairly: ${note.role.protectAgainst}`
+      : undefined;
     const said = await this.phrase('the coaching note', [
-      { key: 'whyItMatters', text: note.whyItMatters },
+      /* Written FROM the map, never quoting it. See Drafted.context. */
+      { key: 'whyItMatters', text: note.whyItMatters, context: mapContext },
       ...(note.role ? [
-        { key: 'onTrack', text: note.role.onTrack },
-        { key: 'goingWrong', text: note.role.goingWrong },
-        { key: 'protectAgainst', text: note.role.protectAgainst },
+        { key: 'protectAgainst', text: `This kind of work is often read unfairly, and that is worth knowing before you read anything into where you stand.`, context: `How ${note.role.label.toLowerCase()} work gets read unfairly: ${note.role.protectAgainst}` },
       ] : []),
       ...note.beforeNextTime.map((t, n) => ({
         key: `a${n}`,
@@ -3293,8 +3295,7 @@ happened, and what is in the way.`;
       whyItMatters: said.whyItMatters ?? note.whyItMatters,
       role: note.role ? {
         ...note.role,
-        onTrack: said.onTrack ?? note.role.onTrack,
-        goingWrong: said.goingWrong ?? note.role.goingWrong,
+        /* Only the fairness line is shown as its own block; it is written from the map, not lifted. */
         protectAgainst: said.protectAgainst ?? note.role.protectAgainst,
       } : null,
       beforeNextTime: note.beforeNextTime.map((t, n) => said[`a${n}`] ?? t),

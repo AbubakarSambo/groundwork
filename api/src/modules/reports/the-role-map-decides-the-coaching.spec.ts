@@ -55,9 +55,12 @@ describe('what the note carries from the map', () => {
   const out = whatToWorkOnNext({ ...base, detectedFunction: 'SALES', functionConfidence: 0.72 });
   const map = ROLE_MAPS[RoleFunction.SALES];
 
-  it('what on track means, in the map\'s own words', () => {
+  it('what on track means, in the map\'s own words, as a claim and not as a sentence in the note', () => {
+    /* The claim travels on `role.onTrack`. The note's own sentence no longer quotes it: the service
+       hands the map to the wording pass as CONTEXT, and the model writes from it. Read back before
+       this: "seems to be quoting directly from the role map instead of using it as context". */
     expect(out.role?.onTrack).toBe(map.onTrackMeans);
-    expect(out.whyItMatters).toContain(map.onTrackMeans);
+    expect(out.whyItMatters).not.toContain(map.onTrackMeans);
   });
 
   it('what going wrong looks like, in the map\'s own words', () => {

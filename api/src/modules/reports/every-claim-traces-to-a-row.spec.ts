@@ -193,6 +193,25 @@ describe('the phrasing layer may only choose words', () => {
     expect(out[1].text).toBe('Put that request in writing, with a date.');
   });
 
+  it('writes a line from context without quoting the context', async () => {
+    const context = 'What on track looks like in operations work: Handoffs held and owned, the hard conversation had on time, preventive work visible.';
+    const one = [{ key: 'w', text: 'This is session 1 of 6 of operations and people work. Nothing repeats yet.', context }];
+    /* Written from the context, in its own words, keeping the draft's number. */
+    const fine = async (system: string) => system.includes('CONTEXT')
+      ? 'You are on session 1 of 6 in operations and people work, where what counts is whether handoffs hold and hard conversations happen on time. Nothing repeats yet.'
+      : null;
+    const out = await wordedByTheModel(one, fine);
+    expect(out[0].text).toContain('session 1 of 6');
+    expect(out[0].text).not.toContain('Handoffs held and owned, the hard conversation had on time, preventive work visible.');
+  });
+
+  it('and ships the draft when the model lifts a sentence of the context whole', async () => {
+    const context = 'What on track looks like in operations work: Handoffs held and owned, the hard conversation had on time, preventive work visible.';
+    const one = [{ key: 'w', text: 'This is session 1 of 6 of operations and people work.', context }];
+    const lifted = async () => 'This is session 1 of 6. Handoffs held and owned, the hard conversation had on time, preventive work visible.';
+    expect((await wordedByTheModel(one, lifted))[0].text).toBe(one[0].text);
+  });
+
   it('holds the line count, which is what makes a dropped claim visible', () => {
     expect(sameShape(['a', 'b'], ['a'])).toBe(false);
     expect(sameShape(['a', 'b'], ['a', 'b', 'c'])).toBe(false);

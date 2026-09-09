@@ -304,9 +304,9 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     if (entry.probe?.trim()) actions.push(entry.probe.trim());
     return {
       showingUp: `${entry.signal} Read across ${recurring.periodsObserved} sessions, not once.`,
-      whyItMatters: map
-        ? `This is ${where} of ${about}. On track here means: ${map.onTrackMeans} Something read once is an incident; read across sessions it becomes what people expect of you.`
-        : `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
+      /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
+         the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
+      whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
       beforeNextTime: actions.slice(0, 3),
       general: false,
       role: roleBlock(map, pair),
@@ -329,8 +329,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   return {
     showingUp: null,
     whyItMatters: early
-      ? `This is ${where} of ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
-      : `This is ${where} of ${about}.${map ? ` On track here means: ${map.onTrackMeans}` : ''} Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
+      ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
+      : `This is ${where} of ${about}. Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
     beforeNextTime: actions.slice(0, 3),
     general: true,
     role: roleBlock(map, pair),

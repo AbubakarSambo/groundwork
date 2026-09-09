@@ -41,7 +41,36 @@ export type Drafted = {
    * may be rewritten freely and the row itself has to survive intact or the draft ships.
    */
   mustKeep?: string[];
+  /**
+   * CONTEXT THE MODEL WRITES FROM, WITHOUT QUOTING IT.
+   *
+   * The first pass at the coaching box handed the role map's sentences to the model as DRAFT lines
+   * and asked it to reword them. Under `STYLE` a draft that is already clear comes back unchanged,
+   * so every person in the same function read the map verbatim: "seems to be quoting directly from
+   * the role map instead of using it as context for what to say."
+   *
+   * A line with `context` is a different job. The draft is the claim about THIS person and this
+   * session; the context is what the map knows about this kind of work; the model writes the line
+   * in its own words, informed by the context, and must not lift the context's sentences. The guard
+   * still holds every number and every capitalised word - but words that appear in the context are
+   * allowed, because the context is engine text too.
+   */
+  context?: string;
 };
+
+/** The style for a line that has context: write from it, do not quote it. */
+export const STYLE_WITH_CONTEXT = `You are Groundwork, writing one short paragraph to somebody about their own work.
+You will be given a DRAFT, which is what must be said, and CONTEXT, which is what is known about this kind of work.
+Rules:
+- Say what the draft says. Keep every fact, number, name and date in the draft exactly. Add no facts of your own.
+- Use the context to choose what to emphasise and how to put it. Do not copy a sentence from the context; do not quote it; do not list it. Fold it into how you say the draft.
+- Speak to the person: "you", plainly. No praise, no scripted warmth, no "I'd be happy to".
+- British spelling. No em dashes. Straight quotes.
+- Two to four sentences. Reply with the paragraph only.`;
+
+export function composeWithContext(draft: string, context: string): string {
+  return `<draft>\n${draft}\n</draft>\n<context>\n${context}\n</context>`;
+}
 
 /** What a caller has to give us to reach a model. Kept as a function so nothing imports Nest here. */
 export type Compose = (system: string, draft: string) => Promise<string | null>;
@@ -67,10 +96,32 @@ export async function wordedByTheModel(
   compose: Compose,
   onRefusal?: (why: string) => void,
 ): Promise<Drafted[]> {
-  const kept = drafts.filter((d) => d.text.trim());
+  /*
+   * LINES WITH CONTEXT GO ONE AT A TIME, UNDER THEIR OWN STYLE. They are paragraphs written from a
+   * draft plus context, not rewordings of a block, so the line-count rule does not apply to them and
+   * the guard compares against draft AND context. Everything else takes the block path below.
+   */
+  const withContext = drafts.filter((d) => d.text.trim() && d.context?.trim());
+  const contextual = new Map<string, string>();
+  await Promise.all(withContext.map(async (d) => {
+    try {
+      const out = await compose(STYLE_WITH_CONTEXT, composeWithContext(d.text.trim(), d.context!.trim()));
+      const text = (out ?? '').trim();
+      /* No sentence of the context may come through whole: that is the quotation this mode exists to stop. */
+      /* Sentences AND the clauses after a colon: the map writes "What on track looks like: X", and X
+         lifted whole is the quotation, whether or not the label came with it. */
+      const quoted = d.context!.split(/(?<=[.!?])\s+|:\s+/).some((piece) => piece.trim().length > 24 && text.includes(piece.trim()));
+      if (text && !quoted && safeToUse(`${d.text}\n${d.context}`, text, d.mustKeep ?? [])) contextual.set(d.key, text);
+      else onRefusal?.(`${d.key}: the contextual line ${quoted ? 'quoted the context' : 'did not survive the guard'}`);
+    } catch (err: any) {
+      onRefusal?.(`${d.key}: the model call failed: ${err?.message}`);
+    }
+  }));
+
+  const kept = drafts.filter((d) => d.text.trim() && !d.context?.trim());
   const lines = kept.map((d) => d.text.trim());
   const keep = kept.map((d) => d.mustKeep ?? []);
-  if (!lines.length) return drafts;
+  if (!lines.length) return drafts.map((d) => (d.context?.trim() && contextual.has(d.key) ? { ...d, text: contextual.get(d.key)! } : d));
 
   const block = lines.join('\n');
   let composed: string | null = null;
@@ -78,23 +129,27 @@ export async function wordedByTheModel(
     composed = await compose(STYLE, composePrompt(block));
   } catch (err: any) {
     onRefusal?.(`the model call failed: ${err?.message}`);
-    return drafts;
+    return drafts.map((d) => (d.context?.trim() && contextual.has(d.key) ? { ...d, text: contextual.get(d.key)! } : d));
   }
 
   const back = (composed ?? '').trim().split('\n').map((l) => l.trim()).filter(Boolean);
+  const withContextual = () => drafts.map((d) => (d.context?.trim() && contextual.has(d.key) ? { ...d, text: contextual.get(d.key)! } : d));
   if (!sameShape(lines, back)) {
     onRefusal?.(`${lines.length} claims went out and ${back.length} came back`);
-    return drafts;
+    return withContextual();
   }
   for (let n = 0; n < lines.length; n++) {
     if (!safeToUse(lines[n], back[n], keep[n])) {
       onRefusal?.(`line ${n + 1} did not survive the guard`);
-      return drafts;
+      return withContextual();
     }
   }
 
   let at = 0;
-  return drafts.map((d) => (d.text.trim() ? { ...d, text: back[at++] } : d));
+  return drafts.map((d) => {
+    if (d.context?.trim()) return contextual.has(d.key) ? { ...d, text: contextual.get(d.key)! } : d;
+    return d.text.trim() ? { ...d, text: back[at++] } : d;
+  });
 }
 
 export { STYLE_VERSION };
