@@ -1075,6 +1075,11 @@ export function EntryChatPage() {
   // the same inviteAdded contributor queue used below - they go out for real
   // once the ground is created at save time.
   const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
+  /* The note that travels with a queued address, remembered when the field opens so Save can
+     queue it too. `renderAdd` hands the label to the button, not to the save handler. */
+  const [addingContributorLabel, setAddingContributorLabel] = useState('')
+  /* Why it refused, beside the field. A silent return read as success. */
+  const [addingContributorError, setAddingContributorError] = useState('')
   const [addingContributorEmail, setAddingContributorEmail] = useState('')
   const [queuedFromSuggestion, setQueuedFromSuggestion] = useState<Set<string>>(new Set())
   // Anonymous correction: inline "what did we get wrong?" box on the report.
@@ -2026,6 +2031,18 @@ export function EntryChatPage() {
   }
 
   async function handleSave() {
+    /*
+     * WHATEVER IS STILL IN THE OPEN "ADD THEM" FIELD COUNTS AS ADDED.
+     *
+     * Somebody who has typed a colleague's address into the box beside that colleague's name and
+     * then pressed the big Save button has said what they want. Requiring a second, smaller press
+     * first is a rule the screen never states, and the cost of getting it wrong is an invitation
+     * that silently never happens. So Save queues it, and a bad address stops the save with the
+     * reason next to the field rather than being thrown away.
+     */
+    if (addingContributorFor && addingContributorEmail.trim()) {
+      if (!queueSuggestedContributor(addingContributorFor, addingContributorLabel)) return
+    }
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes('@')) { setEmailError('Please enter a valid email address.'); return }
     // NOTE: a hard "set a date first" gate used to live here, but the date
@@ -2117,14 +2134,30 @@ export function EntryChatPage() {
   // Queues a recommended addition / mentioned person straight into the
   // contributor list, carrying their role/reason or name/context as the note -
   // the same shape addInviteEmail/submitInviteContext build by hand.
-  function queueSuggestedContributor(key: string, note: string) {
+  /**
+   * A HALF-TYPED ADDRESS IS NOT A DECISION TO INVITE NOBODY.
+   *
+   * Walked as a real lead. Zainab was named in the conversation, "+ Add them" was pressed, her
+   * address was typed into the field beside her name, and then Save was pressed. The panel
+   * answered "No one added yet. You can invite people whenever you're ready." and the board said
+   * one participant. The address was accepted, nothing was said, and the invitation was gone.
+   *
+   * Two faults, both here. Queueing needed a separate press of Add that Save knew nothing about,
+   * and a refusal was a silent `return` - so a typo produced exactly the same nothing as success.
+   */
+  function queueSuggestedContributor(key: string, note: string): boolean {
     const email = addingContributorEmail.trim()
-    if (!email || !email.includes('@')) return
+    if (!email || !email.includes('@')) {
+      setAddingContributorError(email ? 'That does not look like an email address.' : 'Add their email address, or close this to leave them out.')
+      return false
+    }
+    setAddingContributorError('')
     const entry = note ? `${email} - ${note}` : email
     setInviteAdded(prev => (prev.some(e => e === email || e.startsWith(`${email} - `)) ? prev : [...prev, entry]))
     setQueuedFromSuggestion(prev => new Set(prev).add(key))
     setAddingContributorFor(null)
     setAddingContributorEmail('')
+    return true
   }
 
   function submitInviteContext() {
@@ -3183,18 +3216,23 @@ export function EntryChatPage() {
                   queuedFromSuggestion.has(key) ? (
                     <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
                   ) : addingContributorFor === key ? (
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                      <input
-                        type="email" autoFocus placeholder="their@email.com"
-                        value={addingContributorEmail} onChange={e => setAddingContributorEmail(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
-                        style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
-                      />
-                      <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
-                    </div>
+                    <>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <input
+                          type="email" autoFocus placeholder="their@email.com"
+                          value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
+                          onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
+                          style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
+                        />
+                        <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                      </div>
+                      {addingContributorError && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', marginTop: 4 }}>{addingContributorError}</div>
+                      )}
+                    </>
                   ) : (
                     <button
-                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail('') }}
+                      onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
                       style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                     >
                       + Add them
