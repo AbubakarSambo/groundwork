@@ -299,7 +299,7 @@ export class UsersService {
     const memberships = ids.length
       ? await this.prisma.groundParticipant.findMany({
         where: { userId: { in: ids } },
-        select: { userId: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
+        select: { userId: true, joinedAt: true, checkIns: { where: { status: 'COMPLETED' }, select: { id: true }, take: 1 } },
       })
       : [];
     const onCount = new Map<string, number>();
@@ -310,6 +310,29 @@ export class UsersService {
       if (m.checkIns.length) answeredCount.set(m.userId, (answeredCount.get(m.userId) ?? 0) + 1);
     }
     const hasFinished = new Set([...answeredCount.keys()]);
+    /*
+     * WHO CAME IN THROUGH A CHECK-IN, RATHER THAN BEING PUT ON THE ORGANISATION.
+     *
+     * Walked with an address from another company invited to one check-in: they appeared on this
+     * page as an ordinary member with a dropdown offering to make them an admin, indistinguishable
+     * from somebody hired. The approval gate is real and correctly skipped when an admin adds them,
+     * and the account has to exist for them to write their own record - so the fix is not a role
+     * change, it is saying how they got here.
+     *
+     * No column records it, and none is needed: `participants.accept()` creates the user inside the
+     * same transaction that stamps `joinedAt`, so the two timestamps sit within seconds. Somebody
+     * who signed up first and was added later has a `createdAt` well before any `joinedAt`.
+     */
+    const firstJoined = new Map<string, number>();
+    for (const m of memberships) {
+      if (!m.userId || !m.joinedAt) continue;
+      const t = new Date(m.joinedAt).getTime();
+      firstJoined.set(m.userId, Math.min(firstJoined.get(m.userId) ?? Infinity, t));
+    }
+    const arrivedThroughACheckIn = (u: { id: string; createdAt: Date }) => {
+      const j = firstJoined.get(u.id);
+      return j != null && Math.abs(j - new Date(u.createdAt).getTime()) < 60_000;
+    };
 
     return {
       data: users.map((u) => ({
@@ -324,6 +347,7 @@ export class UsersService {
         /** How many check-ins they are on, and how many of those they have answered on. */
         checkInsOn: onCount.get(u.id) ?? 0,
         checkInsAnswered: answeredCount.get(u.id) ?? 0,
+        arrivedThroughACheckIn: arrivedThroughACheckIn(u),
       })),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };

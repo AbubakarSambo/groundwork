@@ -48,7 +48,7 @@ const TEST_NAMES = forbiddenNames([
 ]);
 
 function boardOnly() {
-  const svc = new BoardService({} as any) as any;
+  const svc = new BoardService({} as any, /* wording pass: null ships the engine\'s own words */ { respond: async () => null } as any) as any;
   const raw = svc.buildManagerAlignment.bind(svc);
   svc.buildManagerAlignment = (report: any, names: any = TEST_NAMES) => raw(report, names);
   return svc;

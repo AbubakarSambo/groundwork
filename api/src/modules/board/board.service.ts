@@ -25,6 +25,8 @@ import {
   ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
+import { AnthropicService } from '../conversation/anthropic.service';
+import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
   OrgDependency,
@@ -68,7 +70,11 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
 
-  constructor(private prisma: PrismaService) {}
+  /*
+   * `AnthropicService` for one job: rewording the reads' reason lines. The board decides nothing
+   * with it. See the-engine-drafts-it-the-model-words-it.ts for the guard.
+   */
+  constructor(private prisma: PrismaService, private readonly anthropic: AnthropicService) {}
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
     const ground = await this.prisma.ground.findUnique({
@@ -560,6 +566,26 @@ export class BoardService {
       const readInput = await this.loadReadInput(ground);
       if (has('contribution')) out.contribution = buildContribution(readInput, nameOf);
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
+      /*
+       * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
+       * every board in the product. The engine's claims are unchanged: `safeToUse` holds every number
+       * and every capitalised word, the line count is held, and the draft ships on refusal.
+       */
+      try {
+        const drafts: Drafted[] = [];
+        (out.contribution ?? []).forEach((r: any, i: number) => { if (r.reason) drafts.push({ key: `c${i}`, text: r.reason }); });
+        (out.coverage?.reads ?? []).forEach((r: any, i: number) => { if (r.reasonText) drafts.push({ key: `v${i}`, text: r.reasonText }); });
+        if (drafts.length) {
+          const said = Object.fromEntries((await wordedByTheModel(
+            drafts,
+            (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
+          )).map((d) => [d.key, d.text]));
+          out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
+          if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };
+        }
+      } catch (err: any) {
+        this.logger?.warn?.(`Wording the board reads failed, shipping the engine's words: ${err?.message}`);
+      }
     }
 
     if (has('contribution')) {

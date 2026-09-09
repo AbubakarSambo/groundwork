@@ -279,12 +279,28 @@ export class AnthropicService {
       contents,
       config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
     });
+    /*
+     * A CHUNK OF THE ANSWER WENT MISSING, MID-SENTENCE, AND WAS SAVED THAT WAY.
+     *
+     * Read off a real transcript: "That's a strong,waiting more than an hour in September" and "a
+     * named on-call person published by Friday each week." A clause and an opening quote mark are
+     * gone. Nothing in the join drops text; the only line here that discards a part is the one that
+     * skips `thought` parts, and a thinking model interleaves thought and answer parts on one
+     * stream. A part flagged thought that arrives AFTER the answer has started is not the model
+     * thinking, whatever the flag says, and skipping it is how a sentence loses its middle.
+     *
+     * So thought parts are skipped only until the first answer text has been seen. From then on a
+     * part with text is answer.
+     */
+    let answerHasBegun = false;
     for await (const chunk of stream) {
       const parts = (chunk as any).candidates?.[0]?.content?.parts ?? [];
       for (const part of parts) {
-        // Skip thought parts here; the answer is what we stream to the user.
-        if (part?.thought) continue;
-        if (part?.text) yield houseStyle(part.text as string);
+        if (part?.thought && !answerHasBegun) continue;
+        if (part?.text) {
+          answerHasBegun = true;
+          yield houseStyle(part.text as string);
+        }
       }
     }
   }

@@ -1077,8 +1077,60 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * The retry is not trusted blindly either. If the second attempt is worse on the same tests,
      * the first one is kept: a rule is not worth a worse report.
      */
+    /*
+     * THE PICTURE IS CHECKED AGAINST THE CORPUS IT WAS WRITTEN FROM.
+     *
+     * The assistant's phrasing layer refuses an invented number and an invented capitalised word,
+     * after a live reply attributed the holding-up of somebody's work to a fabricated "Alex Smith".
+     * The stored picture here is the most weighted prose in the product, it is written by a model
+     * over the whole corpus, and nothing checked it. The same failure is worse here: it goes into the
+     * permanent shared record and is quoted back in later sessions.
+     *
+     * Three checks, computed, never asked of the model. A number not in any record. A capitalised
+     * word mid-sentence that is neither a party label nor in any record. A run of eight or more
+     * words lifted verbatim from one person's entry, because a long enough lifted phrase identifies
+     * its author as surely as a name and the picture promises synthesis, not quotation.
+     */
+    const corpusText = records.map((r) => r.text).join('\n');
+    const corpusDigits = new Set(corpusText.match(/\d+/g) ?? []);
+    const knownWords = new Set(
+      [...labelById.values(), ...(corpusText.match(/\b[A-Z][a-zA-Z]+\b/g) ?? [])]
+        .flatMap((w) => w.split(/\s+/))
+        .map((w) => w.toLowerCase()),
+    );
+    const severeFaultsIn = (picture: string): string[] => {
+      const out: string[] = [];
+      for (const n of picture.match(/\d+/g) ?? []) {
+        if (!corpusDigits.has(n)) out.push(`it used the number ${n}, which appears in nobody's record`);
+      }
+      const midSentence = picture.replace(/(^|[.!?]\s+)[A-Z][a-zA-Z]+/g, (m) => m.toLowerCase());
+      for (const w of midSentence.match(/\b[A-Z][a-zA-Z]{2,}\b/g) ?? []) {
+        if (!knownWords.has(w.toLowerCase()) && !/^(I|You|Your)$/.test(w)) out.push(`it named "${w}", which is not a party here and appears in nobody's record`);
+      }
+      return out;
+    };
+    const liftedRunIn = (picture: string): string | null => {
+      const words = picture.split(/\s+/);
+      for (const r of records) {
+        const theirs = r.text.replace(/^\[VERIFIABILITY:\w+\] /, '').split(/\s+/);
+        for (let i = 0; i + 8 <= theirs.length; i++) {
+          const run = theirs.slice(i, i + 8).join(' ');
+          if (run.length > 30 && picture.includes(run)) return run;
+        }
+      }
+      void words;
+      return null;
+    };
+
     const faultsIn = (r: SynthesisResult) => {
       const faults: string[] = [];
+      for (const f of severeFaultsIn(String((r as any).sharedPicture ?? ''))) {
+        faults.push(`${f}. Use only numbers and names that are in the records.`);
+      }
+      const lifted = liftedRunIn(String((r as any).sharedPicture ?? ''));
+      if (lifted) {
+        faults.push(`it copied "${lifted}" word for word from one person's record. Say what it shows; do not quote it.`);
+      }
       const tally = tallyInReport(r as any, ground.peopleWorkTogether !== false);
       if (tally) {
         faults.push(
@@ -1119,6 +1171,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
       } else if (secondPass) {
         this.logger?.warn?.(`Ground ${groundId}: the second attempt was no better, keeping the first.`);
       }
+    }
+    /*
+     * A PICTURE THAT STILL NAMES SOMEBODY WHO IS NOT HERE, OR A NUMBER NOBODY GAVE, DOES NOT SHIP.
+     *
+     * Two passes and the severe faults are still in it. There is no draft to fall back to, so what
+     * ships is the last picture that was released - kept on the previous report row - and the
+     * amendment machinery already says a picture did not move. On a first round there is none, and
+     * the picture is empty rather than wrong; the counts, tiles and per-person lines are engine
+     * output and unaffected. A lifted quotation is a fault to retry on, not to withhold for.
+     */
+    const stillSevere = severeFaultsIn(String((result as any).sharedPicture ?? ''));
+    if (stillSevere.length) {
+      this.logger?.warn?.(`Ground ${groundId}: the picture kept a severe fault after two passes (${stillSevere.join('; ')}); shipping the previous picture instead.`);
+      /* Read here, on this rare path, rather than threaded from the engagement read further down. */
+      const previous = await this.prisma.report.findUnique({ where: { groundId }, select: { sharedPicture: true } }).catch(() => null);
+      (result as any).sharedPicture = previous?.sharedPicture ?? '';
     }
 
     // SECOND PASS: what is at stake, one gap at a time.
@@ -1558,10 +1626,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * otherwise erase them. Everything else in engagement is rebuilt from this
      * synthesis; these are not, so they are the one thing carried across.
      */
-    const priorEngagement = (await this.prisma.report.findUnique({
+    const priorReport = await this.prisma.report.findUnique({
       where: { groundId },
       select: { engagement: true },
-    }))?.engagement as Record<string, any> | null | undefined;
+    });
+    const priorEngagement = priorReport?.engagement as Record<string, any> | null | undefined;
     const existingGuides = priorEngagement?.postReportGuides;
 
     const report = await this.prisma.report.upsert({
@@ -2393,7 +2462,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ...m,
       says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
     }));
-    return { rounds: cleaned, moved };
+    /*
+     * WHAT EACH ROUND LED WITH, WORDED. `moved[].says` came out of howThisHasMoved and whyNot as
+     * template sentences, the same on every ground. One call for the list, the round's own count of
+     * differences held as a number the model may not touch.
+     */
+    const saidMoved = await this.phrase(
+      'how this has moved',
+      moved.map((m: any, i: number) => ({ key: `m${i}`, text: String(m.says ?? '') })),
+    );
+    return { rounds: cleaned, moved: moved.map((m: any, i: number) => ({ ...m, says: saidMoved[`m${i}`] ?? m.says })) };
   }
 
   /**

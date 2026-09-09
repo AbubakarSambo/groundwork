@@ -2553,6 +2553,20 @@ const CRISIS_PACK_COMBINED = [
   CRISIS_WORRY_TENSION,
 ].join('\n\n');
 
+/** The scenarios whose packs carry role-specific questions for the person the check-in is about. */
+export const STARTING_SCENARIOS = new Set(['NEW_HIRE', 'NEW_COFOUNDER', 'NEW_ADVISOR', 'NEW_PROJECT', 'NEW_MANAGER', 'CONTRACT_RENEWAL', 'ROLE_HANDOVER']);
+
+/**
+ * THE PRODUCT'S OWN FIRST QUESTION TO A NON-LEAD IN A STARTING SCENARIO. See ConversationService.open.
+ * Written here so the pack below can refer to it by name and the two cannot drift apart.
+ */
+export const WHO_ARE_YOU_IN_THIS =
+  'Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough.';
+
+/** For the participant who is NOT the person the check-in is about. Their side of the shared work. */
+const SOMEBODY_ELSE_IN_THIS =
+  '"From where you sit, what has this work looked like so far? What have you needed from them, or they from you, and did it arrive? Then separately: what would you point to in three months to say this had gone well from your side?"';
+
 function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): string {
   const role = STARTING_ROLE_QUESTIONS[scenario];
   return [
@@ -2561,7 +2575,9 @@ function composeStartingPack(scenario: keyof typeof STARTING_ROLE_QUESTIONS): st
     STARTING_OPENING,
     STARTING_FOLLOWUP,
     `ROLE-SPECIFIC QUESTIONS - initiator (ask one at a time across exchanges; never list these in a single message):\n${role.initiator}`,
-    `ROLE-SPECIFIC QUESTIONS - participant (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
+    `WHO THE PARTICIPANT IS. For anybody who is not the initiator, the product has already asked, as its first line: "${WHO_ARE_YOU_IN_THIS}" Read their answer. If they are the person this check-in is about, use the participant questions. If they are somebody working alongside that person, use the "somebody else in this" questions and NEVER the participant ones: asking a colleague what they were hired to do, or what they will be doing that the lead does now, puts them in a job they do not have. Never ask the initiator's questions of anybody but the initiator.`,
+    `ROLE-SPECIFIC QUESTIONS - participant, the person this check-in is about (ask one at a time across exchanges; never list these in a single message):\n${role.participant}`,
+    `ROLE-SPECIFIC QUESTIONS - somebody else in this (ask one at a time across exchanges; never list these in a single message):\n${SOMEBODY_ELSE_IN_THIS}`,
     PARTICIPANT_PREAMBLE,
   ].join('\n\n');
 }

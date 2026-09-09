@@ -2007,6 +2007,9 @@ export function GroundAdminPage() {
                       */}
                       {theirSessions.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 40, flexWrap: 'wrap' }}>
+                          {/* Two bare numerals sat under a person's name with the meaning in a tooltip nobody hovers.
+   The row says what it is. */}
+                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>sessions</span>
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
@@ -2068,8 +2071,12 @@ export function GroundAdminPage() {
                             title="Read the expectations, on the Context tab"
                             style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline dotted' }}
                           >
+                            {/* Read on the Sessions tab, directly under "Some sessions done, some still
+                                open": "nothing expected of them yet". Two facts about two different
+                                things, and the second did not say which thing. It is about the
+                                EXPECTATION, so it says so. */}
                             {!p.objective?.text?.trim()
-                              ? 'nothing expected of them yet'
+                              ? 'no expectation set for them yet'
                               : p.objective.seenBySubject
                                 ? 'expectation set, they have seen it'
                                 : 'expectation set, not seen yet'}

@@ -29,6 +29,7 @@ import { CheckInStatus, TurnRole, RecordEntryType, Cadence, GroundStatus, UsageE
 import { runIntake } from './intake';
 import { boardRendersFor } from '../board/board-families';
 import { buildRoleProbeBlock, roleMapFor, signalRead, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
+import { STARTING_SCENARIOS, WHO_ARE_YOU_IN_THIS } from './prompt-library';
 import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
@@ -688,9 +689,27 @@ export class ConversationService {
       : correctingSession != null
         ? `<<BEGIN_CHECK_IN>> The person pressed "correct it" on session ${correctingSession}. This is NOT a new session and NOT a progress check. Do not ask what has happened since, do not ask what exists now, and do not ask how anything is going. Open in one sentence by saying you are back on session ${correctingSession} and asking what they want to change or add - then let them tell you, and only then probe for specifics. Their original answers are not deleted or edited; this is recorded alongside them.`
         : '<<BEGIN_CHECK_IN>> The person has just arrived. Open the check-in now per your runtime context - deliver the moment opening; do not wait for them to speak first.';
-    const reply = await this.anthropic.respond(fullSystem, [
-      { role: 'user', content: beginMessage },
-    ]);
+    /*
+     * THE FIRST QUESTION TO SOMEBODY WHO IS NOT THE LEAD, IN A STARTING SCENARIO, IS WRITTEN HERE.
+     *
+     * The prompt has two roles: initiator and participant. Every non-initiator got the participant
+     * block, and in NEW_HIRE that block is the HIRE's question - "what do you think you were hired
+     * to do". Walked as a real third party (the clinic the ward refers into) and the model, seeing
+     * the person was plainly not the hire, improvised the initiator's framing instead: "in 90 days,
+     * if she is succeeding, what will she be doing that you are doing now?" He does not do her job.
+     *
+     * Nothing on the participant row says whether they are the person this is about. So the
+     * product asks, in its own words, before the model asks anything - the same move as the
+     * session-date citation: the product writes the line, the model only takes it from there. The
+     * answer is in the transcript, and the pack tells the model which block follows from it.
+     */
+    const startsSomething = STARTING_SCENARIOS.has(String((checkIn as any).ground?.scenario ?? ''));
+    const notTheLead = checkIn.participant.partyType !== PartyType.INITIATOR;
+    const reply = startsSomething && notTheLead && correctingSession == null && !(checkIn as any).isFinal
+      ? WHO_ARE_YOU_IN_THIS
+      : await this.anthropic.respond(fullSystem, [
+          { role: 'user', content: beginMessage },
+        ]);
 
     // An opener never closes a session, but strip defensively so the marker can
     // never reach a person even if the model emits it in the wrong place.
