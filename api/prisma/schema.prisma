@@ -416,6 +416,7 @@ model Organization {
   webhookEndpoints    WebhookEndpoint[]
   embedConfig         EmbedConfig?
   commitments         Commitment[]
+  todos       Todo[]
   assistantTurns      AssistantTurn[]
   assistantProposals  AssistantProposal[]
   knowledgeCards      KnowledgeCard[]
@@ -2782,6 +2783,40 @@ model ProductMetric {
   @@unique([organizationId, key, asOf])
   @@index([organizationId, subjectExternalId])
   @@map("product_metrics")
+}
+
+/// A TO-DO IS YOURS. A commitment is to somebody and follows you into your check-in; a to-do is a
+/// note to yourself that nobody else reads and no report weighs. Kept apart so that "buy milk" never
+/// turns up as a promise somebody slipped on.
+model Todo {
+  id               String  @id @default(uuid())
+  organizationId   String  @map("organization_id")
+  /// The identity system's id, the same one commitments use.
+  personExternalId String  @map("person_external_id")
+
+  text    String    @db.Text
+  /// Their words for when. Kept as said.
+  dueSaid String?   @map("due_said")
+  /// Only where a date was actually given.
+  dueAt   DateTime? @map("due_at")
+
+  state TodoState @default(OPEN)
+  /// chat | api
+  source String @default("chat")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  doneAt    DateTime? @map("done_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, personExternalId, state])
+  @@map("todos")
+}
+
+enum TodoState {
+  OPEN
+  DONE
+  DROPPED
 }
 
 model Commitment {

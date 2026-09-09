@@ -30,6 +30,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DraftsService } from '../drafts/drafts.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { CommitmentsByApiService } from './commitments-by-api.service';
+import { TodosByApiService } from './todos-by-api.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
 import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
 import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL } from './what-you-need-to-know-before-you-start';
@@ -84,6 +85,7 @@ export class PublicApiController {
     private readonly drafts: DraftsService,
     private readonly checkIns: ACheckInACustomerCanRunService,
     private readonly commitments: CommitmentsByApiService,
+    private readonly todos: TodosByApiService,
     private readonly myPeople: ReportsForMyPeopleService,
     private readonly reviews: ReviewsComingUpService,
   ) {}
@@ -827,6 +829,30 @@ export class PublicApiController {
   @ApiOperation({ summary: 'Mark one of your commitments done' })
   async commitmentDone(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
     return this.commitments.done(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /* TO-DOS. Yours alone: panel routes only, no machine route, because a to-do is a note to yourself. */
+  @Get('todos/mine')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Your own list, open first' })
+  async myTodos(@Req() req: { panel: PanelCaller }) {
+    return this.todos.mine(req.panel.organizationId, req.panel.personId);
+  }
+
+  @Post('todos')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Put something on your own list' })
+  async addTodo(@Req() req: { panel: PanelCaller }, @Body() dto: { text?: string; dueSaid?: string; dueAt?: string }) {
+    return this.todos.add(req.panel.organizationId, req.panel.personId, dto ?? {});
+  }
+
+  @Post('todos/:id/done')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Tick one off' })
+  async todoDone(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.todos.done(req.panel.organizationId, req.panel.personId, id);
   }
 
   @Get('people/:personExternalId/commitments')

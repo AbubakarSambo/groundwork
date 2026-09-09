@@ -21,6 +21,7 @@ import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
+import { readToDo, toDoProposal, whichToDo, listToDos } from './a-to-do-is-yours';
 import { whatItTakesToStart } from './what-it-takes-to-start';
 import {
   whichSituation,
@@ -168,7 +169,26 @@ export class AssistantService {
     }
 
     const routed = route(message);
+
+    /*
+     * AN OPEN DRAFT TAKES PLAIN ANSWERS.
+     *
+     * The objective lane asked "what is being measured?" and then nothing read the reply: a person
+     * who answered "revenue from the Lagos hub" was told what the assistant can do instead. A message
+     * no lane claims, from somebody with a draft that is still asking, is the answer to what it asked.
+     */
+    if (who && routed.lane === 'unplaced') {
+      const continued = await this.continueTheDraft(organizationId, who, message);
+      if (continued) return continued;
+    }
+
     switch (routed.lane) {
+      case 'add_a_to_do':
+        return this.addAToDo(organizationId, who, routed.subject ?? '');
+      case 'my_to_dos':
+        return this.compose(await this.myToDos(organizationId, who));
+      case 'tick_off_a_to_do':
+        return this.tickOffAToDo(organizationId, who, routed.subject ?? message);
       case 'what_you_can_see':
         return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
@@ -1024,14 +1044,7 @@ export class AssistantService {
 
     if (open) {
       const next = whatToAskForNext(open);
-      if (!next) {
-        return rules(
-          'set_an_objective',
-          text(
-            `"${open.workingTitle}" has everything it needs from you. It is not an objective yet — the people on it have to agree, and then somebody seeds it.`,
-          ),
-        );
-      }
+      if (!next) return this.offerToSeed(organizationId, who, open);
       return rules('set_an_objective', text(`Still on "${open.workingTitle}". ${next.asks}`));
     }
 
@@ -1111,6 +1124,12 @@ export class AssistantService {
 
     if (parked.kind === 'open_a_check_in') {
       return this.resolveParkedOpening(organizationId, personId, who, parked, decision);
+    }
+    if (parked.kind === 'todo') {
+      return this.resolveParkedToDo(organizationId, who, parked, decision);
+    }
+    if (parked.kind === 'seed_objective') {
+      return this.resolveParkedSeed(organizationId, who, parked, decision);
     }
 
     if (decision === 'decline') {
@@ -1509,6 +1528,126 @@ export class AssistantService {
    * Late is only ever said about a commitment that carried a real date. One with words and no date
    * is listed as what it is - something they said - and never as something they have missed.
    */
+  /**
+   * THE DRAFT'S NEXT QUESTION IS ANSWERED HERE.
+   *
+   * Only when a draft of theirs is still asking and no lane claimed the message. The draft's own
+   * refusal ("that is not a measure") is returned as the reply, so the screen and the chat say the
+   * same thing about the same answer. When the last piece lands, the offer to set it follows.
+   */
+  private async continueTheDraft(organizationId: string, who: string, message: string): Promise<Reply | null> {
+    /* A draft that cannot be read is no draft: this must never be the reason a plain message gets no answer. */
+    const open = await Promise.resolve(
+      this.prisma.objectiveDraft?.findFirst({
+        where: { organizationId, initiatorExternalId: who, state: { in: ['DRAFTING', 'CONTESTED'] } },
+        orderBy: { updatedAt: 'desc' },
+      }) ?? null,
+    ).catch(() => null);
+    if (!open) return null;
+    const next = whatToAskForNext(open);
+    if (!next) return null;
+    try {
+      const r = await this.drafts.answer(organizationId, open.id, who, next.piece, message);
+      if (r.askNext) return rules('set_an_objective', text(`Noted. ${r.askNext.asks}`));
+      const fresh = await this.prisma.objectiveDraft.findUnique({ where: { id: open.id } });
+      return this.offerToSeed(organizationId, who, fresh ?? open);
+    } catch (err: any) {
+      const why = err?.message ?? 'That did not read as an answer.';
+      return rules('set_an_objective', text(`${why} ${next.asks}`));
+    }
+  }
+
+  /**
+   * SET IT, AFTER A PLAIN YES. The draft becomes an objective on the organisation's own board -
+   * the same subjects the API lists - owned by the person who drafted it. Never on a maybe, and
+   * never by the assistant deciding the draft is good enough: the drafting service's own readiness
+   * rule is asked first, and its reason is the reply when it says no.
+   */
+  private async offerToSeed(organizationId: string, who: string, draft: { id: string; workingTitle: string }): Promise<Reply> {
+    const status = await this.drafts.status(organizationId, draft.id);
+    if (!status.ready) return rules('set_an_objective', text(`"${draft.workingTitle}" has your answers. It cannot be set yet: ${status.because}`));
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'seed_objective',
+        summary: `Set "${draft.workingTitle}" as an objective on your organisation's board, owned by you? Yes to set it, no to leave it as a draft.`,
+        payload: { draftId: draft.id, title: draft.workingTitle } as any,
+      },
+    });
+    return {
+      lane: 'set_an_objective',
+      composedBy: 'rules',
+      blocks: [text(proposal.summary), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }],
+    };
+  }
+
+  private async resolveParkedSeed(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
+    });
+    const payload = parked.payload as { draftId: string; title: string };
+    if (decision === 'decline') return rules('set_an_objective', text(`Left as a draft. "${payload.title}" is still here when you want it.`));
+    try {
+      const r = await this.drafts.seed(organizationId, payload.draftId, `chat-${payload.draftId}`, 'groundwork-chat');
+      return rules(
+        'set_an_objective',
+        text(`Set. "${payload.title}" is on your organisation's board as an objective you own (subject ${r.subjectExternalId}). Check-ins against it read your evidence from here on.`),
+      );
+    } catch (err: any) {
+      return rules('set_an_objective', text(`I could not set it: ${err?.message ?? 'something refused it'}. The draft is still here.`));
+    }
+  }
+
+  /* --- to-dos: a note to yourself, apart from anything promised to anybody --- */
+
+  private async addAToDo(organizationId: string, who: string | null, subject: string): Promise<Reply> {
+    if (!who) return rules('add_a_to_do', text('I cannot see you in your organisation records, so I have no list to put that on.'));
+    const todo = readToDo(subject);
+    if (!todo) return rules('add_a_to_do', text('What goes on the list? A few words is enough.'));
+    const proposal = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: 'todo', summary: toDoProposal(todo), payload: todo as any },
+    });
+    return {
+      lane: 'add_a_to_do',
+      composedBy: 'rules',
+      blocks: [text(proposal.summary), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }],
+    };
+  }
+
+  private async resolveParkedToDo(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    await this.prisma.assistantProposal.update({
+      where: { id: parked.id },
+      data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
+    });
+    if (decision === 'decline') return rules('add_a_to_do', text('Left it, then.'));
+    const payload = parked.payload as { text: string; dueSaid: string | null };
+    await this.prisma.todo.create({
+      data: { organizationId, personExternalId: who, text: payload.text, dueSaid: payload.dueSaid, dueAt: null, source: 'chat' },
+    });
+    return rules('add_a_to_do', text(`On your list: ${payload.text}. Say "what is on my list" any time; "done: ${payload.text}" closes it.`));
+  }
+
+  private async myToDos(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('my_to_dos', text('I cannot see you in your organisation records, so I have no list to read.'));
+    const open = await this.prisma.todo.findMany({
+      where: { organizationId, personExternalId: who, state: 'OPEN' },
+      orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
+    });
+    return rules('my_to_dos', text(listToDos(open)));
+  }
+
+  private async tickOffAToDo(organizationId: string, who: string | null, said: string): Promise<Reply> {
+    if (!who) return rules('tick_off_a_to_do', text('I cannot see you in your organisation records, so I have no list to close anything on.'));
+    const open = await this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const which = whichToDo(said, open);
+    if ('none' in which) return rules('tick_off_a_to_do', text(open.length ? `Nothing on your list reads like "${said}". ${listToDos(open)}` : 'Your list is empty, so there is nothing to close.'));
+    if ('several' in which) return rules('tick_off_a_to_do', text(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
+    await this.prisma.todo.update({ where: { id: which.one.id }, data: { state: 'DONE', doneAt: new Date() } });
+    return rules('tick_off_a_to_do', text(`Done: ${which.one.text}.`));
+  }
+
   private async myCommitments(organizationId: string, personId: string): Promise<Reply> {
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
