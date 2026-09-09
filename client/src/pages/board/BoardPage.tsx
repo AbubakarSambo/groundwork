@@ -1087,11 +1087,13 @@ export function BoardPage() {
         */}
                 {viewerRunsThisCheckIn && (((groundForSignals as any)?.signals ?? [])).length > 0 && (() => {
                   const sigs = ((groundForSignals as any)?.signals ?? [])
-                  const convergences = sigs.filter((s: any) => s.type === 'Convergence').length
-                  const divergences = sigs.filter((s: any) => s.type === 'Divergence').length
-                  const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
-                  const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
-                  const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
+                  /* Every row is the library's own sentence for a surfaced pattern. The badge is a
+                     count: good signs against patterns to look at, never a verdict word. */
+                  const convergences = sigs.filter((s: any) => s.type === 'Good sign').length
+                  const divergences = sigs.filter((s: any) => s.type === 'Pattern').length
+                  const trendLabel = `${divergences} to look at · ${convergences} good sign${convergences === 1 ? '' : 's'}`
+                  const trendColor = divergences === 0 ? 'var(--gw-green-t)' : 'var(--gw-amber-t)'
+                  const trendBg = divergences === 0 ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)'
                   return (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
@@ -1102,8 +1104,8 @@ export function BoardPage() {
                         {sigs.map((sig: any) => (
                           <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
-                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Good sign' ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Good sign' ? 'var(--gw-green-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
+                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Seen across {sig.periodsObserved ?? sig.sessionNum} session{(sig.periodsObserved ?? sig.sessionNum) === 1 ? '' : 's'}</span>
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
                           </div>

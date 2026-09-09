@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Optional, Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
@@ -26,7 +26,10 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { ReportsService } from '../reports/reports.service';
+import { theSessionReport } from '../reports/the-session-report';
+import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
+import { cleanText } from '../reports/what-the-record-actually-holds';
+import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
@@ -78,11 +81,6 @@ export class BoardService {
   constructor(
     private prisma: PrismaService,
     private readonly anthropic: AnthropicService,
-    /* ONE ENGINE. The board's tiles and question used to be computed here, a second time, from the
-       same rows the session report reads, and disagreed with it on the same screen. When the reports
-       service is present the board takes its tiles, its stands and its question from the session
-       report's shape; the local computation is only a fallback for a board built without it. */
-    @Optional() @Inject(forwardRef(() => ReportsService)) private readonly reports?: ReportsService,
   ) {}
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
@@ -237,10 +235,13 @@ export class BoardService {
     const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
     const unfinished = checkIns.filter((c) => givers.has(c.participantId) && c.status !== CheckInStatus.COMPLETED).map((c) => c.sessionNumber);
     const openRound = unfinished.length ? Math.min(...unfinished) : maxSession;
-    let sessionShape: any = null;
-    if (this.reports && requestingUserId) {
-      sessionShape = await this.reports.sessionReport(groundId, openRound, requestingUserId, (ground as any).organizationId ?? undefined).catch(() => null);
-    }
+    /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
+       board runs the same engines over all of them, so the two share a vocabulary and differ only in
+       scope. Same tiles, same settled-and-open, same question engine. */
+    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound).catch((err: any) => {
+      this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
+      return null;
+    });
 
     /**
      * NAMES AND RAW EMAIL ADDRESSES IN THE SAME COLUMN. W-UX-4.
@@ -530,6 +531,7 @@ export class BoardService {
     }
 
     if (has('quickRead') && sessionShape?.atAGlance?.length) {
+      /* The same four tiles as the report, over every session. */
       out.quickRead = sessionShape.atAGlance;
     } else if (has('quickRead')) {
       const blockers = ground.dependencies.filter((d) => d.status === DependencyStatus.BLOCKING).length;
@@ -1202,6 +1204,58 @@ export class BoardService {
     }
 
     return whoNeedsYou(needs);
+  }
+
+
+  /**
+   * THE REPORT'S ENGINES, OVER EVERY SESSION. Every record line from every completed check-in on the
+   * ground, the written report's agreements and differences, every target's movement, every open
+   * dependency, every OPEN document: the same pure functions the session report runs, with the
+   * ground's rows instead of one session's. Names go through the same labels the board already uses.
+   */
+  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number) {
+    const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
+    const [entries, docs, baseline, deps] = await Promise.all([
+      this.prisma.recordEntry.findMany({
+        where: { disputedAt: null, checkInId: { in: completed.map((c) => c.id) } },
+        select: { type: true, text: true, participantId: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.groundDocument.findMany({ where: { groundId, visibility: 'OPEN' as any }, select: { fileName: true, participantId: true, origin: true } }),
+      (this.prisma as any).groundBaseline?.findFirst?.({ where: { groundId }, select: { successLooksLike: true } }) ?? Promise.resolve(null),
+      this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true } }),
+    ]);
+    const labels = labelsForParties(ground.participants as any);
+    const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A teammate') : null);
+    const report = ground.report ?? {};
+    const answered = ground.participants.filter((p: any) => !p.managingOnly && completed.some((c) => c.participantId === p.id));
+    const shape = theSessionReport({
+      sessionNumber: openRound,
+      closed: !!report.releasedAt,
+      agreements: (report.agreements ?? []) as unknown[],
+      divergences: (report.divergences ?? []) as unknown[],
+      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: nameOf(e.participantId), recallBased: e.recallBased, backedBy: (e as any).anchoredOrigin ?? null, threadKey: e.dimensionThreadKey ?? null })),
+      previousEntries: [],
+      baselineSuccess: baseline?.successLooksLike ?? null,
+      startingPoint: null,
+      previousSharedPicture: null,
+      evidence: docs.map((d: any) => ({ text: originLabel(d.origin) ? `${d.fileName} · ${originLabel(d.origin)}` : d.fileName, who: nameOf(d.participantId) })),
+      specificityLevel: null,
+      recallConfidence: null,
+      centralQuestion: report.centralQuestion ?? null,
+      movedOnTargets: ground.objectives?.some((o: any) => o.target != null) ? ground.objectives.filter((o: any) => o.target != null).reduce((s: number, o: any) => s + (o.count - o.prevCount), 0) : null,
+      blocked: deps.filter((d) => d.status === 'BLOCKING').length,
+      waiting: deps.filter((d) => d.status === 'WAITING').length,
+      answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
+      peopleInAll: ground.participants.filter((p: any) => !p.managingOnly).length,
+    });
+    const question = draftTheQuestion({
+      functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
+      blockers: deps.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+    });
+    /* The tile grammar says "this session"; on the board it is every session. */
+    const atAGlance = (shape.atAGlance ?? []).map((t: any) => ({ ...t, sub: String(t.sub ?? '').replace(/this session/g, 'across every session').replace(/moved this session/g, 'moved so far') }));
+    return { ...shape, atAGlance, theConversationWorthHaving: question?.text ?? null };
   }
 
 }
