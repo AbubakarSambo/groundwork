@@ -327,12 +327,16 @@ function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) 
  * something to be ASKED about, never as part of the record. See
  * api/src/modules/conversation/between-session-notes.ts.
  */
-function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending }: {
+function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt,
+  canChangeTheRhythm, onGoToSetup, onOpenSession, openPending }: {
   groundId: string
   openCheckInId: string | null
   openSessionNumber: number | null
   totalSessions: number | null
   nextOpensAt: string | null
+  /** Whether this reader runs the check-in, and so can change how often it happens. */
+  canChangeTheRhythm?: boolean
+  onGoToSetup?: () => void
   /**
    * OPENING A SESSION CAN COST MONEY, so this does not navigate on its own.
    *
@@ -463,6 +467,19 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
           {nextOpensAt
             ? `Your next check-in opens ${new Date(nextOpensAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}. `
             : 'No check-in is open right now. '}
+          {/* And for the person who can move it, that it can be moved. A lead who wants the next
+              round sooner had no way to find out one was two clicks away. */}
+          {nextOpensAt && canChangeTheRhythm && onGoToSetup && (
+            <>
+              <button
+                onClick={onGoToSetup}
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Change how often this runs
+              </button>
+              {'. '}
+            </>
+          )}
           Notes are yours alone. They are not part of your record, and the next check-in will ask you about them.
         </div>
         <label
@@ -490,7 +507,8 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
 }
 
 export function GroundChat({
-  groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, onOpenSession, openPending,
+  groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt, canChangeTheRhythm, onGoToSetup,
+  onOpenSession, openPending,
   brief, signals,
   viewerIsParty, history, parties, peersHidden,
 }: {
@@ -499,6 +517,16 @@ export function GroundChat({
   openSessionNumber: number | null
   totalSessions: number | null
   nextOpensAt: string | null
+  /**
+   * WHETHER THIS READER CAN CHANGE HOW OFTEN IT RUNS.
+   *
+   * Between sessions this says "your next check-in opens 12 October" and stops. For a party that is
+   * the whole truth. For the person who runs the check-in it is half of it: they chose that rhythm,
+   * usually by not choosing it, and they can change it on Setup in two clicks. Nothing said so, so
+   * a lead who wanted a second round sooner had no way to know one was available.
+   */
+  canChangeTheRhythm?: boolean
+  onGoToSetup?: () => void
   onOpenSession?: () => void
   openPending?: boolean
   /**
@@ -653,6 +681,8 @@ export function GroundChat({
         openSessionNumber={openSessionNumber}
         totalSessions={totalSessions}
         nextOpensAt={nextOpensAt}
+        canChangeTheRhythm={canChangeTheRhythm}
+        onGoToSetup={onGoToSetup}
         onOpenSession={onOpenSession}
         openPending={openPending}
       />

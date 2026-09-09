@@ -1589,6 +1589,9 @@ export function GroundAdminPage() {
               openSessionNumber={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.sessionNumber : null}
               totalSessions={plannedSessions ?? null}
               nextOpensAt={myOpenOpensLater ? myOpenAvailableFrom : null}
+              /* Only the person who runs it can change the rhythm, so only they are told they can. */
+              canChangeTheRhythm={true}
+              onGoToSetup={() => goTab('settings' as Tab)}
               onOpenSession={() => navigate(`/grounds/${id}/p?open=1`)}
               openPending={false}
               /**
@@ -2791,6 +2794,23 @@ export function GroundAdminPage() {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
                   {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} sessions over {timelineDaysDraft} days.
                   {' '}Sessions already completed are never removed.
+                </div>
+                {/*
+                  AND WHAT HAPPENS AT THE END OF THEM, WHICH NOTHING SAID.
+
+                  A check-in does not just run out. On the last session everybody is asked how it
+                  closes, and it ends on an agreed answer. That screen is the point of the whole
+                  thing for some scenarios, and the only way to learn it exists was to reach it -
+                  which on a three-month run means three months. So the number of sessions was a
+                  countdown to something nobody had been told about.
+
+                  Here, next to the control that sets the number, because this is the moment a
+                  person is deciding how long it should be and the ending is what they are deciding
+                  the length of.
+                */}
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.55 }}>
+                  On the last one, everybody is asked how this should close, and it ends on the
+                  answer you agree.
                 </div>
                 <button
                   disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}

@@ -537,6 +537,9 @@ export function GroundParticipantPage() {
             openSessionNumber={dueNow ? openCheckIn.sessionNumber : null}
             totalSessions={totalSessions ?? null}
             nextOpensAt={opensLater ? openAvailableFrom : null}
+            /* Only the person who runs it can change the rhythm, so only they are told they can. */
+            canChangeTheRhythm={isInitiator}
+            onGoToSetup={() => goTab('settings')}
             onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
             openPending={probeSession.isPending}
             brief={(ground as any).brief}
