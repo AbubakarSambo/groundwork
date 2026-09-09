@@ -277,6 +277,15 @@ export class KnowledgeService {
     const text = (said ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
     if (text.trim().length < 20) return [];
 
+    /*
+     * THE SAME RETRIEVAL THE ASSISTANT USES, FIRST. Title-word matching below found a card only when
+     * its title happened to be in the sentence: four cards, matched on four titles. The trigram query
+     * reads bodies too and ranks, so a card about contracting surfaces for a sentence about a
+     * client's terms. The title match stays as the fallback for a database without pg_trgm.
+     */
+    const ranked = await this.scored(organizationId, said).catch(() => [] as { key: string; title: string; body: string; score: number }[]);
+    if (ranked.length) return ranked.slice(0, limit).map((r) => ({ key: r.key, title: r.title, body: r.body }));
+
     const cards = await this.prisma.knowledgeCard.findMany({
       where: { organizationId, effectiveTo: null },
       select: { key: true, title: true, body: true },
@@ -308,31 +317,15 @@ export class KnowledgeService {
       .map((s2) => ({ key: s2.c.key, title: s2.c.title, body: s2.c.body }));
   }
 
-  async retrieve(organizationId: string, personExternalId: string, query: string) {
+  /** The ranking, on its own, so the conversation's lookup and the assistant's retrieval score the same way. */
+  private async scored(organizationId: string, query: string) {
     const q = (query ?? '').trim();
-    if (q.length < 3) return { cards: [], truncated: false };
-
-    /*
-     * `similarity` over title and body, plus a plain ILIKE pass so an exact phrase always wins even
-     * when it is long enough to dilute a trigram score. Only current cards: an answer should come
-     * from what is true now, and the history exists to explain old findings rather than new ones.
-     */
-    /*
-     * A WORD PASS AS WELL AS A PHRASE PASS, AND THE WORDS ARE NORMALISED.
-     *
-     * Trigram similarity alone missed "swap oncall" against a card titled "The on-call rota": the
-     * hyphen breaks the trigrams and a long body dilutes the score below any useful threshold.
-     * Found by asking it, not by reading it.
-     *
-     * So punctuation is stripped from both sides before the word comparison - "on-call", "on call"
-     * and "oncall" are the same word to somebody typing a question, and a retrieval that insists
-     * otherwise is one that fails on the day it matters.
-     */
+    if (q.length < 3) return [];
     const words = q.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
       .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
     const normalisedWords = words.length ? words : [q.toLowerCase().replace(/[^a-z0-9]/g, '')];
 
-    const rows = await this.prisma.$queryRaw<{ id: string; title: string; body: string; kind: string; key: string; score: number }[]>(
+    return this.prisma.$queryRaw<{ id: string; title: string; body: string; kind: string; key: string; score: number }[]>(
       Prisma.sql`
         WITH scored AS (
           SELECT id, title, body, kind::text AS kind, key,
@@ -354,6 +347,12 @@ export class KnowledgeService {
     );
 
     /* The character cap is applied after ranking, so the best card is never the one dropped. */
+  }
+
+  async retrieve(organizationId: string, personExternalId: string, query: string) {
+    const q = (query ?? '').trim();
+    if (q.length < 3) return { cards: [], truncated: false };
+    const rows = await this.scored(organizationId, q);
     const kept: typeof rows = [];
     let chars = 0;
     let truncated = false;

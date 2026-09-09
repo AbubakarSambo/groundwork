@@ -2065,7 +2065,8 @@ export class ConversationService {
         sharedWithEveryone: d.visibility === 'OPEN',
       }),
     }));
-    const fitted = whatFitsInTheRoom([...withProvenance].reverse());
+    /* What they are talking about right now decides which passages of a long document go in. */
+    const fitted = whatFitsInTheRoom([...withProvenance].reverse(), undefined, [latestMessage ?? '', (ground as any).brief ?? ''].join(' '));
     if (fitted.leftOut.length) {
       this.logger?.log?.(`Check-in ${checkIn.id}: documents that did not fit the prompt - ${fitted.leftOut.join(', ')}.`);
     }

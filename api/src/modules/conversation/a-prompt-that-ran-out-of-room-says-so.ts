@@ -19,6 +19,8 @@
  * about to talk about, and the one they would be most surprised to find unread.
  */
 
+import { passagesThatMatter } from '../knowledge/passages-that-matter';
+
 export interface Attached {
   fileName: string;
   content: string;
@@ -48,7 +50,12 @@ export interface WhatFitted {
   leftOut: string[];
 }
 
-export function whatFitsInTheRoom(docs: Attached[], room = ROOM_FOR_DOCUMENTS): WhatFitted {
+/**
+ * @param about what the person is talking about right now - their latest message and the brief.
+ *   When a document does not fit whole, its passages are chosen by this rather than by position.
+ *   See passages-that-matter.ts in the knowledge module. Empty means position, as before.
+ */
+export function whatFitsInTheRoom(docs: Attached[], room = ROOM_FOR_DOCUMENTS, about = ''): WhatFitted {
   if (!docs.length) return { block: '', leftOut: [] };
 
   const parts: string[] = [];
@@ -84,13 +91,22 @@ export function whatFitsInTheRoom(docs: Attached[], room = ROOM_FOR_DOCUMENTS): 
      * PART OF IT, AND THE SESSION IS TOLD WHICH PART. Without this line the model has a document
      * that stops mid-sentence and no reason to believe anything is missing.
      */
-    const kept = d.content.slice(0, room_left);
+    /*
+     * IT DOES NOT FIT, SO WHICH PART. Passages that share words with what is being discussed, in the
+     * document's own order; the opening when nothing matches. Either way the heading says which it
+     * was, because a session that read the right half and says so is one somebody can work with.
+     */
+    const chosen = passagesThatMatter(d.content, about, room_left - 400);
+    const kept = chosen.text || d.content.slice(0, room_left);
+    const percent = Math.round((kept.length / d.content.length) * 100);
+    const how = chosen.byMatch
+      ? `You have ${chosen.kept} of its ${chosen.of} passages, the ones that share words with what is being discussed`
+      : 'You have the first part of it';
     parts.push(
-      `${head}${kept}\n[This document continues. You have the first part of it and not the rest -`
-      + ' about ' + Math.round((kept.length / d.content.length) * 100) + ' percent. If what you need'
-      + ' is not here, say so and ask them for the part you need rather than guessing at it.]',
+      `${head}${kept}\n[This document is longer than this. ${how} - about ${percent} percent - and not the rest.`
+      + ' If what you need is not here, say so and ask them for the part you need rather than guessing at it.]',
     );
-    spent = room;
+    spent += head.length + kept.length;
     leftOut.push(`${d.fileName} (partly)`);
   }
 
