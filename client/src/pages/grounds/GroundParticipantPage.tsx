@@ -436,6 +436,21 @@ export function GroundParticipantPage() {
                   ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
                   : 'Just yours - only you see this until the report releases.'}
               </span>
+              {/*
+                WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
+
+                Somebody added to a check-in in another organisation can open it and nothing said
+                so. They are a guest in a workspace holding one check-in and nothing around it, and
+                the first they knew was that the rest of the product looked empty. Reported as: "I
+                was added to a check-in in one org and then didn't have a way to join the org."
+                
+                Null on a reader's own check-in, because "at your own company" is not information.
+              */}
+              {(ground as any).guestIn && (
+                <span style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+                  · A guest check-in at {(ground as any).guestIn}
+                </span>
+              )}
               {totalSessions != null && (
                 <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
               )}

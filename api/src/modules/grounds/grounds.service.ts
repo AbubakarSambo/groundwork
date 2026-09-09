@@ -1123,6 +1123,8 @@ export class GroundsService {
       include: {
         participants: { select: SAFE_PARTICIPANT_SELECT },
         checkIns: { select: CHECKIN_SELECT },
+        /* For `guestIn`: whose workspace this check-in belongs to. */
+        organization: { select: { name: true } },
         /**
          * WHAT THE WHOLE CHECK-IN IS AIMING AT. Written by the lead's own check-in alongside the
          * per-person expectations, and never read back until now - so the Context page had a band
@@ -1167,6 +1169,9 @@ export class GroundsService {
           include: {
             participants: { select: SAFE_PARTICIPANT_SELECT },
             checkIns: { select: CHECKIN_SELECT },
+            /* Same as the primary read: this is the cross-org path, and it is the one where the
+               name is actually needed. */
+            organization: { select: { name: true } },
             /**
              * THE SAME LIST AS THE PRIMARY READ ABOVE, and it has to stay that way: this is the
              * cross-org participant's path, and anything missing here is a field that exists for
@@ -1657,6 +1662,20 @@ export class GroundsService {
        * cadence". The check-in was running fortnightly on a default.
        */
       cadenceChosen: (ground as any).cadenceStated ?? false,
+      /**
+       * WHOSE CHECK-IN THIS IS, WHEN IT IS NOT THE READER'S OWN COMPANY.
+       *
+       * Somebody added to a check-in in another organisation can open it - the cross-org read a
+       * hundred lines above exists for exactly that - and nothing anywhere told them they had. They
+       * are a guest in somebody else's workspace, seeing one check-in and nothing around it, and
+       * the first they knew of it was that the rest of the product looked empty.
+       *
+       * The name, only when it differs. On a reader's own check-in this is null and no screen says
+       * anything, because "at your own company" is not information.
+       */
+      guestIn: ground.organizationId !== organizationId
+        ? ((ground as any).organization?.name ?? 'another organisation')
+        : null,
     };
   }
 
