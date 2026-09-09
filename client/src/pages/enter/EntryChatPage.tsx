@@ -1036,6 +1036,20 @@ export function EntryChatPage() {
   }
 
 
+  /**
+   * A WAY BACK FOR THE LEAD. Clears the read and puts the conversation back to the opening question,
+   * where the situation cards show again, so they can pick another one or describe it differently.
+   */
+  function pickADifferentSituation() {
+    setPickedSituation(null)
+    /* Or the next situation is set up with the last one's first question. */
+    setPickedScenario(null)
+    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
+    setOnboardingSelections(defaultSels)
+    setOnboardingReady(false)
+    setInput('')
+  }
+
   const [showEndConfirm, setShowEndConfirm] = useState(false)
 
   // Save card
@@ -1493,20 +1507,6 @@ export function EntryChatPage() {
   // Self path: this is the person's own situation - straight into the check-in
   // (no interstitial page). The "~10 min" estimate and the two-report framing
   // live at the top of the check-in itself.
-  /**
-   * A WAY BACK FOR THE LEAD. The cards are gone, but the lead can still put the description back to
-   * the opening question and say it again, before a check-in has started.
-   */
-  function pickADifferentSituation() {
-    setPickedSituation(null)
-    /* Or the next situation is set up with the last one's first question. */
-    setPickedScenario(null)
-    setOnboardingHistory([{ role: 'assistant', content: THE_OPENING_QUESTION }])
-    setOnboardingSelections(defaultSels)
-    setOnboardingReady(false)
-    setInput('')
-  }
-
   function startSelfPath() {
     setFlowPath('self')
     setOnboardingStep(ONBOARDING_STEPS + 1)
@@ -2414,7 +2414,7 @@ export function EntryChatPage() {
                   onClick={pickADifferentSituation}
                   style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
                 >
-                  ← Describe it again
+                  ← Pick a different situation
                 </button>
               )}
               {/* CONFIRMED ONCE THE CONVERSATION EXISTS. Clearing throws away the transcript, the
