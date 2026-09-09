@@ -45,7 +45,8 @@ import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
-import { SentenceGate, screen, ASK_AGAIN } from './nothing-invented-reaches-them';
+import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 import {
   CORRECTION_WINDOW_KEY,
   DEFAULT_CORRECTION_WINDOW_DAYS,
@@ -538,6 +539,9 @@ export class ConversationService {
     if (existingAiTurn) {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground) };
     }
+    await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
+      this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
+    );
 
     // Session balance gate: consume one session from the ground's balance once
     // per session round (sessionNumber). If any other participant has already
@@ -909,11 +913,21 @@ export class ConversationService {
       /* Who is reading, so their own name cannot come back at them in the third person. Their
          first name is on the row this method already loaded. */
       const readerName = (checkIn as any).participant?.user?.firstName ?? null;
-      const screened = screen(stripped.text, personWords, readerName);
-      if (screened.dropped.length) {
-        this.logger.warn(
-          `Dropped ${screened.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
-        );
+      const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
+      this.knownForThisTurn.delete(checkIn.id);
+      let screened = screen(stripped.text, known, readerName);
+      if (screened.hits.length) {
+        /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
+           the hit named. One time. If the second try is clean it replaces the first; if not, the
+           first stands minus its dropped sentences. */
+        const again = await this.askAgainWithoutTheInvention(fullSystem, history, screened.hits, known, readerName, theirWords, checkIn.id);
+        if (again) {
+          screened = again.screened;
+          stripped.hadMarker = again.hadMarker;
+        }
+      }
+      if (!screened.text) {
+        for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
       }
       reply = screened.text || ASK_AGAIN;
 
@@ -988,8 +1002,12 @@ export class ConversationService {
     // is in your record" where the list wanted "here is what is NOW in your
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
-    const signalled = hadCloseMarker || this.detectSessionComplete(reply);
-    const sessionComplete = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false;
+    const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
+    const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
+    if (close.ask) {
+      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${aiTurn.content}\n\n${close.ask}` } });
+    }
+    const sessionComplete = close.ready;
 
     /*
      * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,
@@ -1013,42 +1031,92 @@ export class ConversationService {
    * nothing, and then never again in that session. Nobody gets trapped in a loop
    * to extract a specific that does not exist.
    */
-  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<boolean> {
-    const turns = await this.prisma.conversationTurn.findMany({
-      where: { checkInId },
-      orderBy: { createdAt: 'asc' },
-      select: { role: true, content: true },
-    });
-    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
-    // Has a close already been held back? The AI's own turns carry the extra
-    // question, so a second offer to close means we have already had our one.
-    const aiTurns = turns.filter((t) => t.role === TurnRole.AI).length;
-    const alreadyProbed = aiTurns > personSaid.length;
-
-    // The same floor complete() enforces, so the engine never offers to close
-    // something the server will then refuse. See close-readiness.ts.
-    const minTurns = isSelfCorrection ? 1 : 3;
-    const verdict = closeReadiness(personSaid, alreadyProbed, minTurns);
-    if (!verdict.ready) {
-      this.logger.log(`Holding the close on ${checkInId}: ${verdict.reason}`);
+  /**
+   * ONE MORE TRY, WITH THE INVENTION NAMED. Returns nothing if the second reply is not clean.
+   */
+  private async askAgainWithoutTheInvention(
+    fullSystem: string,
+    history: ChatTurn[],
+    hits: Hit[],
+    known: string[],
+    readerName: string | null,
+    theirWords: string[],
+    checkInId: string,
+  ): Promise<{ screened: ReturnType<typeof screen>; hadMarker: boolean } | null> {
+    const second = await this.anthropic
+      .respond(`${fullSystem}\n\n${askInsteadOfInventing(hits)}`, history)
+      .catch(() => '');
+    if (!second.trim()) {
+      for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
+      return null;
     }
-    return verdict.ready;
+    const screened = screen(withoutQuotesTheyDidNotSay(forHumans(second), theirWords), known, readerName);
+    const clean = screened.hits.length === 0 && !!screened.text;
+    for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, clean ? 'regenerated, clean' : 'regenerated, still hit'));
+    if (!clean) {
+      for (const h of screened.hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
+      return null;
+    }
+    return { screened, hadMarker: textHadCloseMarker(second) };
   }
 
-  /** Whether the AI reply contains the mandatory session-closing phrasing. */
-  private detectSessionComplete(reply: string): boolean {
-    const replyLower = reply.toLowerCase();
-    return (
-      replyLower.includes('here is what is now in your record') ||
-      replyLower.includes('what is in your record from today') ||
-      replyLower.includes('in your record from today') ||
-      replyLower.includes('your account is now on record') ||
-      replyLower.includes('your record from this session') ||
-      (replyLower.includes('now in your record') && replyLower.includes('next steps')) ||
-      (replyLower.includes('now in your record') && replyLower.includes('carry forward')) ||
-      (replyLower.includes('now in your record') && (replyLower.includes('next step') || replyLower.includes('come back when'))) ||
-      (replyLower.includes('your record now') && replyLower.includes('session'))
+  /**
+   * THE CLOSE BAR, AND THE ONE HOLD.
+   *
+   * The model has signalled a close. Before it is accepted, the last thing the person said is read
+   * for a number, a date, a document or an attachment. If none of those is there, and this check-in
+   * has not been held before, it is held ONCE: closeHeldAt is stamped, the product's one question
+   * goes out on the end of the reply, and the next answer closes it whatever it says.
+   *
+   * closeReadiness then runs as it always did. Its "already held back once" branch used to be fed
+   * by aiTurns > personTurns, which is true on every turn of every session (the opener is an AI
+   * turn), so the hold never held. It is fed by the stamp now.
+   */
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string }> {
+    const [row, turns] = await Promise.all([
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true } }),
+      this.prisma.conversationTurn.findMany({
+        where: { checkInId },
+        orderBy: { createdAt: 'asc' },
+        select: { role: true, content: true },
+      }),
+    ]);
+    const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    const minTurns = isSelfCorrection ? 1 : 3;
+    if (personSaid.length < minTurns) {
+      this.logger.log(`Holding the close on ${checkInId}: only ${personSaid.length} answer(s) so far.`);
+      return { ready: false };
+    }
+    if (row?.closeHeldAt) {
+      return { ready: closeReadiness(personSaid, true, minTurns).ready };
+    }
+    const attached = row
+      ? (await this.prisma.groundDocument.count({
+          where: { participantId: row.participantId, createdAt: { gte: row.startedAt ?? new Date(0) } },
+        })) > 0
+      : false;
+    const last = personSaid[personSaid.length - 1] ?? '';
+    const concrete = whatIsConcreteIn(last, attached);
+    const verdict = closeReadiness(personSaid, false, minTurns);
+    if (concrete.length && verdict.ready) return { ready: true };
+    await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
+    this.logger.log(
+      `Holding the close once on ${checkInId}: ${concrete.length ? verdict.reason : 'the last answer carried no number, date, document or attachment'}.`,
     );
+    return { ready: false, ask: THE_ONE_CONCRETE_THING };
+  }
+
+  /**
+   * WHAT COUNTS AS THE MODEL CLOSING.
+   *
+   * The [[SESSION_COMPLETE]] marker, checked by the caller. This is the only other way: the person
+   * has just said they are finished and the reply asks them nothing. Nine hard-coded phrases used
+   * to sit here ("here is what is now in your record", "your account is now on record"). A reply
+   * that closed in other words left the session open, and a mid-session reply that happened to say
+   * "now in your record" and "next step" closed it. Both went with the list.
+   */
+  private closesInOtherWords(reply: string, lastPersonTurn: string): boolean {
+    return !/\?/.test(reply) && askedToFinish([lastPersonTurn]);
   }
 
   /**
@@ -1115,10 +1183,10 @@ export class ConversationService {
         .filter((t) => t.role === TurnRole.PERSON)
         .map((t) => t.content ?? '')
         .concat(message);
-      const gate = new SentenceGate(
-        streamPersonWords,
-        (checkIn as any).participant?.user?.firstName ?? null,
-      );
+      const streamKnown = streamPersonWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
+      this.knownForThisTurn.delete(checkIn.id);
+      const streamReaderName = (checkIn as any).participant?.user?.firstName ?? null;
+      const gate = new SentenceGate(streamKnown, streamReaderName);
       let shown = '';
 
       /*
@@ -1195,13 +1263,22 @@ export class ConversationService {
        * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
        * somebody the model hallucinated is alarming and useless to them.
        */
-      if (gate.dropped.length) {
-        this.logger.warn(
-          `Dropped ${gate.dropped.length} sentence(s) with an invented name on check-in ${checkIn.id}.`,
-        );
+      /* On the stream the sentence is already gone by the time it is known to be wrong, so a hit is
+         dropped live and logged. Only when NOTHING survived is there room to ask the model again. */
+      let reply = shown.trim();
+      if (reply) {
+        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
+      } else {
+        const again = await this.askAgainWithoutTheInvention(fullSystem, history, gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
+        if (again) {
+          reply = again.screened.text;
+          strippedStream.hadMarker = again.hadMarker;
+        } else {
+          for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
+          reply = ASK_AGAIN;
+        }
+        yield { type: 'delta', text: reply };
       }
-      const reply = shown.trim() || ASK_AGAIN;
-      if (!shown.trim()) yield { type: 'delta', text: ASK_AGAIN };
 
       /*
        * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
@@ -1224,14 +1301,20 @@ export class ConversationService {
         );
       }
 
-      await this.prisma.conversationTurn.create({
+      const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
       if (checkIn.status === CheckInStatus.NOT_STARTED) {
         await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
       }
-      const signalled = strippedStream.hadMarker || this.detectSessionComplete(reply);
-      yield { type: 'done', reply, sessionComplete: signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : false };
+      const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
+      const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
+      if (close.ask) {
+        reply = `${reply}\n\n${close.ask}`;
+        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
+        yield { type: 'delta', text: `\n\n${close.ask}` };
+      }
+      yield { type: 'done', reply, sessionComplete: close.ready };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;
@@ -1325,6 +1408,21 @@ export class ConversationService {
    * that only exists when the constructor did would be undefined in exactly the tests that
    * exercise the prompt.
    */
+  /**
+   * WHAT IS ALREADY ON THE TABLE, for the invention gate.
+   *
+   * The gate checked a reply against the person's own words and their first name. Everything else
+   * the prompt legitimately hands the model (who else is in the check-in, the lead's shared note,
+   * the documents, the objectives, their own prior rows, the citation the product wrote) was
+   * "invented" by that reading, so a reply that used a colleague's name from the roster lost the
+   * sentence. Written by composeSystemPrompt, read once by the reply path, same request.
+   */
+  private _knownForThisTurn?: Map<string, string[]>;
+  private get knownForThisTurn(): Map<string, string[]> {
+    if (!this._knownForThisTurn) this._knownForThisTurn = new Map();
+    return this._knownForThisTurn;
+  }
+
   private get citationForThisTurn(): Map<string, { citation: string; directive: string }> {
     if (!this._citationForThisTurn) this._citationForThisTurn = new Map();
     return this._citationForThisTurn;
@@ -2177,17 +2275,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     //
     // Adds nothing at all when the function is unknown or confidence is low, so an
     // uncertain profile never produces coaching from a guess.
-    const roleProbeBlock = buildRoleProbeBlock(
-      (checkIn.participant as any).detectedFunction,
-      (checkIn.participant as any).detectedFunctionConfidence,
-    );
+    const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
+    const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence);
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
      *
-     * Behind COACHING_ENABLED, off in every environment, and it adds nothing at
-     * all when off - not an empty heading, not a blank line. Off is the check-in
-     * exactly as it is today.
+     * ON, everywhere. This comment used to say "behind COACHING_ENABLED, off in
+     * every environment" while coachingEnabled() returned true, and the comment was
+     * the wrong one: the block has been reaching live prompts since it was wired.
+     * There is no flag. It still adds nothing at all when there is no step to raise.
      *
      * It also adds nothing when there is no step to raise, which is most sessions.
      * A coaching block that always has something in it is a product that always
@@ -2215,7 +2312,27 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Immediately after the intake block, because it is about the same objectives and the two read
        as one thing: what was agreed, and what is happening against it. */
-    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
+    const [seenBefore, closeHeldLine] = await Promise.all([
+      this.whatHasBeenSeenAcrossTheirSessions(checkIn.participantId),
+      this.prisma.checkIn
+        .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
+        .then((r) => (r?.closeHeldAt ? THE_CLOSE_WAS_HELD : ''))
+        .catch(() => ''),
+    ]);
+
+    /* What the invention gate may treat as already said. See knownForThisTurn. */
+    this.knownForThisTurn.set(checkIn.id, [
+      ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
+      ...(ground.leadContextNotes ?? []).map((n) => n.text ?? ''),
+      ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
+      ...((ground as any).objectives ?? []).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
+      priorSession ?? '',
+      toPut?.citation ?? '',
+      ...pendingNotes.map((n: any) => n.text ?? ''),
+      ...pendingDeliveries.map((d: any) => `${d.text ?? ''} ${d.evidence ?? ''}`),
+    ].filter(Boolean));
+
+    return [systemPrompt, VOCABULARY_RULE, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, returningUserContext, roleProbeBlock, coachingBlock, seenBefore, closeHeldLine, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, burden, putThisToThem].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -3322,6 +3439,83 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Writes the confidence alongside the function so a low-confidence read adds
    * no coaching downstream rather than being treated as settled.
    */
+  /**
+   * THE ROLE MAP FROM TURN ONE.
+   *
+   * detectFunction ran only at complete(), so the first session of every participant, and every
+   * session of the 94% who never got a read, had no role map at all: the coaching box and the
+   * probe list were wired to a column that was empty for almost everybody. On the first open, the
+   * stated role alone gives a provisional read (confidence 0.4, under MIN_COACHING_CONFIDENCE, so
+   * buildRoleProbeBlock hedges it as PROVISIONAL). complete() re-reads with the record rows and
+   * overwrites, so the read sharpens rather than appears from nowhere.
+   */
+  private async provisionalFunctionFromTheStatedRole(participant: {
+    id: string;
+    roleAsDescribed: string | null;
+    detectedFunction: string | null;
+    detectedFunctionConfidence: number | null;
+  }) {
+    if (participant.detectedFunction) return;
+    const read = detectFunction(participant.roleAsDescribed, [], null);
+    if (!read.fn) return;
+    await this.prisma.groundParticipant.update({
+      where: { id: participant.id },
+      data: { detectedFunction: read.fn, detectedFunctionConfidence: read.confidence, detectedFunctionAt: new Date() },
+    });
+    participant.detectedFunction = read.fn;
+    participant.detectedFunctionConfidence = read.confidence;
+    this.logger.log(`Provisional function ${read.fn} (${read.confidence}) for participant ${participant.id}: ${read.basis}`);
+  }
+
+  /**
+   * WHICH MAP THIS TURN USES. The stored read when it is confident. Below MIN_COACHING_CONFIDENCE,
+   * what they have said so far in THIS session is read too, in memory and not persisted: the
+   * persisted read is complete()'s job. When the in-session read disagrees with the stored one,
+   * detectFunction's own rule applies (the words win, held more tentatively, minus 0.1) and it is
+   * logged. The person sees none of this; the map only changes which question is asked next.
+   */
+  private async roleReadForThisTurn(
+    checkIn: { id: string; participant: { roleAsDescribed: string | null; detectedFunction: string | null; detectedFunctionConfidence: number | null } },
+    latestMessage?: string,
+  ): Promise<{ fn: string | null; confidence: number | null }> {
+    const stored = { fn: checkIn.participant.detectedFunction, confidence: checkIn.participant.detectedFunctionConfidence };
+    if ((stored.confidence ?? 0) >= MIN_COACHING_CONFIDENCE) return stored;
+    const turns = await this.prisma.conversationTurn
+      .findMany({ where: { checkInId: checkIn.id, role: TurnRole.PERSON }, select: { content: true }, orderBy: { createdAt: 'asc' } })
+      .catch(() => [] as { content: string }[]);
+    const texts = turns.map((t) => t.content ?? '').concat(latestMessage ?? '').filter(Boolean);
+    if (!texts.length) return stored;
+    const read = detectFunction(checkIn.participant.roleAsDescribed, texts, stored);
+    if (read.fn && read.fn !== stored.fn) {
+      this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
+    }
+    return read.fn ? { fn: read.fn, confidence: read.confidence } : stored;
+  }
+
+  /**
+   * WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON'S SESSIONS, framed as offerWhatWorked frames it:
+   * a place to look, not a finding. SURFACED only; a CANDIDATE never reaches a conversation. The
+   * query is on THIS participantId, so nothing another person said can arrive through it.
+   */
+  private async whatHasBeenSeenAcrossTheirSessions(participantId: string): Promise<string> {
+    const surfaced = await (this.prisma.patternDetection?.findMany({
+      where: { participantId, status: 'SURFACED' as any },
+      select: { observationText: true, periodsObserved: true },
+      orderBy: { lastSeenAt: 'desc' },
+      take: 3,
+    }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
+      .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
+    const rows = surfaced.filter((p) => p.observationText?.trim());
+    if (!rows.length) return '';
+    return (
+      'WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON\'S OWN SESSIONS. Use this ONLY to decide which one question '
+      + 'matters most right now. It is a place to look, not a finding: it is not evidence about this session, it is '
+      + 'never the reason for anything you say, and if this conversation does not show it then it is not here. Never '
+      + 'repeat it back to them, never describe them with it, never ask about it by name. Ask about the work.\n'
+      + rows.map((p) => `- ${p.observationText!.trim()} (seen across ${p.periodsObserved} periods)`).join('\n')
+    );
+  }
+
   async reviseDetectedFunction(participantId: string) {
     const p = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },

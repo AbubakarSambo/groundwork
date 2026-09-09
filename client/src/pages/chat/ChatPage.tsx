@@ -990,10 +990,10 @@ export function ChatPage() {
               </div>
             </div>
           )}
-          {/* Manual fallback: "done" only flips when the AI's reply happens to
-              match a fixed set of closing phrases (detectSessionComplete on
-              the backend). That heuristic can miss a legitimate closing reply,
-              leaving no way to complete. Once there's a real record built,
+          {/* Manual fallback: "done" flips on the AI's close marker, or when the
+              person asked to finish and the reply asked nothing (closesInOtherWords
+              on the backend). A closing reply can still miss both, which would
+              leave no way to complete. Once there's a real record built,
               offer a manual path - the backend's own readiness gate is the
               actual authority and returns a clear message if it's too early. */}
           {/* COUNT WHAT LANDED, NOT WHAT WAS TYPED.

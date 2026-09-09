@@ -48,7 +48,7 @@ describe('both paths repair what the model invented', () => {
 
   it.each(paths)('%s records what it dropped', (_name, sig) => {
     /* The rate is what decides whether the other two faults ever become drops as well. */
-    expect(body(sig)).toMatch(/Dropped \$\{[a-zA-Z.]+\.length\} sentence/);
+    expect(body(sig)).toMatch(/hitLogLine\(checkIn\.id, h,/);
   });
 
   it.each(paths)('%s records a causal claim nobody made', (_name, sig) => {
@@ -67,7 +67,8 @@ describe('the streamed text and the repaired text are not confused', () => {
      * decides what leaves and flushes its own.
      */
     const stream = body('async *sendMessageStream(');
-    expect(stream).toMatch(/const reply = shown\.trim\(\) \|\| ASK_AGAIN/);
+    expect(stream).toMatch(/let reply = shown\.trim\(\);/);
+    expect(stream).toMatch(/reply = ASK_AGAIN;/);
     const persist = stream.slice(stream.indexOf('conversationTurn.create'));
     expect(persist).toMatch(/content: reply/);
     expect(SRC).not.toMatch(/const tail = streamedText\.slice\(/);

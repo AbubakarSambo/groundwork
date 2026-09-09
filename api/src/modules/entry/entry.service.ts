@@ -118,7 +118,7 @@ const DEFAULT_SCENARIO = GroundScenario.NEW_PROJECT;
 
 // The ENTRY session-completion phrase list (the anonymous-flow end detector). NOTE: this is
 // ONE of four uncoordinated end-detection sources (see BEHAVIOR_INVENTORY.md D / task_35534866:
-// auth detectSessionComplete, this list, entry.controller '[session complete]', client
+// auth closesInOtherWords (marker, or asked-to-finish plus no question), this list, entry.controller '[session complete]', client
 // SESSION_END_PATTERNS). They do NOT match - the behavior-entry-report-end tripwire surfaces it.
 export const ENTRY_COMPLETION_PHRASES = [
   '[session complete]', 'your account is now on record', 'your record is here',

@@ -1178,6 +1178,7 @@ model CheckIn {
   isClarification             Boolean       @default(false) @map("is_clarification") // true when session is correcting a flagged inference
   clarificationTarget         String?       @map("clarification_target") // inference id from report.inferences being corrected
   isSelfCorrection            Boolean       @default(false) @map("is_self_correction") // true when session is correcting the participant's OWN prior session
+  closeHeldAt                 DateTime?     @map("close_held_at") // set once, the one time the close was held for a date, a number or a document
   selfCorrectionTargetSession Int?          @map("self_correction_target_session") // the session number being corrected
   // True when this self-correction session was started AFTER the participant
   // had already signed off (GroundParticipant.signedOffAt). Not a block - just

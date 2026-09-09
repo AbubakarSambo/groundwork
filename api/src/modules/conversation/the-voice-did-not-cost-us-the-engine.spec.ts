@@ -175,7 +175,7 @@ describe('the rhythm nudge reads what actually happened', () => {
   });
 
   it('and the line it produces goes into the prompt', () => {
-    expect(src).toMatch(/coachingBlock, rhythmNow, dynamicContext/);
+    expect(src).toMatch(/coachingBlock, seenBefore, closeHeldLine, rhythmNow, dynamicContext/);
   });
 
   it('never removes a question from a written turn, because that is the probe', () => {
