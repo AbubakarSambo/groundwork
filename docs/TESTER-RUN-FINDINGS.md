@@ -136,3 +136,148 @@ you are in the right place.
 | "Sign up with your own address and start one" | You do not sign up first. The product says "You are not signed up yet" and asks for an email at the very end. |
 | "Add the other person using your +sam address", in step 1 | Adding happens at Save & invite, after the whole session. |
 | 22 scenarios | The picker shows 23 cards. "Onboarding several people at once" is not in the list, and it runs the same scenario as "Several people in the same role". |
+
+---
+
+# Second run: the invited person, and the second admin
+
+The first run covered only the lead. This one carried on from the same check-in: Hafsah saved
+and invited Zainab Bello, Zainab took the invite and did a full session, then Zainab was made a
+second admin and signed in as one. Nothing was fixed along the way.
+
+## 13. The invite page promises something the product does not do
+
+The page an invited person lands on says, in the second paragraph:
+
+> Nobody ever reads what you write - not Hafsah, not anyone.
+
+That is not what happens. What is written is read by the product, summarised, and put in front of
+other people. This is the single most load-bearing sentence on the page, it is the first thing an
+invited person reads, and it is not true.
+
+The same page also says:
+
+> What you get back. The same report Hafsah gets, at the same moment
+
+The lead gets it first. This is the third place the "same moment" claim appears in the product
+(also on the check-in tab, and in the save dialog).
+
+And once more:
+
+> Your account stays private. Always.
+
+"Account" in the meaning of somebody's version of events, on a page where it will be read as a
+login.
+
+## 14. The participant's private report contains the lead's account of events
+
+This is the serious one. After Zainab finished her session, before any report was released, her
+own private report showed:
+
+> Only Hafsah has checked in so far. Their aim is for the new ward coordinator to take over on-call
+> escalations. Hafsah's record describes an incident where a nurse called them at 2am during a
+> weekend the coordinator was on the rota. The coordinator later told Hafsah she was not sure the
+> issue was hers to handle.
+
+The 2am call, the nurse, the weekend, the rota, and what Zainab said afterwards are all from
+Hafsah's private check-in. Two lines below it, the same page says:
+
+> You can still only see your own. The full comparison opens once everyone has opened the report.
+
+And the composer under it says "Your words are private until everyone activates the report."
+So the page states the rule and breaks it in the same view.
+
+## 15. The report page crashes when a second person has checked in
+
+Report tab, Session 1, "2 of 2 answered, Final". Clicking it gives:
+
+> This page could not load. Cannot read properties of undefined (reading 'length')
+
+`TheReportYouSawAtTheEnd` reads `report.areasRequiringAlignment.length` and
+`report.alignmentReached.length` unguarded, and the shared session report does not carry those
+fields. This is the whole point of the product and it cannot be opened. Blocker.
+
+## 16. Adding a person rewinds the session counter
+
+Before the invite the header read "Session 2 of 3, 0 of 1 checked in for session 2, report being
+written". Immediately after sending the invite it read "Session 1 of 3, 1 of 2 checked in for
+session 1, report ready - you release it". Nothing else happened. Adding somebody moved the
+check-in backwards a session.
+
+## 17. Typing a person's email at Save & invite does not invite them
+
+At Save & invite, Zainab was listed under PEOPLE MENTIONED with an "Add" button and an email
+field. Both were used. After saving, the same panel said:
+
+> No one added yet. You can invite people whenever you're ready.
+
+and the board said "1 participant". The address was accepted, no error was shown, and the invite
+was silently dropped. She had to be invited again from Setup afterwards.
+
+## 18. Two contradictory promises, one screen apart
+
+The invited person is told nobody ever reads what they write. The second admin is told, in a
+banner on the same check-in:
+
+> You can see everything here, which is the point of being an admin
+
+Both cannot be true. In practice the admin view showed status only, not words, so the banner
+overclaims and the invite page underclaims, and neither matches the product.
+
+## 19. A second admin's home page is named after somebody else
+
+Signed in as Zainab, the workspace panel says "Setting up Hafsah's workspace" and the progress
+copy is about Hafsah. The organisation is called "Hafsah" because it was named from the first
+person's own name at signup. A second admin sees another person's name where their company
+should be.
+
+## 20. Enter does not send in the participant check-in
+
+Typing an answer and pressing Enter does nothing. The text stays in the box with no feedback.
+Only the small arrow button sends. In the lead's entry chat Enter works.
+
+## 21. The participant's own report is headed as if it covered everyone
+
+Zainab's private report is titled "Session 1 - cross reference / WHERE THIS STANDS, ACROSS
+EVERYONE", above a paragraph that says only one person has checked in. Underneath it says
+"Emerging - 0 areas settled".
+
+## 22. The product assumes gender from a first name
+
+"She named 'taking on-call escalations' as the main aim of the role." Nobody stated Hafsah's
+pronouns. The same paragraph elsewhere uses "Their aim is...", so it is inconsistent within one
+report as well as wrong to guess.
+
+## 23. Sessions tab, as an admin, says two opposite things about the same person
+
+Each row reads "Some sessions done, some still open" and, directly under it, "nothing expected of
+them yet". Between them sit two bare numerals, 1 and 2, with no label. Hafsah's row shows no email
+address; Zainab's shows hers.
+
+## 24. Somebody invited to one check-in appears as a full member of the organisation
+
+Zainab was invited to a single check-in. On the People page she appears as a normal member with a
+role dropdown offering "Admin - manages people and billing". Nothing distinguishes her from
+somebody deliberately put on the organisation.
+
+## 25. Form fields have no labels attached to them
+
+On the invite page, the People page role dropdowns, and the password screen, the visible label text
+is not connected to the field. A screen reader reaches the words "First name" and then an unnamed
+box. Keyboard tabbing also skipped the confirm-password field.
+
+## Not a defect
+
+A React crash on `MySummaryFirst is not defined` appeared once after a magic link opened. It was
+stale dev-server state from the deleted `MyPrivateReport`; a hard reload cleared it and typecheck is
+clean. Noting it only because a tester would report it.
+
+## Perspectives now covered
+
+| Perspective | Covered | Notes |
+| --- | --- | --- |
+| Lead setting up and checking in | Yes | First run, findings 1 to 12 |
+| Invited person taking the invite and checking in | Yes | Findings 13, 14, 20, 21, 22 |
+| Second admin | Yes | Findings 18, 19, 23, 24 |
+| Guest from another organisation | No | Needs a second organisation |
+| Broadcast link, no invite | No | Link exists on the Setup tab, untested |
