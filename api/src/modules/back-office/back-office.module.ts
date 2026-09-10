@@ -3,6 +3,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { BackOfficeDoorService } from './back-office-door.service';
 import { BackOfficeDoorController } from './back-office-door.controller';
+import { TheTeamIsToldService } from './the-team-is-told.service';
 
 /**
  * THE DOOR IN FRONT OF BOTH BACK OFFICES. Its own module, and not part of ops, because the ops
@@ -12,6 +13,6 @@ import { BackOfficeDoorController } from './back-office-door.controller';
 @Module({
   imports: [PrismaModule, EmailModule],
   controllers: [BackOfficeDoorController],
-  providers: [BackOfficeDoorService],
+  providers: [BackOfficeDoorService, TheTeamIsToldService],
 })
 export class BackOfficeModule {}

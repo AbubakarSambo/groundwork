@@ -539,6 +539,25 @@ export class EmailService {
     }
   }
 
+  /**
+   * THE TEAM IS TOLD. One short mail to everybody on the back-office roster when something outside
+   * needs a person here: a new organisation, a request for the API, a request for a call or coaching.
+   * Plain lines and one link to where they act. See back-office/the-team-is-told.service.ts.
+   */
+  async sendTeamAlert(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<{ sent: boolean }> {
+    try {
+      await this.sendEmail({
+        to: email,
+        subject,
+        html: this.layout(lines.map((l) => `<p>${l}</p>`).join('') + `<p><a href="${linkUrl}">${linkLabel}</a></p>`),
+      }, undefined, 'sendTeamAlert');
+      return { sent: true };
+    } catch (err: any) {
+      this.logger.error(`Team alert to ${email} did not send: ${err?.message}`);
+      return { sent: false };
+    }
+  }
+
   async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,

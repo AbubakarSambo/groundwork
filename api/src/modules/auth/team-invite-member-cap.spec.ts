@@ -33,7 +33,7 @@ function makeService(canInviteResult: { allowed: boolean; reason?: string }, exi
   };
   const emailService: any = { sendUserInvite: jest.fn(async () => undefined), sendMagicLinkEmail: jest.fn(async () => undefined) };
   const billing: any = { canInviteMember: jest.fn(async () => canInviteResult) };
-  const service = new AuthService(prisma, {} as any, {} as any, emailService, {} as any, billing);
+  const service = new AuthService(prisma, {} as any, {} as any, emailService, {} as any, billing, { emit: () => undefined } as any);
   return { service, billing, prisma };
 }
 

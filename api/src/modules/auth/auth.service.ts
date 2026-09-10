@@ -11,6 +11,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GroundworkEvents, OrgSignedUpEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -75,7 +77,17 @@ export class AuthService {
     private emailService: EmailService,
     private whatsapp: WhatsAppService,
     private billing: BillingService,
+    private events: EventEmitter2,
   ) {}
+
+  /** The back office hears about every new organisation. Best-effort; a sign-up never fails on it. */
+  private signedUp(org: { id: string; name: string }, adminEmail: string) {
+    try {
+      this.events.emit(GroundworkEvents.ORG_SIGNED_UP, { organizationId: org.id, organizationName: org.name, adminEmail } satisfies OrgSignedUpEvent);
+    } catch (err: any) {
+      this.logger.warn(`org.signedUp did not emit for ${org.id}: ${err?.message}`);
+    }
+  }
 
   async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
     /**
@@ -352,6 +364,7 @@ export class AuthService {
       const created = await this.prisma.$transaction(async (tx) => {
         /* The contact email is the admin's until they say otherwise - see the note on register. */
         const org = await tx.organization.create({ data: { name: orgName, slug, email: pending.email } });
+        this.signedUp(org, pending.email);
         const u = await tx.user.create({
           data: {
             organizationId: org.id,
@@ -622,6 +635,7 @@ export class AuthService {
           const slug = await this.generateUniqueSlug(domainBase);
           /* Their own workspace, so their own address. See the note on register. */
           const org = await tx.organization.create({ data: { name: `${firstName}'s workspace`, slug, email: lower } });
+          this.signedUp(org, lower);
           organizationId = org.id;
         }
         const u = await tx.user.create({
@@ -849,6 +863,7 @@ export class AuthService {
         user = await this.prisma.$transaction(async (tx) => {
           /* The contact email is the admin's until they say otherwise - see the note on register. */
           const organization = await tx.organization.create({ data: { name: orgName, slug, email } });
+          this.signedUp(organization, email);
           const created = await tx.user.create({
             data: {
               organizationId: organization.id,

@@ -138,8 +138,6 @@ export const groundsApi = {
    * a named lead (grounds-by-api.service.ts). A customer's server naming somebody is a different
    * act from a person in the room handing their own situation away - there is no room.
    */
-  confirmLead: (groundId: string, edits?: { brief?: string; managingOnly?: boolean; remit?: string }) =>
-    apiClient.post<{ groundId: string; checkInId: string | null }>(`/grounds/${groundId}/confirm-lead`, edits ?? {}).then(r => r.data),
 
   /**
    * `getOrgRoster` USED TO SIT HERE. W-UX-C.

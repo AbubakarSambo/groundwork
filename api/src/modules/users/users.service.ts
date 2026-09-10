@@ -1,6 +1,8 @@
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GroundworkEvents, CallAskedEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -26,6 +28,8 @@ export class UsersService {
     private billing: BillingService,
     /* The one implementation of "invite somebody", reused rather than reproduced. */
     @Inject(forwardRef(() => AuthService)) private auth: AuthService,
+    /* The back office is told when somebody asks for a call. See back-office/the-team-is-told.service.ts. */
+    private events: EventEmitter2,
   ) {}
 
   /**
@@ -102,6 +106,7 @@ export class UsersService {
       select: { createdAt: true },
     });
     this.logger.log(`Call requested by org ${organizationId} about ${subject}.`);
+    this.events.emit(GroundworkEvents.CALL_ASKED, { organizationId, askedByUserId: requestedById, subject, note: note?.trim() || null } satisfies CallAskedEvent);
     return { asked: true, at: row.createdAt, alreadyOpen: false, subject };
   }
 

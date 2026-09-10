@@ -81,7 +81,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-green-t)', fontWeight: 700, flexShrink: 0 }}>✓</span>
-              <span>Your check-in is saved. Nobody reads your words directly. The report shows where people agree and where they differ.</span>
+              <span>Your check-in is saved. The report shows where people agree, where they differ, and what to do next.</span>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
               <span style={{ color: 'var(--gw-muted)', fontWeight: 700, flexShrink: 0 }}>2</span>

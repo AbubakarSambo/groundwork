@@ -257,7 +257,6 @@ export function GroundAdminPage() {
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
-  const [addingParticipant, setAddingParticipant] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
   const { data: colleagues } = useQuery({ queryKey: ['colleagues'], queryFn: () => authApi.colleagues(), staleTime: 5 * 60 * 1000 })
   /** Whether the last person added is waiting for the start date rather than having been emailed. */
@@ -853,7 +852,6 @@ export function GroundAdminPage() {
         toast.info(`${newParticipantEmail.trim()} is at ${guestFrom}, not here. They join this check-in as a guest and see nothing else in your workspace.`)
       }
       setLastInvitedEmail(newParticipantEmail.trim())
-      setAddingParticipant(false)
       setNewParticipantEmail('')
       setNewParticipantNote('')
       qc.invalidateQueries({ queryKey: ['ground', id] })
@@ -962,150 +960,8 @@ export function GroundAdminPage() {
     )
   }
 
-  /**
-   * ONLY THE LEAD SEES THE LEAD'S CONFIRMATION.
-   *
-   * This used to be `status === 'AWAITING_LEAD'` alone, so anyone who opened the
-   * ground got the lead's page - including the admin who had just handed it off.
-   * She was shown "You lead this ground / An admin set this up and named you to
-   * lead it" (she IS the admin), a live "Confirm and begin" button, and the
-   * lead's own choice about whether to give an account. Those are the lead's
-   * decisions about the lead's participation, and the hand-off exists precisely
-   * so the lead makes them.
-   *
-   * The admin still needs to see the ground she set up - she is coordinating it -
-   * so she gets the waiting state below rather than nothing.
-   */
-  if (ground.status === 'AWAITING_LEAD' && isInitiator) {
-    return (
-      <LeadConfirmView
-        ground={ground}
-        groundId={id!}
-        onConfirmed={(checkInId) => {
-          // managing only -> no check-in was created; land the lead on their
-          // own admin view instead of trying to open a check-in that does
-          // not exist. also-checking-in -> unchanged, straight into the
-          // real engine.
-          if (checkInId) navigate(`/checkin/${checkInId}`)
-          else qc.invalidateQueries({ queryKey: ['ground', id] })
-        }}
-      />
-    )
-  }
-
-  /**
-   * The coordinating admin's view while the lead has not yet confirmed.
-   *
-   * She set this up and handed it over, so the honest thing to show her is the
-   * state of the hand-off: who it went to, and that nothing starts until they
-   * accept. Previously she was shown the lead's own confirmation screen (see
-   * above); the opposite mistake would be to show her nothing at all, which
-   * makes a ground she just created look like it failed to save.
-   */
-  if (ground.status === 'AWAITING_LEAD') {
-    const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-    return (
-      <Shell>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
-          <Sec title="Waiting for your lead" />
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
-          <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-            You set this check-in up and asked {personLabel(lead)} to run it.
-            They have been emailed a link. Nothing starts until they open it and confirm, and
-            they choose their own start time.
-          </p>
-          <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-            You will see who has checked in, and the shared report once it releases. You will
-            not see what anyone wrote - what people write stays private until the report is ready.
-          </div>
-          {/*
-            A real control, not a promise. The first version of this waiting
-            state said "you can add the other people now" and offered no way to
-            do it - which is the same failure as GW-013 in a new coat: telling
-            the admin she may do something the screen does not let her do.
-
-            This is the write that GW-013 unblocked server-side, so it belongs
-            here: she is the one holding the list of people to invite, and the
-            lead may not open their mail for days.
-          */}
-          <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', marginBottom: 10 }}>
-            You can add the other people now, or leave it to your lead.
-          </div>
-
-          {/*
-            Say that it worked.
-            
-            A Playwright run added a participant here successfully - the row was
-            created and the invitation email went out - and the screen was
-            unchanged afterwards: still just "+ Add someone", with the person
-            nowhere on it. The admin has no way to tell the difference between
-            "added" and "silently failed", and the obvious response is to add them
-            again. The main ground view already confirms this way; the waiting view
-            did not. GW-018.
-          */}
-          {lastInvitedEmail && (
-            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                {whyItWaits
-                  ? `${lastInvitedEmail} is on the check-in.`
-                  : lastInviteWaits
-                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                    : `Invite sent to ${lastInvitedEmail}`}
-              </div>
-              <div style={{ fontSize: 12, color: whyItWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)', marginTop: 2, lineHeight: 1.55 }}>
-                {whyItWaits ?? 'They check in on their own, and nothing is shown to them until the report is ready.'}
-              </div>
-            </div>
-          )}
-
-          {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              {(ground.participants ?? []).filter((p: any) => p.partyType !== 'INITIATOR').map((p: any) => (
-                <div key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', padding: '6px 0', borderBottom: '1px solid var(--gw-border)' }}>
-                  {personLabel(p)}{p.roleAsDescribed && personLabel(p) !== p.roleAsDescribed ? ` · ${p.roleAsDescribed}` : ''}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {addingParticipant ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <input
-                autoFocus
-                type="email"
-                value={newParticipantEmail}
-                onChange={e => setNewParticipantEmail(e.target.value)}
-                placeholder="email@company.com"
-                style={{ padding: '10px 12px', borderRadius: 7, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                  onClick={() => addParticipantMut.mutate()}
-                  style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.5 }}
-                >
-                  {addParticipantMut.isPending ? 'Adding…' : 'Add'}
-                </button>
-                <button
-                  onClick={() => { setAddingParticipant(false); setNewParticipantEmail('') }}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setAddingParticipant(true)}
-              style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              + Add someone
-            </button>
-          )}
-        </div>
-      </Shell>
-    )
-  }
+  /* There is no lead page (10 Sep 2026): a ground is open from the moment it is made, and the person
+     leading it goes straight to their check-in like everybody else. */
 
   // The report's own read, or nothing at all. "{conf}/5 {band}" counted
   // completed check-ins and called the result "Aligned".
@@ -2653,9 +2509,11 @@ export function GroundAdminPage() {
               )}
               {lastInvitedEmail && (
                 <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                  {lastInviteWaits
-                    ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                    : `Invite sent to ${lastInvitedEmail}`}
+                  {whyItWaits
+                    ? `${lastInvitedEmail} is on the check-in. ${whyItWaits}`
+                    : lastInviteWaits
+                      ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
+                      : `Invite sent to ${lastInvitedEmail}`}
                 </div>
               )}
             </div>
@@ -3181,149 +3039,6 @@ export function GroundAdminPage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return <div style={{ minHeight: '100vh', background: 'var(--gw-bg)' }}>{children}</div>
-}
-
-/** Shown when a ground is AWAITING_LEAD - an admin set this up and named this
- * person to lead it. They review the admin's context, can edit it or add more
- * participants, and confirm when ready. Their own session 1 only opens once
- * they confirm - not synchronized with the admin in any way, deliberately
- * worded to avoid the false-simultaneity framing found elsewhere in this app. */
-function LeadConfirmView({ ground, groundId, onConfirmed }: { ground: any; groundId: string; onConfirmed: (checkInId: string | null) => void }) {
-  const [brief, setBrief] = useState(ground.brief ?? '')
-  const [showAddParticipant, setShowAddParticipant] = useState(false)
-  const [newEmail, setNewEmail] = useState('')
-  const [newRole, setNewRole] = useState('')
-  const [participants, setParticipants] = useState<{ email: string; roleAsDescribed?: string | null }[]>(
-    (ground.participants ?? []).filter((p: any) => p.partyType === 'PARTICIPANT'),
-  )
-  const [confirming, setConfirming] = useState(false)
-  const [addingParticipant, setAddingParticipant] = useState(false)
-  // Also-checking-in is the common case and the default; managing-only is a
-  // deliberate opt-out from having your own account in the comparison.
-  const [alsoCheckingIn, setAlsoCheckingIn] = useState(true)
-  // The lead's own remit. If the admin did not state it, this is the last point
-  // at which it can be captured - without it the lead is the only person the
-  // board cannot read.
-  const [myRemit, setMyRemit] = useState('')
-
-  async function addParticipant() {
-    if (!newEmail.includes('@')) return
-    setAddingParticipant(true)
-    try {
-      await groundsApi.addParticipant(groundId, { email: newEmail.trim(), roleAsDescribed: newRole.trim() || undefined })
-      setParticipants(v => [...v, { email: newEmail.trim(), roleAsDescribed: newRole.trim() || null }])
-      setNewEmail(''); setNewRole(''); setShowAddParticipant(false)
-      toast.success('Invited')
-    } catch {
-      toast.error('They were not added. Nobody has been emailed — try again.')
-    } finally {
-      setAddingParticipant(false)
-    }
-  }
-
-  async function confirmAndBegin() {
-    setConfirming(true)
-    try {
-      const res = await groundsApi.confirmLead(groundId, { brief: brief.trim() || undefined, managingOnly: !alsoCheckingIn, remit: myRemit.trim() || undefined })
-      onConfirmed(res.checkInId)
-    } catch {
-      toast.error('Could not confirm. Try again.')
-      setConfirming(false)
-    }
-  }
-
-  return (
-    <Shell>
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '48px 20px' }}>
-        <Sec title="You lead this check-in" />
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 6px', letterSpacing: '-.01em' }}>{ground.label}</h1>
-        <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 16 }}>
-          An admin set this up and named you to lead it. You decide when to begin - this is not a synchronized moment with anyone else.
-        </p>
-
-        <div className="gw-box gw-box-blue" style={{ marginBottom: 24 }}>
-          Groundwork records what each person says about a situation independently, then shows where they agree and where they differ. As lead, you will see who has checked in and the shared report once it releases. You will not see what anyone wrote - what people write stays private until the report is ready.
-        </div>
-
-        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Context (edit if needed)</div>
-        <textarea value={brief} onChange={e => setBrief(e.target.value)} rows={4}
-          placeholder="What is this about?"
-          style={{ width: '100%', padding: '10px 12px', fontSize: 13.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 20 }} />
-
-        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
-          Participants {participants.length > 0 ? `(${participants.length})` : ''}
-        </div>
-        {participants.length > 0 && (
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
-            {participants.map((p, i) => (
-              <div key={i} style={{ padding: '9px 12px', fontSize: 13, borderBottom: i < participants.length - 1 ? '1px solid var(--gw-border)' : 'none', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{personLabel(p)}</span>
-                {p.roleAsDescribed && <span style={{ color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
-              </div>
-            ))}
-          </div>
-        )}
-        {!showAddParticipant ? (
-          <button onClick={() => setShowAddParticipant(true)} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 24 }}>
-            + Add someone
-          </button>
-        ) : (
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: 12, marginBottom: 24 }}>
-            <input type="email" placeholder="email@company.com" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
-            <input type="text" placeholder="Role (optional)" value={newRole} onChange={e => setNewRole(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={addParticipant} disabled={addingParticipant || !newEmail.includes('@')} style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: addingParticipant || !newEmail.includes('@') ? 0.5 : 1 }}>
-                {addingParticipant ? 'Adding…' : 'Add'}
-              </button>
-              <button onClick={() => setShowAddParticipant(false)} style={{ padding: '7px 14px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>Your part in this</div>
-        {/* Only asked when the lead is giving their own account - a managing-only
-            lead has no contribution to read, so no remit is needed. */}
-        {alsoCheckingIn && (
-          <div style={{ marginBottom: 8 }}>
-            <input
-              type="text"
-              value={myRemit}
-              onChange={(e) => setMyRemit(e.target.value)}
-              placeholder="What are you responsible for in this check-in?"
-              style={{ width: '100%', padding: '9px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-            />
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.5 }}>
-              Without this you are the one person the board cannot read against a role, and the questions you get will be generic.
-            </div>
-          </div>
-        )}
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', borderBottom: '1px solid var(--gw-border)', cursor: 'pointer', background: alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
-            <input type="radio" checked={alsoCheckingIn} onChange={() => setAlsoCheckingIn(true)} style={{ marginTop: 3 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>I'm also checking in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You answer too, same as everyone else. Recommended - most leads are also a party to the situation.</div>
-            </div>
-          </label>
-          <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 12px', cursor: 'pointer', background: !alsoCheckingIn ? 'var(--gw-bg)' : 'transparent' }}>
-            <input type="radio" checked={!alsoCheckingIn} onChange={() => setAlsoCheckingIn(false)} style={{ marginTop: 3 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>Managing only</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>You oversee this check-in but do not answer yourself. You'll still see who has checked in and the shared report once it releases - you're just not one of the people being compared.</div>
-            </div>
-          </label>
-        </div>
-
-        <button onClick={confirmAndBegin} disabled={confirming} className="gw-btn" style={{ width: '100%', opacity: confirming ? 0.6 : 1 }}>
-          {confirming ? 'Confirming…' : 'Confirm and begin →'}
-        </button>
-      </div>
-    </Shell>
-  )
 }
 
 function ShareSection({ joinToken }: { joinToken: string }) {

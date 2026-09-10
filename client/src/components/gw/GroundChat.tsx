@@ -187,8 +187,8 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty }:
       )}
       <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 8 }}>
         {viewerIsParty === false
-          ? 'What each person says stays on their own side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'
-          : 'What you say stays on your side until everyone has checked in. The report goes to everybody at the same time, so nobody reads it before anybody else.'}
+          ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
+          : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
       </div>
     </div>
   )

@@ -589,7 +589,10 @@ export class GroundsService {
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
           endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
-          status: GroundStatus.AWAITING_LEAD,
+          /* OPEN FROM THE START. There is no lead page any more (10 Sep 2026): nobody sets a check-in
+             up for somebody else to confirm. A ground made through the API with people on it waits
+             for them; one with nobody yet is simply open, and the lead's first check-in exists now. */
+          status: (dto.participants ?? []).length ? GroundStatus.AWAITING_PARTIES : GroundStatus.OPEN,
           brief: dto.brief ?? null,
           joinToken: crypto.randomBytes(24).toString('hex'),
           freeParticipantCap: DEFAULT_FREE_MEMBER_LIMIT,
@@ -599,17 +602,16 @@ export class GroundsService {
         } as any,
       });
 
-      // The lead's own participant row - userId already set, no invite token
-      // needed. Session 1's CheckIn is NOT created yet; confirmLead() creates
-      // it once the lead actually confirms, mirroring create()'s timing.
-      await tx.groundParticipant.create({
+      // The lead's own participant row and their first check-in, gated by the start date exactly
+      // as create() gates the initiator's. Their part is asked inside the check-in if it was not sent.
+      const leadRow = await tx.groundParticipant.create({
         data: {
           groundId: ground.id, userId: leadUser.id, email: leadEmail, partyType: PartyType.INITIATOR,
-          // Without a remit the lead cannot be read at all - no contribution
-          // read, no role-tuned probing. They can still set it themselves at
-          // confirm-lead if the admin left it blank.
           roleAsDescribed: dto.leadRemit?.trim() || null,
         },
+      });
+      await tx.checkIn.create({
+        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
       });
 
       // Pre-added participants (e.g. the whole cohort), created alongside the

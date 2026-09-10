@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ApiAccessStatus } from '@prisma/client';
 import { API_TERMS_VERSION } from './the-api-terms';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { API_ACCESS_ASKED_EVENT, ApiAccessAskedEvent } from '../../common/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { whyThisRequestCannotBeRecorded, whyTheApiIsRefused } from './access-is-asked-for-not-bought';
 
@@ -14,7 +16,10 @@ import { whyThisRequestCannotBeRecorded, whyTheApiIsRefused } from './access-is-
 export class ApiAccessService {
   private readonly logger = new Logger(ApiAccessService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
+  ) {}
 
   /**
    * Ask, or ask again.
@@ -39,6 +44,9 @@ export class ApiAccessService {
     if (existing?.status === ApiAccessStatus.APPROVED) {
       throw new BadRequestException('This organisation already has API access.');
     }
+
+    /* The back office hears about it now, not when somebody happens to open the queue. */
+    this.events.emit(API_ACCESS_ASKED_EVENT, { organizationId, askedByUserId: userId, whatFor: whatFor.trim() } satisfies ApiAccessAskedEvent);
 
     if (existing) {
       return this.prisma.apiAccessRequest.update({

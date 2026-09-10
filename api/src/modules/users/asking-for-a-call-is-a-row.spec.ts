@@ -12,6 +12,8 @@ const svc = (open: any = null) => {
   const created: any[] = [];
   const s = Object.create(UsersService.prototype) as any;
   s.logger = { log: () => {} };
+  /* The back office is told; not what this spec is about. */
+  s.events = { emit: () => undefined };
   s.prisma = {
     callRequest: {
       /*

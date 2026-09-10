@@ -43,7 +43,8 @@ describe('the setup tab', () => {
     /* This component returns early for several ground states. A hook under one of those is a hook
        that sometimes does not run, and React fails the whole page for it - which is what happened. */
     const hook = PAGE.indexOf('const [openSetupBand')
-    const firstReturn = PAGE.indexOf('  if (ground.status ===')
+    /* The first early return moved when the lead page went (10 Sep 2026). */
+    const firstReturn = PAGE.indexOf('  if (definitelyGone)')
     expect(hook).toBeGreaterThan(-1)
     expect(hook).toBeLessThan(firstReturn)
   })

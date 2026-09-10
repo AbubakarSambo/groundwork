@@ -5,6 +5,12 @@
  */
 export const GroundworkEvents = {
   CHECK_IN_COMPLETED: 'checkin.completed',
+  /* THE TEAM IS TOLD. Three things the back office wants to hear about the moment they happen: a
+     new organisation, a request for the API, a request for a call or coaching. Listened to in
+     back-office/the-team-is-told.service.ts. */
+  ORG_SIGNED_UP: 'org.signedUp',
+  API_ACCESS_ASKED: 'apiAccess.asked',
+  CALL_ASKED: 'call.asked',
   /** A session became open to somebody. The moment a host system can tell them, in their own channel. */
   CHECK_IN_OPENED: 'checkin.opened',
   /**
@@ -78,4 +84,28 @@ export interface BlockerEvent {
   groundId: string;
   /** Only on an escalation. */
   waitingDays?: number;
+}
+
+/* A plain constant for the one file that may not carry the product's name (see
+   nobody-connects-without-being-let-in.spec: no exemption for us anywhere in the access gate). */
+export const API_ACCESS_ASKED_EVENT = 'apiAccess.asked';
+
+export interface OrgSignedUpEvent {
+  organizationId: string;
+  organizationName: string;
+  adminEmail: string;
+}
+
+export interface ApiAccessAskedEvent {
+  organizationId: string;
+  askedByUserId: string;
+  whatFor: string;
+}
+
+export interface CallAskedEvent {
+  organizationId: string;
+  askedByUserId: string;
+  /** CALL, COACHING, HANDS_ON or INTEGRATION. */
+  subject: string;
+  note: string | null;
 }

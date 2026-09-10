@@ -229,10 +229,8 @@ export function InvitePage() {
           in a product it reads as a login, and it was carrying the false claim anyway.
         */}
         <div className="gw-box gw-box-blue" style={{ marginBottom: 16 }}>
-          What you write is used to build the shared report and nothing else. It shows{' '}
-          <strong>where what you said and what they said agree or differ</strong>. Your own words
-          about your own work can appear in it. Anything you say about somebody else never does,
-          and it never says who said what about whom.
+          What you write builds the shared report: <strong>where what you said and what they said
+          agree or differ</strong>, and what to do next.
         </div>
 
         {/* YOU ARE IN THIS, NOT REPORTING ON SOMEBODY ELSE.

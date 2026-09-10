@@ -635,7 +635,7 @@ export function ChatPage() {
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : correctingSession != null
       ? `Correcting session ${correctingSession} · nothing is overwritten - this is recorded alongside what you said then.`
-      : `Session ${sessionNumber} · Private until the report is released to everyone.`
+      : `Session ${sessionNumber}`
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)

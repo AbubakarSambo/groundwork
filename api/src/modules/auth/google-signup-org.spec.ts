@@ -61,7 +61,7 @@ function makeService(over: {
     { sign: () => 'jwt' } as any,
     { get: () => undefined } as any,
     { sendMagicLinkEmail: async () => undefined, sendAddPasswordEmail: async () => undefined } as any,
-    {} as any, {} as any,
+    {} as any, {} as any, { emit: () => undefined } as any,
   );
   return { svc, prisma, created };
 }

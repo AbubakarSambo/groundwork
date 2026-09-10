@@ -99,6 +99,7 @@ export function IntegrationsPage() {
   const access = useQuery({ queryKey: ['integrations', 'access'], queryFn: integrationsApi.myApiAccess, enabled: isAdmin, retry: false })
   const [whatFor, setWhatFor] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [engineerOpen, setEngineerOpen] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   const terms = useQuery({ queryKey: ['integrations', 'terms'], queryFn: integrationsApi.apiTerms, enabled: isAdmin })
   const openDocs = useMutation({
@@ -792,7 +793,15 @@ export function IntegrationsPage() {
       </div>
 
       {approved && (<>
-      <div style={S.sec}>For your engineer</div>
+      {/* FOLDED BY DEFAULT. The page reads as the product first; the calls are one click away for the
+          person who needs them. */}
+      <div style={{ ...S.sec, display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <span>For your engineer</span>
+        <button type="button" onClick={() => setEngineerOpen(o => !o)} style={{ fontSize: 12.5, fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+          {engineerOpen ? 'Hide the calls' : 'Show the calls'}
+        </button>
+      </div>
+      {engineerOpen && (<>
       <div style={S.card}>
         {/*
           * THE FIRST TWO REQUESTS, WRITTEN OUT.
@@ -974,6 +983,7 @@ export function IntegrationsPage() {
           {openDocs.isPending ? 'Opening…' : 'Open the API reference →'}
         </button>
       </div>
+      </>)}
       </>)}
     </div>
   )

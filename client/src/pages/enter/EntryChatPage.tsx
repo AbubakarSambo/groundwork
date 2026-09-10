@@ -2262,8 +2262,8 @@ export function EntryChatPage() {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
               <div>
-                <CardTitle weight={700}>The shared report - not your words</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Nobody reads what you write. When everyone is in, the report shows where everyone agrees and where they differ. It does not quote anyone.</div>
+                <CardTitle weight={700}>The shared report</CardTitle>
+                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
               </div>
             </div>
           </div>
@@ -2390,7 +2390,7 @@ export function EntryChatPage() {
         const labels = ['Describe the situation', 'Your check-in', 'Save & invite']
         const hints = [
           "You're describing the situation. Nothing is saved to an account yet.",
-          "You're saying how you see it. It stays private until the report.",
+          "You're saying how you see it.",
           'Save this and invite the people involved.',
         ]
         return (
@@ -3691,8 +3691,8 @@ export function EntryChatPage() {
               ].some(k => s.includes(k))
               const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
               const inviteSubtext = isSensitive
-                ? 'Send them a link so they can give their own version of the same work. They cannot see what you wrote. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
-                : 'Each person gives their own version of the shared work, including their own part in it. Nobody reads anyone else\'s words directly. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
+                ? 'Send them a link so they can give their own version of the same work. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
+                : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
             <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
               <FieldLabel>{inviteHeading}</FieldLabel>

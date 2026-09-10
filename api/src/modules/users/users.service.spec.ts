@@ -38,7 +38,7 @@ describe('UsersService - GW-03 GDPR erasure', () => {
   it('anonymises email, name, and credential fields on the user row', async () => {
     const user = { id: USER_ID, email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' };
     const { prisma, updates } = makePrisma(user, []);
-    const service = new UsersService(prisma, {} as any, {} as any, {} as any);
+    const service = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
 
     await service.eraseAccount(USER_ID);
 
@@ -55,7 +55,7 @@ describe('UsersService - GW-03 GDPR erasure', () => {
   it('anonymises each participant link with a per-row unique email', async () => {
     const user = { id: USER_ID, email: 'alice@example.com' };
     const { prisma, updates } = makePrisma(user, [{ id: LINK_ID }]);
-    const service = new UsersService(prisma, {} as any, {} as any, {} as any);
+    const service = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
 
     await service.eraseAccount(USER_ID);
 
@@ -68,7 +68,7 @@ describe('UsersService - GW-03 GDPR erasure', () => {
   it('revokes all auth tokens', async () => {
     const user = { id: USER_ID, email: 'alice@example.com' };
     const { prisma, deleted } = makePrisma(user, []);
-    const service = new UsersService(prisma, {} as any, {} as any, {} as any);
+    const service = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
 
     await service.eraseAccount(USER_ID);
 
@@ -77,7 +77,7 @@ describe('UsersService - GW-03 GDPR erasure', () => {
 
   it('throws NotFoundException when the user does not exist', async () => {
     const { prisma } = makePrisma(null, []);
-    const service = new UsersService(prisma, {} as any, {} as any, {} as any);
+    const service = new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
     await expect(service.eraseAccount('nonexistent')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

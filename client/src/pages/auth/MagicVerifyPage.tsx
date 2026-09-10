@@ -377,9 +377,9 @@ export function MagicVerifyPage() {
           <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
             {[
-              { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently - they never see your account.' },
-              { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. Nobody reads anyone else\'s words directly. The report shows where people agree and where they differ.' },
-              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody at the same time. Nobody sees it before anybody else.' },
+              { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently.' },
+              { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.' },
+              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody at the same time.' },
             ].map(s => (
               <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
                 <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{s.n}</div>

@@ -99,6 +99,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   /* A one-time code for an operation that cannot be undone. Nothing may stop it, and saying so
      here is the difference between a decision and a cast past the type. */
   sendAdminOtp: 'the way back in',
+  /* To our own roster, about something outside asking for us. Nobody outside asked for the mail. */
+  sendTeamAlert: 'we decided to send it',
 
   /* They took part; this is the outcome. */
   sendReportReady: 'asked for',

@@ -617,7 +617,7 @@ export function AuthPage() {
         )}
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--gw-border)', lineHeight: 1.6 }}>
-          What you write stays yours. The report is built from everyone's check-ins together, and it never says who said what about whom.
+          One check-in each. One report showing where the team agrees, where it differs, and what to do next.
         </div>
 
       </div>
