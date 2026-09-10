@@ -8,7 +8,9 @@
   "git": {
     "deploymentEnabled": {
       "*": false,
-      "main": true
+      "**": false,
+      "main": true,
+      "staging": true
     }
   }
 }
