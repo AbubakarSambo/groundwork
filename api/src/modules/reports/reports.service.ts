@@ -78,6 +78,7 @@ import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
+import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered } from './how-many-have-answered';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
@@ -1357,22 +1358,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // difficultyDisclosures: true if any record entry for this ground contains a difficulty keyword.
     const allGroundTexts = await this.prisma.recordEntry.findMany({
       where: { disputedAt: null, participant: { groundId } },
-      select: { text: true, evidenceType: true },
+      select: { text: true, anchoredDocumentId: true, anchoredOrigin: true, recallBased: true },
     });
     const lowerTexts = allGroundTexts.map((e) => e.text.toLowerCase());
     const difficultyDisclosures = DIFFICULTY_KEYWORDS.some((kw) => lowerTexts.some((t) => t.includes(kw)));
 
-    // documentBackedPct: share of record entries backed by an attached document
-    // (DOCUMENT_AT_AGREEMENT or DOCUMENT_AFTER). CHECK_IN and ANCHORED_RECALL
-    // entries are not document-backed - only actual document references count.
-    // Returns 0 when no documents exist to avoid the 100%-with-no-docs bug.
-    const totalEntries = allGroundTexts.length;
-    const documentBackedCount = allGroundTexts.filter(
-      (e) => e.evidenceType === 'DOCUMENT_AT_AGREEMENT' || e.evidenceType === 'DOCUMENT_AFTER',
-    ).length;
-    const documentBackedPct = totalEntries > 0 && documentBackedCount > 0
-      ? Math.round((documentBackedCount / totalEntries) * 100)
-      : 0;
+    // documentBackedPct: share of record entries with a document anchored to them. Read from the
+    // columns the anchoring path writes, not from an enum nothing wrote - see backed-by-a-document.ts.
+    const documentBackedPct = documentBackedShare(allGroundTexts);
 
     // sessionCounts: turns per party label (from the turnCounts computed above).
     const sessionCounts = Object.fromEntries(turnCounts.map((p) => [p.label, p.turns]));

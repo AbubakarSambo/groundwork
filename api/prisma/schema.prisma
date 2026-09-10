@@ -222,14 +222,6 @@ enum SubscriptionPlan {
   ENTERPRISE // unlimited, contact sales
 }
 
-enum EvidenceType {
-  DOCUMENT_AT_AGREEMENT
-  DOCUMENT_AFTER
-  CHECK_IN
-  ANCHORED_RECALL
-  UNANCHORED_RECALL
-}
-
 enum BillingEventStatus {
   PENDING
   PAID
@@ -1325,7 +1317,6 @@ model RecordEntry {
   participantId        String          @map("participant_id")
   checkInId            String?         @map("check_in_id")
   type                 RecordEntryType
-  evidenceType         EvidenceType    @default(CHECK_IN)
   text                 String          @db.Text // the person's exact words where possible
   recallBased          Boolean         @default(true) @map("recall_based") // false = anchored to a document
   anchoredDocumentId   String?         @map("anchored_document_id") // the uploaded document that backs this line, when one does

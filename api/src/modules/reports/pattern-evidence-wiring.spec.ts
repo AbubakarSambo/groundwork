@@ -47,7 +47,7 @@ function makeService(overrides: {
     recordEntry: {
       findMany: jest.fn(async (args: any) => {
         if (args.include?.participant) return overrides.records; // main corpus records (uses `include`, not `select`)
-        if (args.select?.evidenceType) return overrides.records.map((r) => ({ text: r.text, evidenceType: 'CHECK_IN' })); // allGroundTexts
+        if (args.select?.anchoredDocumentId) return overrides.records.map((r) => ({ text: r.text, anchoredDocumentId: null, anchoredOrigin: null, recallBased: false })); // allGroundTexts
         if (args.where?.participantId) return overrides.records.filter((r) => r.participant.id === args.where.participantId).map((r) => ({ text: r.text })); // per-party engagementParties
         if (args.where?.type?.in) return []; // tensionEntries
         return []; // annotatedEntries

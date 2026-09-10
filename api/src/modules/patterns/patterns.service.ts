@@ -5,6 +5,7 @@ import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
 import { PatternStatus, TurnRole, GroundStatus, CheckInStatus, Prisma } from '@prisma/client';
 import { mirrorDetection } from '../detectors/mirror-a-detection';
+import { isBackedByADocument } from '../reports/backed-by-a-document';
 import {
   PATTERN_DETECTION_PROMPT,
   PATTERN_DETECTION_SCHEMA,
@@ -437,7 +438,7 @@ export class PatternsService {
             id: true,
             user: { select: { firstName: true, lastName: true, email: true } },
             checkIns: { where: { status: CheckInStatus.COMPLETED }, select: { sessionNumber: true } },
-            recordEntries: { select: { text: true, evidenceType: true } },
+            recordEntries: { select: { text: true, anchoredDocumentId: true, anchoredOrigin: true, recallBased: true } },
           },
         },
       },
@@ -469,7 +470,7 @@ export class PatternsService {
     const hasCompletion = (entries: { text: string }[]) =>
       entries.some((e) => COLLUSION_COMPLETION_WORDS.some((w) => e.text.toLowerCase().includes(w)));
     const hasDocAnchor = (p: any) =>
-      p.recordEntries.some((r: any) => r.evidenceType === 'DOCUMENT_AT_AGREEMENT' || r.evidenceType === 'DOCUMENT_AFTER') ||
+      p.recordEntries.some((r: any) => isBackedByADocument(r)) ||
       ground.documents.some((d: any) => d.participantId === p.id);
 
     const eligible = ground.participants.filter((p) => (p.checkIns?.length ?? 0) >= 3);
