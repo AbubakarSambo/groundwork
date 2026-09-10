@@ -27,8 +27,14 @@ answer but the invitation copy must not imply otherwise. And the deletion must b
 reason, while a check-in they are party to is still open, because removing a live party mid-round
 is the frozen-round bug in part B by another route.
 
-**Still open, and the only thing blocking this batch:** how long a record is kept after a check-in
-ends. Nothing else in this part waits on it.
+**Retention, decided 10 September 2026: keep everything for now.** No sweep, no expiry. This is
+revisited before the first paying client, not after, because a retention promise is easier to make
+than to apply retrospectively once real records exist.
+
+Two things to do now so that later decision is cheap rather than a migration. Record when each
+check-in ended, which is already stored, so any future window can be applied without guessing. And
+do not spread copies of a person's words into places a sweep would later have to chase: today that
+means the log lines in G4 and nothing else, which is one more reason to do G4 now.
 
 **Once decided.** A retention column on the organisation, a sweep that removes turns past it and
 leaves the record entries and the report, and an erase route for a person's own check-in. The sweep
@@ -36,8 +42,7 @@ must never touch a ground under a legal hold.
 
 Spec: `a-person-may-delete-their-way-in-and-the-record-stays.spec.ts`, and
 `nobody-leaves-while-a-round-is-open.spec.ts`.
-Effort: a day for the deletion path, which can start now. The retention sweep waits on the one
-remaining answer.
+Effort: a day for the deletion path. Nothing in this part is blocked.
 
 ## G2. The processor list names two providers we do not use
 
@@ -121,5 +126,5 @@ Risk: a wide diff and nothing else.
 
 ## What this part is waiting on
 
-G1 cannot start until you answer how long words are kept and whether a person may erase their own.
-Everything else here can be done now, and G2 through G6 together are about two days.
+Nothing. Both questions are answered: a person deletes their way in and not their record, and
+records are kept until we revisit it with clients. G1 is about a day, G2 through G6 about two more.
