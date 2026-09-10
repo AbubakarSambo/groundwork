@@ -108,8 +108,16 @@ export const integrationsApi = {
       }>('/integrations/credentials/access-request')
       .then(r => r.data),
 
-  askForApiAccess: (whatFor: string) =>
-    apiClient.post('/integrations/credentials/access-request', { whatFor }).then(r => r.data),
+  askForApiAccess: (whatFor: string, acceptedTerms: boolean) =>
+    apiClient.post('/integrations/credentials/access-request', { whatFor, acceptedTerms }).then(r => r.data),
+
+  /** The terms accepted at the point of asking. Versioned. */
+  apiTerms: () =>
+    apiClient.get<{ version: string; title: string; says: string; terms: { heading: string; body: string }[] }>('/integrations/credentials/terms').then(r => r.data),
+
+  /** A one-hour path to the API reference. Refused until access is approved. */
+  docsLink: () =>
+    apiClient.get<{ path: string; expiresInMinutes: number }>('/integrations/credentials/docs-link').then(r => r.data),
 
   listCredentials: () => apiClient.get<Credential[]>('/integrations/credentials').then(r => r.data),
   issueCredential: (name: string, scopes: string[]) =>

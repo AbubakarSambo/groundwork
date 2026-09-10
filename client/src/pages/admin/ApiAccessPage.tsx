@@ -27,6 +27,11 @@ function Row({ request }: { request: ApiAccessRequest }) {
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const clearFlag = useMutation({
+    mutationFn: (flagId: string) => adminApi.clearApiFlag(flagId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'api-access'] }),
+  })
+
   const decide = useMutation({
     mutationFn: (status: ApiAccessRequest['status']) =>
       adminApi.decideApiAccess(request.id, status, note || undefined),
@@ -63,6 +68,33 @@ function Row({ request }: { request: ApiAccessRequest }) {
       <p style={{ fontSize: 14, margin: '10px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
         {request.whatFor}
       </p>
+
+      {/* WHAT THE WATCH SAW, beside the decision it informs. A day's counts, then anything that
+          looked like collection rather than integration, each clearable once looked at. */}
+      {(request.lastDay || request.flags.length > 0) && (
+        <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55 }}>
+          {request.lastDay && (
+            <div style={{ color: 'var(--gw-sub)' }}>
+              Last 24 hours: {request.lastDay.calls} calls, {request.lastDay.reads} reads, {request.lastDay.writes} writes.
+            </div>
+          )}
+          {request.flags.map((f) => (
+            <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 6, padding: '8px 10px', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 6 }}>
+              <div style={{ flex: 1, color: 'var(--gw-amber-t)' }}>
+                <strong>{f.kind.replace(/-/g, ' ')}</strong> · {new Date(f.raisedAt).toLocaleString()}
+                <div style={{ color: 'var(--gw-text)' }}>{f.detail}</div>
+              </div>
+              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} style={{ fontSize: 12 }}>Looked at</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {request.acceptedTermsAt && (
+        <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
+          Terms {request.termsVersion} accepted {new Date(request.acceptedTermsAt).toLocaleDateString()}.
+        </p>
+      )}
 
       {request.decidedAt && (
         <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0', lineHeight: 1.55 }}>

@@ -47,7 +47,6 @@ const UNGUARDED_ON_PURPOSE = [
    * organisation is named - it is the six calls, three closed sets of enum
    * values, and the four places people trip.
    */
-  "@Get('how-to-connect')",
 ];
 
 /**
@@ -62,6 +61,11 @@ const UNGUARDED_ON_PURPOSE = [
  * This list exists so that difference is a decision somebody made rather than a route that quietly
  * missed its guard.
  */
+/* THE CONTRACT IS READABLE BY THOSE LET IN. Not a scoped machine call: a signed-in admin of an
+   approved organisation or a machine token may read it, and nobody else. See
+   approved-or-machine.guard.ts. */
+const READABLE_ONCE_APPROVED = ["@Get('how-to-connect')"];
+
 const PANEL_AUTHENTICATED = [
   "@Post('chat')",
   "@Get('embed/opening')",
@@ -156,7 +160,10 @@ describe('every public route is guarded', () => {
   it('carries a guard on every route but the token exchange', () => {
     for (const r of routes()) {
       if (UNGUARDED_ON_PURPOSE.includes(r.decorator)) continue;
-      const guarded = r.block.includes('@UseGuards(MachineTokenGuard)') || r.block.includes('@UseGuards(EmbedSessionGuard)');
+      const guarded =
+        r.block.includes('@UseGuards(MachineTokenGuard)')
+        || r.block.includes('@UseGuards(EmbedSessionGuard)')
+        || (READABLE_ONCE_APPROVED.includes(r.decorator) && r.block.includes('@UseGuards(ApprovedOrMachineGuard)'));
       expect(guarded).toBe(true);
     }
   });
@@ -174,6 +181,7 @@ describe('every public route is guarded', () => {
        runtime. This says so at build time instead, because "nobody can call it" is a worse way to
        find out than a red test. */
     for (const r of routes()) {
+      if (READABLE_ONCE_APPROVED.includes(r.decorator)) continue;
       if (UNGUARDED_ON_PURPOSE.includes(r.decorator)) continue;
       /* A panel route has no scope by design - see PANEL_AUTHENTICATED. */
       if (PANEL_AUTHENTICATED.includes(r.decorator)) continue;

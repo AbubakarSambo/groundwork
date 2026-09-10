@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { API_DOCS_URL, API_ORIGIN } from '@/lib/where-the-api-lives'
+import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -99,8 +99,16 @@ export function IntegrationsPage() {
   const creds = useQuery({ queryKey: ['integrations', 'credentials'], queryFn: integrationsApi.listCredentials, enabled: isAdmin })
   const access = useQuery({ queryKey: ['integrations', 'access'], queryFn: integrationsApi.myApiAccess, enabled: isAdmin, retry: false })
   const [whatFor, setWhatFor] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [termsOpen, setTermsOpen] = useState(false)
+  const terms = useQuery({ queryKey: ['integrations', 'terms'], queryFn: integrationsApi.apiTerms, enabled: isAdmin })
+  const openDocs = useMutation({
+    mutationFn: integrationsApi.docsLink,
+    onSuccess: (r) => { window.open(`${API_ORIGIN}${r.path}`, '_blank', 'noreferrer') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The reference could not be opened.'),
+  })
   const askForAccess = useMutation({
-    mutationFn: () => integrationsApi.askForApiAccess(whatFor),
+    mutationFn: () => integrationsApi.askForApiAccess(whatFor, acceptedTerms),
     onSuccess: () => {
       setWhatFor('')
       qc.invalidateQueries({ queryKey: ['integrations', 'access'] })
@@ -241,6 +249,10 @@ export function IntegrationsPage() {
     )
   }
 
+  /* THE API IS BEHIND A REQUEST. Until it is approved the page is the plain description, the pictures
+     and the form; nothing an engineer would copy from is drawn. */
+  const approved = !!access.data?.approved
+
   const setupDone = {
     /* Named `key` like the screen. A field called `credential` behind a button called "key" is the
        same drift, one layer down, and it is where the second name came from in the first place. */
@@ -357,9 +369,7 @@ export function IntegrationsPage() {
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             {access.data.says}{' '}
-            You can set all of this up now. Issue a key, register where to be told, and it will be
-            waiting - the key starts working the moment access is approved. Nothing else on this
-            page is affected: we can already tell your systems when something happens here.
+            Once it is approved, this page shows the keys, the calls and the reference.
           </div>
 
           {access.data.status !== 'PENDING' && (
@@ -372,10 +382,32 @@ export function IntegrationsPage() {
                 rows={3}
                 style={{ width: '100%', padding: 8, fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
               />
+              {/* THE TERMS ARE READ HERE, NOT ON A PAGE OF THEIR OWN. Eight short points; the request
+                  cannot be recorded until they are ticked, and the version ticked is written on it. */}
+              <div style={{ marginTop: 10, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} aria-label="I accept the API terms" style={{ marginTop: 3 }} />
+                  <span>
+                    I accept the API terms{terms.data ? ` (version ${terms.data.version})` : ''}.{' '}
+                    <button type="button" onClick={() => setTermsOpen(o => !o)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
+                      {termsOpen ? 'Hide them' : 'Read them'}
+                    </button>
+                  </span>
+                </label>
+                {termsOpen && terms.data && (
+                  <ol style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+                    {terms.data.terms.map(t => (
+                      <li key={t.heading} style={{ marginBottom: 6 }}>
+                        <strong style={{ color: 'var(--gw-text)' }}>{t.heading}.</strong> {t.body}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => askForAccess.mutate()}
-                disabled={askForAccess.isPending}
+                disabled={askForAccess.isPending || !acceptedTerms}
                 style={{ marginTop: 8, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {askForAccess.isPending ? 'Asking…' : 'Ask for access'}
@@ -454,6 +486,7 @@ export function IntegrationsPage() {
         <p style={S.body}>When everybody in a session has checked in, your systems are told. The message says what happened and where to look - never what anybody said. To read the content, somebody signs in and it is governed by the same rules as everywhere else.</p>
       </div>
 
+      {approved && (<>
       {/* GUIDED SETUP, and each step reports whether it actually happened rather than whether it was
           attempted. An admin who has finished step three should KNOW the connection works. */}
       <div style={S.sec}>Setting it up</div>
@@ -790,6 +823,8 @@ export function IntegrationsPage() {
         </div>
       )}
 
+      </>)}
+
       {/* ---------------------------------------------------------------- the security page */}
       {/* ---------------------------------------------------------------- what it looks like */}
       <div style={S.sec}>What it looks like</div>
@@ -809,6 +844,7 @@ export function IntegrationsPage() {
         ))}
       </div>
 
+      {approved && (<>
       <div style={S.sec}>For your engineer</div>
       <div style={S.card}>
         {/*
@@ -987,8 +1023,11 @@ export function IntegrationsPage() {
           The full reference is generated from the running code rather than written by hand, so it
           cannot drift from what the API actually does.
         </p>
-        <a href={API_DOCS_URL} target="_blank" rel="noreferrer" style={{ ...S.mono, color: 'var(--gw-navy)', fontWeight: 600 }}>Open the API reference →</a>
+        <button type="button" onClick={() => openDocs.mutate()} disabled={openDocs.isPending} style={{ ...S.mono, color: 'var(--gw-navy)', fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+          {openDocs.isPending ? 'Opening…' : 'Open the API reference →'}
+        </button>
       </div>
+      </>)}
     </div>
   )
 }

@@ -1,4 +1,6 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, UseGuards, HttpCode, ForbiddenException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { API_TERMS } from './the-api-terms';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -22,7 +24,29 @@ export class CredentialsController {
   constructor(
     private readonly credentials: CredentialsService,
     private readonly access: ApiAccessService,
+    private readonly jwt: JwtService,
   ) {}
+
+  /** The terms an organisation accepts when it asks. One version, dated, so acceptance means something. */
+  @Get('terms')
+  @ApiOperation({ summary: 'The API terms, as accepted at the point of asking' })
+  terms() {
+    return API_TERMS;
+  }
+
+  /**
+   * THE REFERENCE IS BEHIND THE SAME DOOR AS THE API. A generated list of every route was public at
+   * /api/docs, which is the one document somebody copying the product would want most. It now opens
+   * from a link signed for an approved organisation and good for an hour.
+   */
+  @Get('docs-link')
+  @ApiOperation({ summary: 'A one-hour link to the API reference, for an approved organisation' })
+  async docsLink(@CurrentUser('organizationId') organizationId: string) {
+    const mine = await this.access.whereMineHasGotTo(organizationId);
+    if (!mine.approved) throw new ForbiddenException(mine.says);
+    const key = await this.jwt.signAsync({ typ: 'docs', org: organizationId }, { expiresIn: '1h' });
+    return { path: `/api/docs?key=${key}`, expiresInMinutes: 60 };
+  }
 
   /**
    * ASK FOR THE API.
@@ -36,9 +60,9 @@ export class CredentialsController {
   askForAccess(
     @CurrentUser('organizationId') organizationId: string,
     @CurrentUser('id') userId: string,
-    @Body() dto: { whatFor?: string },
+    @Body() dto: { whatFor?: string; acceptedTerms?: boolean },
   ) {
-    return this.access.ask(organizationId, userId, dto?.whatFor ?? '');
+    return this.access.ask(organizationId, userId, dto?.whatFor ?? '', !!dto?.acceptedTerms);
   }
 
   /** Where our own request has got to. */
@@ -50,11 +74,15 @@ export class CredentialsController {
 
   @Post()
   @ApiOperation({ summary: 'Issue a credential pair. The secret is shown once and never again.' })
-  issue(
+  async issue(
     @CurrentUser('organizationId') organizationId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: { name: string; scopes: string[]; boundToPersonExternalIds?: string[]; sourceSystem?: string },
   ) {
+    /* Nothing is issued before access is approved. A key that exists and cannot be used is the
+       confusing order; the Connect page shows this section only once access is granted. */
+    const mine = await this.access.whereMineHasGotTo(organizationId);
+    if (!mine.approved) throw new ForbiddenException(mine.says);
     /* `sourceSystem` is how a REPLACEMENT credential says it speaks for the same system as the one
        it replaces. Give it the same value and the roster stays one roster; leave it out and it is
        derived from the name. See `people/whose-roster-is-this.ts`. */

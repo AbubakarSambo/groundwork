@@ -5,7 +5,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Resend } from 'resend';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import type { Response as ExpressResponse } from 'express';
+import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { JwtService } from '@nestjs/jwt';
 import { MAX_BATCH_BYTES } from './modules/subjects/how-heavy-a-batch-may-be';
 
 /**
@@ -142,6 +143,28 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  /*
+   * THE REFERENCE IS BEHIND THE SAME DOOR AS THE API. Every route of the product, generated from the
+   * code, was readable by anybody at /api/docs: the one document somebody copying us wants most.
+   * It opens with a one-hour key an approved organisation gets from the Connect page (see
+   * CredentialsController.docsLink); the key is kept in a cookie so the reference's own assets load.
+   * DOCS_OPEN=true leaves it open, for local work.
+   */
+  const docsJwt = app.get(JwtService, { strict: false });
+  app.use('/api/docs', (req: ExpressRequest, res: ExpressResponse, next: () => void) => {
+    if (process.env.DOCS_OPEN === 'true') return next();
+    const fromQuery = typeof req.query.key === 'string' ? req.query.key : null;
+    const fromCookie = /(?:^|;\s*)gw_docs=([^;]+)/.exec(req.headers.cookie ?? '')?.[1] ?? null;
+    const key = fromQuery ?? fromCookie;
+    try {
+      const claims: any = key ? docsJwt.verify(key) : null;
+      if (claims?.typ !== 'docs') throw new Error('not a docs key');
+      if (fromQuery) res.setHeader('Set-Cookie', `gw_docs=${fromQuery}; Path=/api/docs; HttpOnly; SameSite=Lax; Max-Age=3600`);
+      return next();
+    } catch {
+      res.status(403).type('text/plain').send('The API reference opens from the Connect page of an organisation with API access.');
+    }
+  });
   SwaggerModule.setup('api/docs', app, document);
 
   const httpAdapter = app.getHttpAdapter();

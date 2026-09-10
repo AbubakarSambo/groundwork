@@ -307,10 +307,47 @@ model ApiAccessRequest {
   decidedAt       DateTime? @map("decided_at")
   note            String?   @db.Text
 
+  /// THE TERMS WERE ACCEPTED AT THE POINT OF ASKING. The API terms forbid using what comes out of
+  /// it to build or train a competing service; a request recorded without acceptance is refused,
+  /// so every approved organisation has agreed to them and we can say when and to which version.
+  acceptedTermsAt DateTime? @map("accepted_terms_at")
+  termsVersion    String?   @map("terms_version")
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([status, requestedAt])
   @@map("api_access_requests")
+}
+
+/// ONE ROW PER AUTHENTICATED MACHINE CALL. Written by the machine-token guard, read by the watch
+/// that looks for an integration behaving like a scraper (reads far outnumbering writes, report
+/// reads by the hundred, bursts) and by the per-credential rate limit. Pruned after 30 days.
+model ApiCall {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  clientId       String   @map("client_id")
+  method         String
+  path           String
+  at             DateTime @default(now())
+
+  @@index([organizationId, at])
+  @@index([clientId, at])
+  @@map("api_calls")
+}
+
+/// WHAT THE WATCH NOTICED ABOUT AN ORGANISATION'S USE OF THE API. Shown beside the access request
+/// on the admin page, where the person who can throttle or withdraw is already looking.
+model ApiUsageFlag {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  kind           String
+  detail         String    @db.Text
+  raisedAt       DateTime  @default(now()) @map("raised_at")
+  clearedAt      DateTime? @map("cleared_at")
+
+  @@index([organizationId, raisedAt])
+  @@index([clearedAt, raisedAt])
+  @@map("api_usage_flags")
 }
 
 enum ApiAccessStatus {

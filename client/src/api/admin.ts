@@ -50,6 +50,12 @@ export interface ApiAccessRequest {
   decidedBy: string | null
   decidedAt: string | null
   note: string | null
+  acceptedTermsAt: string | null
+  termsVersion: string | null
+  /** The last 24 hours of machine calls, when there were any. */
+  lastDay: { calls: number; reads: number; writes: number } | null
+  /** What the watch noticed and nobody has cleared. See the-api-is-watched.ts. */
+  flags: { id: string; kind: string; detail: string; raisedAt: string }[]
 }
 
 export const adminApi = {
@@ -62,6 +68,9 @@ export const adminApi = {
 
   decideApiAccess: (id: string, status: ApiAccessRequest['status'], note?: string) =>
     apiClient.patch(`/admin/api-access/${id}`, { status, note }).then(r => r.data),
+
+  clearApiFlag: (flagId: string) =>
+    apiClient.patch(`/admin/api-access/flags/${flagId}/clear`).then(r => r.data),
 
   getWhatsAppStatus: () =>
     apiClient.get<WhatsAppToggleState>('/admin/whatsapp').then(r => r.data),

@@ -43,7 +43,8 @@ describe('the page and the gate agree', () => {
 
   it('and lets them ask right there rather than stopping at the bad news', () => {
     const banner = PAGE.slice(PAGE.indexOf('Sending data in needs to be asked for'))
-    expect(banner.slice(0, 2600)).toContain('Ask for access')
+    /* The terms sit between the bad news and the button now, so the window is wider. */
+    expect(banner.slice(0, 5200)).toContain('Ask for access')
   })
 
   it('is right about which half is gated', () => {
@@ -58,12 +59,15 @@ describe('the page and the gate agree', () => {
     expect(API_CONTROLLER).toMatch(/oauth\/token[\s\S]{0,2500}mayUseTheApi/)
   })
 
-  it('does not disable anything, because setting up before being approved is reasonable', () => {
-    const banner = PAGE.slice(
-      PAGE.indexOf('Sending data in needs to be asked for'),
-      PAGE.indexOf('Sending data in needs to be asked for') + 1400,
-    )
-    expect(banner).toContain('the moment access is approved')
+  it('draws nothing an engineer would copy from until access is approved', () => {
+    /* 10 Sep 2026: reversed. The page used to let an organisation set everything up before approval
+       ("the moment access is approved"). The API is behind a request now: the keys, the calls, the
+       webhook registration, WhatsApp and the reference are drawn only for an approved organisation,
+       and the request itself carries acceptance of the API terms. */
+    expect(PAGE).toMatch(/const approved = !!access\.data\?\.approved/)
+    expect(PAGE.match(/\{approved && \(<>/g)?.length).toBe(2)
+    expect(PAGE).toContain('acceptedTerms')
+    expect(PAGE).not.toContain('the moment access is approved')
   })
 
   it('and the gate itself decides on the request, not on a subscription', () => {

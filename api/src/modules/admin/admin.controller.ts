@@ -223,6 +223,12 @@ export class AdminController {
     return this.apiAccess.decide(id, dto.status, userId, dto.note);
   }
 
+  @Patch('api-access/flags/:flagId/clear')
+  @ApiOperation({ summary: 'Mark one API usage flag as looked at' })
+  clearApiFlag(@Param('flagId') flagId: string) {
+    return this.apiAccess.clearFlag(flagId);
+  }
+
   @Get('dashboard')
   @ApiOperation({ summary: 'Everything /admin/dashboard draws: overview, codes, free-reason split, feedback, per-user usage' })
   getDashboard() {

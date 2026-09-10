@@ -7,6 +7,7 @@ import { ApiOperation, ApiTags, ApiExcludeEndpoint, ApiConsumes } from '@nestjs/
 import { JwtService } from '@nestjs/jwt';
 import { CredentialsService } from './credentials.service';
 import { SubjectsService, SubjectPush } from '../subjects/subjects.service';
+import { ApprovedOrMachineGuard } from './approved-or-machine.guard';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from './machine-token.guard';
 import { IdempotencyService } from './idempotency.service';
 import { resolveGrantedScopes } from './scopes';
@@ -153,6 +154,7 @@ export class PublicApiController {
    */
   @Get('how-to-connect')
   @Public()
+  @UseGuards(ApprovedOrMachineGuard)
   @ApiOperation({ summary: 'The six calls, the closed sets, and what usually goes wrong' })
   howToConnect() {
     return {
