@@ -235,7 +235,7 @@ export function isMultiPartyScenario(_scenario: GroundScenario): boolean {
 // Fields safe to expose on a participant to anyone who can view the ground.
 // Trust-critical: NEVER serialize inviteToken (magic link → account takeover),
 // soloArtifact (the AI summary of this party's PRIVATE record), specificityHistory
-// (a behavioural signal about them), or willingness answers. Those belong to the
+// (a behavioural signal about them). Those belong to the
 // participant alone - record ownership is the mechanism, enforced here, not by
 // policy. (GW-01.)
 export const SAFE_PARTICIPANT_SELECT = {
@@ -2793,7 +2793,7 @@ export class GroundsService {
     this.usage.emit(UsageEventType.PARTICIPANT_INVITED, { organizationId, groundId, participantId: participant.id }).catch(() => undefined);
 
     // GW-01: strip private fields (inviteToken, inviteTokenExpiresAt, soloArtifact,
-    // specificityHistory, willingnessAnswers, willingnessGateAnswers) before
+    // specificityHistory) before
     // returning to the caller. Only fields in SAFE_PARTICIPANT_SELECT are exposed.
     const { id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt } = participant;
 

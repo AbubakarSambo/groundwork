@@ -6,7 +6,7 @@ import { GroundsService, SAFE_PARTICIPANT_SELECT } from './grounds.service';
  * fail, a participant's private data is leaking through the ground view.
  */
 describe('GroundsService - participant serialization (GW-01)', () => {
-  const SENSITIVE = ['inviteToken', 'inviteTokenExpiresAt', 'soloArtifact', 'specificityHistory', 'willingnessEvidence', 'willingnessCadence', 'lastNudgedAt'];
+  const SENSITIVE = ['inviteToken', 'inviteTokenExpiresAt', 'soloArtifact', 'specificityHistory', 'lastNudgedAt'];
 
   it('SAFE_PARTICIPANT_SELECT never exposes sensitive fields', () => {
     for (const field of SENSITIVE) {

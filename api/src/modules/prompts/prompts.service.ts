@@ -74,7 +74,6 @@ export class PromptsService implements OnModuleInit {
   async createVersion(key: string, content: string, summary?: string) {
     if (key === 'system') {
       const INVARIANTS = [
-        'THE WILLINGNESS GATE',
         'BANNED WORDS AND PHRASES:',
         'CONSENT ARCHITECTURE',
         'BANNED WORDS: never use these in any user-facing response:',

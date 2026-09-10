@@ -116,7 +116,7 @@ describe('GW-PRI-CONV-02: decline() - party scoping', () => {
     expect(result).toEqual({ status: 'declined' });
     expect(prisma.checkIn.update).toHaveBeenCalledWith({
       where: { id: 'ci1' },
-      data: { status: 'DECLINED', closedReason: 'willingness_declined' },
+      data: { status: 'DECLINED', closedReason: 'declined' },
     });
   });
 

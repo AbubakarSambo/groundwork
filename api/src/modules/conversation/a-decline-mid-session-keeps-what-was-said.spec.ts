@@ -6,8 +6,8 @@ import { ConversationService, DECLINED_TO_TAKE_PART } from './conversation.servi
  *
  * decline() permits IN_PROGRESS - somebody can say no partway through - and it wrote DECLINED and
  * nothing else, so every turn they had already given never reached their private record. What they
- * said is theirs. The extraction complete() runs is run first, and the reason is written with the
- * literal the schema documents, so a reader can tell a decline from a close.
+ * said is theirs. The extraction complete() runs is run first, and the reason is written, so a
+ * reader can tell a decline from a close.
  */
 const service = (status: CheckInStatus) => {
   const prisma: any = {
@@ -37,11 +37,11 @@ describe('declining', () => {
     expect(svc.extractRecordEntries).not.toHaveBeenCalled();
   });
 
-  it('writes the reason with the literal the schema documents', async () => {
+  it('writes the reason', async () => {
     const { svc, prisma } = service(CheckInStatus.NOT_STARTED);
     await svc.decline('ci', 'me');
     expect(prisma.checkIn.update).toHaveBeenCalledWith({ where: { id: 'ci' }, data: { status: CheckInStatus.DECLINED, closedReason: DECLINED_TO_TAKE_PART } });
-    expect(DECLINED_TO_TAKE_PART).toBe('willingness_declined');
+    expect(DECLINED_TO_TAKE_PART).toBe('declined');
   });
 
   it('a failed extraction does not stop the decline - saying no must always work', async () => {

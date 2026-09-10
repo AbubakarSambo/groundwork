@@ -26,8 +26,8 @@ import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, Wha
 
 /** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
-/** `CheckIn.closedReason` when the person declined to take part. The literal the schema documents for it. */
-export const DECLINED_TO_TAKE_PART = 'willingness_declined';
+/** `CheckIn.closedReason` when the person declined to take part. */
+export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -5130,7 +5130,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * partway through - and this wrote DECLINED and nothing else, losing every turn they had given
      * from their private record. The extraction complete() runs is run here first, best-effort, so
      * their own words reach their own record before the session closes. And the reason is written,
-     * with the literal the schema documents for it, so a reader can tell a decline from a close.
+     * so a reader can tell a decline from a close.
      */
     if (checkIn.status === CheckInStatus.IN_PROGRESS) {
       await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>

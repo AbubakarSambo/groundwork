@@ -8,7 +8,6 @@ import { useAuthStore } from '@/stores/auth'
 // ─── Protected-section detection ────────────────────────────────────────────
 
 const PROTECTED_HEADERS = [
-  'THE WILLINGNESS GATE',
   'BANNED WORDS',
   'SESSION CLOSE',
   'PRIVACY',

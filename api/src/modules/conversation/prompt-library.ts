@@ -320,49 +320,20 @@ EVIDENCE DEFINITION IS THE STANDARD:
 The person's own evidence definition: not the admin's, not anyone else's: is what the model uses to probe and report. There is no separate verification layer. The person defined the standard. The model holds them to it.
 
 ═══════════════════════════════════════════════════════════
-THE WILLINGNESS GATE: fires before any tension session deepens
+REFUSING TO TAKE PART, AND SUSPICION OF THE TOOL
 ═══════════════════════════════════════════════════════════
 
-Before a drift, resolution, or accountability session goes beyond the opening exchange, establish two
-things: that this will be anchored in what can be pointed to, and that they will keep turning up.
+There is no gate before a session. Nobody is asked to agree to anything, confirm anything, or commit
+to anything before being allowed to continue: somebody who says they have nothing written down is
+the ordinary case, not a refusal, and the standard of evidence is simply how the conversation runs,
+never a condition put to them.
 
-HOW IT IS SAID IS MOST OF WHETHER IT WORKS. This used to read: "Before we go further - two things
-to confirm. Are you willing to anchor this on evidence: what can be documented and confirmed -
-rather than recall or feelings alone? And are you willing to commit to consistent check-ins over the
-agreed period?"
+Where somebody declines to engage AT ALL - not "I have nothing in writing" but "I am not doing this" -
+record that plainly and stop. Record it exactly and do not editorialize about what it means. Refusing
+to take part is different from having nothing to attach, and only the first one ends anything.
 
-Driven live on a performance check-in, that is the third thing a person hears, and it lands as terms
-and conditions: two questions in one turn, "are you willing" twice, and "rather than recall or
-feelings alone" reading as a warning that their account is the suspect kind. On a conversation whose
-whole job is making somebody feel safe enough to be honest, it is the worst sentence in the session.
-
-Say it as what it is FOR, in one sentence, and keep going. It is not a gate they have to pass:
-
-"One thing that makes this worth doing: anything you can point to - a message, a date, a document -
-carries further than memory does, for you as much as anyone. Bring whatever you have as we go."
-
-That establishes the same standard, offers it as something that serves THEM, and asks nothing they
-have to answer before being allowed to continue. Do not deliver it as a separate turn. Do not ask
-them to agree to it. Do not repeat it in later sessions - it is said once, near the start, and then
-it is simply how the conversation runs.
-
-The commitment to keep turning up is NOT asked here at all. It belongs to setup, where the cadence
-was agreed, and asking somebody mid-conversation whether they intend to keep participating reads as
-a threat rather than a plan.
-
-NOBODY IS TURNED AWAY FOR NOT ANSWERING IT, because it is no longer a question. What used to happen
-here was that a "no" ended the session on the spot. That was defensible when this was a gate and is
-not now: somebody who says they have nothing written down is the ordinary case, not a refusal, and
-ending their session over it loses the account this product exists to hold.
-
-What still holds: where somebody declines to engage AT ALL - not "I have nothing in writing" but "I
-am not doing this" - record that plainly and stop. Record it exactly and do not editorialize about
-what it means. Refusing to take part is different from having nothing to attach, and only the first
-one ends anything.
-
-If someone says the tool is being used against them: do not reassure. Ask: "What makes it feel that way?" Explore it. Evasion of the process is itself a signal. Record the evasion and the reason given.
-
-The willingness gate does not fire for new starting grounds where there is no tension. It fires specifically before tension sessions deepen - drift, resolution, accountability, performance track scenarios.
+If someone says the tool is being used against them: do not reassure. Ask: "What makes it feel that
+way?" Explore it. Evasion of the process is itself a signal. Record the evasion and the reason given.
 
 ═══════════════════════════════════════════════════════════
 RETURNING USER OPENING
@@ -2162,28 +2133,6 @@ export const EXPECTATION_SCHEMA = {
 };
 
 // ---------------------------------------------------------------------------
-// Willingness gate - fires before a tension/recognition session deepens.
-// ---------------------------------------------------------------------------
-
-/**
- * THE SECOND COPY OF THE GATE, KEPT IN STEP.
- *
- * The same words existed twice - here and in the willingness section above - so softening one and
- * leaving the other would have put a numbered two-question interrogation back in front of the
- * people the change is for. Both now say the same thing in the same voice.
- */
-export const WILLINGNESS_GATE = `# What makes this worth doing (say once, early, then carry on)
-Establish the standard as something that serves THEM, in one sentence, and keep going. Not a gate,
-not a question, nothing to agree to before being allowed to continue:
-
-"One thing that makes this worth doing: anything you can point to - a message, a date, a document -
-carries further than memory does, for you as much as anyone. Bring whatever you have as we go."
-
-Do not deliver it as its own turn. Do not ask them to confirm it. Do not repeat it in later
-sessions. Having nothing written down is the ordinary case and ends nothing - only somebody
-declining to take part at all does, and that is recorded plainly and without editorial.`;
-
-// ---------------------------------------------------------------------------
 // Shared closings (referenced by the runtime context block).
 // ---------------------------------------------------------------------------
 
@@ -3200,9 +3149,6 @@ export function buildScenarioPackForParty(
   }
 }
 
-// Scenarios whose first session should run the willingness gate.
-const WILLINGNESS_GATE_SCENARIOS: GroundScenario[] = [GroundScenario.DRIFT, GroundScenario.RECOGNITION, GroundScenario.CRISIS_ALIGNMENT, GroundScenario.ACUTE_SHOCK];
-
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Runtime context - computed per check-in, appended to the composed prompt.
@@ -3262,9 +3208,8 @@ export interface PromptContext {
   // reached the model at all - it only ever fed scheduling math
   // (conversation.service.ts availableFrom gates) - so the engine could never
   // reference "since you're on a weekly cadence" or reason about the process
-  // it is asking the person to commit to (see the willingness gate, which
-  // asks them to commit to "consistent check-ins over the agreed period"
-  // without the model ever being told what that period actually is).
+  // it is asking the person to commit to - the cadence was agreed at setup and
+  // the model was never told what it was.
   cadence?: 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'SEQUENTIAL' | null;
   /**
    * How long the run is, in days. Passed so the engine can tell a fortnight from a year: without it,
