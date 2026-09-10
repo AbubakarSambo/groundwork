@@ -3,46 +3,40 @@
 Nothing here is a register finding. These are things that are working as written and are still worth
 deciding, because each one is a promise the product is making on your behalf.
 
-## G1. How long words are kept, and whether a person may erase them
+## G1. Withdrawn. Deletion and retention already ship
 
-**Today.** There is no retention limit on what anybody writes. A person can download their own
-record and cannot delete it. The product tells them their own account of things is theirs, and then
-keeps it indefinitely.
+**Corrected 10 September 2026. This batch should never have been written.**
 
-This is the gap a buyer's legal team finds first, and for a product whose whole promise is that the
-words are private, "for ever" is the answer we currently give.
+Everything G1 proposed to build exists. `DELETE /users/me/data` is wired to `eraseAccount`
+(`users.service.ts`), reachable from a visible "Erase it" control in the app's settings. Its doc
+comment states the rule as an Article 17 erasure: it anonymises every identifying field on the
+person and their participant links, and keeps the conversation content under the other party's
+legitimate interest in the shared record, noting that the retained content no longer carries the
+person's name or address. That is precisely the decision the product owner gave me, already
+implemented, with its legal basis recorded.
 
-**Decided, 10 September 2026.** A person may delete their way in. Their record stays.
+Retention exists too. `RetentionPolicy.turnRetentionDays` defaults to 180 days, and a nightly cron
+ages out departed people's turns.
 
-That is a coherent pair and it is the cheaper half to build. The record was made of their words but
-it is also the other parties' evidence of what was agreed, and pulling it out retrospectively would
-change reports other people have already read and acted on. Deleting the way in means: no sign-in,
-no notifications, and no appearance in any roster or picker for a future check-in. The record is
-untouched. Their words stay, their name stays on the reports that already carry it, and nothing
-already written changes. What goes is the way in, and nothing else.
+So the two questions I put to the product owner were both already answered in code. The decisions
+she gave match what is built, which is the only reassuring part of this.
 
-Two consequences to be deliberate about. Somebody who deletes their way in and is later invited
-again arrives as a new person, so their earlier record does not follow them; that is the right
-answer but the invitation copy must not imply otherwise. And the deletion must be refused, with a
-reason, while a check-in they are party to is still open, because removing a live party mid-round
-is the frozen-round bug in part B by another route.
+**What is actually left.** A reconciliation, not a build:
 
-**Retention, decided 10 September 2026: keep everything for now.** No sweep, no expiry. This is
-revisited before the first paying client, not after, because a retention promise is easier to make
-than to apply retrospectively once real records exist.
+- The stated retention position is now "keep everything for now", and the code keeps turns for 180
+  days. One of those has to move. My recommendation is to keep the 180-day default, because it is
+  built, tested and defensible, and to raise it only if a customer needs it.
+- This batch said "no sweep, no expiry". Part A batch 16 repairs that sweep and adds a deletion
+  backfill. A16 is right and this was wrong; A16 stands.
+- The "refuse deletion while a round is open" rule I proposed is unsafe as stated, because the
+  field it would test is nullable, so a check-in that never completes would lock somebody out of
+  erasure permanently. If that rule is wanted it must be time-bounded.
+- One real gap the existing implementation has: a report renders participant names by joining to
+  the live person, so an erased person appears as a deleted user on reports that previously named
+  them, while a different surface keeps the original name. Those two disagree, and the decision was
+  that nothing already written changes. That is the only genuine defect here.
 
-Two things to do now so that later decision is cheap rather than a migration. Record when each
-check-in ended, which is already stored, so any future window can be applied without guessing. And
-do not spread copies of a person's words into places a sweep would later have to chase: today that
-means the log lines in G4 and nothing else, which is one more reason to do G4 now.
-
-**Once decided.** A retention column on the organisation, a sweep that removes turns past it and
-leaves the record entries and the report, and an erase route for a person's own check-in. The sweep
-must never touch a ground under a legal hold.
-
-Spec: `a-person-may-delete-their-way-in-and-the-record-stays.spec.ts`, and
-`nobody-leaves-while-a-round-is-open.spec.ts`.
-Effort: a day for the deletion path. Nothing in this part is blocked.
+Effort: hours, for the name-rendering disagreement. Nothing else.
 
 ## G2. The processor list names two providers we do not use
 
@@ -95,23 +89,19 @@ Spec: `no-log-line-carries-what-somebody-wrote.spec.ts`.
 Effort: half a day across all sites.
 Risk: none.
 
-## G5. "Account" is doing two jobs
+## G5. Withdrawn. My recommendation was backwards
 
-**Today.** The word appears in user-facing copy in two senses: the login sense, which your standing
-rule bans, and the telling sense, as in the account you wrote of what happened. Both appear, in
-places near each other.
+**Corrected 10 September 2026.** I proposed keeping the telling sense of "account" and removing the
+login sense. The shipped rule is the exact opposite, and it is right.
 
-The telling sense is the best word in the product and the reason the ban is awkward to hold.
+`client/src/components/gw/account-is-not-the-word.spec.ts` states it: what is banned is the sense,
+not the string. The login sense stays, because that is what a reader resolves the word to before
+they reach the end of the sentence. The telling sense is the one that must not appear in copy,
+precisely because it is the codebase's own internal vocabulary and keeps leaking out of the
+comments into the product. The comments are deliberately left alone.
 
-**Change.** Keep the telling. Remove the login sense everywhere, which is what the rule was always
-aiming at. This makes the rule easier to keep rather than harder, and it removes the collision that
-makes the two senses read as one sloppy word.
-
-This runs alongside the check-in and session rename in part C, and should be one pass over the copy
-rather than two.
-
-Spec: extend the existing copy spec so the login sense fails and the telling sense passes.
-Effort: half a day with the rename.
+There is nothing to do here, and something to avoid: the copy pass in part D must not rewrite the
+report vocabulary on the strength of what I originally wrote.
 
 ## G6. The service that calls Google is named after Anthropic
 
@@ -126,5 +116,6 @@ Risk: a wide diff and nothing else.
 
 ## What this part is waiting on
 
-Nothing. Both questions are answered: a person deletes their way in and not their record, and
-records are kept until we revisit it with clients. G1 is about a day, G2 through G6 about two more.
+Nothing, and this part is now much smaller than it looked. G1 and G5 are withdrawn because both
+were already built. What remains is G2, G3, G4 and G6, plus a few hours reconciling how an erased
+person's name renders. About a day in total.

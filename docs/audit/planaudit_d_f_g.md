@@ -315,8 +315,21 @@ suppresses the report even though `sendFor` would have fallen back to the platfo
 flag the dependency on NL-014/P4-002 (Part A Batch 5), is the best-handled dependency in the three
 documents.
 
-**Batch 7 — sound.** `postMessage(..., '*')` at `panel.html:123`, `setInterval` at `:101`, both exact. The
-wildcard-fallback-plus-log staging for E11 is the right risk posture.
+**Batch 7 — sound with corrections; one finding is a misread.** `postMessage(..., '*')` at
+`panel.html:123` and inbound `e.source !== parent` at `:372` (not `:371`) — E11 verified, and the
+wildcard-fallback-plus-log staging is the right risk posture. `setInterval(askForANewSession,
+ASK_AFTER_MS)` at `:101` with `ASK_AFTER_MS = 12 * 60 * 1000` (`:79`) and no `clearInterval` anywhere —
+E09 verified.
+
+**P4-E08 does not hold.** The plan says *"any panel session can settle another person's objective
+disagreement."* The panel's only write of that kind is `panel.html:185`, `POST /grounds/…/confirm-lead`,
+served by `public-api.controller.ts:634-643` under `EmbedSessionGuard`, and it already scopes to the
+session's own person: `this.checkIns.confirmAsLead(req.panel.organizationId, req.panel.personId, id, …)`.
+The two neighbouring panel routes at `:653` and `:661` do the same. The scoping the plan asks for is
+already there. **Drop this bullet** — and note that `what-is-due-for-this-person.ts`, which the plan cites
+as the pattern to copy, is a pure module (`whatIsDueFor`, `:34`) that scopes nothing by itself; the
+scoping lives in the guard. Batch 7 is a two-item batch, not three, and closer to a couple of hours than
+a half-day.
 
 **Batch 8 — sound with one correction.** `JwtAuthGuard` verified: `if (isPublic) return true;` at
 `jwt-auth.guard.ts:18-20`, before `super.canActivate`, and `handleRequest` throws on `!user`. The proposed
@@ -324,7 +337,17 @@ fix is implementable but **not with the signature the plan implies**: `handleReq
 written cannot see whether the route is public. Passport's full signature is
 `handleRequest(err, user, info, context, status)` — the fix must take `context` as a fourth argument and
 re-read the `IS_PUBLIC_KEY` reflector there. Say so, or the implementer will reach for a field on the class.
-The plan is right to call this the one change with reach beyond the flow and right to want its own spec.
+
+**And the blast-radius claim is wrong.** The plan asserts *"nothing currently depends on it being null."*
+Two `@Public()` controllers read `req.user`. One is the intended beneficiary
+(`participants.controller.ts:65`, already null-tolerant). The other is
+**`auth.controller.ts:200`, the Google OAuth callback**, which calls `findOrCreateGoogleUser(req.user)` —
+where `req.user` is the **passport Google profile**, not a JWT user. Running the JWT strategy on that
+route would overwrite the Google profile with a JWT payload and break sign-in with Google for anyone
+arriving with a stale cookie. Exempt the Google callback explicitly, or scope the change to a new
+`@OptionalAuth()` decorator rather than to every `@Public()` route. `entry.controller.ts` never reads
+`req.user`, so it is genuinely unaffected. The plan is right that this is the one change with reach beyond
+the flow, and right to want its own spec — it just found the wrong dependent.
 
 **Batch 9 — sound.** Three-causes-one-boolean verified.
 
@@ -334,7 +357,9 @@ The plan is right to call this the one change with reach beyond the flow and rig
 lane's only `joinToken` use is against `/entry/join-accept` (`api/journey/hundred/probes-two.ts:104,111`).
 **But the plan only removes it from `EntryChatDto`.** The parameter also survives in
 `client/src/api/entry.ts:161,170,194,196` and `client/src/types/index.ts:195`. Leave those and a future
-caller reintroduces the leak through a still-typed door. Delete them in the same commit.
+caller reintroduces the leak through a still-typed door. Delete them in the same commit. One more:
+`a-check-that-can-never-be-true.spec.ts:73` pins the literal string
+`'modules/entry/entry.service.ts:joinToken'` and will fail on the deletion — repoint or remove it.
 
 **Batch 11 — sound.** The `lastReplyHadCloseMarker` singleton defect is real and is also flagged, unclaimed,
 at the end of Part A's coverage table (*"it should not fall between us"*). Part D Batch 11 is where it
@@ -342,15 +367,42 @@ lands; that resolves cleanly.
 
 **Batch 12 — sound with two corrections.** `escapeHtml` is defined at `email.service.ts:1109`, not
 `:1105-1112`, and it is used in **exactly one place** (`:1097`) — so the plan's *"two senders already escape
-and prove the rule"* overstates the precedent; there is one. And the file has **49** async senders by my
-count, not 48 — immaterial, but the golden-render spec should enumerate rather than hardcode. The
-recommendation to add a golden-render spec over all senders rather than reading them is the right call and
-the batch's best line.
+and prove the rule"* overstates the precedent; there is one, plus a local inline `.replace(/</g,'&lt;')`
+at `:721`. Sender count: 48 is the count of `async` methods, of which four are private, so it is **~44
+public senders** — immaterial to the work, but the golden-render spec should enumerate rather than
+hardcode. Two of the cited raw-interpolation ranges point at the wrong lines: `:448` is the
+`sendLeadInvite` **signature** and `:470` is a comment; the raw bodies sit just below each.
+
+**NL-018 is bigger and more dangerous than the plan says, and it collides with G5.** The plan lists the
+banned word at eight lines. It is on **25** lines (`:99, 132, 312, 313, 340, 364, 378, 395, 396, 399, 411,
+532, 575, 577, 590, 653, 666, 667, 687, 702, 705, 733, 842, 862, 868`) — and the two senses are
+interleaved. `:312` *"Activate your Groundwork account"* is the login sense; `:395` *"share their account
+of"*, `:575`/`:590` *"where your accounts agree"*, and `:653`, `:666-667`, `:687`, `:702`, `:705` are the
+**telling** sense and are the product's own vocabulary. A find-and-replace over this file, which is what
+"the banned word, in eight places" invites, breaks the report copy. This batch must not run until G5's
+polarity question (below) is settled, and the pass must be per-line with the sense judged each time.
+
+The recommendation to add a golden-render spec over all senders rather than reading them is the right call
+and the batch's best line.
 
 **Batch 13 — sound.** NL-024 verified precisely: three `sendNudge` callers
 (`grounds.cron.ts:551`, `remind.service.ts:186`, `remind.service.ts:347`) and only the third passes
 `participantId` — with a comment at `:352` saying why (*"So the reminder carries its own way out"*), which
 makes the other two look like oversights rather than decisions. Good.
+
+NL-004 verified and the plan's diagnosis is right: `wouldTheyRatherNot` (`email.service.ts:69-107`) checks
+exactly two things — `user.emailNotifications` at `:76` and a cross-tenant `EmailPreference.unsubscribedAt`
+at `:80-96` — and reads neither `remindersStoppedAt`, nor the per-type `roundDigest`/`nudges` booleans that
+exist on the model, nor `isActive`/`deletedAt`, nor `inviteDeliveryStatus`. So all four of NL-004, NL-033,
+NL-034 and NL-010's suppression half land on the same function, as the plan says.
+
+**One thing to add.** There are **two independent opt-out stores**, not one:
+`GroundParticipant.remindersStoppedAt`, written by `stop-reminders.controller.ts:41-42`, and
+`EmailPreference.unsubscribeToken`, written by `round-digest.service.ts:155-157`. Neither consults the
+other, and `wouldTheyRatherNot` reads only the second. Centralising in `sendEmail` must reconcile the two
+stores, not just call both — otherwise a person who used the stop link still receives the digest. And note
+`:99-101`: `if (!user && !preference) return null;` — an address with no `User` and no `Person` row is
+**always mailable**, which is every invited-by-address participant. Worth its own line in the batch.
 
 **Batch 14 — sound.** NL-037 verified exactly: `grounds.cron.ts:380` and `:393` both take
 `CronLock.SEND_REMINDERS`. The instruction to ship that two-line fix ahead of the rest of the batch is
@@ -777,12 +829,12 @@ commit with no other change in it.
 | 4 | sound with corrections (contradicts Part A Batch 5's design for the same defect) |
 | 5 | sound with corrections (`:159-160`, `:81`/`:92`; add the `enabled` gate) |
 | 6 | sound |
-| 7 | sound |
-| 8 | sound with corrections (`handleRequest` needs the `context` argument) |
+| 7 | sound with corrections (**P4-E08 is a misread — the panel already scopes to its own person**; two items, not three) |
+| 8 | sound with corrections (`handleRequest` needs the `context` argument; **the Google OAuth callback at `auth.controller.ts:200` does depend on `req.user` being the passport profile**) |
 | 9 | sound |
 | 10 | sound with corrections (also delete the client-side `joinToken` parameter) |
 | 11 | sound |
-| 12 | sound with corrections (`escapeHtml` at `:1109`, one precedent not two) |
+| 12 | sound with corrections (**the banned word is on 25 lines with both senses interleaved — blocked on G5's polarity**; `escapeHtml` at `:1109`, one precedent not two) |
 | 13 | sound |
 | 14 | sound |
 | 15 | sound |
@@ -847,6 +899,9 @@ Dependencies the plans **do not** declare and should:
 - G4 → G1 (G1 asserts G4's inventory is complete; it is not).
 - F Batch 10's banned-noun addition → blocked indefinitely by the marketing freeze; ship the guard
   restructure without it, or with a named allowlist.
+
+- D Batch 12 (NL-018) → G5. The copy pass cannot run until the polarity of the "account" rule is settled;
+  running it against the plan's current wording would rewrite the report vocabulary.
 
 Dependencies correctly declared, and worth saying so: D Batch 6's deferral of the ordering fix to NL-014 /
 P4-002 with an explicit "this batch must not write a second, competing fix"; D Batch 14's insistence that
