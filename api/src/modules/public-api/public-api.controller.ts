@@ -195,6 +195,8 @@ export class PublicApiController {
           await this.subjects.find(req.machine.organizationId, dto.sourceSystem.trim(), dto.externalId.trim()),
         );
       },
+      /* An upsert on the caller's own key: a retry without a header is still a retry. See IdempotencyService.run. */
+      { deriveKeyFrom: req.machine.clientId },
     );
   }
 

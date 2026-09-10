@@ -311,6 +311,40 @@ export class GroundsCron {
   }
 
   /**
+   * NOBODY'S WORDS ARE LEFT HANGING WITHOUT ANYBODY KNOWING.
+   *
+   * Both message routes write the person's turn, call the model, then write the reply. If the model
+   * fails the person's turn is deleted so the record does not hold a question with no answer. If
+   * the PROCESS dies between the two writes - a deploy, a crash, a timeout at the edge - nothing
+   * runs the delete, and the person's turn sits there for ever with no reply after it. The two
+   * writes cannot share a transaction: the model call is between them and can take ten seconds.
+   *
+   * So this counts them. Once an hour: every open session whose LAST turn is the person's and is
+   * more than an hour old. Ids only, never the words. Silent orphans were the problem; a counter
+   * that somebody can see is most of the fix.
+   */
+  @Cron('30 * * * *', { timeZone: 'UTC' })
+  async countOrphanedTurns() {
+    const anHourAgo = new Date(Date.now() - 3600_000);
+    const open = await this.prisma.checkIn.findMany({
+      where: { status: CheckInStatus.IN_PROGRESS, turns: { some: { role: TurnRole.PERSON, createdAt: { lt: anHourAgo } } } },
+      select: { id: true },
+    });
+    const orphaned: string[] = [];
+    for (const c of open) {
+      const last = await this.prisma.conversationTurn.findFirst({
+        where: { checkInId: c.id },
+        orderBy: { createdAt: 'desc' },
+        select: { role: true, createdAt: true },
+      });
+      if (last?.role === TurnRole.PERSON && last.createdAt < anHourAgo) orphaned.push(c.id);
+    }
+    if (orphaned.length > 0) {
+      this.logger.warn(`${orphaned.length} check-in(s) hold a person's turn with no reply after an hour: ${orphaned.join(', ')}`);
+    }
+  }
+
+  /**
    * Fires session-closing warnings every 15 minutes. When a session has been
    * inactive for 11–11h30m, an AI turn is injected informing the person the
    * session auto-closes in 30 minutes. warningFiredAt is set so the warning

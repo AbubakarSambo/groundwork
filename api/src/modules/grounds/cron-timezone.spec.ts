@@ -46,6 +46,7 @@ describe('every remaining GroundsCron job is also pinned to UTC', () => {
     ['stallOverdueGrounds', '0 03 * * *'], // CronExpression.EVERY_DAY_AT_3AM
     ['autoCloseStaleCheckIns', '*/30 * * * *'],
     ['fireSessionClosingWarnings', '*/15 * * * *'],
+    ['countOrphanedTurns', '30 * * * *'],
     ['sendReminders', '0 09 * * *'], // CronExpression.EVERY_DAY_AT_9AM
     ['sendSessionReadyNotifications', '*/15 * * * *'],
     ['synthesisBackstop', '0 4 * * *'],

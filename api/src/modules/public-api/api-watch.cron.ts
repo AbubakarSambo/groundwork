@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { DayOfCalls, isARead, isAReportRead, isATranscriptRead, whatLooksWrong } from './the-api-is-watched';
+import { KEEP_RECORDS_HOURS } from './idempotency.service';
 
 /**
  * ONCE AN HOUR, EVERY ORGANISATION'S LAST DAY OF MACHINE CALLS IS READ FOR THE SHAPE OF A SCRAPER.
@@ -13,6 +14,23 @@ export class ApiWatchCron {
   private readonly logger = new Logger(ApiWatchCron.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * A RECORD OF A RETRY IS NOT KEPT FOR EVER. The replay window is a day; the rows behind it were
+   * never deleted, so a table whose whole meaning is "the last day" grew without bound and every
+   * lookup in it got slower. Anything older than the keep period cannot be replayed and cannot
+   * conflict, so it goes.
+   */
+  @Cron('0 1 * * *', { timeZone: 'UTC' })
+  async pruneIdempotencyRecords() {
+    try {
+      const before = new Date(Date.now() - KEEP_RECORDS_HOURS * 3600_000);
+      const gone = await this.prisma.idempotencyRecord.deleteMany({ where: { createdAt: { lt: before } } });
+      if (gone.count > 0) this.logger.log(`Pruned ${gone.count} idempotency record(s) older than ${KEEP_RECORDS_HOURS}h`);
+    } catch (err: any) {
+      this.logger.warn(`Idempotency prune failed: ${err?.message}`);
+    }
+  }
 
   @Cron(CronExpression.EVERY_HOUR)
   async sweep() {

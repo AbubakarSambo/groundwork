@@ -85,3 +85,41 @@ describe('a retry is not a new request', () => {
     expect(work).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('a retry without a header is still a retry, on a route that is an upsert', () => {
+  /**
+   * The header is opt-in, and a client that forgot it got no guarantee - a timeout on a subject push
+   * and its retry were two pushes. On an upsert keyed by the caller's own id, the same body from the
+   * same credential can only mean the same operation, so those routes derive the key themselves.
+   */
+  it('derives a key from the credential, the endpoint and the body, and replays the second call', async () => {
+    const { service } = svc();
+    const work = jest.fn(async () => ({ title: 'first' }));
+    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-A' });
+    await expect(service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-A' })).resolves.toEqual({ title: 'first' });
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it('a different body, or a different credential, is a different operation', async () => {
+    const { service } = svc();
+    const work = jest.fn(async () => ({ ok: true }));
+    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-A' });
+    await service.run('org1', undefined, 'POST /subjects', { a: 2 }, work, { deriveKeyFrom: 'client-A' });
+    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-B' });
+    expect(work).toHaveBeenCalledTimes(3);
+  });
+
+  it('an offered header still wins over derivation', async () => {
+    const { service, rows } = svc();
+    await service.run('org1', 'K', 'POST /subjects', { a: 1 }, async () => ({ ok: true }), { deriveKeyFrom: 'client-A' });
+    expect(rows[0].key).toBe('K');
+  });
+
+  it('a route that does not ask for derivation is unchanged: no header, no guarantee', async () => {
+    const { service } = svc();
+    const work = jest.fn(async () => ({ ok: true }));
+    await service.run('org1', undefined, 'POST /subjects/bulk', { a: 1 }, work);
+    await service.run('org1', undefined, 'POST /subjects/bulk', { a: 1 }, work);
+    expect(work).toHaveBeenCalledTimes(2);
+  });
+});

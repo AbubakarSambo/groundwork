@@ -5,6 +5,7 @@ import { PatternsCron } from '../patterns/patterns.cron';
 import { IntelligenceService } from '../intelligence/intelligence.service';
 import { RemindService } from '../conversation/remind.service';
 import { ReportsService } from '../reports/reports.service';
+import { ApiWatchCron } from '../public-api/api-watch.cron';
 
 /**
  * Follow-up to grounds.cron.ts's cron-timezone.spec.ts: the same implicit-
@@ -28,6 +29,7 @@ describe('every remaining @Cron job across the app is pinned to UTC', () => {
     ['IntelligenceService', IntelligenceService.prototype, 'weeklyLongitudinalSynthesis', '0 9 * * 1'],
     ['RemindService', RemindService.prototype, 'sendScheduledNudges', '0 08 * * *'], // EVERY_DAY_AT_8AM
     ['ReportsService', ReportsService.prototype, 'weeklyOutcomeLearningReport', '0 8 * * 1'],
+    ['ApiWatchCron', ApiWatchCron.prototype, 'pruneIdempotencyRecords', '0 1 * * *'],
   ])('%s.%s is pinned to UTC', (_className, proto, methodName, expectedCronTime) => {
     const opts = cronOptionsFor(proto, methodName as string);
     expect(opts).toBeDefined();
