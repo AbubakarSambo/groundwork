@@ -310,7 +310,14 @@ export class BoardService {
      */
     const visibleNames = namesVisibleTo(
       readsWithNamesOf({
-        viewerIsLead: isInitiator || isSetupAdmin,
+        /*
+         * AN ORGANISATION'S ADMIN READS WITH NAMES, because this page already tells them they can
+         * see everything here and being an admin is the point. Left out, the board named one person
+         * and left the other as "Partnerships Associate, started 1 September" three inches apart,
+         * which reads as two people disagreeing with a third. Their exact words stay walled off, as
+         * they are for everybody; a name is not the wall. Same test `runsThisGround` already uses.
+         */
+        viewerIsLead: runsThisGround,
         viewerParticipantId: me?.id ?? null,
         parties: ground.participants as any[],
       }),
@@ -471,15 +478,17 @@ export class BoardService {
          * two people disagreeing with a third. Where the reader may see the name, the name wins.
          */
         items: Array.isArray(reportSafe.divergences)
-          ? (reportSafe.divergences as any[]).map((d) => ({
-              ...d,
-              perspectives: Array.isArray(d?.perspectives)
-                ? d.perspectives.map((pv: any) => ({
-                    ...pv,
-                    participantLabel: visibleNames.get(String(pv?.participantLabel ?? '')) ?? pv?.participantLabel,
-                  }))
-                : d?.perspectives,
-            }))
+          ? (reportSafe.divergences as any[]).map((d) => {
+              const named = (side: any) => ({
+                ...side,
+                participantLabel: visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel,
+              });
+              return {
+                ...d,
+                ...(Array.isArray(d?.positions) ? { positions: d.positions.map(named) } : {}),
+                ...(Array.isArray(d?.perspectives) ? { perspectives: d.perspectives.map(named) } : {}),
+              };
+            })
           : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
