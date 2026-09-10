@@ -165,6 +165,55 @@ export class WhatsAppService {
     return ok;
   }
 
+  /**
+   * A LIST THEY CAN TAP. Meta's interactive list message, up to ten rows; the text fallback is the
+   * numbered version, sent when the organisation has no connection of its own or the list is refused.
+   */
+  async sendListFor(organizationId: string, phoneNumber: string, body: string, rows: { id: string; title: string; description: string }[], fallbackText: string): Promise<boolean> {
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    if (!own || !own.enabled) return this.sendMessage(phoneNumber, fallbackText).catch(() => false);
+    const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${own.phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${own.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp', to, type: 'interactive',
+          interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: 'Choose', sections: [{ title: 'Your check-ins', rows: rows.slice(0, 10) }] } },
+        }),
+      });
+      if (res.ok) return true;
+      this.logger.warn(`WhatsApp list refused for ${to}: ${res.status}; sending the numbered text instead.`);
+    } catch (err: any) {
+      this.logger.warn(`WhatsApp list failed for ${to}: ${err?.message}; sending the numbered text instead.`);
+    }
+    return this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText);
+  }
+
+  /**
+   * A PHOTO OR A DOCUMENT THEY SENT. Meta hands over an id; the bytes are fetched with the
+   * organisation's own token in two steps, the second signed the same way. Ten megabytes is the
+   * document pipeline's own ceiling.
+   */
+  async fetchMediaFor(organizationId: string, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    const token = own?.accessToken ?? this.config.get<string>('whatsapp.accessToken');
+    if (!token) return null;
+    try {
+      const meta = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!meta.ok) { this.logger.warn(`WhatsApp media lookup failed: ${meta.status}`); return null; }
+      const info = (await meta.json()) as { url?: string; mime_type?: string; file_size?: number };
+      if (!info.url) return null;
+      if ((info.file_size ?? 0) > 10 * 1024 * 1024) return null;
+      const file = await fetch(info.url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!file.ok) { this.logger.warn(`WhatsApp media download failed: ${file.status}`); return null; }
+      return { buffer: Buffer.from(await file.arrayBuffer()), mimeType: info.mime_type ?? 'application/octet-stream' };
+    } catch (err: any) {
+      this.logger.warn(`WhatsApp media fetch failed: ${err?.message}`);
+      return null;
+    }
+  }
+
   private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<boolean> {
     try {
       const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {

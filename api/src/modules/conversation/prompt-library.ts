@@ -1547,7 +1547,7 @@ Do not use a thin or absent record to imply evasion. Note it factually.`;
 // Record extraction - pulls structured entries from one party's transcript.
 // ---------------------------------------------------------------------------
 
-export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. Use the person's own words wherever possible - quote, do not paraphrase.
+export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. THE RECORD IS IN ENGLISH whatever language the transcript is in: write every entry in English, keeping every name, number, date and place exactly as written. Use the person's own words wherever possible - quote, do not paraphrase.
 
 INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 

@@ -996,6 +996,9 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean        @default(false) @map("managing_only")
   roleAsDescribed            String?        @map("role_as_described") // role as the initiator described it
+  /// The language this person writes in, ISO 639-1 (ha, sw, en). Read from their first message when
+  /// nothing on the roster said. The conversation happens in it; the record stays in English.
+  language                   String?        @db.VarChar(8)
   willingnessEvidence        Boolean?       @map("willingness_evidence") // willingness gate Q1
   willingnessCadence         Boolean?       @map("willingness_cadence") // willingness gate Q2
   invitedAt                  DateTime?      @map("invited_at")
@@ -1861,6 +1864,20 @@ model WhatsAppConnection {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("whatsapp_connections")
+}
+
+/// WHICH CHECK-IN A WHATSAPP NUMBER IS TALKING TO. A person with two sessions open picks one from a
+/// list; the pick is remembered here so every following message lands in the same one until it
+/// closes. One row per number per organisation.
+model WhatsAppThread {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  phone          String
+  checkInId      String   @map("check_in_id")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, phone])
+  @@map("whatsapp_threads")
 }
 
 /// ONE CREDENTIAL PAIR PER INTEGRATION, SO ONE CAN BE REVOKED WITHOUT KILLING THE OTHERS.
