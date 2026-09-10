@@ -1679,7 +1679,9 @@ export function EntryChatPage() {
         // Background classify intent when we have initial
         if (res.extracted.initial) {
           entryApi.classifyIntent(res.extracted.initial, res.extracted.mode).then(r => {
-            setOnboardingSelections(prev => ({ ...prev, classifiedScenario: r.scenario }))
+            /* A low-confidence answer comes back as null and the card they picked stands. */
+            const sure = r.scenario
+            if (sure) setOnboardingSelections(prev => ({ ...prev, classifiedScenario: sure }))
           }).catch(() => { /* non-critical */ })
         }
       }

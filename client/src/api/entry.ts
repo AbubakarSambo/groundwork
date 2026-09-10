@@ -196,7 +196,8 @@ export const entryApi = {
     readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, joinToken }, onDelta),
 
   classifyIntent: (description: string, mode?: string) =>
-    apiClient.post<{ scenario: string }>('/entry/classify-intent', { description, mode }).then(r => r.data),
+    /* Null below the confidence bar: the flow keeps the card the person chose rather than a guess. */
+    apiClient.post<{ scenario: string | null; confidence: 'high' | 'low' }>('/entry/classify-intent', { description, mode }).then(r => r.data),
 
   faq: (question: string) =>
     apiClient.post<{ reply: string }>('/entry/faq', { question }).then(r => r.data),

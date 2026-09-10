@@ -41,6 +41,7 @@ import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
+import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -487,33 +488,13 @@ export class EntryService {
     return this.guardedReply(FAQ_PROMPT, [{ role: 'user', content: question }]);
   }
 
-  async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario }> {
-    const modeHint = mode ? `\nBroad category selected by the user: "${mode}"` : '';
-    const prompt = `You are a classifier. Given a brief description of a workplace situation and optionally a broad category, return the single best matching scenario key.
-
-Available scenarios:
-NEW_HIRE - onboarding a new hire or someone joining a team
-NEW_PROJECT - starting a new project, workstream, or initiative
-PULSE_CHECK - checking in on how something is going mid-flight
-DRIFT - a project, plan, or initiative has gone off track or diverged from what was agreed
-REALIGN_TEAM - two specific people (or a small team) see the current situation differently and need to close an interpersonal gap, after conflict, change, or confusion
-NEW_COFOUNDER - new co-founder, co-lead, or equal partner relationship
-NEW_ADVISOR - new board member, advisor, investor, or mentor relationship
-NEW_MANAGER - new manager coming into an existing team or role handover
-CONTRACT_RENEWAL - renewing, renegotiating, or extending a contract or agreement
-OKR_ALIGNMENT - aligning on objectives, goals, or key results across parties
-WORKPLAN_BUDGET - aligning on workplan, resourcing, or budget
-PIP - performance improvement, formal feedback, or capability concern
-BOARD_STRATEGY - board or leadership team aligning on strategy, priorities, or big bets
-COHORT_CHECK - many people in the same role or programme checking in against a shared question (e.g. field officers, franchisees, a training cohort)
-ACUTE_SHOCK - a sudden jarring event just happened (an incident, a blow-up, sudden bad news) and everyone needs a shared honest picture of what actually happened before any decision
-RECOGNITION - someone wants a raise, promotion, equity, or recognition, and the evidence behind the ask needs to be on record before the conversation
-${modeHint}
-
-Description: "${description.slice(0, 400)}"
-
-Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
-
+  /**
+   * Which situation this is. The prompt, its precedence rule and the reading of the answer live in
+   * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
+   * card the person chose rather than a guess.
+   */
+  async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+    const prompt = theClassifierPrompt(description, mode);
     try {
       /*
        * The marker is the VARIABLE NAME, not a comment. It used to be a comment, and the repo-wide
@@ -524,13 +505,11 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
        * still has to say in the open which kind theirs is.
        */
       const notAReplyToAnybody = await this.anthropic.respond(prompt, [{ role: 'user', content: 'Classify.' }]);
-      const raw = notAReplyToAnybody;
-      const match = raw.match(/"scenario"\s*:\s*"([A-Z_]+)"/);
-      if (match && Object.values(GroundScenario).includes(match[1] as GroundScenario)) {
-        return { scenario: match[1] as GroundScenario };
-      }
+      const read = readTheClassification(notAReplyToAnybody);
+      if (read) return read;
     } catch { /* fall through */ }
-    return { scenario: resolveScenario(mode) };
+    /* No answer at all: the broad category the person picked, said with the confidence it deserves. */
+    return { scenario: resolveScenario(mode), confidence: 'low' };
   }
 
   async onboard(
