@@ -128,17 +128,28 @@ export class WhatsAppForAnOrganisationService {
       return;
     }
 
-    /* Open if waiting, then the answer. */
-    let reply = '';
-    if (current.status === 'NOT_STARTED') {
-      const first = await this.conversation.open(current.id, userId!);
-      reply = `${sessionHeader(current)}\n\n${first.reply}`;
-      if (text.length <= 12) { await say(reply); return; }
+    /*
+     * OPEN IF WAITING, THEN THE ANSWER - AND WHATEVER REFUSES, THE PERSON HEARS IT. The finish branch
+     * above was wrapped; this was not. A spent balance, the answer ceiling, a paused or closed ground
+     * and an already-complete check-in all throw with a carefully written sentence, and every one of
+     * them went to the controller's log-only catch. The person got silence, which on a phone reads as
+     * the product being dead. One try, and say() the sentence. The highest-harm line in the slice.
+     */
+    try {
+      let reply = '';
+      if (current.status === 'NOT_STARTED') {
+        const first = await this.conversation.open(current.id, userId!);
+        reply = `${sessionHeader(current)}\n\n${first.reply}`;
+        if (text.length <= 12) { await say(reply); return; }
+      }
+      const r = await this.conversation.sendMessage(current.id, userId!, text);
+      reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
+      if (r.sessionComplete) reply += '\n\nThat is enough to close this check-in. Reply "finish" to complete it, or keep going.';
+      await say(reply);
+    } catch (e: any) {
+      const said = e?.response?.message ?? e?.message ?? 'That could not be answered just now. Try again in a moment.';
+      await say(Array.isArray(said) ? said.join(' ') : String(said));
     }
-    const r = await this.conversation.sendMessage(current.id, userId!, text);
-    reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
-    if (r.sessionComplete) reply += '\n\nThat is enough to close this check-in. Reply "finish" to complete it, or keep going.';
-    await say(reply);
   }
 
   /* --- the report, on the phone, when a session closes anywhere --- */
@@ -175,7 +186,14 @@ export class WhatsAppForAnOrganisationService {
     }
     let text = report ? reportAsText(report, c.label) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     text = await this.inTheirLanguage(text, row.participant.language);
-    await this.whatsapp.sendFor(organizationId, phone, text);
+    /* Retry the SEND, not the report. The synthesis, four polls and a translation are already paid for; a
+       failed send is retried once with the text in hand rather than by running all of that again. */
+    const first = await this.whatsapp.sendFor(organizationId, phone, text, { checkInId: c.id, kind: 'report' });
+    if (!first.sent) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const second = await this.whatsapp.sendFor(organizationId, phone, text, { checkInId: c.id, kind: 'report-retry' });
+      if (!second.sent) this.logger.error(`The report for check-in ${c.id} could not be sent to WhatsApp twice: ${second.error ?? 'no detail'}`);
+    }
   }
 
   /* --- language: read once, converse in it, record in English --- */

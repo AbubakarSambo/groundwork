@@ -1948,6 +1948,28 @@ model WordedLine {
   @@map("worded_lines")
 }
 
+/// EVERY OUTBOUND WHATSAPP MESSAGE, AND WHETHER IT WENT. A reply is composed AFTER the model call and
+/// the session decrement, and a report after a synthesis and up to four polls - so a send that failed
+/// silently was money spent on a message nobody received, and nothing anywhere recorded it. This row
+/// is what makes a paid-for-and-undelivered message findable at all. Organisation null is the
+/// platform number.
+model WhatsAppSend {
+  id             String    @id @default(uuid())
+  organizationId String?   @map("organization_id")
+  phone          String
+  checkInId      String?   @map("check_in_id")
+  kind           String?
+  sentAt         DateTime? @map("sent_at")
+  failedAt       DateTime? @map("failed_at")
+  status         Int?
+  error          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([organizationId, createdAt])
+  @@index([failedAt])
+  @@map("whatsapp_sends")
+}
+
 model WhatsAppThread {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")

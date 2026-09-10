@@ -98,14 +98,31 @@ export class WhatsAppController {
         return { received: true };
       }
 
-      const result =
-        openCheckIn.status === CheckInStatus.NOT_STARTED
-          ? await this.conversation.open(openCheckIn.id, user.id)
-          : await this.conversation.sendMessage(openCheckIn.id, user.id, text);
-
-      await this.whatsapp.sendMessage(fromNumber, result.reply);
+      /*
+       * THE FIRST THING THEY WROTE IS NOT DROPPED. On a NOT_STARTED check-in this called open() and
+       * threw the person's text away, so whatever they said to start with was never their turn. Open
+       * first - that is the door that meters - then hand their words in, and send both replies as one.
+       */
+      let reply: string;
+      if (openCheckIn.status === CheckInStatus.NOT_STARTED) {
+        const opened = await this.conversation.open(openCheckIn.id, user.id);
+        const answered = await this.conversation.sendMessage(openCheckIn.id, user.id, text);
+        reply = `${opened.reply}\n\n${answered.reply}`;
+      } else {
+        reply = (await this.conversation.sendMessage(openCheckIn.id, user.id, text)).reply;
+      }
+      await this.whatsapp.sendMessage(fromNumber, reply, { checkInId: openCheckIn.id, kind: 'reply' });
     } catch (err: any) {
-      this.logger.error(`WhatsApp inbound handling failed: ${err.message}`);
+      /*
+       * SILENCE IS THE ONE OUTCOME THIS CHANNEL CANNOT PRODUCE. A spent balance, a paused ground, an
+       * already-complete check-in and a failed model call all throw with a sentence written for the
+       * person - and this caught every one of them, logged it, and told the person nothing. The
+       * sentence goes back to them; only if THAT send fails is it a log line.
+       */
+      const said = err?.response?.message ?? err?.message ?? 'Something went wrong on our side. Try again in a moment.';
+      const to = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
+      const told = to ? await this.whatsapp.sendMessage(to, Array.isArray(said) ? said.join(' ') : String(said), { kind: 'refusal' }).catch(() => ({ sent: false })) : { sent: false };
+      if (!told.sent) this.logger.error(`WhatsApp inbound handling failed and the person could not be told: ${err?.message}`);
     }
     return { received: true };
   }

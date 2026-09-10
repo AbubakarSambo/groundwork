@@ -20,6 +20,8 @@ import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation
 @Controller()
 export class WhatsAppForAnOrganisationController {
   private readonly logger = new Logger(WhatsAppForAnOrganisationController.name);
+  /** How many inbound webhooks named an organisation we do not have. See receive(). */
+  private unknownOrganisations = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -99,8 +101,14 @@ export class WhatsAppForAnOrganisationController {
   @Throttle({ default: { limit: 240, ttl: 60_000 } })
   async receive(@Param('organizationId') organizationId: string, @Req() req: RawBodyRequest<Request>): Promise<{ received: true }> {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
-    /* Unknown organisation or a connection switched off: acknowledge and do nothing, so Meta does not retry forever. */
-    if (!own) return { received: true };
+    /* Unknown organisation: acknowledge, so Meta does not retry forever - but SAY SO. This returned 200 with
+       no log and no count, so a customer who pointed Meta at the wrong URL was a silence with no evidence
+       anywhere. The count is in the line, so a log search shows the rate without a metrics stack. */
+    if (!own) {
+      this.unknownOrganisations += 1;
+      this.logger.warn(`WhatsApp inbound for unknown organisation ${organizationId} (${this.unknownOrganisations} since start); acknowledged and dropped`);
+      return { received: true };
+    }
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
     this.whatsapp.verifySignatureWith(own.appSecret, req.headers as Record<string, string | string[] | undefined>, raw);
     if (!own.enabled) return { received: true };

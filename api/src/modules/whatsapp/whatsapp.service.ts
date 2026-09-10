@@ -1,6 +1,11 @@
 import * as crypto from 'crypto';
 import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
+/** Did it go. One shape from both numbers; see sendMessage. */
+export type SendResult = { sent: boolean; status?: number; error?: string };
+/** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
+export type SendContext = { checkInId?: string | null; kind?: string };
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -102,7 +107,15 @@ export class WhatsAppService {
    * Send a WhatsApp message to a phone number. Returns true if actually sent
    * via the API, false if dev-logged only (no credentials configured yet).
    */
-  async sendMessage(phoneNumber: string, text: string): Promise<boolean> {
+  /**
+   * ONE ANSWER TO "DID IT GO", FROM BOTH NUMBERS. `sendMessage` (the platform number) threw on a
+   * non-2xx while `deliver` (an organisation's own number) returned false, so the same failure
+   * reached a caller two different ways and the register's own description of it was half right.
+   * Both return this now, both write a WhatsAppSend row, and neither throws into the flow of the
+   * check-in it was about: a message that could not go is a fact to record, not a failure of the
+   * conversation.
+   */
+  async sendMessage(phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = WhatsAppService.normalize(phoneNumber);
     if (!(await this.isEnabled())) {
       /*
@@ -119,32 +132,55 @@ export class WhatsAppService {
       } else {
         this.logger.warn(`[DEV WHATSAPP] To: ${to} | Body: ${text}`);
       }
-      return false;
+      const result: SendResult = { sent: false, error: 'WhatsApp is not configured on this deployment' };
+      this.writeItDown(null, to, result, context);
+      return result;
     }
 
-    const accessToken = this.config.get<string>('whatsapp.accessToken');
-    const phoneNumberId = this.config.get<string>('whatsapp.phoneNumberId');
-    const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: to.replace('+', ''),
-        type: 'text',
-        text: { body: text },
-      }),
-    });
+    const accessToken = this.config.get<string>('whatsapp.accessToken') ?? '';
+    const phoneNumberId = this.config.get<string>('whatsapp.phoneNumberId') ?? '';
+    const result = await this.post(phoneNumberId, accessToken, to, text);
+    if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
+    this.writeItDown(null, to, result, context);
+    return result;
+  }
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${body}`);
-      throw new Error(`WhatsApp send failed: ${res.status}`);
+  /** The one HTTP call both numbers make. Never throws: the answer is in the result. */
+  private async post(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: text } }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${body.slice(0, 200)}`);
+        return { sent: false, status: res.status, error: body.slice(0, 500) || `HTTP ${res.status}` };
+      }
+      return { sent: true, status: res.status };
+    } catch (err: any) {
+      this.logger.error(`WhatsApp send failed for ${to}: ${err?.message}`);
+      return { sent: false, error: String(err?.message ?? err).slice(0, 500) };
     }
-    this.logger.log(`WhatsApp message sent to ${to}`);
-    return true;
+  }
+
+  /** The row. Fire-and-forget: a ledger that cannot be written must not stop a reply that can be sent. */
+  private writeItDown(organizationId: string | null, phone: string, result: SendResult, context: SendContext): void {
+    this.prisma.whatsAppSend
+      .create({
+        data: {
+          organizationId,
+          phone,
+          checkInId: context.checkInId ?? null,
+          kind: context.kind ?? null,
+          sentAt: result.sent ? new Date() : null,
+          failedAt: result.sent ? null : new Date(),
+          status: result.status ?? null,
+          error: result.error ?? null,
+        },
+      })
+      .catch((err: any) => this.logger.warn(`Could not record a WhatsApp send to ${phone}: ${err?.message}`));
   }
 
   /** Finds the account a check-in link should go to, by phone number - the "auto-detect" step. */
@@ -156,13 +192,14 @@ export class WhatsAppService {
    * and never throws into the caller's flow: a notice that could not go is a warning, not a failure of
    * the check-in it was about.
    */
-  async sendFor(organizationId: string, phoneNumber: string, text: string): Promise<boolean> {
+  async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-    if (!own || !own.enabled) return this.sendMessage(phoneNumber, text).catch(() => false);
+    if (!own || !own.enabled) return this.sendMessage(phoneNumber, text, context);
     const to = WhatsAppService.normalize(phoneNumber);
-    const ok = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
-    if (ok) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
-    return ok;
+    const result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
+    if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
+    this.writeItDown(organizationId, to, result, context);
+    return result;
   }
 
   /**
@@ -171,7 +208,7 @@ export class WhatsAppService {
    */
   async sendListFor(organizationId: string, phoneNumber: string, body: string, rows: { id: string; title: string; description: string }[], fallbackText: string): Promise<boolean> {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-    if (!own || !own.enabled) return this.sendMessage(phoneNumber, fallbackText).catch(() => false);
+    if (!own || !own.enabled) return (await this.sendMessage(phoneNumber, fallbackText, { kind: 'which-one' })).sent;
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
       const res = await fetch(`https://graph.facebook.com/v20.0/${own.phoneNumberId}/messages`, {
@@ -187,7 +224,7 @@ export class WhatsAppService {
     } catch (err: any) {
       this.logger.warn(`WhatsApp list failed for ${to}: ${err?.message}; sending the numbered text instead.`);
     }
-    return this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText);
+    return (await this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText)).sent;
   }
 
   /**
@@ -214,23 +251,8 @@ export class WhatsAppService {
     }
   }
 
-  private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<boolean> {
-    try {
-      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: text } }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        this.logger.error(`WhatsApp send failed for ${to}: ${res.status} ${body.slice(0, 200)}`);
-        return false;
-      }
-      return true;
-    } catch (err: any) {
-      this.logger.error(`WhatsApp send failed for ${to}: ${err?.message}`);
-      return false;
-    }
+  private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
+    return this.post(phoneNumberId, accessToken, to, text);
   }
 
   /**
@@ -312,7 +334,7 @@ export class WhatsAppService {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect a number first.');
     if (!toNumber?.trim()) throw new BadRequestException('Say which number to send the test to.');
-    const ok = await this.deliver(own.phoneNumberId, own.accessToken, WhatsAppService.normalize(toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into your record.');
+    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, WhatsAppService.normalize(toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into your record.')).sent;
     if (!ok) throw new BadRequestException('Meta refused the message. Check the token, the number id, and that this number may receive messages from your Meta app.');
     await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } });
     return { sent: true };
