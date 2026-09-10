@@ -352,9 +352,21 @@ export class WhatsAppService {
     }
   }
 
-  async findUserByPhoneNumber(rawNumber: string) {
+  /**
+   * WHICH ORGANISATIONS A NUMBER IS ON. The platform webhook carries no organisation, so the old
+   * lookup was a bare global `user.findUnique` on the phone - one person, whichever tenant. This lists
+   * every organisation whose roster or Settings carries the number, and the inbound handler asks the
+   * person which they mean when there is more than one, rather than guessing.
+   */
+  async whichOrganisations(rawNumber: string): Promise<{ id: string; name: string }[]> {
     const normalized = WhatsAppService.normalize(rawNumber);
-    return this.prisma.user.findUnique({ where: { phoneNumber: normalized } });
+    const [people, users] = await Promise.all([
+      this.prisma.person.findMany({ where: { phone: normalized, active: true }, select: { organization: { select: { id: true, name: true } } } }),
+      this.prisma.user.findMany({ where: { phoneNumber: normalized, deletedAt: null }, select: { organization: { select: { id: true, name: true } } } }),
+    ]);
+    const seen = new Map<string, { id: string; name: string }>();
+    for (const row of [...people, ...users]) if (row.organization) seen.set(row.organization.id, row.organization);
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /** Set (or clear) a user's WhatsApp number. Called from Settings (self) or org roster (admin/HR on someone's behalf). */

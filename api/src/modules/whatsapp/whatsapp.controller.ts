@@ -6,8 +6,8 @@ import { Public } from '../../common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
-import { ConversationService } from '../conversation';
-import { CheckInStatus } from '@prisma/client';
+import { WhatsAppForAnOrganisationService } from '../public-api/whatsapp-for-an-organisation.service';
+import { pickWasAsked, pickedOrganisation, whichOrganisationAsText } from '../public-api/a-whatsapp-message-is-routed';
 
 /**
  * Inbound WhatsApp webhook. Meta calls GET once to verify the endpoint, then POSTs every inbound
@@ -30,7 +30,7 @@ export class WhatsAppController {
     private config: ConfigService,
     private prisma: PrismaService,
     private whatsapp: WhatsAppService,
-    private conversation: ConversationService,
+    private inbound: WhatsAppForAnOrganisationService,
   ) {}
 
   /* Bare text, not the { success, data } envelope: Meta compares the body to the challenge byte for byte. Found 10 Sep 2026. */
@@ -71,47 +71,19 @@ export class WhatsAppController {
 
     const body = req.body as any;
     try {
-      const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-      if (!message || message.type !== 'text') return { received: true };
-
-      const fromNumber: string = message.from;
-      const text: string = message.text?.body ?? '';
-
-      // Auto-detect: match the sender's phone number to a known account.
-      const user = await this.whatsapp.findUserByPhoneNumber(fromNumber);
-      if (!user) {
-        await this.whatsapp.sendMessage(fromNumber, "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.");
-        return { received: true };
-      }
-
-      // Route to their next open check-in (started or waiting), across any ground.
-      const openCheckIn = await this.prisma.checkIn.findFirst({
-        where: {
-          participant: { userId: user.id },
-          status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
-          OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
-        },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (!openCheckIn) {
-        await this.whatsapp.sendMessage(fromNumber, "You don't have an open check-in right now. We'll message you here as soon as your next one is ready.");
-        return { received: true };
-      }
-
       /*
-       * THE FIRST THING THEY WROTE IS NOT DROPPED. On a NOT_STARTED check-in this called open() and
-       * threw the person's text away, so whatever they said to start with was never their turn. Open
-       * first - that is the door that meters - then hand their words in, and send both replies as one.
+       * ONE INBOUND HANDLER, NOT TWO. This route had its own routing body: an organisation-unscoped
+       * identity lookup, the oldest open check-in picked in silence, every non-text message dropped,
+       * no report on finish. The organisation handler is a superset on every axis that matters and the
+       * only one whose identity lookup is tenant-scoped, so this route now does exactly two things of
+       * its own - the shared-secret signature above, and working out WHICH organisation the sender
+       * means - and hands the message to it. Fixes written once, not twice.
        */
-      let reply: string;
-      if (openCheckIn.status === CheckInStatus.NOT_STARTED) {
-        const opened = await this.conversation.open(openCheckIn.id, user.id);
-        const answered = await this.conversation.sendMessage(openCheckIn.id, user.id, text);
-        reply = `${opened.reply}\n\n${answered.reply}`;
-      } else {
-        reply = (await this.conversation.sendMessage(openCheckIn.id, user.id, text)).reply;
-      }
-      await this.whatsapp.sendMessage(fromNumber, reply, { checkInId: openCheckIn.id, kind: 'reply' });
+      const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+      if (!message?.from) return { received: true };
+      const fromNumber: string = message.from;
+      const organizationId = await this.whichOrganisation(fromNumber, message);
+      if (organizationId) await this.inbound.handle(organizationId, body);
     } catch (err: any) {
       /*
        * SILENCE IS THE ONE OUTCOME THIS CHANNEL CANNOT PRODUCE. A spent balance, a paused ground, an
@@ -125,5 +97,38 @@ export class WhatsAppController {
       if (!told.sent) this.logger.error(`WhatsApp inbound handling failed and the person could not be told: ${err?.message}`);
     }
     return { received: true };
+  }
+
+  /**
+   * WHICH ORGANISATION THE SENDER MEANS. On one roster: that one. On none: told how to be added. On
+   * more than one: asked, as a numbered list, and the answer kept - a bare number is read as the
+   * answer only while the question is fresh, the same rule the check-in list uses.
+   */
+  private async whichOrganisation(fromNumber: string, message: any): Promise<string | null> {
+    const orgs = await this.whatsapp.whichOrganisations(fromNumber);
+    if (orgs.length === 0) {
+      await this.whatsapp.sendMessage(fromNumber, "We don't recognize this number yet. Add it in your Groundwork Settings, then message us again.", { kind: 'refusal' });
+      return null;
+    }
+    if (orgs.length === 1) return orgs[0].id;
+    const phone = WhatsAppService.normalize(fromNumber);
+    const kept = await this.prisma.whatsAppOrganisationPick.findUnique({ where: { phone } }).catch(() => null);
+    const text: string = message?.type === 'text' ? (message.text?.body ?? '') : '';
+    if (kept && pickWasAsked(kept.pickPendingAt)) {
+      const picked = pickedOrganisation(text, orgs);
+      if (picked) {
+        await this.prisma.whatsAppOrganisationPick.update({ where: { phone }, data: { organizationId: picked.id, pickPendingAt: null } });
+        await this.whatsapp.sendMessage(fromNumber, `${picked.name}. Carry on - what you write here goes to your check-in there.`);
+        return null;
+      }
+    }
+    if (kept?.organizationId && orgs.some((o) => o.id === kept.organizationId)) return kept.organizationId;
+    await this.prisma.whatsAppOrganisationPick.upsert({
+      where: { phone },
+      create: { phone, pickPendingAt: new Date() },
+      update: { pickPendingAt: new Date() },
+    });
+    await this.whatsapp.sendMessage(fromNumber, whichOrganisationAsText(orgs), { kind: 'which-one' });
+    return null;
   }
 }

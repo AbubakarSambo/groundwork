@@ -1998,11 +1998,26 @@ model WhatsAppThread {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")
   phone          String
-  checkInId      String   @map("check_in_id")
+  /// Null while the person has been asked which check-in and has not yet said.
+  checkInId      String?  @map("check_in_id")
+  /// When the "which one?" list was sent. A typed number is a pick only while this is fresh (a-whatsapp-message-is-routed.ts).
+  pickPendingAt  DateTime? @map("pick_pending_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@unique([organizationId, phone])
   @@map("whatsapp_threads")
+}
+
+/// WHICH ORGANISATION A NUMBER WRITING TO THE PLATFORM NUMBER MEANS. The platform webhook has no
+/// organisation in its URL; the sender's number is looked up on every roster and, when it is on more
+/// than one, the person is asked and the answer is kept here. One row per phone.
+model WhatsAppOrganisationPick {
+  phone          String    @id
+  organizationId String?   @map("organization_id")
+  pickPendingAt  DateTime? @map("pick_pending_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("whatsapp_organisation_picks")
 }
 
 /// ONE CREDENTIAL PAIR PER INTEGRATION, SO ONE CAN BE REVOKED WITHOUT KILLING THE OTHERS.

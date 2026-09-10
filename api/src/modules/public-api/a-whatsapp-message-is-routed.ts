@@ -89,3 +89,39 @@ export function languageBlock(code: string | null | undefined): string {
   const name = LANGUAGES_WE_CONVERSE_IN[code];
   return `THIS PERSON WRITES IN ${name.toUpperCase()}. Ask and answer in ${name}, in plain everyday words. Keep every name, number, date and place exactly as they wrote it. If they switch to English, follow them. Nothing else about how you work changes.`;
 }
+
+/**
+ * A NUMBER IS NOT ALWAYS A MENU PICK. With two check-ins open, any bare one-or-two-digit text was read
+ * as a choice from the list - so "7", typed in answer to "how many did you close?", switched check-in.
+ * A typed number is a pick only while the question is fresh: the list was sent, and not long ago.
+ */
+export const A_PICK_IS_GOOD_FOR_MS = 10 * 60 * 1000;
+
+export function pickWasAsked(pickPendingAt: Date | string | null | undefined, now: Date = new Date()): boolean {
+  if (!pickPendingAt) return false;
+  return now.getTime() - new Date(pickPendingAt).getTime() <= A_PICK_IS_GOOD_FOR_MS;
+}
+
+/** A tapped row is always a pick; a typed id is; a typed number is only when the list was just sent. */
+export function pickedFromText(text: string, open: AnOpenCheckIn[], pickPendingAt: Date | string | null | undefined, now: Date = new Date()): AnOpenCheckIn | null {
+  const t = (text ?? '').trim();
+  if (open.some((c) => c.id === t)) return pickedOne(t, open);
+  if (/^\d{1,2}$/.test(t)) return pickWasAsked(pickPendingAt, now) ? pickedOne(t, open) : null;
+  return null;
+}
+
+/** A greeting and nothing else. The only text that opens a session without being handed in as an answer. */
+export const A_GREETING_ALONE = /^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i;
+
+/** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
+export const A_FINISH_WORD = /^\s*(finish|complete|done|close)\s*[.!]?\s*$/i;
+
+/** Which organisation, when a number is on more than one roster. Same shape as the check-in list. */
+export function whichOrganisationAsText(orgs: { id: string; name: string }[]): string {
+  return ['This number is on more than one organisation\'s roster. Which is this for? Reply with the number.', ...orgs.map((o, i) => `${i + 1}. ${o.name}`)].join('\n');
+}
+
+export function pickedOrganisation(text: string, orgs: { id: string; name: string }[]): { id: string; name: string } | null {
+  const n = /^\s*\d{1,2}\s*$/.test(text ?? '') ? Number(text.trim()) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= orgs.length ? orgs[n - 1] : null;
+}

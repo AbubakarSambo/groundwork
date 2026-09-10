@@ -11,7 +11,7 @@ import { ReportsService } from '../reports/reports.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
-import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
+import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
 
 /**
  * WHAT HAPPENS TO A WHATSAPP MESSAGE SENT TO AN ORGANISATION'S NUMBER.
@@ -57,7 +57,13 @@ export class WhatsAppForAnOrganisationService {
     }
     let userId = who.userId;
     if (!userId && who.personId) {
+      /* On the roster, not connected to a sign-in: a different fact from "nothing open", and one the
+         person can act on. It used to fall through to "You have no check-in open right now". */
       try { userId = await this.checkIns.actingAs(organizationId, who.personId); } catch { userId = null; }
+      if (!userId) {
+        await say("This number is on your organisation's roster but is not connected to a Groundwork sign-in yet - ask your admin to link it.");
+        return;
+      }
     }
 
     const open = userId ? await this.openCheckInsFor(organizationId, userId) : [];
@@ -75,7 +81,8 @@ export class WhatsAppForAnOrganisationService {
     /* Which one. A pick (tapped or typed) settles it; a remembered pick holds; two or more with neither asks. */
     const thread = await this.prisma.whatsAppThread.findUnique({ where: { organizationId_phone: { organizationId, phone: WhatsAppService.normalize(from) } } }).catch(() => null);
     let current: AnOpenCheckIn | null = null;
-    const picked = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' && open.length > 1 ? pickedOne(arrived.text, open) : null;
+    /* A typed number is a pick only while the question is fresh (a-whatsapp-message-is-routed.ts). */
+    const picked = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' && open.length > 1 ? pickedFromText(arrived.text, open, thread?.pickPendingAt) : null;
     if (picked) {
       current = picked;
       await this.remember(organizationId, from, picked.id);
@@ -91,6 +98,7 @@ export class WhatsAppForAnOrganisationService {
       current = open[0];
       await this.remember(organizationId, from, current.id);
     } else {
+      await this.askWhichOne(organizationId, from);
       await this.whatsapp.sendListFor(organizationId, from, 'You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
       return;
     }
@@ -115,8 +123,16 @@ export class WhatsAppForAnOrganisationService {
     if (arrived.kind !== 'text') return;
     const text = arrived.text;
 
-    /* Finish. */
-    if (/^\s*(finish|complete|done|close)\s*[.!]?\s*$/i.test(text) && current.status === 'IN_PROGRESS') {
+    /*
+     * FINISH, MATCHED BEFORE THE STATUS IS LOOKED AT. "finish" on a session not yet opened used to be
+     * discarded by the twelve-character guard below; with that guard gone it would have been written
+     * into the record as the first answer. Neither is right. Say what is true.
+     */
+    if (A_FINISH_WORD.test(text) && current.status === 'NOT_STARTED') {
+      await say('There is nothing to finish yet - this check-in has not started. Say something and I will open it.');
+      return;
+    }
+    if (A_FINISH_WORD.test(text) && current.status === 'IN_PROGRESS') {
       try {
         await this.conversation.complete(current.id, userId!);
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
@@ -140,7 +156,10 @@ export class WhatsAppForAnOrganisationService {
       if (current.status === 'NOT_STARTED') {
         const first = await this.conversation.open(current.id, userId!);
         reply = `${sessionHeader(current)}\n\n${first.reply}`;
-        if (text.length <= 12) { await say(reply); return; }
+        /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
+           twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
+           handed in - matched by a list, not by a length. */
+        if (A_GREETING_ALONE.test(text)) { await say(reply); return; }
       }
       const r = await this.conversation.sendMessage(current.id, userId!, text);
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
@@ -256,7 +275,17 @@ export class WhatsAppForAnOrganisationService {
     await this.prisma.whatsAppThread.upsert({
       where: { organizationId_phone: { organizationId, phone } },
       create: { organizationId, phone, checkInId },
-      update: { checkInId },
+      update: { checkInId, pickPendingAt: null },
+    }).catch(() => undefined);
+  }
+
+  /** The question was asked now; a typed number is an answer to it only while that is fresh. */
+  private async askWhichOne(organizationId: string, from: string) {
+    const phone = WhatsAppService.normalize(from);
+    await this.prisma.whatsAppThread.upsert({
+      where: { organizationId_phone: { organizationId, phone } },
+      create: { organizationId, phone, pickPendingAt: new Date() },
+      update: { pickPendingAt: new Date() },
     }).catch(() => undefined);
   }
 

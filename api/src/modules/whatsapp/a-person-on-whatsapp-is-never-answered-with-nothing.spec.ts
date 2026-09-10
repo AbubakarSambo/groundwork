@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { CheckInStatus } from '@prisma/client';
 import { WhatsAppController } from './whatsapp.controller';
 import { WhatsAppForAnOrganisationController } from '../public-api/whatsapp-for-an-organisation.controller';
 
@@ -20,53 +19,77 @@ const inbound = (text: string, from = '+2348000000001') => ({
   body: { entry: [{ changes: [{ value: { messages: [{ type: 'text', from, text: { body: text } }] } }] }] },
 });
 
-const platform = (checkIn: any, conversation: { open?: any; sendMessage?: any }) => {
+/*
+ * THE PLATFORM ROUTE IS A DOOR INTO THE ORGANISATION HANDLER, NOT A SECOND HANDLER. It works out which
+ * organisation the sender means and hands the body over; everything that used to be tested here about
+ * opening, answering and refusing is the organisation handler's, tested below and in its own module.
+ */
+const platform = (orgs: { id: string; name: string }[], handle: any = async () => undefined, kept: any = null) => {
   const sent: string[] = [];
   const whatsapp: any = {
     isEnabled: jest.fn(async () => true),
     verifySignature: jest.fn(),
-    findUserByPhoneNumber: jest.fn(async () => ({ id: 'me' })),
+    whichOrganisations: jest.fn(async () => orgs),
     sendMessage: jest.fn(async (_to: string, text: string) => { sent.push(text); return { sent: true }; }),
   };
-  const prisma: any = { checkIn: { findFirst: jest.fn(async () => checkIn) } };
-  const conv: any = { open: jest.fn(conversation.open ?? (async () => ({ reply: 'Welcome. What has happened since?' }))), sendMessage: jest.fn(conversation.sendMessage ?? (async () => ({ reply: 'Noted.' }))) };
-  const c = new WhatsAppController({ get: () => undefined } as any, prisma, whatsapp, conv);
-  return { c, sent, conv, whatsapp };
+  const picks: any = { findUnique: jest.fn(async () => kept), upsert: jest.fn(async () => ({})), update: jest.fn(async () => ({})) };
+  const prisma: any = { whatsAppOrganisationPick: picks };
+  const inboundHandler: any = { handle: jest.fn(handle) };
+  const c = new WhatsAppController({ get: () => undefined } as any, prisma, whatsapp, inboundHandler);
+  return { c, sent, inboundHandler, whatsapp, picks };
 };
 
 describe('the platform handler', () => {
+  it('hands a message from a number on one roster to the organisation handler, for that organisation', async () => {
+    const { c, inboundHandler, sent } = platform([{ id: 'org-1', name: 'Acme' }]);
+    await c.receive(inbound('We signed the supplier on Monday.') as any);
+    expect(inboundHandler.handle).toHaveBeenCalledWith('org-1', expect.objectContaining({ entry: expect.any(Array) }));
+    expect(sent).toEqual([]);
+  });
+
+  it('a number on no roster is told how to be added, once, and nothing is handled', async () => {
+    const { c, inboundHandler, sent } = platform([]);
+    await c.receive(inbound('hello') as any);
+    expect(inboundHandler.handle).not.toHaveBeenCalled();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatch(/recognize this number/);
+  });
+
+  it('a number on two rosters is asked which, as a numbered list, and nothing is guessed', async () => {
+    const { c, inboundHandler, sent, picks } = platform([{ id: 'a', name: 'Acme' }, { id: 'b', name: 'Bolt' }]);
+    await c.receive(inbound('hello') as any);
+    expect(inboundHandler.handle).not.toHaveBeenCalled();
+    expect(sent[0]).toMatch(/1\. Acme\n2\. Bolt/);
+    expect(picks.upsert).toHaveBeenCalled();
+  });
+
+  it('a bare number answers the question while it is fresh, and the pick is kept', async () => {
+    const { c, inboundHandler, sent, picks } = platform([{ id: 'a', name: 'Acme' }, { id: 'b', name: 'Bolt' }], undefined, { phone: '+2348000000001', organizationId: null, pickPendingAt: new Date() });
+    await c.receive(inbound('2') as any);
+    expect(picks.update).toHaveBeenCalledWith(expect.objectContaining({ data: { organizationId: 'b', pickPendingAt: null } }));
+    expect(sent[0]).toMatch(/^Bolt\./);
+    expect(inboundHandler.handle).not.toHaveBeenCalled();
+  });
+
+  it('a kept pick routes without asking again', async () => {
+    const { c, inboundHandler } = platform([{ id: 'a', name: 'Acme' }, { id: 'b', name: 'Bolt' }], undefined, { phone: '+2348000000001', organizationId: 'b', pickPendingAt: null });
+    await c.receive(inbound('More happened.') as any);
+    expect(inboundHandler.handle).toHaveBeenCalledWith('b', expect.anything());
+  });
+
   it.each([
     ['a spent balance', () => { throw new ForbiddenException('This check-in is beyond your ten free check-ins. Resubscribe to continue checking in.'); }, /beyond your ten free/],
     ['a paused ground', () => { throw new BadRequestException('This check-in is on hold. Nothing can be added to it until it is resumed.'); }, /on hold/],
-    ['a completed check-in', () => { throw new BadRequestException('This check-in is already complete'); }, /already complete/],
     ['a failed model call', () => { throw new Error('model unreachable'); }, /model unreachable/],
-  ])('%s produces exactly one outbound text carrying the refusal’s own sentence', async (_n, sendMessage, says) => {
-    const { c, sent } = platform({ id: 'ci', status: CheckInStatus.IN_PROGRESS }, { sendMessage });
+  ])('%s escaping the handler still produces exactly one outbound text carrying the refusal’s own sentence', async (_n, handle, says) => {
+    const { c, sent } = platform([{ id: 'org-1', name: 'Acme' }], handle);
     await c.receive(inbound('hello') as any);
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatch(says);
   });
 
-  it('the first message on a NOT_STARTED check-in is opened, then handed in as their turn, and answered once', async () => {
-    const { c, sent, conv } = platform({ id: 'ci', status: CheckInStatus.NOT_STARTED }, {});
-    await c.receive(inbound('We signed the supplier on Monday.') as any);
-    expect(conv.open).toHaveBeenCalledWith('ci', 'me');
-    expect(conv.sendMessage).toHaveBeenCalledWith('ci', 'me', 'We signed the supplier on Monday.');
-    expect(conv.open.mock.invocationCallOrder[0]).toBeLessThan(conv.sendMessage.mock.invocationCallOrder[0]);
-    expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatch(/Welcome/);
-    expect(sent[0]).toMatch(/Noted/);
-  });
-
-  it('a message on a session already underway is one send, not two', async () => {
-    const { c, sent, conv } = platform({ id: 'ci', status: CheckInStatus.IN_PROGRESS }, {});
-    await c.receive(inbound('More happened.') as any);
-    expect(conv.open).not.toHaveBeenCalled();
-    expect(sent).toEqual(['Noted.']);
-  });
-
   it('only when the refusal itself cannot be sent does it become a log line', async () => {
-    const { c, whatsapp } = platform({ id: 'ci', status: CheckInStatus.IN_PROGRESS }, { sendMessage: () => { throw new BadRequestException('on hold'); } });
+    const { c, whatsapp } = platform([{ id: 'org-1', name: 'Acme' }], () => { throw new BadRequestException('on hold'); });
     whatsapp.sendMessage = jest.fn(async () => ({ sent: false, error: '500' }));
     (c as any).logger = { error: jest.fn(), warn: jest.fn(), log: jest.fn() };
     await c.receive(inbound('hello') as any);
