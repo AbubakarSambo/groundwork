@@ -4671,6 +4671,24 @@ model ScenarioCandidate {
 /// is why this is a record keyed to the person rather than a setting on the organisation - a
 /// preference an admin can flip is not a preference, and the whole reason people answer honestly
 /// here is that the product does what it said it would.
+/// A MAIL HELD FOR THE MORNING, NOT DROPPED. When quiet hours apply, sendEmail writes the rendered
+/// mail here instead of sending it, and held-mail.cron.ts sends what is due. Before this, the digest
+/// loop logged "quiet_hours" and moved on: a round that completed at 21:00 local was never announced.
+model ScheduledEmail {
+  id        String    @id @default(uuid())
+  toAddress String    @map("to_address")
+  subject   String
+  html      String    @db.Text
+  sender    String?
+  context   Json?
+  notBefore DateTime  @map("not_before")
+  sentAt    DateTime? @map("sent_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([sentAt, notBefore])
+  @@map("scheduled_emails")
+}
+
 model EmailPreference {
   id               String @id @default(uuid())
   organizationId   String @map("organization_id")

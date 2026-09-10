@@ -128,28 +128,12 @@ export class ReportsListener {
       this.logger.error(`Report release on ground.activated failed for ground ${event.groundId}: ${err.message}`);
     }
 
-    // Notify the participant(s) so they know to return.
-    try {
-      const ground = await this.prisma.ground.findUnique({
-        where: { id: event.groundId },
-        select: { label: true, participants: { include: { user: { select: { email: true, firstName: true } } } } },
-      });
-      if (!ground) return;
-
-      const frontendUrl = this.config.get<string>('resend.frontendUrl') || 'http://localhost:5173';
-      const groundUrl = `${frontendUrl}/grounds/${event.groundId}`;
-
-      const participants = ground.participants.filter((p) => p.partyType === PartyType.PARTICIPANT && p.user);
-      await Promise.all(
-        participants.map((p) =>
-          this.email
-            .sendGroundActivated(p.user!.email, p.user!.firstName, ground.label, groundUrl)
-            .catch((err: any) => this.logger.error(`Failed to notify participant ${p.user!.email} of activation: ${err.message}`)),
-        ),
-      );
-    } catch (err: any) {
-      this.logger.error(`Participant activation notification failed for ground ${event.groundId}: ${err.message}`);
-    }
+    /*
+     * ONE REPORT, ONE MESSAGE (NL-005). release() above mails every participant that the shared record
+     * is ready, with the report link. This then mailed every participant a second time, seconds later,
+     * saying the same thing and pointing at the check-in instead, and neither said which to open. The
+     * second mail and its sender are gone; the report mail is the one.
+     */
   }
 
   private async notifyAdminOnCheckIn(event: CheckInCompletedEvent): Promise<void> {

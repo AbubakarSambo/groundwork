@@ -158,7 +158,6 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendYouAreInNow: 'asked for',
   sendTheyWereNotLetIn: 'asked for',
   sendSomebodyIsWaiting: 'asked for',
-  sendGroundActivated: 'asked for',
   sendGroundClosed: 'asked for',
   sendResolutionProposal: 'asked for',
   sendLateCorrectionNotice: 'asked for',

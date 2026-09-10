@@ -51,17 +51,18 @@ describe('one mail per round', () => {
     expect(sent).toEqual([]);
   });
 
-  it('and refuses in their quiet hours', async () => {
+  it('and in their quiet hours still hands the mail to the door, which holds it for the morning', async () => {
     /*
      * An inverted window (before > after) is quiet at every hour of the day, whatever hour this
-     * suite happens to run in - `quietBeforeHour: quietAfterHour` (e.g. 23/23) used to do that only
-     * by relying on an off-by-one at the boundary itself, which made this pass or fail depending on
-     * the wall clock rather than on the preference being tested.
+     * suite happens to run in. This used to expect NOTHING sent: the digest dropped a mail refused for
+     * the hour, so a round completing at 21:00 local was never announced. Quiet hours are now the
+     * door's business (email.service#holdForTheMorning, held-mail.cron.ts) - the digest sends, the
+     * door holds. See nothing-lands-at-3am-and-nothing-is-lost-either.spec.ts.
      */
     const { service, sent } = svc({ prefs: { id: 'p1', unsubscribeToken: 'tok', roundDigest: true,
       nudges: true, unsubscribedAt: null, quietBeforeHour: 12, quietAfterHour: 11 } });
     await service.onRoundCompleted(round as any);
-    expect(sent).toEqual([]);
+    expect(sent).toHaveLength(1);
   });
 
   it('and refuses to somebody who unsubscribed', async () => {

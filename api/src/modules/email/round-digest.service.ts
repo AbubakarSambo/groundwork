@@ -98,7 +98,9 @@ export class RoundDigestService {
         const refuse = mayNotSend({
           kind: 'round_digest', prefs, timezone: person.timezone, now: new Date(),
         });
-        if (refuse) {
+        /* Quiet hours are no longer a reason to drop it: sendEmail holds the mail for the morning
+           and held-mail.cron.ts sends it. The other reasons still refuse here. */
+        if (refuse && refuse !== 'quiet_hours') {
           this.logger.log(`No digest to ${person.externalId} for ${e.groundId}: ${refuse}.`);
           continue;
         }

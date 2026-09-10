@@ -427,7 +427,9 @@ export class GroundsCron {
    */
   @Cron('*/15 * * * *', { timeZone: 'UTC' })
   async sendSessionReadyNotifications() {
-    await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendSessionReadyNotificationsInner());
+    /* Its own lock (NL-037): it shared SEND_REMINDERS with the daily job, and a long pass here
+       overlapping 09:00 skipped the day's reminders with no retry. */
+    await this.prisma.withAdvisoryLock(CronLock.SESSION_READY, async () => this.sendSessionReadyNotificationsInner());
   }
 
   private async sendSessionReadyNotificationsInner() {
@@ -550,48 +552,13 @@ export class GroundsCron {
     const throttleBefore = new Date(now.getTime() - NUDGE_THROTTLE_DAYS * 24 * 60 * 60 * 1000);
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
-    // 1. Return-nudges to idle accepted parties with a due, open session.
-    const idleParties = await this.prisma.groundParticipant.findMany({
-      where: {
-        userId: { not: null },
-        ground: { status: { notIn: TERMINAL }, sessionsBalance: { gt: 0 } },
-        OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
-        checkIns: { some: { status: { in: OPEN_STATUSES } } },
-      },
-      select: {
-        id: true,
-        email: true,
-        ground: { select: { label: true } },
-        checkIns: {
-          where: { status: { in: OPEN_STATUSES } },
-          orderBy: { sessionNumber: 'asc' },
-          take: 1,
-          select: { id: true, availableFrom: true },
-        },
-        // GW-23: use the person's last record entry as the "specific thing" in the nudge
-        // so the email names something real from their own words rather than the ground label.
-        recordEntries: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { text: true },
-        },
-      },
-    });
-
-    let returnNudges = 0;
-    for (const p of idleParties) {
-      const ci = p.checkIns[0];
-      if (!ci) continue;
-      if (ci.availableFrom && ci.availableFrom > now) continue; // not due yet
-      const specificThing = p.recordEntries[0]?.text ?? p.ground.label;
-      try {
-        await this.email.sendNudge(p.email, specificThing, this.email.buildCheckInUrl(ci.id), undefined, undefined, p.id);
-        await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
-        returnNudges++;
-      } catch (err: any) {
-        this.logger.error(`Return-nudge failed for participant ${p.id}: ${err.message}`);
-      }
-    }
+    /*
+     * THE RETURN-NUDGE HALF OF THIS JOB IS GONE (NL-021). Two engines sent the same nudge: this one
+     * at 09:00 with a three-day throttle, and remind.service at 08:00 with the policy that reads the
+     * lead's chase settings. They coordinated only by the 08:00 job having stamped lastNudgedAt an
+     * hour earlier. remind.service keeps the policy; this job keeps the activation reminders below.
+     */
+    const returnNudges = 0;
 
     // 2. Activation reminders to admins sitting on an unactivated report.
     const reportReady = await this.prisma.ground.findMany({

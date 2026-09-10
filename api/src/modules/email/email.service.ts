@@ -5,6 +5,7 @@ import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
 import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 import { greeting } from './a-greeting-with-no-name';
@@ -243,6 +244,59 @@ export class EmailService {
       this.logger.log(`Not sending "${options.subject}" to ${options.to}: ${rather}`);
       return undefined;
     }
+
+    /*
+     * NOTHING LANDS AT 3AM, AND NOTHING IS LOST EITHER. Quiet hours were honoured by one sender, the
+     * digest - and it DROPPED the mail, so a round that completed at 21:00 local was never announced.
+     * Every other cron sent on a fixed UTC clock. Now every mail we decided to send asks the one rule
+     * here, and one refused for the hour is written down with the moment it may go, and sent then by
+     * held-mail.cron.ts. The way-back-in and asked-for mails go at once: somebody who just asked for
+     * a sign-in link is awake.
+     */
+    if (sender && whatThisMailIs(sender) === 'we decided to send it') {
+      const held = await this.holdForTheMorning(options, context, sender);
+      if (held) return undefined;
+    }
+    return this.deliverNow(options, context, sender);
+  }
+
+  /** The recipient's zone and quiet hours, from their roster row. Nobody on the roster: no hold. */
+  private async holdForTheMorning(options: { to: string; subject: string; html: string }, context: DeliveryContext | undefined, sender: string): Promise<boolean> {
+    try {
+      const person = await this.prisma.person.findFirst({
+        where: { email: { equals: options.to.trim().toLowerCase(), mode: 'insensitive' } },
+        select: { organizationId: true, externalId: true, timezone: true },
+      });
+      if (!person) return false;
+      const prefs = await this.prisma.emailPreference.findUnique({
+        where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
+        select: { quietBeforeHour: true, quietAfterHour: true },
+      });
+      const now = new Date();
+      if (!inQuietHours(now, person.timezone, prefs)) return false;
+      const notBefore = nextAllowedMoment(now, person.timezone, prefs);
+      await this.prisma.scheduledEmail.create({
+        data: { toAddress: options.to, subject: options.subject, html: options.html, sender, context: (context ?? null) as any, notBefore },
+      });
+      this.logger.log(`Holding "${options.subject}" for ${options.to} until ${notBefore.toISOString()} (quiet hours).`);
+      return true;
+    } catch (err: any) {
+      /* A hold that cannot be written must not lose the mail: it goes now, and the log says why. */
+      this.logger.warn(`Could not hold "${options.subject}" for ${options.to}: ${err?.message}; sending now.`);
+      return false;
+    }
+  }
+
+  /** A held mail, when its moment has come. Skips the hold and the preference gate, both already asked. */
+  async deliverHeld(row: { toAddress: string; subject: string; html: string; sender: string | null; context: unknown }): Promise<void> {
+    await this.deliverNow({ to: row.toAddress, subject: row.subject, html: row.html }, (row.context ?? undefined) as DeliveryContext | undefined, row.sender ?? undefined);
+  }
+
+  private async deliverNow(
+    options: { to: string; subject: string; html: string },
+    context?: DeliveryContext,
+    sender?: string,
+  ): Promise<string | undefined> {
 
     /*
      * WHAT GROUNDWORK IS, on the mails where somebody might not know. Appended here rather than
@@ -631,19 +685,7 @@ export class EmailService {
     }, undefined, 'sendReportReady');
   }
 
-  /** Ground activated. Sent to the participant so they know to return. */
-  async sendGroundActivated(email: string, firstName: string, groundLabel: string, groundUrl: string): Promise<void> {
-    await this.sendEmail({
-      to: email,
-      subject: `You have both checked in - your shared report is ready: ${groundLabel}`,
-      html: this.layout(
-        `<p>${greeting(firstName)}</p>
-         <p>All parties have checked in on <strong>${escapeHtml(groundLabel)}</strong>. Your shared report is ready.</p>
-         <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
-         <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
-      ),
-    }, undefined, 'sendGroundActivated');
-  }
+
 
   /** Nudge. Scenario-aware subject, names the specific ground that is still open. */
   /**
