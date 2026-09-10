@@ -68,7 +68,7 @@ export class DraftsService {
 
   /** Pulling somebody in. Their own conversation, not a copy of anybody else's. */
   async invite(organizationId: string, draftId: string, byExternalId: string, personExternalId: string) {
-    const draft = await this.mine(organizationId, draftId);
+    const draft = await this.mine(organizationId, draftId, byExternalId);
     if (draft.state === 'SEEDED' || draft.state === 'ABANDONED') {
       throw new BadRequestException('That draft is finished.');
     }
@@ -91,7 +91,7 @@ export class DraftsService {
    * anything but an obstacle.
    */
   async contribute(organizationId: string, draftId: string, personExternalId: string, field: string, body: string) {
-    const draft = await this.mine(organizationId, draftId);
+    const draft = await this.mine(organizationId, draftId, personExternalId);
     if (!body?.trim()) throw new BadRequestException('Say what you think it should be.');
     const f = (CONTESTABLE_FIELDS as readonly string[]).includes(field) ? (field as ContestableField) : 'general';
 
@@ -160,7 +160,7 @@ export class DraftsService {
     piece: MissingPiece,
     body: string,
   ) {
-    const draft = await this.mine(organizationId, draftId);
+    const draft = await this.mine(organizationId, draftId, personExternalId);
 
     const notAnAnswer = whyThatIsNotAnAnswer(piece, body ?? '', {
       measure: draft.proposedMeasure,
@@ -200,8 +200,8 @@ export class DraftsService {
    * The resolution is written onto the field it settles, so agreeing and then not applying it
    * cannot happen - which is the ordinary way a decision made in a conversation evaporates.
    */
-  async resolveContention(organizationId: string, draftId: string, contentionId: string, resolution: string) {
-    const draft = await this.mine(organizationId, draftId);
+  async resolveContention(organizationId: string, draftId: string, contentionId: string, resolution: string, byExternalId?: string) {
+    const draft = await this.mine(organizationId, draftId, byExternalId);
     if (!resolution?.trim()) throw new BadRequestException('Say what it is, rather than only that it is settled.');
 
     const c = await this.prisma.draftContention.findFirst({ where: { id: contentionId, draftId, resolvedAt: null } });
@@ -227,8 +227,8 @@ export class DraftsService {
   }
 
   /** The draft as it stands, with why it cannot be finished when it cannot. */
-  async status(organizationId: string, draftId: string) {
-    const draft = await this.mine(organizationId, draftId);
+  async status(organizationId: string, draftId: string, byExternalId?: string) {
+    const draft = await this.mine(organizationId, draftId, byExternalId);
     const contentions = await this.prisma.draftContention.findMany({ where: { draftId } });
     const open = contentions.filter((c) => !c.resolvedAt);
     const verdict = canFinish({
@@ -272,11 +272,11 @@ export class DraftsService {
    * is no flag to skip it. Somebody wanting past this has to go and agree with a colleague, which
    * is the mechanism working rather than the mechanism obstructing.
    */
-  async seed(organizationId: string, draftId: string, externalId: string, sourceSystem: string) {
-    const s = await this.status(organizationId, draftId);
+  async seed(organizationId: string, draftId: string, externalId: string, sourceSystem: string, byExternalId?: string) {
+    const s = await this.status(organizationId, draftId, byExternalId);
     if (!s.ready) throw new BadRequestException(s.because);
 
-    const draft = await this.mine(organizationId, draftId);
+    const draft = await this.mine(organizationId, draftId, byExternalId);
 
     /*
      * AGREEMENT IS NOT THE SAME AS THE OBJECTIVE BEING ANY GOOD.
@@ -355,8 +355,25 @@ export class DraftsService {
     return { seeded: true, subjectExternalId: subject.externalId };
   }
 
-  private async mine(organizationId: string, draftId: string) {
-    const d = await this.prisma.objectiveDraft.findFirst({ where: { id: draftId, organizationId } });
+  /**
+   * MINE MEANS MINE. This resolved a draft on `{ id, organizationId }` and nothing else, so anybody in
+   * the organisation with a draft's id could read its status, settle its disagreements and seed it
+   * into an objective. The three panel routes that did not pass the caller now do; a draft is the
+   * business of the person who started it and the people pulled into it.
+   *
+   * A machine credential passes nobody, and reads by the organisation's scope alone: it is the
+   * customer's own system, not a person on the panel, and the scope it carries is the decision.
+   */
+  private async mine(organizationId: string, draftId: string, byExternalId?: string) {
+    const d = await this.prisma.objectiveDraft.findFirst({
+      where: {
+        id: draftId,
+        organizationId,
+        ...(byExternalId
+          ? { OR: [{ initiatorExternalId: byExternalId }, { participants: { some: { personExternalId: byExternalId } } }] }
+          : {}),
+      },
+    });
     if (!d) throw new NotFoundException('No such draft.');
     return d;
   }

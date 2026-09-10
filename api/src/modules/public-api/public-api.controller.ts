@@ -1161,7 +1161,7 @@ export class PublicApiController {
     @Req() req: { machine: MachineCaller },
     @Param('personExternalId') personExternalId: string,
   ) {
-    return this.groundsByApi.howTheirForecastsHaveGone(req.machine.organizationId, personExternalId);
+    return this.groundsByApi.howTheirForecastsHaveGone(req.machine.organizationId, personExternalId, req.machine);
   }
 
   @Get('people/:personExternalId/before-a-conversation')
@@ -1172,7 +1172,7 @@ export class PublicApiController {
     @Req() req: { machine: MachineCaller },
     @Param('personExternalId') personExternalId: string,
   ) {
-    return this.groundsByApi.beforeAConversation(req.machine.organizationId, personExternalId);
+    return this.groundsByApi.beforeAConversation(req.machine.organizationId, personExternalId, req.machine);
   }
 
   @Get('findings/structured')

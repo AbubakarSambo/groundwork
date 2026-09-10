@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PatternsService } from './patterns.service';
-import { CurrentUser, Roles, Role } from '../../common';
+import { CurrentUser } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
 @ApiTags('Patterns')
@@ -28,9 +28,11 @@ export class PatternsController {
     return this.patterns.codeAccuracySummary();
   }
 
+  /* The same mistake as the one above, one route down: `@Roles(Role.ADMIN)` is an ORG admin, while the
+     service says "only platform admins can rate" and the ratings feed the cross-org summary. */
   @Patch(':id/rate')
-  @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Rate accuracy of a surfaced pattern detection' })
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Rate accuracy of a surfaced pattern detection (platform admin only)' })
   async rate(
     @Param('id') id: string,
     @Body() body: { accurate: boolean },

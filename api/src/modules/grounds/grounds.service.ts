@@ -1159,6 +1159,14 @@ export class GroundsService {
   }
 
   async get(id: string, organizationId: string, requestingUserId?: string) {
+    /**
+     * WHO MAY READ ONE. `list()` in this same file gives a non-admin their own grounds only - the
+     * ones they lead or take part in - and an admin everything in the organisation. This read gave
+     * any member of the organisation any ground in it, with the report's shared picture, the
+     * agreements and divergences, the objectives and the participants included. Same rule as the
+     * list, asked here too; and the same answer as assertMaySeeGround gives every other read.
+     */
+    if (requestingUserId) await this.assertMaySeeGround(id, requestingUserId);
     // Primary lookup by org - works for org members and the initiator.
     const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, isFinal: true, specificityLevel: true, recallConfidence: true, specificityDimensions: true } as const;
 

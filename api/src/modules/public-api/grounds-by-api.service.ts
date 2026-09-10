@@ -646,7 +646,9 @@ export class GroundsByApiService {
    * Part of the same read a lead opens before a conversation, because that is where a question
    * about somebody's estimates belongs - in a conversation with them, not on a dashboard.
    */
-  async howTheirForecastsHaveGone(organizationId: string, personExternalId: string) {
+  async howTheirForecastsHaveGone(organizationId: string, personExternalId: string, fence?: Fence) {
+    /* A credential bound to some people read any person in the organisation by path. The fence is the same one every other person-shaped read here asks. */
+    if (!mayTouch(fence, personExternalId)) throw new ForbiddenException(OUTSIDE_THE_FENCE);
     const rows = await this.prisma.commitment.findMany({
       where: {
         organizationId,
@@ -824,7 +826,8 @@ export class GroundsByApiService {
    * what-a-lead-should-read-first.ts, away from the queries, because that is the part that has to
    * be arguable without a database in front of you.
    */
-  async beforeAConversation(organizationId: string, personExternalId: string) {
+  async beforeAConversation(organizationId: string, personExternalId: string, fence?: Fence) {
+    if (!mayTouch(fence, personExternalId)) throw new ForbiddenException(OUTSIDE_THE_FENCE);
     const person = await this.prisma.person.findFirst({
       where: { organizationId, externalId: personExternalId },
       select: { email: true, displayName: true, givenName: true, familyName: true },

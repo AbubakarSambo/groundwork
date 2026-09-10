@@ -443,8 +443,10 @@ export class ACheckInACustomerCanRunService {
     /* The check-in is named by id; the document belongs to its ground. Resolved here rather than
        asking the caller for both, because a caller holding a check-in has no reason to know the
        ground's id and asking for it invites the two arriving mismatched. */
-    const checkIn = await this.prisma.checkIn.findUnique({
-      where: { id: checkInId },
+    const checkIn = await this.prisma.checkIn.findFirst({
+      /* Theirs, and here - not any check-in in the database. The upload two files away re-checks, and
+         a fence that holds only because a neighbour happens to is not a fence. */
+      where: { id: checkInId, participant: { userId, ground: { organizationId } } },
       select: { groundId: true },
     });
     if (!checkIn) throw new NotFoundException('We cannot see that check-in.');

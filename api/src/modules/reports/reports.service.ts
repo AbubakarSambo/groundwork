@@ -1819,6 +1819,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * should not have to go and fetch the thing it is measuring against. This is the same computation
    * behind the same wall, for the pages that show it without a session.
    */
+  /**
+   * AN ORG ADMIN READS WITH THE LEAD'S EYES. A MEMBER DOES NOT.
+   *
+   * The decision in an-org-admin-reads-with-the-lead-s-eyes.spec.ts stands: an admin of the
+   * organisation a check-in belongs to reads its report as the lead does, names included. What the
+   * four readers below actually tested was narrower than the argument - "same organisation", with
+   * no role in it - so every MEMBER of the customer's organisation was handed the lead's eyes:
+   * resolved names, what the record rests on, what it holds, the probe list. board.service.ts asks
+   * the right question; this is that question, asked once for all four.
+   */
+  private async isAnAdminOf(requestingUserId: string, requestingUserOrgId: string | undefined, groundOrganizationId: string): Promise<boolean> {
+    if (!requestingUserOrgId || groundOrganizationId !== requestingUserOrgId) return false;
+    const user = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } });
+    return user?.role === 'ADMIN' && user.organizationId === groundOrganizationId;
+  }
+
   async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -1838,7 +1854,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
-    const isOrgAdmin = !isInitiator && !me && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
     /* NotFound, not Forbidden. GW-PRI-04: a 403 tells a stranger the check-in is real. */
     if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
 
@@ -1931,7 +1947,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
-    const isOrgAdmin = !isInitiator && !me && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
     /*
      * NOT FOUND, NOT FORBIDDEN. GW-PRI-04.
      *
@@ -2493,7 +2509,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
-    const isOrgAdmin = !isInitiator && !isParty && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    const isOrgAdmin = !isInitiator && !isParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
     /* NotFound, not Forbidden, for the reason in `sessionReport` above: a 403 confirms the
        check-in exists. This endpoint has had the leak since it was written. GW-PRI-04. */
     if (!isParty && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
@@ -3551,7 +3567,7 @@ happened, and what is in the way.`;
     const isInitiator = ground.initiatorId === requestingUserId;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
-    const isOrgAdmin = !isInitiator && !participant && !!requestingUserOrgId && ground.organizationId === requestingUserOrgId;
+    const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
     if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
     if (!ground.report.releasedAt) {

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theGroundIsHere } from './the-ground-is-here';
 import {
   Assertion,
   AssertionState,
@@ -46,6 +47,7 @@ export class AssertionsService {
       );
     }
 
+    await theGroundIsHere(this.prisma, groundId, organizationId);
     return this.prisma.assertion.create({
       data: { organizationId, groundId, ...a },
       select: { id: true, about: true, state: true },

@@ -393,6 +393,11 @@ export class BillingService {
 
   /** Grants one free session extension to a ground if the org has not used it yet. Idempotent. */
   async claimFreeExtension(organizationId: string, groundId: string): Promise<void> {
+    /* The ground id came straight off the body and went straight into the update, so an organisation's
+       one free extension could be spent onto any ground in the database. Resolved inside the caller's
+       organisation first, exactly as purchaseSession does two methods up. */
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { freeExtensionUsed: true },
