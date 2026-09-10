@@ -47,6 +47,7 @@ import { TodosByApiService } from './todos-by-api.service';
 import { ConversationModule } from '../conversation/conversation.module';
 import { EmailModule } from '../email/email.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { UsersModule } from '../users/users.module';
 import { RolesService } from '../detectors/roles-and-their-action.service';
 import { DetectorsService } from '../detectors/detectors.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
@@ -69,6 +70,7 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
        the others: EmailService has its own dependency chain. */
     EmailModule,
     DocumentsModule,
+    UsersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),

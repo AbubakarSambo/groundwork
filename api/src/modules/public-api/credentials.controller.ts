@@ -8,6 +8,7 @@ import { Roles, Role } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CredentialsService } from './credentials.service';
 import { ApiAccessService } from './api-access.service';
+import { UsersService } from '../users/users.service';
 
 /**
  * WHERE AN ADMIN ISSUES AND REVOKES THE PAIRS THEIR SYSTEMS AUTHENTICATE WITH.
@@ -25,6 +26,7 @@ export class CredentialsController {
     private readonly credentials: CredentialsService,
     private readonly access: ApiAccessService,
     private readonly jwt: JwtService,
+    private readonly users: UsersService,
   ) {}
 
   /** The terms an organisation accepts when it asks. One version, dated, so acceptance means something. */
@@ -57,12 +59,16 @@ export class CredentialsController {
    */
   @Post('access-request')
   @ApiOperation({ summary: 'Ask for API access. Say what you intend to build.' })
-  askForAccess(
+  async askForAccess(
     @CurrentUser('organizationId') organizationId: string,
     @CurrentUser('id') userId: string,
     @Body() dto: { whatFor?: string; acceptedTerms?: boolean },
   ) {
-    return this.access.ask(organizationId, userId, dto?.whatFor ?? '', !!dto?.acceptedTerms);
+    const request = await this.access.ask(organizationId, userId, dto?.whatFor ?? '', !!dto?.acceptedTerms);
+    /* ONE REQUEST. The page used to have a separate "Ask for a call"; asking for access is the call.
+       Best-effort: the access request is the record, the call is how ops gets told to ring back. */
+    await this.users.requestACall(organizationId, userId, dto?.whatFor, 'INTEGRATION').catch(() => undefined);
+    return request;
   }
 
   /** Where our own request has got to. */
