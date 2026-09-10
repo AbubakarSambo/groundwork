@@ -7,7 +7,7 @@ import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus } from '@prisma/client';
-import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { hasEnded, isHeld } from '../grounds/a-ground-that-has-ended';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -80,9 +80,14 @@ export class ReportsListener {
          * ground is live, and for the closing session it is the opposite: the report lands after
          * the decision. Watched live - a CLOSED ground was set back to ACTIVE here, seconds after
          * the lead ended it. See a-ground-that-has-ended.ts.
+         *
+         * NOR MAY IT LIFT A HOLD. A paused ground whose last participant finishes is still paused;
+         * the report is released and the hold stands until somebody resumes it on purpose.
          */
-        if (hasEnded(g.status)) {
-          this.logger.log(`Ground ${event.groundId} is ${g.status}; report released and the status left as it is.`);
+        if (hasEnded(g.status) || isHeld(g.status)) {
+          this.logger.log(
+            `Ground ${event.groundId} is ${g.status} (${hasEnded(g.status) ? 'ended' : 'held'}); report released and the status left as it is.`,
+          );
         } else {
           await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
         }

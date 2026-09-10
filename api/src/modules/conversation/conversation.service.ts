@@ -787,7 +787,14 @@ export class ConversationService {
      *
      * Fail-closed still holds where it matters: any status this guard actually reads and does not
      * recognise as open is refused below.
+     *
+     * But a row that EXISTS with no status is not a test double, it is a fact about production this
+     * guard would otherwise wave through in silence. So it is logged at error level, by ground. If
+     * the line never fires, the reasoning above is confirmed; if it does, somebody has to look.
      */
+    if (ground && !ground.status) {
+      this.logger.error(`Ground ${groundId} exists but has no readable status; input accepted on the test-double rule above.`);
+    }
     if (!ground?.status) return;
     const OPEN_STATUSES: GroundStatus[] = [
       GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY,

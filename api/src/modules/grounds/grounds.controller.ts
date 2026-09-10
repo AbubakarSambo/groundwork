@@ -32,6 +32,14 @@ class ConfirmLeadDto {
   remit?: string;
 }
 
+class HoldDto {
+  @ApiPropertyOptional({ description: 'Why the check-in is being paused or resumed. Logged, not shown to participants.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(500)
+  reason!: string;
+}
+
 class UpdateTimelineDto {
   @ApiPropertyOptional({ description: 'Rename the ground' })
   @IsOptional()
@@ -309,6 +317,27 @@ export class GroundsController {
   @ApiOperation({ summary: 'Activate the ground after the report is ready (starts billing)' })
   async activate(@Param('id') id: string, @CurrentUser('organizationId') organizationId: string) {
     return this.grounds.activate(id, organizationId);
+  }
+
+  /**
+   * A HOLD, AND THE WAY OUT OF IT. `pauseGround` was written for a surface that never arrived, so
+   * PAUSED was a status nothing could reach and nothing could leave. Both doors are here now, side
+   * by side, because a resume route without a pause route is a key to a door nobody can lock.
+   */
+  @Post(':id/pause')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Put the check-in on hold: nothing is added, nothing moves, until it is resumed (admin only)' })
+  async pause(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: HoldDto) {
+    await this.grounds.pauseGround(id, userId, dto.reason);
+    return { groundId: id, status: 'PAUSED' };
+  }
+
+  @Post(':id/resume')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Lift the hold and return the check-in to the status it was paused from (admin only)' })
+  async resume(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: HoldDto) {
+    await this.grounds.resumeGround(id, userId, dto.reason);
+    return { groundId: id };
   }
 
   @Get(':id/participants/:participantId/invite-url')

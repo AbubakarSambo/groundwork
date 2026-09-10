@@ -7,9 +7,20 @@
  * happens to it, and it was the one thing no page mentioned.
  */
 const OVER = ['RESOLVED', 'CLOSED', 'STALLED']
+/** Mirrors A_GROUND_IS_HELD on the server. A held check-in is not over, and it is not live either. */
+const HELD = ['PAUSED']
 
 export function hasEnded(status?: string | null): boolean {
   return !!status && OVER.includes(status)
+}
+
+export function isHeld(status?: string | null): boolean {
+  return !!status && HELD.includes(status)
+}
+
+/** What the ground says about itself while it is held. Null otherwise. */
+export function howItIsHeld(status?: string | null): string | null {
+  return isHeld(status) ? 'On hold' : null
 }
 
 /** What the ground says about itself once it is over. Null while it is live. */

@@ -1,5 +1,5 @@
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
-import { hasEnded } from './a-ground-that-has-ended';
+import { hasEnded, isHeld, mayChangeOnItsOwn, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -2439,6 +2439,21 @@ export class GroundsService {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
     if (!ground) throw new NotFoundException('Check-in not found');
 
+    /**
+     * NOBODY IS ADDED TO A GROUND THAT HAS ENDED, OR ONE THAT IS HELD.
+     *
+     * This sits before the participant row is written, not only before the status write further
+     * down, because the row itself is the wrong thing on a finished ground: a person with a session
+     * on a check-in that is over. And the status write below - AWAITING_PARTIES - used to run on
+     * any ground past AWAITING_LEAD, which resurrected a CLOSED or STALLED ground and quietly lifted
+     * a PAUSED one. See a-ground-that-has-ended.ts.
+     */
+    if (!mayChangeOnItsOwn(ground.status)) {
+      throw new BadRequestException(
+        hasEnded(ground.status) ? 'This check-in has ended. Nobody can be added to it.' : WHILE_IT_IS_HELD,
+      );
+    }
+
     await this.assertSomethingToBeInvitedInto(groundId);
 
     /**
@@ -2975,6 +2990,12 @@ export class GroundsService {
   async activate(groundId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { report: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* Activating is not resuming, and it is not reopening. An ended ground stays ended; a held one is lifted by resumeGround, which knows what to go back to. */
+    if (!mayChangeOnItsOwn(ground.status)) {
+      throw new BadRequestException(
+        hasEnded(ground.status) ? 'This check-in has ended and cannot be activated.' : WHILE_IT_IS_HELD,
+      );
+    }
 
     const activated = await this.prisma.ground.update({
       where: { id: groundId },
@@ -4130,16 +4151,6 @@ export class GroundsService {
     return { scores, label, trend, whatWouldHelp, mostUseful, strongest };
   }
 
-  /**
-   * Pause a ground - marks status = PAUSED, stamps pausedAt. Typically called
-   * when active legal proceedings are detected in a check-in (GW-08 / context.service.ts)
-   * and the admin or user confirms they want to pause. Billing continues to run
-   * (the ground is not RESOLVED or CLOSED); an admin can un-pause by
-   * transitioning back to the prior status.
-   *
-   * Only OPEN, AWAITING_PARTIES, ACTIVE, or REPORT_READY grounds can be paused;
-   * terminal grounds (RESOLVED, STALLED, CLOSED) are immutable.
-   */
   async getMyCheckinStatus(groundId: string, userId: string) {
     const participant = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId } });
     if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
@@ -4200,6 +4211,19 @@ export class GroundsService {
     return { groundId, groundLabel: ground.label, participants: results };
   }
 
+  /**
+   * Pause a ground - marks status = PAUSED, stamps pausedAt. Typically called
+   * when active legal proceedings are detected in a check-in (GW-08 / context.service.ts)
+   * and the admin or user confirms they want to pause. Billing continues to run
+   * (the ground is not RESOLVED or CLOSED); an admin un-pauses with `resumeGround`.
+   *
+   * Only OPEN, AWAITING_PARTIES, ACTIVE, or REPORT_READY grounds can be paused;
+   * terminal grounds (RESOLVED, STALLED, CLOSED) are immutable.
+   *
+   * THE HOLD REMEMBERS WHERE IT CAME FROM. This docstring promised "transitioning back to the prior
+   * status" for as long as nothing recorded the prior status, so nothing could. `pausedFromStatus`
+   * is written here and read by `resumeGround`, which is the only way out of PAUSED.
+   */
   async pauseGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -4222,10 +4246,41 @@ export class GroundsService {
 
     await this.prisma.ground.update({
       where: { id: groundId },
-      data: { status: GroundStatus.PAUSED, pausedAt: new Date() },
+      data: { status: GroundStatus.PAUSED, pausedAt: new Date(), pausedFromStatus: ground.status },
     });
 
-    this.logger.warn(`Ground ${groundId} paused by user ${adminUserId}. Reason: ${reason}`);
+    this.logger.warn(`Ground ${groundId} paused by user ${adminUserId} from ${ground.status}. Reason: ${reason}`);
+  }
+
+  /**
+   * Lift a hold. Refuses anything that is not PAUSED, takes the same org-membership check as
+   * `pauseGround`, and puts the ground back on the status it was paused from. A ground paused before
+   * `pausedFromStatus` existed has no recorded prior status; those go back to ACTIVE, and the log
+   * says so, because a guess is worth naming.
+   */
+  async resumeGround(groundId: string, adminUserId: string, reason: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!isHeld(ground.status)) {
+      throw new BadRequestException(`Check-in in status "${ground.status}" is not on hold`);
+    }
+
+    const member = await this.prisma.user.findFirst({
+      where: { id: adminUserId, organizationId: ground.organizationId },
+    });
+    if (!member) throw new ForbiddenException('Only an org member may resume a check-in');
+
+    const backTo = ground.pausedFromStatus ?? GroundStatus.ACTIVE;
+    if (!ground.pausedFromStatus) {
+      this.logger.warn(`Ground ${groundId} was paused before its prior status was recorded; resuming to ACTIVE by default.`);
+    }
+
+    await this.prisma.ground.update({
+      where: { id: groundId },
+      data: { status: backTo, pausedAt: null, pausedFromStatus: null },
+    });
+
+    this.logger.warn(`Ground ${groundId} resumed to ${backTo} by user ${adminUserId}. Reason: ${reason}`);
   }
 
   /**

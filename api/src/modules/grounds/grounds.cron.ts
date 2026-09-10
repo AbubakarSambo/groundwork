@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { deadlineOf } from './when-the-clock-starts';
-import { A_GROUND_IS_OVER } from './a-ground-that-has-ended';
+import { A_GROUND_IS_OVER, A_GROUND_IS_HELD } from './a-ground-that-has-ended';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -19,6 +19,13 @@ const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivi
 
 /* One list, in one place: a-ground-that-has-ended.ts. */
 const TERMINAL: GroundStatus[] = A_GROUND_IS_OVER;
+/**
+ * A HELD CLOCK DOES NOT RUN. Every sweep in here that moves a ground on, invites into it, or
+ * closes and warns about its sessions leaves a paused ground exactly as it found it. The stall
+ * sweep was the worst of these: it counted a paused ground as overdue and wrote it STALLED, which
+ * is terminal, so a legal hold ended the check-in for good. See a-ground-that-has-ended.ts.
+ */
+const HELD: GroundStatus[] = A_GROUND_IS_HELD;
 const NUDGE_THROTTLE_DAYS = 3;
 const OPEN_STATUSES: CheckInStatus[] = [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS];
 
@@ -74,9 +81,10 @@ export class GroundsCron {
            * meant the invite was held forever on precisely the grounds it was held for.
            *
            * What must be excluded is a ground that has finished. Inviting somebody into a resolved or
-           * stalled ground is worse than never inviting them.
+           * stalled ground is worse than never inviting them. A held one waits too: the invite is not
+           * lost, it goes the morning after the hold is lifted.
            */
-          ground: { status: { notIn: TERMINAL } },
+          ground: { status: { notIn: [...TERMINAL, ...HELD] } },
         },
         select: {
           id: true, email: true, inviteToken: true, groundId: true,
@@ -115,7 +123,7 @@ export class GroundsCron {
   async stallOverdueGrounds() {
     await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       const candidates = await this.prisma.ground.findMany({
-        where: { status: { notIn: TERMINAL } },
+        where: { status: { notIn: [...TERMINAL, ...HELD] } },
         select: { id: true, createdAt: true, startsAt: true, timelineDays: true },
       });
 
@@ -243,7 +251,8 @@ export class GroundsCron {
   async autoCloseStaleCheckIns() {
     await this.prisma.withAdvisoryLock(CronLock.AUTO_CLOSE_CHECK_INS, async () => {
       const inProgress = await this.prisma.checkIn.findMany({
-        where: { status: CheckInStatus.IN_PROGRESS },
+        /* A session on a held ground is not stale, it is waiting. Its clock resumes when the ground does. */
+        where: { status: CheckInStatus.IN_PROGRESS, ground: { status: { notIn: HELD } } },
         select: {
           id: true,
           groundId: true,
@@ -320,7 +329,8 @@ export class GroundsCron {
   async fireSessionClosingWarnings() {
     await this.prisma.withAdvisoryLock(CronLock.SESSION_CLOSING_WARNINGS, async () => {
       const candidates = await this.prisma.checkIn.findMany({
-        where: { status: CheckInStatus.IN_PROGRESS, warningFiredAt: null },
+        /* Same as the auto-close above: nobody is warned that a held session is closing, because it is not. */
+        where: { status: CheckInStatus.IN_PROGRESS, warningFiredAt: null, ground: { status: { notIn: HELD } } },
         select: { id: true, groundId: true, participantId: true, sessionNumber: true },
       });
 

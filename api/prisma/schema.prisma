@@ -806,6 +806,10 @@ model Ground {
   resolvedAt         DateTime? @map("resolved_at")
   closedAt           DateTime? @map("closed_at")
   pausedAt           DateTime? @map("paused_at") // set when status transitions to PAUSED
+  /// The status a hold was placed on, so lifting it can put the ground back where it was rather
+  /// than guessing ACTIVE. Written by pauseGround, cleared by resumeGround. Null on any ground
+  /// paused before this column existed; resume falls back to ACTIVE for those and says so.
+  pausedFromStatus   GroundStatus? @map("paused_from_status")
 
   /// WHO CHASES, AND HOW OFTEN, BELONGS TO WHOEVER SET THE WORK UP.
   ///
