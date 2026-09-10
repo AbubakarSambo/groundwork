@@ -1,5 +1,5 @@
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
-import { hasEnded, isHeld, mayChangeOnItsOwn, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
+import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -889,7 +889,15 @@ export class GroundsService {
       where: { joinToken },
       include: { initiator: { select: { firstName: true } } },
     });
-    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    if (!ground) throw new NotFoundException('Join link not found');
+    /**
+     * A JOIN LINK INTO A FINISHED CHECK-IN IS A DOOR INTO AN EMPTY ROOM. The token has no expiry of
+     * its own, so it outlived the check-in: a link shared in week one still signed people up in
+     * month four, onto a ground that was CLOSED, and gave them a session on it. The reason it
+     * refuses is the real one - ended, or held - not an expiry the link never had.
+     */
+    const refused = whyItRefuses(ground.status, ground.endState);
+    if (refused) throw new BadRequestException(refused);
     return {
       groundId: ground.id,
       groundLabel: ground.label,

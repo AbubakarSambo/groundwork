@@ -35,6 +35,7 @@ import { recordRoundCompletion } from '../grounds/round-completion';
 import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
 import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
+import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
@@ -1824,9 +1825,12 @@ STRICT RULES:
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true },
+      select: { id: true, status: true, endState: true },
     });
-    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
+    /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
+    const refused = whyItRefuses(ground.status, ground.endState);
+    if (refused) throw new BadRequestException(refused);
 
     const email = dto.email.trim().toLowerCase();
     const token = crypto.randomBytes(32).toString('hex');
@@ -1881,9 +1885,12 @@ STRICT RULES:
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: pending.joinToken },
-      select: { id: true, organizationId: true },
+      select: { id: true, organizationId: true, status: true, endState: true },
     });
-    if (!ground) throw new NotFoundException('Join link not found or has expired');
+    if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
+    /* Asked before anything is made: no account, no participant row and no session on a ground that has ended or is held. */
+    const refusedNow = whyItRefuses(ground.status, ground.endState);
+    if (refusedNow) throw new BadRequestException(refusedNow);
 
     const email = pending.email;
     const firstName = pending.firstName ?? '';

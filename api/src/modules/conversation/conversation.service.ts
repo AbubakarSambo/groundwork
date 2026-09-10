@@ -506,10 +506,7 @@ export class ConversationService {
   }
 
   async open(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     /**
      * THE BRIEF, FETCHED HERE BECAUSE THIS QUERY WAS ALREADY RUNNING.
@@ -534,11 +531,6 @@ export class ConversationService {
         objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
-    const OPEN_STATUSES: GroundStatus[] = [GroundStatus.OPEN, GroundStatus.AWAITING_PARTIES, GroundStatus.ACTIVE, GroundStatus.REPORT_READY];
-    if (ground && !OPEN_STATUSES.includes(ground.status)) {
-      throw new BadRequestException('This check-in is closed and nothing further can be added');
-    }
-
     // ISSUE 7: use a single findFirst on the AI turn as the idempotency guard.
     // This collapses the count + separate findFirst into one query and closes the
     // TOCTOU window: if any AI turn exists (written by a concurrent open()), return
@@ -807,6 +799,48 @@ export class ConversationService {
   }
 
   /**
+   * EVERY DOOR INTO A SESSION ASKS THE SAME QUESTIONS, IN THE SAME ORDER.
+   *
+   * There were four ways into one conversation and the guards were added to one of them. `open()`
+   * checked the ground's status with its own list and a generic message; `sendMessage()` gained
+   * `assertGroundAcceptsInput` when a paused ground kept accepting answers; `sendMessageStream()` -
+   * the route the client actually posts to - got neither for as long as the guard lived only on its
+   * sibling, so the protected route was the one nobody called. `complete()` had its own copy.
+   *
+   * Now there is one door. Ownership first, so a stranger is refused for not owning the check-in
+   * rather than told the ground's state; then whether this session may still be written to (the
+   * loader refuses COMPLETED and DECLINED); then whether the ground accepts input at all. A route
+   * that wants in calls this and nothing else. Metering is NOT here: it stays in `open()`, once per
+   * round per ground, after the idempotency guard that makes a second open() free. Putting it in
+   * the door would charge every message.
+   */
+  private async openTheDoor(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
+    await this.assertGroundAcceptsInput(checkIn.groundId);
+    return checkIn;
+  }
+
+  /**
+   * AND A MESSAGE NEEDS A SESSION THAT HAS BEEN OPENED.
+   *
+   * `open()` is the only door that meters. Both message routes used to accept a NOT_STARTED check-in
+   * and flip it to IN_PROGRESS themselves, with no billing call - so a client that posted an answer
+   * without ever calling open() ran a whole session free, and the only thing standing between a
+   * customer and that was remembering to knock first. Every caller that exists knocks: the web
+   * client, both WhatsApp paths and the public API all open before they send. Nothing legitimate
+   * reaches this with NOT_STARTED, so it is refused rather than metered here - moving the meter into
+   * the message path would mean a second copy of the billing rule, and the audit of this plan found
+   * that the obvious way to do that charges per message.
+   */
+  private async aSessionUnderway(checkInId: string, requestingUserId: string) {
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
+    if (checkIn.status === CheckInStatus.NOT_STARTED) {
+      throw new BadRequestException('This session has not been opened yet. Open it first, then answer.');
+    }
+    return checkIn;
+  }
+
+  /**
    * WHAT TO DO ABOUT A SECOND PRESS. See `a-second-press-is-not-a-second-answer.ts`.
    *
    * Both the plain and the streaming path ask this before writing anything, because a person who
@@ -829,11 +863,7 @@ export class ConversationService {
   }
 
   async sendMessage(checkInId: string, requestingUserId: string, message: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    await this.assertGroundAcceptsInput(checkIn.groundId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
 
     const again = await this.theSameAnswerAgain(checkIn.id, message);
     if (again.kind === 'the same answer, already answered') {
@@ -1033,10 +1063,6 @@ export class ConversationService {
       throw err;
     }
 
-    if (checkIn.status === CheckInStatus.NOT_STARTED) {
-      await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-    }
-
     // Two detectors, union. The model states plainly that it is closing (the
     // [[SESSION_COMPLETE]] marker in ENGINE_RULES), and the old phrase matching
     // stays as a backstop for a turn where the model forgets the marker.
@@ -1182,10 +1208,8 @@ export class ConversationService {
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
     AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean }, void, unknown> {
-    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    /* The door people actually use. It had no lock for as long as the guard lived only on sendMessage(). See openTheDoor. */
+    const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     const againStreaming = await this.theSameAnswerAgain(checkIn.id, message);
     if (againStreaming.kind !== 'a new answer') {
       const say =
@@ -1350,9 +1374,6 @@ export class ConversationService {
       const streamAiTurn = await this.prisma.conversationTurn.create({
         data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
       });
-      if (checkIn.status === CheckInStatus.NOT_STARTED) {
-        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
-      }
       const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
       const close = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false as const };
       if (close.ask) {
@@ -3016,11 +3037,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async complete(checkInId: string, requestingUserId: string) {
-    const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    await this.assertGroundAcceptsInput(checkIn.groundId);
-    if (checkIn.status === CheckInStatus.COMPLETED) {
-      throw new BadRequestException('This check-in is already complete');
-    }
+    const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
     // actually built a record. Hollow completions produce thin, over-confident
