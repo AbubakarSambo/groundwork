@@ -530,7 +530,7 @@ export function BoardPage() {
 
         {shown.divergence && b.divergence && (
           <>
-            <Sec title="Where accounts differ" src="cross-referenced" />
+            <Sec title="Where people differ" src="cross-referenced" />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing cross-referenced yet. This fills in once more than one person has checked in.</div></Row>
@@ -763,7 +763,22 @@ export function BoardPage() {
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
               </div>
-              {b.contribution.map((c) => (
+              {/*
+                THE SAME PARAGRAPH THREE TIMES IS A MAIL MERGE. When nobody's role is defined the note
+                is one fact about the check-in, said once; and a party with no name and nothing on
+                record gets no card, because a card for nobody says nothing.
+              */}
+              {b.contribution.every((c) => !c.remitDefined) && b.contribution.length > 1 ? (
+                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>Everyone here</span>
+                    <span style={{ fontSize: 12, color: 'var(--gw-amber-t)', fontWeight: 600 }}>no role clearly defined yet</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 9, padding: '8px 10px', marginTop: 8, lineHeight: 1.5 }}>
+                    {b.contribution[0].note}
+                  </div>
+                </div>
+              ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => (
                 <div key={c.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{c.name}</span>
@@ -901,7 +916,7 @@ export function BoardPage() {
 
         {b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
-            <Sec title="How the leading is landing" src="two accounts of the same leadership" />
+            <Sec title="How the leading is landing" src="two sides of the same leadership" />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
@@ -928,7 +943,7 @@ export function BoardPage() {
               ))}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
                 Neither read is called wrong. Something can be set clearly and still not land, and both people can be describing
-                their own experience honestly. This shows that two accounts of the same leadership differ, never who said what, and it
+                their own experience honestly. This shows that two sides of the same leadership differ, never who said what, and it
                 is a prompt for a conversation rather than a finding about anyone.
               </div>
             </Card>
@@ -1072,11 +1087,13 @@ export function BoardPage() {
         */}
                 {viewerRunsThisCheckIn && (((groundForSignals as any)?.signals ?? [])).length > 0 && (() => {
                   const sigs = ((groundForSignals as any)?.signals ?? [])
-                  const convergences = sigs.filter((s: any) => s.type === 'Convergence').length
-                  const divergences = sigs.filter((s: any) => s.type === 'Divergence').length
-                  const trendLabel = convergences > divergences ? 'Trending toward alignment' : divergences > convergences ? 'Active divergence - needs attention' : 'Mixed signals'
-                  const trendColor = convergences > divergences ? 'var(--gw-green-t)' : divergences > convergences ? 'var(--gw-red-t)' : 'var(--gw-amber-t)'
-                  const trendBg = convergences > divergences ? 'var(--gw-green-bg)' : divergences > convergences ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)'
+                  /* Every row is the library's own sentence for a surfaced pattern. The badge is a
+                     count: good signs against patterns to look at, never a verdict word. */
+                  const convergences = sigs.filter((s: any) => s.type === 'Good sign').length
+                  const divergences = sigs.filter((s: any) => s.type === 'Pattern').length
+                  const trendLabel = `${divergences} to look at · ${convergences} good sign${convergences === 1 ? '' : 's'}`
+                  const trendColor = divergences === 0 ? 'var(--gw-green-t)' : 'var(--gw-amber-t)'
+                  const trendBg = divergences === 0 ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)'
                   return (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
@@ -1087,8 +1104,8 @@ export function BoardPage() {
                         {sigs.map((sig: any) => (
                           <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Convergence' ? 'var(--gw-green-bg)' : sig.type === 'Divergence' ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Convergence' ? 'var(--gw-green-t)' : sig.type === 'Divergence' ? 'var(--gw-red-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
-                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Session {sig.sessionNum}</span>
+                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sig.type === 'Good sign' ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)', color: sig.type === 'Good sign' ? 'var(--gw-green-t)' : 'var(--gw-amber-t)' }}>{sig.type}</span>
+                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Seen across {sig.periodsObserved ?? sig.sessionNum} session{(sig.periodsObserved ?? sig.sessionNum) === 1 ? '' : 's'}</span>
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
                           </div>

@@ -5,7 +5,8 @@ import { randomBytes } from 'crypto';
 import { verifyEmbedToken, frameAncestors, readOrgClaim } from './their-login-is-the-only-login';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
-import { theOneToRaise, alreadyNudgedToday, slippedOpening } from '../assistant/what-somebody-said-they-would-do';
+import { theOneToRaise, alreadyNudgedToday, slippedOpening, hasSlipped } from '../assistant/what-somebody-said-they-would-do';
+import { whatIsDueFor, openingOnWhatIsDue, WhatIsDue } from './what-is-due-for-this-person';
 import {
   whatIsWorthSayingWhenYouArrive,
   mayBeSaidEveryTime,
@@ -185,12 +186,25 @@ export class EmbedService {
         })
       : null;
 
+    /*
+     * WHAT IS DUE, COUNTED ONCE AND HANDED TO THE PANEL.
+     *
+     * The launcher could draw a badge and nothing ever set one, and the opening never looked at
+     * check-ins at all: a person with a session open right now saw the same launcher and the same
+     * hello as a person with nothing due. This is the one read behind the badge, the pulse and the
+     * first line. It is the person's own state, read for the person, so it goes to the PANEL and
+     * never to the host page (see session()).
+     */
+    const truth = await this.truth.forPerson(organizationId, person.id).catch(() => null);
+    const due = await this.whatIsDue(organizationId, person, truth);
+
     return {
       person: { externalId: person.externalId, displayName: person.displayName ?? person.userName },
       opening: on
         ? await this.openingOnASubject(organizationId, person, on)
-        : await this.opening(organizationId, person),
+        : await this.opening(organizationId, person, truth, due),
       freshness: await this.freshness(organizationId),
+      due,
       /* Echoed so the panel can tell the difference between "we used your context" and "your id
          matched nothing here", which is otherwise invisible on both sides. */
       openedOn: on ? { externalId: on.externalId, title: on.title } : null,
@@ -212,7 +226,12 @@ export class EmbedService {
     return openingAbout({ externalId: on.externalId, title: on.title, kind: on.type }, firstName, waitingOnThem);
   }
 
-  private async opening(organizationId: string, person: { id: string; displayName: string | null; userName: string; externalId?: string; lastNudgedOn?: Date | null }) {
+  private async opening(
+    organizationId: string,
+    person: { id: string; displayName: string | null; userName: string; externalId?: string; lastNudgedOn?: Date | null },
+    truth: Awaited<ReturnType<WhatIsTrueService['forPerson']>> | null = null,
+    due: WhatIsDue = { checkIns: [], toStart: [], slippedCommitments: 0, count: 0 },
+  ) {
     /*
      * THE HIGHEST-VALUE SPECIFIC THING, AND AT MOST ONE, AND NOT TWICE IN A DAY.
      *
@@ -233,6 +252,19 @@ export class EmbedService {
         await this.prisma.commitment.update({ where: { id: one.id }, data: { lastFollowedUpAt: now } });
         return slippedOpening(one);
       }
+    }
+
+    /*
+     * A CHECK-IN THAT IS OPEN BEATS EVERYTHING BELOW THIS LINE.
+     *
+     * The quiet period and "nothing is connected" used to come first, so an organisation that ran
+     * check-ins and had never connected a system - which is every organisation on the API today -
+     * greeted somebody whose session was waiting with "Nothing is connected yet". The session is
+     * the product; the connected systems are context for it.
+     */
+    const firstName = (person.displayName ?? person.userName).split(' ')[0];
+    if (due.checkIns.length || due.toStart.length) {
+      return openingOnWhatIsDue(due, firstName);
     }
 
     const quiet = quietUntil(
@@ -265,8 +297,6 @@ export class EmbedService {
      * know about and have not said, and it is rate limited by the calendar because the cost is in
      * being asked. This is not — stating what is waiting is not chasing.
      */
-    const firstName = (person.displayName ?? person.userName).split(' ')[0];
-    const truth = await this.truth.forPerson(organizationId, person.id);
     if (truth) {
       const worth = whatIsWorthSayingWhenYouArrive(truth, firstName);
 
@@ -287,6 +317,54 @@ export class EmbedService {
       source: 'orientation',
       suggestions: ['What am I on?', 'What is due?'],
     };
+  }
+
+  /**
+   * The person's own due list: check-ins open to them, grounds waiting on them to start, and
+   * commitments past the date they gave. Tolerant of a thin database, because the panel must draw
+   * even when this cannot be read - a badge that fails closed is a badge, an opening that fails is
+   * an empty box.
+   */
+  private async whatIsDue(
+    organizationId: string,
+    person: { id: string; externalId?: string },
+    truth: Awaited<ReturnType<WhatIsTrueService['forPerson']>> | null,
+  ): Promise<WhatIsDue> {
+    const sessions = truth?.sessions?.value ?? [];
+    const openIds = sessions.filter((s) => s.standing === 'open to you' && s.checkInId).map((s) => s.checkInId as string);
+    const rows = openIds.length
+      ? await (this.prisma.checkIn?.findMany({
+          where: { id: { in: openIds } },
+          select: { id: true, sessionNumber: true, participantId: true },
+        }) ?? Promise.resolve([])).catch(() => [] as { id: string; sessionNumber: number; participantId: string }[])
+      : [];
+    const leftOpen = new Map<string, string[]>();
+    for (const r of rows) {
+      if (r.sessionNumber <= 1) continue;
+      const entries = await (this.prisma.recordEntry?.findMany({
+        where: {
+          participantId: r.participantId,
+          type: { in: ['WORRY', 'TENSION', 'COMMITMENT'] as any },
+          checkIn: { status: 'COMPLETED' as any, sessionNumber: { lt: r.sessionNumber } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { text: true },
+      }) ?? Promise.resolve([])).catch(() => [] as { text: string }[]);
+      leftOpen.set(r.id, entries.map((e) => e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')));
+    }
+    const commitments = person.externalId
+      ? await this.prisma.commitment
+          .findMany({ where: { organizationId, personExternalId: person.externalId, state: 'OPEN' }, select: { dueAt: true, dueSaid: true, state: true } })
+          .catch(() => [] as any[])
+      : [];
+    const now = new Date();
+    return whatIsDueFor({
+      sessions,
+      sessionNumbers: new Map(rows.map((r) => [r.id, r.sessionNumber])),
+      leftOpen,
+      slippedCommitments: commitments.filter((c: any) => hasSlipped(c, now)).length,
+    });
   }
 
   /**

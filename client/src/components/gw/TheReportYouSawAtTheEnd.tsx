@@ -24,6 +24,8 @@ function CardTitle({ children, weight = 600 }: { children: ReactNode; weight?: 6
 }
 
 export interface TheReportYouSawAtTheEndProps {
+  /** Settled and still open, from the session report's engines. */
+  stands?: { settled: string[]; open: string[] } | null
   /** The report itself, exactly as it was produced. */
   report: EntryReport
   /** The correction conversation, when this reader can still correct it. */
@@ -110,7 +112,7 @@ export function TheReportYouSawAtTheEnd({
   renderAdd,
   onRecordLine,
   stillNeeded,
-  hideCompleteness,
+  stands,
 }: TheReportYouSawAtTheEndProps) {
   const report = everySectionCanBeAbsent(given)
   return (
@@ -127,31 +129,11 @@ export function TheReportYouSawAtTheEnd({
           {correctionSlot}
         </div>
 
-        {/* How complete your side is, unless the engine's own meter is on the page. See above. */}
-        {!hideCompleteness && (
-        <div style={{ marginBottom: 16 }}>
-          {/* "Account" is the login word. Here it meant what this person said, so it says that. */}
-          <Sec title="How complete your side of this is" />
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--gw-text)' }}>{STATUS_DISPLAY[report.alignmentStatus] ?? report.alignmentStatus}</div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{report.alignmentBasis}</div>
-          <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
-            {(['Unresolved','Mixed','Emerging','Clear','Aligned'] as const).map(s => {
-              const order = ['Unresolved','Mixed','Emerging','Clear','Aligned']
-              const on = order.indexOf(s) <= order.indexOf(report.alignmentStatus)
-              // "Shared" (data value 'Aligned') requires a second party, so it stays locked in a one-sided report.
-              const locked = s === 'Aligned'
-              const bg = on ? 'var(--gw-navy)' : 'var(--gw-bg)'
-              return (
-                <div key={s} style={{ flex: 1, textAlign: 'center', fontSize: 9, letterSpacing: '.03em', textTransform: 'uppercase', padding: '5px 2px', borderRadius: 5, fontWeight: 700, background: bg, color: on ? 'white' : (locked ? '#B8B4AE' : 'var(--gw-muted)'), border: locked ? '1px dashed #CFCBC4' : 'none' }}>{locked ? `${STATUS_DISPLAY[s]} 🔒` : STATUS_DISPLAY[s]}</div>
-              )
-            })}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
-            Reading left to right: <b>Just started</b> (little saved yet) → <b>Taking shape</b> → <b>Getting there</b> → <b>Clear</b> (your side is well defined) → <b>Shared</b>. This is your side only. It becomes "Shared" once everyone else checks in too.
-          </div>
-        </div>
-        )}
-
+        {/*
+          THE LADDER IS GONE. "Just started" here, "Your record is specific" two lines above it, and
+          "Not much yet, most of this is general" on My record were three verdicts on one session.
+          The specificity meter on the page is the one read; nothing else rates the record.
+        */}
         {/* What's still open */}
         {report.areasRequiringAlignment.length > 0 && (
           <div style={{ marginBottom: 16 }}>
@@ -280,23 +262,20 @@ export function TheReportYouSawAtTheEnd({
           </div>
         )}
 
-        {/* Where this leaves you — the one-glance summary of the detail above */}
+        {/*
+          WHERE THIS LEAVES YOU, FROM THE SAME ENGINE AS THE SHARED REPORT. Four coloured boxes used to
+          sit here with a model's honestClose in them, and on a first session they were four empty
+          boxes while the shared report on the same page listed two open items. Settled and still open
+          come from the session report now; with nothing in either, one line says so.
+        */}
         <div style={{ marginBottom: 16 }}>
           <Sec title="Where this leaves you" />
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>A one-glance summary of your side. "Worth revisiting" is what we will check back on with you next time, not a task list.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {[
-              { k: 'Settled', v: report.honestClose.aligned, bg: 'var(--gw-green-bg)', kc: 'var(--gw-green-t)' },
-              { k: 'Still open', v: report.honestClose.open, bg: 'var(--gw-amber-bg)', kc: 'var(--gw-amber-t)' },
-              { k: 'Worth revisiting', v: report.honestClose.revisit, bg: 'var(--gw-blue-bg)', kc: 'var(--gw-navy)' },
-              { k: 'Watch for', v: report.honestClose.risk,  bg: 'var(--gw-clay-bg)', kc: 'var(--gw-clay)' },
-            ].map(({ k, v, bg, kc }) => (
-              <div key={k} style={{ background: bg, borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.5, color: 'var(--gw-text)' }}>
-                <span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: kc, display: 'block', marginBottom: 3 }}>{k}</span>
-                {v}
+          {(stands?.settled.length || stands?.open.length)
+            ? <div style={{ display: 'grid', gap: 6 }}>
+                {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
+                {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
               </div>
-            ))}
-          </div>
+            : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing settled or in dispute yet. That arrives once more than one person has checked in.</div>}
           <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>

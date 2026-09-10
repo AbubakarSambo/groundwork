@@ -39,6 +39,8 @@ export function whatTheyWantToCallIt(message: string): string | null {
     .replace(/^(?:new\s+)?(?:objectives?|okrs?|goals?|targets?)\s*/i, '')
     .replace(/^(?:for|about|on|around|to)\s+/i, '')
     .replace(/^(?:the\s+)?(?:quarter|period)\s*(?:for|about|on)?\s*/i, '')
+    /* "for the quarter: three customers" left a title beginning with a colon. Punctuation is not a title. */
+    .replace(/^[\s:;,.\-–—]+/, '')
     .replace(/[?.!,\s]+$/, '')
     .trim();
 

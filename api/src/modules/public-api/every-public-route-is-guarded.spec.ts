@@ -82,6 +82,15 @@ const PANEL_AUTHENTICATED = [
   "@Get('check-ins/mine')",
   "@Post('check-ins/:id/open')",
   "@Post('check-ins/:id/messages')",
+  "@Get('check-ins/:id/report')",
+  "@Patch('grounds/:groundId/documents/:docId/visibility')",
+  "@Post('check-ins/:id/success-looks-like')",
+  "@Get('commitments/mine')",
+  "@Post('commitments')",
+  "@Post('commitments/:id/done')",
+  "@Get('todos/mine')",
+  "@Post('todos')",
+  "@Post('todos/:id/done')",
   /*
    * ATTACHING A DOCUMENT IS THE SAME ACT AS ANSWERING, and belongs on the same side of this line.
    * A document here is one party's evidence for one record - read against what is being discussed

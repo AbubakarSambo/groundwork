@@ -54,6 +54,30 @@ export interface Capability {
  */
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
+    key: 'tick_off_a_to_do',
+    does: 'Close one of your own to-dos by naming it',
+    writes: 'after you confirm it',
+    ordered: 'First, because "done: send the rota" holds the same words as the to-do it closes.',
+    owns: ['done: send the rota', 'tick off the rota', 'mark the rota as done'],
+    refuses: ['what did I commit to', 'what am I on'],
+  },
+  {
+    key: 'add_a_to_do',
+    does: 'Put a note to yourself on your own list. Nobody else reads it and no report weighs it.',
+    writes: 'after you confirm it',
+    ordered: 'Above the document lane, because "add the rota to my to-do list" names a list and "add the rota" names a file.',
+    owns: ['add the rota to my to-do list', 'to-do: chase the invoice', 'remind me to book the room', 'note to self: renew the domain'],
+    refuses: ['add the handbook', 'upload a document'],
+  },
+  {
+    key: 'my_to_dos',
+    does: 'What is on your own list, open first',
+    writes: 'nothing',
+    ordered: 'Below adding, so the sentence that adds is not read as a request to list.',
+    owns: ['what is on my list?', 'my to-dos', 'what do I still have to do'],
+    refuses: ['my commitments', 'what am I on', 'add the rota to my to-do list'],
+  },
+  {
     key: 'add_a_document',
     does: 'Put a document into a check-in — a file, or a link to where it already lives — and say who it is for',
     writes: 'after you confirm it',

@@ -62,7 +62,8 @@ describe('nothing that describes the mechanism assumes two parties', () => {
     /* The sentence sits on the report screen, which is its own component now so that a session
        opened later renders exactly what its owner read at the end of it. */
     const report = strip(readFileSync(join(__dirname, 'TheReportYouSawAtTheEnd.tsx'), 'utf8'))
-    expect(report).toMatch(/once everyone else checks in too/)
+    /* The ladder that carried this sentence is gone; what remains must not speak of 'the other party'. */
+    expect(report).not.toMatch(/the other (party|person|side)/i)
     const page = strip(readFileSync(join(__dirname, '../../pages/enter/EntryChatPage.tsx'), 'utf8'))
     expect(page).toMatch(/everyone receives the shared report at the same time/)
   })

@@ -21,6 +21,11 @@
   .chips { display:flex; flex-wrap:wrap; gap:6px }
   .chip { font-size:12px; padding:5px 10px; border-radius:14px; border:1px solid var(--line); background:#fff; cursor:pointer; font-family:inherit }
   .chip:hover { background:var(--bg) }
+  .chip.act { background:var(--navy); color:#fff; border-color:var(--navy); font-weight:600 }
+  .chip.act:hover { background:#173f68 }
+  #pin[aria-pressed=true] { background:var(--bg) }
+  .card { background:var(--bg); border-radius:12px; padding:10px 12px; font-size:13px; align-self:stretch }
+  .card b { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--sub); margin-bottom:4px }
   .by { font-size:10.5px; color:var(--sub); align-self:flex-start; margin-top:-6px }
   form { display:flex; gap:6px; padding:10px 12px; border-top:1px solid var(--line) }
   input { flex:1; font:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--line); border-radius:8px }
@@ -35,6 +40,7 @@
     </div>
     <div class="acts">
       <button id="seen" type="button" class="chip">What you can see</button>
+      <button id="pin" type="button" class="chip" aria-pressed="false" title="Keep this open on the side">Pin</button>
       <button id="close" aria-label="Close">×</button>
     </div>
   </header>
@@ -127,26 +133,159 @@
     return d;
   }
 
+  /*
+   * A CHIP EITHER SAYS SOMETHING OR DOES SOMETHING. A plain chip sends its label as if typed. A
+   * chip with an `act` runs that act against the check-in routes: it is how "Start it" starts the
+   * check-in here, in this box, rather than printing a link into the product.
+   */
   function chips(options) {
     var wrap = document.createElement('div');
     wrap.className = 'chips';
     options.forEach(function (o) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'chip';
+      b.className = o.act ? 'chip act' : 'chip';
       b.textContent = o.label;
-      b.addEventListener('click', function () { ask(o.label); });
+      b.addEventListener('click', function () {
+        if (o.act) act(o.act);
+        else ask(o.label);
+      });
       wrap.appendChild(b);
     });
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
   }
 
+  function api(method, path, body) {
+    return withSession(function (t) {
+      var init = { method: method, headers: { Authorization: 'Bearer ' + t } };
+      if (body !== undefined) {
+        init.headers['Content-Type'] = 'application/json';
+        init.body = JSON.stringify(body);
+      }
+      return fetch(API + '/api/org/v1' + path, init);
+    });
+  }
+
+  /*
+   * THE CHECK-IN RUNS IN THE PANEL.
+   *
+   * The routes to open, answer and complete a check-in existed and the panel never called them, so a
+   * member's check-in was a link to the product. While `inCheckIn` is set, what they type goes to
+   * the check-in and not to the assistant; it clears when the session completes or fails to open.
+   */
+  var inCheckIn = null;
+  /* A ground waiting on this person to start: the next thing they type is their part in it. */
+  var awaitingPartFor = null;
+
+  function confirmWithPart(groundId, part) {
+    awaitingPartFor = null;
+    input.placeholder = 'Ask about your work';
+    bubble('me', part);
+    api('POST', '/grounds/' + encodeURIComponent(groundId) + '/confirm-lead', { remit: part })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        bubble('them', o ? 'Started. Your first check-in is open when you are ready.' : 'I could not start it just then. Try again in a moment.');
+        if (typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
+      })
+      .catch(function () { bubble('them', 'I could not start it just then. Try again in a moment.'); });
+  }
+
+  function act(a) {
+    if (a.kind === 'open_a_check_in') return startCheckIn(a.id);
+    if (a.kind === 'confirm_a_check_in') return readAndConfirm(a.id);
+  }
+
+  function startCheckIn(id) {
+    api('POST', '/check-ins/' + encodeURIComponent(id) + '/open')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.reply) { bubble('them', 'I could not open that check-in just then. Try again in a moment.'); return; }
+        inCheckIn = id;
+        input.placeholder = 'Answer here';
+        bubble('them', o.reply);
+        input.focus();
+      })
+      .catch(function () { bubble('them', 'I could not open that check-in just then. Try again in a moment.'); });
+  }
+
+  function answerInCheckIn(message) {
+    var id = inCheckIn;
+    bubble('me', message);
+    api('POST', '/check-ins/' + encodeURIComponent(id) + '/messages', { content: message })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.reply) { bubble('them', 'I could not reach the record just then. Say that again in a moment.'); return; }
+        bubble('them', o.reply);
+        if (o.sessionComplete) finishCheckIn(id);
+      })
+      .catch(function () { bubble('them', 'I could not reach the record just then. Say that again in a moment.'); });
+  }
+
+  function finishCheckIn(id) {
+    inCheckIn = null;
+    input.placeholder = 'Ask about your work';
+    api('POST', '/check-ins/' + encodeURIComponent(id) + '/complete')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function () { return api('GET', '/check-ins/' + encodeURIComponent(id) + '/report'); })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (s) {
+        var report = s && s.report;
+        if (!report) { bubble('them', 'That is done. Your report is being put together and will be here when it is ready.'); }
+        else showReport(report);
+        /* The badge and the first line are about what is due, and something just stopped being due. */
+        if (typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
+      })
+      .catch(function () { bubble('them', 'That is done. I could not fetch the report just then; ask me for it in a moment.'); });
+  }
+
+  /* The session report, as the app shows it under the transcript: where things stand, the reads at a glance, the one conversation worth having. */
+  function showReport(report) {
+    var card = document.createElement('div');
+    card.className = 'card';
+    var lines = [];
+    if (report.whereThingsStand && report.whereThingsStand.saying) lines.push(report.whereThingsStand.saying);
+    (report.atAGlance || []).forEach(function (g) { lines.push(g.label + ': ' + g.value + (g.sub ? ' (' + g.sub + ')' : '')); });
+    if (report.theConversationWorthHaving) lines.push('Worth having: ' + report.theConversationWorthHaving);
+    var head = document.createElement('b');
+    head.textContent = report.state === 'final' ? 'Your report' : 'Your report so far';
+    card.appendChild(head);
+    card.appendChild(document.createTextNode(lines.join('\n')));
+    card.style.whiteSpace = 'pre-wrap';
+    log.appendChild(card);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  /* A ground set up for this person as lead: show what was written for them, then one chip that confirms it. */
+  function readAndConfirm(groundId) {
+    api('GET', '/grounds/awaiting-me')
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (list) {
+        var g = (list || []).filter(function (x) { return x.groundId === groundId; })[0];
+        if (!g) { bubble('them', 'That one has already started, or is no longer waiting on you.'); return; }
+        bubble('them', (g.brief ? 'What was written for you: "' + g.brief + '"\n\n' : '') + g.says);
+        /*
+         * THEIR OWN PART, ASKED ONCE, BEFORE IT STARTS. The role map, the coaching read and the
+         * probe list all key on it, and a lead confirmed from the panel used to arrive with none:
+         * 0 of 2 API-set leads had one. One sentence, sent as the remit with the confirmation.
+         */
+        bubble('them', 'And your part in this, in a sentence? Type it and send, and this starts.');
+        awaitingPartFor = groundId;
+        input.placeholder = 'Your part in this';
+        input.focus();
+      })
+      .catch(function () { bubble('them', 'I could not read that just then. Try again in a moment.'); });
+  }
+
   function render(reply) {
     (reply.blocks || []).forEach(function (b) {
       if (b.type === 'text') bubble('them', b.body);
       else if (b.type === 'picker') chips(b.options || []);
-      else bubble('them', '[' + b.type + ']');
+      else if (b.type === 'next_step' && (b.kind === 'open_a_check_in' || b.kind === 'confirm_a_check_in') && b.id) {
+        /* An act on a record, done here. It used to print "[next_step]", which is a link to the product with the link removed. */
+        chips([{ label: b.label, act: { kind: b.kind, id: b.id } }]);
+      } else if (b.type === 'proposal' && b.summary) bubble('them', b.summary);
+      else if (b.type !== 'next_step') bubble('them', '[' + b.type + ']');
     });
     /* Stamped on every reply, so a person always knows which spoke. */
     if (reply.composedBy === 'rules') {
@@ -179,7 +318,21 @@
     var v = input.value.trim();
     if (!v) return;
     input.value = '';
-    ask(v);
+    if (awaitingPartFor) confirmWithPart(awaitingPartFor, v);
+    else if (inCheckIn) answerInCheckIn(v);
+    else ask(v);
+  });
+
+  /*
+   * PIN. The loader owns where the frame sits, so the panel only says what was asked; the loader
+   * docks it and remembers, and answers with the state so the button reads right after a reload.
+   */
+  var pinBtn = document.getElementById('pin');
+  pinBtn.addEventListener('click', function () {
+    var pinned = pinBtn.getAttribute('aria-pressed') !== 'true';
+    pinBtn.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+    pinBtn.textContent = pinned ? 'Unpin' : 'Pin';
+    send('pin', { pinned: pinned });
   });
 
   /*
@@ -223,6 +376,11 @@
       token = e.data.token;
       if (window.__gwSessionArrived) window.__gwSessionArrived();
     } else if (e.data.type === 'open') input.focus();
+    else if (e.data.type === 'pinned') {
+      pinBtn.setAttribute('aria-pressed', e.data.pinned ? 'true' : 'false');
+      pinBtn.textContent = e.data.pinned ? 'Unpin' : 'Pin';
+      pinBtn.hidden = e.data.pinned === null;
+    }
     else if (e.data.type === 'context' && e.data.subjectExternalId) {
       var next = String(e.data.subjectExternalId);
       var changed = window.__gwContext !== next;
@@ -278,11 +436,13 @@
           : s.freshness.map(function (f) { return f.system; }).join(', ') + ' connected';
         if (stale.length) fresh.className = 'fresh stale';
       }
+      /* The badge is the count of things only this person can move. Zero clears it. */
+      send('badge', { count: s.due && s.due.count ? Number(s.due.count) : 0 });
       if (s.opening) {
         bubble('them', s.opening.line);
-        if (s.opening.suggestions) {
-          chips(s.opening.suggestions.map(function (t) { return { key: t, label: t }; }));
-        }
+        var options = (s.opening.acts || []).map(function (a) { return { label: a.label, act: { kind: a.kind, id: a.id } }; })
+          .concat((s.opening.suggestions || []).map(function (t) { return { key: t, label: t }; }));
+        if (options.length) chips(options);
       }
       send('ready');
       send('resize', { height: Math.min(document.body.scrollHeight, 640) });

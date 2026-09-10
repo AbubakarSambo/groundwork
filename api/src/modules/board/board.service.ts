@@ -26,6 +26,10 @@ import {
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { theSessionReport } from '../reports/the-session-report';
+import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
+import { cleanText } from '../reports/what-the-record-actually-holds';
+import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
@@ -74,7 +78,10 @@ export class BoardService {
    * `AnthropicService` for one job: rewording the reads' reason lines. The board decides nothing
    * with it. See the-engine-drafts-it-the-model-words-it.ts for the guard.
    */
-  constructor(private prisma: PrismaService, private readonly anthropic: AnthropicService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly anthropic: AnthropicService,
+  ) {}
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
     const ground = await this.prisma.ground.findUnique({
@@ -221,6 +228,20 @@ export class BoardService {
       orderBy: { sessionNumber: 'asc' },
     });
     const maxSession = checkIns.reduce((m, c) => Math.max(m, c.sessionNumber), 1);
+    /* ONE CLOCK. The open round is the lowest session anybody who gives a check-in has not finished.
+       When a third person is added, the round goes back to session 1 while the lead's session 2 may
+       already be in progress; the board said "session 2" and the header said "back to session 1".
+       The round is the clock everywhere; a session ahead of it is upcoming, not current. */
+    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
+    const unfinished = checkIns.filter((c) => givers.has(c.participantId) && c.status !== CheckInStatus.COMPLETED).map((c) => c.sessionNumber);
+    const openRound = unfinished.length ? Math.min(...unfinished) : maxSession;
+    /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
+       board runs the same engines over all of them, so the two share a vocabulary and differ only in
+       scope. Same tiles, same settled-and-open, same question engine. */
+    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound).catch((err: any) => {
+      this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
+      return null;
+    });
 
     /**
      * NAMES AND RAW EMAIL ADDRESSES IN THE SAME COLUMN. W-UX-4.
@@ -335,13 +356,13 @@ export class BoardService {
       out.phaseSpine = {
         startsAt: ground.startsAt,
         endsAt: ground.endsAt,
-        currentSession: maxSession,
+        currentSession: openRound,
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b).map((n) => {
           const forSession = checkIns.filter((c) => c.sessionNumber === n);
           const allDone = forSession.length > 0 && forSession.every((c) => c.status === CheckInStatus.COMPLETED);
           return {
             n,
-            state: n < maxSession || allDone ? 'done' : n === maxSession ? 'current' : 'upcoming',
+            state: n < openRound || allDone ? 'done' : n === openRound ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
           };
         }),
@@ -421,7 +442,9 @@ export class BoardService {
       out.divergence = {
         items: Array.isArray(reportSafe.divergences) ? reportSafe.divergences : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
-        centralQuestion: reportSafe.centralQuestion ?? null,
+        centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
+        settled: sessionShape?.whereThingsStand?.settled ?? [],
+        stillOpen: sessionShape?.whereThingsStand?.open ?? [],
       };
     }
 
@@ -507,7 +530,10 @@ export class BoardService {
         'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
     }
 
-    if (has('quickRead')) {
+    if (has('quickRead') && sessionShape?.atAGlance?.length) {
+      /* The same four tiles as the report, over every session. */
+      out.quickRead = sessionShape.atAGlance;
+    } else if (has('quickRead')) {
       const blockers = ground.dependencies.filter((d) => d.status === DependencyStatus.BLOCKING).length;
       const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
       const movedTotal = ground.objectives.reduce((s, o) => s + (o.count - o.prevCount), 0);
@@ -531,8 +557,8 @@ export class BoardService {
           label: 'Differences',
           value: divCount ? `${divCount}` : 'None',
           sub: divCount
-            ? `still open between the accounts`
-            : 'the accounts do not disagree anywhere yet',
+            ? 'still open between people'
+            : 'nobody disagrees anywhere yet',
           tone: divCount ? 'warn' : 'good',
         },
         {
@@ -1178,6 +1204,58 @@ export class BoardService {
     }
 
     return whoNeedsYou(needs);
+  }
+
+
+  /**
+   * THE REPORT'S ENGINES, OVER EVERY SESSION. Every record line from every completed check-in on the
+   * ground, the written report's agreements and differences, every target's movement, every open
+   * dependency, every OPEN document: the same pure functions the session report runs, with the
+   * ground's rows instead of one session's. Names go through the same labels the board already uses.
+   */
+  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number) {
+    const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
+    const [entries, docs, baseline, deps] = await Promise.all([
+      this.prisma.recordEntry.findMany({
+        where: { disputedAt: null, checkInId: { in: completed.map((c) => c.id) } },
+        select: { type: true, text: true, participantId: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.groundDocument.findMany({ where: { groundId, visibility: 'OPEN' as any }, select: { fileName: true, participantId: true, origin: true } }),
+      (this.prisma as any).groundBaseline?.findFirst?.({ where: { groundId }, select: { successLooksLike: true } }) ?? Promise.resolve(null),
+      this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true } }),
+    ]);
+    const labels = labelsForParties(ground.participants as any);
+    const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A teammate') : null);
+    const report = ground.report ?? {};
+    const answered = ground.participants.filter((p: any) => !p.managingOnly && completed.some((c) => c.participantId === p.id));
+    const shape = theSessionReport({
+      sessionNumber: openRound,
+      closed: !!report.releasedAt,
+      agreements: (report.agreements ?? []) as unknown[],
+      divergences: (report.divergences ?? []) as unknown[],
+      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: nameOf(e.participantId), recallBased: e.recallBased, backedBy: (e as any).anchoredOrigin ?? null, threadKey: e.dimensionThreadKey ?? null })),
+      previousEntries: [],
+      baselineSuccess: baseline?.successLooksLike ?? null,
+      startingPoint: null,
+      previousSharedPicture: null,
+      evidence: docs.map((d: any) => ({ text: originLabel(d.origin) ? `${d.fileName} · ${originLabel(d.origin)}` : d.fileName, who: nameOf(d.participantId) })),
+      specificityLevel: null,
+      recallConfidence: null,
+      centralQuestion: report.centralQuestion ?? null,
+      movedOnTargets: ground.objectives?.some((o: any) => o.target != null) ? ground.objectives.filter((o: any) => o.target != null).reduce((s: number, o: any) => s + (o.count - o.prevCount), 0) : null,
+      blocked: deps.filter((d) => d.status === 'BLOCKING').length,
+      waiting: deps.filter((d) => d.status === 'WAITING').length,
+      answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
+      peopleInAll: ground.participants.filter((p: any) => !p.managingOnly).length,
+    });
+    const question = draftTheQuestion({
+      functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
+      blockers: deps.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+    });
+    /* The tile grammar says "this session"; on the board it is every session. */
+    const atAGlance = (shape.atAGlance ?? []).map((t: any) => ({ ...t, sub: String(t.sub ?? '').replace(/this session/g, 'across every session').replace(/moved this session/g, 'moved so far') }));
+    return { ...shape, atAGlance, theConversationWorthHaving: question?.text ?? null };
   }
 
 }

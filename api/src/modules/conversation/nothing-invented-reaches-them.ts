@@ -59,7 +59,7 @@ export type Screened = {
 
 export type Hit = {
   sentence: string;
-  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | 'a second question';
+  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | 'a second question' | 'an apology' | 'a pronoun with nobody named';
   offending: string[];
 };
 
@@ -87,11 +87,43 @@ export function numbersNobodySaid(sentence: string, known: string[]): string[] {
   return [...new Set(out)];
 }
 
+/**
+ * AN APOLOGY IS DROPPED. "My apologies, that was unclear." "My mistake." Both seen live, in consecutive
+ * turns, to somebody who was confused by a question the product asked badly. The sentence goes; the
+ * rest of the turn stands.
+ */
+const AN_APOLOGY = /^\s*(my apologies|apologies|sorry|so sorry|i apologi[sz]e|my mistake|my bad)\b/i;
+
+/**
+ * A PRONOUN WITH NOBODY NAMED. "What would you want him to point to?" with no him anywhere. The
+ * sentence is dropped when it leans on him/his/her/hers and neither the reply nor the conversation so
+ * far names a person or a role a person could be. Only singular third-person pronouns: "them" and
+ * "their" name clients, teams and things far too often to check.
+ */
+const A_LONE_PRONOUN = /\b(him|his|her|hers|himself|herself)\b/i;
+const A_ROLE = /\b(the )?(new hire|new starter|lead|manager|colleague|teammate|partner|client|candidate|co-?founder|report|director|head of [a-z]+|person (running|setting) this)\b/i;
+function somebodyIsNamed(text: string): boolean {
+  if (A_ROLE.test(text)) return true;
+  const caps = text.match(/\b[A-Z][a-z]{2,}\b/g) ?? [];
+  return caps.some((w) => !NOT_A_NAME_FOR_PRONOUNS.has(w));
+}
+const NOT_A_NAME_FOR_PRONOUNS = new Set(['The', 'What', 'When', 'Where', 'Who', 'Why', 'How', 'That', 'This', 'These', 'Those', 'You', 'Your', 'Yes', 'Okay', 'Less', 'More', 'Let', 'And', 'But', 'Then', 'Now', 'One', 'Two', 'Not', 'Before', 'After', 'Once', 'Since', 'Which', 'Something', 'Nothing', 'Everyone', 'Nobody', 'Somebody', 'Success', 'Session', 'Groundwork']);
+export function pronounWithNobodyNamed(sentence: string, saidSoFar: string[]): boolean {
+  if (!A_LONE_PRONOUN.test(sentence)) return false;
+  if (somebodyIsNamed(sentence)) return false;
+  return !saidSoFar.some((t) => somebodyIsNamed(t));
+}
+
 export function whyItFails(
   sentence: string,
   personSaid: string[],
   readerName?: string | null,
+  /* The conversation so far, both voices. The roster is in personSaid for the name check and must
+     NOT count as an antecedent: a name on the roster is not a name in the conversation. */
+  conversation?: string[],
 ): Omit<Hit, 'sentence'> | null {
+  if (AN_APOLOGY.test(sentence)) return { check: 'an apology', offending: [sentence.trim().split(/[.,!]/)[0]] };
+  if (conversation && pronounWithNobodyNamed(sentence, conversation)) return { check: 'a pronoun with nobody named', offending: [(sentence.match(A_LONE_PRONOUN) ?? [''])[0]] };
   const names = namesWorthReporting(sentence, personSaid);
   if (names.length) return { check: 'a name nobody said', offending: names };
   if (callsTheReaderByName(sentence, readerName)) return { check: 'called the reader by name', offending: [readerName ?? ''] };
@@ -138,7 +170,7 @@ function callsTheReaderByName(sentence: string, readerName?: string | null): boo
   return new RegExp(`\\b${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(sentence);
 }
 
-export function screen(reply: string, personSaid: string[], readerName?: string | null): Screened {
+export function screen(reply: string, personSaid: string[], readerName?: string | null, conversation?: string[]): Screened {
   const repaired = restoreTheirWords(reply, personSaid);
   const dropped: string[] = [];
   const hits: Hit[] = [];
@@ -147,7 +179,7 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
   const questions = new OneQuestionPerTurn();
 
   for (const sentence of intoSentences(repaired)) {
-    const why = whyItFails(sentence, personSaid, readerName);
+    const why = whyItFails(sentence, personSaid, readerName, conversation);
     if (why) {
       dropped.push(sentence);
       hits.push({ sentence, ...why });
@@ -190,6 +222,8 @@ export class SentenceGate {
     private readonly personSaid: string[],
     /** Who is reading. See callsTheReaderByName - their own name never belongs in a reply to them. */
     private readonly readerName?: string | null,
+    /** The conversation so far, for the pronoun check. See whyItFails. */
+    private readonly conversation?: string[],
   ) {}
 
   /** Feed a delta. Returns whatever complete, checked sentences are now safe to send. */
@@ -228,7 +262,7 @@ export class SentenceGate {
     const out: string[] = [];
     for (const s of sentences) {
       const repaired = restoreTheirWords(s, this.personSaid);
-      const why = whyItFails(repaired, this.personSaid, this.readerName);
+      const why = whyItFails(repaired, this.personSaid, this.readerName, this.conversation ? [...this.conversation, ...out] : undefined);
       if (why) {
         this.droppedSentences.push(s);
         this.hitRows.push({ sentence: s, ...why });

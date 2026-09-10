@@ -1227,7 +1227,7 @@ export function GroundAdminPage() {
     (ground as any).report?.releasedAt
       ? 'report sent to everyone'
       : (ground as any).report
-        ? (everyoneIn ? 'report ready \u2014 you release it' : 'report being written')
+        ? (everyoneIn ? 'everyone is in, report on its way' : 'report being written')
         : 'no report yet'
   // contact-visibility toggle state (default: hidden). true = peers cannot see each other's email.
   /**
@@ -2846,8 +2846,8 @@ export function GroundAdminPage() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select className="gw-input" aria-label="Timeframe" value={timelineDaysDraft}
                     onChange={(e) => setTimelineDaysDraft(Number(e.target.value))} style={{ background: 'white' }}>
-                    {[7, 14, 30, 60, 90, 180, 365].map((d) => (
-                      <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
+                    {[7, 14, 21, 30, 60, 90, 180, 365].map((d) => (
+                      <option key={d} value={d}>{d === 7 ? '1 week' : d === 14 ? '2 weeks' : d === 21 ? '3 weeks' : d === 365 ? '12 months' : d === 180 ? '6 months' : `${d} days`}</option>
                     ))}
                   </select>
                   <select className="gw-input" aria-label="Check-in cadence" value={cadenceDraft}

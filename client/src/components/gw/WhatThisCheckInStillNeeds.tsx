@@ -36,7 +36,19 @@ export function WhatThisCheckInStillNeeds({
   startDateUnset = false,
   timelineUnset = false,
   timelineDays,
+  briefStandard = null,
+  saidDate = null,
+  alreadyStarted = false,
+  nextOpens = null,
 }: {
+  /** Session 1 has begun, so 'when does this start' is no longer a question. */
+  alreadyStarted?: boolean
+  /** When this reader's next session opens, if it is scheduled. */
+  nextOpens?: string | null
+  /** The first sentence of the brief that carries a number; read as the standard until one is set. */
+  briefStandard?: string | null
+  /** A timeframe this person gave in their check-in, so the product does not say nobody chose one. */
+  saidDate?: string | null
   /** True when nobody has chosen a rhythm and the default is standing in for one. */
   cadenceUnset: boolean
   /** Whatever is in force now, chosen or defaulted, so the buttons can show which. */
@@ -64,7 +76,7 @@ export function WhatThisCheckInStillNeeds({
   timelineUnset?: boolean
   timelineDays?: number | null
 }) {
-  const missing = [cadenceUnset, standardUnset, startDateUnset, timelineUnset].filter(Boolean).length
+  const missing = [cadenceUnset, standardUnset, startDateUnset && !alreadyStarted, timelineUnset, alreadyStarted && !!nextOpens].filter(Boolean).length
   if (!missing) return null
 
   return (
@@ -102,7 +114,7 @@ export function WhatThisCheckInStillNeeds({
         </div>
       )}
 
-      {startDateUnset && (
+      {startDateUnset && !alreadyStarted && (
         <div style={{ marginBottom: 13 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When does this start?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
@@ -118,13 +130,22 @@ export function WhatThisCheckInStillNeeds({
           </button>
         </div>
       )}
+      {alreadyStarted && nextOpens && (
+        <div style={{ marginBottom: 13 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When is the next one?</div>
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+            Your next session opens on {new Date(nextOpens).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}. The rhythm is set on Setup.
+          </div>
+        </div>
+      )}
 
       {timelineUnset && (
         <div style={{ marginBottom: 13 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>How long does it run?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
-            Nobody chose this, so it is {timelineDays ?? 90} days by default. Everything that says
-            days remaining is counting against that number.
+            {saidDate
+              ? <>You said {saidDate} in your check-in. The check-in itself is set to {timelineDays ?? 90} days, and everything that says days remaining counts against that, not against your date.</>
+              : <>Nobody chose this, so it is {timelineDays ?? 90} days by default. Everything that says days remaining is counting against that number.</>}
           </div>
           <button
             onClick={onGoToSetup}
@@ -139,8 +160,9 @@ export function WhatThisCheckInStillNeeds({
         <div>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>What does good look like?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 7 }}>
-            You said it in the session. It is not set as the standard, so nothing is being read
-            against it.
+            {briefStandard
+              ? <>Your brief says &ldquo;{briefStandard}&rdquo;. That is being read as the standard until you set one here.</>
+              : <>You said it in the session. It is not set as the standard, so nothing is being read against it.</>}
           </div>
           <button
             onClick={onGoToSetup}
