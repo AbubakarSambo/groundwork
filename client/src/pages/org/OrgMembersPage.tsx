@@ -216,7 +216,7 @@ export function OrgMembersPage() {
     mutationFn: (userId: string) => apiClient.patch('/users/organization/owner', { userId }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['org-owner'] })
-      toast.success('Handed over. They now hold this account.')
+      toast.success('Handed over. They now own this organisation.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not hand that over.'),
   })
@@ -278,7 +278,7 @@ export function OrgMembersPage() {
         People
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.6 }}>
-        Everyone with a Groundwork account in your organisation. Invite colleagues to give them access.
+        Everyone signed in to Groundwork in your organisation. Invite colleagues to give them access.
       </p>
 
       {/* THE QUEUE. Shown only when there is one - an empty "nobody is waiting" panel on every
@@ -413,7 +413,7 @@ export function OrgMembersPage() {
       <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 12, padding: '20px 22px', marginBottom: 32 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a team member</div>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.5 }}>
-          They will receive an email with a link to set up their Groundwork account.
+          They will receive an email with a link to set themselves up in Groundwork.
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <input
@@ -677,7 +677,7 @@ export function OrgMembersPage() {
                     <span style={{
                       fontSize: 11, borderRadius: 6, padding: '2px 7px', fontWeight: 600,
                       background: 'var(--gw-bg)', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
-                    }}>Holds this account</span>
+                    }}>Owns this organisation</span>
                   )}
                   {m.id === user?.id ? (
                     <span style={{
@@ -690,7 +690,7 @@ export function OrgMembersPage() {
                      * says "Holds this account" about somebody else, so this only needs to say the
                      * same thing about you.
                      */
-                    }}>{iAmTheOwner ? 'You · account holder' : 'You'}</span>
+                    }}>{iAmTheOwner ? 'You · owner' : 'You'}</span>
                   ) : m.id === ownerId ? null : (
                     <select
                       /* An unnamed control. A screen reader reached this row and announced a
@@ -733,7 +733,7 @@ export function OrgMembersPage() {
                       onClick={() => {
                         const who = `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
                         if (window.confirm(
-                          `Hand this account to ${who}?\n\nThey become the person who cannot be `
+                          `Hand this organisation to ${who}?\n\nThey become the person who cannot be `
                           + 'removed by other admins, and you stop being that person. You stay an admin.',
                         )) handOverMut.mutate(m.id)
                       }}

@@ -229,7 +229,7 @@ export function IntegrationsPage() {
     return (
       <div style={S.page}>
         <h1 style={S.h1}>Connect your systems</h1>
-        <p style={S.lede}>Only an admin in your organisation can set this up. Ask whoever manages your Groundwork account.</p>
+        <p style={S.lede}>Only an admin in your organisation can set this up. Ask whoever manages Groundwork for your organisation.</p>
       </div>
     )
   }

@@ -156,7 +156,11 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
             // complete, not a count of check-in rows.
             const doneRounds = (g as any).roundsDone as number | undefined
             const sessions = planned != null && doneRounds != null
-              ? `${doneRounds} of ${planned} sessions done`
+              /* A check-in that has ended will never reach the plan, so counting toward it is a
+                 promise it is not keeping. What happened is the number that is true. */
+              ? howItEnded(g as any)
+                ? `${doneRounds} session${doneRounds === 1 ? '' : 's'}`
+                : `${doneRounds} of ${planned} sessions done`
               : planned != null
                 ? `${planned} sessions`
                 : null
@@ -233,7 +237,8 @@ export function GroundsListPage() {
    *
    * A ground waiting on an approval, or on its lead accepting it, has not started.
    */
-  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'AWAITING_LEAD', 'DECLINED']
+  /* AWAITING_LEAD went on 10 Sep 2026 - a check-in is open from the moment it is made. */
+  const NOT_STARTED_YET = ['AWAITING_APPROVAL', 'DECLINED']
   const active = grounds.filter(
     g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
   )
@@ -633,8 +638,16 @@ export function GroundsListPage() {
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              {/* COUNTED THE SAME WAY THE ADMIN'S LIST COUNTS. This said "In progress (1)" over a
+                   single check-in that had ended, because it counted every row rather than the live
+                   ones. Same split, same words. */}
               <div style={{ fontSize: 16, fontWeight: 700 }}>
-                {grounds.length > 0 ? `In progress (${grounds.length})` : 'In progress'}
+                {active.length > 0 ? `In progress (${active.length})` : closedCount > 0 ? 'Nothing in progress' : 'In progress'}
+                {closedCount > 0 && (
+                  <span style={{ fontSize: 12.5, fontWeight: 400, color: 'var(--gw-sub)', marginLeft: 8 }}>
+                    · {closedCount} closed
+                  </span>
+                )}
               </div>
               {/*
                 A SIGNED-IN PERSON MUST NOT BE SENT TO /start.

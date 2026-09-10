@@ -2389,7 +2389,7 @@ export function EntryChatPage() {
            was being promised a hand-off screen they would never reach. */
         const labels = ['Describe the situation', 'Your check-in', 'Save & invite']
         const hints = [
-          "You're describing the situation. Nothing is saved to an account yet.",
+          "You're describing the situation. Nothing is saved yet.",
           "You're saying how you see it.",
           'Save this and invite the people involved.',
         ]
@@ -2488,7 +2488,7 @@ export function EntryChatPage() {
                 person "additional sessions are $5 each" at the moment they were
                 deciding whether to start - and it was not even true: their
                 first ground is free with unlimited sessions. */}
-            <strong>{sessions} sessions</strong> needs an account, and it is free. Save your session below to get set up.
+            <strong>{sessions} sessions</strong> means signing in, and it is free. Save your session below to get set up.
           </div>
           <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
             style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
