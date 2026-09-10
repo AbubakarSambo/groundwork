@@ -94,7 +94,6 @@ export function ContextPage({
    * somebody else is the only one who can have told them, and this is the only moment they can
    * still go and ask.
    */
-  const [askingConsent, setAskingConsent] = useState<File | null>(null)
 
   /*
    * A FILE ARRIVES WITH NO INSTRUCTIONS AND THE SESSION HAS TO GUESS WHAT MATTERED ABOUT IT.
@@ -140,8 +139,11 @@ export function ContextPage({
      * pressed a button and is watching the button. A silent success and a silent failure look
      * identical, so the honest reading was "I do not know whether that worked".
      */
-    onSuccess: (_res, { file }) => {
+    onSuccess: (res: any, { file }) => {
       toast.success(`Uploaded ${file.name}`)
+      /* A record of a conversation is taken on their word, and the word is said back to them - the
+         server no longer refuses and asks first. See a-conversation-belongs-to-the-people-in-it.ts. */
+      if (res?.assumed) toast.message(res.assumed, { duration: 9000 })
       qc.invalidateQueries({ queryKey: ['docs', id] })
     },
     onError: (e: any) => {
@@ -149,9 +151,7 @@ export function ContextPage({
        * The server refused because it recognised a conversation and nothing had been confirmed.
        * Ask, rather than reporting a failure at somebody who did nothing wrong.
        */
-      const said = e?.response?.data?.message
-      if (typeof said === 'string' && said.includes('record of a conversation')) return
-      toast.error(said || 'Upload failed.')
+      toast.error(e?.response?.data?.message || 'Upload failed.')
     },
   })
 
@@ -533,44 +533,6 @@ export function ContextPage({
               
               Saying no keeps their file. Nothing was uploaded and nothing is waiting.
             */}
-            {askingConsent && (
-              <div style={{
-                border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)',
-                borderRadius: 10, padding: '14px 16px', marginBottom: 12,
-              }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                  Other people are in this
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10, maxWidth: 520 }}>
-                  {askingConsent.name} looks like a record of a conversation. Confirm that the people
-                  in it know conversations like this may be used to help your team work better - and
-                  that you told them, rather than us. We cannot ask them ourselves.
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => { setWhatToLookFor(''); setAskingWhatToLookFor({ file: askingConsent, consented: true }); setAskingConsent(null) }}
-                    style={{
-                      padding: '8px 16px', borderRadius: 8, border: 'none', fontFamily: 'inherit',
-                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      background: 'var(--gw-navy)', color: 'white',
-                    }}
-                  >
-                    They know - upload it
-                  </button>
-                  <button
-                    onClick={() => setAskingConsent(null)}
-                    style={{
-                      padding: '8px 16px', borderRadius: 8, fontFamily: 'inherit', fontSize: 13,
-                      fontWeight: 600, cursor: 'pointer', background: 'white',
-                      color: 'var(--gw-sub)', border: '1px solid var(--gw-border)',
-                    }}
-                  >
-                    Not yet
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/*
               * NUMBERED IN THE ORDER THE PAGE ACTUALLY RUNS IN, WHICH IT WAS NOT.
               *
@@ -668,15 +630,13 @@ export function ContextPage({
                 onChange={e => {
                   const f = e.target.files?.[0]
                   /*
-                   * ASKED BEFORE IT LEAVES THE DEVICE where the name says what it is. The server
-                   * catches the rest by reading the shape, and that path opens the same question.
+                   * NOTHING IS ASKED BEFORE IT LEAVES THE DEVICE. This used to stop a file whose name said
+                   * "transcript" and ask first. The server recognises a record of a conversation by its
+                   * shape, keeps it, and says the assumption back (see the upload's onSuccess) - so the
+                   * one question left to ask here is what to look for in it.
                    */
                   if (f) {
-                    if (/transcript|recording|call notes|meeting notes|whatsapp|chat|conversation|gemini|minutes/i.test(f.name)) {
-                      setAskingConsent(f)
-                    } else {
-                      setWhatToLookFor(''); setAskingWhatToLookFor({ file: f, consented: false })
-                    }
+                    setWhatToLookFor(''); setAskingWhatToLookFor({ file: f, consented: false })
                   }
                   e.target.value = ''
                 }} />

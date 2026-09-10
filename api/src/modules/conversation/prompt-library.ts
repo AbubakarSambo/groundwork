@@ -3509,7 +3509,7 @@ function buildActivePathway(ctx: PromptContext): string {
 
 Open with this block in order, as one natural message:
 "Last time you told us: [reference one specific named thing from their record by the exact word or phrase they used, not a paraphrase]"
-"Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, confidence score, alignment map, documents]"
+"Since then: [use GROUND_STATE if provided; otherwise draw from context - who has submitted, alignment map, documents. Never a score: nobody here is scored, and telling a person one exists is telling them they are]"
 "Today we are going to: [focus on an unexpected angle - session 1 produced thin specificity, so this session goes to what almost went wrong, what they wish had been different, or what they held back]"
 
 Then ask one question from an unexpected angle. Do not explain the shift. Do not announce that you are approaching differently. One opening block. One question. Wait.`;
@@ -3525,7 +3525,7 @@ Then ask one question from an unexpected angle. Do not explain the shift. Do not
 
 Open with this block in order, as one natural message:
 "Last time you told us: [one specific named thing from session 1 in plain language - a synthesis of the most important thing they said, not a quote]"
-"Since then: [use GROUND_STATE if provided; otherwise use what is available in PRIOR_SESSION and context - who has submitted, what the confidence score is, whether the alignment map has updated, whether documents have been added]"
+"Since then: [use GROUND_STATE if provided; otherwise use what is available in PRIOR_SESSION and context - who has submitted, whether the alignment map has updated, whether documents have been added. Never a score]"
 "Today we are going to: [what session 2 will focus on - drawn from the gaps and specificity levels in session 1]"
 
 Then ask the first question of session 2. Draw it directly from a gap or a vague answer in session 1. It must be specific to what this person said. Never ask "what have you been working on." Never ask "welcome back." Never open with a question.

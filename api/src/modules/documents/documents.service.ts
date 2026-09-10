@@ -16,7 +16,8 @@ import { originFromTheFile, looksGeneratedByAModel, type DocumentOrigin } from '
 import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMPT, DESCRIPTION_CHECK_SCHEMA } from '../conversation/prompt-library';
 import { RecordEntryType, EvidenceType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
-import { looksLikeAConversation, NOT_CONFIRMED } from './a-conversation-belongs-to-the-people-in-it';
+import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
+import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 
 const ALLOWED_MIME = [
   'application/pdf',
@@ -280,17 +281,17 @@ export class DocumentsService {
     const participant = await this.assertParticipant(groundId, userId);
     const content = await this.extractContent(file);
     /*
-     * A RECORD OF A CONVERSATION IS REFUSED UNTIL SOMEBODY CONFIRMS THE PEOPLE IN IT KNOW.
+     * A RECORD OF A CONVERSATION IS TAKEN ON THE UPLOADER'S WORD, AND THE WORD IS STATED.
      *
-     * Refused rather than kept pending: a transcript sitting in a database waiting for permission
-     * is exactly the thing this is meant to prevent. The content is read to recognise the shape and
-     * then dropped with the request - nothing is written.
-     *
-     * The check errs towards asking. Being asked about a strategy deck costs one click; a
-     * transcript slipping through as an ordinary document costs somebody else their privacy.
+     * This refused a transcript until `consentConfirmed` was sent - the person had to press a button
+     * saying the people in it knew. Reversed by the product owner on 11 September 2026: nothing is
+     * refused; the assumption is said instead, in the response, and shown to them. See
+     * a-conversation-belongs-to-the-people-in-it.ts for the reasoning. The flag is still accepted so
+     * no client breaks, and no longer read: uploading IS the confirmation, so the record of who and
+     * when is stamped from the upload itself.
      */
     const isConversation = looksLikeAConversation(file.originalname, content);
-    if (isConversation && !consentConfirmed) throw new BadRequestException(NOT_CONFIRMED);
+    void consentConfirmed;
 
     const assessment = await this.assessDocument(content, file.originalname);
     const origin = await this.decideOrigin(file, content, isConversation);
@@ -326,7 +327,11 @@ export class DocumentsService {
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
-    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
+    return {
+      ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
+      /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
+      ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+    };
   }
 
   /** Update a document's assessment (user-corrected version). */
@@ -502,19 +507,33 @@ export class DocumentsService {
       throw new BadRequestException('Unsupported file type. Accepted: PDF, TXT, CSV, HTML, code/text, DOCX, XLSX, JPEG, PNG, HEIC.');
     }
 
-    const participant = await this.prisma.groundParticipant.findUnique({
-      where: { inviteToken: token },
-    });
-    if (!participant) throw new NotFoundException('Invite not found');
+    /*
+     * THE SAME DOOR AS THE SIGNED-IN UPLOAD, WITH THE SAME QUESTIONS.
+     *
+     * This looked the token up bare - no expiry, no single-use - so an invite email from months ago
+     * still attached files to the ground; and it asked none of what the signed-in path asks, so a
+     * transcript arrived with no record that it was one, no visibility, and nobody's word behind it.
+     * The token rule is the invitation's (an-invite-link-still-opens.ts). The conversation check and
+     * the stated assumption are the upload's. The token no longer travels in the query string, where
+     * it landed in every access log on the path: see the controller.
+     */
+    const participant = assertInviteLinkStillOpens(
+      await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } }),
+    );
 
     const content = await this.extractContent(file);
+    const isConversation = looksLikeAConversation(file.originalname, content);
     const assessment = await this.assessDocument(content, file.originalname);
-    const origin = await this.decideOrigin(file, content, false);
+    const origin = await this.decideOrigin(file, content, isConversation);
 
     const doc = await this.prisma.groundDocument.create({
       data: {
         groundId: participant.groundId,
         participantId: participant.id,
+        isConversation,
+        /* Taken on the word of whoever holds the invitation; they have no account yet, so no user id. */
+        ...(isConversation ? { consentConfirmedAt: new Date(), consentConfirmedById: participant.userId ?? null } : {}),
+        visibility: defaultVisibilityForUpload(),
         fileName: file.originalname,
         mimeType: file.mimetype,
         content,
@@ -531,7 +550,11 @@ export class DocumentsService {
 
     /* The uploader's own view of what they just attached, including who can see it. The flag is
        what documents.list already reads: with context off, everything is private to its uploader. */
-    return toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true);
+    return {
+      ...toDocShape(doc, doc.participantId ?? undefined, this.config.get<boolean>('app.contextEnabled') === true),
+      /* Said back, so the screen can say it too. Absent on anything that is not a conversation. */
+      ...(isConversation ? { assumed: THE_ASSUMPTION_WHEN_UPLOADING } : {}),
+    };
   }
 
   /**

@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { needsApproval } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
+import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
@@ -429,46 +430,10 @@ export class ParticipantsService {
 
   // --- helpers ---
 
+  /** The rule lives in an-invite-link-still-opens.ts, because attaching a document before the account exists presents the same token. */
   private async loadByToken(token: string) {
     const participant = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
-    if (!participant) {
-      /**
-       * The link is genuinely dead, and that is deliberate - the token is
-       * cleared on first use so an emailed invite cannot serve as a permanent
-       * way in (see invite-single-use.spec.ts). Nothing here should hand a used
-       * link any access.
-       *
-       * What was wrong was only the wording. Someone who has already joined and
-       * comes back to their own link - a bookmark, the email again - was told
-       * their link was "invalid", which reads as something being broken, or as
-       * an accusation. It is neither: they are already in, and they were sent a
-       * password link when they joined.
-       *
-       * We cannot tell "used" from "never existed" here, because the row is
-       * found by the token and the token is gone - so the message has to cover
-       * both without guessing, and point to the way forward in each case.
-       */
-      throw new NotFoundException(
-        'This link has already been used, or it is not a link we recognise. If you have already joined, sign in with the password you set - check your email for the setup link. If you have not, ask the person who added you to send a new invite.',
-      );
-    }
-    // Skip expiry for participants who already accepted - they can always return via their link.
-    const alreadyAccepted = !!participant.userId;
-    /**
-     * Ninety days, and only for an invite nobody ever accepted.
-     *
-     * Fourteen days was short enough to expire on ordinary human timescales -
-     * annual leave, a quarter that slipped, a ground set up ahead of a start
-     * date - and the reward for being late was a dead link and an instruction to
-     * go and ask a colleague to resend it. Nobody should have to chase someone
-     * to get into their own record.
-     */
-    if (!alreadyAccepted && participant.inviteTokenExpiresAt && participant.inviteTokenExpiresAt < new Date()) {
-      throw new BadRequestException(
-        'This invite link is very old and has expired. Use the "send me a new link" option, or ask whoever added you to invite you again.',
-      );
-    }
-    return participant;
+    return assertInviteLinkStillOpens(participant);
   }
 
   // Never fabricate a name from the email address. firstName is a required

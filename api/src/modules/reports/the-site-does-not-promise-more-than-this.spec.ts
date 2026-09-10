@@ -26,13 +26,34 @@ import { PartyType } from '@prisma/client';
  * it describes - the only place the two are ever compared.
  */
 
-const HOME = path.join(__dirname, '../../../../marketing/src/pages/index.astro');
+const PAGES = path.join(__dirname, '../../../../marketing/src/pages');
+const HOME = path.join(PAGES, 'index.astro');
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/<!--[\s\S]*?-->/g, '');
 const copy = () => fs.readFileSync(HOME, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /** Prose only. A promise inside a source comment is a note, not a claim. */
 function visibleCopy(): string {
   return copy().replace(/<!--[\s\S]*?-->/g, '');
 }
+
+/** Every page, because the first false sentence was removed from the home page and survived on two others. */
+function everyPage(): { page: string; text: string }[] {
+  return fs.readdirSync(PAGES).filter((f) => f.endsWith('.astro')).map((f) => ({ page: f, text: strip(fs.readFileSync(path.join(PAGES, f), 'utf8')) }));
+}
+
+/**
+ * SENTENCES THE SITE STILL MAKES THAT THE PRODUCT DOES NOT KEEP, LEFT AS THEY ARE ON PURPOSE.
+ *
+ * The marketing copy is frozen (fix_plan.md, standing constraints), so a guard over every page
+ * would go red on day one for sentences already known and accepted. Each is listed here with the
+ * finding it leaves open, so the guard catches a NEW overclaim without failing on an old one - and
+ * so that when the product catches up with a sentence, the entry comes off this list rather than
+ * the sentence coming off the page.
+ */
+const ACCEPTED_OVERCLAIMS: { page: string; sentence: RegExp; leavesOpen: string }[] = [
+  { page: 'how-it-works.astro', sentence: /Groundwork never shows anyone's raw answers/, leavesOpen: 'P6B-001: a lead can be shown a paraphrase of a party (fix plan A3); raw turns are not shown' },
+  { page: 'pricing.astro', sentence: /no one sees anyone else's raw answers/, leavesOpen: 'P6B-001, the same sentence on the pricing page' },
+];
 
 describe('what the page promises about individual answers', () => {
   it('does not claim answers are never shared, because they are', () => {
@@ -43,6 +64,30 @@ describe('what the page promises about individual answers', () => {
   it('makes the promise the product actually keeps', () => {
     const text = visibleCopy();
     expect(text).toMatch(/never says who said what about whom/i);
+  });
+});
+
+describe('and the same two regressions on every other page', () => {
+  it.each(everyPage().map((p) => [p.page, p.text]))('%s does not claim answers are never shared, or that everyone reads one picture', (_page, text) => {
+    expect(text).not.toMatch(/never shares individual answers/i);
+    expect(text).not.toMatch(/The same picture goes to everyone in it/i);
+  });
+
+  it('a raw-answers promise appears only where it is already accepted, and nowhere new', () => {
+    for (const { page, text } of everyPage()) {
+      const claims = text.match(/[^.]*raw answers[^.]*\./gi) ?? [];
+      for (const claim of claims) {
+        const accepted = ACCEPTED_OVERCLAIMS.find((a) => a.page === page && a.sentence.test(claim));
+        if (!accepted) throw new Error(`${page} makes a raw-answers promise that is not on the accepted list: "${claim.trim()}"`);
+      }
+    }
+  });
+
+  it('and every accepted overclaim is still on its page, or its entry is stale', () => {
+    for (const a of ACCEPTED_OVERCLAIMS) {
+      const page = everyPage().find((p) => p.page === a.page);
+      expect(page && a.sentence.test(page.text)).toBe(true);
+    }
   });
 });
 

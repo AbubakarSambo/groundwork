@@ -23,10 +23,9 @@ export const documentsApi = {
     apiClient.get<GroundDocument[]>(`/grounds/${groundId}/documents`).then(r => r.data),
 
   /**
-   * `consentConfirmed` is only ever true because somebody read the notice and pressed the button.
-   * The server decides whether it was needed - it recognises a record of a conversation for itself
-   * and refuses one without this, so a client that never sent it could not slip a transcript
-   * through.
+   * `consentConfirmed` is still sent when the caller has it and is no longer read by the server. A
+   * record of a conversation is taken on the uploader's word and the assumption is said back in the
+   * response as `assumed` (product-owner decision, 11 September 2026). Kept so nothing breaks.
    */
   upload: (groundId: string, file: File, consentConfirmed = false, uploaderNote?: string) => {
     const form = new FormData()
@@ -34,7 +33,7 @@ export const documentsApi = {
     if (consentConfirmed) form.append('consentConfirmed', 'true')
     /* What they want looked for in it. Optional, and kept in their words. */
     if (uploaderNote?.trim()) form.append('uploaderNote', uploaderNote.trim())
-    return apiClient.post<GroundDocument>(`/grounds/${groundId}/documents`, form, {
+    return apiClient.post<GroundDocument & { assumed?: string }>(`/grounds/${groundId}/documents`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
