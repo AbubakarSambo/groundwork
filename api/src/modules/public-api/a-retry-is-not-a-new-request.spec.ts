@@ -92,26 +92,26 @@ describe('a retry without a header is still a retry, on a route that is an upser
    * and its retry were two pushes. On an upsert keyed by the caller's own id, the same body from the
    * same credential can only mean the same operation, so those routes derive the key themselves.
    */
-  it('derives a key from the credential, the endpoint and the body, and replays the second call', async () => {
+  it('derives a key from the source system, the endpoint and the body, and replays the second call', async () => {
     const { service } = svc();
     const work = jest.fn(async () => ({ title: 'first' }));
-    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-A' });
-    await expect(service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-A' })).resolves.toEqual({ title: 'first' });
+    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'hris' });
+    await expect(service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'hris' })).resolves.toEqual({ title: 'first' });
     expect(work).toHaveBeenCalledTimes(1);
   });
 
-  it('a different body, or a different credential, is a different operation', async () => {
+  it('a different body, or a different source system, is a different operation', async () => {
     const { service } = svc();
     const work = jest.fn(async () => ({ ok: true }));
-    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-A' });
-    await service.run('org1', undefined, 'POST /subjects', { a: 2 }, work, { deriveKeyFrom: 'client-A' });
-    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'client-B' });
+    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'hris' });
+    await service.run('org1', undefined, 'POST /subjects', { a: 2 }, work, { deriveKeyFrom: 'hris' });
+    await service.run('org1', undefined, 'POST /subjects', { a: 1 }, work, { deriveKeyFrom: 'ats' });
     expect(work).toHaveBeenCalledTimes(3);
   });
 
   it('an offered header still wins over derivation', async () => {
     const { service, rows } = svc();
-    await service.run('org1', 'K', 'POST /subjects', { a: 1 }, async () => ({ ok: true }), { deriveKeyFrom: 'client-A' });
+    await service.run('org1', 'K', 'POST /subjects', { a: 1 }, async () => ({ ok: true }), { deriveKeyFrom: 'hris' });
     expect(rows[0].key).toBe('K');
   });
 

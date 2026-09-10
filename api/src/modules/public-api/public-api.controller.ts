@@ -195,8 +195,10 @@ export class PublicApiController {
           await this.subjects.find(req.machine.organizationId, dto.sourceSystem.trim(), dto.externalId.trim()),
         );
       },
-      /* An upsert on the caller's own key: a retry without a header is still a retry. See IdempotencyService.run. */
-      { deriveKeyFrom: req.machine.clientId },
+      /* An upsert on the caller's own key: a retry without a header is still a retry - including one
+         sent after the credential was rotated, so the key follows the source system, never the
+         client id. See IdempotencyService.run and a-rotated-credential-is-the-same-roster.spec.ts. */
+      { deriveKeyFrom: req.machine.sourceSystem },
     );
   }
 

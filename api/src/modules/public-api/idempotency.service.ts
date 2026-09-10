@@ -40,9 +40,10 @@ export class IdempotencyService {
      *
      * For a route that IS an upsert on the caller's own key, the same body from the same credential
      * within the window can only mean the same operation, and a retry that arrives without a header
-     * is still a retry. Those routes pass `deriveKeyFrom` (the credential's clientId) and get the
-     * guarantee by default: the key is derived from who is calling, what they are calling and what
-     * they sent. Scoped to upserts on purpose: on a route that creates, two genuinely-intended
+     * is still a retry. Those routes pass `deriveKeyFrom` - the source system the credential speaks
+     * for, not its clientId, so a retry sent after a credential rotation is still the same retry -
+     * and get the guarantee by default: the key is derived from who is calling, what they are
+     * calling and what they sent. Scoped to upserts on purpose: on a route that creates, two genuinely-intended
      * identical calls would collapse into one.
      */
     const offered = key?.trim();
