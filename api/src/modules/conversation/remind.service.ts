@@ -183,7 +183,7 @@ export class RemindService {
       const checkInUrl = this.email.buildCheckInUrl(participant.session!.id);
 
       // #34: Pass otherPartyCompleted so the email includes the appropriate note.
-      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted);
+      await this.email.sendNudge(participant.email, specificThing, checkInUrl, undefined, otherPartyCompleted, participant.id);
 
       await this.prisma.groundParticipant.update({
         where: { id: participant.id },

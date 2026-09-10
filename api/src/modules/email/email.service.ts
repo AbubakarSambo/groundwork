@@ -66,13 +66,18 @@ export class EmailService {
    * senders and every one of those files looked right on its own. See
    * `nothing-goes-out-that-was-turned-off.ts` for the two kinds and the line between them.
    */
-  private async wouldTheyRatherNot(to: string, sender: string): Promise<string | null> {
+  private async wouldTheyRatherNot(to: string, sender: string, context?: DeliveryContext): Promise<string | null> {
     const kind = whatThisMailIs(sender);
-    if (kind === 'the way back in') return null;
+    if (kind === 'the way back in' || kind === 'operational') return null;
 
     const address = to.trim().toLowerCase();
+    /* THE STOP LINK STOPS EVERY ENGINE. `remindersStoppedAt` was read by one nudge engine of three;
+       it is read here, once, whenever the mail is about a participant. */
+    const stopped = context?.participantId
+      ? await this.prisma.groundParticipant.findUnique({ where: { id: context.participantId }, select: { remindersStoppedAt: true } }).catch(() => null)
+      : null;
     const [user, preference] = await Promise.all([
-      this.prisma.user.findUnique({ where: { email: address }, select: { emailNotifications: true } }),
+      this.prisma.user.findUnique({ where: { email: address }, select: { emailNotifications: true, isActive: true, deletedAt: true } }),
       /* Preferences are keyed by (organisation, externalId) and hold no address, so the roster is
          the way in. ANY unsubscribed row for this address stops the mail: somebody who used the
          link said "stop hearing from us", not "stop hearing from one of your tenants" — and
@@ -82,28 +87,35 @@ export class EmailService {
           where: { email: { equals: address, mode: 'insensitive' } },
           select: { organizationId: true, externalId: true },
         })
-        .then((people) =>
-          people.length === 0
-            ? null
-            : this.prisma.emailPreference.findFirst({
-                where: {
-                  OR: people.map((p) => ({ organizationId: p.organizationId, personExternalId: p.externalId })),
-                  unsubscribedAt: { not: null },
-                },
-                select: { unsubscribedAt: true },
-              }),
-        )
+        .then(async (people) => {
+          if (people.length === 0) return null;
+          const rows = await this.prisma.emailPreference.findMany({
+            where: { OR: people.map((p) => ({ organizationId: p.organizationId, personExternalId: p.externalId })) },
+            select: { unsubscribedAt: true, roundDigest: true, nudges: true },
+          });
+          if (!rows.length) return null;
+          /* Any unsubscribed row stops; a per-kind switch turned off on any row is off. */
+          return {
+            unsubscribedAt: rows.find((r) => r.unsubscribedAt)?.unsubscribedAt ?? null,
+            roundDigest: rows.every((r) => r.roundDigest),
+            nudges: rows.every((r) => r.nudges),
+          };
+        })
         .catch(() => null),
     ]);
 
     /* Nobody to ask: a participant invited by address has no account and no preference, and
        refusing to write to them would mean nobody could ever be invited. */
-    if (!user && !preference) return null;
+    if (!user && !preference && !stopped) return null;
 
     const answer = whetherToSend(kind, {
       emailNotifications: user?.emailNotifications,
       unsubscribedAt: preference?.unsubscribedAt ?? null,
-    });
+      remindersStoppedAt: stopped?.remindersStoppedAt ?? null,
+      wantsDigest: preference?.roundDigest,
+      wantsNudges: preference?.nudges,
+      stillHere: user ? user.isActive && !user.deletedAt : undefined,
+    }, sender);
     return answer.send ? null : answer.because;
   }
 
@@ -224,7 +236,7 @@ export class EmailService {
     /** Which sender this is. Defaulted so nothing breaks, and every sender passes it. */
     sender?: string,
   ): Promise<string | undefined> {
-    const rather = sender ? await this.wouldTheyRatherNot(options.to, sender) : null;
+    const rather = sender ? await this.wouldTheyRatherNot(options.to, sender, context) : null;
     if (rather) {
       /* Logged rather than silent: an email that did not go out for a good reason is still a thing
          somebody may be waiting for, and "nothing happened" is the hardest kind of bug to chase. */
@@ -634,7 +646,12 @@ export class EmailService {
   }
 
   /** Nudge. Scenario-aware subject, names the specific ground that is still open. */
-  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario?: string, otherPartyCompleted?: boolean, participantId?: string): Promise<void> {
+  /**
+   * `participantId` is REQUIRED. Two of three callers left it out, so whether a person could stop being
+   * chased depended on which engine chased them; and the stop itself is honoured in sendEmail through
+   * the context, so it has to be there.
+   */
+  async sendNudge(email: string, groundLabel: string, checkInUrl: string, scenario: string | undefined, otherPartyCompleted: boolean | undefined, participantId: string): Promise<void> {
     const subjectMap: Record<string, string> = {
       NEW_HIRE: 'Your 90-day check-in is waiting',
       NEW_COFOUNDER: 'Your cofounder check-in is open',
@@ -657,7 +674,7 @@ export class EmailService {
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
       html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
-    }, undefined, 'sendNudge');
+    }, { kind: 'REMINDER', participantId }, 'sendNudge');
   }
 
   /**

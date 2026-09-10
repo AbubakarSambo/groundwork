@@ -585,7 +585,7 @@ export class GroundsCron {
       if (ci.availableFrom && ci.availableFrom > now) continue; // not due yet
       const specificThing = p.recordEntries[0]?.text ?? p.ground.label;
       try {
-        await this.email.sendNudge(p.email, specificThing, this.email.buildCheckInUrl(ci.id));
+        await this.email.sendNudge(p.email, specificThing, this.email.buildCheckInUrl(ci.id), undefined, undefined, p.id);
         await this.prisma.groundParticipant.update({ where: { id: p.id }, data: { lastNudgedAt: now } });
         returnNudges++;
       } catch (err: any) {
