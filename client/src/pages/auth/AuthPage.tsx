@@ -617,7 +617,7 @@ export function AuthPage() {
         )}
 
         <div style={{ fontSize: 11, color: 'var(--gw-sub)', textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--gw-border)', lineHeight: 1.6 }}>
-          Your contributions stay private from the other participants. Alignment, gaps, and confidence emerge from everyone's check-ins together.
+          What you write stays yours. The report is built from everyone's check-ins together, and it never says who said what about whom.
         </div>
 
       </div>

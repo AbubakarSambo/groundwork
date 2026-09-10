@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
+import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
 import { SessionReportCard } from '@/components/gw/SessionReportCard'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
@@ -110,9 +111,16 @@ export function ChatPage() {
   const [searchParams] = useSearchParams()
   const isClarificationSession = searchParams.get('clarify') === 'true'
 
-  const sessionNumber: number = (location.state as any)?.sessionNumber ?? 1
+  /*
+   * THE SESSION NUMBER COMES FROM THE CHECK-IN, NOT FROM HOW YOU GOT HERE. It read navigation state
+   * and defaulted to 1, so every check-in opened from an email, WhatsApp or a bookmark said
+   * "Session 1" whatever session it was. Navigation state is the first guess; the transcript's own
+   * check-in corrects it the moment it loads.
+   */
+  const [sessionNumber, setSessionNumber] = useState<number>((location.state as any)?.sessionNumber ?? 1)
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
+  const [showAllPrior, setShowAllPrior] = useState(false)
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
@@ -431,6 +439,7 @@ export function ChatPage() {
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
             if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
+            if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
             if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
             /** Reopening a session already declined must show the settled state, not the composer. */
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
@@ -626,7 +635,7 @@ export function ChatPage() {
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : correctingSession != null
       ? `Correcting session ${correctingSession} · nothing is overwritten - this is recorded alongside what you said then.`
-      : `Session ${sessionNumber} · Your words are private until everyone activates the report.`
+      : `Session ${sessionNumber} · Private until the report is released to everyone.`
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
@@ -690,8 +699,9 @@ export function ChatPage() {
    * the admin's guide - which is where a promise belongs. Not in front of every session.
    */
 
+  /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. It was minHeight, and the composer measured 1,518px down on an 812px screen. */
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
+    <div style={{ height: '100dvh', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-bg)' }}>
       {/* Header */}
       {/**
         * THE WAY OUT, MOVED TO THE LEFT, AND POINTED AT THE GROUND.
@@ -819,31 +829,44 @@ export function ChatPage() {
               </div>
             </div>
           )}
-          {priorRecordEntries.length > 0 && (
-            <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
-                What you told us before · read-only
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {priorRecordEntries.map(s => (
-                  <div key={s.sessionNumber}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>Session {s.sessionNumber}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {s.entries.map((e, i) => (
-                        <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)' }}>
-                          <span style={{ fontWeight: 600 }}>{RECORD_ENTRY_LABELS[e.type] ?? e.type}: </span>
-                          {e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}
-                        </div>
-                      ))}
+          {priorRecordEntries.length > 0 && (() => {
+            /*
+             * WHAT YOU SAID LAST TIME, IN YOUR WORDS, THREE LINES UNLESS YOU ASK FOR MORE.
+             *
+             * This was every extracted line from every earlier session, with the engine's own marks
+             * left in, sitting above the first question. On a phone the question was two screens
+             * down. A participant read the machine's notes on her before she was asked anything.
+             * The most recent session's last three lines, cleaned, with the rest behind a tap.
+             */
+            const lines = priorRecordEntries
+              .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
+              .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
+            const latest = Math.max(...priorRecordEntries.map(s => s.sessionNumber))
+            const shown = showAllPrior ? lines : lines.filter(l => l.session === latest).slice(-3)
+            const more = lines.length - shown.length
+            return (
+              <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
+                  What you said last time
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {shown.map((l, i) => (
+                    <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)' }}>
+                      {showAllPrior && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginRight: 6 }}>S{l.session}</span>}
+                      <span style={{ fontWeight: 600 }}>{RECORD_ENTRY_LABELS[l.type] ?? l.type}: </span>
+                      {l.text}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {more > 0 && (
+                  <button type="button" onClick={() => setShowAllPrior(true)}
+                    style={{ background: 'none', border: 'none', padding: 0, marginTop: 8, fontSize: 11.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
+                    {more === 1 ? 'One more line' : `${more} more lines`} on record
+                  </button>
+                )}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.5 }}>
-                This is on record as it is. This session adds to it - it does not change what is above.
-              </div>
-            </div>
-          )}
+            )
+          })()}
           {priorTurns.length > 0 && (
             <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
@@ -1180,7 +1203,7 @@ export function ChatPage() {
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
           <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
+            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel} <a href="/org/guide" target="_blank" rel="noreferrer" style={{ color: 'var(--gw-navy)' }}>Who reads what</a></span>
             {/*
               * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
               *

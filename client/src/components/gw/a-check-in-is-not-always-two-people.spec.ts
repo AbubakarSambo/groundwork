@@ -55,7 +55,8 @@ describe('nothing that describes the mechanism assumes two parties', () => {
 
   it('the check-in page too', () => {
     const code = strip(readFileSync(join(__dirname, '../../pages/chat/ChatPage.tsx'), 'utf8'))
-    expect(code).toMatch(/private until everyone activates the report/)
+    /* Reworded 10 Sep 2026: 'activates' was a word nobody understood; the report is released. */
+    expect(code).toMatch(/Private until the report is released to everyone/)
   })
 
   it('the entry flow, where the same sentence appeared a fourth time', () => {

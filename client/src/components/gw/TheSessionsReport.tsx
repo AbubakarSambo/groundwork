@@ -85,7 +85,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
     enabled: !!groundId && !!sessionNumber,
   })
-  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading this session…</div>
+  /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
+  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody's side of this session. It takes a moment.</div>
   if (isError || !data) return null
   const d = data as any
   const final = d.state === 'final'

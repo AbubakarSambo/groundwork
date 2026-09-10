@@ -53,7 +53,8 @@ export function BoardPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [variant, setVariant] = useState<CoverageVariant | undefined>(undefined)
-  const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) !== 'closed')
+  /* Closed unless opened: five paragraphs of instructions were the first screen on a phone. */
+  const [howToRead, setHowToRead] = useState(() => localStorage.getItem(HOW_TO_READ_KEY) === 'open')
 
   /*
    * THE CHECK-IN ITSELF, for one fact the board does not carry: whether the person reading is the
@@ -653,7 +654,7 @@ export function BoardPage() {
             <Card>
               {b.dependencies.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row>
-              ) : b.dependencies.map((d, i) => (
+              ) : b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d, i) => (
                 <Row key={d.id} first={i === 0}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.from}</span>

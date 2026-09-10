@@ -297,7 +297,7 @@ export function BillingPage() {
 
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-dark)', margin: '0 0 4px' }}>Billing</h1>
         <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 28, lineHeight: 1.6 }}>
-          Manage sessions for your check-ins and generate access codes.
+          Your plan, and how many people it covers.
         </div>
 
         {/**

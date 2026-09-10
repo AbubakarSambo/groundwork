@@ -56,7 +56,8 @@ import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayA
  * to the enum before the catalog. See scenario-catalog.ts.
  */
 
-const MOMENT_LABELS: Record<string, string> = {
+/** Kept for the party page and the list, which still name the moment. The header here no longer shows it. */
+export const MOMENT_LABELS: Record<string, string> = {
   STARTING: 'Starting',
   RECOGNITION: 'Recognition',
   RESOLUTION: 'Resolution',
@@ -916,7 +917,17 @@ export function GroundAdminPage() {
     </Shell>
   )
 
-  if (isLoading || !ground) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
+  if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
+  /* Not loading and nothing came back: the address is wrong or this is not yours. "Loading…" forever said neither. */
+  if (!ground) return (
+    <Shell>
+      <div style={{ padding: 24, maxWidth: 480 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No check-in at this address</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The link may be out of date, or this check-in is not one you are in.</div>
+        <button onClick={() => navigate('/grounds')} style={{ padding: '9px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Back to your check-ins</button>
+      </div>
+    </Shell>
+  )
 
   /**
    * REFUSED OUT LOUD, WITH SOMEWHERE TO GO.
@@ -1303,12 +1314,7 @@ export function GroundAdminPage() {
                   ground. The state is the green dot beside it and the line under the
                   title, which were both already right.
                 */}
-                <span
-                  title="What this was opened for. Not its current state."
-                  style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)', whiteSpace: 'nowrap' }}
-                >
-                  Opened for: {MOMENT_LABELS[ground.moment] ?? ground.moment}
-                </span>
+                {/* The moment pill ('Opened for: Starting') went: the scenario pill on the next line says what kind of check-in this is, and an enum is not a sentence. */}
                 {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
                 {/*
                   WHICH OF THE TWO VIEWS THIS IS, PERMANENTLY.
@@ -1334,9 +1340,8 @@ export function GroundAdminPage() {
                   Both labels say the same thing about the view - it is everyone's state, not your
                   own account - and differ only on the half that is about the reader.
                 */}
-                <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
-                  {isInitiator ? 'Everyone in it - you are running this' : 'Everyone in it - you are an admin here'}
-                </span>
+                {/* 'Everyone in it - you are running this' went too: the rail, the card and 'Led by' already say it. The admin variant stays, because that one is news. */}
+                {!isInitiator && <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>Everyone in it - you are an admin here</span>}
               </div>
             </div>
           </div>
@@ -1434,8 +1439,6 @@ export function GroundAdminPage() {
               )}
               {ground.daysLeft != null && ground.daysLeft <= 3 ? (
                 <span style={{ fontWeight: 700, color: 'var(--gw-red-t)' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
-              ) : ground.daysLeft != null ? (
-                <span style={{ color: 'var(--gw-sub)' }}>{ground.daysLeft} days remaining</span>
               ) : null}
               {/*
                 THE STATE, IN THE PLACE THAT ALREADY HOLDS THE STATE. Overview's stat row moved here.
@@ -1471,7 +1474,8 @@ export function GroundAdminPage() {
               )}
             </>
           )}
-          <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>
+          {/* Report state only while there is something to say about it; 'report sent to everyone' beside 'Session 3 of 6' was a fourth fact for no reader. */}
+          {reportState !== 'report sent to everyone' && reportState !== 'no report yet' && <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>}
         </div>
 
         {/* Tabs.

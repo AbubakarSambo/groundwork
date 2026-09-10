@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
@@ -39,6 +40,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
   /** Only this session\'s rows are shown here; the page is about one session. */
   sessionNumber: number
 }) {
+  const [disputing, setDisputing] = useState(false)
   const qc = useQueryClient()
   const dispute = useMutation({
     mutationFn: ({ checkInId, id }: { checkInId: string; id: string }) => conversationApi.disputeEntry(checkInId, id),
@@ -57,9 +59,14 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
       <div style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>
         Lines taken from what you said
       </div>
+      {/* Eleven identical 'Not what I said' buttons made the one that mattered invisible. One control opens them. */}
       <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, maxWidth: '68ch' }}>
-        Not what you typed. What the product took from it, and what every count on this page is built
-        from. If one is not what you said, say so and it stops counting.
+        Not what you typed. What the product took from it, and what every count on this page is built from.{' '}
+        {!disputing ? (
+          <button type="button" onClick={() => setDisputing(true)} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Something here is not what I said
+          </button>
+        ) : 'Pick the line, and it stops counting.'}
       </p>
       <div style={{ display: 'grid', gap: 6 }}>
         {mine.map(r => (
@@ -76,7 +83,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
                 </div>
               )}
             </div>
-            {!r.disputedAt && (
+            {!r.disputedAt && disputing && (
               <button
                 onClick={() => dispute.mutate({ checkInId: r.checkInId!, id: r.id })}
                 disabled={dispute.isPending}

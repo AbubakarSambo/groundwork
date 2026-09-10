@@ -566,6 +566,7 @@ export function GroundChat({
   /** The ground's peer rule, so an empty roster can say which kind of empty it is. W14-5. */
   peersHidden?: boolean
 }) {
+  const navigate = useNavigate()
   const isParty = viewerIsParty !== false
   const { data, isLoading, isError } = useQuery({
     queryKey: ['my-transcript', groundId],
@@ -603,6 +604,22 @@ export function GroundChat({
           notOpenYet={!openCheckInId && !!nextOpensAt}
           viewerIsParty={isParty}
         />
+
+        {/*
+          THE TAB IS CALLED CHECK-IN, SO THE CHECK-IN IS AT THE TOP. When it is this person's turn
+          and there is already a transcript, the only way in was a button under the whole history -
+          two screens down on a phone. One primary action here; the one at the bottom stays for a
+          first session, when there is nothing above it.
+        */}
+        {isParty && openCheckInId && sessions.length > 0 && (
+          <button
+            onClick={() => (onOpenSession ? onOpenSession() : navigate(`/checkin/${openCheckInId}`))}
+            disabled={openPending}
+            style={{ width: '100%', padding: '13px 16px', borderRadius: 10, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 6 }}
+          >
+            Do check-in {openSessionNumber ?? sessions.length + 1}{totalSessions ? ` of ${totalSessions}` : ''} · about ten minutes
+          </button>
+        )}
 
         {/*
           WHAT GROUNDWORK HAS NOTICED - the alignment feed, which the card view held

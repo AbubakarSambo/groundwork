@@ -129,7 +129,7 @@ export default function SessionReportPage() {
       */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
         {data?.finishedAt
-          ? `Everything about this session, on ${new Date(data.finishedAt).toLocaleDateString()}. Yours first, then everybody's.`
+          ? `Everything about this session, on ${new Date(data.finishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}. Yours first, then everybody's.`
           : "Everything about this session. Yours first, then everybody's."}
       </div>
 

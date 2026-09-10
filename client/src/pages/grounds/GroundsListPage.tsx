@@ -234,7 +234,6 @@ export function GroundsListPage() {
   const active = grounds.filter(
     g => g.status !== 'CLOSED' && g.status !== 'RESOLVED' && !NOT_STARTED_YET.includes(g.status),
   )
-  const checkInsToday = grounds.reduce((n, g) => n + (g.checkInsToday ?? 0), 0)
   /** What the list holds that the "In progress" tile above it does not count. */
   const closedCount = grounds.length - active.length
   // Count reports waiting for THIS person. The old count was grounds in
@@ -306,9 +305,7 @@ export function GroundsListPage() {
               <h1 className="gw-logo gw-page-h1">Check-ins</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 20, padding: '3px 10px' }}>
-            {isAdmin ? 'Admin' : 'Team member'}
-          </span>
+{/* The 'Admin' / 'Team member' pill went: a badge of rank on every screen, saying what the rail already shows. */}
           {/*
             A SECOND NAVIGATION BAR FOR THINGS THE FIRST ONE ALREADY HAD. W-UX-3.
             
@@ -402,7 +399,7 @@ export function GroundsListPage() {
             <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
               {[
                 { val: active.length,    label: 'In progress' },
-                { val: checkInsToday,    label: 'Participant sessions today' },
+                /* 'Participant sessions today' went: it counted activity, the one thing the product says it never does. */
                 /**
                  * THE LABEL SAYS WHAT THE NUMBER COUNTS.
                  *
