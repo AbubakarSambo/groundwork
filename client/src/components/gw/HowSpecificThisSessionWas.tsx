@@ -15,12 +15,20 @@
  */
 const STEPS = ['General', 'Some of both', 'Specific'] as const
 
-/** Where a level sits on the bar. Unread is not zero, and is drawn as nothing rather than as low. */
+/**
+ * Where a level sits on the bar. Unread is not zero, and is drawn as nothing rather than as low.
+ *
+ * This switched on `high`/`low`, which the scorer never emits, so every read session drew as "some
+ * of both" whatever it was - the same bug the server's sentence had. The four real levels, in the
+ * order the server ranks them (api: how-checkable-a-session-was.ts): managed and vague are general,
+ * directional is some of both, specific is specific.
+ */
 export function whereItSits(level: string | null | undefined): number | null {
   const l = (level ?? '').toLowerCase()
-  if (l === 'low') return 0
-  if (l === 'high') return 2
-  return l ? 1 : null
+  if (l === 'managed' || l === 'vague') return 0
+  if (l === 'specific') return 2
+  if (l === 'directional') return 1
+  return null
 }
 
 export function HowSpecificThisSessionWas({ level, recall, spots }: {

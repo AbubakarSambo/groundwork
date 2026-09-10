@@ -76,6 +76,7 @@ import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
+import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -1327,23 +1328,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
          * on each check-in, from scoreSessionSpecificity. That is the read the
          * headline label is built from now.
          */
-        const scored = await this.prisma.checkIn.findMany({
-          where: { participantId: p.id, status: CheckInStatus.COMPLETED, specificityLevel: { not: null } },
-          select: { specificityLevel: true },
+        /* Every completed session, scored or not: a scorer that was tried and failed is a different
+           fact from one that has not run, and the picture must not present either as a verdict. */
+        const completedSessions = await this.prisma.checkIn.findMany({
+          where: { participantId: p.id, status: CheckInStatus.COMPLETED },
+          select: { specificityLevel: true, specificityScoredAt: true },
         });
-        const RANK: Record<string, number> = { vague: 0, directional: 1, managed: 2, specific: 3 };
-        const ranks = scored.map((c) => RANK[String(c.specificityLevel)] ?? 0);
+        /* The order lives in how-checkable-a-session-was.ts; the map that ranked `managed` above `directional` is gone. */
+        const ranks = completedSessions.map((c) => rankOf(c.specificityLevel)).filter((r): r is number => r !== null);
+        const failed = completedSessions.filter((c) => c.specificityScoredAt && c.specificityLevel == null).length;
         const mean = ranks.length ? ranks.reduce((a, b) => a + b, 0) / ranks.length : 0;
         // No sessions scored yet is not a bad record, it is no record. "low"
         // would be a verdict on somebody who has not been asked anything.
         const specificityLabel: 'high' | 'moderate' | 'low' | 'not scored yet' =
-          !ranks.length ? 'not scored yet' : mean >= 2 ? 'high' : mean >= 1 ? 'moderate' : 'low';
+          !ranks.length ? 'not scored yet' : labelFromMean(mean);
         return {
           label: labelById.get(p.id) ?? 'a party', sessions, recordEntries, documentsAttached,
           contributed: contributorIds.has(p.id), specificityLabel,
           // G30. The same two numbers, said about the picture rather than the
           // person. Computed always, attached only behind the flag below.
-          confidence: confidenceInThePicture(ranks.length, mean),
+          confidence: confidenceInThePicture(ranks.length, mean, { failed }),
         };
       }),
     );

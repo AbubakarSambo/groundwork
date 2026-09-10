@@ -1212,9 +1212,15 @@ model CheckIn {
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
   nextCommitment              String?       @map("next_commitment")
   closedReason                String?       @map("closed_reason") // "declined" or "auto_closed"; null when the person completed it
+  /// One of managed | vague | directional | specific, worst first - enforced by a CHECK constraint in
+  /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
+  /// ranked "managed" above "directional" is gone.
   specificityLevel            String?       @map("specificity_level")
+  /// When scoring was TRIED. Set with a null level means the scorer failed; null means not scored yet.
+  /// The two used to be one silence, and the report said "nobody was asked" about a fault of ours.
+  specificityScoredAt         DateTime?     @map("specificity_scored_at")
   specificityDimensions       Json?         @map("specificity_dimensions")
-  recallConfidence            String?       @map("recall_confidence")
+  recallConfidence            String?       @map("recall_confidence") // written null since 2026-09-11: it was specificity under a second name. Dropped with the other dead columns (B12).
   /// THE REPORT AS THE PERSON SAW IT WHEN THEY FINISHED.
   ///
   /// "I want the exact same forming report to be openable. I have not seen it anywhere, when I

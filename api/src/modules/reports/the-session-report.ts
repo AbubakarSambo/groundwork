@@ -1,3 +1,4 @@
+import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
 import { howMuchThereIsToGoOn, type Confidence } from './how-much-there-is-to-go-on';
@@ -613,24 +614,25 @@ function sinceTheBeginning(input: SessionReportInputs): SaidThing[] {
  * own it reads as a mark out of five for the person, which this product does not give - so it
  * says what the level MEANS for the report that came out of it.
  */
-function howClear(level: string | null, recall: string | null): string {
+/**
+ * FOUR REACHABLE SENTENCES, ONE PER LEVEL. This switched on `high`/`low`, which the scorer never
+ * emits, so every report with a level printed the middle sentence whatever the score. The recall
+ * clause is gone with the number it read (see scoreSessionSpecificity). Where it was read from is
+ * said, so a keyword count is never presented in the grammar of an assessment.
+ */
+function howClear(level: string | null, _recall: string | null): string {
   const clarity =
-    level === 'HIGH' || level === 'high'
-      /* "Accounts" is the login word to a reader. What is meant is what people said, so it says
-         that. Three visible sentences at the foot of every shared report. */
+    level === 'specific'
+      /* "Accounts" is the login word to a reader. What is meant is what people said, so it says that. */
       ? 'What people said was specific: dates, numbers and named work rather than impressions.'
-      : level === 'LOW' || level === 'low'
-        ? 'What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
-        : level
-          ? 'What people said was specific in places and general in others.'
-          : 'How specific this session was has not been read yet.';
-  const memory =
-    recall === 'LOW' || recall === 'low'
-      ? ' Much of it was recalled rather than checked against anything.'
-      : recall === 'HIGH' || recall === 'high'
-        ? ' Most of it was anchored to something written down.'
-        : '';
-  return `${clarity}${memory}`;
+      : level === 'directional'
+        ? 'What people said was specific in places and general in others.'
+        : level === 'vague'
+          ? 'What people said stayed general. A report can only be as specific as what it was given, so this one names fewer things than it otherwise would.'
+          : level === 'managed'
+            ? 'Little that could be checked was said in this session. The report names what it can and no more.'
+            : 'How specific this session was has not been read yet.';
+  return level ? `${clarity} ${WHERE_IT_WAS_READ_FROM}` : clarity;
 }
 
 /**

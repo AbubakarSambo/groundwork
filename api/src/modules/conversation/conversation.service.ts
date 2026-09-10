@@ -23,6 +23,7 @@ import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../com
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
+import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
 
 /** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
@@ -156,18 +157,6 @@ export function countCheckableSpecifics(text: string): number {
   return total;
 }
 
-function mapSpecificityLevel(avgScore: number): string {
-  if (avgScore >= 0.6) return 'specific';
-  if (avgScore >= 0.35) return 'directional';
-  if (avgScore >= 0.15) return 'vague';
-  return 'managed';
-}
-
-function mapRecallConfidence(avgScore: number): string {
-  if (avgScore >= 0.5) return 'certain';
-  if (avgScore >= 0.25) return 'mostly_certain';
-  return 'uncertain';
-}
 
 const RECORD_EXTRACTION_SCHEMA = {
   name: 'emit_record_entries',
@@ -3195,7 +3184,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    */
   private async finishTheSession(checkIn: any, by: 'the person' | 'the clock'): Promise<{ status: 'completed'; groundId: string }> {
     // Score session specificity from person's turns before marking complete
-    const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch(() => null);
+    /* A scorer that fails is logged by check-in, and the row says it was TRIED: specificityScoredAt set
+       with no level is "scoring failed", which is not "not scored yet" and not a fact about the ground. */
+    const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch((err) => {
+      this.logger.error(`Specificity scoring failed for check-in ${checkIn.id}: ${err?.message ?? err}`);
+      return null;
+    });
 
     // ISSUE 6: extractRecordEntries runs BEFORE the status flips to COMPLETED so
     // the record is populated before the status change races past it. buildSoloArtifact
@@ -3281,7 +3275,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         status: CheckInStatus.COMPLETED,
         completedAt: new Date(),
         specificityLevel: specificityData?.level ?? null,
-        recallConfidence: specificityData?.recallConfidence ?? null,
+        specificityScoredAt: new Date(),
+        /* Written null on purpose: it was specificity under a second name. See scoreSessionSpecificity. */
+        recallConfidence: null,
         specificityDimensions: specificityData?.dimensions ?? undefined,
         /* The one thing `by` decides. A person's completion leaves whatever reason was already there. */
         ...(by === 'the clock' ? { closedReason: CLOSED_BY_THE_CLOCK } : {}),
@@ -3566,10 +3562,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Score the specificity level for the session from person's turns.
    * Returns mapped level (specific/directional/vague/managed) and recall confidence.
    */
+  /**
+   * The mapper and the order live in how-checkable-a-session-was.ts, because four functions used
+   * to disagree about them. `recallConfidence` is no longer produced: it was this same specificity
+   * number under a second name, and the report presented the two as independent corroboration.
+   * Measuring recall honestly (RecordEntry.recallBased) is structurally zero for any ground with no
+   * documents (planaudit_b.md C7), so the column is written null and its sentence is gone.
+   */
   private async scoreSessionSpecificity(checkInId: string): Promise<{
-    level: string;
-    recallConfidence: string;
-    dimensions: Record<string, string>;
+    level: SpecificityLevel;
+    dimensions: Record<string, SpecificityLevel>;
   }> {
     const personTurns = await this.prisma.conversationTurn.findMany({
       where: { checkInId, role: TurnRole.PERSON },
@@ -3577,8 +3579,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       select: { content: true },
     });
     if (personTurns.length === 0) {
-      const dims = { delivery: 'managed', evidence: 'managed', enablement: 'managed', coverage: 'managed', commitment: 'managed' };
-      return { level: 'vague', recallConfidence: 'uncertain', dimensions: dims };
+      /* One verdict about nothing, not two: the level and every dimension are the bottom. */
+      const dims = { delivery: NOTHING_SAID, evidence: NOTHING_SAID, enablement: NOTHING_SAID, coverage: NOTHING_SAID, commitment: NOTHING_SAID };
+      return { level: NOTHING_SAID, dimensions: dims };
     }
 
     const intakes = personTurns.map(t => runIntake(t.content));
@@ -3591,7 +3594,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coverageScore = Math.min(1, (intakes.filter(r => r.types.includes('absorption') || r.types.includes('rescue')).length / n) * 1.5);
     const commitScore   = intakes.filter(r => r.types.includes('movement')).length / n;
 
-    const dimensions: Record<string, string> = {
+    const dimensions: Record<string, SpecificityLevel> = {
       delivery:   mapSpecificityLevel(avgDelivery),
       evidence:   mapSpecificityLevel(avgSpecificity),
       enablement: mapSpecificityLevel(avgEnablement),
@@ -3601,7 +3604,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     return {
       level: mapSpecificityLevel(avgSpecificity),
-      recallConfidence: mapRecallConfidence(avgSpecificity),
       dimensions,
     };
   }

@@ -41,17 +41,18 @@ describe('the lead weighs on the session page too', () => {
 })
 
 describe('the meter shows the engine\'s own read of thinness', () => {
+  /* `directional`, a level the scorer actually emits. The old fixture said "medium", which only drew because the bar mapped anything unknown to the middle. */
   const spots = [{ line: 'Nothing else in this ground touches any part of this account.', wouldRaiseIt: 'One other person mentioning the same work would.' }]
 
   it('replaces the hand-written line when the engine has a read', () => {
-    render(<HowSpecificThisSessionWas level="medium" recall="low" spots={spots} />)
+    render(<HowSpecificThisSessionWas level="directional" recall={null} spots={spots} />)
     expect(screen.getByText(/Nothing else in this ground touches/)).toBeTruthy()
     expect(screen.getByText(/One other person mentioning/)).toBeTruthy()
     expect(screen.queryByText(/One date, one number or one document/)).toBeNull()
   })
 
   it('and keeps the line when the engine has none', () => {
-    render(<HowSpecificThisSessionWas level="medium" recall="low" spots={[]} />)
+    render(<HowSpecificThisSessionWas level="directional" recall={null} spots={[]} />)
     expect(screen.getByText(/One date, one number or one document/)).toBeTruthy()
   })
 })
