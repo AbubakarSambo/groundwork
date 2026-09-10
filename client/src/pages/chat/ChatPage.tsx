@@ -980,7 +980,8 @@ export function ChatPage() {
                     {complete.isPending ? 'Saving…' : 'Finish check-in ✓'}
                   </button>
                   <button
-                    onClick={() => setConfirmingFinish(false)}
+                    /* "Not yet" means not yet: the offer to finish goes away too, and comes back on the next close signal. */
+                    onClick={() => { setConfirmingFinish(false); setDone(false); taRef.current?.focus() }}
                     disabled={complete.isPending}
                     style={{ padding: '10px 18px', borderRadius: 8, background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
                   >

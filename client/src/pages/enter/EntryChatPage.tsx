@@ -948,6 +948,9 @@ export function EntryChatPage() {
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
   const urlInitial = params.get('initial') ?? ''
+  /* The rail's Start a check-in. A saved setup used to swallow it: the page restored the old one and
+     the picker never showed, "unless I click go backwards". Now it asks. */
+  const wantsANewOne = params.get('new') === '1'
 
   const user = useAuthStore(s => s.user)
   const queryClient = useQueryClient()
@@ -1241,7 +1244,7 @@ export function EntryChatPage() {
   // Load or start session
   useEffect(() => {
     const saved = loadSession()
-    const branch = saved ? entryRestoreBranch(saved, scenario) : 'fresh'
+    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
     // Closed-but-unsaved sessions MUST restore too: they hold the report and
     // the locked transcript. Excluding them made the fallback below DELETE an
     // ended session on reload, right when it is most valuable.
@@ -3944,11 +3947,15 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>You have a check-in in progress</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Starting a new scenario will clear your current session. Your progress will be lost.
+              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Keep it to carry on where you left off.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                onClick={() => { setShowNewScenarioConflict(false); setPendingNewScenario(null) }}
+                onClick={() => {
+                  setShowNewScenarioConflict(false); setPendingNewScenario(null)
+                  /* Came from the rail with a saved setup: keeping it means restoring it, which the plain address does. */
+                  if (wantsANewOne) navigate('/start', { replace: true })
+                }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Keep current session

@@ -11,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { blockerHasSubstance } from '../board/reads';
 import { PrismaService } from '../prisma/prisma.service';
-import { forHumans, hadCloseMarker as textHadCloseMarker } from '../presentation/outbound';
+import { forHumans, hadCloseMarker as textHadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { endStatesFor } from '../resolution/end-states';
 import { totalSessionsFor } from '../grounds/session-count';
 import { PromptsService } from '../prompts';
@@ -1234,50 +1234,39 @@ export class ConversationService {
 
       let emitted = 0;
       /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
-      let cleanEmitted = 0;
-
+      /*
+       * CLEANING IS NOT PREFIX-STABLE, SO THE LIVE TEXT IS DIFFED, NOT SLICED. See whatIsNewSince:
+       * slicing the newly cleaned prefix at the length of the last one skipped words and cut one in
+       * half ("That's a clea writing the text"). `cleanShown` is the cleaned text handed to the gate.
+       */
+      let cleanShown = '';
       for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
         raw += delta;
         const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
         if (safeUpTo > emitted) {
-          /*
-           * CLEAN THE WHOLE, THEN TAKE WHAT IS NEW - never clean a chunk on its own.
-           *
-           * `forHumans` ends with `.trim()`, which is right for a finished reply and wrong for a
-           * fragment: a chunk ending "you're " lost its trailing space, the next began "focused",
-           * and the person read "you'refocused". Two of those reached a real check-in before anybody
-           * looked at a stored turn rather than at a terminal.
-           *
-           * Cleaning the accumulated text and slicing off the new suffix keeps the spaces, because
-           * they are interior to the string being trimmed rather than at its edge.
-           */
           const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
-          const fresh = cleanedSoFar.slice(cleanEmitted);
-          cleanEmitted = cleanedSoFar.length;
+          const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
+          if (fresh) cleanShown = cleanedSoFar;
           emitted = safeUpTo;
-          const clean = gate.push(fresh);
+          const clean = fresh ? gate.push(fresh) : '';
           if (clean) { shown += clean; yield { type: 'delta', text: clean }; }
         }
       }
-      /*
-       * THE HELD-BACK TAIL, WHICH THE GATE NEVER SAW.
-       *
-       * The loop only ever pushes up to `raw.length - SESSION_CLOSE_MARKER.length`, so the last few
-       * characters of every reply are deliberately withheld until the end in case they turn out to
-       * be the close marker. The old code flushed those separately; replacing that with the gate
-       * dropped them entirely, and every reply ended mid-word - "What is it," and then nothing.
-       *
-       * Found by reading the deltas of one real check-in. It would never have shown up in a test of
-       * the gate, because the gate was right: it was never given the last piece.
-       */
-      const withheld = forHumans(raw).slice(cleanEmitted);
+      const cleanedWhole = forHumans(raw);
+      const withheld = whatIsNewSince(cleanShown, cleanedWhole);
       const fromWithheld = withheld ? gate.push(withheld) : '';
       if (fromWithheld) { shown += fromWithheld; yield { type: 'delta', text: fromWithheld }; }
-
       const tailFromGate = gate.flush();
       if (tailFromGate) { shown += tailFromGate; yield { type: 'delta', text: tailFromGate }; }
-      const strippedStream = { text: forHumans(raw), hadMarker: textHadCloseMarker(raw) };
+      const strippedStream = { text: cleanedWhole, hadMarker: textHadCloseMarker(raw) };
       if (!strippedStream.text) throw new Error('AI returned an empty response');
+      /*
+       * THE RECORD IS THE WHOLE REPLY, CLEANED WHOLE AND SCREENED WHOLE. What streamed is a preview
+       * and can be short where cleaning moved earlier text. The stored turn and the `done` event
+       * carry this, and the client replaces the preview with it.
+       */
+      const whole = screen(cleanedWhole, streamKnown, streamReaderName, turns.map((t) => t.content ?? ''));
+      shown = whole.text;
 
       /*
        * WHAT THEY SAW IS WHAT IS KEPT. `shown` is the concatenation of the deltas that actually
@@ -1292,9 +1281,9 @@ export class ConversationService {
          dropped live and logged. Only when NOTHING survived is there room to ask the model again. */
       let reply = shown.trim();
       if (reply) {
-        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
+        for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'dropped live'));
       } else {
-        const again = await this.askAgainWithoutTheInvention(fullSystem, history, gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
+        const again = await this.askAgainWithoutTheInvention(fullSystem, history, whole.hits.length ? whole.hits : gate.hits, streamKnown, streamReaderName, streamPersonWords, checkIn.id);
         if (again) {
           reply = again.screened.text;
           strippedStream.hadMarker = again.hadMarker;

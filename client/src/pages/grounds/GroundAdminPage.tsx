@@ -11,6 +11,7 @@ import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
+import { authApi } from '@/api/auth'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -256,6 +257,7 @@ export function GroundAdminPage() {
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [addingParticipant, setAddingParticipant] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
+  const { data: colleagues } = useQuery({ queryKey: ['colleagues'], queryFn: () => authApi.colleagues(), staleTime: 5 * 60 * 1000 })
   /** Whether the last person added is waiting for the start date rather than having been emailed. */
   const [lastInviteWaits, setLastInviteWaits] = useState(false)
   /** The server's own reason when an invitation is held for something other than the start date. */
@@ -2528,6 +2530,28 @@ export function GroundAdminPage() {
               >
                 See who is in it, and where each of them has got to &rarr;
               </button>
+              {/*
+                * THE PEOPLE ALREADY HERE, FIRST. "I still can't have a drop down for people in my org":
+                * the box took an address and nothing else. Colleagues not yet on this check-in are one
+                * click; the box stays for somebody from outside.
+                */}
+              {(() => {
+                const on = new Set((((ground as any)?.participants ?? []) as any[]).map((m) => (m.email ?? '').toLowerCase()))
+                const notYet = (colleagues ?? []).filter((c) => !on.has(c.email.toLowerCase()))
+                return notYet.length ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 6 }}>Already in your organisation. Click to fill in their address.</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {notYet.slice(0, 30).map((c) => (
+                        <button key={c.email} type="button" title={c.email} onClick={() => setNewParticipantEmail(c.email)}
+                          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 14, border: '1px solid var(--gw-border)', background: newParticipantEmail === c.email ? 'var(--gw-bg)' : 'white', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-text)' }}>
+                          + {c.name ?? c.email}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              })()}
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
                 value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
