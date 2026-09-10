@@ -262,6 +262,8 @@ export const joinApi = {
     firstName?: string
     lastName?: string
     roleAsDescribed?: string
+    /** Optional, never inferred; blank means blank. */
+    department?: string
   }) =>
     apiClient.post<{ sent: true; to: string; says: string }>(
       '/entry/join-accept',

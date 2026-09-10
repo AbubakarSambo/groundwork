@@ -704,10 +704,10 @@ export class PublicApiController {
   @Post('people')
   @HttpCode(201)
   @UseGuards(EmbedSessionGuard)
-  @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything.' })
+  @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything. `department` is optional and never inferred.' })
   async addPersonFromPanel(
     @Req() req: { panel: PanelCaller },
-    @Body() dto: { email?: string; displayName?: string; externalId?: string; phone?: string },
+    @Body() dto: { email?: string; displayName?: string; externalId?: string; phone?: string; department?: string },
   ) {
     return this.checkIns.addAPerson(req.panel.organizationId, req.panel.personId, dto);
   }

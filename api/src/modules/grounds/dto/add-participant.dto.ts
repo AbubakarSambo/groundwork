@@ -15,6 +15,13 @@ export class AddParticipantDto {
   @MaxLength(300)
   roleAsDescribed?: string;
 
+  /** Optional. Never inferred from the address; blank means blank. See who-may-read-this-check-in.ts. */
+  @ApiPropertyOptional({ example: 'Finance', description: 'Their department, if the organiser knows it. Optional; never inferred.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  department?: string;
+
   @ApiPropertyOptional({ example: 'Looking forward to aligning on the roadmap with you.', description: 'Optional personal note included in the invite email' })
   @IsOptional()
   @IsString()

@@ -390,7 +390,7 @@ export class ACheckInACustomerCanRunService {
   async addAPerson(
     organizationId: string,
     personId: string,
-    dto: { email?: string; displayName?: string; externalId?: string; phone?: string },
+    dto: { email?: string; displayName?: string; externalId?: string; phone?: string; department?: string },
   ) {
     /* Refuses for the same reason every other panel route does: a session that cannot be resolved
        to a person is a session that may not act in this organisation at all. */
@@ -412,6 +412,11 @@ export class ACheckInACustomerCanRunService {
       name: { givenName, familyName: rest.join(' ') || undefined },
       emails: [{ value: email, primary: true }],
       ...(dto?.phone?.trim() ? { phoneNumbers: [{ value: dto.phone.trim(), primary: true }] } : {}),
+      /* Department rides the same enterprise extension the directory sync uses, so the two doors
+         write one column one way. Optional; blank is not sent, and never guessed from the address. */
+      ...(dto?.department?.trim()
+        ? { 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User': { department: dto.department.trim().slice(0, 120) } }
+        : {}),
       active: true,
     } as never);
   }

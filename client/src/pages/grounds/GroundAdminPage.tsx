@@ -265,6 +265,8 @@ export function GroundAdminPage() {
   /** The server's own reason when an invitation is held for something other than the start date. */
   const [whyItWaits, setWhyItWaits] = useState<string | null>(null)
   const [newParticipantNote, setNewParticipantNote] = useState('')
+  /* Optional, beside what they cover. Never inferred from the address; blank means blank. */
+  const [newParticipantDepartment, setNewParticipantDepartment] = useState('')
   const [shareCodeModalOpen, setShareCodeModalOpen] = useState(false)
   /** Deleting a test check-in: the confirm step, and whatever the server refused with. */
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -816,7 +818,7 @@ export function GroundAdminPage() {
   }
 
   const addParticipantMut = useMutation({
-    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
+    mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined, department: newParticipantDepartment.trim() || undefined }),
     onSuccess: (added) => {
       /*
        * "INVITE SENT" WAS SAID WHETHER OR NOT ONE WAS SENT.
@@ -2442,6 +2444,11 @@ export function GroundAdminPage() {
               <input
                 type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
                 value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+              />
+              <input
+                type="text" placeholder="Their department (optional)" aria-label="Their department"
+                value={newParticipantDepartment} onChange={(e) => setNewParticipantDepartment(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
               />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>

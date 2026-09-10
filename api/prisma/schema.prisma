@@ -18,7 +18,9 @@ datasource db {
 enum UserRole {
   ADMIN // manages grounds, billing activation, sees the alignment feed
   /// Sets up check-ins for their own team. No admin powers of any kind: every privilege check in
-  /// this codebase asks for ADMIN specifically, so a LEAD inherits nothing by not being a MEMBER.
+  /// this codebase asks for ADMIN specifically. One READ is granted by role (fix plan E5, amending
+  /// what this note used to say): a LEAD reads at the shared level on check-ins run by the leads of
+  /// their own department - grounds/who-may-read-this-check-in.ts. Nothing else follows from LEAD.
   ///
   /// This was a boolean on User for about an hour. A role is what an admin already means when they
   /// say "my leads", and one field that says what somebody is beats two that have to agree.
@@ -612,6 +614,7 @@ model PendingJoin {
   firstName       String? @map("first_name")
   lastName        String? @map("last_name")
   roleAsDescribed String? @map("role_as_described")
+  department      String? @db.VarChar(120)
 
   /// The secret in the emailed link. Single use.
   token     String    @unique
@@ -1038,6 +1041,10 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean        @default(false) @map("managing_only")
   roleAsDescribed            String?        @map("role_as_described") // role as the initiator described it
+  /// Optional, never inferred, never guessed from an address; blank means blank. Captured beside the
+  /// role at every door that adds a person (fix plan E2). A person with no department is in no
+  /// department, which is "no scope", never "everyone's".
+  department                 String?        @db.VarChar(120)
   /// The language this person writes in, ISO 639-1 (ha, sw, en). Read from their first message when
   /// nothing on the roster said. The conversation happens in it; the record stays in English.
   language                   String?        @db.VarChar(8)

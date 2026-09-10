@@ -395,6 +395,8 @@ export class EntryCommitController {
     firstName?: string;
     lastName?: string;
     roleAsDescribed?: string;
+    /** Optional, never inferred; blank means blank. */
+    department?: string;
   }) {
     return this.service.askToJoin(dto);
   }

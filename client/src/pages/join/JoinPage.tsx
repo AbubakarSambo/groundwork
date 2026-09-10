@@ -27,6 +27,8 @@ export function JoinPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('')
+  /* Optional, beside their part. Never inferred; blank means blank. */
+  const [department, setDepartment] = useState('')
   const [joining, setJoining] = useState(false)
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export function JoinPage() {
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
         roleAsDescribed: role.trim(),
+        department: department.trim() || undefined,
       })
       setSentTo(res.to)
       setSentSays(res.says)
@@ -129,6 +132,7 @@ export function JoinPage() {
           <input id="join-role" className="gw-input" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. I run the clinic that St Mary's refers into" />
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.5 }}>One line on what you do here. The questions you get asked are shaped by it.</div>
         </div>
+        <div className="gw-fld"><label className="gw-label" htmlFor="join-department">Department</label><input id="join-department" className="gw-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder="Optional" /></div>
         <button className="gw-btn" type="submit" disabled={joining || !email.trim().includes('@') || !role.trim()} style={{ marginTop: 8, opacity: (joining || !email.trim().includes('@') || !role.trim()) ? 0.6 : 1 }}>
           {joining ? 'Setting up your session…' : 'Join and start my check-in →'}
         </button>

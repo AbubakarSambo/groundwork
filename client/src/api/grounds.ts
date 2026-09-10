@@ -45,6 +45,8 @@ export interface CreateGroundBody {
 export interface AddParticipantBody {
   email: string
   roleAsDescribed?: string
+  /** Optional, never inferred; blank means blank. */
+  department?: string
   note?: string
   /**
    * WHEN THIS PERSON STARTS, IF THEY HAVE NOT.

@@ -1804,6 +1804,7 @@ STRICT RULES:
     firstName?: string;
     lastName?: string;
     roleAsDescribed?: string;
+    department?: string;
   }): Promise<WhatWeSay> {
     if (!dto.joinToken?.trim()) throw new BadRequestException('A join link is required.');
     if (!dto.email?.trim()) throw new BadRequestException('An email is required to join.');
@@ -1835,6 +1836,7 @@ STRICT RULES:
         firstName: dto.firstName?.trim() || null,
         lastName: dto.lastName?.trim() || null,
         roleAsDescribed: dto.roleAsDescribed?.trim() || null,
+        department: dto.department?.trim().slice(0, 120) || null,
         token,
         expiresAt: new Date(Date.now() + A_JOIN_LINK_LASTS_HOURS * 60 * 60 * 1000),
       },
@@ -1998,6 +2000,7 @@ STRICT RULES:
             userId: user.id,
             partyType: PartyType.PARTICIPANT,
             roleAsDescribed: pending.roleAsDescribed ?? null,
+            department: pending.department ?? null,
             invitedAt: new Date(),
             notifiedAt: new Date(),
           },
