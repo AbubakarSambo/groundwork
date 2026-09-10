@@ -75,6 +75,7 @@ import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
 import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
+import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -1113,27 +1114,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
       return out;
     };
-    const liftedRunIn = (picture: string): string | null => {
-      const words = picture.split(/\s+/);
-      for (const r of records) {
-        const theirs = r.text.replace(/^\[VERIFIABILITY:\w+\] /, '').split(/\s+/);
-        for (let i = 0; i + 8 <= theirs.length; i++) {
-          const run = theirs.slice(i, i + 8).join(' ');
-          if (run.length > 30 && picture.includes(run)) return run;
-        }
-      }
-      void words;
-      return null;
-    };
+    /* Their words, as they were recorded, for the lift check over EVERY field - see said-in-its-own-words.ts. */
+    const theirWords = records.map((r) => r.text.replace(/^\[VERIFIABILITY:\w+\] /, ''));
 
     const faultsIn = (r: SynthesisResult) => {
       const faults: string[] = [];
       for (const f of severeFaultsIn(String((r as any).sharedPicture ?? ''))) {
         faults.push(`${f}. Use only numbers and names that are in the records.`);
       }
-      const lifted = liftedRunIn(String((r as any).sharedPicture ?? ''));
-      if (lifted) {
-        faults.push(`it copied "${lifted}" word for word from one person's record. Say what it shows; do not quote it.`);
+      for (const lift of liftsInReport(r as any, theirWords)) {
+        faults.push(`in ${lift.path} it copied "${lift.run}" word for word from one person's record. Say what it shows; do not quote it.`);
       }
       const tally = tallyInReport(r as any, ground.peopleWorkTogether !== false);
       if (tally) {
@@ -1177,13 +1167,51 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
     }
     /*
+     * THEIR WORDS DO NOT SHIP, IN ANY FIELD, FORMING OR RELEASED - AND THE INFORMATION DOES.
+     *
+     * This used to read "a lifted quotation is a fault to retry on, not to withhold for", and it
+     * checked the shared picture alone. Decided by the product owner, 11 September 2026: never
+     * verbatim, and never lose the substance either. So after the two passes above, a lift that
+     * survives gets one more ask - restate these exact phrases in your own words, change nothing
+     * else - and one that survives THAT has its sentence withheld. The sentence, not the report, and
+     * not a rewrite by us of what the sentence claimed (counts-accounts.ts says why). This runs at
+     * synthesis, which is where the forming report comes from as well as the released one.
+     */
+    const stillLifted = liftsInReport(result as any, theirWords);
+    if (stillLifted.length) {
+      const restated = await this.anthropic
+        .extract<SynthesisResult>(
+          systemPrompt,
+          [{
+            role: 'user',
+            content:
+              `${corpus}\n\nHere is the report you wrote:\n${JSON.stringify(result)}\n\n` +
+              `These phrases are copied word for word from one person's record: ${stillLifted.map((l) => `"${l.run}"`).join('; ')}. ` +
+              `Return the same report with each of those phrases said in your own words. Keep every fact and change nothing else.`,
+          }],
+          activeSchema,
+        )
+        .catch(() => null);
+      if (restated && liftsInReport(restated as any, theirWords).length < stillLifted.length && faultsIn(restated).length <= faultsIn(result).length) {
+        result = restated;
+      }
+      let withheld = 0;
+      for (const field of ['sharedPicture', 'agreements', 'divergences'] as const) {
+        const cut = withholdLiftsIn((result as any)[field], theirWords);
+        (result as any)[field] = cut.value;
+        withheld += cut.withheld;
+      }
+      if (withheld > 0) this.logger?.warn?.(`Ground ${groundId}: ${withheld} sentence(s) withheld from the report because they repeated somebody's words after three attempts.`);
+    }
+
+    /*
      * A PICTURE THAT STILL NAMES SOMEBODY WHO IS NOT HERE, OR A NUMBER NOBODY GAVE, DOES NOT SHIP.
      *
      * Two passes and the severe faults are still in it. There is no draft to fall back to, so what
      * ships is the last picture that was released - kept on the previous report row - and the
      * amendment machinery already says a picture did not move. On a first round there is none, and
      * the picture is empty rather than wrong; the counts, tiles and per-person lines are engine
-     * output and unaffected. A lifted quotation is a fault to retry on, not to withhold for.
+     * output and unaffected.
      */
     const stillSevere = severeFaultsIn(String((result as any).sharedPicture ?? ''));
     if (stillSevere.length) {
