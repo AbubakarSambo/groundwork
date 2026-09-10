@@ -23,8 +23,10 @@ describe('nothing here is written twice', () => {
     expect(MODAL).toContain("import { HOW_TO_STEPS } from './how-a-check-in-is-run'")
   })
 
-  it('reads the privacy claims from the same place the check-in screen reads them', () => {
-    expect(GUIDE).toContain("import { WHAT_HAPPENS_TO_WHAT_YOU_WRITE } from '@/components/gw/what-happens-to-what-you-write'")
+  it('carries no privacy claims at all, since 10 Sep 2026', () => {
+    /* The guide is how to run one. The four claims stay folded on the invite page for whoever asks. */
+    expect(GUIDE).not.toContain('WHAT_HAPPENS_TO_WHAT_YOU_WRITE')
+    expect(GUIDE).not.toMatch(/What happens to what people write/)
   })
 
   it('does not restate a single claim in its own words', () => {

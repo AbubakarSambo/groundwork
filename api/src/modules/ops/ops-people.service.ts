@@ -331,6 +331,7 @@ export class OpsPeopleService implements OnModuleInit {
 
     if (!active) {
       await this.prisma.opsGrant.deleteMany({ where: { personId: person.id } });
+      await this.handWhatTheyOwnedToWhoeverHoldsTheRole(person.id, person.functionalRole);
     }
 
     return this.prisma.opsPerson.update({
@@ -340,6 +341,28 @@ export class OpsPeopleService implements OnModuleInit {
   }
 
   /** The roles somebody can be given, and what each comes with. */
+  /**
+   * NOTHING STAYS OWNED BY SOMEBODY WHO HAS LEFT. Roadmap items, workstreams, objectives, key results
+   * and open requests pass to whoever holds the same role, else to the CEO, else to anybody active.
+   * A board pointing at a person no longer on the team is a board nobody acts on.
+   */
+  private async handWhatTheyOwnedToWhoeverHoldsTheRole(personId: string, role: OpsFunctionalRole) {
+    const active = await this.prisma.opsPerson.findMany({ where: { active: true, id: { not: personId } }, orderBy: { createdAt: 'asc' } });
+    const heir = active.find((p) => p.functionalRole === role) ?? active.find((p) => p.functionalRole === 'CEO') ?? active[0];
+    if (!heir) return;
+    await this.prisma.$transaction([
+      this.prisma.opsRoadmapItem.updateMany({ where: { ownerId: personId }, data: { ownerId: heir.id } }),
+      this.prisma.opsRoadmapItem.updateMany({ where: { proposedById: personId }, data: { proposedById: heir.id } }),
+      this.prisma.opsWorkstream.updateMany({ where: { ownerPersonId: personId }, data: { ownerPersonId: heir.id } }),
+      this.prisma.opsWorkstream.updateMany({ where: { oversightPersonId: personId }, data: { oversightPersonId: heir.id } }),
+      this.prisma.opsWorkstream.updateMany({ where: { technicalPartnerPersonId: personId }, data: { technicalPartnerPersonId: heir.id } }),
+      this.prisma.opsObjective.updateMany({ where: { ownerId: personId }, data: { ownerId: heir.id } }),
+      this.prisma.opsKeyResult.updateMany({ where: { ownerId: personId }, data: { ownerId: heir.id } }),
+      this.prisma.opsResourceRequest.updateMany({ where: { requesterId: personId, status: 'open' as any }, data: { requesterId: heir.id } }),
+    ]);
+    this.logger.warn(`What ${personId} owned now belongs to ${heir.displayName} (${heir.key}).`);
+  }
+
   roles() {
     return everyRole();
   }

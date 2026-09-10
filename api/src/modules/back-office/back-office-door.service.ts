@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -14,10 +14,28 @@ export class BackOfficeDoorService {
     private readonly email: EmailService,
   ) {}
 
+  /**
+   * ONLY GROUNDWORK STAFF MEET THE DOOR. Somebody on the back-office roster with this account
+   * connected, or a platform admin. Anybody else is told the place is not theirs and no code is
+   * sent: a member of a customer organisation must not be able to make us email them codes to a
+   * door they can never open.
+   */
+  async isStaff(userId: string): Promise<boolean> {
+    const [user, person, account] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { isPlatformAdmin: true } }),
+      this.prisma.opsPerson.findFirst({ where: { userId, active: true }, select: { id: true } }),
+      this.prisma.opsPersonAccount.findFirst({ where: { userId, person: { active: true } }, select: { id: true } }),
+    ]);
+    return !!user?.isPlatformAdmin || !!person || !!account;
+  }
+
   async status(userId: string, signedInVia?: string | null) {
+    const staff = await this.isStaff(userId);
+    if (!staff) return { staff: false, open: false, via: null, expiresAt: null, codeInFlight: false };
     const pass = await this.prisma.backOfficePass.findUnique({ where: { userId } });
     const open = signedInVia === 'google' || (!!pass && pass.expiresAt.getTime() > Date.now());
     return {
+      staff: true,
       open,
       via: signedInVia === 'google' ? 'google' : open ? pass?.via ?? null : null,
       expiresAt: signedInVia === 'google' ? null : open ? pass?.expiresAt ?? null : null,
@@ -27,8 +45,9 @@ export class BackOfficeDoorService {
 
   /** A six-digit code to the signed-in address. Ten minutes. Asking again replaces the last one. */
   async sendCode(userId: string) {
+    if (!(await this.isStaff(userId))) throw new ForbiddenException('This part is for Groundwork staff.');
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-    if (!user) throw new BadRequestException('No account.');
+    if (!user) throw new BadRequestException('Nobody is signed in.');
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const codeHash = await bcrypt.hash(code, 10);
     const codeExpiresAt = new Date(Date.now() + CODE_LIFETIME_MS);

@@ -205,7 +205,7 @@ export function InvitePage() {
               the invitation already says, two paragraphs down, that she is not expected to agree
               with any of it.
             */}
-            Why you were added, in their words: <strong>{preview.roleAsDescribed}</strong>
+            Your part in this: <strong>{preview.roleAsDescribed}</strong>
           </div>
         )}
 
@@ -329,7 +329,7 @@ export function InvitePage() {
 
         <form onSubmit={(e) => { e.preventDefault(); if (!accept.isPending) accept.mutate() }}>
           <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-            Your name is optional - the other party will see it on the shared report if you add it.
+            Your name is optional - the others will see it on the shared report if you add it.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 4 }}>
             <div className="gw-fld" style={{ margin: 0 }}>
@@ -347,7 +347,7 @@ export function InvitePage() {
         </form>
 
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-          This also sets up your account, so you can come back any time to add to
+          This also saves your place, so you can come back any time to add to
           your record - and see the shared report once everyone has checked in.
           We'll email you a link for returning later.
         </div>

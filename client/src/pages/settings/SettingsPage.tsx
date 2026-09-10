@@ -251,7 +251,7 @@ export function SettingsPage() {
               </div>
               {([
                 ['NAMED_LEADS', 'Only people I name', 'You choose who on the People page. Everybody else takes part.'],
-                ['EVERYONE', 'Anybody here', 'Anybody with an account can open one.'],
+                ['EVERYONE', 'Anybody here', 'Anybody signed in here can open one.'],
               ] as const).map(([value, title, body]) => (
                 <label
                   key={value}
@@ -359,7 +359,7 @@ export function SettingsPage() {
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Your WhatsApp number</div>
             <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 10, lineHeight: 1.5 }}>
               Add your number to get check-in links and reminders on WhatsApp as well as email. Your
-              emails keep coming either way. We match messages to your account by this number.
+              emails keep coming either way. We match messages to you by this number.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input

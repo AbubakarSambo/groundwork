@@ -96,7 +96,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
         {/* Save account */}
         <div style={{ padding: '14px 16px', background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-            Save your account to receive the report.
+            Save this to receive the report.
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5 }}>
             Enter the email where you received this invite. We will send you a link when the report is ready.
@@ -124,7 +124,7 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
               disabled={saveSession.isPending}
               style={{ marginTop: 4 }}
             >
-              {saveSession.isPending ? 'Sending…' : 'Send me my account link'}
+              {saveSession.isPending ? 'Sending…' : 'Send me my link'}
             </button>
           </form>
         </div>
@@ -212,11 +212,11 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
             disabled={saveSession.isPending}
             style={{ marginTop: 4 }}
           >
-            {saveSession.isPending ? 'Sending…' : 'Create your account'}
+            {saveSession.isPending ? 'Sending…' : 'Save and continue'}
           </button>
         </form>
         <div style={{ marginTop: 10, fontSize: 11, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-          A link lands in your inbox. Click it to finish setting up your account and set a password.
+          A link lands in your inbox. Click it to finish saving and set a password.
         </div>
       </div>
 
@@ -263,11 +263,11 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
           Invite a participant
         </div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 10 }}>
-          Add their email and we will send them an invite once your account is set up.
+          Add their email and we will send them an invite once you have saved.
         </div>
         {participantAdded ? (
           <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-            Saved. They will receive an invite once your account is created.
+            Saved. They will receive an invite once you have saved.
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>

@@ -731,8 +731,8 @@ export function ChatPage() {
               {isFinalSession
                 ? `Closing session ${sessionNumber} · your final account`
                 : correctingSession != null
-                  ? `Correcting session ${correctingSession} · Private`
-                  : `Session ${sessionNumber} · Private`}
+                  ? `Correcting session ${correctingSession}`
+                  : `Session ${sessionNumber}`}
             </div>
           </div>
         </div>
@@ -1203,7 +1203,7 @@ export function ChatPage() {
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
           <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel} <a href="/org/guide" target="_blank" rel="noreferrer" style={{ color: 'var(--gw-navy)' }}>Who reads what</a></span>
+            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
             {/*
               * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
               *

@@ -622,7 +622,7 @@ function GroundStatusBadge({ status }: { status: string }) {
   if (SILENT_STATUSES.includes(status)) return null
   const isReady = status === 'REPORT_READY'
   /** Amber for "somebody has to act before this can move", grey for a finished record. */
-  const isWaiting = status === 'AWAITING_LEAD' || status === 'AWAITING_APPROVAL' || status === 'PAUSED'
+  const isWaiting = status === 'AWAITING_APPROVAL' || status === 'PAUSED'
   const color = isReady ? '#065f46' : isWaiting ? 'var(--gw-amber-t)' : '#6B7280'
   const bg = isReady ? 'rgba(6,95,70,.1)' : isWaiting ? 'var(--gw-amber-bg)' : 'rgba(107,114,128,.08)'
   const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
@@ -682,7 +682,7 @@ export function AppSidebar() {
 
   const location = useLocation()
   const isEntryPage = !isAuthenticated && location.pathname === '/start'
-  const { groundName, setGroundName, sessions } = useEntryStore()
+  const { groundName, setGroundName } = useEntryStore()
   const [renamingEntry, setRenamingEntry] = useState(false)
   const [entryRenameVal, setEntryRenameVal] = useState('')
   const entryRenameRef = useRef<HTMLInputElement>(null)
@@ -836,8 +836,8 @@ export function AppSidebar() {
                   </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>1/{sessions} sessions</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--gw-green-live)', background: 'rgba(52,211,153,.12)', borderRadius: 4, padding: '2px 6px' }}>In progress</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Not saved yet</span>
+                  
                 </div>
               </div>
             )}

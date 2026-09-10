@@ -2,6 +2,8 @@ import { apiClient } from './client'
 
 /** The door in front of /ops and /admin. See api ops/the-back-office-has-a-door.ts. */
 export interface BackOfficeDoor {
+  /** On the back-office roster or a platform admin. Anybody else never sees the code screen. */
+  staff: boolean
   open: boolean
   via: 'google' | 'otp' | null
   expiresAt: string | null

@@ -3064,7 +3064,7 @@ function ShareSection({ joinToken }: { joinToken: string }) {
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px', marginTop: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>Broadcast link</div>
       <div style={{ fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6, marginBottom: 14 }}>
-        Share this link or QR code - anyone can check in without creating an account first. They'll be asked to save their details at the end.
+        Share this link or QR code - anyone can check in without signing up first. They'll be asked to save their details at the end.
       </div>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {qrDataUrl && (

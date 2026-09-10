@@ -326,12 +326,14 @@ export function GroundParticipantPage() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>Account not linked</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>You are not in this check-in</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
-            Your account is not linked to this check-in. Please contact the check-in admin.
+            {user?.role === 'ADMIN'
+              ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
+              : 'Whoever runs it can add you.'}
           </div>
-          <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-            Back to check-ins
+          <button onClick={() => navigate(user?.role === 'ADMIN' ? `/grounds/${id}` : '/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+            {user?.role === 'ADMIN' ? 'Open the whole check-in' : 'Back to check-ins'}
           </button>
         </div>
       </div>
@@ -434,7 +436,7 @@ export function GroundParticipantPage() {
               <span>
                 {canRunThisCheckIn
                   ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
-                  : 'Just yours - only you see this until the report releases.'}
+                  : 'Your own check-in. The report shows where you and the others agree, differ, and what to do next.'}
               </span>
               {/*
                 WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.

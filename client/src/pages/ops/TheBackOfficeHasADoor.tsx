@@ -21,7 +21,23 @@ export function RequireBackOffice({ children }: { children: JSX.Element }) {
   }
   if (door.isLoading) return null
   if (door.data?.open) return children
+  if (door.data && !door.data.staff) return <NotStaff />
   return <TheDoor />
+}
+
+/** The same refusal the platform console gives: no door, no code, nothing to try. */
+function NotStaff() {
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ textAlign: 'center', maxWidth: 380 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>This part is for Groundwork staff</div>
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+          It is not part of your organisation's admin, and there is nothing here that affects your check-ins.
+        </div>
+        <Link to="/grounds" style={{ display: 'inline-block', padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>Go to my check-ins</Link>
+      </div>
+    </div>
+  )
 }
 
 function TheDoor() {

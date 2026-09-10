@@ -397,7 +397,8 @@ export function OpsCommitmentsPage() {
   const commitments = useQuery({
     queryKey: ['ops', 'commitments', me.data?.key, period],
     queryFn: () => opsApi.commitments(me.data!.key, period),
-    enabled: Boolean(me.data?.key),
+    /* Not before a period is chosen: with an empty key the call was a 404 and the page said something did not load. */
+    enabled: Boolean(me.data?.key && period),
     retry: false,
   })
 

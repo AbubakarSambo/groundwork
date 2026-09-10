@@ -34,7 +34,7 @@ describe('nothing pushes the page sideways', () => {
 
   it('and so is the one on the party view, which says the opposite thing', () => {
     const party = readFileSync(join(__dirname, 'GroundParticipantPage.tsx'), 'utf8')
-    const i = party.indexOf('Just yours - only you see this')
+    const i = party.indexOf('Your own check-in. The report shows')
     expect(i).toBeGreaterThan(-1)
     expect(party.slice(Math.max(0, i - 200), i)).not.toMatch(/whiteSpace: 'nowrap'[^<]*$/)
   })

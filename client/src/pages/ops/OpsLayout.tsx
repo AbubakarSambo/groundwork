@@ -51,7 +51,15 @@ function useWhatDidNotLoad(): { failed: number; retry: () => void } {
         .getQueryCache()
         .findAll({ predicate: (q) => q.state.status === 'error' && q.queryKey[0] === 'ops' }).length
     setFailed(count())
-    return client.getQueryCache().subscribe(() => setFailed(count()))
+    /* The cache notifies synchronously, sometimes from inside a child's render; setting state on
+       the layout right then is the "cannot update a component while rendering a different
+       component" warning on every ops page. A tick later is the same number, quietly. */
+    let pending: ReturnType<typeof setTimeout> | null = null
+    const unsubscribe = client.getQueryCache().subscribe(() => {
+      if (pending) return
+      pending = setTimeout(() => { pending = null; setFailed(count()) }, 0)
+    })
+    return () => { if (pending) clearTimeout(pending); unsubscribe() }
   }, [client])
 
   return {

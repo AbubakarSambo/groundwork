@@ -471,7 +471,7 @@ export function GroundsListPage() {
               <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Invite a colleague</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-blue-t)', lineHeight: 1.5, marginBottom: 12 }}>
-                  They will receive an email with a link to set up their own Groundwork account. They can then open and manage their own check-ins.
+                  They will receive an email with a link to sign in to Groundwork. They can then open and manage their own check-ins.
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
@@ -623,7 +623,7 @@ export function GroundsListPage() {
             {/* Welcome banner after password setup */}
             {justSetUp && (
               <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>Your account is live.</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 3 }}>You are in.</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.5 }}>You will see your check-ins and reports here. Open one to start contributing.</div>
               </div>
             )}

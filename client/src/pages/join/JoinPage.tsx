@@ -135,7 +135,7 @@ export function JoinPage() {
       </form>
 
       <div style={{ marginTop: 12, fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-        This sets up your account so you can come back any time and see the shared report once everyone has checked in. We'll email you a link to set a password for returning later.
+        This saves your place so you can come back any time and see the shared report once everyone has checked in. We'll email you a link to set a password for returning later.
       </div>
     </Shell>
   )

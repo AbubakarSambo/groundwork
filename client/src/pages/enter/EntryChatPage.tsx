@@ -2553,7 +2553,19 @@ export function EntryChatPage() {
               // bubbles keep the narrow reading column.
               style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
             >
-              {onboardingHistory.map((m, i) => (
+              {onboardingHistory.map((m, i) => {
+                /* A CARD IS A PICK, NOT SOMETHING THEY SAID. The card's message travels as the first
+                   user turn so the model has a situation; drawing it as a navy bubble put words in
+                   their mouth ("I have a new hire starting and want to..."). It is drawn as a pick. */
+                const picked = m.role === 'user' && SITUATION_CARDS.find((c) => c.message === m.content)
+                if (picked) {
+                  return (
+                    <div key={i} style={{ alignSelf: 'flex-end', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 12px', border: '1px solid var(--gw-border)', borderRadius: 999, background: 'white' }}>
+                      You picked <strong style={{ color: 'var(--gw-text)' }}>{picked.label}</strong>
+                    </div>
+                  )
+                }
+                return (
                 <div
                   key={i}
                   style={{
@@ -2575,7 +2587,8 @@ export function EntryChatPage() {
                       server too - this is a net, not the fix. */}
                   {nothingInternalReachesTheBubble(m.content)}
                 </div>
-              ))}
+                )
+              })}
 
               {/* Situation cards - shown only before user has sent first message */}
               {onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation && (

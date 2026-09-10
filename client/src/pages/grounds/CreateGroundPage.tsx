@@ -1509,7 +1509,7 @@ export function CreateGroundPage() {
             {billingLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: 'var(--gw-sub)', fontSize: 14 }}>
                 <div style={{ width: 18, height: 18, border: '2px solid var(--gw-border)', borderTopColor: 'var(--gw-navy)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                Checking your account…
+                Checking…
               </div>
             )}
 
