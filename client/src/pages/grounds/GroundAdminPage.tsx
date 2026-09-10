@@ -12,6 +12,7 @@ import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { authApi } from '@/api/auth'
+import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -787,6 +788,28 @@ export function GroundAdminPage() {
       )
     },
   })
+
+  /* Many at once, one call each, so a refusal for one person (a seat, a guest) is reported for that person and the rest still land. */
+  const [addingMany, setAddingMany] = useState(false)
+  async function addManyParticipants(emails: string[]) {
+    setAddingMany(true)
+    let added = 0
+    const refused: string[] = []
+    let waiting = 0
+    for (const email of emails) {
+      try {
+        const r = (await groundsApi.addParticipant(id!, { email })) as { invitedAt?: string | null }
+        added++
+        if (!r.invitedAt) waiting++
+      } catch (err: any) {
+        refused.push(`${email}: ${err?.response?.data?.message ?? 'could not be added'}`)
+      }
+    }
+    setAddingMany(false)
+    qc.invalidateQueries({ queryKey: ['ground', id] })
+    if (added) toast.success(added === 1 ? 'Added and invited.' : `${added} people added${waiting ? `, ${waiting} invited on the start date` : ' and invited'}.`)
+    for (const line of refused) toast.error(line)
+  }
 
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined }),
@@ -2531,27 +2554,16 @@ export function GroundAdminPage() {
                 See who is in it, and where each of them has got to &rarr;
               </button>
               {/*
-                * THE PEOPLE ALREADY HERE, FIRST. "I still can't have a drop down for people in my org":
-                * the box took an address and nothing else. Colleagues not yet on this check-in are one
-                * click; the box stays for somebody from outside.
+                * THE PEOPLE ALREADY HERE, FIRST, PICKED LIKE A GROUP CHAT. "Should be able to click team
+                * and see a list and select like how you add people to WhatsApp groups." Search, tick,
+                * one button; each is added the way the box below adds one. The box stays for an outsider.
                 */}
-              {(() => {
-                const on = new Set((((ground as any)?.participants ?? []) as any[]).map((m) => (m.email ?? '').toLowerCase()))
-                const notYet = (colleagues ?? []).filter((c) => !on.has(c.email.toLowerCase()))
-                return notYet.length ? (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 6 }}>Already in your organisation. Click to fill in their address.</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {notYet.slice(0, 30).map((c) => (
-                        <button key={c.email} type="button" title={c.email} onClick={() => setNewParticipantEmail(c.email)}
-                          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 14, border: '1px solid var(--gw-border)', background: newParticipantEmail === c.email ? 'var(--gw-bg)' : 'white', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-text)' }}>
-                          + {c.name ?? c.email}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null
-              })()}
+              <PeoplePicker
+                people={colleagues ?? []}
+                alreadyIn={(((ground as any)?.participants ?? []) as any[]).map((m) => m.email ?? '')}
+                adding={addingMany}
+                onAdd={(picked) => addManyParticipants(picked.map((p) => p.email))}
+              />
               <input
                 type="email" placeholder="name@company.com" aria-label="Their email address"
                 value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}

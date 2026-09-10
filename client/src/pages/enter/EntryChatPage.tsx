@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
 import { authApi } from '@/api/auth'
+import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { useEntryStore } from '@/stores/entry'
 import { useAuthStore } from '@/stores/auth'
 import { VennIcon } from '@/components/gw/VennIcon'
@@ -3753,29 +3754,17 @@ export function EntryChatPage() {
                 </div>
               )}
 
-              {(() => {
-                /* Colleagues not yet on the list, as chips. One click queues them and asks what they should cover. */
-                const notYet = colleagues.filter(c => !inviteAdded.some(e => e === c.email || e.startsWith(`${c.email} - `)) && c.email !== user?.email)
-                return notYet.length && !inviteContextFor && !bulkInviteMode ? (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 6 }}>Already in your organisation. Click to add.</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {notYet.slice(0, 24).map(c => (
-                        <button
-                          key={c.email}
-                          type="button"
-                          onClick={() => { setInviteContextFor(c.email); setInviteContext('') }}
-                          title={c.email}
-                          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 14, border: '1px solid var(--gw-border)', background: 'white', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-text)' }}
-                        >
-                          + {c.name ?? c.email}
-                        </button>
-                      ))}
-                      {notYet.length > 24 && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', alignSelf: 'center' }}>and {notYet.length - 24} more, by address below</span>}
-                    </div>
-                  </div>
-                ) : null
-              })()}
+              {/* Colleagues, picked the way a group chat picks them: search, tick, one button. Each goes on the list without a note; notes can be added on Setup. */}
+              {!inviteContextFor && !bulkInviteMode && (
+                <PeoplePicker
+                  people={colleagues.filter((c) => c.email !== user?.email)}
+                  alreadyIn={inviteAdded.map((e) => e.split(' - ')[0])}
+                  onAdd={(picked) => {
+                    for (const c of picked) queueColleague(c)
+                    toast.success(picked.length === 1 ? `${picked[0].name ?? picked[0].email} is on the list.` : `${picked.length} people are on the list. Invites go out when you save.`)
+                  }}
+                />
+              )}
 
               {inviteContextFor ? (
                 <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
