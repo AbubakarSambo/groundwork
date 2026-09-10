@@ -168,6 +168,35 @@
   }
 
   /*
+   * THE PANEL TELLS THE TRUTH ABOUT WHAT HAPPENED.
+   *
+   * Four calls did `r.ok ? r.json() : null`, which collapses every refusal into "try again in a
+   * moment" - including the billing wall, a legal hold and an already-complete check-in, none of
+   * which trying again can fix - and one call did not check at all, so a refusal rendered as
+   * nothing. The server writes a sentence for every refusal; this reads it.
+   */
+  function refusalFrom(r, fallback) {
+    return r.json().then(function (b) {
+      var m = b && b.message;
+      if (Array.isArray(m)) m = m.join(' ');
+      return (typeof m === 'string' && m.trim()) ? m : fallback;
+    }).catch(function () { return fallback; });
+  }
+
+  /*
+   * ONE THING IN FLIGHT AT A TIME. The composer fired as often as return was pressed and the
+   * "Start it" chip had no lock, so five presses against a slow model were five sessions opened -
+   * and five decrements. While a call is out, the input and every acting chip are disabled.
+   */
+  var busy = false;
+  function setBusy(on) {
+    busy = on;
+    input.disabled = on;
+    Array.prototype.forEach.call(document.querySelectorAll('.chip.act'), function (b) { b.disabled = on; });
+    if (!on) input.focus();
+  }
+
+  /*
    * THE CHECK-IN RUNS IN THE PANEL.
    *
    * The routes to open, answer and complete a check-in existed and the panel never called them, so a
@@ -197,46 +226,94 @@
   }
 
   function startCheckIn(id) {
+    if (busy) return;
+    setBusy(true);
     api('POST', '/check-ins/' + encodeURIComponent(id) + '/open')
-      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) {
+        /* A refusal here is usually the billing wall, which trying again cannot fix. Print its sentence. */
+        if (!r.ok) return refusalFrom(r, 'I could not open that check-in just then. Try again in a moment.').then(function (said) { bubble('them', said); return null; });
+        return r.json();
+      })
       .then(function (o) {
-        if (!o || !o.reply) { bubble('them', 'I could not open that check-in just then. Try again in a moment.'); return; }
+        if (!o) return;
+        if (!o.reply) { bubble('them', 'I could not open that check-in just then. Try again in a moment.'); return; }
         inCheckIn = id;
         input.placeholder = 'Answer here';
         bubble('them', o.reply);
-        input.focus();
       })
-      .catch(function () { bubble('them', 'I could not open that check-in just then. Try again in a moment.'); });
+      .catch(function () { bubble('them', 'I could not open that check-in just then. Try again in a moment.'); })
+      .then(function () { setBusy(false); });
   }
+
+  /* Said once, by the person, in a word. Completion is irreversible, so the panel never does it for them. */
+  var FINISH_WORD = /^\s*(finish|complete|done|close)\s*[.!]?\s*$/i;
 
   function answerInCheckIn(message) {
     var id = inCheckIn;
+    if (busy) return;
     bubble('me', message);
+    setBusy(true);
     api('POST', '/check-ins/' + encodeURIComponent(id) + '/messages', { content: message })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (o) {
-        if (!o || !o.reply) { bubble('them', 'I could not reach the record just then. Say that again in a moment.'); return; }
-        bubble('them', o.reply);
-        if (o.sessionComplete) finishCheckIn(id);
+      .then(function (r) {
+        /* The answer ceiling, a legal hold and a network fault are three different sentences. */
+        if (!r.ok) return refusalFrom(r, 'I could not reach the record just then. Say that again in a moment.').then(function (said) { bubble('them', said); return null; });
+        return r.json();
       })
-      .catch(function () { bubble('them', 'I could not reach the record just then. Say that again in a moment.'); });
+      .then(function (o) {
+        if (!o) return;
+        if (!o.reply) { bubble('them', 'I could not reach the record just then. Say that again in a moment.'); return; }
+        bubble('them', o.reply);
+        /*
+         * NOT finishCheckIn(id). The panel auto-completed the moment the engine said the session
+         * could close, and completion is irreversible. WhatsApp asks first; so does this.
+         */
+        if (o.sessionComplete) bubble('them', 'That is enough to close this check-in. Say "finish" to complete it, or keep going.');
+      })
+      .catch(function () { bubble('them', 'I could not reach the record just then. Say that again in a moment.'); })
+      .then(function () { setBusy(false); });
   }
 
+  /*
+   * NEVER "THAT IS DONE" WHEN IT IS NOT. This cleared the check-in and the placeholder BEFORE the
+   * network call, then mapped the response and threw it away - so a refused completion (a thin
+   * record, which the server refuses with canContinue: true) was announced as done and the person
+   * was typing to the assistant about a session that was still open. The state changes only when
+   * the server says it did.
+   */
   function finishCheckIn(id) {
-    inCheckIn = null;
-    input.placeholder = 'Ask about your work';
+    if (busy) return;
+    setBusy(true);
     api('POST', '/check-ins/' + encodeURIComponent(id) + '/complete')
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function () { return api('GET', '/check-ins/' + encodeURIComponent(id) + '/report'); })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (s) {
-        var report = s && s.report;
-        if (!report) { bubble('them', 'That is done. Your report is being put together and will be here when it is ready.'); }
-        else showReport(report);
-        /* The badge and the first line are about what is due, and something just stopped being due. */
-        if (typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
+      .then(function (r) {
+        if (r.ok) return r.json().then(function () { return 'completed'; });
+        return r.json().catch(function () { return {}; }).then(function (b) {
+          var said = b && b.message; if (Array.isArray(said)) said = said.join(' ');
+          if (r.status === 400 && b && b.canContinue) {
+            /* Still open, and still theirs to finish: the server said what it needs first. */
+            bubble('them', (typeof said === 'string' && said) || 'A little more is needed before this can close. Answer one or two more questions, then say finish.');
+          } else {
+            bubble('them', 'Your check-in is still open. ' + ((typeof said === 'string' && said) || 'It could not be completed just then; try again in a moment.'));
+          }
+          return 'refused';
+        });
       })
-      .catch(function () { bubble('them', 'That is done. I could not fetch the report just then; ask me for it in a moment.'); });
+      .then(function (outcome) {
+        if (outcome !== 'completed') return;
+        inCheckIn = null;
+        input.placeholder = 'Ask about your work';
+        return api('GET', '/check-ins/' + encodeURIComponent(id) + '/report')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (s) {
+            var report = s && s.report;
+            if (!report) { bubble('them', 'That is done. Your report is being put together and will be here when it is ready.'); }
+            else showReport(report);
+            /* The badge and the first line are about what is due, and something just stopped being due. */
+            if (typeof window.__gwDrawOpening === 'function') window.__gwDrawOpening();
+          })
+          .catch(function () { bubble('them', 'That is done. I could not fetch the report just then; ask me for it in a moment.'); });
+      })
+      .catch(function () { bubble('them', 'Your check-in is still open. I could not reach the record just then; try again in a moment.'); })
+      .then(function () { setBusy(false); });
   }
 
   /* The session report, as the app shows it under the transcript: where things stand, the reads at a glance, the one conversation worth having. */
@@ -297,7 +374,9 @@
   }
 
   function ask(message) {
+    if (busy) return;
     bubble('me', message);
+    setBusy(true);
     withSession(function (t) {
       return fetch(API + '/api/org/v1/chat', {
         method: 'POST',
@@ -305,12 +384,17 @@
         body: JSON.stringify({ message: message }),
       });
     })
-      .then(function (r) { return r.json(); })
-      .then(render)
+      .then(function (r) {
+        /* This never checked the status: a refusal body has no blocks, so render() printed nothing at all. */
+        if (!r.ok) return refusalFrom(r, 'I could not reach the record just then. Try again in a moment.').then(function (said) { bubble('them', said); return null; });
+        return r.json();
+      })
+      .then(function (reply) { if (reply) render(reply); })
       .catch(function () {
         /* Never a stack trace, and never silence. */
         bubble('them', 'I could not reach the record just then. Try again in a moment.');
-      });
+      })
+      .then(function () { setBusy(false); });
   }
 
   form.addEventListener('submit', function (e) {
@@ -319,6 +403,7 @@
     if (!v) return;
     input.value = '';
     if (awaitingPartFor) confirmWithPart(awaitingPartFor, v);
+    else if (inCheckIn && FINISH_WORD.test(v)) { bubble('me', v); finishCheckIn(inCheckIn); }
     else if (inCheckIn) answerInCheckIn(v);
     else ask(v);
   });
