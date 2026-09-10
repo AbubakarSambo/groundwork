@@ -1,4 +1,5 @@
 import { AdminFirstRun } from './an-admin-lands-on-a-check-in-list'
+import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useState } from 'react'
 import { railAttention } from '@/lib/rail-attention'
@@ -68,6 +69,9 @@ function GroundCard({ g, onClick, myUserId }: { g: Ground; onClick: () => void; 
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3 }}>{g.label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {(() => {
+              /* A check-in that is over says so, rather than "Nothing due". */
+              const over = howItEnded(g as any)
+              if (over) return <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }}>{over}</span>
               const w = whatThisWants(g, myUserId)
               return w
                 ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: w.bg, color: w.color }}>{w.text}</span>

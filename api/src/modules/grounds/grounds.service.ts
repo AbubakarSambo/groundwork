@@ -1,4 +1,5 @@
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
+import { hasEnded } from './a-ground-that-has-ended';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -2946,8 +2947,7 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing session');
-    const terminal = ['RESOLVED', 'CLOSED', 'STALLED'];
-    if (terminal.includes(ground.status as string)) throw new BadRequestException('This check-in has already ended');
+    if (hasEnded(ground.status)) throw new BadRequestException('This check-in has already ended');
 
     let flagged = 0;
     for (const p of ground.participants) {

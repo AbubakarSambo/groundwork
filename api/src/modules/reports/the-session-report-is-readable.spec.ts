@@ -190,8 +190,8 @@ describe('the per-session report', () => {
       sessionNumber: 2,
       entries: [{ ...entry(RecordEntryType.INTENT, 'Working on onboarding'), threadKey: 'onboarding' }],
       previousEntries: [
-        { type: RecordEntryType.COMMITMENT, text: 'CRM current every Friday', threadKey: 'crm' },
-        { type: RecordEntryType.COMMITMENT, text: 'Onboarding doc', threadKey: 'onboarding' },
+        { type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'CRM current every Friday', threadKey: 'crm' },
+        { type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'Onboarding doc', threadKey: 'onboarding' },
       ],
     });
     const commitments = out.sections.find((s) => s.title === 'Commitments')!;
@@ -205,7 +205,7 @@ describe('the per-session report', () => {
     const out = theSessionReport({
       ...base,
       sessionNumber: 2,
-      previousEntries: [{ type: RecordEntryType.COMMITMENT, text: 'Ship it', threadKey: 'ship' }],
+      previousEntries: [{ type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'Ship it', threadKey: 'ship' }],
     });
     const commitments = out.sections.find((s) => s.title === 'Commitments')!;
     expect(JSON.stringify(commitments)).not.toMatch(/delivered|done|complete|failed/i);
@@ -220,5 +220,21 @@ describe('the per-session report', () => {
   it('does not call one account agreed', () => {
     const out = theSessionReport(base);
     expect(out.whereThingsStand.saying).toContain('nothing to agree or differ with');
+  });
+});
+
+describe('a commitment carried from last session', () => {
+  it('keeps the person who made it', () => {
+    /* 10 Sep 2026: carried lines went out with no author, and the reader prints a missing author as
+       "you" - so six of the participant's commitments appeared under the lead's name on the closing
+       report. Whose commitment it was is the whole point of the line. */
+    const shape = theSessionReport({
+      ...base,
+      entries: [],
+      previousEntries: [{ type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'Tracker current every Friday', threadKey: 'tracker' }],
+    } as any);
+    const carried = shape.sections.flatMap((s: any) => s.items).find((i: any) => /not mentioned again/.test(i.text));
+    expect(carried).toBeDefined();
+    expect(carried!.who).toBe('Ada Obi');
   });
 });

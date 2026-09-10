@@ -100,7 +100,8 @@ export function TheReportIsAListOfSessions({
                     border: `1px solid ${r.closed ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}`,
                   }}
                 >
-                  {r.closed ? 'Final' : 'Forming'}
+                  {/* 'Final' read as 'the last one' on every row. It means the report is out. */}
+                  {r.closed ? 'Released' : 'Forming'}
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
               </span>

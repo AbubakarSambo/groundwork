@@ -1,3 +1,4 @@
+import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
@@ -453,11 +454,18 @@ export function GroundParticipantPage() {
                   · A guest check-in at {(ground as any).guestIn}
                 </span>
               )}
-              {totalSessions != null && (
-                <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
-              )}
-              {(ground as any).daysLeft != null && (
-                <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+              {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
+              {howItEnded(ground as any) ? (
+                <span style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>· {howItEnded(ground as any)}</span>
+              ) : (
+                <>
+                  {totalSessions != null && (
+                    <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
+                  )}
+                  {(ground as any).daysLeft != null && (
+                    <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>
+                  )}
+                </>
               )}
             </div>
           </div>

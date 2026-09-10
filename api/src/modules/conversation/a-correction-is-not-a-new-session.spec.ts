@@ -44,11 +44,18 @@ describe('a self-correction session', () => {
      * first but that only one of them can be non-empty at a time - the order made this defect
      * invisible for as long as both could be built.
      */
-    const assembled = service.slice(service.indexOf('return [systemPrompt, VOCABULARY_RULE'));
+    /* Found by the two things the line always has, rather than by its first two entries: a block
+       inserted at the front (theirLanguage) once made this slice(-1) and the assertions vacuous. */
+    const at = service.indexOf('return [systemPrompt,');
+    expect(at).toBeGreaterThan(-1);
+    const assembled = service.slice(at, service.indexOf('\n', at));
+    expect(assembled).toContain('VOCABULARY_RULE');
     expect(assembled).toContain('selfCorrectionContext');
     expect(assembled).toContain('returningUserContext');
-    const selfBuilt = service.indexOf("if (checkIn.isSelfCorrection && checkIn.selfCorrectionTargetSession != null) {\n      const targetEntries");
-    const returningBuilt = service.indexOf('if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {\n      returningUserContext =');
+    /* Each is built only under its own guard. Matched on the guard, not on the line after it,
+       which drifted the first time the body below it was edited. */
+    const selfBuilt = service.indexOf('if (checkIn.isSelfCorrection && checkIn.selfCorrectionTargetSession != null) {');
+    const returningBuilt = service.indexOf('if (checkIn.sessionNumber >= 2 && !checkIn.isSelfCorrection) {');
     expect(selfBuilt).toBeGreaterThan(-1);
     expect(returningBuilt).toBeGreaterThan(-1);
   });

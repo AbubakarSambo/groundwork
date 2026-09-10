@@ -69,7 +69,14 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
         ) : 'Pick the line, and it stops counting.'}
       </p>
       <div style={{ display: 'grid', gap: 6 }}>
-        {mine.map(r => (
+        {mine.map((r, i) => {
+        /*
+         * THE SAME DOCUMENT DISAGREEING TWICE IS ONE FACT, NOT TWO. On a closing report the lead's
+         * own plan contradicted their own summary on two lines running, and the same paragraph of
+         * explanation printed under each. Said once, on the first line it applies to.
+         */
+        const saidBefore = mine.slice(0, i).some(x => !x.disputedAt && x.documentSays === r.documentSays)
+        return (
           <div key={r.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5, lineHeight: 1.55 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ color: r.disputedAt ? 'var(--gw-muted)' : 'var(--gw-text)', textDecoration: r.disputedAt ? 'line-through' : 'none' }}>{r.text}</span>
@@ -77,7 +84,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
               <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· {KIND[r.type] ?? r.type.toLowerCase()}</span>
               {r.disputedAt && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginLeft: 8 }}>· you said this is not what you said</span>}
               {!r.disputedAt && r.documented && <span style={{ color: 'var(--gw-green-t)', fontSize: 11, marginLeft: 8 }}>· backed by a document</span>}
-              {!r.disputedAt && r.documentSays && (
+              {!r.disputedAt && r.documentSays && !saidBefore && (
                 <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 3, lineHeight: 1.5 }}>
                   A document you can see reads differently: “{r.documentSays}”. Yours stands as you said it; your next check-in will ask which is current.
                 </div>
@@ -93,7 +100,7 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
               </button>
             )}
           </div>
-        ))}
+        )})}
       </div>
     </section>
   )

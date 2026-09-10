@@ -42,7 +42,7 @@ const COMMITMENT = { type: RecordEntryType.COMMITMENT, who: 'Lola', recallBased:
 describe('when nothing threads the sessions together', () => {
   const r = theSessionReport(base({
     entries: [{ ...COMMITMENT, text: 'I will call the new list on Monday.', threadKey: null }],
-    previousEntries: [{ type: RecordEntryType.COMMITMENT, text: 'I will ask Tunde for a better list.', threadKey: null }],
+    previousEntries: [{ type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'I will ask Tunde for a better list.', threadKey: null }],
   }));
 
   it('does not list every previous commitment as abandoned', () => {
@@ -66,8 +66,8 @@ describe('when the record does thread', () => {
   const r = theSessionReport(base({
     entries: [{ ...COMMITMENT, text: 'The list is sorted.', threadKey: 'list' }],
     previousEntries: [
-      { type: RecordEntryType.COMMITMENT, text: 'I will ask Tunde for a better list.', threadKey: 'list' },
-      { type: RecordEntryType.COMMITMENT, text: 'I will write the demo script.', threadKey: 'script' },
+      { type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'I will ask Tunde for a better list.', threadKey: 'list' },
+      { type: RecordEntryType.COMMITMENT, who: 'Ada Obi', text: 'I will write the demo script.', threadKey: 'script' },
     ],
   }));
 
@@ -96,13 +96,14 @@ describe('the Movement read when a number has been said but nothing tracks it', 
 
   it('names the gap when somebody put a number on what they are aiming at', () => {
     const g = glance([{ type: RecordEntryType.SUCCESS_DEFINITION, text: 'Each of them at eight closed deals.', who: 'Tunde', recallBased: true, threadKey: null }]);
-    expect(g.value).toBe('A number was said');
+    /* The tile's value answers the tile's label, and the label is Movement. See the-session-report. */
+    expect(g.value).toBe('Not tracked');
     expect(g.sub).toBe('somebody named a number and nothing is tracking it');
   });
 
   it('and reads digits as readily as words, because people say both', () => {
     expect(glance([{ type: RecordEntryType.INTENT, text: 'Get to 8 closed deals.', who: 'K', recallBased: true, threadKey: null }]).value)
-      .toBe('A number was said');
+      .toBe('Not tracked');
   });
 
   it('and still says no set target when nobody has named one', () => {

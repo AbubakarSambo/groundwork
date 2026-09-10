@@ -124,7 +124,7 @@ interface AdminDashboardData {
 const adminApi = {
   /** Zero-row detection: which writers have never written. */
   writers: () =>
-    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; error?: string }[] }>('/admin/writers').then(r => r.data),
+    apiClient.get<{ checkedAt: string; flaggedCount: number; rows: { table: string; writer: string; count: number | null; lastWrite: string | null; shippedAt: string | null; flagged: boolean; needs?: string; error?: string }[] }>('/admin/writers').then(r => r.data),
   dashboard: (): Promise<AdminDashboardData> =>
     apiClient.get<AdminDashboardData>('/admin/dashboard').then(r => r.data),
   requestOtp: (): Promise<void> => apiClient.post('/admin/otp/request').then(() => undefined),
@@ -661,13 +661,15 @@ function WritersSection() {
     <div style={{ ...C, marginTop: 16 }}>
       <div style={SL}>Writers · {data.flaggedCount} at zero</div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
-        Every table a writer should fill in normal operation. Zero rows since the table shipped means the writer has never fired.
+        Every table a writer should fill in normal operation. A zero means nothing has reached it
+        yet - which is a fault where the writer runs on our own machinery, and simply news where it
+        waits on a customer or on a check-in ending. What each one waits for is in the last column.
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--gw-muted)' }}>
-              <th style={{ padding: '4px 6px' }}>Table</th><th style={{ padding: '4px 6px' }}>Written by</th><th style={{ padding: '4px 6px', textAlign: 'right' }}>Rows</th><th style={{ padding: '4px 6px' }}>Last write</th><th style={{ padding: '4px 6px' }}>Shipped</th>
+              <th style={{ padding: '4px 6px' }}>Table</th><th style={{ padding: '4px 6px' }}>Written by</th><th style={{ padding: '4px 6px', textAlign: 'right' }}>Rows</th><th style={{ padding: '4px 6px' }}>Last write</th><th style={{ padding: '4px 6px' }}>Shipped</th><th style={{ padding: '4px 6px' }}>Waits for</th>
             </tr>
           </thead>
           <tbody>
@@ -678,6 +680,7 @@ function WritersSection() {
                 <td style={{ padding: '5px 6px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: r.flagged ? 700 : 400 }}>{r.count ?? '?'}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.lastWrite ? new Date(r.lastWrite).toLocaleDateString() : r.flagged ? 'never' : ''}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-muted)' }}>{r.shippedAt ?? ''}</td>
+                <td style={{ padding: '5px 6px', color: 'var(--gw-muted)', maxWidth: 280 }}>{r.needs ?? (r.flagged ? 'nothing named - worth a look' : '')}</td>
               </tr>
             ))}
           </tbody>

@@ -140,6 +140,13 @@ function hasAnyCaller(method: string, declaredIn: string): boolean {
   return false;
 }
 
+/** Whether the method is wired to the event bus rather than to a caller. */
+function isAnEventListener(method: string, text: string): boolean {
+  const at = text.search(new RegExp(`\\basync ${method}\\s*\\(|\\b${method}\\s*\\(`));
+  if (at === -1) return false;
+  return /@OnEvent\([^)]*\)\s*$/.test(text.slice(Math.max(0, at - 300), at).trimEnd());
+}
+
 describe('every public service method has a caller', () => {
   it('or is listed as deliberately without one', () => {
     const dead: string[] = [];
@@ -148,6 +155,9 @@ describe('every public service method has a caller', () => {
       for (const method of publicMethodsOf(sources.get(file)!)) {
         const key = `${basename(file)}#${method}`;
         if (key in NO_CALLER_ON_PURPOSE) continue;
+        /* A listener's caller is the event bus, and the emit is somewhere else entirely. The
+           decorator above the method is the wiring, and it is checked by reading it. */
+        if (isAnEventListener(method, sources.get(file)!)) continue;
         if (!hasAnyCaller(method, file)) dead.push(`${relative(SRC, file)}#${method}`);
       }
     }

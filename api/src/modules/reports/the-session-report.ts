@@ -142,7 +142,7 @@ export interface SessionReportInputs {
   /** This session's entries, already typed at extraction. */
   entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null }[];
   /** The previous session's entries, for what has changed and what was not spoken to again. */
-  previousEntries: { type: RecordEntryType; text: string; threadKey: string | null }[];
+  previousEntries: { type: RecordEntryType; text: string; who: string | null; threadKey: string | null }[];
   /** What was said at the beginning: the baseline's success statement and the starting point. */
   baselineSuccess: string | null;
   startingPoint: string | null;
@@ -269,9 +269,14 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       about: 'what people committed to, and what last session\'s commitments were not returned to',
       items: [
         ...commitmentsNow,
+        /*
+          * A CARRIED COMMITMENT KEEPS THE PERSON WHO MADE IT. `who: null` here, and a reader that
+          * prints a missing author as "you", put six of the participant's commitments under the
+          * lead's name on the closing report. The person who said it is the whole point of the line.
+          */
         ...notSpokenTo.map((c) => ({
           text: `From last session, not mentioned again: ${c.text}`,
-          who: null,
+          who: c.who,
           documented: false,
         })),
       ],
@@ -406,8 +411,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
        * sentence and making it the thing somebody is measured against is exactly the inference this
        * product refuses everywhere else - the lead sets the yardstick, on purpose, in one place.
        */
+      /* The VALUE of a tile answers its own label. Under "Movement", "A number was said" answers a
+         different question, and read live as though it were the movement. What there is to say
+         here is that nothing is being tracked. */
       value: input.movedOnTargets == null
-        ? aNumberWasSaid(input) ? 'A number was said' : 'No target set'
+        ? aNumberWasSaid(input) ? 'Not tracked' : 'No target set'
         : input.movedOnTargets > 0 ? `+${input.movedOnTargets}` : 'None',
       sub: input.movedOnTargets == null
         ? aNumberWasSaid(input)

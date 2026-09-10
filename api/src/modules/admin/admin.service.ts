@@ -129,15 +129,22 @@ export class AdminService implements OnApplicationBootstrap {
    * admin dashboard, not in a log.
    */
   async getWriters() {
-    const WRITERS: { table: string; writer: string }[] = [
+    /*
+     * "NEVER FIRED" AND "NOTHING HAS ASKED IT TO" ARE DIFFERENT FACTS. Twelve tables sat at zero and
+     * the panel called all twelve a writer that has never fired, which reads as twelve broken
+     * subsystems. Walked through on 10 September 2026: none of them were broken. Some wait on a
+     * customer's own system to send something, some wait on a check-in to end, and until this month
+     * no check-in ever had. `needs` says what makes each one write, so a zero can be read.
+     */
+    const WRITERS: { table: string; writer: string; needs?: string }[] = [
       { table: 'record_entries', writer: 'record extraction at complete()' },
       { table: 'pattern_detections', writer: 'pattern engine on CHECK_IN_COMPLETED' },
       { table: 'coaching_states', writer: 'coaching observation at complete()' },
       { table: 'work_mentions', writer: 'work-mention extractor' },
       { table: 'ground_dependencies', writer: 'dependency extractor' },
       { table: 'deliveries', writer: 'progress extractor, and the person\'s own board' },
-      { table: 'proposed_changes', writer: 'a change asked for against an objective' },
-      { table: 'interactions', writer: 'what-they-say-happened extractor, and the API' },
+      { table: 'proposed_changes', writer: 'a change asked for against an objective', needs: 'a customer system asking for a change against an objective, through the API' },
+      { table: 'interactions', writer: 'what-they-say-happened extractor, and the API', needs: 'the what-they-say-happened extractor, or the API' },
       { table: 'person_objectives', writer: 'own-promise extractor, and objective setup' },
       { table: 'ground_documents', writer: 'uploads' },
       { table: 'participant_notes', writer: 'between-session notes' },
@@ -147,22 +154,22 @@ export class AdminService implements OnApplicationBootstrap {
       { table: 'report_rounds', writer: 'report rounds' },
       { table: 'org_intelligence', writer: 'org intelligence pass' },
       { table: 'knowledge_cards', writer: 'how-we-do-it cards' },
-      { table: 'knowledge_retrievals', writer: 'howWeDoIt prompt block' },
+      { table: 'knowledge_retrievals', writer: 'howWeDoIt prompt block', needs: 'a question that a how-we-do-it card answers' },
       { table: 'assistant_proposals', writer: 'the assistant' },
       { table: 'objective_drafts', writer: 'objective drafting' },
       { table: 'draft_contributions', writer: 'objective drafting' },
       { table: 'ground_baselines', writer: 'baseline at setup' },
-      { table: 'resolutions', writer: 'resolution flow' },
-      { table: 'outcomes', writer: 'outcome capture' },
-      { table: 'outcome_feedback', writer: 'outcome feedback' },
-      { table: 'evaluations_due', writer: 'review-due detector' },
-      { table: 'assertions', writer: 'assertion engine' },
-      { table: 'reported_figures', writer: 'figures extractor' },
-      { table: 'obligations', writer: 'obligations and signing' },
-      { table: 'agreements', writer: 'agreements' },
-      { table: 'documents_elsewhere', writer: 'documents that live elsewhere' },
-      { table: 'product_metrics', writer: 'product metrics' },
-      { table: 'ground_polls', writer: 'polls' },
+      { table: 'resolutions', writer: 'resolution flow', needs: 'a check-in reaching an agreed end' },
+      { table: 'outcomes', writer: 'outcome capture', needs: 'a check-in reaching an agreed end' },
+      { table: 'outcome_feedback', writer: 'outcome feedback', needs: 'somebody answering whether the outcome felt fair, after a check-in has ended' },
+      { table: 'evaluations_due', writer: 'review-due detector', needs: 'a customer system telling us a review is coming up, through the API' },
+      { table: 'assertions', writer: 'assertion engine', needs: 'the alignment routes, which a customer drives' },
+      { table: 'reported_figures', writer: 'figures extractor', needs: 'the alignment routes, which a customer drives' },
+      { table: 'obligations', writer: 'obligations and signing', needs: 'the alignment routes, which a customer drives' },
+      { table: 'agreements', writer: 'agreements', needs: 'the alignment routes, which a customer drives' },
+      { table: 'documents_elsewhere', writer: 'documents that live elsewhere', needs: 'somebody pasting a link to a document into the assistant' },
+      { table: 'product_metrics', writer: 'product metrics', needs: 'a customer system sending a figure against an objective, through the API' },
+      { table: 'ground_polls', writer: 'polls', needs: 'a lead setting a meeting poll on the board' },
       { table: 'people', writer: 'the API roster' },
       { table: 'subjects', writer: 'the API' },
       { table: 'webhook_deliveries', writer: 'webhooks' },

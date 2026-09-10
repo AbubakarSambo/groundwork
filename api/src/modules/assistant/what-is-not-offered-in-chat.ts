@@ -148,6 +148,11 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     because: 'Proposing and countering a settlement between two people. High stakes and slow — it needs its own thinking, not a lane.',
   },
   {
+    area: 'back-office',
+    why: 'the chat is the wrong shape',
+    because: 'The door in front of our own back office. A code to an email is the one thing a chat must not be able to do on somebody\'s behalf.',
+  },
+  {
     area: 'intelligence',
     why: 'not yet',
     because: 'Outcome feedback after the fact. It has no natural question somebody would ask yet.',

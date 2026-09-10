@@ -7,6 +7,7 @@ import { ReportsService } from './reports.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus } from '@prisma/client';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
 
 /**
  * Bridges domain events to report generation. Lives in the reports module so
@@ -71,10 +72,20 @@ export class ReportsListener {
       // Once everyone is through, this is the real moment: mutual reveal,
       // billing activation, "your report is ready" notifications.
       this.logger.log(`All parties through session ${sessionNumber}. Releasing report and activating ground ${event.groundId}.`);
-      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true } });
+      const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);
-        await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
+        /*
+         * THE REPORT OF THE LAST SESSION MUST NOT REOPEN THE GROUND. Releasing normally means the
+         * ground is live, and for the closing session it is the opposite: the report lands after
+         * the decision. Watched live - a CLOSED ground was set back to ACTIVE here, seconds after
+         * the lead ended it. See a-ground-that-has-ended.ts.
+         */
+        if (hasEnded(g.status)) {
+          this.logger.log(`Ground ${event.groundId} is ${g.status}; report released and the status left as it is.`);
+        } else {
+          await this.prisma.ground.update({ where: { id: event.groundId }, data: { status: GroundStatus.ACTIVE } });
+        }
       }
     } catch (err: any) {
       this.logger.error(`Report handling on checkin.completed failed for ground ${event.groundId}: ${err.message}`);

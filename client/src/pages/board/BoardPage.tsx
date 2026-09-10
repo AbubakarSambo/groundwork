@@ -1,3 +1,4 @@
+import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
 import { useState } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -157,6 +158,9 @@ export function BoardPage() {
   }
 
   const b = data as BoardPresent
+  /* Whether the check-in is over, so the board stops drawing a clock. See lib/a-ground-that-has-ended. */
+  const groundEnded = hasEnded((b as any)?.groundStatus)
+  const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
   const has = (s: string) => b.sections.includes(s as any)
 
   /**
@@ -243,14 +247,17 @@ export function BoardPage() {
                   house style anyway. Say the session, and only mention dates when
                   there are dates.
                 */}
-                {b.phaseSpine && (
+                {/* Once it is over, what ended it is the header, not which session is open. */}
+                {endedSaying ? (
+                  <span style={{ color: '#8BE0AE', fontWeight: 700 }}>{endedSaying}</span>
+                ) : b.phaseSpine ? (
                   <span>
                     {b.phaseSpine.startsAt || b.phaseSpine.endsAt
                       ? `${dshort(b.phaseSpine.startsAt)} to ${dshort(b.phaseSpine.endsAt)} · `
                       : ''}
                     session {b.phaseSpine.currentSession}
                   </span>
-                )}
+                ) : null}
               </div>
             </div>
             <div style={{ fontSize: 10.5, color: '#8891BC', textAlign: 'right', lineHeight: 1.5 }}>
@@ -268,7 +275,8 @@ export function BoardPage() {
                     color: s.state === 'current' ? '#8BE0AE' : '#8891BC',
                     fontWeight: s.state === 'current' ? 700 : 500,
                   }}>
-                    Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' ? ' · now' : ''}
+                    {/* "now" on a check-in that has ended is a clock nobody is watching. */}
+                    Session {s.n}{s.date ? ` · ${dshort(s.date)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
                   </div>
                 ))}
               </div>
@@ -440,15 +448,27 @@ export function BoardPage() {
                         {o.name}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
                       </div>
-                      <div style={{ width: 140, height: 7, borderRadius: 6, background: '#EAEDF6', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
-                        <b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{o.target != null ? ` of ${o.target}` : ''}
-                      </div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                        {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
-                      </div>
+                      {/*
+                        NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
+                        bar, a "0" and "no change" beside it - read live as "Confirm her in the role ·
+                        0 · no change", which says the decision did not happen. Without a target the
+                        row is the aim and nothing else.
+                      */}
+                      {o.target != null ? (
+                        <>
+                          <div style={{ width: 140, height: 7, borderRadius: 6, background: '#EAEDF6', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
+                            <b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}
+                          </div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+                            {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>no number set</div>
+                      )}
                     </div>
                       {b.canEditFrame && (
                         <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>

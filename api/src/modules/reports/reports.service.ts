@@ -17,6 +17,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
+import { stillRaised, notRaisedAgain } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
 import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
@@ -1975,7 +1976,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
           where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber: sessionNumber - 1 } },
-          select: { type: true, text: true, dimensionThreadKey: true },
+          select: { type: true, text: true, dimensionThreadKey: true, participantId: true },
         })
         : Promise.resolve([]),
       this.prisma.groundBaseline.findFirst({
@@ -2089,6 +2090,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       previousEntries: previousEntries.map((e) => ({
         type: e.type,
         text: cleanText(e.text),
+        /* Whose commitment it was. Without it the reader calls every carried line the reader's own. */
+        who: whoOf(e.participantId),
         threadKey: e.dimensionThreadKey ?? null,
       })),
       baselineSuccess: baseline?.successLooksLike ?? null,
@@ -2243,9 +2246,26 @@ Close the report by framing - neutrally, without recommending one - the choice n
       started(() => this.prisma.workMention.findMany({ where: { groundId }, select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true } }), [] as any[]),
       started(() => this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, blockerKind: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, blockerKind: true, sourceCheckInId: true },
       }), [] as any[]),
     ]);
+
+    /*
+     * WHAT IS STILL BEING WAITED ON, AS OPPOSED TO WHAT WAS ONCE SAID. A handoff clears only when
+     * somebody says it has; one resolved quietly stays open for the life of the ground. See
+     * a-blocker-nobody-raised-again.ts - read live as "waiting for 6 things, starting with
+     * introductions" on the closing report of a ground where the introductions happened in week six.
+     */
+    const allCheckIns = await this.prisma.checkIn.findMany({ where: { groundId }, select: { id: true, participantId: true, sessionNumber: true, status: true } });
+    const sessionOfCheckIn = new Map(allCheckIns.map((c) => [c.id, c.sessionNumber]));
+    const latestSessionByPerson = new Map<string, number>();
+    for (const c of allCheckIns.filter((c) => c.status === CheckInStatus.COMPLETED)) {
+      latestSessionByPerson.set(c.participantId, Math.max(latestSessionByPerson.get(c.participantId) ?? 0, c.sessionNumber));
+    }
+    const withSession = (depRows as any[]).map((d) => ({ ...d, statedInSession: d.sourceCheckInId ? sessionOfCheckIn.get(d.sourceCheckInId) ?? null : null }));
+    const currentDeps = stillRaised(withSession, latestSessionByPerson);
+    const wentQuiet = notRaisedAgain(withSession, latestSessionByPerson).length;
+    if (wentQuiet) this.logger.log(`${wentQuiet} handoff(s) on ${groundId} have not been raised again; left out of the current read.`);
 
     /*
      * THE ASSEMBLER'S OWN SENTENCES GO THROUGH THE SAME WORDING PASS AS EVERYTHING ELSE.
@@ -2330,15 +2350,33 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ...(await (async () => {
         /* The reader is 'you' in the picture, whatever whoOf calls them in a cite. */
         const nameFor = (pid: string) => (me && pid === me.id ? 'You' : whoOf(pid) ?? null);
+        /*
+         * THE READ IS ABOUT THE RECORD, SO IT IS GIVEN THE RECORD. This passed only the session in
+         * hand, so the coverage read said "1 check-in on record" to somebody on their fourth, and
+         * the shape-over-time read had one point to draw a shape from. Read live on the closing
+         * report of a four-session ground. The whole run, with each entry under the session it was
+         * said in.
+         */
+        const [everyAnswered, everyEntry] = await Promise.all([
+          this.prisma.checkIn.findMany({
+            where: { groundId, status: CheckInStatus.COMPLETED },
+            select: { participantId: true, sessionNumber: true },
+          }),
+          this.prisma.recordEntry.findMany({
+            /* A line somebody has disputed counts toward nothing. See a-disputed-row-counts-toward-nothing. */
+            where: { disputedAt: null, checkIn: { groundId } },
+            select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
+          }),
+        ]);
         const readInput = {
           participants: ground.participants.map((p: any) => ({
             id: p.id, roleAsDescribed: p.roleAsDescribed ?? null, managingOnly: !!p.managingOnly,
             detectedFunction: p.detectedFunction ?? null, detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
           })),
-          checkIns: answered.map((c) => ({ participantId: c.participantId, sessionNumber, status: CheckInStatus.COMPLETED })),
-          entries: entries.map((e) => ({ participantId: e.participantId, sessionNumber, text: cleanText(e.text) })),
+          checkIns: everyAnswered.map((c) => ({ participantId: c.participantId, sessionNumber: c.sessionNumber, status: CheckInStatus.COMPLETED })),
+          entries: everyEntry.map((e) => ({ participantId: e.participantId, sessionNumber: e.checkIn?.sessionNumber ?? sessionNumber, text: cleanText(e.text) })),
           mentions: mentionRows,
-          dependencies: depRows.map((d) => ({
+          dependencies: currentDeps.map((d: any) => ({
             fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId, onLabel: d.onLabel,
             what: d.what, status: d.status, createdAt: d.createdAt,
           })),
@@ -2371,7 +2409,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           patterns: patternsForPage,
           coverage,
           contribution,
-          blockers: depRows.map((d) => ({
+          blockers: currentDeps.map((d: any) => ({
             who: nameFor(d.fromParticipantId),
             on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
             onIsPerson: !!d.onParticipantId,
@@ -2382,7 +2420,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         });
         const question = draftTheQuestion({
           functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
-          blockers: depRows.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
+          blockers: currentDeps.map((d: any) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
         });
         /* Two wording passes that do not depend on each other, in parallel. Measured serial: this
            endpoint took ten seconds and the page waited on it before drawing the shared half. */
@@ -3217,6 +3255,10 @@ happened, and what is in the way.`;
     const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
     const map = roleMapFor((participant as any).detectedFunction);
+    const thisOneIsTheClosingSession = !!(await this.prisma.checkIn.findFirst({
+      where: { groundId, participantId: participant.id, sessionNumber, isFinal: true },
+      select: { id: true },
+    }));
     const note = whatToWorkOnNext({
       patterns: held.detections
         .filter((d) => d.participantId === participant.id)
@@ -3250,6 +3292,8 @@ happened, and what is in the way.`;
       noticedBehaviour: null,
       sessionNumber,
       totalSessions: planned > 0 ? planned : null,
+      /* A lead can close early, so the count cannot tell you this. See CoachingInputs.isFinalSession. */
+      isFinalSession: thisOneIsTheClosingSession,
       scenario: ground.scenario ?? null,
       waitingOn: held.dependencies
         .filter((d) => d.fromParticipantId === participant.id)

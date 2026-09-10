@@ -340,6 +340,9 @@ export class BoardService {
       sections,
       title: ground.label,
       scenario: ground.scenario,
+      /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
+      groundStatus: ground.status,
+      endState: (ground as any).endState ?? null,
       coverageVariant: variant,
       /**
        * What everyone agreed this ground was FOR, set at creation, before a
@@ -461,7 +464,23 @@ export class BoardService {
        * simply not rendering the fields it already had.
        */
       out.divergence = {
-        items: Array.isArray(reportSafe.divergences) ? reportSafe.divergences : [],
+        /*
+         * ONE NAME PER PERSON ON ONE BOARD. A `participantLabel` is a role - "Partnerships
+         * Associate, started 1 September" - and every other section of this page says "Ada Obi".
+         * Read live: the same person appeared under two names three inches apart, which reads as
+         * two people disagreeing with a third. Where the reader may see the name, the name wins.
+         */
+        items: Array.isArray(reportSafe.divergences)
+          ? (reportSafe.divergences as any[]).map((d) => ({
+              ...d,
+              perspectives: Array.isArray(d?.perspectives)
+                ? d.perspectives.map((pv: any) => ({
+                    ...pv,
+                    participantLabel: visibleNames.get(String(pv?.participantLabel ?? '')) ?? pv?.participantLabel,
+                  }))
+                : d?.perspectives,
+            }))
+          : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],

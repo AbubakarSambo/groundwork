@@ -235,7 +235,7 @@ export class AnthropicService {
    * cannot tell you the model is unreachable, which is exactly how this went
    * unnoticed.
    */
-  async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; lastRebuildAt: Date | null; error?: string }> {
+  async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string }> {
     const started = Date.now();
     try {
       const res = await this.client.models.generateContent({
@@ -250,13 +250,14 @@ export class AnthropicService {
       const ok = !!res?.text;
       if (ok) this.noteSuccess();
       else this.noteFailure('healthCheck', new Error('empty response'));
-      return { ok, latencyMs: Date.now() - started, model: this.model, lastRebuildAt: this.lastRebuildAt };
+      return { ok, latencyMs: Date.now() - started, model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt };
     } catch (err: any) {
       this.noteFailure('healthCheck', err);
       return {
         ok: false,
         latencyMs: Date.now() - started,
         model: this.model,
+        models: this.modelsInUse(),
         lastRebuildAt: this.lastRebuildAt,
         error: String(err?.message ?? err).slice(0, 300),
       };

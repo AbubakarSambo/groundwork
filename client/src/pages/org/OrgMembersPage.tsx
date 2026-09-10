@@ -242,7 +242,15 @@ export function OrgMembersPage() {
     )
   }
 
-  const members = data?.data ?? []
+  const everybody = data?.data ?? []
+  /*
+   * A SEARCH BOX ONCE THE LIST IS LONGER THAN A SCREEN. An organisation putting its whole company
+   * on scrolls a hundred rows to change one person's role. Shown only where it earns its space.
+   */
+  const [find, setFind] = useState('')
+  const members = find.trim()
+    ? everybody.filter((m: any) => `${m.firstName ?? ''} ${m.lastName ?? ''} ${m.email}`.toLowerCase().includes(find.trim().toLowerCase()))
+    : everybody
 
   return (
     <div style={{ padding: '28px 20px 80px', maxWidth: 860, margin: '0 auto' }}>
@@ -580,8 +588,21 @@ export function OrgMembersPage() {
         <div style={{ color: 'var(--gw-sub)', fontSize: 14 }}>Loading…</div>
       ) : (
         <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+          {everybody.length > 12 && (
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)' }}>
+              <input
+                value={find}
+                onChange={(e) => setFind(e.target.value)}
+                placeholder={`Find somebody among ${everybody.length}`}
+                aria-label="Find somebody"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', fontSize: 13, borderRadius: 7, border: '1px solid var(--gw-border)', fontFamily: 'inherit', background: 'white' }}
+              />
+            </div>
+          )}
           {members.length === 0 ? (
-            <div style={{ padding: '24px 20px', color: 'var(--gw-sub)', fontSize: 14 }}>No members yet.</div>
+            <div style={{ padding: '24px 20px', color: 'var(--gw-sub)', fontSize: 14 }}>
+              {find.trim() ? `Nobody here matches "${find.trim()}".` : 'No members yet.'}
+            </div>
           ) : (
             members.map((m, i) => (
               <div

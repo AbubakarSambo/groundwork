@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { deadlineOf } from './when-the-clock-starts';
+import { A_GROUND_IS_OVER } from './a-ground-that-has-ended';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -16,7 +17,8 @@ const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
 const WARNING_WINDOW_START_MS = 11 * 60 * 60 * 1000;       // 11h of inactivity
 const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivity
 
-const TERMINAL: GroundStatus[] = [GroundStatus.RESOLVED, GroundStatus.CLOSED, GroundStatus.STALLED];
+/* One list, in one place: a-ground-that-has-ended.ts. */
+const TERMINAL: GroundStatus[] = A_GROUND_IS_OVER;
 const NUDGE_THROTTLE_DAYS = 3;
 const OPEN_STATUSES: CheckInStatus[] = [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS];
 

@@ -164,7 +164,7 @@ export function truncationsOfTheirWords(reply: string, personSaid: string[]): st
  */
 export function restoreTheirWords(reply: string, personSaid: string[]): string {
   const theirWords = personSaid.join(' ').match(/[A-Za-z][A-Za-z0-9'-]{3,}/g) ?? [];
-  let out = reply;
+  let out = theirSpellingOfAnAcronym(reply, personSaid);
 
   for (const invented of namesNobodySaid(reply, personSaid)) {
     const first = norm(invented.split(/\s+/)[0]);
@@ -233,3 +233,30 @@ export function causalClaimNobodyMade(reply: string, personSaid: string[]): stri
  */
 export const ASK_INSTEAD_OF_CONCLUDING =
   'Ask whether the two things are connected rather than saying they are. "They signed up after the demo" is what the person said; "the demo is why they signed up" is a claim only they can make, and asking for it usually gets it.';
+
+/**
+ * SOMEBODY'S OWN SPELLING OF THEIR OWN ACRONYM.
+ *
+ * A person typed NABG - the trade body they work with - and the reply came back "NAB-G", inside a
+ * question they were being asked to answer. The name guard did not catch it: NAB-G is not a person
+ * and both spellings are made of letters the person used. It reads as the product not listening,
+ * on the one screen whose claim is that it holds what somebody said.
+ *
+ * The rule is narrow on purpose. An all-capital run in the reply is compared with the all-capital
+ * runs in what the person actually wrote, ignoring punctuation. Same letters, different
+ * punctuation, and theirs wins. Different letters and nothing happens: this restores a spelling,
+ * it never invents one.
+ */
+export function theirSpellingOfAnAcronym(reply: string, personSaid: string[]): string {
+  const bare = (t: string) => t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const said = personSaid.join(' ').match(/\b[A-Z][A-Z0-9]{1,9}\b/g) ?? [];
+  if (!said.length) return reply;
+  const theirs = new Map<string, string>();
+  for (const a of said) if (!theirs.has(bare(a))) theirs.set(bare(a), a);
+
+  return reply.replace(/\b[A-Z][A-Za-z0-9]*(?:[-.\u2019']?[A-Z][A-Za-z0-9]*)+\b/g, (token) => {
+    const mine = theirs.get(bare(token));
+    /* Only where the letters match and the punctuation does not. */
+    return mine && mine !== token ? mine : token;
+  });
+}

@@ -119,7 +119,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
         {/* The header line: what this is, and how many are in it. */}
         <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <b style={{ fontSize: 14 }}>Session {d.sessionNumber} · {final ? 'closed' : 'still forming'}</b>
+          {/* "Still forming" after everybody had answered and the report was out. Three states, not two. */}
+          <b style={{ fontSize: 14 }}>Session {d.sessionNumber} · {final ? 'closed' : ofPeople > 0 && answered >= ofPeople ? 'everyone answered' : 'still forming'}</b>
           <em style={{ fontFamily: MONO, fontStyle: 'normal', fontSize: 11, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
             {ofPeople ? `${answered} of ${ofPeople} answered` : ''}
           </em>

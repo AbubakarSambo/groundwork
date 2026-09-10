@@ -1,3 +1,4 @@
+import { howItEnded } from '@/lib/a-ground-that-has-ended'
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
@@ -960,6 +961,9 @@ export function GroundAdminPage() {
     )
   }
 
+  /* Null while the check-in is live. See lib/a-ground-that-has-ended. */
+  const ended = howItEnded(ground as any)
+
   /* There is no lead page (10 Sep 2026): a ground is open from the moment it is made, and the person
      leading it goes straight to their check-in like everybody else. */
 
@@ -1286,7 +1290,10 @@ export function GroundAdminPage() {
               and useless, because the work is measured in check-ins. Sessions
               lead; the calendar follows in the quieter line, and only while it
               still has something to say. */}
-          {allSessionsDone ? (
+          {/* WHAT ENDED IT COMES FIRST, and the session clock stops. See lib/a-ground-that-has-ended. */}
+          {ended ? (
+            <span style={{ fontWeight: 700, color: 'var(--gw-green-t)' }}>{ended}</span>
+          ) : allSessionsDone ? (
             <span>every session done</span>
           ) : (
             <>

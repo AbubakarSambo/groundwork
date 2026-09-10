@@ -57,6 +57,13 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * request body or a local, not the column the name matches.
  */
 const CHECKED_AND_FINE = new Set([
+  /*
+   * A NAME COLLISION, NOT A CHECK THAT CANNOT BE TRUE. This file reads both OpsPerson and
+   * OpsPersonAccount, and both have a `userId`. The check is `if (!person.userId)` on OpsPerson,
+   * where it is nullable and the whole point: a person on the team with no account connected.
+   * The audit stops at the first model with a matching field name and picks the wrong one.
+   */
+  'modules/ops/the-door-into-the-ops-system.ts:userId',
   'modules/entry/entry.service.ts:email',           // the request body's email, before a user exists
   /*
    * The REQUEST BODY's join token, checked before anything is looked up. It collides on the name

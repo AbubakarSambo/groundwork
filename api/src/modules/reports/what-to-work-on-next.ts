@@ -94,6 +94,13 @@ export interface CoachingInputs {
   noticedBehaviour: string | null;
   sessionNumber: number;
   totalSessions: number | null;
+  /**
+   * WHETHER THIS IS THE CLOSING SESSION, WHICH THE COUNT CANNOT TELL YOU. A lead can end a ground
+   * early - "begin the closing session" on session 4 of 6 - and `sessionNumber >= totalSessions`
+   * then reads false. Read live: the closing report told the lead what to do "before the next
+   * session" and handed them an opener for a conversation that was never going to happen.
+   */
+  isFinalSession?: boolean;
   scenario: string | null;
   /** What this person says they are waiting on. */
   waitingOn: Dependency[];
@@ -243,7 +250,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     : i.role?.trim() ? `your work as ${i.role.trim().toLowerCase()}` : 'this work';
 
   const early = i.sessionNumber <= 2;
-  const last = i.totalSessions != null && i.sessionNumber >= i.totalSessions;
+  const last = i.isFinalSession === true || (i.totalSessions != null && i.sessionNumber >= i.totalSessions);
   const actions: string[] = [];
 
   /*

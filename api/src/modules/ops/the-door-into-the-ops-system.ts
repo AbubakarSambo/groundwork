@@ -36,7 +36,11 @@ export class OpsDoorService {
       select: { key: true, displayName: true, functionalRole: true, active: true, userId: true, accounts: { select: { userId: true } } },
     });
 
-    const linkedUserIds = people.flatMap((p) => [p.userId, ...p.accounts.map((a) => a.userId)]).filter((id): id is string => id !== null);
+    /* The person's own link is nullable; a further account row is not, so only the first is checked. */
+    const linkedUserIds = [
+      ...people.map((p) => p.userId).filter((id): id is string => id !== null),
+      ...people.flatMap((p) => p.accounts.map((a) => a.userId)),
+    ];
     const accounts = linkedUserIds.length
       ? await this.prisma.user.findMany({
           where: { id: { in: linkedUserIds } },
@@ -135,7 +139,8 @@ export class OpsDoorService {
       if (user && person.userId === user.id) {
         /* The first account goes; the next one, if any, steps up so the person still has a way in. */
         const next = person.accounts[0];
-        await this.prisma.opsPerson.update({ where: { id: person.id }, data: { userId: next?.userId ?? null } });
+        /* `next` may not exist; its userId always does. Written so it says which of the two is in question. */
+        await this.prisma.opsPerson.update({ where: { id: person.id }, data: { userId: next ? next.userId : null } });
         if (next) await this.prisma.opsPersonAccount.delete({ where: { id: next.id } });
       } else if (user) {
         await this.prisma.opsPersonAccount.deleteMany({ where: { personId: person.id, userId: user.id } });

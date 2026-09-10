@@ -73,6 +73,8 @@ import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
 import { withoutQuotesTheyDidNotSay, unmatchedQuotes } from './a-quote-has-to-match-what-they-said';
 import { tooManyQuestionsInARow, landThisOneInstead } from './four-questions-in-a-row';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -941,6 +943,28 @@ export class ConversationService {
       }
       if (!screened.text) {
         for (const h of screened.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'whole reply, asked again'));
+      }
+
+      /*
+       * A SENTENCE WITH A WORD MISSING IS ASKED FOR AGAIN. "every we discuss is to help you build a
+       * clear, honest record" reached a real transcript and was saved. One retry, the same shape as
+       * the invention gate's; if the second try is broken too the first stands, because a reply
+       * that reads oddly is better than no reply at all. See a-sentence-with-a-word-missing.ts.
+       */
+      if (screened.text && readsAsBroken(screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a sentence read as broken; asking again.`);
+        const plainly = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASK_FOR_IT_AGAIN_PLAINLY}`, history)
+          .catch(() => '');
+        const second = plainly.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(plainly), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !readsAsBroken(second.text)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try was whole.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no better; the first stands.`);
+        }
       }
       reply = screened.text || ASK_AGAIN;
 
@@ -3268,8 +3292,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (me?.managingOnly) return;
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { cadence: true, cadenceAnchorDay: true, endsAt: true },
+      select: { cadence: true, cadenceAnchorDay: true, endsAt: true, status: true },
     });
+
+    /*
+     * NOTHING FOLLOWS THE END. A ground that has been resolved, closed or stalled gets no next
+     * session, and neither does the closing session itself - it is called the closing session
+     * because there is nothing after it. Watched live: a resolved ground grew a "Session 5 of 6"
+     * for both people minutes after the decision was taken. See a-ground-that-has-ended.ts.
+     */
+    if (hasEnded(ground?.status)) {
+      this.logger.log(`No next session for ${participantId}: ground ${groundId} is ${ground?.status}.`);
+      return;
+    }
     const cadence = ground?.cadence ?? Cadence.FORTNIGHTLY;
 
     // ONE_TIME: a single check-in, full stop. No next session for this party,
@@ -3278,6 +3313,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // cadenceDays below: a 0-day step still CREATES a session (immediately
     // available), which is the opposite of "no follow-up round."
     if (cadence === Cadence.ONE_TIME) return;
+
+    const justClosed = await this.prisma.checkIn.findUnique({
+      where: { participantId_sessionNumber: { participantId, sessionNumber } },
+      select: { isFinal: true },
+    });
+    if (justClosed?.isFinal) {
+      this.logger.log(`No next session for ${participantId}: session ${sessionNumber} was the closing one.`);
+      return;
+    }
 
     // The completer's own next session. For SEQUENTIAL there is no clock: their
     // next round is not auto-scheduled (availableFrom stays null until triggered).
