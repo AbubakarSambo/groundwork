@@ -84,7 +84,8 @@ export function MyParticipation({
             </div>
             <div style={{ padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCount} of {totalSessions}</div>
+              {/* No total means no total: "3 of" with nothing after it is not a count. */}
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCount}{totalSessions != null ? ` of ${totalSessions}` : ''}</div>
             </div>
           </div>
 

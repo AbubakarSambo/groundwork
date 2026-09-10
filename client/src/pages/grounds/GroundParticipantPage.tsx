@@ -369,14 +369,15 @@ export function GroundParticipantPage() {
 
   // Derive the session total the same way the create wizard does
   // (floor(timelineDays / cadence interval)), from the timelineDays + cadence
-  // the ground carries. Previously this fell back to a hardcoded 6, so a
-  // 90-day monthly ground (really 3 sessions) displayed "of 6".
-  // Same rule as everywhere else now - see lib/sessionCount, which the server's
-  // totalSessionsFor is the authority for. This page already rounded down; the
-  // admin page and sidebar rounded up, and a ground could never call itself
-  // finished as a result.
-  const totalSessions =
-    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? 6
+  // the ground carries - see lib/sessionCount, which the server's
+  // totalSessionsFor is the authority for. This fell back to a hardcoded 6 for
+  // years, directly under the comment naming the hardcoded 6 as the bug, so a
+  // ground with no timeline displayed "of 6" AND was offered the way to end the
+  // engagement at session 5 (MyRecord gates the resolution panel on this
+  // number). Unknown is null: the header prints the session with no total, and
+  // the gate stays closed rather than guessed open.
+  const totalSessions: number | null =
+    plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).totalSessions) ?? null
 
 
   /**
@@ -469,8 +470,15 @@ export function GroundParticipantPage() {
                 <span style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>· {howItEnded(ground as any)}</span>
               ) : (
                 <>
-                  {totalSessions != null && (
+                  {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
+                      apart, and this line numbered the not-yet-due session as current anyway. When it
+                      opens later, the date is the news; the total is printed only when it is known. */}
+                  {opensLater ? (
+                    <span>· Next session opens {new Date(openAvailableFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</span>
+                  ) : totalSessions != null ? (
                     <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
+                  ) : (
+                    <span>· Session {completedCheckIns.length + 1}</span>
                   )}
                   {(ground as any).daysLeft != null && (
                     <span>· {(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? '' : 's'} remaining</span>

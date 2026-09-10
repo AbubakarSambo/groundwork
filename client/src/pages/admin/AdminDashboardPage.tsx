@@ -395,7 +395,8 @@ function UsageBreakdownSection({ breakdown }: { breakdown: FreeReasonBreakdown }
           )
         })}
         <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Total sessions</span>
+          {/* These are ground-creation reasons, so the sum is check-ins created - not sessions. */}
+          <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>Check-ins created</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>{total}</span>
         </div>
       </div>

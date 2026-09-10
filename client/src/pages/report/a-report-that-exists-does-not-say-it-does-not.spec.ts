@@ -47,6 +47,7 @@ describe('a report that exists', () => {
   })
 
   it('while a one-sided report still says what it cannot do', () => {
-    expect(REPORT).toContain('The second is what makes it a comparison.')
+    /* The outstanding count is said as a number now (a-number-is-a-measurement.spec.ts); the sentence still says what it cannot do. */
+    expect(REPORT).toContain('is what makes it a comparison.')
   })
 })

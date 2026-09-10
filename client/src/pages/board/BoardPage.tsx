@@ -255,7 +255,13 @@ export function BoardPage() {
                     {b.phaseSpine.startsAt || b.phaseSpine.endsAt
                       ? `${dshort(b.phaseSpine.startsAt)} to ${dshort(b.phaseSpine.endsAt)} · `
                       : ''}
-                    session {b.phaseSpine.currentSession}
+                    {/* Counted the way the exit gate below counts it: sessions everybody has finished.
+                        `currentSession` is the highest number any row carries, and the next row is
+                        created the moment one completes, so it ran ahead of the run. */}
+                    {(() => {
+                      const done = ((b.phaseSpine.sessions ?? []) as { state: string }[]).filter((x) => x.state === 'done').length
+                      return `${done} ${done === 1 ? 'session' : 'sessions'} done`
+                    })()}
                   </span>
                 ) : null}
               </div>

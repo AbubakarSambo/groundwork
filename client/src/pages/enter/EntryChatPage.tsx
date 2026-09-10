@@ -1180,6 +1180,8 @@ export function EntryChatPage() {
   const [checkInBy, setCheckInBy] = useState('')
   const [lastCheckInBy, setLastCheckInBy] = useState('')
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ONE_TIME' | 'SEQUENTIAL'>('FORTNIGHTLY')
+  /* Where the planned session count came from, so the chip can say so instead of presenting it as fact. */
+  const [plannedFrom, setPlannedFrom] = useState<{ timelineDays: number; cadence: string } | null>(null)
   /**
    * Did anyone actually choose this rhythm?
    *
@@ -1672,7 +1674,7 @@ export function EntryChatPage() {
            * was contradict the number the person had just agreed to.
            */
           const planned = plannedSessionsFor(res.extracted.timelineDays, res.extracted.cadence ?? cadence)
-          if (planned != null) setSessions(planned)
+          if (planned != null) { setSessions(planned); setPlannedFrom({ timelineDays: res.extracted.timelineDays, cadence: res.extracted.cadence ?? cadence }) }
         }
         // Background classify intent when we have initial
         if (res.extracted.initial) {
@@ -2361,7 +2363,7 @@ export function EntryChatPage() {
             <button
               onClick={() => { setSessionsInput(String(sessions)); setEditingSessions(true) }}
               style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-              title="Edit number of sessions"
+              title={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'} - from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
             >
               {/*
                 This read "1/{sessions}" - so during setup, before anyone has
@@ -2373,10 +2375,9 @@ export function EntryChatPage() {
                 conversation said. GW-005.
 
                 The prefix is gone and the number is labelled as the plan, which
-                is what it actually is - an editable estimate. The engine does not
-                yet extract cadence from the conversation (the /entry/onboard
-                response carries no session or duration field), so the number
-                still has to be set here rather than inferred.
+                is what it actually is - an editable estimate, derived from the
+                timeline and cadence the engine extracted (see onboard, above)
+                and traceable to them in the button's title.
               */}
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{sessions}</span>
               <span style={{ fontSize: 10, color: 'var(--gw-sub)', marginLeft: 4 }}>
@@ -3205,13 +3206,18 @@ export function EntryChatPage() {
                * as a page arguing with itself, which is the same defect as "Reports ready 0" over
                * a finished report. The number was never wrong; the place was.
                */
+              /*
+               * AND NOT A MEASUREMENT IT IS NOT. This was a five-dot bar and a grade word ("Thin",
+               * "Moderate", "Strong") under a tooltip claiming it measured how concrete the answers
+               * were. It was a turn count. The real specificity read is server-side and not on the
+               * anonymous entry report, so nothing is invented: the number is labelled as what it
+               * counts, and the bar out of five - which specificity-shows-as-what-it-is-made-of.spec
+               * records as decided may not come back - is gone with the grade word.
+               */
               const turns = history.filter(m => m.role === 'user').length
-              const depth = turns < 4 ? 1 : turns < 8 ? 2 : turns < 12 ? 3 : turns < 16 ? 4 : 5
-              const label = depth <= 1 ? 'Thin · more exchanges strengthen the report' : depth <= 2 ? 'Moderate · a solid start' : depth <= 3 ? 'Good' : depth <= 4 ? 'Strong' : 'Rich'
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  {[1,2,3,4,5].map(n => <div key={n} style={{ width: 7, height: 7, borderRadius: 2, background: n <= depth ? 'var(--gw-green-b)' : 'rgba(255,255,255,.18)' }} />)}
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }} title="How concrete and specific your answers were (Thin, Fair, Good, Strong)">Specificity: {label}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Depth: {turns} {turns === 1 ? 'exchange' : 'exchanges'}{turns < 4 ? ' · more exchanges strengthen the report' : ''}</span>
                 </div>
               )
             })()}

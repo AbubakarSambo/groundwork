@@ -993,7 +993,16 @@ export function ReportBody({
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
-  const contributedParties = ((report.engagement ?? {}) as any).parties?.filter((p: any) => p.contributed).length ?? 2
+  const parties = ((report.engagement ?? {}) as any).parties as { contributed?: boolean }[] | undefined
+  const contributedParties = parties?.filter((p) => p.contributed).length ?? 2
+  /* How many are still to check in - said as a number, because "the second" on a four-person
+     check-in with three outstanding was wrong by two. */
+  const outstandingParties = parties ? Math.max(0, parties.length - contributedParties) : 0
+  const stillToCheckIn = outstandingParties === 0
+    ? 'One person has checked in so far. The next is what makes it a comparison.'
+    : outstandingParties === 1
+      ? 'One person has checked in so far. One more is still to check in, and that is what makes it a comparison.'
+      : `One person has checked in so far. ${outstandingParties} more are still to check in, and that is what makes it a comparison.`
   // Null when the report names nothing, and the header renders nothing in that
   // case rather than a reassuring placeholder.
   const read = agreements.length + divergences.length > 0
@@ -1041,10 +1050,10 @@ export function ReportBody({
    */
   const sessionPhrase = !statusLabel
     ? (oneSided
-      ? 'One person has checked in so far. The second is what makes it a comparison.'
+      ? stillToCheckIn
       : 'Everyone has answered. This has not yet named an area they agree or differ on.')
     : oneSided
-      ? 'One person has checked in so far. The second is what makes it a comparison.'
+      ? stillToCheckIn
       : divergences.length === 0
         ? 'You see this the same way.'
         : 'Where you see it differently is below, most important first.'
@@ -1109,7 +1118,8 @@ export function ReportBody({
       {isForming && progress && (
         <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
           <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: 'var(--gw-amber-t)' }}>
-            <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in.
+            {/* The unit, named: without "for session N" this read as "3 of 5 have ever taken part". */}
+            <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in for session {progress.sessionNumber}.
             {progress.requestingUserIsMissing ? ' You haven\'t checked in yet for this session - that\'s part of what\'s still missing.' : ' This updates as more people check in.'}
           </div>
         </div>
