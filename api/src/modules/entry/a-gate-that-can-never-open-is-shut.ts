@@ -53,8 +53,22 @@ export interface ATurn {
  *
  * `reply` is the turn about to be sent, which is not in `messages` yet.
  */
+/**
+ * A REPLY THAT HANDS OFF IS A CLOSE ON ITS OWN. Driven live on 10 Sep 2026: "Great, that gives me
+ * what I need. The next screen will ask who should give their account" - and nothing happened,
+ * because the rule below wanted TWO closers in a row and the previous turn had asked a question.
+ * The person sat with an input and a sentence telling them the next screen was coming. When the
+ * reply itself names the hand-off, it has stopped asking.
+ */
+const A_HAND_OFF = /\b(?:next screen|that gives me what i need|that is everything i need|go into (?:your|the) check-in|into the check-in itself|you'?ll go into)\b/i;
+
+export function itHandsOff(text: string | null | undefined): boolean {
+  return itAskedNothing(text) && A_HAND_OFF.test(text ?? '');
+}
+
 export function theSetupHasStoppedAsking(messages: ATurn[], reply: string): boolean {
   if (!itAskedNothing(reply)) return false;
+  if (itHandsOff(reply)) return true;
 
   /* The assistant turn before this one. Anything that is not an assistant turn is skipped rather
      than treated as a break: the person answering in between is the normal shape, and is in fact
