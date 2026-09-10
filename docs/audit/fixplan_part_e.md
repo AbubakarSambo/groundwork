@@ -79,51 +79,59 @@ Migration: none, the column exists. Backfill: none, blank is a valid answer.
 Effort: half a day.
 Risk: low. The field is additive and already in the schema and the API response.
 
-## E3. Department as an optional read scope
+## E3. The manager rule exists. Wire it to the reads that do not use it
 
-Closes: the dead reporting line, and the manager question.
+**Corrected 10 September 2026.** This batch was written as though the manager rule had to be built.
+It does not. `api/src/modules/reports/whose-reports-a-manager-may-read.ts` implements it, with a
+long header stating the rule, and `a-manager-sees-the-report-not-the-words.spec.ts` holds it. It
+already draws the two lines that matter: a solo report is never handed over by virtue of being
+somebody's manager, a transcript never at any level, and access follows your own people rather than
+any report that happens to mention one of them.
 
-Once E1 exists this is a small change inside one function: a viewer who is the named manager of a
-party, or an admin whose department matches, reads at `shared`. Never at `own`, so a manager sees
-the report and never the words. That is the standing rule and this makes it real rather than
-incidental.
+It is reachable through exactly one route, the published interface's reports-for-my-people. The
+product's own client never calls it, and the app's four report reads still use the roleless
+organisation test.
 
-It ships behind an organisation setting, because two customers will want different answers and the
-product already keeps settings as rows rather than defaults in code. The setting has three values:
-nobody, department managers, every admin. The last one is what happens today, so shipping with it
-selected changes nothing until somebody chooses otherwise.
+So the work here is not a rule, it is a wiring job: E1's rule delegates to this module rather than
+inventing a second answer, and the app's own reads go through E1. That is the whole batch.
 
-Awaiting your decision only on which value is the default for a new organisation. Everything else
-can be built now.
+Two things to check while wiring, because they are the failure modes the module cannot see from
+where it sits. A person with no department must not match another person with no department. And
+the caller has to supply the manager's own external identifier, which the app's session does not
+carry today the way a panel caller's does.
 
-Spec: `a-manager-sees-the-report-and-not-the-words.spec.ts`.
+Spec: extend the existing one rather than adding a near-duplicate. Do not write
+`a-manager-sees-the-report-and-not-the-words.spec.ts`; the file already exists under all but one
+character of that name.
 
-Migration: one settings row per organisation, written by the same path that writes the other
-settings. Backfill: set every existing organisation to the value that matches today's behaviour, so
-nothing changes under anybody.
-Effort: half a day on top of E1.
-Risk: the failure mode to guard is a blank department matching another blank department. The spec
-above must include that case.
+Effort: hours, not the half-day previously stated, and only after E1.
+Risk: low. The rule is already specified and tested; this changes who can reach it.
 
-## E4. A session belongs to the organisation being viewed
+## E4. The organisation switch is global, and the join path does not use it
 
-Closes: P4-B07.
+**Corrected 10 September 2026.** This batch claimed the organisation should move out of the person's
+row and into the session. That reverses a decision recorded at `auth.service.ts:1209-1218`, and it
+is unnecessary: the switcher exists, it takes the role from the membership rather than carrying the
+old one, and it works, because it writes the active organisation onto the user row and the token
+strategy re-reads that row on every request.
 
-Every scope is taken from the single organisation on the person's row, while the schema supports
-several memberships and the back-office work relies on that. Somebody who joins another
-organisation's check-in is signed in against their home organisation, so every surface around the
-check-in reads the wrong one.
+Two real defects remain, both narrower than what was proposed.
 
-The organisation moves out of the person row and into the session, chosen at sign-in and switchable,
-with the person's memberships as the list of what they may choose. The rule from E1 then asks the
-session, not the user.
+The active organisation is global to the person rather than to the session. Switching in one browser
+switches every other browser and device at the same time, mid-task, with no notice. Whether that is
+worth changing is a judgement: the cost of per-session is that every org-scoped query stops trusting
+the user row, which is the rewrite the recorded decision deliberately avoided. My recommendation is
+to leave it and say so on the switcher, rather than to rewrite the scoping.
 
-Spec: `a-person-may-belong-to-two-places-and-be-in-one.spec.ts`.
+The join path never switches. Somebody who joins another organisation's check-in is signed in against
+their home organisation, so the shell around the check-in reads the wrong one. That is P4-B07 and it
+is a real bug with a small fix: the join confirmation switches the active organisation to the one
+whose check-in they just joined, using the switcher that already exists.
 
-Migration: none. Backfill: none.
-Effort: a day, and it touches sign-in, so it wants its own change rather than riding with E1.
-Risk: the highest in this part. Every read is scoped by this value. Do it after E1 is green, not
-alongside it.
+Spec: `joining-somewhere-else-puts-you-there.spec.ts`.
+
+Effort: hours for the join path. The per-session question is a decision, not a task.
+Risk: low, once it stops being a rewrite.
 
 ## E5. What a lead may read
 
