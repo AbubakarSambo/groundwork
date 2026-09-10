@@ -1305,3 +1305,53 @@ Every ID in this slice, in exactly one batch.
 Batch 4 (transactions and unique rows) unblocks Batch 3 and Batch 2. Batch 2 unblocks Batch 11's
 repair sweep. Batch 8 should land before or with Batch 11 so the new `extract` timeout produces a
 recorded failure rather than a swallowed one. Everything else is independent.
+
+---
+
+# Added 10 September 2026, by decision
+
+## Batch 18 — A report can say the evidence is strong, because the anchoring already exists
+
+Closes: P6B-002, and the unreachable top coverage band.
+
+**The real cause, which the register did not find.** There are two notions of document-backing in
+this codebase. One is alive and careful. The other is dead, and it is the one the ground report
+uses.
+
+The live one: a record entry carries `recallBased`, `anchoredDocumentId`, `anchoredPassage` and
+`anchoredOrigin`. Entries are written with `recallBased: true`, and an anchoring pass in
+`conversation.service.ts` sets it false when a line is matched to an uploaded document, storing the
+document, the passage that backs it and where the document came from. The session report uses
+exactly this, as `!recallBased && countsAsASource(backedBy)`, and the origin check is there so a
+note the product generated cannot back a claim the product made.
+
+The dead one: `RecordEntry.evidenceType`, an enum defaulting to `CHECK_IN`. Nothing in the
+repository ever writes the two document values. There are two readers and no writers.
+`documentBackedPct` counts those two values, so it is structurally zero rather than merely low. And
+because `coverageBand` requires that percentage above thirty to say `strong`, the strongest band
+has never been reachable by any report, whatever anybody uploads.
+
+**The change is small, because the work is already done.**
+
+1. `documentBackedPct` computes from the live fields, the same expression the session report uses,
+   including the origin check. Not from `evidenceType`.
+2. `coverageBand` then works as written, with no change to its thresholds. Confirm thirty percent
+   is the right line once real reports produce real numbers; it was chosen against a figure that
+   was always zero, so it has never been tested against anything.
+3. `evidenceType` is then dead in earnest. Do not backfill it. Remove the two reads and the column,
+   or leave the column and remove the reads, but do not leave a second answer to a question that
+   already has one. This is the pattern part B batch 4 exists to stop.
+4. The patterns service reads `evidenceType` the same way and has the same defect. Fix both, or
+   neither is fixed.
+
+**No migration, no backfill.** The anchoring data is already recorded on existing entries, so
+reports regenerated after this change will report their real evidence for runs that already
+happened.
+
+Spec: `a-report-counts-the-anchoring-it-actually-has.spec.ts`, and a source-order spec that fails
+if `documentBackedPct` is ever computed from a field with no writer.
+
+Effort: hours for the computation. Half a day including the patterns service and removing the dead
+path.
+Risk: low, and it moves in the honest direction. Numbers that were always zero start being
+non-zero, so any screen that reads "0% document-backed" as normal will change. That is the point.

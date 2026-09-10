@@ -803,3 +803,44 @@ Every ID in the slice, once.
 answers with silence. Batch 3 sits on top of Part A Batch 5. Batch 10's widened marketing guard
 should land after Part A Batch 3 and Batch 7's wording change, or it fails on sentences those
 batches own.
+
+---
+
+# Added 10 September 2026, by decision
+
+## Batch 17 — Where WhatsApp, the panel and the API are shown
+
+Replaces the deleted batch 11, which proposed a marketing section and dies with the copy freeze.
+
+**Decided: the Connect page is the home for this.** It already holds the three screenshots
+(`client/public/connect/panel.png`, `whatsapp.png`, `ops-panel.png`), it already has the
+request-access flow, and putting the pictures above that request is the right order: see what it
+is, then ask for it.
+
+What goes there: the panel, WhatsApp, and webhooks, each with its picture and two sentences. Not
+patterns; patterns is a product surface a customer meets in use, not a thing they evaluate before
+signing up, and putting it here would make the page an inventory instead of an offer.
+
+**The limitation to be honest about.** The Connect page is behind sign-in and behind an admin role.
+It reaches a customer who has already bought in, which makes it good at converting an existing
+customer into an integrated one, and useless for the prospect who never learns WhatsApp exists.
+It solves the discoverability problem for one audience and not the other.
+
+**If the marketing freeze is lifted for one thing, make it one clause.** The recommendation is a
+clause, not a section, in the homepage block headed "Everyone is asked the same way, at the same
+time." That is where the mechanism is already described, and WhatsApp is not a feature so much as
+the answer to the objection that block raises: my team will not log into another tool. Naming it
+there costs one line and answers the question at the moment a reader has it. A separate features
+section would be worse, because it turns a scenario-led page into a list.
+
+The panel and the API do not need the homepage. The buyer who wants them arrives already asking.
+
+**Not fixable by the product, and needing a recorded exception rather than a fix:** four uses of
+the internal word "Ground" in site copy, and the About page's contact route, which is a mail link
+the pricing page's own source says was removed there for being broken. Both are copy, both are
+frozen. They should be written down as accepted rather than left looking like open findings.
+
+Effort: half a day for the Connect page. An hour for the homepage clause if it is wanted.
+Risk: the Connect page must not advertise WhatsApp before part D lands, for the same reason the
+deleted batch was sequenced that way. A page that sells a channel which answers with silence is
+worse than a page that does not mention it.
