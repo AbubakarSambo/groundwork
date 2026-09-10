@@ -98,7 +98,8 @@ export class WebhooksListener {
         const connected = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } }).catch(() => null);
         if (person?.phone && connected?.enabled) {
           const which = e.sessionNumber === 1 ? 'Your first check-in' : `Check-in ${e.sessionNumber}`;
-          await this.whatsapp.sendFor(ground.organizationId, person.phone, `${which} on "${ground.label}" is open. Reply here to do it: about ten minutes, and what you say is released with everybody else's, not before.`)
+          /* Business-initiated: goes as free text inside the window, as a template outside it, or not at all. */
+          await this.whatsapp.sendFor(ground.organizationId, person.phone, `${which} on "${ground.label}" is open. Reply here to do it: about ten minutes, and what you say is released with everybody else's, not before.`, { checkInId: e.checkInId, kind: 'opening' })
             .catch((err) => this.logger.warn(`WhatsApp opening notice failed for ${e.checkInId}: ${err?.message}`));
         }
       }

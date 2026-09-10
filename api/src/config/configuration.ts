@@ -151,6 +151,11 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
    */
   appSecret: process.env.WHATSAPP_APP_SECRET,
   enabled: !!process.env.WHATSAPP_ACCESS_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID,
+  /**
+   * Template names Meta has approved, comma-separated. A business-initiated message outside the
+   * 24-hour window goes as one of these or not at all (whatsapp/a-message-outside-the-window.ts).
+   */
+  approvedTemplates: (process.env.WHATSAPP_APPROVED_TEMPLATES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 }));
 
 // Stripe, USD. Subscription billing: ten free grounds per org with unlimited

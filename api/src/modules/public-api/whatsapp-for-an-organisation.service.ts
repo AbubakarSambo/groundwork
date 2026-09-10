@@ -12,6 +12,7 @@ import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
+import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
 
 /**
  * WHAT HAPPENS TO A WHATSAPP MESSAGE SENT TO AN ORGANISATION'S NUMBER.
@@ -44,6 +45,8 @@ export class WhatsAppForAnOrganisationService {
     if (!message) return;
     const from: string = message.from;
     if (!from) return;
+    /* A redelivery is not a second answer. The id is claimed before anything else happens. */
+    if (message.id && !(await this.firstTimeWeSeeThis(organizationId, String(message.id)))) return;
     await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     const arrived = whatArrived(message);
     const say = (text: string) => this.whatsapp.sendFor(organizationId, from, text);
@@ -54,6 +57,20 @@ export class WhatsAppForAnOrganisationService {
     if (!who.personId && !who.userId) {
       await say("This number is not on your organisation's roster yet. Ask your admin to add it, or add it yourself under Settings in Groundwork, then message again.");
       return;
+    }
+    /* The 24-hour window is measured from this, per person; and STOP means stop. */
+    if (who.personId) {
+      await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappLastInboundAt: new Date() } }).catch(() => undefined);
+      if (arrived.kind === 'text' && A_STOP_WORD.test(arrived.text)) {
+        await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: new Date() } }).catch(() => undefined);
+        await say(STOPPED_SAYING);
+        return;
+      }
+      if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
+        await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
+        await say(RESUMED_SAYING);
+        return;
+      }
     }
     let userId = who.userId;
     if (!userId && who.personId) {
@@ -136,8 +153,10 @@ export class WhatsAppForAnOrganisationService {
       try {
         await this.conversation.complete(current.id, userId!);
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
+        /* The report comes from the completion listener below, off this request: four polls at four
+           seconds each and a translation held Meta's webhook past its patience, and the redelivery
+           was another answer. Acknowledge, and let the listener send. */
         await say('Your check-in is complete and on record. Your report follows in a moment.');
-        await this.sendTheReport(organizationId, current, userId!, from);
       } catch (e: any) {
         await say(e?.response?.message ?? e?.message ?? 'That could not be completed yet.');
       }
@@ -173,6 +192,16 @@ export class WhatsAppForAnOrganisationService {
 
   /* --- the report, on the phone, when a session closes anywhere --- */
 
+  /**
+   * THE REPORT REACHES THE CHANNEL THE PERSON WAS ACTUALLY USING. This returned early whenever ANY
+   * thread row existed for the check-in, reasoning that the finish handler had sent it - but a thread
+   * row is written on any WhatsApp interaction and deleted only in the WhatsApp finish branch, so
+   * somebody who sent one message here and then finished in the app never got their report here. It
+   * also required the organisation's own connection to be enabled, though sendFor falls back to the
+   * platform number. The one fact that matters is whether a report send for this check-in already
+   * went, and the send record says so. And it is not awaited into the request that completed the
+   * session: the synthesis is polled, and that must not hold anybody's webhook or button.
+   */
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(e: CheckInCompletedEvent) {
     try {
@@ -181,16 +210,27 @@ export class WhatsAppForAnOrganisationService {
         select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true } }, participant: { select: { userId: true, email: true } } },
       });
       if (!c?.participant.userId) return;
-      const connected = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: c.ground.organizationId }, select: { enabled: true } }).catch(() => null);
-      if (!connected?.enabled) return;
       const person = c.participant.email ? await this.prisma.person.findFirst({ where: { organizationId: c.ground.organizationId, email: c.participant.email }, select: { phone: true } }) : null;
       if (!person?.phone) return;
-      /* Completed from the phone: the finish handler already sends it. Avoid saying it twice. */
-      const thread = await this.prisma.whatsAppThread.findFirst({ where: { organizationId: c.ground.organizationId, checkInId: c.id } }).catch(() => null);
-      if (thread) return;
-      await this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label }, c.participant.userId, person.phone);
+      const alreadySent = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: { in: ['report', 'report:template'] }, sentAt: { not: null } }, select: { id: true } }).catch(() => null);
+      if (alreadySent) return;
+      void this.sendTheReport(c.ground.organizationId, { id: c.id, status: c.status, sessionNumber: c.sessionNumber, label: c.ground.label }, c.participant.userId, person.phone)
+        .catch((err: any) => this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`));
     } catch (err: any) {
       this.logger.warn(`WhatsApp report after completion failed for ${e.checkInId}: ${err?.message}`);
+    }
+  }
+
+  /** Claims the message id. False on a redelivery, which is then not handled a second time. */
+  private async firstTimeWeSeeThis(organizationId: string, messageId: string): Promise<boolean> {
+    try {
+      await this.prisma.whatsAppInboundMessage.create({ data: { organizationId, messageId } });
+      return true;
+    } catch (err: any) {
+      if (err?.code === 'P2002') return false;
+      /* The table being unreachable must not make every message a redelivery. */
+      this.logger.warn(`Could not record inbound WhatsApp message ${messageId}: ${err?.message}`);
+      return true;
     }
   }
 

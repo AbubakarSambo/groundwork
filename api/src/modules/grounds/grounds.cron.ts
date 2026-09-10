@@ -484,7 +484,7 @@ export class GroundsCron {
         if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
           const contextLine = lastContext ? `\n\nLast time: "${lastContext}"` : '';
           try {
-            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`);
+            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.${contextLine}\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
           } catch (waErr: any) {
             // The email is already out. A second channel failing is worth knowing about, not retrying.
             this.logger.warn(`WhatsApp session-ready failed for check-in ${ci.id}, email was sent: ${waErr.message}`);

@@ -7,6 +7,7 @@ export type SendResult = { sent: boolean; status?: number; error?: string };
 /** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
 export type SendContext = { checkInId?: string | null; kind?: string };
 import { PrismaService } from '../prisma/prisma.service';
+import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
 
 /**
  * Single Groundwork-owned WhatsApp Business number, shared across every org -
@@ -117,6 +118,13 @@ export class WhatsAppService {
    */
   async sendMessage(phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = WhatsAppService.normalize(phoneNumber);
+    const gate = await this.mayInitiate(null, to, context);
+    if (!gate.free) {
+      if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', null, to, text, gate.template, context);
+      const result: SendResult = { sent: false, error: gate.because };
+      this.writeItDown(null, to, result, context);
+      return result;
+    }
     if (!(await this.isEnabled())) {
       /*
        * THE BODY ONLY OUTSIDE PRODUCTION.
@@ -196,6 +204,13 @@ export class WhatsAppService {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return this.sendMessage(phoneNumber, text, context);
     const to = WhatsAppService.normalize(phoneNumber);
+    const gate = await this.mayInitiate(organizationId, to, context);
+    if (!gate.free) {
+      if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, context);
+      const result: SendResult = { sent: false, error: gate.because };
+      this.writeItDown(organizationId, to, result, context);
+      return result;
+    }
     const result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     this.writeItDown(organizationId, to, result, context);
@@ -253,6 +268,48 @@ export class WhatsAppService {
 
   private async deliver(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
     return this.post(phoneNumberId, accessToken, to, text);
+  }
+
+  /**
+   * WHETHER THIS MESSAGE MAY GO AS FREE TEXT. A reply to something the person just wrote always may.
+   * A message the product starts may only inside Meta's 24-hour window, measured from the last time
+   * THIS person wrote to us, and never to somebody who said STOP. Outside the window it goes as an
+   * approved template or is recorded as not sent, with the reason - checked before anything is
+   * composed or paid for. See a-message-outside-the-window.ts.
+   */
+  private async mayInitiate(organizationId: string | null, to: string, context: SendContext): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string }> {
+    if (!isBusinessInitiated(context.kind)) return { free: true };
+    const person = await this.prisma.person
+      .findFirst({
+        where: { phone: to, ...(organizationId ? { organizationId } : {}) },
+        orderBy: { whatsappLastInboundAt: { sort: 'desc', nulls: 'last' } },
+        select: { whatsappStoppedAt: true, whatsappLastInboundAt: true },
+      })
+      .catch(() => null);
+    if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };
+    if (insideTheServiceWindow(person?.whatsappLastInboundAt)) return { free: true };
+    const template = templateFor(context.kind, this.config.get<string[]>('whatsapp.approvedTemplates') ?? []);
+    return { free: false, template, because: OUTSIDE_THE_WINDOW };
+  }
+
+  /** Meta's template message. The plain text the caller composed rides as the body parameter. */
+  private async sendTemplate(phoneNumberId: string, accessToken: string, organizationId: string | null, to: string, text: string, template: ATemplate, context: SendContext): Promise<SendResult> {
+    let result: SendResult;
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'template',
+          template: { name: template.name, language: { code: template.language }, components: template.components(text) },
+        }),
+      });
+      result = res.ok ? { sent: true, status: res.status } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };
+    } catch (err: any) {
+      result = { sent: false, error: err?.message ?? 'template send failed' };
+    }
+    this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
+    return result;
   }
 
   /**

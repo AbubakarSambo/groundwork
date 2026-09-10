@@ -2008,6 +2008,19 @@ model WhatsAppThread {
   @@map("whatsapp_threads")
 }
 
+/// A REDELIVERED WHATSAPP MESSAGE IS NOT A SECOND ANSWER. Meta redelivers when it does not get a 200
+/// in time; each redelivery was another model turn, another slot against the answer ceiling and, on
+/// a session not yet opened, another session spent. The handler claims the message id here first.
+model WhatsAppInboundMessage {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  messageId      String   @map("message_id")
+  handledAt      DateTime @default(now()) @map("handled_at")
+
+  @@unique([organizationId, messageId])
+  @@map("whatsapp_inbound_messages")
+}
+
 /// WHICH ORGANISATION A NUMBER WRITING TO THE PLATFORM NUMBER MEANS. The platform webhook has no
 /// organisation in its URL; the sender's number is looked up on every roster and, when it is on more
 /// than one, the person is asked and the answer is kept here. One row per phone.
@@ -3110,6 +3123,11 @@ model Person {
   /// The number they message from, E.164, from SCIM phoneNumbers[] or the people route. Matched
   /// before any number a person typed into Settings, because the roster is the customer's truth.
   phone String?
+  /// STOP means stop, by the means the channel offers (whatsapp/a-message-outside-the-window.ts).
+  whatsappStoppedAt      DateTime? @map("whatsapp_stopped_at")
+  whatsappConsentAt      DateTime? @map("whatsapp_consent_at")
+  /// The last time THIS person wrote to us on WhatsApp: Meta's 24-hour service window is measured from it.
+  whatsappLastInboundAt  DateTime? @map("whatsapp_last_inbound_at")
 
   /// SCIM's own signal, kept as it arrives. `deactivatedAt` is the moment it first became false.
   active        Boolean   @default(true)
