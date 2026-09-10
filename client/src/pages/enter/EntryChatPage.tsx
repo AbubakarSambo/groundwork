@@ -1065,6 +1065,8 @@ export function EntryChatPage() {
 
   // Save card
   const [showSave, setShowSave] = useState(false)
+  /* The save card's own confirm: the page's Start over is under the card and cannot be reached. */
+  const [confirmClearInCard, setConfirmClearInCard] = useState(false)
   // Token authorizing pre-auth updates to the server-side draft (issued at
   // entry-save). Survives reloads so post-email edits keep syncing.
   const [draftToken, setDraftToken] = useState<string | null>(() => {
@@ -3397,6 +3399,26 @@ export function EntryChatPage() {
                 </button>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
                   Saving to {user.email}. No confirmation needed, you are already signed in.
+                </div>
+                {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
+                    so a card that cannot save (an old empty lead session) was a screen with one button
+                    that failed. Seen 10 Sep 2026. Confirmed, like the page's own control. */}
+                <div style={{ textAlign: 'center', paddingTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                  {confirmClearInCard ? (
+                    <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                      This throws away this session and everything in it.
+                      <button type="button" onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11.5, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Start over</button>
+                      <button type="button" onClick={() => setConfirmClearInCard(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>Keep it</button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmClearInCard(true)}
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      Start over instead
+                    </button>
+                  )}
                 </div>
               </div>
             ) : !emailSent ? (
