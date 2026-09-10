@@ -34,7 +34,8 @@ export class ReportsListener {
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(event: CheckInCompletedEvent) {
     // Notify the admin when any participant checks in (best-effort, never blocks report flow)
-    this.notifyAdminOnCheckIn(event).catch((err: any) =>
+    /* A repair is not news to the admin: the backstop re-emitting a lost event must not re-send "X has checked in". */
+    if (event.source !== 'repair') this.notifyAdminOnCheckIn(event).catch((err: any) =>
       this.logger.warn(`Admin check-in notification failed for ground ${event.groundId}: ${err.message}`),
     );
 

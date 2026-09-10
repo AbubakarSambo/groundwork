@@ -80,6 +80,30 @@ describe('a round closes once', () => {
     );
   });
 
+  it('a decline is an answer: the round closes when the last person has answered, however they answered', async () => {
+    /* One refusal used to freeze the round for that session and every session after. The harness's
+       single count stands in for both counts here; the where clauses are what this pins. */
+    const { prisma, events } = harness({ participants: 2, done: 2 });
+    await recordRoundCompletion(prisma, events, 'g1', 1);
+    const wheres = prisma.checkIn.count.mock.calls.map((c: any) => c[0].where.status);
+    expect(wheres).toContainEqual({ in: expect.arrayContaining(['COMPLETED', 'DECLINED']) });
+    expect(wheres).toContainEqual('COMPLETED');
+  });
+
+  it('but a round where everybody declined has nothing to report, and does not close', async () => {
+    const created: any[] = [];
+    const prisma: any = {
+      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p0' }, { id: 'p1' }]) },
+      /* Two answered; none completed. */
+      checkIn: { count: jest.fn(async ({ where }: any) => (where.status === 'COMPLETED' ? 0 : 2)) },
+      roundCompletion: { create: jest.fn(async (a: any) => { created.push(a.data); return a.data; }) },
+    };
+    const events: any = { emit: jest.fn() };
+    await expect(recordRoundCompletion(prisma, events, 'g1', 1)).resolves.toBe(false);
+    expect(created).toEqual([]);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
   it('a ground with nobody to hear from has not closed a round', async () => {
     /* Otherwise an empty or misconfigured ground closes round after round against an empty list. */
     const { prisma, events } = harness({ participants: 0, done: 0 });

@@ -86,7 +86,8 @@ function prismaWith(people: Participant[]) {
     checkIn: {
       findFirst: async ({ where }: any) => {
         const person = people.find((p) => p.id === where.participantId);
-        return person?.completedSessions.includes(where.sessionNumber) ? { id: 'ci' } : null;
+        /* The predicate reads the status now, because a decline is an answer too. */
+        return person?.completedSessions.includes(where.sessionNumber) ? { id: 'ci', status: 'COMPLETED' } : null;
       },
     },
   };

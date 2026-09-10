@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { deadlineOf } from './when-the-clock-starts';
 import { A_GROUND_IS_OVER, A_GROUND_IS_HELD } from './a-ground-that-has-ended';
+import { AN_ANSWER } from './an-answer-includes-a-refusal';
+import { recordRoundCompletion } from './round-completion';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -665,56 +667,78 @@ export class GroundsCron {
   }
 
   /**
-   * GW-06 synthesis backstop - 4 AM daily. If the CHECK_IN_COMPLETED event
-   * was lost (e.g. a crash between session completion and synthesis), an ACTIVE
-   * ground can sit with both parties done and no report. This sweep finds that
-   * state and re-emits the event; the reports listener is idempotent so re-fire
-   * is safe.
+   * THE BACKSTOP REACHES EVERY ROUND, NOT ONLY THE FIRST.
+   *
+   * GW-06: if the CHECK_IN_COMPLETED event was lost - a crash between a session completing and the
+   * synthesis - a ground can sit with everybody done and no report. This sweep found that state and
+   * re-emitted the event. But it looked for it in exactly one place: `sessionNumber: 1`, on a ground
+   * that was ACTIVE, with `report: { is: null }`. So a failed release on session 5 of a ground that
+   * already had a session-1 report was permanent; and a ground whose FIRST release never fired sits
+   * at AWAITING_PARTIES - it only becomes ACTIVE when a report releases - and could never be reached.
+   *
+   * Now: every live ground, every session anybody has answered. A round is closed when everybody
+   * who is not managing-only has answered it (a decline is an answer) and at least one account is
+   * COMPLETED. A closed round with no completion row, or no report round taken for it, is the
+   * repair: the row is written if missing, and the event is re-emitted as a REPAIR - so the listener
+   * synthesises and releases, and does not mail the admin "X has checked in" again.
    */
   @Cron('0 4 * * *', { timeZone: 'UTC' })
   async synthesisBackstop() {
     await this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
-      const candidates = await this.prisma.ground.findMany({
-        where: { status: GroundStatus.ACTIVE, report: { is: null } },
+      const grounds = await this.prisma.ground.findMany({
+        where: { status: { notIn: [...TERMINAL, ...HELD] } },
         select: { id: true },
       });
 
-      if (candidates.length === 0) return;
-
       let triggered = 0;
-      for (const g of candidates) {
-        const active = await this.prisma.groundParticipant.findMany({
-          where: { groundId: g.id, userId: { not: null } },
+      for (const g of grounds) {
+        const parties = await this.prisma.groundParticipant.findMany({
+          where: { groundId: g.id, managingOnly: false },
           select: { id: true },
         });
-        if (active.length < 2) continue;
+        if (parties.length < 2) continue;
+        const ids = parties.map((p) => p.id);
 
-        let allDone = true;
-        let triggerCheckIn: { id: string; participantId: string } | null = null;
-        for (const p of active) {
-          // #36: report triggers after session 1 (both parties' first check-in),
-          // not session 2. Backstop mirrors isReportReady().
-          const s1 = await this.prisma.checkIn.findFirst({
-            where: { participantId: p.id, sessionNumber: 1, status: CheckInStatus.COMPLETED },
-            select: { id: true },
-          });
-          if (!s1) { allDone = false; break; }
-          triggerCheckIn = { id: s1.id, participantId: p.id };
+        const answers = await this.prisma.checkIn.findMany({
+          where: { groundId: g.id, participantId: { in: ids }, status: { in: AN_ANSWER } },
+          select: { id: true, participantId: true, sessionNumber: true, status: true },
+          orderBy: { sessionNumber: 'asc' },
+        });
+        const rounds = new Map<number, typeof answers>();
+        for (const a of answers) rounds.set(a.sessionNumber, [...(rounds.get(a.sessionNumber) ?? []), a]);
+
+        /* Every closed round gets its completion row if it is missing - cheap, idempotent, no model
+           call. Only the LATEST closed round is re-emitted for synthesis: re-running an older round's
+           picture cannot help anybody, and a round whose picture was empty keeps no snapshot at all,
+           so bounding the re-emit to one round per ground is what keeps this from firing daily. */
+        const closed: { sessionNumber: number; anAccount: (typeof answers)[number] }[] = [];
+        for (const [sessionNumber, rows] of rounds) {
+          if (new Set(rows.map((r) => r.participantId)).size < parties.length) continue;
+          const anAccount = rows.find((r) => r.status === CheckInStatus.COMPLETED);
+          if (!anAccount) continue;
+          closed.push({ sessionNumber, anAccount });
         }
-
-        if (!allDone || !triggerCheckIn) continue;
+        for (const { sessionNumber } of closed) {
+          const recorded = await this.prisma.roundCompletion.findUnique({ where: { groundId_roundNumber: { groundId: g.id, roundNumber: sessionNumber } }, select: { id: true } });
+          if (!recorded) await recordRoundCompletion(this.prisma, this.events, g.id, sessionNumber);
+        }
+        const latest = closed[closed.length - 1];
+        if (!latest) continue;
+        const taken = await this.prisma.reportRound.findUnique({ where: { groundId_round: { groundId: g.id, round: latest.sessionNumber } }, select: { id: true } });
+        if (taken) continue;
 
         this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
-          checkInId: triggerCheckIn.id,
+          checkInId: latest.anAccount.id,
           groundId: g.id,
-          participantId: triggerCheckIn.participantId,
-          sessionNumber: 1,
+          participantId: latest.anAccount.participantId,
+          sessionNumber: latest.sessionNumber,
+          source: 'repair',
         } satisfies CheckInCompletedEvent);
         triggered++;
       }
 
       if (triggered > 0) {
-        this.logger.warn(`Synthesis backstop: re-triggered synthesis for ${triggered} stuck ground(s)`);
+        this.logger.warn(`Synthesis backstop: re-triggered ${triggered} round(s) that closed and were never recorded or released`);
       }
     });
   }

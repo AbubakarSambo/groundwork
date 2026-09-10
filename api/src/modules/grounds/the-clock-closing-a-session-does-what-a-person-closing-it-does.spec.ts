@@ -20,7 +20,9 @@ describe('the auto-close sweep', () => {
       /\bdata:\s*\{/.test(CODE.slice(Math.max(0, m.index! - 200), m.index!)),
     );
     expect(writes).toHaveLength(0);
-    expect(CODE).not.toMatch(/recordRoundCompletion\(/);
+    /* The SWEEP closes no round. The backstop, a different job in the same file, repairs rounds that closed and were never recorded - that is its job. */
+    const sweep = CODE.slice(CODE.indexOf('async autoCloseStaleCheckIns('), CODE.indexOf('async fireSessionClosingWarnings('));
+    expect(sweep).not.toMatch(/recordRoundCompletion\(/);
   });
 
   it('hands each stale session to the conversation service', () => {

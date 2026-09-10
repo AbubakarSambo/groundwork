@@ -1,5 +1,6 @@
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
+import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -4359,18 +4360,19 @@ export class GroundsService {
     });
     if (active.length < 2) return false;
 
+    /* Everybody has ANSWERED - and a decline is an answer (an-answer-includes-a-refusal.ts). Counting
+       only COMPLETED here froze every round with one refusal in it, for that session and every one after. */
+    let completed = 0;
     for (const p of active) {
       const ci = await this.prisma.checkIn.findFirst({
-        where: { participantId: p.id, sessionNumber, status: CheckInStatus.COMPLETED },
+        where: { participantId: p.id, sessionNumber, status: { in: AN_ANSWER } },
+        select: { status: true },
       });
       if (!ci) return false;
+      if (ci.status === CheckInStatus.COMPLETED) completed += 1;
     }
-    return true;
-  }
-
-  /** Backward-compat alias - checks session 1 readiness. */
-  async isReportReady(groundId: string): Promise<boolean> {
-    return this.isSessionReadyForReport(groundId, 1);
+    /* A round of refusals has answered and has nothing to report: no shared report from zero accounts. */
+    return completed >= AT_LEAST_ONE_ACCOUNT;
   }
 
   /**
@@ -4464,7 +4466,7 @@ export class GroundsService {
       where: {
         participantId: { in: active.map((p) => p.id) },
         sessionNumber,
-        status: { in: [CheckInStatus.COMPLETED, CheckInStatus.DECLINED] },
+        status: { in: AN_ANSWER },
       },
       select: { participantId: true, status: true },
     });

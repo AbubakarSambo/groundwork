@@ -24,8 +24,10 @@ import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 
-/** `CheckIn.closedReason` when the sweep, not the person, ended the session. The schema's own example is `willingness_declined`. */
+/** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
+/** `CheckIn.closedReason` when the person declined to take part. The literal the schema documents for it. */
+export const DECLINED_TO_TAKE_PART = 'willingness_declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -5123,7 +5125,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async decline(checkInId: string, requestingUserId: string) {
     /** The already-complete and already-declined refusals both live in the loader now. */
     const checkIn = await this.loadOwnedOpenCheckIn(checkInId, requestingUserId);
-    await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.DECLINED } });
+    /*
+     * WHAT THEY ALREADY SAID IS THEIRS. The loader permits IN_PROGRESS, so somebody can decline
+     * partway through - and this wrote DECLINED and nothing else, losing every turn they had given
+     * from their private record. The extraction complete() runs is run here first, best-effort, so
+     * their own words reach their own record before the session closes. And the reason is written,
+     * with the literal the schema documents for it, so a reader can tell a decline from a close.
+     */
+    if (checkIn.status === CheckInStatus.IN_PROGRESS) {
+      await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
+        this.logger.warn(`Record extraction before a decline failed for check-in ${checkIn.id}: ${err.message}`),
+      );
+    }
+    await this.prisma.checkIn.update({
+      where: { id: checkIn.id },
+      data: { status: CheckInStatus.DECLINED, closedReason: DECLINED_TO_TAKE_PART },
+    });
     return { status: 'declined' };
   }
 
