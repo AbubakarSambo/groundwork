@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Param, Query, Body, Req } from '@nestjs/c
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, MaxLength, Length } from 'class-validator';
 import { ParticipantsService } from './participants.service';
-import { Public, CurrentUser } from '../../common';
+import { Public, CurrentUser, OptionalAuth } from '../../common';
 
 class AcceptInviteDto {
   @IsString()
@@ -48,6 +48,7 @@ export class ParticipantsController {
   }
 
   @Public()
+  @OptionalAuth()
   @Post('accept')
   @ApiOperation({ summary: 'Accept an invite - returns an auth token and the check-in to enter' })
   async accept(@Body() dto: AcceptInviteDto, @Req() req: any) {

@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
-import { needsApproval } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { needsApproval, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens } from './an-invite-link-still-opens';
 import { PrismaService } from '../prisma/prisma.service';
@@ -361,6 +361,10 @@ export class ParticipantsService {
       groundId: ground.id,
       checkInId: checkIn?.id ?? null,
       existingAccount,
+      /* Signed in, and not yet let in. The page that receives this renders the sentence rather than
+         sending them to a check-in that will refuse them with a message about something else. */
+      queuedForApproval,
+      ...(queuedForApproval ? { saying: WAITING_TO_BE_LET_IN } : {}),
     };
   }
 

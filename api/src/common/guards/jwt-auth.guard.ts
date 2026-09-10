@@ -2,6 +2,7 @@ import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/com
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { IS_OPTIONAL_AUTH_KEY } from '../decorators/optional-auth.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -9,21 +10,26 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+  private flag(key: string, context: ExecutionContext): boolean {
+    return !!this.reflector.getAllAndOverride<boolean>(key, [context.getHandler(), context.getClass()]);
+  }
 
-    if (isPublic) {
+  canActivate(context: ExecutionContext) {
+    const isPublic = this.flag(IS_PUBLIC_KEY, context);
+    /*
+     * A public route that has asked to know who is signed in runs passport and swallows the failure
+     * (see handleRequest); a plain public route does not run it at all. See optional-auth.decorator.ts.
+     */
+    if (isPublic && !this.flag(IS_OPTIONAL_AUTH_KEY, context)) {
       return true;
     }
 
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, info: any) {
+  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     if (err || !user) {
+      if (context && this.flag(IS_PUBLIC_KEY, context) && this.flag(IS_OPTIONAL_AUTH_KEY, context)) return null;
       throw err || new UnauthorizedException('Invalid or expired token');
     }
     return user;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { joinApi } from '@/api/entry'
+import { authApi } from '@/api/auth'
 import { Arrival } from '@/components/gw/Arrival'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { useAuthStore } from '@/stores/auth'
@@ -32,11 +33,18 @@ export function JoinConfirmPage() {
     started.current = true
 
     joinApi.confirm(token)
-      .then(res => {
+      .then(async res => {
+        /* The token first, so the profile read is authenticated; then the REAL user. This used to
+           persist an empty email, no name, MEMBER and no organisation, and every screen that reads the
+           store then believed the person belonged nowhere. */
         setAuth(
           { id: res.userId, email: '', firstName: '', lastName: '', role: 'MEMBER', organizationId: '' },
           res.accessToken,
         )
+        try {
+          const fresh = await authApi.me()
+          setAuth(fresh, res.accessToken)
+        } catch { /* the placeholder stands until the next profile read; the check-in still opens */ }
         /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
            message about something else, is the failure the register calls P4-B03. They are told here. */
         if (res.queuedForApproval) { setWaiting(res.saying ?? 'An admin at the organisation that invited you has to approve you joining it before you can start.'); return }

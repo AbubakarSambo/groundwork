@@ -28,6 +28,8 @@ export function InvitePage() {
   const navigate = useNavigate()
   /** Set when the server has emailed a fresh way in, instead of signing us in here. */
   const [emailedTo, setEmailedTo] = useState<string | null>(null)
+  /* The server's sentence for somebody signed in and not yet let in. Rendered, not navigated past. */
+  const [waiting, setWaiting] = useState('')
   const setAuth = useAuthStore((s) => s.setAuth)
   const qc = useQueryClient()
 
@@ -102,6 +104,12 @@ export function InvitePage() {
         toast.info(`Welcome back - continuing as ${res.user.email}`)
       }
       qc.invalidateQueries({ queryKey: ['grounds'] })
+      /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
+         message about something else and a retry that can never work, is P4-B03. Told here. */
+      if (res.queuedForApproval) {
+        setWaiting(res.saying ?? 'An admin at the organisation that invited you has to approve you joining it before you can start. They have been asked.')
+        return
+      }
       // Seamless handoff: straight into their session-1 check-in on the
       // initiator's ground (the check-in row already exists - accept()
       // returns it, it never creates a second one). Fall back to the ground
@@ -122,8 +130,9 @@ export function InvitePage() {
         navigate(`/grounds/${groundId}/p`, { replace: true })
       }
     },
-    onError: () => {
-      toast.error('Could not start your session. Please try again.')
+    onError: (err: any) => {
+      /* The server's own sentence when there is one: it says which thing refused and what to do. */
+      toast.error(err?.response?.data?.message ?? 'Could not start your session. Please try again.')
     },
   })
 
@@ -132,6 +141,18 @@ export function InvitePage() {
    * on. Not an error, and not a dead end - just one more click, landing in the
    * inbox that was actually invited.
    */
+  if (waiting) {
+    return (
+      <InviteShell>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🕐</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>One thing before you start</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{waiting}</div>
+        </div>
+      </InviteShell>
+    )
+  }
+
   if (emailedTo) {
     return (
       <InviteShell>

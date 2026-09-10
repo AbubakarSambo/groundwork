@@ -86,7 +86,7 @@ export function needsApproval(who: WhoIsArriving): boolean {
 
 /** What the person themselves is told, on the screen where they expected a check-in. */
 export const WAITING_TO_BE_LET_IN =
-  'Your account is ready, and one thing has to happen before you can start: an admin at the ' +
+  'Your sign-in is ready, and one thing has to happen before you can start: an admin at the ' +
   'organisation that invited you has to approve you joining it. They have been asked. Nothing ' +
   'you do here is lost in the meantime, and you will be able to check in as soon as they answer.';
 
