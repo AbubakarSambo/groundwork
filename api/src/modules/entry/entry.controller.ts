@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
-import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class TurnDto {
@@ -111,12 +111,47 @@ class EntryLeadDto {
 // reportSummary should not exist" - i.e. every commit where the committer had
 // completed their own check-in session before saving. The client and service
 // were already correct; only this DTO was stale.
+/*
+ * THE WHOLE REPORT, NOT TWO FIELDS OF IT. The person read nine fields at the end of their entry
+ * chat; this DTO carried two, the merge rebuilt a one-key object from them, and that one key is what
+ * was written to CheckIn.sessionReport. Seven of nine fields were shown and then dropped at the
+ * moment they made an account - "the report looks nothing like what I got at the end", four times.
+ * Every key the client's EntryReport has is declared here, because forbidNonWhitelisted turns an
+ * undeclared key into a 400 (which is how this DTO came to exist in the first place).
+ */
 class EntryReportSummaryDto {
   @IsIn(['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'])
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
 
-  @IsString()
+  @IsString() @MaxLength(6000)
   whatGroundworkSaw: string;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  yourRole?: string | null;
+
+  @IsOptional() @IsString() @MaxLength(4000)
+  alignmentBasis?: string;
+
+  @IsOptional() @IsArray() @ArrayMaxSize(50)
+  areasRequiringAlignment?: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[];
+
+  @IsOptional() @IsArray() @ArrayMaxSize(50)
+  alignmentReached?: { title: string; note: string }[];
+
+  @IsOptional() @IsObject()
+  honestClose?: { aligned: string; open: string; revisit: string; risk: string };
+
+  @IsOptional() @IsArray() @ArrayMaxSize(100)
+  mentionedPeople?: { name: string; context: string }[];
+
+  @IsOptional() @IsArray() @ArrayMaxSize(100)
+  alsoCameUp?: { name: string; context: string }[];
+
+  @IsOptional() @IsString() @MaxLength(2000)
+  alsoCameUpNote?: string | null;
+
+  @IsOptional() @IsArray() @ArrayMaxSize(50)
+  suggestedParties?: { role: string; reason: string }[];
 }
 
 export class EntryDocumentDto {

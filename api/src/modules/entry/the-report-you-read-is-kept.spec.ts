@@ -29,6 +29,23 @@ describe('the report a session ended on', () => {
     expect(service).toMatch(/checkIn\.update\(\{[\s\S]{0,200}?sessionReport: dto\.report/);
   });
 
+  it('is carried whole: every key the client\'s report has, the DTO declares, and the merge passes it through', () => {
+    /* Seven of nine fields were shown at the end of the entry chat and dropped at the moment an
+       account was made, because the DTO declared two and the merge rebuilt a one-key object. A key
+       added to the client's EntryReport and not here is a 400 under forbidNonWhitelisted, which is
+       how this DTO came to exist - so the two are held equal. */
+    const clientType = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'client', 'src', 'api', 'entry.ts'), 'utf8');
+    const iface = clientType.slice(clientType.indexOf('export interface EntryReport {'), clientType.indexOf('\n}', clientType.indexOf('export interface EntryReport {')));
+    const keys = [...iface.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
+    expect(keys.length).toBeGreaterThanOrEqual(9);
+    const controller = withoutComments('entry.controller.ts');
+    const dto = controller.slice(controller.indexOf('class EntryReportSummaryDto {'), controller.indexOf('export class EntryDocumentDto'));
+    for (const k of keys) expect(dto).toMatch(new RegExp(`\\b${k}\\??:`));
+    expect(service).toMatch(/if \(!merged\.report && merged\.reportSummary\) \{\s*merged\.report = merged\.reportSummary;/);
+    const page = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8');
+    expect(page).toMatch(/reportSummary: sessionReport \?\? undefined/);
+  });
+
   it('never goes into the column the background summary owns', () => {
     /* `buildSoloArtifact` writes soloArtifact after this method returns. A commit that also wrote
        it would be racing a job it started itself, and losing. */

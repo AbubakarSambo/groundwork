@@ -1870,7 +1870,8 @@ export function EntryChatPage() {
         cadenceAnchorDay: (cadence === 'WEEKLY' || cadence === 'FORTNIGHTLY' || cadence === 'MONTHLY') && cadenceAnchorDay != null ? cadenceAnchorDay : undefined,
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
-        reportSummary: sessionReport ? { alignmentStatus: sessionReport.alignmentStatus, whatGroundworkSaw: sessionReport.whatGroundworkSaw } : undefined,
+        /* The WHOLE report they read, not two fields of it: what is sent here is what CheckIn.sessionReport keeps. */
+        reportSummary: sessionReport ?? undefined,
         // The setter's own part in this, as the interview extracted it. Lands on their participant row.
         roleAsDescribed: sessionReport?.yourRole?.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,

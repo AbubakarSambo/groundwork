@@ -404,8 +404,10 @@ export function overlayDraftOntoBody(
   // The client payload stores the report as reportSummary; map it into the
   // dto's report shape so the ground brief populates ("visible before
   // participants arrive").
-  if (!merged.report && merged.reportSummary?.whatGroundworkSaw) {
-    merged.report = { whatGroundworkSaw: merged.reportSummary.whatGroundworkSaw };
+  /* Pass-through, now that the DTO carries the whole report. The narrowing that stood here rebuilt a
+     one-key object because the DTO was two fields wide, and seven fields the person had read were lost. */
+  if (!merged.report && merged.reportSummary) {
+    merged.report = merged.reportSummary;
   }
   if (!Array.isArray(merged.contributors)) merged.contributors = [];
   return merged;
