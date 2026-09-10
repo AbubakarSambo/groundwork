@@ -74,17 +74,17 @@ function TheDoor() {
             disabled={verify.isPending || code.length !== 6}
             style={{ padding: '10px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: code.length === 6 ? 1 : 0.5 }}
           >
-            {verify.isPending ? 'Checking…' : 'Open the back office'}
+            {verify.isPending ? 'Checking…' : 'Open'}
           </button>
           <button
             type="button"
             onClick={() => send.mutate()}
             disabled={send.isPending}
-            style={{ fontSize: 12.5, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ fontSize: 12.5, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             Send it again
           </button>
-          <Link to="/grounds" style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Groundwork</Link>
+          <Link to="/grounds" style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--gw-sub)', textDecoration: 'none', whiteSpace: 'nowrap' }}>← Groundwork</Link>
         </div>
       </form>
     </div>
