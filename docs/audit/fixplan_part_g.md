@@ -12,20 +12,32 @@ keeps it indefinitely.
 This is the gap a buyer's legal team finds first, and for a product whose whole promise is that the
 words are private, "for ever" is the answer we currently give.
 
-Two decisions, both yours:
+**Decided, 10 September 2026.** A person may delete their way in. Their record stays.
 
-1. How long a person's words are kept after a check-in ends. A default of a year covers a full
-   review cycle; anything shorter starts destroying the record the product exists to build.
-2. Whether a person may erase their own words while the shared report built from them stays. The
-   shared report contains no verbatim runs by design, so this is coherent. It is also the harder
-   promise to keep, because it means the report can never be regenerated from the record afterwards.
+That is a coherent pair and it is the cheaper half to build. The record was made of their words but
+it is also the other parties' evidence of what was agreed, and pulling it out retrospectively would
+change reports other people have already read and acted on. Deleting the way in means: no sign-in,
+no notifications, no appearance in any roster or picker, and their name replaced by their part in
+the check-in wherever a report already names them. The words stay, attached to a person nobody can
+sign in as.
+
+Two consequences to be deliberate about. Somebody who deletes their way in and is later invited
+again arrives as a new person, so their earlier record does not follow them; that is the right
+answer but the invitation copy must not imply otherwise. And the deletion must be refused, with a
+reason, while a check-in they are party to is still open, because removing a live party mid-round
+is the frozen-round bug in part B by another route.
+
+**Still open, and the only thing blocking this batch:** how long a record is kept after a check-in
+ends. Nothing else in this part waits on it.
 
 **Once decided.** A retention column on the organisation, a sweep that removes turns past it and
 leaves the record entries and the report, and an erase route for a person's own check-in. The sweep
 must never touch a ground under a legal hold.
 
-Spec: `words-do-not-stay-for-ever.spec.ts` and `a-report-outlives-the-words-behind-it.spec.ts`.
-Effort: a day, once the two answers exist. Nothing can start before them.
+Spec: `a-person-may-delete-their-way-in-and-the-record-stays.spec.ts`, and
+`nobody-leaves-while-a-round-is-open.spec.ts`.
+Effort: a day for the deletion path, which can start now. The retention sweep waits on the one
+remaining answer.
 
 ## G2. The processor list names two providers we do not use
 
