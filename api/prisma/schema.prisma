@@ -432,6 +432,10 @@ model Organization {
   subscriptionStatus    String?           @map("subscription_status") // active | paused | cancelled
   subscriptionStripeId  String?           @map("subscription_stripe_id")
   subscriptionPeriodEnd DateTime?         @map("subscription_period_end")
+  /// Set when a cancellation is scheduled: access runs to this date and then stops. The status stays
+  /// `active` until Stripe deletes the subscription, because isSubscribed() reads `active` alone and
+  /// a fifth status would have unsubscribed the customer the moment they asked to leave later.
+  subscriptionEndsAt    DateTime?         @map("subscription_ends_at")
 
   companyStage CompanyStage? @map("company_stage")
 

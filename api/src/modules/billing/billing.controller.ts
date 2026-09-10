@@ -83,9 +83,17 @@ export class BillingController {
   @Delete('subscription')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Cancel the org subscription immediately' })
+  @ApiOperation({ summary: 'Cancel the org subscription at the end of the paid period. Access continues until then.' })
   async cancelSubscription(@CurrentUser('organizationId') organizationId: string) {
     return this.billing.cancelSubscription(organizationId);
+  }
+
+  @Post('subscription/keep')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Undo a scheduled cancellation before the date it would have ended' })
+  async keepSubscription(@CurrentUser('organizationId') organizationId: string) {
+    return this.billing.keepSubscription(organizationId);
   }
 
   @Patch('subscription/plan')

@@ -72,7 +72,6 @@ const NO_CALLER_ON_PURPOSE: Record<string, string> = {
    *   until its routes were wired (POST :id/pause and :id/resume) and came off the list.
    */
   'billing.service.ts#isBillingReady': 'a readiness check with no caller; the paths that would use it check their own preconditions',
-  'stripe.service.ts#cancelSubscriptionAtPeriodEnd': 'no cancellation surface exists yet, and cancelling is not a thing to wire in speculatively',
   'intelligence.service.ts#rollupAnonymised': 'built before the org-wide intelligence surface',
   'intelligence.service.ts#detectForceMultiplier': 'built before the surface that would show it',
   'patterns.service.ts#getOrgWideMentions': 'built before the org-wide view',

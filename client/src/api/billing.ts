@@ -19,6 +19,8 @@ export interface BillingStatus {
     plan: SubscriptionPlan | null
     status: string | null
     periodEnd: string | null
+    /** Non-null means a cancellation is scheduled: access runs to this date and then stops. */
+    endsAt: string | null
     freeExtensionUsed: boolean
   }
   /** `cap: null` means unlimited or no plan - render the count without a ceiling. W14-7. */
@@ -205,8 +207,13 @@ export const billingApi = {
   changeSubscriptionPlan: (plan: SubscriptionPlan) =>
     apiClient.patch<{ plan: SubscriptionPlan; periodEnd: string | null }>('/billing/subscription/plan', { plan }).then(r => r.data),
 
+  /** Schedules the end of the paid period; access continues until then. Returns when. */
   cancelSubscription: () =>
-    apiClient.delete('/billing/subscription').then(r => r.data),
+    apiClient.delete<{ endsAt: string | null }>('/billing/subscription').then(r => r.data),
+
+  /** Undo a scheduled cancellation before the date. */
+  keepSubscription: () =>
+    apiClient.post('/billing/subscription/keep').then(r => r.data),
 
   pauseSubscription: () =>
     apiClient.patch('/billing/subscription/pause').then(r => r.data),

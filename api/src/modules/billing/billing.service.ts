@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
@@ -565,20 +565,52 @@ export class BillingService {
     return { plan: newPlan, periodEnd };
   }
 
-  /** Cancel the org's active subscription immediately. */
-  async cancelSubscription(organizationId: string): Promise<void> {
+  /**
+   * CANCELLING RUNS TO THE END OF WHAT WAS PAID FOR.
+   *
+   * This called `subscriptions.cancel()`, which ends the subscription at that moment with no
+   * proration, then nulled the plan, the status, the Stripe id and the period end. A customer who
+   * cancelled on the second day of a paid month lost the twenty-eight days they had already paid
+   * for; nothing refunded them and nothing told them. With payment live, that is money taken and not
+   * returned. Decided by the product owner: cancelling means the subscription ends at the end of the
+   * paid period, and somebody who wants to stop paying sooner pauses instead (which is built, below).
+   *
+   * So this schedules the cancellation with Stripe and writes WHEN access stops. Everything else is
+   * left as it is: the plan, the Stripe id, the period end, and the status - which stays `active`,
+   * because `isSubscribed` reads `active` alone and fails toward the free tier on anything else. A
+   * fifth status ("cancelling") would have unsubscribed the customer the moment they asked to leave
+   * later. The webhook that already handles the subscription's deletion writes `cancelled` on the
+   * day, so the local record follows Stripe rather than predicting it.
+   */
+  async cancelSubscription(organizationId: string): Promise<{ endsAt: Date | null }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionStripeId: true },
+      select: { subscriptionStripeId: true, subscriptionPeriodEnd: true },
     });
     if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
 
-    await this.stripe.stripe.subscriptions.cancel(org.subscriptionStripeId);
-    await this.prisma.organization.update({
+    const scheduled = await this.stripe.cancelSubscriptionAtPeriodEnd(org.subscriptionStripeId);
+    const endsAt = scheduled.current_period_end ? new Date(scheduled.current_period_end * 1000) : org.subscriptionPeriodEnd ?? null;
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionEndsAt: endsAt } });
+    this.logger.log(`Subscription for org ${organizationId} ends at ${endsAt?.toISOString() ?? 'the period end'}`);
+    return { endsAt };
+  }
+
+  /**
+   * A scheduled cancellation is undone before the date. Stripe supports it and the subscription is
+   * still there; the screen that says "ending on the 30th" offers this beside it.
+   */
+  async keepSubscription(organizationId: string): Promise<void> {
+    const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null },
+      select: { subscriptionStripeId: true, subscriptionEndsAt: true },
     });
-    this.logger.log(`Subscription cancelled for org ${organizationId}`);
+    if (!org?.subscriptionStripeId) throw new NotFoundException('No active subscription found.');
+    if (!org.subscriptionEndsAt) throw new BadRequestException('This subscription is not ending. There is nothing to keep.');
+
+    await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, { cancel_at_period_end: false });
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { subscriptionEndsAt: null } });
+    this.logger.log(`Subscription for org ${organizationId} kept; the scheduled cancellation is undone`);
   }
 
   /** Pause the org's subscription via Stripe pause collection. */
@@ -765,6 +797,7 @@ export class BillingService {
       plan: SubscriptionPlan | null;
       status: string | null;
       periodEnd: Date | null;
+      endsAt: Date | null;
       freeExtensionUsed: boolean;
     };
     people: { count: number; cap: number | null };
@@ -782,6 +815,7 @@ export class BillingService {
         subscriptionPlan: true,
         subscriptionStatus: true,
         subscriptionPeriodEnd: true,
+        subscriptionEndsAt: true,
         freeExtensionUsed: true,
       },
     });
@@ -834,6 +868,8 @@ export class BillingService {
         plan: org.subscriptionPlan ?? null,
         status: org.subscriptionStatus ?? null,
         periodEnd: org.subscriptionPeriodEnd ?? null,
+        /* Non-null means a cancellation is scheduled: access runs to this date and then stops. */
+        endsAt: org.subscriptionEndsAt ?? null,
         freeExtensionUsed: org.freeExtensionUsed,
       },
       // `null` cap means unlimited (Enterprise) or no plan at all - the client renders the
@@ -1028,6 +1064,8 @@ export class BillingService {
             data: {
               subscriptionStatus: sub.status,
               subscriptionPeriodEnd: periodEnd,
+              /* A cancellation scheduled or undone on Stripe's side (the portal) is mirrored here too. */
+              subscriptionEndsAt: sub.cancel_at_period_end && periodEnd ? periodEnd : null,
             },
           });
         } else {
@@ -1047,7 +1085,7 @@ export class BillingService {
           const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true, subscriptionPlan: true } });
           await this.prisma.organization.update({
             where: { id: orgId },
-            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null },
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
             await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);
