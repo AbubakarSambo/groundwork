@@ -75,6 +75,8 @@ first. Confirm no client relies on the returned `draftToken` for the existing-us
 
 ## Batch 2 — Writes and reads that name a record by its id and nothing else
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: pinned shut by a source-text spec that matches the expression verbatim. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P1-001, P1-002, P1-003, P1-004, P1-006, P1-007, P1-014, P4-001, P4-H02, P4-G01, P4-G02
 
 One cause, eleven places: a handler resolves a row by its own id, and the organisation, the party,
@@ -404,6 +406,8 @@ auto-creates the caller's `OpsPerson` on first touch and that write is on the sa
 
 ## Batch 7 — Money the product takes, keeps, or refuses to give back
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the status value it introduces will not compile, and it duplicates batch 17. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P6B-011, P6B-012, P4-H03, P4-H04, P4-H12, P4-H11, P4-008
 
 Four separate promises broken by the same habit — the billing rule lives on one surface and not the
@@ -631,6 +635,8 @@ management before writing the migration.
 
 ## Batch 11 — A scope that does not describe what the route does
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the scope decorator takes one value, and an existing implied-scope map already gives the grace this proposes to build. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P4-G05
 
 `POST /api/org/v1/findings/run` (`detectors.controller.ts:87-101`) is annotated
@@ -761,6 +767,8 @@ them makes visibly broken mail, so convert and eyeball each.
 
 ## Batch 15 — A read that writes, and a price the site cannot see
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: both halves blocked: one reverses a dated decision record, the other is a frozen marketing edit. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P1-017, P6B-010
 
 Two separate small things, both "the record and the reality drift with nobody noticing", and both a
@@ -798,6 +806,8 @@ downstream assumes the row exists — check `OpsCapabilityGuard` first.
 ---
 
 ## Batch 16 — An erased account escapes the retention sweep
+
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the finding is real, the fix is not constructible: the join it relies on does not exist in the schema. See the matching `planaudit_*.md` for what it should say instead.
 
 **Closes:** P1-020
 

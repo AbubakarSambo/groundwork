@@ -410,6 +410,8 @@ do not ship them on a prompt line alone.
 
 ## Batch 9 — A performance process was put around an onboarding, and then the board hid the strip
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the board half overrides a written decision; the classifier half alone closes the finding. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P6-011, P6B-003
 
 These are one story, found in two passes.
@@ -509,6 +511,8 @@ with an explicit allowlist that shrinks as those batches close.
 ---
 
 ## Batch 11 — The two most saleable things the product does are invisible
+
+> **UNSOUND as written — do not implement from this text.** The plan audit found: withdrawn entirely under the marketing freeze; nothing survives and no false claim is left behind. See the matching `planaudit_*.md` for what it should say instead.
 
 **Closes:** P6B-020
 
@@ -826,21 +830,17 @@ It reaches a customer who has already bought in, which makes it good at converti
 customer into an integrated one, and useless for the prospect who never learns WhatsApp exists.
 It solves the discoverability problem for one audience and not the other.
 
-**If the marketing freeze is lifted for one thing, make it one clause.** The recommendation is a
-clause, not a section, in the homepage block headed "Everyone is asked the same way, at the same
-time." That is where the mechanism is already described, and WhatsApp is not a feature so much as
-the answer to the objection that block raises: my team will not log into another tool. Naming it
-there costs one line and answers the question at the moment a reader has it. A separate features
-section would be worse, because it turns a scenario-led page into a list.
-
-The panel and the API do not need the homepage. The buyer who wants them arrives already asking.
+**Decided: nothing goes on the marketing site.** The Connect page carries this and the homepage is
+not touched. The prospect who never signs in will not learn about WhatsApp from us, and that is
+accepted rather than overlooked. If discovery for prospects becomes a problem, the place to solve
+it is a sales conversation, not a page edit.
 
 **Not fixable by the product, and needing a recorded exception rather than a fix:** four uses of
 the internal word "Ground" in site copy, and the About page's contact route, which is a mail link
 the pricing page's own source says was removed there for being broken. Both are copy, both are
 frozen. They should be written down as accepted rather than left looking like open findings.
 
-Effort: half a day for the Connect page. An hour for the homepage clause if it is wanted.
+Effort: half a day for the Connect page.
 Risk: the Connect page must not advertise WhatsApp before part D lands, for the same reason the
 deleted batch was sequenced that way. A page that sells a channel which answers with silence is
 worse than a page that does not mention it.

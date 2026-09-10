@@ -54,6 +54,31 @@ production. That was wrong, and it changes the severity of four billing findings
 is that cancelling ends a subscription immediately rather than at the end of the paid period, so a
 customer who cancels early loses time they have already paid for, with no refund and no notice.
 
+## The plan was itself audited against the code
+
+Four passes checked every batch against what the code actually does. Their reports are
+`planaudit_a_e.md`, `planaudit_b.md`, `planaudit_c.md` and `planaudit_d_f_g.md`. Read the one for
+any part before working on it.
+
+What they found, and what has been done about it:
+
+- **Sixteen batches are unsound as written.** Each is now marked in place with a warning naming the
+  problem. Do not implement one from its original text.
+- **Four batches proposed building something that already ships**, and are withdrawn: the manager
+  read rule, the organisation switcher, self-service erasure with retention, and the banned-word
+  rule, whose polarity I had backwards. All four exist, wired and specified.
+- **Three pairs of batches collide**, proposing incompatible versions of one fix: cancellation in
+  two places, WhatsApp idempotency in two places, and the refund path in two places. The later of
+  each pair defers to the earlier.
+- **About a third of the line citations are wrong.** Implement by searching for the symbol, never
+  by opening the cited line. The diagnoses hold; the coordinates drifted.
+- **Several batches reverse a written decision without acknowledging it.** This codebase records
+  its reasoning in long comments above the code. Where a batch contradicts one, the comment wins
+  until somebody argues with it deliberately.
+
+The corrections are folded into parts E, G, A, B and F. The audits stay on disk because they carry
+the evidence, and because they are the record of what the plan got wrong.
+
 ## The order
 
 ### Wave 0 — three things to confirm, not build

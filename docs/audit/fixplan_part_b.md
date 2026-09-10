@@ -93,6 +93,8 @@ toast. The new column is additive.
 
 ## Batch 2 — A round that can never complete, and a completion that completes nothing
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: collides with batch 4 on the same method, breaks a guard spec unannounced, and can release an all-declined report. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P2-004, P2-021, P2-022, P4-C01, P4-C02, P4-C09, P4-C11
 
 **The one cause.** Three separate functions each decide "is this session done", and they disagree
@@ -194,6 +196,8 @@ existing specs be the safety net.
 ---
 
 ## Batch 3 — The door people actually use has no lock and no meter
+
+> **UNSOUND as written — do not implement from this text.** The plan audit found: its central mechanism depends on something batch 4 does not provide, and as written would meter every message. See the matching `planaudit_*.md` for what it should say instead.
 
 **Closes:** P2-003, P2-015, P4-003, P4-B06
 
@@ -670,6 +674,8 @@ document-parse exception is a new 4xx on upload; verify the client shows the mes
 ---
 
 ## Batch 9 — The platform panel counts three different objects and calls them all check-ins
+
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the query cannot compile, and the cohort source is on the wrong model and null when it matters. See the matching `planaudit_*.md` for what it should say instead.
 
 **Closes:** P3-005, P3-006, P3-016, P3-023, P6-012, P7-003, P7-004
 

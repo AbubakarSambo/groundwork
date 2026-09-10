@@ -202,6 +202,8 @@ that changes behaviour in a working path, and it changes it from broken to worki
 
 ## Batch 2 — One email test, and no button that silently does nothing
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the sweep is about thirty sites in three shapes, not nine in one, and its spec cannot pass. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** P5-003, P5-011, P5-037, P5-064, P5-102, BR-010
 
 **The change.** `includes('@')` is the shared root, verified in `AuthPage` (×4: `submitPassword`,
@@ -386,6 +388,8 @@ it with a second default.
 
 ## Batch 5 — The setup engine must use the person's own words
 
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the two client strings it is built on do not exist; the real leaks are different and genuine. See the matching `planaudit_*.md` for what it should say instead.
+
 **Closes:** BR-001, BR-004, BR-006, BR-007
 
 **The change.** BR-001 is the single worst finding in this slice and it is **mostly not a client
@@ -562,6 +566,8 @@ offers Try again.
 ---
 
 ## Batch 8 — check-in and session: one word per object
+
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the rename table misses the largest cluster in the product and is costed several times too low. See the matching `planaudit_*.md` for what it should say instead.
 
 **Closes:** P5-013, P5-024, P5-033, P5-036, P5-046, P5-050, P5-058, P5-075, P5-082, P5-087, BR-015
 
@@ -1084,6 +1090,8 @@ re-raised. Plus one line in the existing plain-language sweep for the admin head
 ---
 
 ## Batch 19 — Two narrow-viewport defects
+
+> **UNSOUND as written — do not implement from this text.** The plan audit found: the fix is a no-op against the current markup and contradicts batch 20. See the matching `planaudit_*.md` for what it should say instead.
 
 **Closes:** P5-098, BR-005
 
