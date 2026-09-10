@@ -98,20 +98,21 @@ describe('somebody who already belongs here', () => {
 describe('somebody with an account in another organisation', () => {
   const elsewhere = { id: 'u-else', email: 'cohort@else.test', organizationId: 'org-other', role: 'ADMIN', firstName: 'C' };
 
-  it('gets a GUEST membership here, is marked waiting, and is queued', async () => {
+  it('arrives as a GUEST here - no queue, and nothing touches their own account', async () => {
+    /* The waiting flag is on the account, so queueing them would have refused them on their OWN
+       organisation's check-ins. A guest holds no seat and no keys here; the role is the gate. */
     const { svc, writes } = service({ existingUser: elsewhere });
     const res = await svc.joinConfirm('t');
     expect(writes.membership[0].create).toMatchObject({ organizationId: 'org1', role: 'GUEST' });
-    expect(writes.userUpdate[0]).toMatchObject({ where: { id: 'u-else' }, data: { awaitingOrgApproval: true } });
-    expect(writes.membershipRequest).toHaveLength(1);
-    expect(res.queuedForApproval).toBe(true);
+    expect(writes.userUpdate).toHaveLength(0);
+    expect(writes.membershipRequest).toHaveLength(0);
+    expect(res.queuedForApproval).toBe(false);
   });
 
-  it('but not when they already hold a membership here', async () => {
+  it('and a second arrival does not overwrite a role they were given here', async () => {
     const { svc, writes } = service({ existingUser: elsewhere, memberHere: true });
-    const res = await svc.joinConfirm('t');
-    expect(res.queuedForApproval).toBe(false);
-    expect(writes.membershipRequest).toHaveLength(0);
+    await svc.joinConfirm('t');
+    expect(writes.membership[0].update).toEqual({});
   });
 
   it('is signed in as their home organisation, as the invitation path does', async () => {

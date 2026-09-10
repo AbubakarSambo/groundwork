@@ -27,9 +27,26 @@
  * account somewhere else keeps every bit of access they had there. Being made to wait at your door
  * must not lock them out of their own house.
  *
- * WHO NEVER WAITS: somebody who is already in the organisation, and somebody the organisation's own
- * admin adds through the People page - that is an admin acting, and asking an admin to approve
- * their own action is a queue with one item in it that they put there.
+ * AND THAT SENTENCE WAS NOT TRUE OF THE CODE UNDER IT. `awaitingOrgApproval` is one flag on the
+ * account, not one per organisation, and the check-in door reads it without asking which
+ * organisation the check-in belongs to. So somebody in good standing at their own company who
+ * opened another company's link was marked waiting - and refused on their own company's check-ins
+ * until a stranger's admin got round to them. Locked out of their own house, exactly.
+ *
+ * So an existing account from elsewhere does not wait. It arrives as a GUEST (see
+ * joining-a-second-organisation.ts), and the guest role IS the gate: neither of the two
+ * consequences above applies to it. A guest is not indistinguishable from staff - they hold no
+ * keys here, cannot open a check-in or invite this organisation's people. And a guest is not on
+ * the bill - a seat is an active user OF the organisation, and their account lives elsewhere. What
+ * the queue protects against, the role already prevents; the only thing the queue added was the
+ * lock-out. Decided 10 September 2026.
+ *
+ * WHO NEVER WAITS: somebody who is already in the organisation; somebody with an account elsewhere,
+ * who is a guest; and somebody the organisation's own admin adds through the People page - that is
+ * an admin acting, and asking an admin to approve their own action is a queue with one item in it
+ * that they put there. Which leaves exactly one person who does: somebody with no account
+ * anywhere, whose account is being created in this organisation right now by opening a link or an
+ * invitation an admin did not send. That is the case the gate was built for.
  */
 
 export type WhoIsArriving = {
@@ -53,6 +70,9 @@ export function whyTheyDoNotNeedApproval(who: WhoIsArriving): string | null {
   if (who.alreadyAMemberHere) return 'they are already in this organisation';
   if (who.theirHomeOrganizationId === who.groundOrganizationId) {
     return 'this is their own organisation';
+  }
+  if (who.theirHomeOrganizationId !== null) {
+    return 'they have an account elsewhere and arrive here as a guest, with no seat and no keys';
   }
   if (who.addedByAnAdminOfThisOrg) {
     return 'an admin of this organisation added them, which is the approval';

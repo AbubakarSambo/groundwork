@@ -1976,8 +1976,11 @@ STRICT RULES:
       /* THE QUEUE. One row per (organisation, person); a second link joins the request already waiting. */
       if (wait) {
         queuedForApproval = true;
+        /* Nobody with an existing account waits any more (see needsApproval), so the flag is only ever
+           set on the row created above - never on an account that has check-ins elsewhere to be locked
+           out of. `brandNew` is kept as the assertion of that. */
         if (!brandNew) {
-          await tx.user.update({ where: { id: user.id }, data: { awaitingOrgApproval: true } });
+          this.logger.error(`needsApproval said existing account ${user.id} should wait; refusing to flag it, because the flag is account-wide and would lock them out of their own organisation.`);
         }
         await tx.membershipRequest.upsert({
           where: { organizationId_userId: { organizationId: ground.organizationId, userId: user.id } },
