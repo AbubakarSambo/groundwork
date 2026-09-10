@@ -1360,52 +1360,20 @@ export function EntryChatPage() {
     saveSession({ scenario, history: h, closed: cl, report: rep, onboardingStep: ONBOARDING_STEPS, onboardingSelections })
   }
 
-  // Typewriter streaming effect for check-in phase
+  /*
+   * THE STREAM IS THE ANIMATION. A typewriter used to redraw each reply over about a second after
+   * it had arrived whole. Replies arrive a sentence at a time now (entryApi.chatStream), so the
+   * words appear as the model says them and nothing is redrawn. The typewriter also broke on a real
+   * stream: every delta restarted it, and the final reply could match the last delta and skip the
+   * redraw with a half-drawn line still on screen.
+   */
   useEffect(() => {
     if (phase !== 'checkin') return
+    setDisplayedHistory(history)
     const lastIdx = history.length - 1
     const last = history[lastIdx]
-    if (!last || last.role !== 'assistant' || last.content === '…') {
-      setDisplayedHistory(history)
-      setStreamingIdx(null)
-      return
-    }
-    if (displayedHistory[lastIdx]?.content === last.content) return
-
-    setStreamingIdx(lastIdx)
-    let i = 0
-    const full = last.content
-    /*
-     * THE TYPEWRITER IS NOT A STREAM, AND IT WAS CHARGING LIKE ONE.
-     *
-     * The reply arrives whole - this endpoint does not stream - and then this animated it at two
-     * characters every 25ms. That is 80 characters a second, so a 500-character answer spent six
-     * more seconds appearing AFTER the model had already finished. Reported as "the chat is slow
-     * on both entry and when signed in, the response is slow and doesn't render as writing".
-     *
-     * A real stream is slow because the words genuinely are not there yet. This one is slow on
-     * purpose, over text already sitting in memory, which is the worst version: all of the waiting
-     * and none of the reason for it.
-     *
-     * So the animation is bounded by TIME rather than by length - about a second, whatever the
-     * reply's size. Short answers still feel written rather than pasted; long ones stop punishing
-     * the person for having asked something that deserved a full answer.
-     */
-    const ABOUT_A_SECOND = 900
-    const DELAY = 25
-    const CHUNK = Math.max(2, Math.ceil(full.length / (ABOUT_A_SECOND / DELAY)))
-    const base = history.slice(0, lastIdx)
-    const tick = setInterval(() => {
-      i += CHUNK
-      setDisplayedHistory([...base, { role: 'assistant', content: full.slice(0, i) }])
-      if (i >= full.length) {
-        clearInterval(tick)
-        setDisplayedHistory(history)
-        setStreamingIdx(null)
-      }
-    }, DELAY)
-    return () => clearInterval(tick)
-  }, [history, phase])
+    setStreamingIdx(loading && last?.role === 'assistant' && last.content !== '…' ? lastIdx : null)
+  }, [history, phase, loading])
 
   useEffect(() => {
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight

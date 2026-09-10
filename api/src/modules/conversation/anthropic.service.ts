@@ -147,6 +147,8 @@ export class AnthropicService {
   private readonly logger = new Logger(AnthropicService.name);
   private client: GoogleGenAI;
   private model: string;
+  /** What a person in a conversation talks to. See geminiConfig.conversationModel. */
+  private conversationModel: string;
   private maxTokens: number;
 
   constructor(private config: ConfigService) {
@@ -161,6 +163,7 @@ export class AnthropicService {
 
     this.client = this.buildClient();
     this.model = this.config.get<string>('gemini.model') || 'gemini-2.5-pro';
+    this.conversationModel = this.config.get<string>('gemini.conversationModel') || 'gemini-2.5-flash';
     /*
      * A PREVIEW MODEL SITS OUTSIDE THE DATA PROCESSING TERMS. See
      * a-preview-model-has-no-data-terms.ts — Google's Service Specific Terms exclude Pre-GA
@@ -168,7 +171,7 @@ export class AnthropicService {
      * Refused loudly at boot rather than logged: a deployment processing check-ins outside the DPA
      * should not start, and a warning in a log is a thing nobody reads until afterwards.
      */
-    const notAllowed = whyThisModelIsNotAllowed(this.model);
+    const notAllowed = whyThisModelIsNotAllowed(this.model) || whyThisModelIsNotAllowed(this.conversationModel);
     if (notAllowed) throw new Error(`Refusing to start: ${notAllowed}`);
     // Floor at 8192 (configuration.ts's own default). A low cap (e.g. a stale
     // GEMINI_MAX_TOKENS=2048) leaves too little room once thinking tokens are
@@ -275,9 +278,9 @@ export class AnthropicService {
       parts: [{ text: t.content }],
     }));
     const stream = await this.client.models.generateContentStream({
-      model: this.model,
+      model: this.conversationModel,
       contents,
-      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
+      config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
     });
     /*
      * A CHUNK OF THE ANSWER WENT MISSING, MID-SENTENCE, AND WAS SAVED THAT WAY.
@@ -305,6 +308,21 @@ export class AnthropicService {
     }
   }
 
+  /**
+   * Flash answers fastest with no thinking at all (0.65s to the first word against 2.3s with a
+   * 256 budget); pro cannot go below 128 and is slow to start regardless. The budget follows the
+   * model so that swapping GEMINI_CONVERSATION_MODEL back to pro does not also swap in a budget
+   * that model rejects.
+   */
+  private conversationThinkingBudget(): number {
+    return /flash/.test(this.conversationModel) ? 0 : CONVERSATION_THINKING_BUDGET;
+  }
+
+  /** For logs and the health page. */
+  modelsInUse() {
+    return { conversation: this.conversationModel, reports: this.model };
+  }
+
   async respond(systemPrompt: string, history: ChatTurn[]): Promise<string> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
@@ -318,9 +336,9 @@ export class AnthropicService {
       res = await tryAgainIfItIsJustBusy(
         () => {
           const call = this.client.models.generateContent({
-            model: this.model,
+            model: this.conversationModel,
             contents,
-            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: CONVERSATION_THINKING_BUDGET } },
+            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
           });
           const timeout = new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Gemini respond() timed out after 90s')), TIMEOUT_MS),
@@ -387,7 +405,7 @@ export class AnthropicService {
     systemPrompt: string,
     history: ChatTurn[],
     tool: { name: string; description: string; input_schema: any },
-    options: { thinkingBudget?: number } = {},
+    options: { thinkingBudget?: number; fast?: boolean } = {},
   ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
@@ -398,7 +416,7 @@ export class AnthropicService {
     /* Same treatment as respond(): an extraction lost to a burst is a report built from less. */
     try {
       res = await tryAgainIfItIsJustBusy(() => this.client.models.generateContent({
-        model: this.model,
+        model: options.fast ? this.conversationModel : this.model,
         contents,
         config: {
           systemInstruction: systemPrompt,

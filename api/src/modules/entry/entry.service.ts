@@ -757,7 +757,12 @@ Rules:
      */
     const repeating = aDirectiveAboutRepeatingYourself(messages as { role: string; content: string }[]);
     const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput);
-    const reply = await this.guardedReply(
+    /*
+     * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
+     * they have already said it; the reply being composed at the same time is a question, and a
+     * question adds no fact about their situation. In sequence the two doubled the turn.
+     */
+    const replyInFlight = this.guardedReply(
       repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
       messages,
       onDelta,
@@ -859,10 +864,15 @@ from finishing at all.`;
       },
     };
 
-    const allMessages: ChatTurn[] = [...messages, { role: 'assistant', content: reply }];
     let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; yourRole?: string } = {};
+    /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
+    const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
+      this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
+      .catch((err: Error) => err);
+    const reply = await replyInFlight;
     try {
-      const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT });
+      const result = await extractionInFlight;
+      if (result instanceof Error) throw result;
       if (result) extracted = result;
     } catch { /* extraction is best-effort */ }
 

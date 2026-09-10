@@ -129,6 +129,10 @@ export const geminiConfig = registerAs("gemini", () => ({
   projectId: process.env.GEMINI_PROJECT_ID || "groundwork-500011",
   location: process.env.GEMINI_LOCATION || "us-central1",
   model: process.env.GEMINI_MODEL || "gemini-2.5-pro",
+  // The model a person talks to. Turns are one question at a time and a person is waiting, so the
+  // fast model answers them; reports, synthesis and extraction stay on `model`. Measured 10 Sep 2026
+  // on the same prompt: pro 3.9-4.5s to the first word, flash 0.65s.
+  conversationModel: process.env.GEMINI_CONVERSATION_MODEL || "gemini-2.5-flash",
   maxTokens: parseInt(process.env.GEMINI_MAX_TOKENS || "8192", 10),
 }));
 
