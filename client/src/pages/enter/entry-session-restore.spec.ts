@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { entryRestoreBranch, leadReturnsToSaveCard } from './EntryChatPage'
+import { entryRestoreBranch, leadReturnsToSaveCard, leadNeedsTheirFirstCheckIn } from './EntryChatPage'
 
 /**
  * GW-ENTRY-RESTORE tripwire.
@@ -39,8 +39,18 @@ describe('entryRestoreBranch: ended sessions are never silently discarded', () =
 })
 
 describe('leadReturnsToSaveCard: coordinator lands back on the save card', () => {
-  it('reopens the save card for a closed lead session', () => {
-    expect(leadReturnsToSaveCard({ flowPath: 'lead', closed: true })).toBe(true)
+  it('reopens the save card for a closed lead session that has words in it', () => {
+    expect(leadReturnsToSaveCard({ flowPath: 'lead', closed: true, history: [{ role: 'user', content: 'x' }] })).toBe(true)
+  })
+
+  it('never reopens a card that cannot save: a closed lead session with nothing said goes to its check-in instead', () => {
+    /* Seen 10 Sep 2026: a session saved under the old "others give the accounts" rule, closed with an
+       empty history, reopened the save card and the server answered NO_ENTRY_SESSION. */
+    expect(leadReturnsToSaveCard({ flowPath: 'lead', closed: true, history: [] })).toBe(false)
+    expect(leadReturnsToSaveCard({ flowPath: 'lead', closed: true })).toBe(false)
+    expect(leadNeedsTheirFirstCheckIn({ flowPath: 'lead', history: [], onboardingStep: 7 }, 6)).toBe(true)
+    expect(leadNeedsTheirFirstCheckIn({ flowPath: 'lead', history: [{ role: 'user', content: 'x' }], onboardingStep: 7 }, 6)).toBe(false)
+    expect(leadNeedsTheirFirstCheckIn({ flowPath: 'self', history: [], onboardingStep: 7 }, 6)).toBe(false)
   })
 
   it('does not open it for the self path or an unfinished lead capture', () => {
