@@ -196,8 +196,12 @@ export class ACheckInACustomerCanRunService {
     groundId: string,
     file: Express.Multer.File,
     uploaderNote?: string,
+    visibility?: string,
   ) {
     const userId = await this.actingAs(organizationId, personId);
+    if (visibility && visibility !== 'OPEN' && visibility !== 'OWN') {
+      throw new BadRequestException('visibility must be OPEN (everybody on the check-in) or OWN (only you). Omit it to be asked.');
+    }
 
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
@@ -206,6 +210,17 @@ export class ACheckInACustomerCanRunService {
     if (!ground) throw new NotFoundException('No such check-in in your organisation.');
 
     const document = await this.documents.upload(groundId, userId, file, false, uploaderNote);
+    /*
+     * SAID UP FRONT, SO NOT ASKED. A caller that names who the document is for gets it set now,
+     * through the same rule the app applies; the question below is for the ones that did not say.
+     */
+    if (visibility === 'OPEN') {
+      await this.documents.setVisibility(groundId, (document as { id: string }).id, userId, 'OPEN');
+      return { documentId: (document as { id: string }).id, fileName: file.originalname, visibility: 'OPEN', says: `"${file.originalname}" is in, and everybody on this check-in can see it.` };
+    }
+    if (visibility === 'OWN') {
+      return { documentId: (document as { id: string }).id, fileName: file.originalname, visibility: 'OWN', says: `"${file.originalname}" is in, and only you can see it.` };
+    }
 
     /*
      * THE QUESTION IS PARKED HERE RATHER THAN LEFT TO THE PANEL.
@@ -245,6 +260,18 @@ export class ACheckInACustomerCanRunService {
     return this.conversation.complete(checkInId, await this.actingAs(organizationId, personId));
   }
 
+  /**
+   * THEIR OWN SESSION REPORT, FROM THE PANEL.
+   *
+   * A member could finish a check-in here and had nowhere to read what came of it: the only report
+   * route on this API is the lead's, under a machine credential. This is the same report the app
+   * shows under the transcript, read as the person the session belongs to, through the same owner
+   * check the app applies.
+   */
+  async report(organizationId: string, personId: string, checkInId: string) {
+    return this.conversation.getSessionReport(checkInId, await this.actingAs(organizationId, personId));
+  }
+
   async transcript(organizationId: string, personId: string, checkInId: string) {
     return this.conversation.getTranscript(checkInId, await this.actingAs(organizationId, personId));
   }
@@ -273,6 +300,9 @@ export class ACheckInACustomerCanRunService {
       timelineDays?: number;
       cadence?: string;
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
+      startsAt?: string;
+      endsAt?: string;
+      brief?: string;
     },
   ) {
     const me = await this.prisma.person.findFirst({
@@ -292,7 +322,56 @@ export class ACheckInACustomerCanRunService {
       timelineDays: dto?.timelineDays,
       cadence: dto?.cadence,
       participants: dto?.participants,
+      startsAt: dto?.startsAt,
+      endsAt: dto?.endsAt,
+      brief: dto?.brief,
     });
+  }
+
+  /**
+   * WHAT SUCCESS LOOKS LIKE, IN THE PERSON'S OWN WORDS, FROM THE PANEL.
+   *
+   * The machine route can seed a SUCCESS_DEFINITION for anybody; a member had no way to state their
+   * own. This writes the same row the seed writes, owned by them, authored by them, so the report
+   * reads it exactly as it reads one the customer's system pushed. One per person per check-in:
+   * saying it again replaces it.
+   */
+  async statedSuccess(organizationId: string, personId: string, checkInId: string, text: string) {
+    const userId = await this.actingAs(organizationId, personId);
+    if (!text?.trim()) throw new BadRequestException('text is required: what success looks like, in your words.');
+    const checkIn = await this.prisma.checkIn.findFirst({
+      where: { id: checkInId, participant: { userId, ground: { organizationId } } },
+      select: { groundId: true, participantId: true },
+    });
+    if (!checkIn) throw new NotFoundException('That check-in is not yours.');
+    const externalId = `success:${checkIn.participantId}`;
+    const row = await this.prisma.personObjective.upsert({
+      where: { groundId_sourceSystem_externalId: { groundId: checkIn.groundId, sourceSystem: 'groundwork-panel', externalId } },
+      create: {
+        groundId: checkIn.groundId,
+        participantId: checkIn.participantId,
+        text: text.trim().slice(0, 1000),
+        kind: 'SUCCESS_DEFINITION',
+        scope: 'ONE_PERSON',
+        authoredBy: 'participant',
+        sourceSystem: 'groundwork-panel',
+        externalId,
+      },
+      update: { text: text.trim().slice(0, 1000) },
+      select: { id: true, text: true, kind: true },
+    });
+    return { ...row, says: 'Kept. The report reads your check-in against this.' };
+  }
+
+  /** Who can see a document on a check-in, changed by the person who put it there, under the app's own rules. */
+  async setDocumentVisibility(organizationId: string, personId: string, groundId: string, docId: string, visibility: string) {
+    const userId = await this.actingAs(organizationId, personId);
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true } });
+    if (!ground) throw new NotFoundException('No such check-in in your organisation.');
+    if (visibility !== 'OPEN' && visibility !== 'OWN' && visibility !== 'CLOSED') {
+      throw new BadRequestException('visibility must be OPEN (everybody on the check-in), OWN (only you) or CLOSED (only the lead).');
+    }
+    return this.documents.setVisibility(groundId, docId, userId, visibility);
   }
 
   /**

@@ -77,6 +77,8 @@ describe('opening a check-in returns what it should and nothing else', () => {
   it('is a named list, so a column added tomorrow does not escape on its own', async () => {
     const out: any = await service().open('org1', { ...dto } as any);
     expect(Object.keys(out).sort()).toEqual([
+      /* The brief is echoed since 10 Sep 2026: the caller set the standard and could not see it. */
+      'brief',
       'cadence', 'endsAt', 'id', 'invitations', 'label', 'mode', 'moment',
       'scenario', 'startsAt', 'status', 'timelineDays',
     ]);

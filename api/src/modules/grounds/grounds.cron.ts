@@ -393,6 +393,7 @@ export class GroundsCron {
 
   private async sendSessionReadyNotificationsInner() {
     const now = new Date();
+    await this.announceOpenedSessions(now);
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
 
     const newlyOpen = await this.prisma.checkIn.findMany({
@@ -454,6 +455,53 @@ export class GroundsCron {
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
         this.logger.error(`Session-ready notification failed for check-in ${ci.id}: ${err.message}`);
+      }
+    }
+  }
+
+  /**
+   * checkin.opened, ONCE PER SESSION, FIRST SESSION INCLUDED.
+   *
+   * The email above only covers session 2 onward, because the first is announced by the invitation.
+   * A host system subscribed to webhooks has no invitation email to read, so this announces every
+   * session the moment it is open to an accepted person: the round is what they need to tell that
+   * person about in their own channel. Stamped so it fires once whatever else fails around it.
+   */
+  private async announceOpenedSessions(now: Date) {
+    const opened = await this.prisma.checkIn.findMany({
+      where: {
+        status: CheckInStatus.NOT_STARTED,
+        openedAnnouncedAt: null,
+        OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+        participant: { userId: { not: null }, ground: { status: { notIn: TERMINAL } } },
+      },
+      select: {
+        id: true,
+        groundId: true,
+        participantId: true,
+        sessionNumber: true,
+        participant: { select: { email: true, ground: { select: { organizationId: true } } } },
+      },
+      take: 200,
+    });
+    for (const ci of opened) {
+      try {
+        const person = ci.participant.email
+          ? await this.prisma.person.findFirst({
+              where: { organizationId: ci.participant.ground.organizationId, email: ci.participant.email, active: true },
+              select: { externalId: true },
+            })
+          : null;
+        this.events.emit(GroundworkEvents.CHECK_IN_OPENED, {
+          checkInId: ci.id,
+          groundId: ci.groundId,
+          participantId: ci.participantId,
+          sessionNumber: ci.sessionNumber,
+          personExternalId: person?.externalId ?? null,
+        });
+        await this.prisma.checkIn.update({ where: { id: ci.id }, data: { openedAnnouncedAt: now } });
+      } catch (err: any) {
+        this.logger.error(`Could not announce check-in ${ci.id} as opened: ${err.message}`);
       }
     }
   }

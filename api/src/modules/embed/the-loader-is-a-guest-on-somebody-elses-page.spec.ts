@@ -68,18 +68,18 @@ describe("the loader is a guest on somebody else's page", () => {
   });
 });
 
-describe('four events out, three in, and no content either way', () => {
-  it('sends only ready, resize, closed and a request for a new session', () => {
+describe('six events out, four in, and no content either way', () => {
+  it('sends only ready, resize, closed, a badge count, a pin and a request for a new session', () => {
     /* `needs-session` carries nothing — it is the panel saying its fifteen minutes are nearly up.
        Only the host can get another, because the session comes from the customer's own signed
        identity token, which the panel cannot ask their server for. */
     const sent = new Set([...code(PANEL).matchAll(/send\('([\w-]+)'/g)].map((m) => m[1]));
-    expect([...sent].sort()).toEqual(['closed', 'needs-session', 'ready', 'resize']);
+    expect([...sent].sort()).toEqual(['badge', 'closed', 'needs-session', 'pin', 'ready', 'resize']);
   });
 
-  it('accepts only open, context and a session handed back', () => {
+  it('accepts only open, context, the pinned state and a session handed back', () => {
     const handled = new Set([...code(PANEL).matchAll(/e\.data\.type === '([\w-]+)'/g)].map((m) => m[1]));
-    expect([...handled].sort()).toEqual(['context', 'open', 'session']);
+    expect([...handled].sort()).toEqual(['context', 'open', 'pinned', 'session']);
   });
 
   it('and the loader answers that request by handshaking again, not by inventing a token', () => {

@@ -27,6 +27,9 @@ export type Lane =
   | 'start_a_check_in'
   | 'send_me_that'
   | 'add_a_document'
+  | 'add_a_to_do'
+  | 'my_to_dos'
+  | 'tick_off_a_to_do'
   | 'unplaced';
 
 export interface Routed {
@@ -50,6 +53,31 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  /*
+   * TO-DOS, FIRST, AND ON THE WORD "TO-DO" OR A SHAPE THAT IS ONLY A NOTE TO SELF.
+   *
+   * "Add the rota to my to-do list" names a list; "add the rota" alone does not, and goes to the
+   * document lane below when it names a file. Ticking off sits above adding because "done: send the
+   * rota" contains the same words as the to-do it closes.
+   */
+  rule('tick_off_a_to_do', [
+    /\b(?:tick|cross|strike)\s+(?:off\s+)?(.{3,120}?)(?:\s+off)?\s*$/i,
+    /^(?:done|finished|did)[:,]\s+(.{3,120})$/i,
+    /\bmark\s+(.{3,120}?)\s+(?:as\s+)?done\s*$/i,
+  ]),
+  rule('add_a_to_do', [
+    /* A deadline may trail the list: "add the rota to my to-do list by Friday". The lane reads the whole message for when. */
+    /\b(?:add|put)\s+(.{3,160}?)\s+(?:to|on|onto)\s+(?:my\s+)?(?:to[- ]?dos?|to[- ]?do\s+list|list)\b(?:\s+(?:by|on|before|this|next|for|end\s+of)\b.{0,60})?\s*$/i,
+    /^\s*to[- ]?do:\s*(.{3,160})$/i,
+    /\bremind\s+me\s+to\s+(.{3,160})$/i,
+    /\bnote\s+to\s+self:?\s*(.{3,160})$/i,
+  ]),
+  rule('my_to_dos', [
+    /\bwhat(?:'s| is)\s+on\s+my\s+(?:list|to[- ]?dos?)\b/i,
+    /\b(?:my|the)\s+to[- ]?dos?(?:\s+list)?\s*\??$/i,
+    /\bwhat\s+do\s+i\s+(?:have|need|still\s+have)\s+to\s+do\b/i,
+    /\bshow\s+(?:me\s+)?my\s+(?:list|to[- ]?dos?)\b/i,
+  ]),
   rule('add_a_document', [
     /*
      * ABOVE `send_me_that`, because "send me the handbook" and "add the handbook" are opposite
@@ -340,6 +368,7 @@ export function whatICanDoWith(input: string): { line: string; options: { key: s
     options: [
       { key: 'what_you_can_see', label: 'Tell me what you can see' },
       { key: 'what_am_i_on', label: 'What am I on?' },
+      { key: 'my_to_dos', label: 'What is on my list?' },
       { key: 'hold_it', label: 'Hold this against my next check-in' },
     ],
   };

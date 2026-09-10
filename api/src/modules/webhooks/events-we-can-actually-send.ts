@@ -26,6 +26,12 @@ export const SENDABLE_EVENTS = [
   /** One person finished one session. Fires per participant, not per round. */
   'checkin.completed',
   /*
+   * A session is now open to somebody. Addressed, unlike the two above: it carries the person's own
+   * directory id, because an opening is an invitation and the receiver's job is to tell that person
+   * in their own channel. A completion says nothing about who; an opening has to.
+   */
+  'checkin.opened',
+  /*
    * A handoff was named for the first time, and it cleared the substance bar - the same bar the
    * board uses, so a throwaway mention does not become an alert in somebody else's channel.
    */

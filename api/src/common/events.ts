@@ -5,6 +5,8 @@
  */
 export const GroundworkEvents = {
   CHECK_IN_COMPLETED: 'checkin.completed',
+  /** A session became open to somebody. The moment a host system can tell them, in their own channel. */
+  CHECK_IN_OPENED: 'checkin.opened',
   /**
    * EVERY PARTY IS IN FOR A ROUND. Fires once per round, guaranteed by the unique row that records
    * it rather than by anybody remembering to check. This is the event the delivery rule needs -
@@ -31,6 +33,15 @@ export interface CheckInCompletedEvent {
   groundId: string;
   participantId: string;
   sessionNumber: number;
+}
+
+export interface CheckInOpenedEvent {
+  checkInId: string;
+  groundId: string;
+  participantId: string;
+  sessionNumber: number;
+  /** The customer's own id for the person, when the roster knows them. Null otherwise. */
+  personExternalId: string | null;
 }
 
 export interface RoundCompletedEvent {

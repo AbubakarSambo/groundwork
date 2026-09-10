@@ -29,9 +29,12 @@ import { WhatHappenedWithACustomerService } from './what-happened-with-a-custome
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DraftsService } from '../drafts/drafts.service';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
+import { CommitmentsByApiService } from './commitments-by-api.service';
+import { TodosByApiService } from './todos-by-api.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
 import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
-import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER } from './what-you-need-to-know-before-you-start';
+import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL } from './what-you-need-to-know-before-you-start';
+import { SENDABLE_EVENTS } from '../webhooks/events-we-can-actually-send';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
 const TOKEN_TTL_SECONDS = 900;
@@ -81,6 +84,8 @@ export class PublicApiController {
     private readonly whatHappened: WhatHappenedWithACustomerService,
     private readonly drafts: DraftsService,
     private readonly checkIns: ACheckInACustomerCanRunService,
+    private readonly commitments: CommitmentsByApiService,
+    private readonly todos: TodosByApiService,
     private readonly myPeople: ReportsForMyPeopleService,
     private readonly reviews: ReviewsComingUpService,
   ) {}
@@ -154,6 +159,8 @@ export class PublicApiController {
       sequence: THE_SEQUENCE,
       vocabulary: VOCABULARY,
       wordsThatDiffer: WORDS_THAT_DIFFER,
+      webhookEvents: SENDABLE_EVENTS,
+      thePanel: THE_PANEL,
       says: 'Six calls. One of them is a person signing in, which nothing else will tell you.',
     };
   }
@@ -724,6 +731,14 @@ export class PublicApiController {
   }
 
   /** Finish it. What was said is released with everybody else's, not before. */
+  /** What came of it, for the person it belongs to. Session reports are per check-in; the shared report is under grounds. */
+  @Get('check-ins/:id/report')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: "This person's own session report for a check-in they completed" })
+  async myCheckInReport(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.checkIns.report(req.panel.organizationId, req.panel.personId, id);
+  }
+
   @Post('check-ins/:id/complete')
   @HttpCode(200)
   @UseGuards(EmbedSessionGuard)
@@ -747,7 +762,7 @@ export class PublicApiController {
     @Req() req: { panel: PanelCaller },
     @Param('groundId') groundId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { uploaderNote?: string },
+    @Body() body: { uploaderNote?: string; visibility?: string },
   ) {
     if (!file) throw new BadRequestException('No file was sent.');
     return this.checkIns.putADocumentIn(
@@ -756,7 +771,96 @@ export class PublicApiController {
       groundId,
       file,
       body?.uploaderNote,
+      body?.visibility,
     );
+  }
+
+  /** Who can see a document already on a check-in. OPEN is everybody on it; OWN is only the uploader. */
+  @Patch('grounds/:groundId/documents/:docId/visibility')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Change who can see a document you put on a check-in' })
+  async setDocumentVisibility(
+    @Req() req: { panel: PanelCaller },
+    @Param('groundId') groundId: string,
+    @Param('docId') docId: string,
+    @Body() dto: { visibility?: string },
+  ) {
+    return this.checkIns.setDocumentVisibility(req.panel.organizationId, req.panel.personId, groundId, docId, dto?.visibility ?? '');
+  }
+
+  /** What success looks like, said by the person for their own check-in. */
+  @Post('check-ins/:id/success-looks-like')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'State, in your words, what success looks like on this check-in' })
+  async statedSuccess(@Req() req: { panel: PanelCaller }, @Param('id') id: string, @Body() dto: { text?: string }) {
+    return this.checkIns.statedSuccess(req.panel.organizationId, req.panel.personId, id, dto?.text ?? '');
+  }
+
+  /*
+   * COMMITMENTS HAVE A DOOR OF THEIR OWN.
+   *
+   * They were only ever made by saying them in the chat and only ever read by asking. A customer's
+   * own system could neither list what somebody had promised nor record one it already knew about.
+   * Panel routes act as the signed-in person; the machine route reads for a named person.
+   */
+  @Get('commitments/mine')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'What this person has said they will do, open first' })
+  async myCommitments(@Req() req: { panel: PanelCaller }) {
+    return this.commitments.mine(req.panel.organizationId, req.panel.personId);
+  }
+
+  @Post('commitments')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Record a commitment in your own name' })
+  async addCommitment(
+    @Req() req: { panel: PanelCaller },
+    @Body() dto: { text?: string; dueSaid?: string; dueAt?: string; subjectExternalId?: string },
+  ) {
+    return this.commitments.add(req.panel.organizationId, req.panel.personId, dto ?? {});
+  }
+
+  @Post('commitments/:id/done')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Mark one of your commitments done' })
+  async commitmentDone(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.commitments.done(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  /* TO-DOS. Yours alone: panel routes only, no machine route, because a to-do is a note to yourself. */
+  @Get('todos/mine')
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Your own list, open first' })
+  async myTodos(@Req() req: { panel: PanelCaller }) {
+    return this.todos.mine(req.panel.organizationId, req.panel.personId);
+  }
+
+  @Post('todos')
+  @HttpCode(201)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Put something on your own list' })
+  async addTodo(@Req() req: { panel: PanelCaller }, @Body() dto: { text?: string; dueSaid?: string; dueAt?: string }) {
+    return this.todos.add(req.panel.organizationId, req.panel.personId, dto ?? {});
+  }
+
+  @Post('todos/:id/done')
+  @HttpCode(200)
+  @UseGuards(EmbedSessionGuard)
+  @ApiOperation({ summary: 'Tick one off' })
+  async todoDone(@Req() req: { panel: PanelCaller }, @Param('id') id: string) {
+    return this.todos.done(req.panel.organizationId, req.panel.personId, id);
+  }
+
+  @Get('people/:personExternalId/commitments')
+  @UseGuards(MachineTokenGuard)
+  @RequiresScope('graph:read')
+  @ApiOperation({ summary: "A named person's commitments, for the system that holds their work" })
+  async commitmentsOf(@Req() req: { machine: MachineCaller }, @Param('personExternalId') personExternalId: string) {
+    return this.commitments.forPerson(req.machine.organizationId, personExternalId, req.machine);
   }
 
   /**

@@ -60,7 +60,7 @@ export const THE_SEQUENCE: IntegrationStep[] = [
     call: 'POST /grounds',
     why: 'Open a check-in. Same engine and same report as one opened in the product.',
     watchOutFor:
-      'scenario and moment are both required, and both are closed sets - see `vocabulary` below.',
+      'scenario and moment are both required, and both are closed sets - see `vocabulary` below. `startsAt` (ISO date) holds the first session until that day; `timelineDays` is any number of days, 21 for three weeks; `brief` is what everybody works from.',
   },
   {
     n: 5,
@@ -79,6 +79,42 @@ export const THE_SEQUENCE: IntegrationStep[] = [
 ];
 
 /** The closed sets, straight from the enums the validators use. */
+/**
+ * THE PANEL, WHICH IS THE OTHER HALF OF THE API AND WAS NOT WRITTEN DOWN HERE.
+ *
+ * Everything above is a machine talking to us. The panel is a person: one script tag on the
+ * customer's page, signed in by their own login, and from it the person runs their check-in, reads
+ * their report, states what success looks like, and keeps their commitments. These are the routes
+ * it uses, every one of them acting as the signed-in person and never as anybody else.
+ */
+export const THE_PANEL = {
+  embed: '<script src="{api}/embed.js" data-token="{identity token}"></script>; data-mode="anchor" data-anchor="#el" pins it inside your own element',
+  session: 'POST /embed/session (the loader does this); GET /embed/opening returns the first line, what is due, and what the person can do next',
+  routes: [
+    'GET /check-ins/mine',
+    'GET /grounds/awaiting-me',
+    'POST /grounds/:id/confirm-lead',
+    'POST /check-ins  { label, scenario, moment, timelineDays, cadence, startsAt, brief, participants[] }',
+    'POST /check-ins/:id/open',
+    'POST /check-ins/:id/messages  { content }',
+    'POST /check-ins/:id/complete',
+    'GET /check-ins/:id/report',
+    'GET /check-ins/:id/transcript',
+    'POST /check-ins/:id/success-looks-like  { text }',
+    'POST /grounds/:groundId/documents  (multipart file, uploaderNote, visibility OPEN|OWN)',
+    'PATCH /grounds/:groundId/documents/:docId/visibility  { visibility }',
+    'GET /commitments/mine',
+    'POST /commitments  { text, dueSaid, dueAt, subjectExternalId }',
+    'POST /commitments/:id/done',
+    'GET /todos/mine',
+    'POST /todos  { text, dueSaid, dueAt }',
+    'POST /todos/:id/done',
+    'GET /reports/my-people',
+    'POST /chat  { message }',
+  ],
+  says: "The panel runs the check-in in place. A check-in that becomes open fires checkin.opened to your webhooks, with the person's own id, so you can tell them in your channel.",
+} as const;
+
 export const VOCABULARY = {
   scenario: Object.values(GroundScenario),
   moment: Object.values(GroundMoment),
