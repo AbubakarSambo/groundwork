@@ -137,6 +137,7 @@ export function IntegrationsPage() {
   const toggleWa = useMutation({
     mutationFn: (enabled: boolean) => integrationsApi.setWhatsappEnabled(enabled),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change. WhatsApp is as it was - try again.'),
   })
   const testWa = useMutation({
     mutationFn: () => integrationsApi.testWhatsapp(waTestTo),
@@ -146,6 +147,7 @@ export function IntegrationsPage() {
   const disconnectWa = useMutation({
     mutationFn: () => integrationsApi.disconnectWhatsapp(),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Removed.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'The connection was not removed. Try again.'),
   })
 
   /*
@@ -310,6 +312,14 @@ export function IntegrationsPage() {
         * would tell somebody to go and pay for something that is free, which is
         * the worst version of a stale message.
         */}
+      {/* A failed read of access used to strand the customer with nothing: the request form is gated on
+          access.data, so no data meant no form and no explanation. Say which it is. */}
+      {access.isLoading && (
+        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 12 }}>Checking whether your organisation has access...</div>
+      )}
+      {access.isError && (
+        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.6 }}>We could not read whether your organisation has access. Reload, or email hello@myground.work.</div>
+      )}
       {access.data && !access.data.approved && (
         <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 5 }}>

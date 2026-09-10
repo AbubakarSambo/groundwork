@@ -184,7 +184,10 @@ export function GroundParticipantPage() {
 
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: string) => billingApi.createSubscription(plan as any),
-    onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
+    onSuccess: r => {
+      if (r.checkoutUrl) window.location.href = r.checkoutUrl
+      else toast.error('Checkout did not open. Try again, or email hello@myground.work.')
+    },
     onError: () => toast.error('Could not start checkout. Try again.'),
   })
 

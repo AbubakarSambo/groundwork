@@ -285,7 +285,14 @@ export function AuthPage() {
         setError('That address already has an account. Sign in instead.')
         return
       }
-      setLinkSent(true)
+      /*
+       * NOT setLinkSent(true). The same fall-through is RIGHT on sendLink above - that is the sign-in
+       * door, where any honest 4xx would say whether an address exists - and WRONG here: the person
+       * has just told us they are new, so there is nothing to leak, and "check your email" on a
+       * request that failed is a lie. A shape complaint says nothing about any account. Do not make
+       * the two consistent; they differ on purpose.
+       */
+      setError('That address was not accepted. Check it and try again.')
     },
   })
 

@@ -585,6 +585,7 @@ export function GroundAdminPage() {
   const dismissRequest = useMutation({
     mutationFn: (reqId: string) => participantRequestsApi.update(id!, reqId, 'DISMISSED'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['participant-requests', id] }),
+    onError: () => toast.error('That request was not dismissed - it is still in the list. Try again.'),
   })
 
   const [confirmClosing, setConfirmClosing] = useState(false)
@@ -601,6 +602,7 @@ export function GroundAdminPage() {
   const remind = useMutation({
     mutationFn: (checkInId: string) => conversationApi.remind(checkInId),
     onSuccess: () => toast.success('Reminder sent'),
+    onError: () => toast.error('The reminder did not go out - nobody has been emailed. Try again.'),
   })
 
   const fixEmail = useMutation({
@@ -754,7 +756,8 @@ export function GroundAdminPage() {
       return { failed, waiting, sent: results.length - failed.length - waiting }
     },
     onSuccess: ({ failed, waiting, sent }) => {
-      setQueuedToAdd([])
+      /* The ones that failed stay in the queue, so the retry is in place rather than retyped. */
+      setQueuedToAdd(queuedToAdd.filter((q) => failed.some((f) => f.email === q.email)))
       qc.invalidateQueries({ queryKey: ['ground', id] })
       if (sent > 0) toast.success(`Invite sent to ${sent} ${sent === 1 ? 'person' : 'people'}`)
       if (waiting > 0) {

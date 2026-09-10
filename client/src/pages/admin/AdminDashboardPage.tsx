@@ -654,8 +654,10 @@ function AdminManagementSection({
  * is flagged and sorted to the top.
  */
 function WritersSection() {
-  const { data, isLoading } = useQuery({ queryKey: ['admin-writers'], queryFn: adminApi.writers, staleTime: 60 * 1000 })
-  if (isLoading || !data) return null
+  const { data, isLoading, error } = useQuery({ queryKey: ['admin-writers'], queryFn: adminApi.writers, staleTime: 60 * 1000 })
+  /* A health check that renders nothing on failure reads as a clean bill of health. Say which it is. */
+  if (isLoading) return <div style={{ ...C, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)' }}>Reading the writers...</div>
+  if (error || !data) return <div style={{ ...C, marginTop: 16, fontSize: 12, color: 'var(--gw-sub)' }}>The writers check could not run. Reload to try it again.</div>
   const rows = [...data.rows].sort((a, b) => Number(b.flagged) - Number(a.flagged) || a.table.localeCompare(b.table))
   return (
     <div style={{ ...C, marginTop: 16 }}>

@@ -15,7 +15,12 @@ const MODE_LABEL: Record<string, string> = {
   both: 'Both',
 }
 
-const APP_URL = import.meta.env.VITE_APP_URL ?? ''
+/*
+ * VITE_APP_URL WAS SET NOWHERE. Referenced in exactly one place in the client and present in neither
+ * env file, so every invite link copied off this card was `/invite?token=...` with no origin - in every
+ * environment - and unopenable. The page's own origin is the right answer whenever nothing says otherwise.
+ */
+const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin
 
 function generateToken(): string {
   const arr = new Uint8Array(24)
@@ -61,12 +66,14 @@ export function SaveCard({ mode, variant = 'admin', onClear, email: initialEmail
       localStorage.setItem('gw_magic_email', trimmed)
       navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
     },
+    /*
+     * A FAILURE MUST NEVER RENDER THE SUCCESS SCREEN. This body was byte-for-byte the onSuccess
+     * above: it wrote the two storage keys and navigated to "check your email" on a request that had
+     * failed - so nothing was sent and the person was told to go and look for it. Stay here, keep
+     * what they typed, say what happened, and leave the button live.
+     */
     onError: () => {
-      const trimmed = email.trim()
-      sessionStorage.setItem('gw_magic_type', 'entry')
-      sessionStorage.setItem('gw_magic_email', trimmed)
-      localStorage.setItem('gw_magic_email', trimmed)
-      navigate(`/auth/sent?email=${encodeURIComponent(trimmed)}`)
+      setEmailError('That did not save - nothing has been sent. Try again.')
     },
   })
 
