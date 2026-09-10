@@ -22,6 +22,19 @@ Every proposed change was checked against the code before it was written down. W
 and the code disagreed, the part files say so; there are nine such corrections and they matter,
 because three of them would have turned a fix into a new bug.
 
+## Standing constraints
+
+**Nothing in the marketing site or its homepage is changed by this plan.** Several batches were
+written proposing a wording change there. Those halves are struck. Where a batch had a product half
+and a copy half, only the product half survives.
+
+This has a consequence worth stating plainly rather than burying. Some of the claims the audit found
+on the site are ones the product does not currently deliver. With the copy frozen, the only way to
+close those is to build the thing the claim describes. `planaudit_d_f_g.md` lists every claim that
+now stands uncorrected and what the product would have to do to make each one true. Read that list
+and decide which to build and which to accept as a known gap. The gap does not disappear because the
+sentence stays.
+
 ## Decisions already made
 
 - **Deleting.** A person may delete their way in. The record is untouched: their words stay, their
@@ -29,6 +42,8 @@ because three of them would have turned a fix into a new bug.
 - **Retention.** Keep everything for now. Revisited before the first paying client, not after.
 - **Department.** Optional, captured beside role wherever a person is added, usable through the API,
   never inferred.
+- **Cancelling.** A cancellation ends the subscription at the end of the paid period. Somebody who
+  wants to stop sooner pauses instead, which is already built and correct. See batch `A17`.
 - **check-in and session.** A check-in is the whole engagement. A session is one round by one
   person. Grounded in what the navigation and the database already do.
 
@@ -56,7 +71,8 @@ Nobody can settle these from the repository. They gate how urgent wave 1 is.
 `A1` three public routes acting with the product's own authority, including an open mail relay and
 the unauthenticated draft takeover. `A2` eleven handlers that name a record by its id alone. `A3`
 the raw words, which is the promise the product is sold on. `A4` the join link as a way into an
-organisation. `A7` and `A8` money kept or refused wrongly, and the webhook that loses the record.
+organisation. `A7`, `A8` and `A17` money kept or refused wrongly, the webhook that loses the record, and
+cancelling early taking money that is not returned.
 `B3` the door people actually use, which has no lock and no meter.
 
 `B3` is the one to look at first if you read only one thing. The streaming route the client uses

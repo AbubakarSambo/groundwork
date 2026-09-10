@@ -860,3 +860,56 @@ controller after an await on a `@Public()` anonymous route, so one visitor's clo
 It is a real cross-visitor security defect, but it is filed under the state machine and belongs with
 whoever holds that slice. It is a one-line fix (return the flag with the reply instead of storing
 it) and it should not fall between us.
+
+---
+
+# Added 10 September 2026, by decision
+
+## Batch 17 — Cancelling ends at the end of the month, and pausing is offered instead
+
+Closes: P6B-011, and replaces the copy half of P5-088.
+
+**Decided by the product owner:** cancellation means the subscription ends at the end of the paid
+period. Somebody who wants to stop paying sooner pauses instead.
+
+**Today.** `billing.service.ts:564-577` calls `subscriptions.cancel()`, which ends the subscription
+at that moment, then clears `subscriptionPlan`, `subscriptionStripeId` and `subscriptionPeriodEnd`
+locally. A customer who cancels on the second day of a paid month loses the remaining days they
+have already paid for. Nothing refunds them and nothing tells them. With payment live on
+production this is money taken and not returned.
+
+Pause already exists and is correct: `pauseSubscription` at `:580` sets
+`pause_collection: { behavior: 'mark_uncollectible' }` and `resumeSubscription` at `:595` clears
+it. Nothing needs building there. What is missing is that the person is never offered it at the
+moment they are trying to stop paying.
+
+**The change.**
+
+1. `cancelSubscription` calls `subscriptions.update(id, { cancel_at_period_end: true })` rather
+   than `cancel`. It keeps `subscriptionStripeId` and `subscriptionPeriodEnd`, and sets the status
+   to a value meaning "ending on that date" rather than `cancelled`. Access continues until the
+   date. The webhook that already handles subscription deletion is what finally writes `cancelled`,
+   so the local record follows Stripe rather than predicting it.
+2. A cancellation that is scheduled can be undone before the date, since Stripe supports it and the
+   subscription is still there. The screen that shows "ending on the 30th" gets an "keep it" action.
+3. The confirmation replaces `window.confirm`. It states the real consequence, which is that access
+   continues until the period end and then stops, and it offers pause as the alternative in the
+   same place. The existing text saying the team "will move to per-session billing" is describing a
+   mode that no longer exists and must go.
+4. Pause gets its own confirmation, which it does not have today, saying what pausing does to
+   access and when collection resumes.
+
+**Status values.** Check the `SubscriptionStatus` set before adding one. If a suitable value exists
+it is reused; if not, this is the one schema change in the batch, and every reader of the status
+must be found first, because a status nothing understands is the frozen-state bug in part B.
+
+**Backfill.** Any organisation cancelled before this ships was ended immediately and their period
+end was cleared, so the data to make them whole is in Stripe rather than here. Somebody with
+dashboard access should list cancellations to date and decide whether anybody is owed time. This
+cannot be answered from the repository.
+
+Spec: `cancelling-runs-to-the-end-of-what-was-paid-for.spec.ts`, and
+`stopping-early-is-a-pause-not-a-refund.spec.ts`.
+
+Effort: half a day for the service and the webhook path, half a day for the two confirmations.
+Risk: the status value. Everything else is a smaller change than what it replaces.
