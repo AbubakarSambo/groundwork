@@ -207,6 +207,30 @@ function Fold({
   )
 }
 
+/**
+ * "NOT INVITED YET" IS THREE DIFFERENT FACTS. The server names which (notInvitedBecause); this turns
+ * the counts into sentences, one per fact, so a lead is never told "invited on the start date" about
+ * somebody whose mail failed or who has no seat.
+ */
+function whyNotInvited(rows: ({ invitedAt?: string | null; notInvitedBecause?: string | null } | undefined)[]) {
+  const why = { starts_later: 0, no_seat: 0, mail_failed: 0 }
+  for (const r of rows) {
+    if (!r || r.invitedAt) continue
+    const k = (r.notInvitedBecause ?? 'starts_later') as keyof typeof why
+    if (k in why) why[k]++
+  }
+  return why
+}
+
+function sentencesFor(why: { starts_later: number; no_seat: number; mail_failed: number }): string[] {
+  const people = (n: number) => (n === 1 ? 'One person is' : `${n} people are`)
+  const out: string[] = []
+  if (why.starts_later) out.push(`${people(why.starts_later)} on the check-in and will be invited on the start date.`)
+  if (why.no_seat) out.push(`${people(why.no_seat)} on the check-in and will be invited when an admin makes room on the plan.`)
+  if (why.mail_failed) out.push(`${people(why.mail_failed)} on the check-in but the invitation did not send. Send it again from their row.`)
+  return out
+}
+
 export function GroundAdminPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -752,23 +776,18 @@ export function GroundAdminPage() {
           email,
           because: (r.reason as any)?.response?.data?.message ?? 'The invite did not send.',
         }))
-      const waiting = results
-        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null }> => r.status === 'fulfilled')
-        .filter((r) => !r.value?.invitedAt).length
-      return { failed, waiting, sent: results.length - failed.length - waiting }
+      const added = results
+        .filter((r): r is PromiseFulfilledResult<{ invitedAt?: string | null; notInvitedBecause?: string | null }> => r.status === 'fulfilled')
+        .map((r) => r.value)
+      const why = whyNotInvited(added)
+      return { failed, why, sent: added.filter((a) => !!a?.invitedAt).length }
     },
-    onSuccess: ({ failed, waiting, sent }) => {
+    onSuccess: ({ failed, why, sent }) => {
       /* The ones that failed stay in the queue, so the retry is in place rather than retyped. */
       setQueuedToAdd(queuedToAdd.filter((q) => failed.some((f) => f.email === q.email)))
       qc.invalidateQueries({ queryKey: ['ground', id] })
       if (sent > 0) toast.success(`Invite sent to ${sent} ${sent === 1 ? 'person' : 'people'}`)
-      if (waiting > 0) {
-        toast.info(
-          waiting === 1
-            ? 'One person is on the check-in and will be invited on the start date.'
-            : `${waiting} people are on the check-in and will be invited on the start date.`,
-        )
-      }
+      for (const line of sentencesFor(why)) toast.info(line)
       for (const f of failed) toast.warning(`${f.email}: ${f.because}`)
       if (failed.length) rememberWhoWasNotInvited(id!, failed)
     },
@@ -801,19 +820,21 @@ export function GroundAdminPage() {
     setAddingMany(true)
     let added = 0
     const refused: string[] = []
-    let waiting = 0
+    const rows: { invitedAt?: string | null; notInvitedBecause?: string | null }[] = []
     for (const email of emails) {
       try {
-        const r = (await groundsApi.addParticipant(id!, { email })) as { invitedAt?: string | null }
+        const r = (await groundsApi.addParticipant(id!, { email })) as { invitedAt?: string | null; notInvitedBecause?: string | null }
         added++
-        if (!r.invitedAt) waiting++
+        rows.push(r)
       } catch (err: any) {
         refused.push(`${email}: ${err?.response?.data?.message ?? 'could not be added'}`)
       }
     }
     setAddingMany(false)
     qc.invalidateQueries({ queryKey: ['ground', id] })
-    if (added) toast.success(added === 1 ? 'Added and invited.' : `${added} people added${waiting ? `, ${waiting} invited on the start date` : ' and invited'}.`)
+    const invited = rows.filter((r) => !!r.invitedAt).length
+    if (added) toast.success(added === 1 ? (invited ? 'Added and invited.' : 'Added.') : `${added} people added${invited ? `, ${invited} invited` : ''}.`)
+    for (const line of sentencesFor(whyNotInvited(rows))) toast.info(line)
     for (const line of refused) toast.error(line)
   }
 
@@ -833,6 +854,11 @@ export function GroundAdminPage() {
        * worse than either.
        */
       setLastInviteWaits(!(added as { invitedAt?: string | null }).invitedAt)
+      /* Three facts, three sentences. "Invited on the start date" was said for a person with no seat and
+         for a mail that never sent - false in both. The mail that failed gets its own line, and the row's
+         Resend button is the way back. */
+      const because = (added as { notInvitedBecause?: string | null }).notInvitedBecause
+      if (because === 'mail_failed') toast.error(`The invitation to ${newParticipantEmail.trim()} did not send. They are on the check-in; send it again from their row.`)
       /*
        * AND WHY IT WAITS, WHEN THE SERVER KNOWS A BETTER REASON THAN THE DATE.
        *

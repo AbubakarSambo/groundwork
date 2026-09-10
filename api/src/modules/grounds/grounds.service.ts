@@ -2809,8 +2809,21 @@ export class GroundsService {
       select: { organizationId: true, organization: { select: { name: true } } },
     });
     const fromAnotherOrg = !!theirHome && theirHome.organizationId !== organizationId;
+    /*
+     * "NOT INVITED YET" IS THREE DIFFERENT FACTS. The start date is ahead, there is no seat, or the
+     * mail did not send - and the screen read them all as one null and told the lead "invited on the
+     * start date", false in two of the three. The row carries the facts; this names them.
+     */
+    const notInvitedBecause: 'starts_later' | 'no_seat' | 'mail_failed' | null = emailFailed
+      ? 'mail_failed'
+      : !waitingForASeat.room
+        ? 'no_seat'
+        : invitedAt
+          ? null
+          : 'starts_later';
     return {
-      id, email, partyType, userId, roleAsDescribed, invitedAt, notifiedAt, soloArtifactAt, createdAt,
+      id, email, partyType, userId, roleAsDescribed, invitedAt: emailFailed ? null : invitedAt, notifiedAt, soloArtifactAt, createdAt,
+      notInvitedBecause,
       devUrl: emailResult?.devUrl,
       emailFailed,
       /* On the check-in, not written to, until an admin makes room. The lead is told exactly that -
