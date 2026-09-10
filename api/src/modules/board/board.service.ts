@@ -1,4 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
+import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
@@ -83,6 +85,24 @@ export class BoardService {
     private prisma: PrismaService,
     private readonly anthropic: AnthropicService,
   ) {}
+
+  /*
+   * THE BOARD IS BUILT WHEN THE SESSION ENDS, NOT WHEN THE LEAD OPENS IT. Every worded line the
+   * board shows is kept by its hash (see a-line-worded-once-is-kept), so reading it once here, a
+   * few seconds after the check-in that changed it, means the lead's first open pays nothing.
+   * Best-effort: a failure here is logged and the open still works, it is just slower.
+   */
+  @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
+  async warmOnCheckInCompleted(event: CheckInCompletedEvent) {
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
+      if (!ground?.initiatorId) return;
+      await this.get(event.groundId, ground.initiatorId);
+      this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+    } catch (err: any) {
+      this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
+    }
+  }
 
   async get(groundId: string, requestingUserId: string, variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT) {
     const ground = await this.prisma.ground.findUnique({

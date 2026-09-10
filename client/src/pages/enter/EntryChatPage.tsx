@@ -1022,6 +1022,8 @@ export function EntryChatPage() {
   const [onboardingHistory, setOnboardingHistory] = useState<Turn[]>([])
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingLoading, setOnboardingLoading] = useState(false)
+  /** What the model has said so far on the turn in flight. Empty until the first sentence lands. */
+  const [onboardingDraft, setOnboardingDraft] = useState('')
   // Doc-add during onboarding: paste or upload a text document + context, so the
   // AI reads it and reports what it gathered (instead of the person typing it out).
   const [showDocPanel, setShowDocPanel] = useState(false)
@@ -1444,7 +1446,24 @@ export function EntryChatPage() {
   const sendMut = useMutation({
     /* Same situation for every turn after the first, and for the same reason - a check-in that
        opens on the right question and continues on a generic one is the same bug, one turn later. */
-    mutationFn: (msgs: Turn[]) => entryApi.chat(msgs, onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined, groundName || undefined),
+    mutationFn: (msgs: Turn[]) => {
+      /* The '…' placeholder send() appended becomes the reply as the sentences arrive. */
+      let shown = ''
+      return entryApi.chatStream(
+        msgs,
+        onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
+        groundName || undefined,
+        (text) => {
+          shown += text
+          const live = shown
+          setHistory(prev => {
+            const last = prev[prev.length - 1]
+            if (!last || last.role !== 'assistant') return prev
+            return [...prev.slice(0, -1), { role: 'assistant', content: live }]
+          })
+        },
+      )
+    },
     onSuccess: (res, msgs) => {
       const newTurn: Turn = { role: 'assistant', content: res.reply }
       const updated = [...msgs, newTurn]
@@ -1461,9 +1480,9 @@ export function EntryChatPage() {
       }
       persistCheckin(updated)
     },
-    onError: () => {
+    onError: (_err, msgs) => {
       setLoading(false)
-      setHistory(prev => prev.filter(m => m.role !== 'assistant' || m.content !== '…'))
+      setHistory(msgs)
       toast.error('Message failed. Try again.')
     },
   })
@@ -1610,11 +1629,15 @@ export function EntryChatPage() {
        * (onboarding a group is a different question from an ongoing read of one), and guessing it
        * would ask the wrong one of the two with complete confidence.
        */
-      const res = await entryApi.onboard(
+      setOnboardingDraft('')
+      let draft = ''
+      const res = await entryApi.onboardStream(
         withoutPickedOpener(newHistory) as Turn[],
         onboardingSelections.classifiedScenario || pickedScenario || scenario || undefined,
         onboardingSelections.mode === 'something_new' ? 'STARTING' : undefined,
+        (text) => { draft += text; setOnboardingDraft(draft) },
       )
+      setOnboardingDraft('')
       // Safety net: if the endpoint says we are ready to wrap up but the reply
       // still asks a question, showing the wrap-up card would strand that
       // question (the input hides). Swap the question-reply for a clean closer
@@ -2707,10 +2730,14 @@ export function EntryChatPage() {
                   maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
                   border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
                   padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.06)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', whiteSpace: 'pre-wrap',
                 }}>
-                  <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
-                  <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
+                  {onboardingDraft ? onboardingDraft : (
+                    <>
+                      <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
+                      <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
+                    </>
+                  )}
                 </div>
               )}
 

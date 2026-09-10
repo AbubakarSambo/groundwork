@@ -377,7 +377,18 @@ export class AnthropicService {
     return houseStyle(text);
   }
 
-  async extract<T = any>(systemPrompt: string, history: ChatTurn[], tool: { name: string; description: string; input_schema: any }): Promise<T | null> {
+  /**
+   * `thinkingBudget` is for the small, live extractions: the Setup turn pulls a handful of typed
+   * fields out of a short conversation while a person waits, and with the model's default budget
+   * that pull took longer than the reply it followed (28s observed, against 2s for the reply).
+   * Report synthesis leaves it unset and keeps the deeper default.
+   */
+  async extract<T = any>(
+    systemPrompt: string,
+    history: ChatTurn[],
+    tool: { name: string; description: string; input_schema: any },
+    options: { thinkingBudget?: number } = {},
+  ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
@@ -392,6 +403,7 @@ export class AnthropicService {
         config: {
           systemInstruction: systemPrompt,
           maxOutputTokens: 8192,
+          ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {
             functionCallingConfig: {

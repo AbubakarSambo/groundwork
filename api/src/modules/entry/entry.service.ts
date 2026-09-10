@@ -29,10 +29,11 @@ import {
   buildRuntimeContext,
 } from '../conversation/prompt-library';
 import { VOCABULARY_RULE } from '../conversation/prompt-library';
-import { forHumans, hadCloseMarker } from '../presentation/outbound';
+import { forHumans, hadCloseMarker, whatIsNewSince } from '../presentation/outbound';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
 import { recordRoundCompletion } from '../grounds/round-completion';
-import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
+import { screen, ASK_AGAIN, SentenceGate } from '../conversation/nothing-invented-reaches-them';
+import { SESSION_CLOSE_MARKER } from '../conversation/prompt-library';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 
@@ -451,6 +452,9 @@ export function onboardingIsReady(extracted: {
   return !!(extracted.mode && extracted.initial && extracted.decision);
 }
 
+/** Enough to fill typed fields from a short chat, not enough to sit on the turn. See AnthropicService.extract. */
+const CONVERSATION_THINKING_BUDGET_FOR_EXTRACT = 256;
+
 @Injectable()
 export class EntryService {
   private readonly logger = new Logger(EntryService.name);
@@ -530,6 +534,7 @@ Respond with exactly one JSON object: {"scenario": "<SCENARIO_KEY>"}`;
      */
     scenarioInput?: string,
     momentInput?: string,
+    onDelta?: (text: string) => void,
   ): Promise<{
     reply: string;
     extracted: {
@@ -755,6 +760,7 @@ Rules:
     const reply = await this.guardedReply(
       repeating ? `${setupPrompt}\n\n---\n\n${repeating}` : setupPrompt,
       messages,
+      onDelta,
     );
 
     // Second lightweight call to extract structured fields
@@ -856,7 +862,7 @@ from finishing at all.`;
     const allMessages: ChatTurn[] = [...messages, { role: 'assistant', content: reply }];
     let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; yourRole?: string } = {};
     try {
-      const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL);
+      const result = await this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, allMessages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT });
       if (result) extracted = result;
     } catch { /* extraction is best-effort */ }
 
@@ -908,7 +914,7 @@ from finishing at all.`;
     return { reply, extracted, ready, needsPeople };
   }
 
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, joinToken?: string): Promise<string> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, joinToken?: string, onDelta?: (text: string) => void): Promise<string> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     // Join participant path: the person scanned a QR code and is responding to a specific ground question.
@@ -936,7 +942,7 @@ STRICT RULES:
 - Off-topic or very brief first messages: name that gently and redirect - "This check-in is to get your perspective on ${ground.label}. In a sentence or two, what would you want on record?"
 
 ` + buildEntrySystemPrompt(joinScenario, ground.label, PartyType.PARTICIPANT);
-        return this.guardedReply(joinPrompt, messages);
+        return this.guardedReply(joinPrompt, messages, onDelta);
       }
     }
 
@@ -945,11 +951,11 @@ STRICT RULES:
     // and only for short messages - long context blocks from startCheckin are never FAQ questions.
     const conversationStarted = messages.filter(m => m.role === 'user').length > 1;
     if (!conversationStarted && lastUser && lastUser.content.length <= 200 && isLikelyQuestion(lastUser.content)) {
-      return this.guardedReply(FAQ_PROMPT, messages);
+      return this.guardedReply(FAQ_PROMPT, messages, onDelta);
     }
 
     const mapped = resolveScenario(scenario);
-    return this.guardedReply(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages);
+    return this.guardedReply(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages, onDelta);
   }
 
 
@@ -967,9 +973,18 @@ STRICT RULES:
    * somebody adds would not have the restore on it. Going through here means a new
    * exit is guarded by default and forgetting is the unusual act.
    */
-  private async guardedReply(system: string, messages: ChatTurn[]): Promise<string> {
-    const reply = await this.anthropic.respond(system, messages);
+  /**
+   * STREAMED WHEN ASKED, GUARDED THE SAME EITHER WAY. Setup replies used to arrive whole after five to
+   * ten seconds of "Thinking". With `onDelta` the sentences go out live through the same gate the
+   * check-in stream uses, cleaned with a diff and never a slice (see whatIsNewSince), and the reply
+   * that is kept is still the whole one, screened whole. What streams is a preview; what stands is
+   * what always stood.
+   */
+  private async guardedReply(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<string> {
     const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
+    const reply = onDelta
+      ? await this.spokenAsItComes(this.anthropic.respondStream(system, messages), personSaid, onDelta)
+      : await this.anthropic.respond(system, messages);
     /*
      * NOTHING INVENTED REACHES A PERSON, on this path as on the check-in. A sentence naming somebody
      * who does not exist is dropped rather than repaired, because there is nothing of theirs to put
@@ -1013,6 +1028,36 @@ STRICT RULES:
      */
     this.lastReplyHadCloseMarker = hadCloseMarker(restored);
     return forHumans(restored);
+  }
+
+  /**
+   * Sentences go out as the model says them, through the same gate the check-in stream uses, cleaned
+   * with a diff and never a slice (whatIsNewSince). What is returned is the whole raw reply, and the
+   * guard screens it whole exactly as it screens an unstreamed one: what streamed was a preview.
+   */
+  private async spokenAsItComes(
+    deltas: AsyncIterable<string>,
+    personSaid: string[],
+    onDelta: (text: string) => void,
+  ): Promise<string> {
+    const gate = new SentenceGate(personSaid, null);
+    let raw = '';
+    let cleanShown = '';
+    let emitted = 0;
+    for await (const delta of deltas) {
+      raw += delta;
+      const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+      if (safeUpTo <= emitted) continue;
+      const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
+      const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
+      if (fresh) cleanShown = cleanedSoFar;
+      emitted = safeUpTo;
+      const clean = fresh ? gate.push(fresh) : '';
+      if (clean) onDelta(clean);
+    }
+    const tail = gate.push(whatIsNewSince(cleanShown, forHumans(raw))) + gate.flush();
+    if (tail) onDelta(tail);
+    return raw;
   }
 
   /**

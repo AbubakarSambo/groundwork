@@ -27,7 +27,8 @@ describe('every reply that reaches a person goes through the guard', () => {
 
     const offenders: string[] = [];
     lines.forEach((line, i) => {
-      if (!/this\.anthropic\.respond\(/.test(line)) return;
+      /* Streamed or not, it is the same model and the same rule. */
+      if (!/this\.anthropic\.respond(Stream)?\(/.test(line)) return;
       /* The guard's own call. */
       if (i > guardLine && i < guardLine + 12) return;
       /*

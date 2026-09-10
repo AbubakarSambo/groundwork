@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { EntryService } from './entry.service';
@@ -219,6 +220,72 @@ export class EntryController {
     return this.service.onboard(dto.messages, dto.scenario, dto.moment);
   }
 
+  /*
+   * THE SAME TWO CALLS, STREAMED. Setup sat on "Thinking" for the whole of a model turn; the
+   * check-in page has streamed for months. Same guard, same reply at the end: the `done` event
+   * carries exactly what the plain route would have returned.
+   */
+  @Public()
+  @Post('onboard/stream')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async onboardStream(@Body() dto: EntryOnboardDto, @Res() res: Response) {
+    this.openStream(res);
+    const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }));
+      write({ type: 'done', ...out });
+    } catch (err: any) {
+      write({ type: 'error', message: err?.message ?? 'stream failed' });
+    } finally {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+
+  @Public()
+  @Post('chat/stream')
+  @Throttle({ global: { limit: 30, ttl: 60000 } })
+  async chatStream(@Body() dto: EntryChatDto, @Res() res: Response) {
+    this.openStream(res);
+    const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, dto.joinToken, (text) => write({ type: 'delta', text }));
+      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply) });
+    } catch (err: any) {
+      write({ type: 'error', message: err?.message ?? 'stream failed' });
+    } finally {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+
+
+  private sessionCompleteFrom(reply: string): boolean {
+    const markerClosed = this.service.didLastReplyClose();
+    const r = reply.toLowerCase();
+    const sessionComplete =
+      markerClosed ||
+      r.includes('[session complete]') ||
+      r.includes('your account is now on record') ||
+      r.includes('your record is here') ||
+      r.includes('your record is saved as is') ||
+      r.includes('cannot be verified from this account') ||
+      r.includes('your contribution is saved');
+        return sessionComplete;
+  }
+
+  private chatResponse(reply: string) {
+    const sessionComplete = this.sessionCompleteFrom(reply);
+    return { reply, sessionComplete };
+  }
+
+  private openStream(res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+  }
+
   @Public()
   @Post('opener')
   opener(@Body() dto: EntryOpenerDto) {
@@ -238,17 +305,7 @@ export class EntryController {
      * signal was never consulted, and whether a session closed depended on the assistant happening
      * to use one of six wordings.
      */
-    const markerClosed = this.service.didLastReplyClose();
-    const r = reply.toLowerCase();
-    const sessionComplete =
-      markerClosed ||
-      r.includes('[session complete]') ||
-      r.includes('your account is now on record') ||
-      r.includes('your record is here') ||
-      r.includes('your record is saved as is') ||
-      r.includes('cannot be verified from this account') ||
-      r.includes('your contribution is saved');
-    return { reply, sessionComplete };
+    return this.chatResponse(reply);
   }
 
   @Public()

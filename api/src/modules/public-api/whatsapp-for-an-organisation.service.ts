@@ -187,6 +187,8 @@ export class WhatsAppForAnOrganisationService {
       'Say which language this message is written in. Answer with the ISO 639-1 code only (en, ha, sw, yo, ig, fr, pt, ar, am, es). Mixed or unsure: the language most of the words are in.',
       [{ role: 'user', content: text }],
       { name: 'language_of', description: 'The language of the message', input_schema: { type: 'object', properties: { language: { type: 'string' } }, required: ['language'] } },
+      /* One word out, and a person on WhatsApp waiting for it: the model's default budget is for reports. */
+      { thinkingBudget: 128 },
     ).catch(() => null);
     const code = (read?.language ?? 'en').toLowerCase().slice(0, 2);
     const kept = LANGUAGES_WE_CONVERSE_IN[code] ? code : 'en';
