@@ -39,7 +39,7 @@ describe('the cron sweeps leave a held ground alone', () => {
       withAdvisoryLock: lock,
       ground: { findMany: filtering([paused]), updateMany: jest.fn() },
     };
-    const cron = new GroundsCron(prisma, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any);
+    const cron = new GroundsCron(prisma, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any, {} as any);
     await cron.stallOverdueGrounds();
     expect(prisma.ground.updateMany).not.toHaveBeenCalled();
   });
@@ -53,7 +53,7 @@ describe('the cron sweeps leave a held ground alone', () => {
         update: jest.fn(),
       },
     };
-    const cron = new GroundsCron(prisma, email as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any);
+    const cron = new GroundsCron(prisma, email as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any, {} as any);
     await cron.inviteJoinersWhoStartToday();
     expect(email.sendParticipantInvite).not.toHaveBeenCalled();
   });
@@ -70,7 +70,7 @@ describe('the cron sweeps leave a held ground alone', () => {
       },
       conversationTurn: { findFirst: jest.fn(), create: jest.fn() },
     };
-    const cron = new GroundsCron(prisma, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any);
+    const cron = new GroundsCron(prisma, {} as any, {} as any, { emit: jest.fn() } as any, {} as any, {} as any, {} as any);
     await (cron as any)[sweep]();
     expect(prisma.conversationTurn.findFirst).not.toHaveBeenCalled();
     expect(prisma.checkIn.update).not.toHaveBeenCalled();

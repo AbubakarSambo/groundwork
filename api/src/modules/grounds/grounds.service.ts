@@ -2972,26 +2972,53 @@ export class GroundsService {
     if (ground.initiatorId !== userId) throw new ForbiddenException('Only the lead of this check-in can begin the closing session');
     if (hasEnded(ground.status)) throw new BadRequestException('This check-in has already ended');
 
+    /**
+     * WHO GETS A CLOSING SESSION: THE PEOPLE WHO TOOK PART.
+     *
+     * This looped over every participant row. A managing-only lead - who by the rule above their
+     * own flag gives no account after session 1 - was handed a closing session; so was somebody
+     * invited who never joined. Neither would ever answer it, and the closing round waited on both
+     * for ever: the report of the whole arc, permanently "forming".
+     *
+     * The three places that count who is expected each use a deliberately different population
+     * (see the comments on isSessionReadyForReport and getSessionProgress). This one is its own,
+     * stated here rather than borrowed: a closing session is the last word from somebody who has
+     * been giving their account, so it goes to people who joined and are not managing-only. An
+     * invitation still live at this point is not a person who took part.
+     */
+    const answering = ground.participants.filter((p) => !!p.userId && !p.managingOnly);
+
+    /**
+     * BEGINNING IT TWICE IS BEGINNING IT ONCE. Each pass computed `last + 1` and created, so a
+     * retry - a double click, a timeout on the first call - gave every person a SECOND final
+     * session at last + 2. The whole loop is one transaction now, and a person who already has a
+     * final session, open or not, is left exactly as they are.
+     */
     let flagged = 0;
-    for (const p of ground.participants) {
-      const open = await this.prisma.checkIn.findFirst({
-        where: { groundId, participantId: p.id, status: { in: ['NOT_STARTED', 'IN_PROGRESS'] as any } },
-        orderBy: { sessionNumber: 'asc' },
-      });
-      if (open) {
-        await this.prisma.checkIn.update({ where: { id: open.id }, data: { isFinal: true } });
-      } else {
-        const last = await this.prisma.checkIn.findFirst({
-          where: { groundId, participantId: p.id },
-          orderBy: { sessionNumber: 'desc' },
-          select: { sessionNumber: true },
+    await this.prisma.$transaction(async (tx) => {
+      for (const p of answering) {
+        const alreadyFinal = await tx.checkIn.findFirst({ where: { groundId, participantId: p.id, isFinal: true }, select: { id: true } });
+        if (alreadyFinal) { flagged += 1; continue; }
+
+        const open = await tx.checkIn.findFirst({
+          where: { groundId, participantId: p.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
+          orderBy: { sessionNumber: 'asc' },
         });
-        await this.prisma.checkIn.create({
-          data: { groundId, participantId: p.id, sessionNumber: (last?.sessionNumber ?? 0) + 1, status: 'NOT_STARTED' as any, isFinal: true },
-        });
+        if (open) {
+          await tx.checkIn.update({ where: { id: open.id }, data: { isFinal: true } });
+        } else {
+          const last = await tx.checkIn.findFirst({
+            where: { groundId, participantId: p.id },
+            orderBy: { sessionNumber: 'desc' },
+            select: { sessionNumber: true },
+          });
+          await tx.checkIn.create({
+            data: { groundId, participantId: p.id, sessionNumber: (last?.sessionNumber ?? 0) + 1, status: CheckInStatus.NOT_STARTED, isFinal: true },
+          });
+        }
+        flagged += 1;
       }
-      flagged += 1;
-    }
+    });
     return { groundId, closingSession: true, participantsFlagged: flagged };
   }
 

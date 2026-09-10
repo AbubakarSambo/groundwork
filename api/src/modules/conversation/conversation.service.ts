@@ -21,6 +21,10 @@ import { ConversationContextService } from './context.service';
 import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { recordRoundCompletion } from '../grounds/round-completion';
+import { Prisma } from '@prisma/client';
+
+/** `CheckIn.closedReason` when the sweep, not the person, ended the session. The schema's own example is `willingness_declined`. */
+export const CLOSED_BY_THE_CLOCK = 'auto_closed';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -3136,6 +3140,57 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
     }
 
+    return this.finishTheSession(checkIn, 'the person');
+  }
+
+  /**
+   * THE CLOCK CLOSING A SESSION DOES WHAT A PERSON CLOSING IT DOES.
+   *
+   * The auto-close sweep used to be a second, thinner definition of "completed": it wrote the
+   * status, emitted the event and closed the round, and did none of the rest - no specificity
+   * score, no record extraction, no anchoring, no solo artifact, no usage event, and no next
+   * session. The person who walked away was stamped complete with an empty record, counted present
+   * in a report built without their words, and left with nowhere to return to, so the next round
+   * could never complete either. Now the sweep decides only WHICH sessions are stale; this is the
+   * one place a session finishes. Public because the sweep lives in the grounds module.
+   *
+   * No readiness gates on this path, on purpose: the clock closes whatever is there. The gates in
+   * complete() protect against a person leaving nothing behind; a person who left is the case they
+   * cannot help.
+   */
+  async closeByTheClock(checkInId: string): Promise<{ status: 'completed'; groundId: string }> {
+    const checkIn = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true } } } } },
+    });
+    if (!checkIn) throw new NotFoundException('Check-in not found');
+    return this.finishTheSession(checkIn, 'the clock');
+  }
+
+  /**
+   * ONE SESSION FINISHES ONCE.
+   *
+   * Everything that happens when a session ends, after the gates: scoring, extraction, the status
+   * write, the usage event, the next session, the completion event and the round. Two callers -
+   * complete() for a person, closeByTheClock() for the sweep - and `by` changes exactly one thing:
+   * the record carries that the clock closed it, so a report can say so rather than present
+   * silence as an account.
+   *
+   * THE WRITE IS THE CLAIM. Two presses of Complete used to run all twelve extractors twice and emit
+   * CHECK_IN_COMPLETED twice, double-firing the report builder and the webhook queue, because the
+   * only "is it already complete" check was an in-memory read at the top of the method. The status
+   * write is now guarded in its `where`: whoever flips IN_PROGRESS to COMPLETED wins, and only the
+   * winner emits, schedules the next session and closes the round. The loser returns the same
+   * completed response, because from the person's side it did complete.
+   *
+   * ISSUE 6 STANDS: the extractors still run BEFORE the write, so the record is populated before
+   * the status change races past it - the other party's completion can trigger a round check that
+   * reads this check-in as COMPLETED, and it must find the entries there. The cost of keeping that
+   * order is that a true same-instant double press can still run the awaited extractors twice; the
+   * event and the round are protected, the record may gain duplicate lines, and that is the cheaper
+   * of the two failures. Closing it fully needs a claim column, which is its own change.
+   */
+  private async finishTheSession(checkIn: any, by: 'the person' | 'the clock'): Promise<{ status: 'completed'; groundId: string }> {
     // Score session specificity from person's turns before marking complete
     const specificityData = await this.scoreSessionSpecificity(checkIn.id).catch(() => null);
 
@@ -3217,16 +3272,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.logger.warn(`Coaching observation failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
-    await this.prisma.checkIn.update({
-      where: { id: checkIn.id },
+    const won = await this.prisma.checkIn.updateMany({
+      where: { id: checkIn.id, status: { not: CheckInStatus.COMPLETED } },
       data: {
         status: CheckInStatus.COMPLETED,
         completedAt: new Date(),
         specificityLevel: specificityData?.level ?? null,
         recallConfidence: specificityData?.recallConfidence ?? null,
         specificityDimensions: specificityData?.dimensions ?? undefined,
+        /* The one thing `by` decides. A person's completion leaves whatever reason was already there. */
+        ...(by === 'the clock' ? { closedReason: CLOSED_BY_THE_CLOCK } : {}),
       },
     });
+    if (won.count === 0) {
+      this.logger.warn(`Check-in ${checkIn.id} was completed by another call first; nothing emitted twice.`);
+      return { status: 'completed', groundId: checkIn.groundId };
+    }
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     /*
@@ -3277,6 +3338,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       groundId: checkIn.groundId,
       participantId: checkIn.participantId,
       sessionNumber: checkIn.sessionNumber,
+      ...(by === 'the clock' ? { source: 'auto-close' as const } : {}),
     } satisfies CheckInCompletedEvent);
 
     /*
@@ -3438,8 +3500,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     if (planned != null && sessionNumber > planned) return;
 
-    await this.prisma.checkIn.create({ data: { groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal } });
+    await this.createSessionOnce({ groundId, participantId, sessionNumber, status: CheckInStatus.NOT_STARTED, availableFrom, isFinal });
   }
+
+  /**
+   * A SESSION IS CREATED ONCE, HOWEVER MANY TIMES THE REQUEST ARRIVES.
+   *
+   * Every place that makes a session computed `last + 1` and then created, against
+   * `@@unique([participantId, sessionNumber])`, with nothing catching the collision. Two requests
+   * in the same instant - a double click, a retry, the entry flow and the completion racing - both
+   * read the same `last`, and the second create threw P2002 as a 500. On ensureNextSession that 500
+   * came out of complete(), at the exact moment the person's work was being saved.
+   *
+   * The unique index was always the right arbiter. This lets it decide, and on a collision hands
+   * back the row that won.
+   */
+  private async createSessionOnce(data: Prisma.CheckInUncheckedCreateInput) {
+    try {
+      return await this.prisma.checkIn.create({ data });
+    } catch (err: any) {
+      if (err?.code !== 'P2002') throw err;
+      const existing = await this.prisma.checkIn.findUnique({
+        where: { participantId_sessionNumber: { participantId: data.participantId, sessionNumber: data.sessionNumber } },
+      });
+      if (!existing) throw err;
+      this.logger.log(`Session ${data.sessionNumber} for participant ${data.participantId} already existed; using it.`);
+      return existing;
+    }
+  }
+
 
   /**
    * Convert a cadence enum to the next available date from now.
@@ -5090,15 +5179,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     const nextSession = (lastCheckIn?.sessionNumber ?? 0) + 1;
 
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        groundId,
-        participantId: participant.id,
-        sessionNumber: nextSession,
-        status: CheckInStatus.NOT_STARTED,
-        isClarification: true,
-        clarificationTarget: inferenceId,
-      },
+    const checkIn = await this.createSessionOnce({
+      groundId,
+      participantId: participant.id,
+      sessionNumber: nextSession,
+      status: CheckInStatus.NOT_STARTED,
+      isClarification: true,
+      clarificationTarget: inferenceId,
     });
 
     return { checkInId: checkIn.id };
@@ -5188,16 +5275,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // something - but the shared report needs to know this correction landed
     // after they already confirmed their account was accurate, so it can be
     // surfaced as a flagged update rather than silently blended in.
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        groundId,
-        participantId: participant.id,
-        sessionNumber: nextSession,
-        status: CheckInStatus.NOT_STARTED,
-        isSelfCorrection: true,
-        selfCorrectionTargetSession: targetSessionNumber,
-        isPostSignOff: !!participant.signedOffAt,
-      },
+    const checkIn = await this.createSessionOnce({
+      groundId,
+      participantId: participant.id,
+      sessionNumber: nextSession,
+      status: CheckInStatus.NOT_STARTED,
+      isSelfCorrection: true,
+      selfCorrectionTargetSession: targetSessionNumber,
+      isPostSignOff: !!participant.signedOffAt,
     });
 
     return { checkInId: checkIn.id };

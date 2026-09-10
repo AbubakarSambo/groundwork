@@ -17,10 +17,16 @@ import { join } from 'path';
  */
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
+/**
+ * Two, not three. grounds.cron.ts used to be the third: the auto-close sweep wrote COMPLETED itself
+ * and was a second, thinner definition of finishing. It now hands the session to
+ * ConversationService.closeByTheClock, so the write it made is gone and the file drops off this
+ * list - which is the point of checking the list: a file that STOPS writing is as much a change as
+ * one that starts.
+ */
 const COMPLETION_SITES = [
   '../conversation/conversation.service.ts',
   '../entry/entry.service.ts',
-  './grounds.cron.ts',
 ];
 
 describe('every way a check-in completes closes its round', () => {

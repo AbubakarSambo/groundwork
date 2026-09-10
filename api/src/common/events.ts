@@ -39,6 +39,8 @@ export interface CheckInCompletedEvent {
   groundId: string;
   participantId: string;
   sessionNumber: number;
+  /** Absent when a person completed it. The sweep says so, so a listener can tell a completion from a closure. */
+  source?: 'auto-close';
 }
 
 export interface CheckInOpenedEvent {

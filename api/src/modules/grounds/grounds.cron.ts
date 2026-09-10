@@ -10,7 +10,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
-import { recordRoundCompletion } from './round-completion';
+import { ConversationService } from '../conversation/conversation.service';
 
 const INACTIVITY_AUTO_CLOSE_MS = 12 * 60 * 60 * 1000;     // 12 hours
 const MAX_SESSION_AGE_MS = 48 * 60 * 60 * 1000;            // 48 hours
@@ -40,6 +40,8 @@ export class GroundsCron {
     private events: EventEmitter2,
     private patterns: PatternsService,
     private whatsapp: WhatsAppService,
+    /** Last, so the specs that build this positionally keep compiling. The sweep only decides which sessions are stale; finishing one is the conversation module's job. */
+    private conversation: ConversationService,
   ) {}
 
   /**
@@ -290,24 +292,13 @@ export class GroundsCron {
           ? `session age ${Math.round(sessionAgeMs / 3_600_000)}h >= 48h`
           : `inactivity ${Math.round(lastActivityMs / 3_600_000)}h >= 12h`;
 
-        await this.prisma.checkIn.update({
-          where: { id: checkIn.id },
-          data: { status: CheckInStatus.COMPLETED, completedAt: now },
-        });
-
-        this.events.emit(GroundworkEvents.CHECK_IN_COMPLETED, {
-          checkInId: checkIn.id,
-          participantId: checkIn.participantId,
-          groundId: checkIn.groundId,
-          sessionNumber: checkIn.sessionNumber,
-          source: 'auto-close',
-        } as CheckInCompletedEvent & { source: string });
-
         /*
-         * An auto-closed session still closes a round, and this is the path most likely to be the
-         * last one in: the person who never came back is exactly who a round ends up waiting on.
+         * THE CLOCK FINISHES A SESSION THE WAY A PERSON DOES. This used to write COMPLETED itself,
+         * emit, and close the round - and skip everything else a completion does, so the person who
+         * walked away had an empty record and no next session. One place finishes a session now;
+         * this decides only that it is time. See ConversationService.closeByTheClock.
          */
-        await recordRoundCompletion(this.prisma, this.events, checkIn.groundId, checkIn.sessionNumber);
+        await this.conversation.closeByTheClock(checkIn.id);
 
         this.logger.warn(`Auto-closed check-in ${checkIn.id} (session ${checkIn.sessionNumber}): ${reason}`);
         closed++;
