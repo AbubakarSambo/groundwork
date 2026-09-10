@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, GoneException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
@@ -131,15 +131,20 @@ export class BillingController {
     return this.billing.applyContributorCode(organizationId, body.code);
   }
 
+  /**
+   * A TIER WE DO NOT SELL CANNOT BE CHARGED FOR. This created a real $5 Checkout under a summary that
+   * called it legacy and unreachable. The client had stopped offering it; the route had not stopped
+   * taking money. Gone, by the product owner's word (11 September 2026): the route stays registered so
+   * an old caller gets a clear 410 rather than a 404, and the webhook branch that reads a historical
+   * session_fee event stays where it is (billing.service.ts, handleStripeEvent), because Stripe can
+   * redeliver an old event long after its writer is gone.
+   */
   @Post('purchase-session')
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'LEGACY - per-session purchase. Sessions are not sold; no user-facing surface calls this. Retained only because live Stripe records may reference it.' })
-  async purchaseSession(
-    @CurrentUser('organizationId') organizationId: string,
-    @Body() body: { groundId: string; quantity?: number },
-  ) {
-    return this.billing.purchaseSession(organizationId, body.groundId, body.quantity);
+  @ApiOperation({ summary: 'Gone. Sessions are not sold one at a time; a check-in has unlimited sessions on a free ground or a subscription.' })
+  purchaseSession() {
+    throw new GoneException('Sessions are not sold one at a time. A check-in has unlimited sessions on the free plan and on every subscription.');
   }
 
   @Get('can-create-ground')

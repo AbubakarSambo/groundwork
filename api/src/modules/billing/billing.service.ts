@@ -204,54 +204,6 @@ export class BillingService {
     };
   }
 
-  /**
-   * Create a Stripe Checkout session to purchase one or more additional check-in
-   * sessions ($5 each, one-time). On webhook confirmation the ground sessionsBalance
-   * is incremented by quantity and a SESSION_FEE BillingEvent is recorded.
-   */
-  async purchaseSession(organizationId: string, groundId: string, quantity = 1): Promise<{ checkoutUrl: string }> {
-    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
-    if (!org) throw new NotFoundException('Organization not found');
-
-    // Free-tier grounds have UNLIMITED sessions (the advertised model - see
-    // canStartSession's isFreeGround branch above) and must never be charged,
-    // regardless of caller: this is the mechanism itself, not a UI surface -
-    // it closes the gap left when the paywall TRIGGERS were hidden client-side
-    // (fix/free-tier-unlimited-sessions) but this endpoint was never guarded,
-    // leaving a live path via a stale link or a direct call to /billing/purchase-session.
-    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
-    if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.isFreeGround) {
-      throw new ForbiddenException('This check-in has unlimited free sessions - nothing to purchase.');
-    }
-
-    const customerId = await this.stripe.ensureCustomer(org.id, org.email ?? undefined, org.stripeCustomerId);
-    if (customerId !== org.stripeCustomerId) {
-      await this.prisma.organization.update({ where: { id: org.id }, data: { stripeCustomerId: customerId } });
-    }
-
-    const qty = Math.max(1, Math.min(20, quantity));
-    const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
-    const session = await this.stripe.stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'payment',
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            unit_amount: 500,
-            product_data: { name: qty === 1 ? 'Check-in session' : `Check-in sessions (×${qty})` },
-          },
-          quantity: qty,
-        },
-      ],
-      metadata: { organizationId, groundId, type: 'session_fee', quantity: String(qty) },
-      success_url: `${base}?status=success&groundId=${groundId}&type=session_fee`,
-      cancel_url: `${base}?status=cancelled`,
-    });
-
-    return { checkoutUrl: session.url! };
-  }
 
   /**
    * The seat caps used to be a hardcoded map here, with a second copy on the client and a third
@@ -1071,6 +1023,12 @@ export class BillingService {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
 
+        /*
+         * THE WRITER OF THIS METADATA IS GONE. purchaseSession wrote { type: 'session_fee', organizationId,
+         * groundId, quantity } onto a Checkout session; the route returns 410 now and the method is
+         * deleted. This branch stays because Stripe redelivers old events, and a historical payment that
+         * was processed must still be recognised as processed rather than becoming a 500.
+         */
         if (session.metadata?.type === 'session_fee') {
           const { organizationId, groundId } = session.metadata ?? {};
           const qty = parseInt(session.metadata?.quantity ?? '1', 10) || 1;
