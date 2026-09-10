@@ -210,6 +210,7 @@ enum BillingEventType {
   SESSION_FEE // $5 per additional session
   SUBSCRIPTION_FEE // org subscription (Starter/SmallTeam/Growth/Business/Enterprise)
   FREE_EXTENSION // one-time free session extension per org
+  CREDIT // a session given back by a platform admin, with the reason logged
 }
 
 enum SubscriptionPlan {

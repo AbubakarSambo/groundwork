@@ -179,7 +179,7 @@ export function GroundParticipantPage() {
       setPaywallFreeExtensionAvailable(false)
       toast.success('Free session added. You can now start your session.')
     },
-    onError: () => toast.error('Could not claim free session. Try again.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free session. Try again.'),
   })
 
   const createSubscriptionMut = useMutation({
@@ -778,8 +778,9 @@ export function GroundParticipantPage() {
                   Did Groundwork help your team move forward? Choose what works best for you.
                 </div>
 
-                {/* Tier 1: Free extension */}
-                {paywallFreeExtensionAvailable && (
+                {/* Tier 1: Free extension. The route is admin-only, so the button is too: a blocked
+                    participant pressing it got "try again" for a refusal that would never change. */}
+                {paywallFreeExtensionAvailable && user?.role === 'ADMIN' && (
                   <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
                     <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
@@ -792,6 +793,12 @@ export function GroundParticipantPage() {
                     >
                       {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
                     </button>
+                  </div>
+                )}
+
+                {paywallFreeExtensionAvailable && user?.role !== 'ADMIN' && (
+                  <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+                    An admin of your organisation can add one free session to this check-in, or move the organisation to a plan.
                   </div>
                 )}
 

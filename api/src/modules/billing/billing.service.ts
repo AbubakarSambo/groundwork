@@ -172,8 +172,15 @@ export class BillingService {
     }
 
     // 3. Free tier: up to the limit a platform admin has set, defaulting to what we shipped.
+    /*
+     * AN ALLOWANCE, NOT A LIFETIME TALLY. This counted every check-in the organisation had ever made,
+     * so an organisation that opened forty while subscribed and then cancelled had used "all ten of
+     * its free check-ins" without ever having had one. The pricing page - frozen - says "up to 10
+     * check-ins for free", and a check-in opened on a subscription was not a free one: it is stamped
+     * isFreeGround=false at creation for exactly this reason. So the count is of free check-ins.
+     */
     const freeGroundLimit = await this.pricing.getFreeGroundLimit();
-    const groundCount = await this.prisma.ground.count({ where: { organizationId } });
+    const groundCount = await this.prisma.ground.count({ where: { organizationId, isFreeGround: true } });
     if (groundCount < freeGroundLimit) {
       return { allowed: true, freeReason: 'FREE_TIER', groundsUsed: groundCount };
     }
@@ -397,14 +404,18 @@ export class BillingService {
     /* The ground id came straight off the body and went straight into the update, so an organisation's
        one free extension could be spent onto any ground in the database. Resolved inside the caller's
        organisation first, exactly as purchaseSession does two methods up. */
-    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true } });
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { id: true, isFreeGround: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* A free check-in has unlimited sessions - the same guard purchaseSession carries. Without it the
+       organisation's one extension was spent on a check-in that never needed it, the person was told
+       "Free session added", and the flag never resets. */
+    if (ground.isFreeGround) throw new ForbiddenException('This check-in has unlimited free sessions - nothing to extend.');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: { freeExtensionUsed: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
-    if (org.freeExtensionUsed) throw new ForbiddenException('Free session extension has already been used for this organization.');
+    if (org.freeExtensionUsed) throw new ForbiddenException('Your organisation has already used its one free extension. This does not reset; subscribing is the way to keep going.');
 
     const now = new Date();
     await this.prisma.$transaction([
@@ -449,6 +460,39 @@ export class BillingService {
       // A notification must never undo a granted extension.
       this.logger.warn(`Free extension granted but the email did not send: ${(err as Error)?.message}`);
     }
+  }
+
+  /**
+   * ONE WAY TO GIVE A SESSION BACK. There was no refund, reversal or credit anywhere in this file,
+   * which made every consumption defect permanent from the customer's side: "I was charged and got
+   * nothing" had no answer a support person could give. This is that answer. Platform admin only -
+   * an organisation's own admin crediting their own check-in would be the free-extension hole with
+   * no cap - and every credit is a ledger row with the reason in it.
+   */
+  async creditSession(groundId: string, reason: string, byUserId: string): Promise<{ groundId: string; sessionsBalance: number }> {
+    if (!reason?.trim()) throw new BadRequestException('Say why the session is being credited; it goes on the ledger.');
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const now = new Date();
+    const [credited] = await this.prisma.$transaction([
+      this.prisma.ground.update({ where: { id: groundId }, data: { sessionsBalance: { increment: 1 } }, select: { sessionsBalance: true } }),
+      this.prisma.billingEvent.create({
+        data: {
+          organizationId: ground.organizationId,
+          groundId,
+          type: BillingEventType.CREDIT,
+          amountCents: 0,
+          currency: 'USD',
+          status: BillingEventStatus.PAID,
+          periodStart: now,
+          periodEnd: now,
+          /* The column is unique; a credit has no Stripe invoice, so the row carries who and when instead. */
+          stripeInvoiceId: `credit_${groundId}_${now.getTime()}_${byUserId.slice(0, 8)}`,
+        },
+      }),
+    ]);
+    this.logger.warn(`Session credited to ground ${groundId} by ${byUserId}: ${reason.trim()}`);
+    return { groundId, sessionsBalance: credited.sessionsBalance };
   }
 
   /**

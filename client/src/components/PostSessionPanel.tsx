@@ -23,7 +23,9 @@ export function PostSessionPanel({ groundId, freeExtensionUsed, onDismiss }: Pro
       setDismissed(true)
       onDismiss()
     },
-    onError: () => toast.error('Could not claim free session. Try again.'),
+    /* The server says which it was - "already used", which is permanent, or a free check-in with
+       nothing to extend - and "try again" was the message for both. Say what it said. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free session. Try again.'),
   })
 
   // purchaseSessionMut removed with the buy-a-session tier.

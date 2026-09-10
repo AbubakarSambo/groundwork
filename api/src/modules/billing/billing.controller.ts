@@ -303,6 +303,14 @@ export class BillingController {
     }
   }
 
+  @Post('credit-session')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Credit one session to a check-in, with a reason on the ledger (platform admin only)' })
+  async creditSession(@CurrentUser('id') userId: string, @Body() body: { groundId: string; reason: string }) {
+    return this.billing.creditSession(body?.groundId, body?.reason, userId);
+  }
+
   @Get('stripe-failures')
   @ApiBearerAuth()
   @UseGuards(PlatformAdminGuard)
