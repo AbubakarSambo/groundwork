@@ -316,7 +316,7 @@ export function IntegrationsPage() {
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
             {access.data.says}{' '}
-            Somebody reads it and gets in touch; once it is approved, this page shows the keys, the calls and the reference.
+            One request covers the API, the panel on your own pages and your WhatsApp number. Somebody reads it and gets in touch; once it is approved, this page shows the keys, the calls and the reference.
           </div>
 
           {access.data.status !== 'PENDING' && (

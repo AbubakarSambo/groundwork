@@ -1,23 +1,23 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, type ApiAccessRequest } from '@/api/admin'
 
 /**
- * WHO HAS ASKED FOR THE API, AND WHAT WE DECIDED.
+ * WHO HAS ASKED TO CONNECT, AND WHAT WE DECIDED.
  *
- * Access stopped being something an organisation buys and became something
- * somebody here reads and grants. A subscription opened this door until it
- * turned out we could not use our own API in our own back office without
- * paying ourselves — and that is the acceptance test for the product.
+ * One request per organisation covers everything a machine can reach: the API, the panel on their
+ * own pages, and a WhatsApp number of theirs. Somebody says what they intend to build, and somebody
+ * here reads it and decides. Our own organisation is on this list like anybody else's.
  *
- * OUR OWN ORGANISATION IS ON THIS LIST. Not as a special case at the top: a
- * rule we are exempt from is a rule we stop noticing is broken, and this one
- * guards the thing we most need to keep working.
+ * 10 Sep 2026, Hafsah on the first version: "this page is unclear and has no exit". So: a way back
+ * at the top, the decision buttons say what they do, the why-box appears only for the decisions
+ * that need one, and the decided pile is folded away under a count.
  */
 
 const SAID: Record<ApiAccessRequest['status'], string> = {
   PENDING: 'waiting on us',
-  APPROVED: 'approved',
+  APPROVED: 'connected',
   DECLINED: 'declined',
   WITHDRAWN: 'withdrawn',
 }
@@ -25,6 +25,7 @@ const SAID: Record<ApiAccessRequest['status'], string> = {
 function Row({ request }: { request: ApiAccessRequest }) {
   const qc = useQueryClient()
   const [note, setNote] = useState('')
+  const [asking, setAsking] = useState<null | 'DECLINED' | 'WITHDRAWN'>(null)
   const [error, setError] = useState<string | null>(null)
 
   const clearFlag = useMutation({
@@ -38,45 +39,32 @@ function Row({ request }: { request: ApiAccessRequest }) {
     onSuccess: () => {
       setError(null)
       setNote('')
+      setAsking(null)
       qc.invalidateQueries({ queryKey: ['admin', 'api-access'] })
     },
     onError: (e: { response?: { data?: { message?: string } } }) =>
       setError(e?.response?.data?.message ?? 'That could not be recorded.'),
   })
 
+  const small = { fontSize: 12.5, color: 'var(--gw-sub)' } as const
+  const btn = { fontSize: 13, padding: '7px 14px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit' } as const
+  const primary = { ...btn, background: 'var(--gw-navy)', color: 'white', border: 'none', fontWeight: 600 } as const
+
   return (
-    <div
-      style={{
-        border: '1px solid var(--gw-border)',
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 12,
-        background: 'var(--gw-card)',
-      }}
-    >
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: 16, marginBottom: 12, background: 'var(--gw-card)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>
         <strong style={{ fontSize: 15 }}>{request.organization.name}</strong>
-        <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{SAID[request.status]}</span>
-        <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-          asked by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}
-        </span>
+        <span style={small}>{SAID[request.status]}</span>
+        <span style={small}>asked by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}</span>
       </div>
 
-      {/* WHAT THEY SAID THEY WOULD BUILD, which is the whole basis for the
-          decision. Shown in full rather than truncated — a queue that hides the
-          one thing you have to read is a queue that gets waved through. */}
-      <p style={{ fontSize: 14, margin: '10px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-        {request.whatFor}
-      </p>
+      {/* WHAT THEY SAID THEY WOULD BUILD, which is the whole basis for the decision. In full. */}
+      <p style={{ fontSize: 14, margin: '10px 0 0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{request.whatFor}</p>
 
-      {/* WHAT THE WATCH SAW, beside the decision it informs. A day's counts, then anything that
-          looked like collection rather than integration, each clearable once looked at. */}
       {(request.lastDay || request.flags.length > 0) && (
         <div style={{ marginTop: 10, fontSize: 12.5, lineHeight: 1.55 }}>
           {request.lastDay && (
-            <div style={{ color: 'var(--gw-sub)' }}>
-              Last 24 hours: {request.lastDay.calls} calls, {request.lastDay.reads} reads, {request.lastDay.writes} writes.
-            </div>
+            <div style={small}>Last 24 hours: {request.lastDay.calls} calls, {request.lastDay.reads} reads, {request.lastDay.writes} writes.</div>
           )}
           {request.flags.map((f) => (
             <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 6, padding: '8px 10px', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 6 }}>
@@ -84,99 +72,106 @@ function Row({ request }: { request: ApiAccessRequest }) {
                 <strong>{f.kind.replace(/-/g, ' ')}</strong> · {new Date(f.raisedAt).toLocaleString()}
                 <div style={{ color: 'var(--gw-text)' }}>{f.detail}</div>
               </div>
-              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} style={{ fontSize: 12 }}>Looked at</button>
+              <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} style={btn}>Looked at</button>
             </div>
           ))}
         </div>
       )}
 
-      {request.acceptedTermsAt && (
-        <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '6px 0 0' }}>
-          Terms {request.termsVersion} accepted {new Date(request.acceptedTermsAt).toLocaleDateString()}.
-        </p>
-      )}
-
-      {request.decidedAt && (
-        <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '8px 0 0', lineHeight: 1.55 }}>
-          {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on{' '}
-          {new Date(request.decidedAt).toLocaleDateString()}
-          {request.note ? ` — ${request.note}` : ''}
-        </p>
-      )}
-
-      <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Why (required unless approving)"
-          aria-label="Why"
-          style={{
-            flex: '1 1 260px',
-            padding: '6px 8px',
-            fontSize: 13,
-            borderRadius: 6,
-            border: '1px solid var(--gw-border)',
-          }}
-        />
-        {request.status !== 'APPROVED' && (
-          <button type="button" onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>
-            Approve
-          </button>
-        )}
-        {request.status === 'PENDING' && (
-          <button type="button" onClick={() => decide.mutate('DECLINED')} disabled={decide.isPending}>
-            Decline
-          </button>
-        )}
-        {request.status === 'APPROVED' && (
-          <button type="button" onClick={() => decide.mutate('WITHDRAWN')} disabled={decide.isPending}>
-            Withdraw
-          </button>
+      <div style={{ ...small, marginTop: 8 }}>
+        {request.acceptedTermsAt
+          ? `Terms ${request.termsVersion} accepted ${new Date(request.acceptedTermsAt).toLocaleDateString()}.`
+          : 'Asked before the terms existed; no version accepted.'}
+        {request.decidedAt && (
+          <> {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on {new Date(request.decidedAt).toLocaleDateString()}{request.note ? ` — ${request.note}` : ''}.</>
         )}
       </div>
 
-      {error && (
-        <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>{error}</p>
-      )}
+      <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        {request.status === 'PENDING' && !asking && (
+          <>
+            <button type="button" style={primary} onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+            <button type="button" style={btn} onClick={() => setAsking('DECLINED')}>Decline</button>
+          </>
+        )}
+        {(request.status === 'DECLINED' || request.status === 'WITHDRAWN') && !asking && (
+          <button type="button" style={primary} onClick={() => decide.mutate('APPROVED')} disabled={decide.isPending}>Let them in</button>
+        )}
+        {request.status === 'APPROVED' && !asking && (
+          <button type="button" style={btn} onClick={() => setAsking('WITHDRAWN')}>Withdraw access</button>
+        )}
+        {asking && (
+          <>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={asking === 'DECLINED' ? 'Why it is declined. They will read this.' : 'Why it is withdrawn. They will read this.'}
+              aria-label="Why"
+              autoFocus
+              style={{ flex: '1 1 260px', padding: '7px 10px', fontSize: 13, borderRadius: 6, border: '1px solid var(--gw-border)', fontFamily: 'inherit' }}
+            />
+            <button type="button" style={primary} onClick={() => decide.mutate(asking)} disabled={decide.isPending || !note.trim()}>
+              {asking === 'DECLINED' ? 'Decline' : 'Withdraw'}
+            </button>
+            <button type="button" style={btn} onClick={() => { setAsking(null); setNote('') }}>Cancel</button>
+          </>
+        )}
+      </div>
+
+      {error && <p style={{ fontSize: 12.5, color: 'var(--gw-red-t)', margin: '8px 0 0' }}>{error}</p>}
     </div>
   )
 }
 
 export function ApiAccessPage() {
-  const requests = useQuery({
-    queryKey: ['admin', 'api-access'],
-    queryFn: adminApi.getApiAccessRequests,
-    retry: false,
-  })
+  const navigate = useNavigate()
+  const [showDecided, setShowDecided] = useState(false)
+  const requests = useQuery({ queryKey: ['admin', 'api-access'], queryFn: adminApi.getApiAccessRequests, retry: false })
 
   const waiting = (requests.data ?? []).filter((r) => r.status === 'PENDING')
   const decided = (requests.data ?? []).filter((r) => r.status !== 'PENDING')
+  const connected = decided.filter((r) => r.status === 'APPROVED').length
+  const flagged = decided.filter((r) => r.flags.length > 0)
 
   return (
-    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '32px 20px 80px' }}>
-      <h1 style={{ fontSize: 24, margin: 0 }}>API access</h1>
+    <section className="gw-page" style={{ maxWidth: 820, margin: '0 auto', padding: '24px 20px 80px' }}>
+      <button
+        type="button"
+        onClick={() => navigate('/admin/dashboard')}
+        style={{ fontSize: 12.5, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+      >
+        ← Admin dashboard
+      </button>
+      <h1 style={{ fontSize: 24, margin: '10px 0 0' }}>Who has asked to connect</h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 8 }}>
-        Access to the integration API is asked for and granted, not bought. Somebody says what they
-        intend to build, and somebody here reads it and decides.
+        One request per organisation covers the API, the panel on their own pages and a WhatsApp number
+        of theirs. They said what they intend to build and accepted the terms; you read it and let
+        them in or say why not. Every machine call they make afterwards is counted and watched here.
       </p>
 
-      <h2 style={{ fontSize: 15, marginTop: 28 }}>
-        Waiting on us{waiting.length ? ` (${waiting.length})` : ''}
-      </h2>
-      {waiting.length === 0 && (
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Nothing is waiting.</p>
-      )}
-      {waiting.map((r) => (
-        <Row key={r.id} request={r} />
-      ))}
+      <h2 style={{ fontSize: 15, marginTop: 28 }}>Waiting on you{waiting.length ? ` (${waiting.length})` : ''}</h2>
+      {requests.isLoading && <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Reading…</p>}
+      {!requests.isLoading && waiting.length === 0 && <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Nobody is waiting.</p>}
+      {waiting.map((r) => <Row key={r.id} request={r} />)}
 
-      <h2 style={{ fontSize: 15, marginTop: 28 }}>Decided</h2>
-      {decided.length === 0 && (
-        <p style={{ fontSize: 14, color: 'var(--gw-sub)' }}>Nothing decided yet.</p>
+      {flagged.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 15, marginTop: 28 }}>Worth a look ({flagged.length})</h2>
+          {flagged.map((r) => <Row key={r.id} request={r} />)}
+        </>
       )}
-      {decided.map((r) => (
-        <Row key={r.id} request={r} />
-      ))}
+
+      <h2 style={{ fontSize: 15, marginTop: 28, display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <span>Decided</span>
+        <button
+          type="button"
+          onClick={() => setShowDecided((s) => !s)}
+          style={{ fontSize: 12.5, fontWeight: 400, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+        >
+          {showDecided ? 'Hide' : `Show ${decided.length} (${connected} connected)`}
+        </button>
+      </h2>
+      {showDecided && decided.filter((r) => r.flags.length === 0).map((r) => <Row key={r.id} request={r} />)}
     </section>
   )
 }
