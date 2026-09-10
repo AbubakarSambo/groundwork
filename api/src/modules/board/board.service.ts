@@ -44,6 +44,7 @@ import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-librar
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -198,9 +199,8 @@ export class BoardService {
         select: { role: true, organizationId: true },
       })
       : null;
-    const adminsThisOrg =
-      viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId;
-    if (!me && !isInitiator && !isSetupAdmin && !adminsThisOrg) {
+    const adminHere = adminsThisOrg(viewer, ground as any);
+    if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
 
@@ -226,8 +226,8 @@ export class BoardService {
      */
     const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(family);
     const peersVisible = (ground as any).peersVisibleToEachOther ?? !evaluative;
-    /* `viewer` and `adminsThisOrg` are read once at the door above - see the note there. */
-    const runsThisGround = isInitiator || isSetupAdmin || !!adminsThisOrg;
+    /* `viewer` and `adminHere` are read once at the door above - see the note there. */
+    const runsThisGround = isInitiator || isSetupAdmin || adminHere;
     const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };
 
     // WHOSE ANSWER THIS IS.

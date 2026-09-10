@@ -78,6 +78,7 @@ import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
+import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered } from './how-many-have-answered';
 
@@ -1856,10 +1857,11 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * resolved names, what the record rests on, what it holds, the probe list. board.service.ts asks
    * the right question; this is that question, asked once for all four.
    */
+  /** The one rule (grounds/who-may-read-this-check-in.ts): an admin of THIS organisation, by role, re-read from the database. */
   private async isAnAdminOf(requestingUserId: string, requestingUserOrgId: string | undefined, groundOrganizationId: string): Promise<boolean> {
     if (!requestingUserOrgId || groundOrganizationId !== requestingUserOrgId) return false;
     const user = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } });
-    return user?.role === 'ADMIN' && user.organizationId === groundOrganizationId;
+    return adminsThisOrg(user, { organizationId: groundOrganizationId });
   }
 
   async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {

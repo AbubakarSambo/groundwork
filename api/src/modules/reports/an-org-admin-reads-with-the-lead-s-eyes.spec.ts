@@ -54,8 +54,9 @@ describe('who reads with the lead\'s eyes', () => {
     expect(CODE).toMatch(/const isOrgAdmin = !isInitiator && !participant && \(await this\.isAnAdminOf\(requestingUserId, requestingUserOrgId, ground\.organizationId\)\)/);
     /* And the question it asks is the role, in the organisation the check-in belongs to. */
     const helper = CODE.slice(CODE.indexOf('private async isAnAdminOf('), CODE.indexOf('async whereAgainstSuccess('));
-    expect(helper).toMatch(/role === 'ADMIN'/);
-    expect(helper).toMatch(/organizationId === groundOrganizationId/);
+    /* Through the one rule (grounds/who-may-read-this-check-in.ts), which asks the role in THIS organisation. */
+    expect(helper).toMatch(/adminsThisOrg\(user, \{ organizationId: groundOrganizationId \}\)/);
+    expect(helper).toMatch(/select: \{ role: true, organizationId: true \}/);
   });
 });
 

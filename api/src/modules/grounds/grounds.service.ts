@@ -38,6 +38,7 @@ import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
+import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -985,18 +986,12 @@ export class GroundsService {
     const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Non-admins only see grounds they created or were invited to.
-    // Admins see all org grounds (needed for org-level management).
-    const isAdmin = userRole === 'ADMIN';
-    const orgGroundWhere = isAdmin || !userId
-      ? { organizationId }
-      : {
-          organizationId,
-          OR: [
-            { initiatorId: userId },
-            { participants: { some: { userId } } },
-          ],
-        };
+    /* Who sees which check-ins is the one rule's business (who-may-read-this-check-in.ts); this is
+       that rule as a query. Admins see the organisation's; everybody else what they run, set up or
+       take part in; a LEAD also what the leads of their department run. */
+    const viewer = { role: userRole, organizationId };
+    const leadsOfMine = userId && userRole === 'LEAD' ? await this.leadsOfTheDepartment(userId, organizationId) : [];
+    const orgGroundWhere = groundsAViewerMayList(userId, viewer, organizationId, leadsOfMine) as any;
 
     const orgGrounds = await this.prisma.ground.findMany({
       where: orgGroundWhere,
@@ -1420,8 +1415,7 @@ export class GroundsService {
       ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
       : null;
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
-    const viewerAdminsThisOrg =
-      viewer?.role === 'ADMIN' && viewer.organizationId === (ground as any).organizationId;
+    const viewerAdminsThisOrg = adminsThisOrg(viewer, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
 
     // CAN THE PARTIES SEE EACH OTHER AT ALL?
@@ -1801,7 +1795,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(viewer, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Setting this check-in up is for the lead or an admin in your organisation. Your own check-ins are on your page.');
     }
@@ -2173,7 +2167,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(viewer, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in your organisation, can add context to it.',
@@ -2251,7 +2245,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(viewer, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in this organisation, can change this.',
@@ -2295,7 +2289,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(viewer, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in this organisation, can change this.',
@@ -2660,6 +2654,7 @@ export class GroundsService {
           email: dto.email.toLowerCase(),
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
+          department: dto.department?.trim() || null,
           /* Over the cap: on the check-in, not written to, until an admin makes room. */
           awaitingSeat: !waitingForASeat.room,
           /**
@@ -3117,21 +3112,41 @@ export class GroundsService {
    * is simply "can you see this check-in at all", answered the same way everything else here
    * answers it: NotFound rather than Forbidden, so a stranger cannot tell a real id from a guess.
    */
+  /** The one rule (who-may-read-this-check-in.ts), asked with the viewer's and the lead's departments resolved. */
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
+      select: { organizationId: true, initiatorId: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const user = await this.prisma.user.findUnique({
       where: { id: userId }, select: { role: true, organizationId: true },
     });
-    const maySee =
-      ground.initiatorId === userId ||
-      ground.participants.some((p) => p.userId === userId) ||
-      (user?.role === 'ADMIN' && user.organizationId === ground.organizationId);
-    if (!maySee) throw new NotFoundException('Check-in not found');
+    const viewer = { ...user, department: user?.role === 'LEAD' ? await this.departmentOf(userId, ground.organizationId) : null };
+    const leadDepartment = user?.role === 'LEAD' && ground.initiatorId ? await this.departmentOf(ground.initiatorId, ground.organizationId) : null;
+    if (!maySee(userId, viewer, { ...ground, leadDepartment })) throw new NotFoundException('Check-in not found');
     return ground;
+  }
+
+  /** A user's department is on the Person linked to them, when there is one. Null for most of a roster, and that is normal. */
+  private async departmentOf(userId: string, organizationId: string): Promise<string | null> {
+    const person = await this.prisma.person.findFirst({ where: { linkedUserId: userId, organizationId }, select: { department: true } });
+    return person?.department?.trim() || null;
+  }
+
+  /** The user ids of the leads whose linked Person shares this department. Empty for a blank department: blank is nobody's. */
+  private async leadsOfTheDepartment(userId: string, organizationId: string): Promise<string[]> {
+    const mine = await this.departmentOf(userId, organizationId);
+    if (!mine) return [];
+    const people = await this.prisma.person.findMany({
+      where: { organizationId, department: mine, linkedUserId: { not: null } },
+      select: { linkedUserId: true },
+    });
+    const linked = people.map((p) => p.linkedUserId!).filter((id) => id !== userId);
+    if (!linked.length) return [];
+    /* Person has no relation to User, so the role is read in a second step. */
+    const leads = await this.prisma.user.findMany({ where: { id: { in: linked }, role: 'LEAD', organizationId }, select: { id: true } });
+    return leads.map((u) => u.id);
   }
 
   async setupSignOffs(groundId: string, userId: string): Promise<number[]> {
@@ -3302,7 +3317,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = viewer?.role === 'ADMIN' && viewer.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(viewer, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -3879,7 +3894,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(asker, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this check-in.');
     }
@@ -3931,7 +3946,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(asker, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this check-in.');
     }
@@ -3969,7 +3984,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(asker, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -4043,7 +4058,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(asker, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Stating what doing well looks like belongs to whoever runs this check-in.');
     }
@@ -4099,7 +4114,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = asker?.role === 'ADMIN' && asker.organizationId === ground.organizationId;
+    const isOrgAdmin = adminsThisOrg(asker, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
