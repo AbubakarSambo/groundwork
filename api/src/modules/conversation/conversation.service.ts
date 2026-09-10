@@ -43,6 +43,7 @@ import { closeReadiness, askedToFinish } from './close-readiness';
 import { observeStyle, mergeStyle, styleGuidance } from './person-style';
 import { readOutcome, isGenericStep } from './coaching-step';
 import { mayCoach } from './participation-timeline';
+import { stillAsking } from './one-question-per-turn';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, Hit } from './nothing-invented-reaches-them';
@@ -1018,7 +1019,14 @@ export class ConversationService {
     if (close.ask) {
       aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${aiTurn.content}\n\n${close.ask}` } });
     }
-    const sessionComplete = close.ready;
+    /*
+     * NOT WHILE IT IS STILL ASKING. A reply can carry the close marker and end in a question - the
+     * model closing and asking one more thing in the same breath. Marking that turn complete put a
+     * "Complete session" button under a question the person had not answered: "the session closing
+     * without an option to chat more, but the agent asks more questions". The signal comes again on
+     * the next turn, after they have answered. Decided here, in code, and not by asking the model.
+     */
+    const sessionComplete = close.ready && !stillAsking(aiTurn.content ?? '');
 
     /*
      * AND SAY WHEN THE CEILING IS COMING. `personTurnCount` was read before this turn was stored,

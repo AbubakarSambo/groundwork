@@ -1082,6 +1082,31 @@ export function EntryChatPage() {
   // the same inviteAdded contributor queue used below - they go out for real
   // once the ground is created at save time.
   const [addingContributorFor, setAddingContributorFor] = useState<string | null>(null)
+  /*
+   * THE PEOPLE ALREADY HERE. A lead had to type every colleague's address in full, for people the
+   * organisation already knows. Read once when signed in; empty for a stranger, who has nobody yet.
+   */
+  const [colleagues, setColleagues] = useState<{ email: string; name: string | null }[]>([])
+  useEffect(() => {
+    if (!user) return
+    authApi.colleagues().then(setColleagues).catch(() => setColleagues([]))
+  }, [user])
+  /** A colleague whose name is the one mentioned, when exactly one matches. Never a guess between two. */
+  function colleagueNamed(label: string): { email: string; name: string | null } | null {
+    const name = label.split(' - ')[0].trim().toLowerCase()
+    if (name.length < 2) return null
+    const hits = colleagues.filter(c => {
+      const full = (c.name ?? '').toLowerCase()
+      const first = full.split(' ')[0]
+      return full && (full === name || first === name || full.startsWith(name + ' ') || name.startsWith(full))
+    })
+    return hits.length === 1 ? hits[0] : null
+  }
+  function queueColleague(c: { email: string; name: string | null }, note?: string, key?: string) {
+    const entry = note ? `${c.email} - ${note}` : c.email
+    setInviteAdded(prev => (prev.some(e => e === c.email || e.startsWith(`${c.email} - `)) ? prev : [...prev, entry]))
+    if (key) setQueuedFromSuggestion(prev => new Set(prev).add(key))
+  }
   /* The note that travels with a queued address, remembered when the field opens so Save can
      queue it too. `renderAdd` hands the label to the button, not to the save handler. */
   const [addingContributorLabel, setAddingContributorLabel] = useState('')
@@ -3258,6 +3283,14 @@ export function EntryChatPage() {
                         <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', marginTop: 4 }}>{addingContributorError}</div>
                       )}
                     </>
+                  ) : colleagueNamed(label) ? (
+                    /* Already in the organisation: one click, no address to type. */
+                    <button
+                      onClick={() => queueColleague(colleagueNamed(label)!, label, key)}
+                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                    >
+                      + Add {colleagueNamed(label)!.name ?? colleagueNamed(label)!.email} ({colleagueNamed(label)!.email})
+                    </button>
                   ) : (
                     <button
                       onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
@@ -3716,6 +3749,30 @@ export function EntryChatPage() {
                   ))}
                 </div>
               )}
+
+              {(() => {
+                /* Colleagues not yet on the list, as chips. One click queues them and asks what they should cover. */
+                const notYet = colleagues.filter(c => !inviteAdded.some(e => e === c.email || e.startsWith(`${c.email} - `)) && c.email !== user?.email)
+                return notYet.length && !inviteContextFor && !bulkInviteMode ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginBottom: 6 }}>Already in your organisation. Click to add.</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {notYet.slice(0, 24).map(c => (
+                        <button
+                          key={c.email}
+                          type="button"
+                          onClick={() => { setInviteContextFor(c.email); setInviteContext('') }}
+                          title={c.email}
+                          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 14, border: '1px solid var(--gw-border)', background: 'white', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--gw-text)' }}
+                        >
+                          + {c.name ?? c.email}
+                        </button>
+                      ))}
+                      {notYet.length > 24 && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', alignSelf: 'center' }}>and {notYet.length - 24} more, by address below</span>}
+                    </div>
+                  </div>
+                ) : null
+              })()}
 
               {inviteContextFor ? (
                 <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>

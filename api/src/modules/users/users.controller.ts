@@ -126,6 +126,21 @@ export class UsersController {
     return this.usersService.setHowCheckInsWork(organizationId, body);
   }
 
+  /**
+   * THE PEOPLE ALREADY HERE, FOR ADDING WITHOUT TYPING.
+   *
+   * A lead inviting colleagues to a check-in had to type every address in full, for people the
+   * organisation already knows: "it recognises the people mentioned and suggests them, but then you
+   * need to type every email out". Any signed-in member may read this - these are their own
+   * colleagues, and the addresses are the ones invitations already go to. Name and address only,
+   * never role or standing, and never the caller.
+   */
+  @Get('colleagues')
+  @ApiOperation({ summary: 'The people in your organisation, for adding to a check-in without typing their address' })
+  async colleagues(@CurrentUser() user: CurrentUserData) {
+    return this.usersService.colleaguesOf(user.organizationId, user.id);
+  }
+
   @Post('me/leave')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Deactivate own membership (self-serve leave org)' })

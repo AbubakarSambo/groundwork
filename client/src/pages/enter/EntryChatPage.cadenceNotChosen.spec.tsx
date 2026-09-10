@@ -45,7 +45,10 @@ function seedSaved() {
     closed: true,
     flowPath: 'lead',
     onboardingStep: 7,
-    history: [],
+    /* With words in it: since 10 Sep 2026 a closed lead session with an empty history goes to its
+       first check-in rather than to a save card that cannot save. The cadence panel is what this
+       spec is about, and it sits behind a save that has something to save. */
+    history: [{ role: 'user', content: 'The launch is in six weeks and two of us disagree on scope.' }, { role: 'assistant', content: 'Noted.' }],
     lead: { email: 'lead@x.test', name: 'Lead' },
     onboardingSelections: { mode: 'new', initial: 'New project' },
   }))

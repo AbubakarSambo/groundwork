@@ -257,6 +257,20 @@ export class UsersService {
     return { preview: false, seatsLeft: await this.billing.seatsLeft(organizationId), rows: sent, summary: summarise(sent) };
   }
 
+  /** See UsersController.colleagues. Active, verified members other than the caller, by name. */
+  async colleaguesOf(organizationId: string, exceptUserId: string) {
+    const rows = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null, isActive: true, isEmailVerified: true, id: { not: exceptUserId } },
+      select: { email: true, firstName: true, lastName: true },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { email: 'asc' }],
+      take: 500,
+    });
+    return rows.map((r) => ({
+      email: r.email,
+      name: [r.firstName, r.lastName].filter(Boolean).join(' ').trim() || null,
+    }));
+  }
+
   async findAll(organizationId: string, pagination: PaginationDto) {
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
