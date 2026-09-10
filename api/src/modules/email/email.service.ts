@@ -128,8 +128,8 @@ export class EmailService {
       subject: `${who} is waiting to be let into your organisation`,
       html: this.layout(
         `<p>${greeting(adminFirstName)}</p>
-         <p><strong>${who}</strong> was invited to check in${checkInLabel ? ` on <strong>${checkInLabel}</strong>` : ''} by ${addedBy}, and they are not in your organisation yet.</p>
-         <p>They have an account and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
+         <p><strong>${escapeHtml(who)}</strong> was invited to check in${checkInLabel ? ` on <strong>${escapeHtml(checkInLabel)}</strong>` : ''} by ${escapeHtml(addedBy)}, and they are not in your organisation yet.</p>
+         <p>They can sign in, and they cannot start until you approve them joining. Nobody outside your organisation is added to it, or counted on your plan, without this.</p>
          <p><a href="${this.frontendUrl.replace(/\/$/, '')}/org/members" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">See who is waiting →</a></p>`,
       ),
     }, undefined, 'sendSomebodyIsWaiting');
@@ -162,11 +162,37 @@ export class EmailService {
       subject: `${who} was not added to your organisation`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin has decided not to add <strong>${who}</strong> to your organisation, so they cannot check in on it.</p>
-         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${reason}</p>` : ''}
+         <p>An admin has decided not to add <strong>${escapeHtml(who)}</strong> to your organisation, so they cannot check in on it.</p>
+         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;margin:18px 0;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
          <p>They have not been told. If they should hear anything about it, that is yours to say.</p>`,
       ),
     }, undefined, 'sendTheyWereNotLetIn');
+  }
+
+  /**
+   * The unsubscribe link for this address, minted if it does not exist yet. Preferences are keyed by
+   * (organisation, person on the roster), so an address with no Person row anywhere has nothing to
+   * hang a token on and gets no footer - that is a participant invited by address before they exist
+   * here, and the invite itself already says ignoring it is enough.
+   */
+  private async theWayToStopHearingFromUs(to: string): Promise<string | null> {
+    try {
+      const person = await this.prisma.person.findFirst({
+        where: { email: { equals: to.trim().toLowerCase(), mode: 'insensitive' } },
+        select: { organizationId: true, externalId: true },
+      });
+      if (!person) return null;
+      const pref = await this.prisma.emailPreference.upsert({
+        where: { organizationId_personExternalId: { organizationId: person.organizationId, personExternalId: person.externalId } },
+        create: { organizationId: person.organizationId, personExternalId: person.externalId, unsubscribeToken: crypto.randomBytes(32).toString('base64url') },
+        update: {},
+        select: { unsubscribeToken: true },
+      });
+      return `${this.frontendUrl.replace(/\/$/, '')}/unsubscribe/${pref.unsubscribeToken}`;
+    } catch (err: any) {
+      this.logger.warn(`Could not build an unsubscribe link for ${to}: ${err?.message}`);
+      return null;
+    }
   }
 
   private async theWayToStopBeingChased(participantId?: string): Promise<string | null> {
@@ -214,6 +240,18 @@ export class EmailService {
      */
     options = { ...options, html: withWhatGroundworkIs(options.html, sender) };
 
+    /*
+     * EVERY MESSAGE CARRIES A WAY OUT, A TEXT PART, AND ITS OWN HEADERS - HERE, ONCE, FOR ALL
+     * FORTY-EIGHT SENDERS. The unsubscribe link was composed in one template (the digest) and nowhere
+     * else, and no mail carried a text part or a List-Unsubscribe header, which is what a mail client
+     * shows its own "unsubscribe" button from. The way-back-in mails (a sign-in link, a password
+     * reset) are transactional and carry no footer: stopping those is not something anybody means.
+     */
+    const wayOut = sender && whatThisMailIs(sender) !== 'the way back in' ? await this.theWayToStopHearingFromUs(options.to) : null;
+    if (wayOut) options = { ...options, html: `${options.html}${UNSUBSCRIBE_FOOTER(wayOut)}` };
+    const text = plainTextOf(options.html);
+    const headers = wayOut ? { 'List-Unsubscribe': `<${wayOut}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : undefined;
+
     if (this.isDev()) {
       this.logger.warn(`[DEV EMAIL] To: ${options.to} | Subject: ${options.subject}`);
       const text = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -246,7 +284,7 @@ export class EmailService {
       const match = options.html.match(/href="([^"]+)"/);
       return match?.[1];
     }
-    const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options });
+    const { data, error } = await this.resend.emails.send({ from: this.fromEmail, ...options, text, ...(headers ? { headers } : {}) });
     if (error) {
       this.logger.error(`Failed to send email to ${options.to}: ${error.name} - ${error.message}`);
       throw new Error(`Failed to send email: ${error.message}`);
@@ -309,8 +347,8 @@ export class EmailService {
     const url = `${this.frontendUrl}/verify-email?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
     await this.sendEmail({
       to: email,
-      subject: 'Activate your Groundwork account',
-      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your account and get started.</p><p><a href="${url}">Activate account</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. No account will be created without clicking the link.</p>`),
+      subject: 'Activate your Groundwork sign-in',
+      html: this.layout(`<p>${greeting(firstName)}</p><p>You or someone on your team just signed up for Groundwork using this email. Click the link below to activate your sign-in and get started.</p><p><a href="${url}">Activate sign-in</a></p><p>This link lasts ${howLongInWords('verify an address')}.</p><p style="color:#888;font-size:12px;">If you did not request this, you can ignore this email. Nothing is created without clicking the link.</p>`),
     }, { kind: 'MAGIC_LINK' }, 'sendMagicLinkEmail');
   }
 
@@ -361,7 +399,7 @@ export class EmailService {
       html: this.layout(
         `<p>Here is your Groundwork access code. It gives you ${sessionsGranted} session${sessionsGranted !== 1 ? 's' : ''} free of charge.</p>
          <p style="font-size:22px;font-weight:bold;letter-spacing:0.1em;background:#F5F3EF;border-radius:6px;padding:14px 20px;display:inline-block;">${code}</p>
-         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, create an account, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
+         <p>To use it: go to <a href="https://app.myground.work">app.myground.work</a>, sign up, set up a check-in, and enter this code when prompted. Your check-in stays private until the report is released.</p>
          <p>Any questions, reply to this email.</p>
          <p style="color:#9B9590;font-size:12px;">The Groundwork team</p>`,
       ),
@@ -375,7 +413,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `You've been added to ${orgName} on Groundwork`,
-      html: this.layout(`<p>${greeting(firstName)}</p><p>${orgName} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. No account is active until you click the link.</p>`),
+      html: this.layout(`<p>${greeting(firstName)}</p><p>${escapeHtml(orgName)} added you to their Groundwork workspace. Groundwork runs structured check-ins across a team and surfaces alignment and gaps in a shared report. Your contributions stay private until the report is ready.</p><p><a href="${url}">Accept invite</a></p><p style="color:#888;font-size:12px;">If you were not expecting this, you can ignore this email. Nothing is active until you click the link.</p>`),
     }, undefined, 'sendUserInvite');
   }
 
@@ -386,13 +424,15 @@ export class EmailService {
     const url = `${this.frontendUrl}/invite?token=${token}`;
     /* The paragraph below promises that ignoring this is enough. This is what makes it true. */
     const stopLine = await this.theWayToStopBeingChased(context?.participantId);
-    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${note}</p>` : '';
+    /* Free text from the inviter, inside a styled block, in a mail from noreply@: escaped, so a note
+       with an ampersand or an angle bracket renders as written rather than as half a sentence. */
+    const noteHtml = note ? `<p style="border-left:3px solid #5DCAA5;padding:8px 14px;margin:20px 0;color:#4A4540;font-style:italic;">${escapeHtml(note)}</p>` : '';
     const devUrl = await this.sendEmail({
       to: email,
       subject: `${founderName} invited you to check in on: ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
-         <p><strong>${founderName}</strong> has invited you to share your account of <strong>${groundLabel}</strong> using Groundwork.</p>
+         <p><strong>${escapeHtml(founderName)}</strong> has invited you to share your account of <strong>${escapeHtml(groundLabel)}</strong> using Groundwork.</p>
          <p>What this means: a short private check-in, about 10 minutes, where you give your own version of what is going on. Nobody reads what you write. The shared report shows where your account and theirs agree or differ. It does not quote you.</p>
          <p>You are not being asked to be fair or balanced. You are being asked to be honest. What you put on record belongs to you.</p>
          ${noteHtml}
@@ -422,7 +462,7 @@ export class EmailService {
       subject: `Your check-in is approved: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin in your organisation has approved <strong>${groundLabel}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
+         <p>An admin in your organisation has approved <strong>${escapeHtml(groundLabel)}</strong>. You can invite the people involved now, and their check-ins can begin.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the check-in →</a></p>`,
       ),
     }, undefined, 'sendGroundApproved');
@@ -438,8 +478,8 @@ export class EmailService {
       subject: `Your check-in was not approved: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>An admin in your organisation has not approved <strong>${groundLabel}</strong>, so it will not run and nobody has been invited to it.</p>
-         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${reason}</p>` : ''}
+         <p>An admin in your organisation has not approved <strong>${escapeHtml(groundLabel)}</strong>, so it will not run and nobody has been invited to it.</p>
+         ${reason ? `<p style="border-left:3px solid #E2E0DB;padding:8px 14px;color:#4A4540;">${escapeHtml(reason)}</p>` : ''}
          <p>Nothing you wrote has been shared with anybody. If this was a misunderstanding, the fastest way through it is a conversation with whoever administers Groundwork for your organisation.</p>`,
       ),
     }, undefined, 'sendGroundDeclined');
@@ -451,7 +491,7 @@ export class EmailService {
       subject: `${adminName} asked you to lead a check-in: ${groundLabel}`,
       html: this.layout(
         `<p>Hi,</p>
-         <p><strong>${adminName}</strong> set up <strong>${groundLabel}</strong> on Groundwork and named you to lead it.</p>
+         <p><strong>${escapeHtml(adminName)}</strong> set up <strong>${escapeHtml(groundLabel)}</strong> on Groundwork and named you to lead it.</p>
          <p>You decide when to begin. Review the context they left, add or edit it, and confirm when you are ready. You will do your own check-in as part of this, and any people already invited will be waiting on you.</p>
          <!--
            W8-6. The Context tab has document upload and context notes, and
@@ -529,7 +569,7 @@ export class EmailService {
         subject: 'Your Groundwork admin code',
         html: this.layout(
           `<p>Your one-time code is <strong>${code}</strong>. It expires in ten minutes.</p>` +
-          `<p style="color:#888;font-size:12px;">If you did not ask for this, somebody with your admin account is trying to perform an operation that cannot be undone. Tell the team.</p>`,
+          `<p style="color:#888;font-size:12px;">If you did not ask for this, somebody signed in as you is trying to perform an admin operation that cannot be undone. Tell the team.</p>`,
         ),
       }, undefined, 'sendAdminOtp');
       return { sent: true };
@@ -571,7 +611,7 @@ export class EmailService {
        * ordinary case, to a participant who has met the product exactly once, ten minutes ago.
        */
       html: this.layout(
-        `<p>Everybody on <strong>${groundLabel}</strong> has now checked in, so the shared record is open to all of you at the same moment.</p>` +
+        `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared record is open to all of you at the same moment.</p>` +
         `<p>It shows where your accounts agree, where they differ, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared record →</a></p>` +
         `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each give their own account of it, privately, and get one shared record back.</p>`,
@@ -586,7 +626,7 @@ export class EmailService {
       subject: `You have both checked in - your shared report is ready: ${groundLabel}`,
       html: this.layout(
         `<p>${greeting(firstName)}</p>
-         <p>All parties have checked in on <strong>${groundLabel}</strong>. Your shared report is ready.</p>
+         <p>All parties have checked in on <strong>${escapeHtml(groundLabel)}</strong>. Your shared report is ready.</p>
          <p>The report shows where your accounts agree, where they differ, and what is still unresolved. It does not quote anyone - it draws on what everyone said without showing the raw words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared report →</a></p>`,
       ),
@@ -616,7 +656,7 @@ export class EmailService {
       to: email,
       subject,
       /* A reminder with no way to stop it is the whole defect. This is the second mail it goes on. */
-      html: this.layout(`<p>Your check-in for <strong>${groundLabel}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
+      html: this.layout(`<p>Your check-in for <strong>${escapeHtml(groundLabel)}</strong> is still open.</p>${otherPartyNote}<p><a href="${checkInUrl}">Check in</a></p>${(await this.theWayToStopBeingChased(participantId)) ?? ''}`),
     }, undefined, 'sendNudge');
   }
 
@@ -633,7 +673,7 @@ export class EmailService {
     await this.sendEmail({
       to: email,
       subject: `Your next check-in is open: ${groundLabel}`,
-      html: this.layout(`<p>A new check-in is ready for <strong>${groundLabel}</strong>.</p>${contextNote}<p><a href="${checkInUrl}">Check in</a></p>`),
+      html: this.layout(`<p>A new check-in is ready for <strong>${escapeHtml(groundLabel)}</strong>.</p>${contextNote}<p><a href="${checkInUrl}">Check in</a></p>`),
     }, undefined, 'sendSessionReady');
   }
 
@@ -650,7 +690,7 @@ export class EmailService {
       to: email,
       subject: `Someone added to what they said on "${groundLabel}"`,
       html: this.layout(
-        `<p>One of the parties on <strong>${groundLabel}</strong> corrected their account after you had already seen the shared report.</p>
+        `<p>One of the parties on <strong>${escapeHtml(groundLabel)}</strong> corrected their account after you had already seen the shared report.</p>
          <p>The report now shows this as an update, flagged with when it happened - it does not show what was changed in their own words.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Open the report →</a></p>`,
       ),
@@ -663,7 +703,7 @@ export class EmailService {
       to: email,
       subject: `Your shared report for "${groundLabel}" is waiting`,
       html: this.layout(
-        `<p>All accounts are in for <strong>${groundLabel}</strong> and the shared report has been generated.</p>
+        `<p>All accounts are in for <strong>${escapeHtml(groundLabel)}</strong> and the shared report has been generated.</p>
          <p>The report shows where accounts agree, where they differ, and what is still unresolved. Nobody's words are quoted - it draws on what was said without showing the raw text.</p>
          <p>Open the check-in to read and release the report to all parties.</p>
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read and release the report →</a></p>`,
@@ -683,7 +723,7 @@ export class EmailService {
       to: email,
       subject: `Your report for "${groundLabel}" is ready to view`,
       html: this.layout(
-        `<p>Your shared record for <strong>${groundLabel}</strong> has been ready for a few days now.</p>
+        `<p>Your shared record for <strong>${escapeHtml(groundLabel)}</strong> has been ready for a few days now.</p>
          <p>It shows where accounts agree, where they differ, and what is still unresolved. You just need to confirm you are ready to see it.</p>
          <p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View your report →</a></p>`,
       ),
@@ -699,7 +739,7 @@ export class EmailService {
       to: adminEmail,
       subject: `${participantEmail} has checked in on ${groundLabel}`,
       html: this.layout(
-        `<p><strong>${participantEmail}</strong> has completed their check-in on <strong>${groundLabel}</strong>. Their account is on record.</p>
+        `<p><strong>${escapeHtml(participantEmail)}</strong> has completed their check-in on <strong>${escapeHtml(groundLabel)}</strong>. Their account is on record.</p>
          ${pendingNote}
          <p><a href="${groundUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View check-in →</a></p>
          <p style="font-size:12px;color:#9B9590;">You can see who has checked in and the shared report once it is ready. You cannot see what anybody wrote — accounts stay private until the record is released to everybody at once.</p>`,
@@ -753,7 +793,7 @@ export class EmailService {
       to: email,
       subject: `"${groundLabel}" has stalled`,
       html: this.layout(
-        `<p>The check-in <strong>${groundLabel}</strong> has reached the end of its timeline without a confirmed outcome.</p>
+        `<p>The check-in <strong>${escapeHtml(groundLabel)}</strong> has reached the end of its timeline without a confirmed outcome.</p>
          <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the check-in page.</p>
          <p><a href="${groundUrl}">View check-in</a></p>`,
       ),
@@ -767,7 +807,7 @@ export class EmailService {
       to: email,
       subject: 'A resolution has been proposed. Your confirmation is needed',
       html: this.layout(
-        `<p><strong>${proposerLabel}</strong> has proposed the following outcome: <em>${endStateLabel}</em>.</p>
+        `<p><strong>${escapeHtml(proposerLabel)}</strong> has proposed the following outcome: <em>${escapeHtml(endStateLabel)}</em>.</p>
          <p>The check-in closes only when all active parties confirm the same outcome. Review the proposal and confirm, or counter-propose a different outcome.</p>
          <p><a href="${groundUrl}">View and confirm</a></p>`,
       ),
@@ -781,7 +821,7 @@ export class EmailService {
       to: email,
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
-        `<p>All parties have confirmed. <strong>${groundLabel}</strong> has been closed with the agreed outcome: <em>${endStateLabel}</em>.</p>
+        `<p>All parties have confirmed. <strong>${escapeHtml(groundLabel)}</strong> has been closed with the agreed outcome: <em>${escapeHtml(endStateLabel)}</em>.</p>
          <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
@@ -794,7 +834,7 @@ export class EmailService {
       to: email,
       subject: `One question about "${groundLabel}"`,
       html: this.layout(
-        `<p>Now that <strong>${groundLabel}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
+        `<p>Now that <strong>${escapeHtml(groundLabel)}</strong> has closed: did the process help you reach an outcome that felt fair and grounded in what was actually said?</p>
          <p>Your answer takes 20 seconds and helps us make every future check-in better.</p>
          <p><a href="${feedbackUrl}">Share your view</a></p>`,
       ),
@@ -811,10 +851,13 @@ export class EmailService {
     const billingUrl = `${this.frontendUrl}/billing?groundId=${groundId}`;
     await this.sendEmail({
       to: adminEmail,
-      subject: 'Add a card to continue on Groundwork',
+      subject: 'Add a card to open more check-ins on Groundwork',
+      /* This used to say a check-in "has used its free session" and, in the next line, that every free
+         check-in runs unlimited sessions - two sentences that cannot both be true. What happened: the
+         free check-ins are used up. What a card buys: more of them, and more people. */
       html: this.layout(
-        `<p>A check-in in your workspace (<strong>${orgName}</strong>) has used its free session.</p>
-         <p>Every check-in on the free tier runs unlimited sessions and reports. Subscribe to open more check-ins, or to add more people - the record you have already built is safe and waiting either way.</p>
+        `<p>Your workspace (<strong>${escapeHtml(orgName)}</strong>) has used all of its free check-ins.</p>
+         <p>Every check-in you already have keeps running, with unlimited sessions and reports, and every record stays yours. Adding a card lets your team open more check-ins and add more people.</p>
          <p><a href="${billingUrl}">Add a card</a></p>`,
       ),
     }, undefined, 'sendPaymentRequestEmail');
@@ -826,7 +869,7 @@ export class EmailService {
       to: adminEmail,
       subject: `${participantEmail} tried to check in - add a session to unblock them`,
       html: this.layout(
-        `<p><strong>${participantEmail}</strong> tried to check in on <strong>${groundLabel}</strong> but there are no sessions remaining.</p>
+        `<p><strong>${escapeHtml(participantEmail)}</strong> tried to check in on <strong>${escapeHtml(groundLabel)}</strong> but there are no sessions remaining.</p>
          <p>Resubscribe or apply an access code to unblock them. Their record and the report are safe in the meantime.</p>
          <p><a href="${groundUrl}">Go to the check-in</a></p>`,
       ),
@@ -839,7 +882,7 @@ export class EmailService {
       to: adminEmail,
       subject: `Action required: payment could not be processed for ${orgName}`,
       html: this.layout(
-        `<p>We were unable to charge the card on file. Please update your payment method within 7 days to keep your account active. Your records are safe regardless of payment status.</p>
+        `<p>We were unable to charge the card on file. Please update your payment method within 7 days to keep your team's access active. Your records are safe regardless of payment status.</p>
          <p><a href="${this.frontendUrl}/billing">Update payment method</a></p>`,
       ),
     }, undefined, 'sendPaymentFailed');
@@ -865,7 +908,7 @@ export class EmailService {
       to: userEmail,
       subject: 'Your Groundwork record is yours to keep',
       html: this.layout(
-        `<p>${greeting(firstName)} Your organisation's Groundwork account has been cancelled.</p>
+        `<p>${greeting(firstName)} Your organisation's Groundwork subscription has been cancelled.</p>
          <p>Your record does not disappear. It belongs to you. Download it here: <a href="${downloadUrl}">${downloadUrl}</a>. This link is valid for 30 days.</p>`,
       ),
     }, undefined, 'sendRecordPortabilityNotice');
@@ -874,7 +917,8 @@ export class EmailService {
   /** Sent when an org successfully subscribes to a plan. */
   async sendSubscriptionConfirmed(email: string, plan: string, renewalDate: Date): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
-    const renewal = renewalDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    /* ISO order, because the recipient's zone is not known on a billing mail and "March 5" is a different day on two continents. */
+    const renewal = onTheDay(renewalDate);
     await this.sendEmail({
       to: email,
       subject: 'Your Groundwork organization subscription is active',
@@ -921,15 +965,13 @@ export class EmailService {
   /** Sent when a subscription renews successfully. */
   async sendSubscriptionRenewal(email: string, plan: string, amountCents: number, nextRenewal: Date | null): Promise<void> {
     const planLabel = plan.replace('_', ' ').toLowerCase();
-    const amount = (amountCents / 100).toFixed(2);
-    const next = nextRenewal
-      ? nextRenewal.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-      : 'your next billing date';
+    const amount = inDollars(amountCents);
+    const next = nextRenewal ? onTheDay(nextRenewal) : 'your next billing date';
     await this.sendEmail({
       to: email,
-      subject: `Groundwork subscription renewed: $${amount}`,
+      subject: `Groundwork subscription renewed: ${amount}`,
       html: this.layout(
-        `<p>Your <strong>${planLabel}</strong> subscription has renewed. $${amount} has been charged to the card on file.</p>
+        `<p>Your <strong>${planLabel}</strong> subscription has renewed. ${amount} has been charged to the card on file.</p>
          <p>Your next renewal is ${next}. You can pause or cancel at any time from your billing page.</p>
          <p><a href="${this.frontendUrl}/billing">View billing</a></p>`,
       ),
@@ -942,7 +984,7 @@ export class EmailService {
       to: email,
       subject: `Free session added to ${groundLabel}`,
       html: this.layout(
-        `<p>Your free session extension has been added to <strong>${groundLabel}</strong>.</p>
+        `<p>Your free session extension has been added to <strong>${escapeHtml(groundLabel)}</strong>.</p>
          <p>Check-ins on the free tier run unlimited sessions. Subscribe when your team needs more check-ins, or more people.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
@@ -955,7 +997,7 @@ export class EmailService {
       to: email,
       subject: `One session remaining on ${groundLabel}`,
       html: this.layout(
-        `<p>Your check-in <strong>${groundLabel}</strong> has one session remaining.</p>
+        `<p>Your check-in <strong>${escapeHtml(groundLabel)}</strong> has one session remaining.</p>
          <p>Subscribe before your team's next check-in to keep this check-in running.</p>
          <p><a href="${groundUrl}">Go to your check-in</a></p>`,
       ),
@@ -1076,7 +1118,7 @@ export class EmailService {
       subject: 'Your Groundwork subscription is active',
       html: this.layout(
         `<p>${greeting(name)}</p>
-         <p>Your Groundwork subscription for <strong>${orgName}</strong> is now active.</p>
+         <p>Your Groundwork subscription for <strong>${escapeHtml(orgName)}</strong> is now active.</p>
          <p>Ten check-ins are free, each with unlimited sessions and reports. Your subscription lifts that cap - nobody is ever charged per session, and participants are never charged at all.</p>
          <p>Your records are always yours, regardless of plan status.</p>`,
       ),
@@ -1106,7 +1148,34 @@ export class EmailService {
  * about an attacker - it is about a team whose project is called "Q3 <finance & ops>" getting a mail
  * that renders as half a sentence.
  */
-function escapeHtml(s: string): string {
+/** The date alone, in ISO order, so nobody reads it in the wrong month or the wrong zone. */
+function onTheDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/** Money says its currency. Every amount here is USD cents. */
+function inDollars(cents: number): string {
+  return `${(cents / 100).toFixed(2)} USD`;
+}
+
+/** The plain-text part, from the HTML every sender already composes: links kept as their address. */
+export function plainTextOf(html: string): string {
+  return html
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => `${label.replace(/<[^>]+>/g, '').trim()} (${href})`)
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Appended to every mail we decided to send. The link works with no sign-in (round-digest.service.ts#unsubscribe). */
+export const UNSUBSCRIBE_FOOTER = (url: string) =>
+  `<p style="font-size:12px;color:#9B9590;margin-top:28px;">To stop these emails: <a href="${url}" style="color:#9B9590;">unsubscribe</a>. A link to sign in will still reach you if you ask for one.</p>`;
+
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

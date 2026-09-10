@@ -7,6 +7,9 @@ import { EmailService } from './email.service';
 import { GroundworkEvents, RoundCompletedEvent } from '../../common';
 import { mayNotSend, digestSubject, digestBody, DigestFacts } from './nothing-lands-at-3am';
 
+/** Said to an unknown unsubscribe token, in place of an error. */
+export const NOT_A_LINK_WE_KNOW = 'That link is not one we recognise, which usually means these emails have already stopped. If any still arrive, reply to one and we will stop them by hand.';
+
 /**
  * ONE MAIL PER ROUND, TO THE PEOPLE WHO WANT IT, IN THEIR OWN HOURS.
  *
@@ -154,7 +157,10 @@ export class RoundDigestService {
    */
   async unsubscribe(token: string) {
     const pref = await this.prisma.emailPreference.findUnique({ where: { unsubscribeToken: token } });
-    if (!pref) throw new NotFoundException('That link is not valid.');
+    /* An unknown token is not an error to the person holding it. Somebody trying to make the mail
+       stop must never be told their link is broken: the next click is the spam button, and that costs
+       every tenant on the domain. Same posture as stop-reminders.controller.ts. */
+    if (!pref) return { ok: true, already: true, says: NOT_A_LINK_WE_KNOW };
     if (pref.unsubscribedAt) return { ok: true, already: true };
     await this.prisma.emailPreference.update({
       where: { id: pref.id },
