@@ -143,6 +143,33 @@ lookup adds one query per write.
 
 ## Batch 3 — The promise the product is sold on: raw words
 
+**Decided by the product owner, 10 September 2026.** The route is not deleted. It paraphrases,
+keeping the main point, or extracts the context. Raw words never leave the person who wrote them,
+and this holds most strictly where the result can reach a report.
+
+That changes the shape of this batch. Deleting the route was the cheap answer and it removes a
+capability the lead legitimately needs, which is to understand what was said without being handed
+somebody's exact sentences. What replaces it:
+
+- The route returns a paraphrase per party, not turns. The existing screening already knows what a
+  lifted run looks like; the same test decides whether a paraphrase is close enough to the original
+  to count as the original.
+- Anything derived this way is marked as derived where it is stored, so a later reader cannot
+  mistake it for a quotation, and so the report builder can refuse to treat it as evidence.
+- The paraphrase is produced once and kept, rather than regenerated per request. A paraphrase that
+  changes between two readings of the same check-in is worse than no paraphrase.
+- The screening runs at the read, not only at the write. This is the structural rule the codebase
+  already learned twice: anything derived from a private record is stripped at the read, never
+  protected by an instruction in a prompt.
+
+Effort: this is no longer half a day. Budget two days, because it needs the paraphrase to be
+generated, stored, screened and specified, and because the report path has to learn the difference
+between a quotation and a paraphrase.
+
+Spec: `a-paraphrase-is-not-a-quotation.spec.ts`, and the existing lift screening extended to run at
+this read.
+
+
 **Closes:** P6B-004, P6B-015, P1-005, P1-016, P6B-001, P6B-009, P6B-014
 
 The homepage says "Leaders get the report. They cannot request an individual's check-in, and there
