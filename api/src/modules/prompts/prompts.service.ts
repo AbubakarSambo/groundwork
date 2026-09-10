@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
+import { Prisma } from '@prisma/client';
+import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -98,10 +100,18 @@ export class PromptsService implements OnModuleInit {
     });
   }
 
-  /** Usage funnel - session drop-off, scenario/moment/status breakdowns, engagement stats. */
-  async usageFunnel() {
+  /**
+   * Usage funnel - session drop-off, scenario/moment/status breakdowns, engagement stats. Every count
+   * is over customers' check-ins and real sessions, within the one range the panel asked for; see
+   * what-the-platform-has-actually-done.ts.
+   */
+  async usageFunnel(range?: string) {
     const now = new Date();
+    const since = sinceFor(range, now);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const aGround = { ...A_REAL_CHECK_IN, ...inRange('createdAt', since) };
+    const aSession = { ...A_REAL_SESSION, status: 'COMPLETED' as const, ...inRange('completedAt', since) };
+    const sinceSql = since ? Prisma.sql`AND ci.completed_at >= ${since}` : Prisma.empty;
 
     const [
       sessionCounts,
@@ -115,100 +125,98 @@ export class PromptsService implements OnModuleInit {
       session5Count,
       avgDaysRaw,
     ] = await Promise.all([
-      // 1. Completed check-ins per session (sessions 1-7)
+      // 1. Completed sessions per session number (1-7)
       Promise.all(
         [1, 2, 3, 4, 5, 6, 7].map((n) =>
-          this.prisma.checkIn.count({ where: { status: 'COMPLETED', sessionNumber: n } }).then((count) => ({ session: n, completed: count })),
+          this.prisma.checkIn.count({ where: { ...aSession, sessionNumber: n } }).then((count) => ({ session: n, completed: count })),
         ),
       ),
 
-      // 2. Avg session duration in minutes (raw SQL)
-      this.prisma.$queryRaw<{ session_number: number; avg_minutes: number }[]>`
-        SELECT session_number, ROUND(AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60))::int as avg_minutes
-        FROM check_ins
-        WHERE status = 'COMPLETED' AND started_at IS NOT NULL AND completed_at IS NOT NULL
-        GROUP BY session_number
-        ORDER BY session_number
+      // 2. Avg session duration in minutes, with the sample size (raw SQL)
+      this.prisma.$queryRaw<{ session_number: number; avg_minutes: number; n: number }[]>`
+        SELECT ci.session_number, ROUND(AVG(EXTRACT(EPOCH FROM (ci.completed_at - ci.started_at)) / 60)::numeric, 1)::float as avg_minutes, COUNT(*)::int as n
+        FROM check_ins ci
+        JOIN grounds g ON g.id = ci.ground_id
+        JOIN organizations o ON o.id = g.organization_id
+        WHERE ci.status = 'COMPLETED' AND ci.started_at IS NOT NULL AND ci.completed_at IS NOT NULL
+          AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
+        GROUP BY ci.session_number
+        ORDER BY ci.session_number
       `,
 
       // 3. Scenario breakdown
-      this.prisma.ground.groupBy({ by: ['scenario'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+      this.prisma.ground.groupBy({ by: ['scenario'], where: aGround, _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
 
       // 4. Moment breakdown
-      this.prisma.ground.groupBy({ by: ['moment'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+      this.prisma.ground.groupBy({ by: ['moment'], where: aGround, _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
 
       // 5. Status breakdown
-      this.prisma.ground.groupBy({ by: ['status'], _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
+      this.prisma.ground.groupBy({ by: ['status'], where: aGround, _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
 
-      // 6. Grounds where both initiator AND at least one participant have a COMPLETED check-in
+      // 6. Check-ins where both the lead AND at least one participant have given a session
       this.prisma.ground.count({
         where: {
-          checkIns: {
-            some: { status: 'COMPLETED', participant: { partyType: 'INITIATOR' } },
-          },
-          AND: [
-            {
-              checkIns: {
-                some: { status: 'COMPLETED', participant: { partyType: 'PARTICIPANT' } },
-              },
-            },
-          ],
+          ...aGround,
+          checkIns: { some: { ...aSession, participant: { partyType: 'INITIATOR' } } },
+          AND: [{ checkIns: { some: { ...aSession, participant: { partyType: 'PARTICIPANT' } } } }],
         },
       }),
 
-      // 7. Grounds with any COMPLETED check-in (to compute one-sided)
-      this.prisma.ground.count({
-        where: { checkIns: { some: { status: 'COMPLETED' } } },
-      }),
+      // 7. Check-ins with any given session (to compute one-sided)
+      this.prisma.ground.count({ where: { ...aGround, checkIns: { some: aSession } } }),
 
-      // 8. Stalled check-ins: IN_PROGRESS and startedAt > 7 days ago
-      this.prisma.checkIn.count({
-        where: { status: 'IN_PROGRESS', startedAt: { lt: sevenDaysAgo } },
-      }),
+      // 8. Stalled sessions: IN_PROGRESS and startedAt > 7 days ago
+      this.prisma.checkIn.count({ where: { ...A_REAL_SESSION, status: 'IN_PROGRESS', startedAt: { lt: sevenDaysAgo } } }),
 
       // 9. Session 5 completed count
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED', sessionNumber: 5 } }),
+      this.prisma.checkIn.count({ where: { ...aSession, sessionNumber: 5 } }),
 
-      // 10. Avg days from ground creation to first check-in (raw SQL)
-      this.prisma.$queryRaw<{ avg_days: number | null }[]>`
-        SELECT ROUND(AVG(EXTRACT(EPOCH FROM (ci.started_at - g.created_at)) / 86400))::int as avg_days
+      // 10. Avg days from check-in creation to first session, with the sample size (raw SQL)
+      this.prisma.$queryRaw<{ avg_days: number | null; n: number }[]>`
+        SELECT ROUND(AVG(EXTRACT(EPOCH FROM (ci.started_at - g.created_at)) / 86400)::numeric, 1)::float as avg_days, COUNT(*)::int as n
         FROM grounds g
+        JOIN organizations o ON o.id = g.organization_id
         JOIN check_ins ci ON ci.ground_id = g.id
-        WHERE ci.session_number = 1 AND ci.started_at IS NOT NULL
+        WHERE ci.session_number = 1 AND ci.started_at IS NOT NULL AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
       `,
     ]);
 
-    // Build funnel with drop-off rates
+    // Build funnel with drop-off rates, each carrying the count it is a rate of
     const funnelBySession = sessionCounts.map((row, idx) => ({
       session: row.session,
       completed: row.completed,
       dropOffRate: idx === 0 ? null : sessionCounts[idx - 1].completed > 0
         ? Math.round((1 - row.completed / sessionCounts[idx - 1].completed) * 100) / 100
         : null,
+      of: idx === 0 ? null : sessionCounts[idx - 1].completed,
     }));
 
-    // Scenario breakdown with pct
-    const totalScenario = scenarioBreakdown.reduce((sum, r) => sum + r._count.id, 0);
-    const byScenario = scenarioBreakdown.map((r) => ({
-      scenario: r.scenario,
-      count: r._count.id,
-      pct: totalScenario > 0 ? Math.round((r._count.id / totalScenario) * 1000) / 10 : 0,
-    }));
-
+    /* Percentages are computed here, beside their totals, for every breakdown alike. byScenario's
+       was here and byStatus's was on the client, which is how two panels drift. */
+    const withPct = <T extends { _count: { id: number } }>(rows: T[]) => {
+      const total = rows.reduce((sum, r) => sum + r._count.id, 0);
+      return { total, pctOf: (r: T) => (total > 0 ? Math.round((r._count.id / total) * 1000) / 10 : 0) };
+    };
+    const scenarios = withPct(scenarioBreakdown);
+    const byScenario = scenarioBreakdown.map((r) => ({ scenario: r.scenario, count: r._count.id, pct: scenarios.pctOf(r), of: scenarios.total }));
+    const statuses = withPct(statusBreakdown);
+    const byStatus = statusBreakdown.map((r) => ({ status: r.status, count: r._count.id, pct: statuses.pctOf(r), of: statuses.total }));
     const byMoment = momentBreakdown.map((r) => ({ moment: r.moment, count: r._count.id }));
-    const byStatus = statusBreakdown.map((r) => ({ status: r.status, count: r._count.id }));
 
     const oneEngaged = anyCompletedGrounds - bothEngaged;
 
     const avgDaysRow = avgDaysRaw[0];
-    const avgDaysToFirstCheckin = avgDaysRow?.avg_days != null ? Number(avgDaysRow.avg_days) : null;
+    const avgDaysToFirstCheckin = aMean(avgDaysRow?.avg_days != null ? Number(avgDaysRow.avg_days) : null, Number(avgDaysRow?.n ?? 0));
 
     const avgSessionMinutes = avgSessionMinutesRaw.map((r) => ({
       session: Number(r.session_number),
-      avgMinutes: Number(r.avg_minutes),
+      avgMinutes: aMean(Number(r.avg_minutes), Number(r.n)).value,
+      n: Number(r.n),
     }));
 
     return {
+      range: range ?? 'all',
+      since,
       funnelBySession,
       avgSessionMinutes,
       byScenario,
@@ -222,11 +230,17 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
-  /** Cross-org usage dashboard - platform admin only. */
-  async platformDashboard() {
+  /**
+   * Cross-org usage dashboard - platform admin only. Customers' organisations and check-ins, real
+   * sessions, within the one range; the session-two rate is over those whose session two was due.
+   */
+  async platformDashboard(range?: string) {
     const now = new Date();
+    const since = sinceFor(range, now);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const aGround = { ...A_REAL_CHECK_IN, ...inRange('createdAt', since) };
+    const aSession = { ...A_REAL_SESSION, status: 'COMPLETED' as const };
 
     const [
       totalOrgs,
@@ -239,31 +253,29 @@ export class PromptsService implements OnModuleInit {
       totalCheckIns,
       checkInsLast7Days,
       checkInsLast30Days,
-      session1Count,
-      session2Count,
+      session2,
       promptVersions,
       recentCheckIns,
       recentGrounds,
       recentResolutions,
     ] = await Promise.all([
-      this.prisma.organization.count(),
-      this.prisma.organization.count({ where: { careFeeStatus: 'ACTIVE' } }),
-      this.prisma.organization.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      this.prisma.ground.groupBy({ by: ['status'], _count: { id: true } }),
-      this.prisma.ground.count(),
-      this.prisma.ground.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-      this.prisma.ground.count({ where: { resolvedAt: { gte: thirtyDaysAgo } } }),
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED' } }),
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED', completedAt: { gte: sevenDaysAgo } } }),
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED', completedAt: { gte: thirtyDaysAgo } } }),
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED', sessionNumber: 1 } }),
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED', sessionNumber: 2 } }),
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, ...inRange('createdAt', since) } }),
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, careFeeStatus: 'ACTIVE' } }),
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, createdAt: { gte: thirtyDaysAgo } } }),
+      this.prisma.ground.groupBy({ by: ['status'], where: aGround, _count: { id: true } }),
+      this.prisma.ground.count({ where: aGround }),
+      this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, createdAt: { gte: sevenDaysAgo } } }),
+      this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, resolvedAt: { gte: thirtyDaysAgo } } }),
+      this.prisma.checkIn.count({ where: { ...aSession, ...inRange('completedAt', since) } }),
+      this.prisma.checkIn.count({ where: { ...aSession, completedAt: { gte: sevenDaysAgo } } }),
+      this.prisma.checkIn.count({ where: { ...aSession, completedAt: { gte: thirtyDaysAgo } } }),
+      session2RateOfThoseDue(this.prisma, since, now),
       this.prisma.promptVersion.findMany({
         orderBy: [{ key: 'asc' }, { version: 'desc' }],
         select: { id: true, key: true, version: true, isActive: true, activatedAt: true, createdAt: true },
       }),
       this.prisma.checkIn.findMany({
-        where: { status: 'COMPLETED' },
+        where: aSession,
         orderBy: { completedAt: 'desc' },
         take: 15,
         select: {
@@ -273,6 +285,7 @@ export class PromptsService implements OnModuleInit {
         },
       }),
       this.prisma.ground.findMany({
+        where: A_REAL_CHECK_IN,
         orderBy: { createdAt: 'desc' },
         take: 10,
         select: {
@@ -283,7 +296,7 @@ export class PromptsService implements OnModuleInit {
         },
       }),
       this.prisma.ground.findMany({
-        where: { resolvedAt: { not: null } },
+        where: { ...A_REAL_CHECK_IN, resolvedAt: { not: null } },
         orderBy: { resolvedAt: 'desc' },
         take: 10,
         select: {
@@ -296,9 +309,11 @@ export class PromptsService implements OnModuleInit {
 
     // Prompt version performance: resolved outcomes + fairness per version
     const outcomes = await this.prisma.outcome.findMany({
+      where: { ground: A_REAL_CHECK_IN },
       select: { promptVersionId: true, resolvedState: true },
     });
     const feedback = await this.prisma.outcomeFeedback.findMany({
+      where: { ground: A_REAL_CHECK_IN },
       select: {
         feltFair: true,
         ground: { select: { promptVersionId: true } },
@@ -344,16 +359,19 @@ export class PromptsService implements OnModuleInit {
       .sort((a, b) => b.at.getTime() - a.at.getTime())
       .slice(0, 20);
 
+    const statusTotal = groundsByStatus.reduce((sum, r) => sum + r._count.id, 0);
     const byStatus = Object.fromEntries(groundsByStatus.map((r) => [r.status, r._count.id]));
 
     return {
+      range: range ?? 'all',
+      since,
       orgs: { total: totalOrgs, withActiveCareFee: activeOrgs, createdLast30Days: orgsLast30Days },
-      grounds: { total: totalGrounds, byStatus, openedLast7Days: groundsLast7Days, resolvedLast30Days },
+      grounds: { total: totalGrounds, byStatus, byStatusOf: statusTotal, openedLast7Days: groundsLast7Days, resolvedLast30Days },
       checkIns: {
         totalCompleted: totalCheckIns,
         completedLast7Days: checkInsLast7Days,
         completedLast30Days: checkInsLast30Days,
-        session2Rate: session1Count > 0 ? Math.round((session2Count / session1Count) * 100) : null,
+        session2RateOfThoseDue: session2,
       },
       promptPerformance,
       recentActivity: activity,
@@ -373,6 +391,9 @@ export class PromptsService implements OnModuleInit {
   }
 
   async orgList() {
+    /* Every organisation, ours included - the list is for finding one, not for counting them - with
+       ours marked so the eye can skip them. The two dead queries that used to sit here (a ground
+       count fetched twice, a participant count never read) are gone. */
     const orgs = await this.prisma.organization.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
@@ -382,31 +403,27 @@ export class PromptsService implements OnModuleInit {
         email: true,
         careFeeStatus: true,
         createdAt: true,
+        isInternal: true,
         _count: { select: { grounds: true, ...SEAT_RELATION_COUNT } },
       },
     });
 
-    const groundCounts = await this.prisma.ground.groupBy({
-      by: ['organizationId'],
-      _count: { id: true },
-    });
-    const participantCounts = await this.prisma.groundParticipant.groupBy({
+    const lastSession = await this.prisma.checkIn.groupBy({
       by: ['groundId'],
-      _count: { id: true },
+      where: { status: 'COMPLETED', isSetup: false },
+      _max: { completedAt: true },
     });
-
-    const groundCountMap = Object.fromEntries(groundCounts.map(r => [r.organizationId, r._count.id]));
-
-    const checkInsByOrg = await this.prisma.checkIn.findMany({
-      where: { status: 'COMPLETED' },
-      orderBy: { completedAt: 'desc' },
-      select: { completedAt: true, ground: { select: { organizationId: true } } },
+    const groundOrg = await this.prisma.ground.findMany({
+      where: { id: { in: lastSession.map((r) => r.groundId) } },
+      select: { id: true, organizationId: true },
     });
-
+    const orgOf = Object.fromEntries(groundOrg.map((g) => [g.id, g.organizationId]));
     const lastActivityMap: Record<string, Date> = {};
-    for (const ci of checkInsByOrg) {
-      const orgId = ci.ground.organizationId;
-      if (!lastActivityMap[orgId] && ci.completedAt) lastActivityMap[orgId] = ci.completedAt;
+    for (const row of lastSession) {
+      const orgId = orgOf[row.groundId];
+      const at = row._max.completedAt;
+      if (!orgId || !at) continue;
+      if (!lastActivityMap[orgId] || lastActivityMap[orgId] < at) lastActivityMap[orgId] = at;
     }
 
     return orgs.map(org => ({
@@ -416,32 +433,44 @@ export class PromptsService implements OnModuleInit {
       email: org.email,
       billingActive: org.careFeeStatus === 'ACTIVE',
       careFeeStatus: org.careFeeStatus,
-      groundCount: groundCountMap[org.id] ?? 0,
+      isInternal: org.isInternal,
+      groundCount: org._count.grounds,
       userCount: org._count.users,
       lastActivity: lastActivityMap[org.id] ?? null,
       createdAt: org.createdAt,
     }));
   }
 
-  async usageStats() {
+  /**
+   * Three totals for three different objects, each labelled with its own word on the panel:
+   * sessions completed (CheckIn), check-ins created (Ground), reports released. The middle tile
+   * was labelled "Check-ins created" over a Ground count and the first "Check-ins completed" over a
+   * CheckIn count; 243 x 2 ~ 484 read as a funnel and was a grain mismatch.
+   */
+  async usageStats(range?: string) {
     const now = new Date();
+    const since = sinceFor(range, now);
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const aSession = { ...A_REAL_SESSION, status: 'COMPLETED' as const };
 
-    const [checkInsByDay, usageEvents, totalCheckIns, reportsGenerated, groundsCreated] = await Promise.all([
+    const [checkInsByDay, usageEvents, sessionsCompleted, reportsReleased, checkInsCreated] = await Promise.all([
       this.prisma.checkIn.findMany({
-        where: { status: 'COMPLETED', completedAt: { gte: fourteenDaysAgo } },
+        where: { ...aSession, completedAt: { gte: fourteenDaysAgo } },
         select: { completedAt: true, sessionNumber: true },
       }),
-      this.prisma.usageEvent.groupBy({
-        by: ['type'],
-        _count: { id: true },
-      }),
-      this.prisma.checkIn.count({ where: { status: 'COMPLETED' } }),
-      this.prisma.ground.count({ where: { report: { releasedAt: { not: null } } } }),
-      this.prisma.ground.count(),
+      aRealUsageEvent(this.prisma).then((byACustomer) =>
+        this.prisma.usageEvent.groupBy({
+          by: ['type'],
+          where: { ...byACustomer, ...inRange('createdAt', since) },
+          _count: { id: true },
+        }),
+      ),
+      this.prisma.checkIn.count({ where: { ...aSession, ...inRange('completedAt', since) } }),
+      this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, report: { releasedAt: since ? { gte: since } : { not: null } } } }),
+      this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, ...inRange('createdAt', since) } }),
     ]);
 
-    // Bucket check-ins by day label
+    // Bucket sessions by day label
     const dayBuckets: Record<string, number> = {};
     for (let i = 13; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
@@ -457,10 +486,12 @@ export class PromptsService implements OnModuleInit {
     const usageMap = Object.fromEntries(usageEvents.map(e => [e.type, e._count.id]));
 
     return {
-      checkInsLast14Days: Object.entries(dayBuckets).map(([date, count]) => ({ date, count })),
-      totalCheckIns,
-      groundsCreated,
-      reportsGenerated,
+      range: range ?? 'all',
+      since,
+      sessionsLast14Days: Object.entries(dayBuckets).map(([date, count]) => ({ date, count })),
+      sessionsCompleted,
+      checkInsCreated,
+      reportsReleased,
       eventTotals: usageMap,
     };
   }

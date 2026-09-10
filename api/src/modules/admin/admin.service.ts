@@ -13,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { isSubscribed } from '../../common/subscription';
+import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -208,15 +209,23 @@ export class AdminService implements OnApplicationBootstrap {
     return out;
   }
 
-  async getPlatformStats() {
+  /*
+   * THE SAME NUMBERS AS THE PLATFORM PANEL. This was a second console: it counted every organisation
+   * and every ground with no filter, so its "total check-ins" and the panel's disagreed whenever
+   * one of our own organisations made one. Both read through what-the-platform-has-actually-done.ts
+   * now, and this is a private feed of getDashboard rather than a route of its own - the three
+   * routes that exposed these halves (stats, usage, feedback) had no caller.
+   */
+  private async getPlatformStats() {
     const [orgsCount, groundsCount, codesCount, redemptionsCount, freeReasonBreakdown] =
       await Promise.all([
-        this.prisma.organization.count(),
-        this.prisma.ground.count(),
+        this.prisma.organization.count({ where: A_CUSTOMER }),
+        this.prisma.ground.count({ where: A_REAL_CHECK_IN }),
         this.prisma.contributorCode.count(),
         this.prisma.contributorCodeRedemption.count(),
         this.prisma.ground.groupBy({
           by: ['freeReason'],
+          where: A_REAL_CHECK_IN,
           _count: { id: true },
         }),
       ]);
@@ -254,8 +263,8 @@ export class AdminService implements OnApplicationBootstrap {
       this.getAllCodes(),
       this.getFeedback(),
       this.getUsagePatterns(),
-      this.prisma.organization.count({ where: { subscriptionPlan: { not: null } } }),
-      this.prisma.ground.aggregate({ _sum: { sessionsBalance: true } }),
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, subscriptionPlan: { not: null } } }),
+      this.prisma.ground.aggregate({ where: A_REAL_CHECK_IN, _sum: { sessionsBalance: true } }),
     ]);
 
     /* The four buckets the page draws as a bar. `freeReason` is null on a ground
@@ -312,7 +321,7 @@ export class AdminService implements OnApplicationBootstrap {
   // Per-user + per-org usage patterns
   // ---------------------------------------------------------------------------
 
-  async getUsagePatterns() {
+  private async getUsagePatterns() {
     const [perOrg, perUser] = await Promise.all([
       this.prisma.organization.findMany({
         select: {
@@ -627,8 +636,9 @@ export class AdminService implements OnApplicationBootstrap {
     return this.getInbox();
   }
 
-  async getFeedback() {
+  private async getFeedback() {
     return this.prisma.outcomeFeedback.findMany({
+      where: { ground: A_REAL_CHECK_IN },
       include: {
         ground: {
           select: {

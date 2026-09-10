@@ -247,12 +247,6 @@ export class AdminController {
     return this.adminService.getWriters();
   }
 
-  @Get('stats')
-  @ApiOperation({ summary: 'Platform-wide stats: orgs, grounds, codes, redemptions, freeReason breakdown' })
-  getPlatformStats() {
-    return this.adminService.getPlatformStats();
-  }
-
   @Get('codes')
   @ApiOperation({ summary: 'All ContributorCodes across all orgs with full redemption data' })
   getAllCodes() {
@@ -289,18 +283,6 @@ export class AdminController {
   @ApiOperation({ summary: 'Mark one inbound message read' })
   markInboundRead(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.adminService.markInboundRead(id, userId);
-  }
-
-  @Get('feedback')
-  @ApiOperation({ summary: 'All OutcomeFeedback records with ground/org context' })
-  getFeedback() {
-    return this.adminService.getFeedback();
-  }
-
-  @Get('usage')
-  @ApiOperation({ summary: 'Per-user and per-org usage patterns' })
-  getUsagePatterns() {
-    return this.adminService.getUsagePatterns();
   }
 
   @Get('grounds/:groundId')

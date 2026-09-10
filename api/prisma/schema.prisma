@@ -513,6 +513,10 @@ model Organization {
 
   workspaceNotifiers WorkspaceNotifier[]
 
+  /// OUR OWN ORGANISATIONS ARE NOT CUSTOMERS. Set by hand on Groundwork's own organisations; the
+  /// platform panel counts nothing under one (prompts/what-the-platform-has-actually-done.ts).
+  isInternal Boolean @default(false) @map("is_internal")
+
   @@map("organizations")
 }
 

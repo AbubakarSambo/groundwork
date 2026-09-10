@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData } from '@/api/prompts'
+import { promptsApi, UsageFunnelData, PlatformDashboardData, OrgListItem, UsageStatsData, FeedbackSummaryData, PANEL_RANGES, type PanelRange, type Rate } from '@/api/prompts'
 import { adminApi, type PricingPlanRow, type InboundMessage, type CallRequestRow } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -30,13 +30,22 @@ function timeAgo(date: string | Date): string {
 const C: React.CSSProperties = { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 14px' }
 const SL: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }
 
-function Stat({ val, label, accent }: { val: string | number; label: string; accent?: boolean }) {
+/* A RATE CARRIES ITS DENOMINATOR. "62%" is a number with no size; "62% of 34" is a finding. `of` is
+   printed beside any value that is a share of something, and a share of nothing prints as "–". */
+function Stat({ val, label, accent, of }: { val: string | number; label: string; accent?: boolean; of?: number | null }) {
   return (
     <div style={{ ...C, flex: 1, minWidth: 100 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>{val}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: accent ? 'var(--gw-navy)' : 'var(--gw-navy)' }}>
+        {val}{of != null && <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--gw-muted)', marginLeft: 5 }}>of {of}</span>}
+      </div>
       <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 3 }}>{label}</div>
     </div>
   )
+}
+
+/** A rate as text: "62%" with its "of N" beside it, or "–" over nothing. */
+function rateText(r: Rate): string {
+  return r.pct == null ? '–' : `${r.pct}%`
 }
 
 function Bar({ pct, color = 'var(--gw-navy)' }: { pct: number; color?: string }) {
@@ -494,8 +503,9 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat val={dash.orgs.total} label="Total orgs" />
           <Stat val={dash.orgs.withActiveCareFee} label="Active billing" accent />
-          <Stat val={dash.grounds.total} label="Total check-ins" />
-          <Stat val={dash.checkIns.totalCompleted} label="Check-ins done" />
+          <Stat val={dash.grounds.total} label="Check-ins created" />
+          <Stat val={dash.checkIns.totalCompleted} label="Sessions completed" />
+          <Stat val={rateText(dash.checkIns.session2RateOfThoseDue)} of={dash.checkIns.session2RateOfThoseDue.of} label="Came back for session 2, of those whose session 2 was due" />
         </div>
       </section>
 
@@ -504,7 +514,7 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Stat val={dash.orgs.createdLast30Days} label="New orgs (30d)" />
           <Stat val={dash.grounds.openedLast7Days} label="Check-ins opened" />
-          <Stat val={dash.checkIns.completedLast7Days} label="Check-ins" />
+          <Stat val={dash.checkIns.completedLast7Days} label="Sessions completed" />
           <Stat val={dash.grounds.resolvedLast30Days} label="Resolved (30d)" />
         </div>
       </section>
@@ -513,14 +523,14 @@ function SystemTab({ dash }: { dash: PlatformDashboardData }) {
         <div style={SL}>Check-in status</div>
         <div style={C}>
           {Object.entries(dash.grounds.byStatus).sort((a, b) => b[1] - a[1]).map(([status, count]) => {
-            const total = Object.values(dash.grounds.byStatus).reduce((a, b) => a + b, 0)
+            const total = dash.grounds.byStatusOf
             const pct = total > 0 ? (count / total) * 100 : 0
             return (
               <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(status)}</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{count}</div>
                 <Bar pct={pct} />
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 34, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}% of {total}</div>
               </div>
             )
           })}
@@ -556,7 +566,6 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
   for (let i = 0; i < sessions.length; i++) { if (sessions[i].completed > 0) lastNonZero = i }
   const visible = sessions.slice(0, lastNonZero + 1)
   const s1 = sessions[0]?.completed ?? 1
-  const statusTotal = data.byStatus.reduce((a, s) => a + s.count, 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -570,7 +579,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 32, textAlign: 'right', flexShrink: 0 }}>{row.completed}</div>
               <Bar pct={s1 > 0 ? (row.completed / s1) * 100 : 0} />
               <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 60, textAlign: 'right', flexShrink: 0 }}>
-                {row.session === 1 ? 'baseline' : row.dropOffRate != null ? `−${Math.round(row.dropOffRate * 100)}%` : '–'}
+                {row.session === 1 ? 'baseline' : row.dropOffRate != null ? `−${Math.round(row.dropOffRate * 100)}% of ${row.of}` : '–'}
               </div>
             </div>
           ))}
@@ -589,8 +598,8 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
       <section>
         <div style={SL}>Avg days to first check-in</div>
         <div style={{ ...C, display: 'inline-block' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin?.toFixed(1) ?? '–'}</div>
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>days</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--gw-navy)' }}>{data.avgDaysToFirstCheckin.value ?? '–'}</div>
+          <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>days, over {data.avgDaysToFirstCheckin.n} first sessions</div>
         </div>
       </section>
 
@@ -603,13 +612,15 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
                 <tr>
                   <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'left', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Session</th>
                   <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'right', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Avg min</th>
+                  <th style={{ fontSize: 10, fontWeight: 700, color: 'var(--gw-muted)', textAlign: 'right', paddingBottom: 6, textTransform: 'uppercase', letterSpacing: '.06em' }}>Over</th>
                 </tr>
               </thead>
               <tbody>
                 {data.avgSessionMinutes.map(row => (
                   <tr key={row.session}>
                     <td style={{ fontSize: 12, color: 'var(--gw-text)', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>S{row.session}</td>
-                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes.toFixed(1)}</td>
+                    <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.avgMinutes ?? '–'}</td>
+                    <td style={{ fontSize: 12, color: 'var(--gw-muted)', textAlign: 'right', padding: '4px 0', borderTop: '1px solid var(--gw-border)' }}>{row.n}</td>
                   </tr>
                 ))}
               </tbody>
@@ -626,7 +637,7 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
               <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(row.scenario)}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
               <Bar pct={row.pct} />
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 34, textAlign: 'right', flexShrink: 0 }}>{row.pct.toFixed(0)}%</div>
+              <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{row.pct.toFixed(0)}% of {row.of}</div>
             </div>
           ))}
         </div>
@@ -636,13 +647,13 @@ function DropoffsTab({ data }: { data: UsageFunnelData }) {
         <div style={SL}>Check-in status distribution</div>
         <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[...data.byStatus].sort((a, b) => b.count - a.count).map(row => {
-            const pct = statusTotal > 0 ? (row.count / statusTotal) * 100 : 0
+            const pct = row.pct
             return (
               <div key={row.status} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ fontSize: 12, color: 'var(--gw-text)', minWidth: 160, flexShrink: 0 }}>{fmt(row.status)}</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{row.count}</div>
                 <Bar pct={pct} />
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 34, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</div>
+                <div style={{ fontSize: 11, color: 'var(--gw-muted)', minWidth: 70, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}% of {row.of}</div>
               </div>
             )
           })}
@@ -672,9 +683,12 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
         {filtered.map(org => (
           <div key={org.id} style={{ ...C, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>{org.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>
+                {org.name}
+                {org.isInternal && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 6, padding: '1px 6px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>ours - not counted</span>}
+              </div>
               <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
-                {org.groundCount} ground{org.groundCount !== 1 ? 's' : ''} · {org.userCount} user{org.userCount !== 1 ? 's' : ''}
+                {org.groundCount} check-in{org.groundCount !== 1 ? 's' : ''} · {org.userCount} user{org.userCount !== 1 ? 's' : ''}
                 {org.lastActivity ? ` · last active ${timeAgo(org.lastActivity)}` : ' · no activity yet'}
               </div>
             </div>
@@ -704,7 +718,7 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
 // ── Usage tab ─────────────────────────────────────────────────────────────────
 
 function UsageTab({ data }: { data: UsageStatsData }) {
-  const maxCount = Math.max(...data.checkInsLast14Days.map(d => d.count), 1)
+  const maxCount = Math.max(...data.sessionsLast14Days.map(d => d.count), 1)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -712,20 +726,23 @@ function UsageTab({ data }: { data: UsageStatsData }) {
       <section>
         <div style={SL}>Platform totals</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Stat val={data.totalCheckIns} label="Check-ins completed" accent />
-          <Stat val={data.groundsCreated} label="Check-ins created" />
-          <Stat val={data.reportsGenerated} label="Reports generated" />
+          {/* Three objects, three words: a session is what one person gives, a check-in is the thing
+              they give it on, a report is what comes out. These three tiles used to say "check-ins"
+              over two different tables. */}
+          <Stat val={data.sessionsCompleted} label="Sessions completed" accent />
+          <Stat val={data.checkInsCreated} label="Check-ins created" />
+          <Stat val={data.reportsReleased} label="Reports released" />
         </div>
       </section>
 
       <section>
-        <div style={SL}>Check-ins - last 14 days</div>
+        <div style={SL}>Sessions - last 14 days</div>
         <div style={{ ...C, paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
-            {data.checkInsLast14Days.map(({ date, count }) => (
+            {data.sessionsLast14Days.map(({ date, count }) => (
               <div key={date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                 <div
-                  title={`${count} check-in${count !== 1 ? 's' : ''}`}
+                  title={`${count} session${count !== 1 ? 's' : ''}`}
                   style={{
                     width: '100%', borderRadius: '3px 3px 0 0',
                     height: `${Math.max((count / maxCount) * 60, count > 0 ? 4 : 2)}px`,
@@ -744,7 +761,7 @@ function UsageTab({ data }: { data: UsageStatsData }) {
 
       {Object.keys(data.eventTotals).length > 0 && (
         <section>
-          <div style={SL}>Usage events (all time)</div>
+          <div style={SL}>Usage events</div>
           <div style={{ ...C, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {Object.entries(data.eventTotals).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
               <div key={type} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1188,17 +1205,20 @@ export function AdminPage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const [tab, setTab] = useState<Tab>('system')
+  /* ONE DATE RANGE FOR THE WHOLE PANEL. Every query below respects it; nothing on the panel is a
+     percentage over an unnamed period any more. */
+  const [range, setRange] = useState<PanelRange>('all')
 
   const { data: dash, isLoading: dashLoading } = useQuery({
-    queryKey: ['platform-dashboard'],
-    queryFn: promptsApi.platformDashboard,
+    queryKey: ['platform-dashboard', range],
+    queryFn: () => promptsApi.platformDashboard(range),
     enabled: !!user?.isPlatformAdmin,
     staleTime: 2 * 60 * 1000,
   })
 
   const { data: funnel, isLoading: funnelLoading } = useQuery({
-    queryKey: ['platform-funnel'],
-    queryFn: promptsApi.platformFunnel,
+    queryKey: ['platform-funnel', range],
+    queryFn: () => promptsApi.platformFunnel(range),
     enabled: !!user?.isPlatformAdmin && tab === 'dropoffs',
     staleTime: 5 * 60 * 1000,
   })
@@ -1211,8 +1231,8 @@ export function AdminPage() {
   })
 
   const { data: usage, isLoading: usageLoading } = useQuery({
-    queryKey: ['platform-usage'],
-    queryFn: promptsApi.usageStats,
+    queryKey: ['platform-usage', range],
+    queryFn: () => promptsApi.usageStats(range),
     enabled: !!user?.isPlatformAdmin && tab === 'usage',
     staleTime: 2 * 60 * 1000,
   })
@@ -1305,8 +1325,16 @@ export function AdminPage() {
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', overflowX: 'auto', borderTop: '1px solid var(--gw-border)' }}>
+        {/* Tab bar, and the one range control every number on the panel respects */}
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', overflowX: 'auto', borderTop: '1px solid var(--gw-border)' }}>
+          <select
+            aria-label="Date range for every number on this panel"
+            value={range}
+            onChange={(e) => setRange(e.target.value as PanelRange)}
+            style={{ fontSize: 12, padding: '4px 8px', margin: '0 8px 0 4px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', fontFamily: 'inherit', color: 'var(--gw-navy)' }}
+          >
+            {PANEL_RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
           {TABS.map(({ id, label }) => (
             <button
               key={id}

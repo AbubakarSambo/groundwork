@@ -15,7 +15,21 @@ export interface PromptVersion {
   content: string
 }
 
+/** A percentage with the count it is a percentage of. Null pct when nothing is in the denominator. */
+export interface Rate { pct: number | null; of: number; n: number }
+
+/** The one date range the whole platform panel respects. */
+export type PanelRange = '7d' | '30d' | '90d' | 'all'
+export const PANEL_RANGES: { id: PanelRange; label: string }[] = [
+  { id: '7d', label: 'Last 7 days' },
+  { id: '30d', label: 'Last 30 days' },
+  { id: '90d', label: 'Last 90 days' },
+  { id: 'all', label: 'Since the beginning' },
+]
+
 export interface PlatformDashboardData {
+  range: PanelRange
+  since: string | null
   orgs: {
     total: number
     withActiveCareFee: number
@@ -24,6 +38,7 @@ export interface PlatformDashboardData {
   grounds: {
     total: number
     byStatus: Record<string, number>
+    byStatusOf: number
     openedLast7Days: number
     resolvedLast30Days: number
   }
@@ -31,7 +46,7 @@ export interface PlatformDashboardData {
     totalCompleted: number
     completedLast7Days: number
     completedLast30Days: number
-    session2Rate: number | null
+    session2RateOfThoseDue: Rate
   }
   promptPerformance: {
     id: string
@@ -55,16 +70,19 @@ export interface PlatformDashboardData {
 }
 
 export interface UsageFunnelData {
-  funnelBySession: { session: number; completed: number; dropOffRate: number | null }[]
-  avgSessionMinutes: { session: number; avgMinutes: number }[]
-  byScenario: { scenario: string; count: number; pct: number }[]
+  range: PanelRange
+  since: string | null
+  funnelBySession: { session: number; completed: number; dropOffRate: number | null; of: number | null }[]
+  /** avgMinutes is already rounded for its sample size on the server; n is that size. */
+  avgSessionMinutes: { session: number; avgMinutes: number | null; n: number }[]
+  byScenario: { scenario: string; count: number; pct: number; of: number }[]
   byMoment: { moment: string; count: number }[]
-  byStatus: { status: string; count: number }[]
+  byStatus: { status: string; count: number; pct: number; of: number }[]
   bothEngaged: number
   oneEngaged: number
   stalledCheckIns: number
   session5Count: number
-  avgDaysToFirstCheckin: number | null
+  avgDaysToFirstCheckin: { value: number | null; n: number }
 }
 
 export interface OrgListItem {
@@ -74,17 +92,22 @@ export interface OrgListItem {
   email: string
   billingActive: boolean
   careFeeStatus: string
+  /** One of ours. Listed, so it can be found; counted nowhere. */
+  isInternal: boolean
   groundCount: number
   userCount: number
   lastActivity: string | null
   createdAt: string
 }
 
+/** Three totals for three objects: sessions (CheckIn), check-ins (Ground), reports. Never one word for two. */
 export interface UsageStatsData {
-  checkInsLast14Days: { date: string; count: number }[]
-  totalCheckIns: number
-  groundsCreated: number
-  reportsGenerated: number
+  range: PanelRange
+  since: string | null
+  sessionsLast14Days: { date: string; count: number }[]
+  sessionsCompleted: number
+  checkInsCreated: number
+  reportsReleased: number
   eventTotals: Record<string, number>
 }
 
@@ -100,14 +123,14 @@ export const promptsApi = {
   create: (key: string, content: string, summary?: string) =>
     apiClient.post<PromptVersion>('/prompts', { key, content, summary }).then((r) => r.data),
   activate: (id: string) => apiClient.post<PromptVersion>(`/prompts/${id}/activate`).then((r) => r.data),
-  platformDashboard: () =>
-    apiClient.get<PlatformDashboardData>('/prompts/platform-dashboard').then((r) => r.data),
-  platformFunnel: () =>
-    apiClient.get<UsageFunnelData>('/prompts/platform-funnel').then((r) => r.data),
+  platformDashboard: (range: PanelRange = 'all') =>
+    apiClient.get<PlatformDashboardData>('/prompts/platform-dashboard', { params: { range } }).then((r) => r.data),
+  platformFunnel: (range: PanelRange = 'all') =>
+    apiClient.get<UsageFunnelData>('/prompts/platform-funnel', { params: { range } }).then((r) => r.data),
   orgList: () =>
     apiClient.get<OrgListItem[]>('/prompts/org-list').then((r) => r.data),
-  usageStats: () =>
-    apiClient.get<UsageStatsData>('/prompts/usage-stats').then((r) => r.data),
+  usageStats: (range: PanelRange = 'all') =>
+    apiClient.get<UsageStatsData>('/prompts/usage-stats', { params: { range } }).then((r) => r.data),
   feedbackSummary: () =>
     apiClient.get<FeedbackSummaryData>('/prompts/feedback-summary').then((r) => r.data),
 
