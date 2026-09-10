@@ -791,29 +791,22 @@ export function IntegrationsPage() {
       )}
 
       {/* ---------------------------------------------------------------- the security page */}
-      <div style={S.sec}>What this API never returns</div>
-      <div style={S.card}>
-        <p style={{ ...S.body, marginBottom: 10 }}>
-          This is here so you can answer your own security review without opening a ticket with us.
-          These are not settings. They are enforced in the code that builds every response, and a
-          test blocks the build if any of them stops being true.
-        </p>
+      {/* ---------------------------------------------------------------- what it looks like */}
+      <div style={S.sec}>What it looks like</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
         {[
-          ['Any score of how clearly a person writes or speaks', 'Or anything derived from one. We measure the record, not the person’s articulacy.'],
-          ['What a named person said about a colleague', 'Attributed testimony never leaves. A finding describes the work, not who reported whom.'],
-          ['How often somebody took part, presented as a measure of their contribution', 'Turning up is not contributing, and a count that looks like a score gets used as one.'],
-          ['Any recommended verdict about a person', 'Evidence about the work goes out. The judgement stays with the human who has to make it.'],
-        ].map(([t, b]) => (
-          <div key={t} style={{ padding: '9px 0', borderTop: '1px solid var(--gw-bg)' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{t}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.55 }}>{b}</div>
+          { src: '/connect/panel.png', title: 'The panel on your own page', body: 'One script tag. Your people see what is due and do their check-in without leaving your system.' },
+          { src: '/connect/ops-panel.png', title: 'An organisation\'s own panel in its back office', body: 'The same assistant, embedded where the work is managed: what is due, who is waiting, what came of it.' },
+          { src: '/connect/whatsapp.png', title: 'A check-in over WhatsApp', body: 'On your number. A reply is an answer; a photo is a document; the report comes back as a message.' },
+        ].map((c) => (
+          <div key={c.src} style={{ ...S.card, padding: 0, overflow: 'hidden' }}>
+            <img src={c.src} alt={c.title} style={{ display: 'block', width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', objectPosition: 'top', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-bg)' }} />
+            <div style={{ padding: '12px 14px' }}>
+              <div style={S.h3}>{c.title}</div>
+              <p style={{ ...S.body, marginBottom: 0 }}>{c.body}</p>
+            </div>
           </div>
         ))}
-        <p style={{ ...S.body, marginTop: 12, fontSize: 12.5 }}>
-          Two more things hold for every request: nothing you send is ever readable by another
-          organisation, and no text imported from your systems can cause a write here - an objective
-          titled like an instruction is data, not a command. Both have standing tests.
-        </p>
       </div>
 
       <div style={S.sec}>For your engineer</div>
