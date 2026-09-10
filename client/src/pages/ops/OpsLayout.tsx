@@ -228,7 +228,7 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
       <nav aria-label="Back office" className="gw-ops-rail">
         {/* THE WAY OUT, AT THE TOP. It was at the foot of the rail, under twenty links, which on any
             normal screen is below the fold: "i need to get out of this place too". */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
           <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Groundwork</Link>
           {isPlatformAdmin && (
             <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Platform console</Link>
