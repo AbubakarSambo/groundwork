@@ -1,5 +1,3 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -53,7 +51,7 @@ describe('and it is asked for where the question comes up', () => {
        the credentials controller raises it with subject INTEGRATION when the request is recorded. */
     const CREDENTIALS = readFileSync(join(__dirname, '../../../../api/src/modules/public-api/credentials.controller.ts'), 'utf8')
     expect(CREDENTIALS).toContain("'INTEGRATION'")
-    expect(CONNECT).not.toContain('Ask for a call')
+    expect(CONNECT).not.toMatch(/callMut|call-request/)
   })
 
   it('Billing asks about coaching and setup', () => {
