@@ -114,10 +114,22 @@ export function entryRestoreBranch(
   return 'fresh'
 }
 
-/** After a reload, the coordinator/lead path (closed, empty history) lands
- * back on the open save card - the only place it can go. */
-export function leadReturnsToSaveCard(saved: { closed?: boolean; flowPath?: string }): boolean {
-  return saved.flowPath === 'lead' && !!saved.closed
+/**
+ * A SAVED LEAD SESSION WITH NOTHING IN IT IS NOT SAVEABLE.
+ *
+ * Before everyone did a first check-in, "others give the accounts" closed the session on the spot
+ * with an empty history and this reopened the save card after a reload. The card then committed
+ * nothing and the server said NO_ENTRY_SESSION - a person blocked on a button that could never
+ * work. Seen on 10 Sep 2026 on a session saved under the old rule. Now: a closed lead session with
+ * words in it returns to the save card; one with no words returns to its first check-in.
+ */
+export function leadReturnsToSaveCard(saved: { closed?: boolean; flowPath?: string; history?: unknown[] }): boolean {
+  return saved.flowPath === 'lead' && !!saved.closed && (saved.history?.length ?? 0) > 0
+}
+
+/** The other half of the same rule: a lead session saved with no words goes into its check-in. */
+export function leadNeedsTheirFirstCheckIn(saved: { flowPath?: string; history?: unknown[]; onboardingStep?: number }, steps: number): boolean {
+  return saved.flowPath === 'lead' && (saved.history?.length ?? 0) === 0 && (saved.onboardingStep ?? 0) >= steps
 }
 export function hasPendingEntry(): boolean {
   try {
@@ -1053,6 +1065,8 @@ export function EntryChatPage() {
 
   // Save card
   const [showSave, setShowSave] = useState(false)
+  /* The save card's own confirm: the page's Start over is under the card and cannot be reached. */
+  const [confirmClearInCard, setConfirmClearInCard] = useState(false)
   // Token authorizing pre-auth updates to the server-side draft (issued at
   // entry-save). Survives reloads so post-email edits keep syncing.
   const [draftToken, setDraftToken] = useState<string | null>(() => {
@@ -1229,8 +1243,14 @@ export function EntryChatPage() {
         setPhase('checkin')
         setOnboardingStep(ONBOARDING_STEPS)
         // Reload between hand-off and save: reopen the save card so the
-        // coordinator lands back where they left off.
+        // coordinator lands back where they left off - only when there is something to save.
         if (leadReturnsToSaveCard(saved as any)) setShowSave(true)
+        /* Nothing said yet: the session was closed under the old rule. Everyone does a first
+           check-in, so it opens here rather than on a card that cannot save. */
+        if (leadNeedsTheirFirstCheckIn(saved as any, ONBOARDING_STEPS)) {
+          setClosed(false)
+          startCheckin.mutate()
+        }
       } else if (step > 0) {
         setPhase('onboarding')
         setOnboardingStep(step)
@@ -1981,6 +2001,14 @@ export function EntryChatPage() {
   }
 
   async function saveAsSignedInUser() {
+    /* The server refuses an empty session (NO_ENTRY_SESSION). Rather than show that code, go and do the check-in. */
+    if (history.length === 0) {
+      setShowSave(false)
+      setClosed(false)
+      toast.info('Nothing is on record yet. Your first check-in opens now; save when it closes.')
+      startCheckin.mutate()
+      return
+    }
     setSavingAsUser(true)
     try {
       const res = await entryApi.commit({ ...buildCommitPayload(), history })
@@ -3118,7 +3146,7 @@ export function EntryChatPage() {
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
                 {skippedCheckin
-                  ? <>Your lead runs the first check-in; you'll see it as its coordinator. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where they agree and where they differ.</>
+                  ? <>You did the first check-in; after this one, only the people you invite check in. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where they agree and where they differ.</>
                   : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone agrees and where they differ.</>}
               </div>
             </div>
@@ -3371,6 +3399,26 @@ export function EntryChatPage() {
                 </button>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
                   Saving to {user.email}. No confirmation needed, you are already signed in.
+                </div>
+                {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
+                    so a card that cannot save (an old empty lead session) was a screen with one button
+                    that failed. Seen 10 Sep 2026. Confirmed, like the page's own control. */}
+                <div style={{ textAlign: 'center', paddingTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                  {confirmClearInCard ? (
+                    <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                      This throws away this session and everything in it.
+                      <button type="button" onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11.5, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Start over</button>
+                      <button type="button" onClick={() => setConfirmClearInCard(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>Keep it</button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmClearInCard(true)}
+                      style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                    >
+                      Start over instead
+                    </button>
+                  )}
                 </div>
               </div>
             ) : !emailSent ? (
