@@ -31,6 +31,7 @@ import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-rea
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
+import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import {
   OrgDependency,
@@ -604,7 +605,7 @@ export class BoardService {
         if (drafts.length) {
           const said = Object.fromEntries((await wordedByTheModel(
             drafts,
-            (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
+            rememberedCompose(this.prisma, (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])),
           )).map((d) => [d.key, d.text]));
           out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
           if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };

@@ -54,6 +54,17 @@ export class ReportsListener {
       // agreement that isn't there - it just shows what's known so far.
       await this.reports.synthesize(event.groundId);
 
+      /*
+       * WORD THE READS NOW, NOT WHEN SOMEBODY OPENS THE PAGE. The session report and the shared
+       * report hand their drafts to the model for wording, and the worded lines are kept by their
+       * hash. Reading them here, for everybody who will read them, means the first open after a
+       * check-in costs a lookup rather than ten seconds. Best effort and off the critical path: a
+       * warm-up that fails leaves the page exactly as slow as it was, never broken.
+       */
+      this.warmTheReads(event.groundId, sessionNumber).catch((err: any) =>
+        this.logger.warn(`Warming the reads for ${event.groundId} failed: ${err?.message}`),
+      );
+
       const allDone = await this.grounds.isSessionReadyForReport(event.groundId, sessionNumber);
       if (!allDone) return;
 
@@ -68,6 +79,20 @@ export class ReportsListener {
     } catch (err: any) {
       this.logger.error(`Report handling on checkin.completed failed for ground ${event.groundId}: ${err.message}`);
     }
+  }
+
+  private async warmTheReads(groundId: string, sessionNumber: number) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
+    });
+    if (!ground) return;
+    const readers = [...new Set([ground.initiatorId, ...ground.participants.map((p) => p.userId)].filter(Boolean))] as string[];
+    for (const userId of readers) {
+      await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
+      await this.reports.get(groundId, userId, ground.organizationId).catch(() => undefined);
+    }
+    this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
   }
 
   @OnEvent(GroundworkEvents.GROUND_ACTIVATED)

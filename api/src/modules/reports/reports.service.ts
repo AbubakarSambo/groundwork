@@ -16,6 +16,7 @@ import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { rememberedCompose } from './a-line-worded-once-is-kept';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
 import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
@@ -3122,7 +3123,7 @@ happened, and what is in the way.`;
   private async phrase(what: string, drafts: Drafted[]): Promise<Record<string, string>> {
     const out = await wordedByTheModel(
       drafts,
-      (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }]),
+      rememberedCompose(this.prisma, (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])),
       (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`),
     ).catch(() => drafts);
     return Object.fromEntries(out.map((d) => [d.key, d.text]));

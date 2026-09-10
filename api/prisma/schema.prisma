@@ -1869,6 +1869,19 @@ model WhatsAppConnection {
 /// WHICH CHECK-IN A WHATSAPP NUMBER IS TALKING TO. A person with two sessions open picks one from a
 /// list; the pick is remembered here so every following message lands in the same one until it
 /// closes. One row per number per organisation.
+/// A LINE THE MODEL HAS ALREADY WORDED. The report, the session report and the board hand the
+/// engine's drafts to the model for wording on every read, and the same drafts came back the same
+/// way ten seconds later. Keyed by a hash of the style, the instruction and the draft, so an
+/// unchanged record costs one lookup and a changed one costs one model call.
+model WordedLine {
+  key       String   @id
+  text      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("worded_lines")
+}
+
 model WhatsAppThread {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")
