@@ -17,9 +17,9 @@ words are private, "for ever" is the answer we currently give.
 That is a coherent pair and it is the cheaper half to build. The record was made of their words but
 it is also the other parties' evidence of what was agreed, and pulling it out retrospectively would
 change reports other people have already read and acted on. Deleting the way in means: no sign-in,
-no notifications, no appearance in any roster or picker, and their name replaced by their part in
-the check-in wherever a report already names them. The words stay, attached to a person nobody can
-sign in as.
+no notifications, and no appearance in any roster or picker for a future check-in. The record is
+untouched. Their words stay, their name stays on the reports that already carry it, and nothing
+already written changes. What goes is the way in, and nothing else.
 
 Two consequences to be deliberate about. Somebody who deletes their way in and is later invited
 again arrives as a new person, so their earlier record does not follow them; that is the right
