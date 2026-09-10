@@ -269,7 +269,11 @@ export const joinApi = {
 
   /** The address answered. This is the call that creates anything. */
   confirm: (token: string) =>
-    apiClient.post<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }>(
+    apiClient.post<{
+      groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean
+      /* An admin has to let them in first; `saying` is the server's sentence for that. */
+      queuedForApproval: boolean; saying?: string
+    }>(
       '/entry/join-confirm',
       { token },
     ).then(r => r.data),

@@ -22,13 +22,17 @@ const grounds = (ground: any) => {
 
 const entry = (ground: any) => {
   const prisma: any = {
+    $transaction: async (fn: any) => fn(prisma),
     ground: { findUnique: jest.fn(async () => ground) },
+    organization: { findUnique: jest.fn(async () => ({ subscriptionPlan: null, subscriptionStatus: null })) },
+    organizationMembership: { findUnique: jest.fn(async () => null), upsert: jest.fn(async () => ({})) },
+    membershipRequest: { upsert: jest.fn(async () => ({})) },
     pendingJoin: {
       create: jest.fn(), updateMany: jest.fn(async () => ({ count: 0 })),
       findUnique: jest.fn(async () => ({ id: 'pj', joinToken: 'jt', email: 'a@b.c', token: 't', expiresAt: new Date(Date.now() + 60_000), usedAt: null })),
       update: jest.fn(),
     },
-    user: { findUnique: jest.fn(async () => null), create: jest.fn() },
+    user: { findUnique: jest.fn(async () => null), create: jest.fn(), update: jest.fn(), findMany: jest.fn(async () => []) },
     groundParticipant: { findUnique: jest.fn(async () => null), create: jest.fn() },
     checkIn: { findFirst: jest.fn(async () => null), create: jest.fn() },
   };
@@ -37,7 +41,7 @@ const entry = (ground: any) => {
   return { svc, prisma, email };
 };
 
-const closed = { id: 'g', organizationId: 'org', label: 'L', scenario: 'S', status: GroundStatus.CLOSED, endState: 'KEEP', initiator: { firstName: 'A' } };
+const closed = { id: 'g', organizationId: 'org', label: 'L', scenario: 'S', status: GroundStatus.CLOSED, endState: 'KEEP', initiator: { firstName: 'A' }, initiatorId: 'lead', isFreeGround: false, freeParticipantCap: 5 };
 const held = { ...closed, status: GroundStatus.PAUSED, endState: null };
 const live = { ...closed, status: GroundStatus.ACTIVE, endState: null };
 

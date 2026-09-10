@@ -87,7 +87,8 @@ describe('the account', () => {
   });
 
   it('and tells the admins after the transaction, never inside it', () => {
-    expect(participants.indexOf('tellTheAdminsSomebodyIsWaiting')).toBeGreaterThan(
+    /* The CALL, not the name: the sentence now lives in somebody-is-waiting-at-the-door.ts and is imported at the top. */
+    expect(participants.indexOf('this.tellTheAdminsSomebodyIsWaiting(')).toBeGreaterThan(
       participants.indexOf('membershipRequest.upsert'),
     );
   });

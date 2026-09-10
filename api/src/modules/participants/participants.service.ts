@@ -3,6 +3,7 @@ import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisati
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { needsApproval } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CheckInStatus, TokenType, Cadence, PartyType } from '@prisma/client';
@@ -474,28 +475,9 @@ export class ParticipantsService {
   // A capitalized email local-part ("Hjumare") is not a name; it just looks
   // like one, which is worse than showing nothing.
   /** Every admin of the organisation, because one of them has to decide and any of them may. */
-  private async tellTheAdminsSomebodyIsWaiting(
-    organizationId: string,
-    groundId: string,
-    inviterId: string,
-    who: string,
-  ): Promise<void> {
-    const [admins, inviter, ground] = await Promise.all([
-      this.prisma.user.findMany({
-        where: { organizationId, role: 'ADMIN', isActive: true, deletedAt: null },
-        select: { email: true, firstName: true },
-      }),
-      this.prisma.user.findUnique({ where: { id: inviterId }, select: { firstName: true, lastName: true, email: true } }),
-      this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true } }),
-    ]);
-    const addedBy = inviter
-      ? [inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviter.email
-      : 'somebody on your team';
-    for (const admin of admins) {
-      await this.email
-        .sendSomebodyIsWaiting(admin.email, admin.firstName ?? 'there', who, addedBy, ground?.label ?? null)
-        .catch((err: any) => this.logger.warn(`Waiting-notice to ${admin.email} failed: ${err.message}`));
-    }
+  /** The sentence lives in somebody-is-waiting-at-the-door.ts now, because the join link queues people too. */
+  private tellTheAdminsSomebodyIsWaiting(organizationId: string, groundId: string, inviterId: string, who: string): Promise<void> {
+    return tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, organizationId, groundId, inviterId, who);
   }
 
   private resolveName(email: string, names?: { firstName?: string; lastName?: string }): [string, string] {

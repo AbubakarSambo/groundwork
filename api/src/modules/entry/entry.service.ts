@@ -11,6 +11,10 @@ import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
+import { needsApproval, WAITING_TO_BE_LET_IN } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { tellTheAdminsSomebodyIsWaiting } from '../participants/somebody-is-waiting-at-the-door';
+import { isSubscribed } from '../../common/subscription';
+import { freeSeatLimitMessage } from '../billing/billing.service';
 import {
   restoreTheirWords, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING,
 } from '../conversation/the-record-holds-what-was-said';
@@ -1875,7 +1879,11 @@ STRICT RULES:
    * opening this link IS the proof. A row that says unverified after somebody has
    * proved it is a lie that some later check will believe.
    */
-  async joinConfirm(token: string): Promise<{ groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean }> {
+  async joinConfirm(token: string): Promise<{
+    groundId: string; checkInId: string; accessToken: string; userId: string; existingAccount: boolean;
+    /** True when an admin of the organisation has to approve them before the check-in will open; `saying` is what to tell them. */
+    queuedForApproval: boolean; saying?: string;
+  }> {
     if (!token?.trim()) throw new BadRequestException(whyThisDidNotWork('that link is not one we know'));
 
     const pending = await this.prisma.pendingJoin.findUnique({ where: { token } });
@@ -1885,7 +1893,7 @@ STRICT RULES:
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: pending.joinToken },
-      select: { id: true, organizationId: true, status: true, endState: true },
+      select: { id: true, organizationId: true, status: true, endState: true, initiatorId: true, isFreeGround: true, freeParticipantCap: true },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Asked before anything is made: no account, no participant row and no session on a ground that has ended or is held. */
@@ -1896,67 +1904,146 @@ STRICT RULES:
     const firstName = pending.firstName ?? '';
     const lastName = pending.lastName ?? '';
 
-    let user = await this.prisma.user.findUnique({ where: { email } });
-    const existingAccount = !!user;
-    if (user && isASecondOrganisation(user.organizationId, ground.organizationId)) {
-      /* Somebody with an account elsewhere, joining a check-in here. Without this the organisation
-         never appears in their switcher and every org-scoped read returns nothing, because their
-         token still carries their home organisation — the third of the three paths that skipped it.
-         GUEST, never the role they hold at home. */
-      await this.prisma.organizationMembership.upsert({
-        where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
-        create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
-        /* Nothing on a second one: a role somebody was given here is theirs to keep. */
-        update: {},
+    /**
+     * A JOIN LINK IS A WAY INTO A CHECK-IN, NOT A WAY INTO THE COMPANY.
+     *
+     * The invitation path (participants.service.ts accept) asks four things before anybody is let
+     * in: does this person need an admin's approval, is their account marked as waiting, is the
+     * request queued for the admins, and is there a seat. This path asked none of them. It made a
+     * MEMBER with a live check-in for whoever opened the link - and a join link is designed to be
+     * forwarded to a cohort, so whoever received a forward was in. The same four steps now, in the
+     * same order, in one transaction, with the same rule (`needsApproval`) deciding. A join link is
+     * not an admin adding somebody, so nobody is treated as pre-approved by it.
+     *
+     * Kept beside the invitation path rather than extracted from it, because four source-text
+     * specs pin that path's wording line by line and each is a recorded argument; the shared parts
+     * - the rule, the role, the notice - are already shared.
+     */
+    let existingAccount = false;
+    let queuedForApproval = false;
+    const { user, checkIn } = await this.prisma.$transaction(async (tx) => {
+      let user = await tx.user.findUnique({ where: { email } });
+      existingAccount = !!user;
+      const brandNew = !user;
+
+      /* Worked out BEFORE the account is created: once it exists its own organisationId answers
+         "is this their org?" with yes and the question can no longer be asked. */
+      const alreadyAMemberHere = user
+        ? user.organizationId === ground.organizationId ||
+          (await tx.organizationMembership.findUnique({
+            where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+            select: { id: true },
+          })) !== null
+        : false;
+      const wait = needsApproval({
+        groundOrganizationId: ground.organizationId,
+        theirHomeOrganizationId: user?.organizationId ?? null,
+        alreadyAMemberHere,
+        /* Whoever made the link may well be an admin here. Broadcasting a link is not the same act as
+           adding a named person, and the approval it would stand in for was never given for THIS one. */
+        addedByAnAdminOfThisOrg: false,
       });
-    }
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          organizationId: ground.organizationId,
-          email,
-          firstName,
-          lastName,
-          role: 'MEMBER',
-          /* Proved by construction: this only runs because the link opened. */
-          isEmailVerified: true,
-          passwordHash: null,
-        },
+
+      if (user && isASecondOrganisation(user.organizationId, ground.organizationId)) {
+        /* Somebody with an account elsewhere, joining a check-in here. Without this the organisation
+           never appears in their switcher and every org-scoped read returns nothing, because their
+           token still carries their home organisation - the third of the three paths that skipped it.
+           GUEST, never the role they hold at home. */
+        await tx.organizationMembership.upsert({
+          where: { userId_organizationId: { userId: user.id, organizationId: ground.organizationId } },
+          create: { userId: user.id, organizationId: ground.organizationId, role: GUEST_ROLE },
+          /* Nothing on a second one: a role somebody was given here is theirs to keep. */
+          update: {},
+        });
+      }
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            organizationId: ground.organizationId,
+            email,
+            firstName,
+            lastName,
+            role: 'MEMBER',
+            /* Proved by construction: this only runs because the link opened. */
+            isEmailVerified: true,
+            passwordHash: null,
+            /* Holds no seat and cannot check in until somebody says yes. */
+            awaitingOrgApproval: wait,
+          },
+        });
+      }
+
+      /* THE QUEUE. One row per (organisation, person); a second link joins the request already waiting. */
+      if (wait) {
+        queuedForApproval = true;
+        if (!brandNew) {
+          await tx.user.update({ where: { id: user.id }, data: { awaitingOrgApproval: true } });
+        }
+        await tx.membershipRequest.upsert({
+          where: { organizationId_userId: { organizationId: ground.organizationId, userId: user.id } },
+          create: {
+            organizationId: ground.organizationId,
+            userId: user.id,
+            email,
+            requestedByUserId: ground.initiatorId,
+            groundId: ground.id,
+          },
+          /* A request already decided is not reopened; a pending one is left as the admin sees it. */
+          update: {},
+        });
+      }
+
+      let participant = await tx.groundParticipant.findUnique({
+        where: { groundId_email: { groundId: ground.id, email } },
       });
+      if (!participant) {
+        /* The same seat rule addParticipant applies before it writes a row: a free ground has a cap,
+           a paying organisation's grounds do not. This path wrote the row without asking. */
+        const org = await tx.organization.findUnique({
+          where: { id: ground.organizationId },
+          select: { subscriptionPlan: true, subscriptionStatus: true },
+        });
+        if (ground.isFreeGround && !(org && isSubscribed(org))) {
+          const taken = await tx.groundParticipant.count({ where: { groundId: ground.id } });
+          if (taken >= ground.freeParticipantCap) throw new BadRequestException(freeSeatLimitMessage(ground.freeParticipantCap));
+        }
+        participant = await tx.groundParticipant.create({
+          data: {
+            groundId: ground.id,
+            email,
+            userId: user.id,
+            partyType: PartyType.PARTICIPANT,
+            roleAsDescribed: pending.roleAsDescribed ?? null,
+            invitedAt: new Date(),
+            notifiedAt: new Date(),
+          },
+        });
+      } else if (!participant.userId) {
+        participant = await tx.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
+      }
+
+      let checkIn = await tx.checkIn.findFirst({
+        where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
+        orderBy: { sessionNumber: 'asc' },
+      });
+      if (!checkIn) {
+        checkIn = await tx.checkIn.create({
+          data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
+        });
+      }
+      return { user, checkIn };
+    });
+
+    if (!existingAccount) {
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
         data: { userId: user.id, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
       });
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
-
-    let participant = await this.prisma.groundParticipant.findUnique({
-      where: { groundId_email: { groundId: ground.id, email } },
-    });
-    if (!participant) {
-      participant = await this.prisma.groundParticipant.create({
-        data: {
-          groundId: ground.id,
-          email,
-          userId: user.id,
-          partyType: PartyType.PARTICIPANT,
-          roleAsDescribed: pending.roleAsDescribed ?? null,
-          invitedAt: new Date(),
-          notifiedAt: new Date(),
-        },
-      });
-    } else if (!participant.userId) {
-      participant = await this.prisma.groundParticipant.update({ where: { id: participant.id }, data: { userId: user.id } });
-    }
-
-    let checkIn = await this.prisma.checkIn.findFirst({
-      where: { participantId: participant.id, status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] } },
-      orderBy: { sessionNumber: 'asc' },
-    });
-    if (!checkIn) {
-      checkIn = await this.prisma.checkIn.create({
-        data: { groundId: ground.id, participantId: participant.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-      });
+    if (queuedForApproval) {
+      tellTheAdminsSomebodyIsWaiting({ prisma: this.prisma, email: this.email, logger: this.logger }, ground.organizationId, ground.id, ground.initiatorId, email)
+        .catch((err: any) => this.logger.warn(`Could not tell the admins about ${email}: ${err.message}`));
     }
 
     /* Marked used only now. A failure anywhere above leaves the link usable, which
@@ -1964,8 +2051,16 @@ STRICT RULES:
        person who cannot get in and cannot ask again. */
     await this.prisma.pendingJoin.update({ where: { id: pending.id }, data: { usedAt: new Date() } });
 
+    /* Their HOME organisation and role, as the invitation path signs it and for the reason it gives
+       there: that is what keeps their own grounds reachable. The check-in they just joined is owned
+       by their participant row, not by the token's organisation, and jwt.strategy re-reads the
+       organisation from the user row on every request in any case. */
     const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
-    this.logger.log(`join-confirm: ${email} joined ground ${ground.id} -> check-in ${checkIn.id} (new user: ${!existingAccount})`);
-    return { groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount };
+    this.logger.log(`join-confirm: ${email} joined ground ${ground.id} -> check-in ${checkIn.id} (new user: ${!existingAccount}, queued: ${queuedForApproval})`);
+    return {
+      groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount,
+      queuedForApproval,
+      ...(queuedForApproval ? { saying: WAITING_TO_BE_LET_IN } : {}),
+    };
   }
 }
