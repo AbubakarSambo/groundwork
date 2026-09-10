@@ -868,7 +868,6 @@ const QUICK_ACTIONS = [
   { label: 'My report', msg: 'Give me a summary of what my record shows so far.' },
   { label: 'What am I missing?', msg: 'What is missing from my record that would make it stronger?' },
   { label: 'Review my goals', msg: 'Review the goals I set at the start of this check-in and tell me where I stand against each one.' },
-  { label: 'Cross-reference', msg: 'Cross-reference what I have shared with what you know about how the other party sees this situation.' },
 ]
 
 /**

@@ -1,3 +1,4 @@
+import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SEAT_WHERE } from '../../common/seats';
 import { whetherThereIsRoomForOneMore, type SeatAnswer } from './added-but-waiting-for-a-seat';
@@ -1271,14 +1272,24 @@ export class GroundsService {
     const rawBrief = (ground as any).brief ?? null;
     const brief = typeof rawBrief === 'string' ? notTheWordParty(rawBrief) : rawBrief;
 
+    /* The board's alignment feed. Codes on ALIGNMENT_FEED_ONLY_CODES are the engine talking to
+       itself ("Session 2 will use a different approach") and never reach a person; only SURFACED
+       detections do, the same rule as the report. */
+    /* NOT A TEXT. The feed used to print the model's own observation sentence, which is how "the
+       individual" reached a shared board. It prints the pattern library's fixed sentence for the code,
+       the same words every time the same pattern appears, plus how many sessions it was seen across,
+       which is the fact that makes it a pattern. The model's sentence stays on the row for admin. */
+    const catalogue = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
     const signals = (ground.patternDetections ?? [])
-      .filter((pd) => pd.observationText)
+      .filter((pd) => !ALIGNMENT_FEED_ONLY_CODES.has(pd.code) && (pd as any).status !== 'CANDIDATE' && catalogue.has(pd.code))
       .map((pd) => ({
         id: pd.id,
         groundId: id,
+        code: pd.code,
         sessionNum: pd.periodsObserved,
-        type: 'Pattern' as const,
-        text: pd.observationText!,
+        periodsObserved: pd.periodsObserved,
+        type: (isPositiveCode(pd.code) ? 'Good sign' : 'Pattern') as 'Good sign' | 'Pattern',
+        text: catalogue.get(pd.code)!.signal,
         confidenceDelta: null,
         createdAt: pd.createdAt.toISOString(),
       }));

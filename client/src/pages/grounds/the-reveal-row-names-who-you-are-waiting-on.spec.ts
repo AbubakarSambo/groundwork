@@ -53,15 +53,16 @@ describe('who the report is counting', () => {
     expect(API).toContain('nameByLabel.get(label)')
   })
 
-  it('and a lead gets the address of somebody who has not joined, where a peer gets the label', () => {
+  it('and nobody, lead included, is shown an address where a name should be', () => {
     /* `displayName` returns null for an unjoined invitee by design - the address is not a peer's
        to see. To the lead who typed it, "participant B" cannot say which invitation is late. */
-    expect(API).toContain('if (viewerIsLead && p.email) return p.email;')
+    /* Never an email in a name slot, whoever is reading: the same label everywhere. */
+    expect(API).not.toContain('return p.email;')
   })
 
   it('and still gives a nameless party a row rather than dropping them', () => {
     /* Blanking the row would lose the fact that somebody has not answered, which is the point. */
-    expect(API).toContain('`Party ${i + 1}`')
+    expect(API).toContain("label || 'A teammate'")
   })
 
   it('never counts somebody who was never going to answer', () => {

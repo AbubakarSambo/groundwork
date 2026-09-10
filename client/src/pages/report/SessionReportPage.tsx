@@ -245,6 +245,7 @@ export default function SessionReportPage() {
           */}
           <TheReportYouSawAtTheEnd
             report={data.report}
+            stands={shape?.whereThingsStand ? { settled: shape.whereThingsStand.settled ?? [], open: shape.whereThingsStand.open ?? [] } : null}
             /* The engine's own meter is above this. Two meters about one session, six lines apart,
                said "Thin" and "Clear" about the same ten minutes. See hideCompleteness. */
             hideCompleteness={!!shape?.howClearThisWas?.level}
@@ -271,6 +272,14 @@ export default function SessionReportPage() {
                   startDateUnset={(ground as any).startDateChosen === false}
                   timelineUnset={(ground as any).timelineChosen === false}
                   timelineDays={(ground as any).timelineDays ?? null}
+                  briefStandard={(shape as any)?.briefStandard ?? null}
+                  alreadyStarted
+                  nextOpens={(() => {
+                    const mine = ((ground as any).participants ?? []).find((p: any) => p.userId === viewerUserId)
+                    const next = (((mine as any)?.checkIns ?? []) as any[]).filter((c) => c.status !== 'COMPLETED' && c.availableFrom && new Date(c.availableFrom).getTime() > Date.now()).sort((a, b) => new Date(a.availableFrom).getTime() - new Date(b.availableFrom).getTime())[0]
+                    return next?.availableFrom ?? null
+                  })()}
+                  saidDate={(shape as any)?.myTimeframe ?? null}
                   /* The board already says the standard is unset and links to Setup; what was
                      missing was any route to Setup from here at all. */
                   standardUnset={((ground as any).objectives ?? []).length === 0}

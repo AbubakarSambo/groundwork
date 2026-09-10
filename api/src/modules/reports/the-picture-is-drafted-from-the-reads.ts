@@ -19,6 +19,8 @@ import { WHO_CAN_MOVE_IT, WHAT_IT_MEANS, type Kind } from '../board/what-kind-of
  * merge.
  */
 export interface PictureInput {
+  /** Where two people describe the same thing differently, from the written report's own read. */
+  differences?: { topic: string; sides: { who: string; says: string }[] }[];
   answered: number;
   ofPeople: number;
   confidence: { band: 'thin' | 'partial' | 'solid'; saying: string; reasons: string[] };
@@ -47,7 +49,7 @@ const lower = (s: string) => (/^[A-Z]([a-z]|\s)/.test(s) && !/^I\b/.test(s) ? s[
  * the tile line, which outranks the settled-and-open line. The basis line never leads; it goes
  * underneath the finding, small.
  */
-const FINDING_RANK: [RegExp, number][] = [[/^block-/, 0], [/^(cov|con)-/, 1], [/^pattern-/, 2]];
+const FINDING_RANK: [RegExp, number][] = [[/^differs-/, 0], [/^block-/, 1], [/^(cov|con)-/, 2], [/^pattern-/, 3]];
 export function pickTheFinding(keys: string[]): string | null {
   const ranked = keys
     .map((k) => ({ k, r: FINDING_RANK.find(([re]) => re.test(k))?.[1] ?? 9 }))
@@ -75,6 +77,19 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   /* The tiles say what the tiles say. A line restating them ("Differences: 1, still open. How much was
      said: All from memory") was the mail merge in paragraph form, and it went. Same for the
      settled-and-open line: those rows have their own place. */
+  /* THE DIFFERENCE IS THE FINDING. "Abubak says success is usage; Hafsah says it is five contracts"
+     is the sharpest fact a shared report can carry, and the board already had it while the picture
+     led with coverage boilerplate. One line per difference, both sides in it. */
+  for (const d of i.differences ?? []) {
+    const sides = d.sides.filter((x) => x.who && x.says.trim());
+    if (sides.length < 2) continue;
+    const said = sides.map((x) => `${x.who} says ${lower(theThing(x.says))}`);
+    out.push({
+      key: `differs-${d.topic.slice(0, 24)}`,
+      text: `On ${lower(theThing(d.topic))}: ${andList(said)}.`,
+      mustKeep: sides.map((x) => lower(theThing(x.says))),
+    });
+  }
   if (i.blockers.length) {
     const byKind = new Map<string, typeof i.blockers>();
     for (const b of i.blockers) byKind.set(b.kind ?? '', [...(byKind.get(b.kind ?? '') ?? []), b]);

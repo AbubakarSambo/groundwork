@@ -70,6 +70,8 @@ export interface OwnDefinition {
 }
 
 export interface WhereAgainstSuccess {
+  /** The standard was read from the brief, not set on Setup. */
+  statedFromBrief?: boolean;
   /**
    * WHOSE ACCOUNTS THIS READ COULD SEE, WHICH CHANGES WHAT ITS WORDS MEAN.
    *
@@ -161,7 +163,17 @@ export function speaksTo(condition: string, line: string): boolean {
   return false;
 }
 
+/** The first sentence of a brief that carries a number: "Jamie is to get 10 clients on the platform." */
+export function sentenceWithANumber(brief: string | null | undefined): string | null {
+  if (!brief?.trim()) return null;
+  const sentences = brief.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/);
+  const hit = sentences.find((x) => /\b\d+\b/.test(x) && x.trim().length >= 12 && x.trim().length <= 240);
+  return hit ? hit.trim() : null;
+}
+
 export interface WhereAgainstSuccessInputs {
+  /** True when `stated` was read from the brief rather than set on Setup. */
+  statedFromBrief?: boolean;
   /** See `counting` on the result: whether this read could see every account or only the reader's. */
   counting: 'everyone' | 'only-yours';
   stated: string | null;
@@ -243,6 +255,7 @@ export function whereYouAreAgainstWhatYouNamed(
           : 'nobody';
 
   return {
+    statedFromBrief: !!input.statedFromBrief && !!stated,
     counting: input.counting,
     stated,
     version: input.version,

@@ -45,7 +45,7 @@ describe('what the check-in still needs', () => {
      * and which are unset on every one of them. It counts what is missing now, and still vanishes
      * at zero, which was always the point. */
     expect(BLOCK).toContain('if (!missing) return null')
-    expect(BLOCK).toContain('const missing = [cadenceUnset, standardUnset, startDateUnset, timelineUnset]')
+    expect(BLOCK).toContain('const missing = [cadenceUnset, standardUnset, startDateUnset && !alreadyStarted, timelineUnset, alreadyStarted && !!nextOpens]')
   })
 
   it('and asks about the start date and how long it runs, not only how often', () => {

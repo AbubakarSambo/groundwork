@@ -198,8 +198,8 @@ const SOLO_ARTIFACT_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      summary: { type: 'string', description: "Plain-language summary of what this person put on the record, in their own framing. No verdict, no inference about anyone else." },
-      whatToCarry: { type: 'string', description: 'One specific, forward-looking thing for them to carry into the conversation or watch for next. Not a judgement.' },
+      summary: { type: 'string', description: "Plain-language summary of what this person put on the record, in their own framing. No verdict, no inference about anyone else, and never a rating of the record itself: not 'your record is specific', not 'clear', not 'thin'. The page has its own meter for that." },
+      whatToCarry: { type: 'string', description: "One specific, forward-looking thing for them to carry into the conversation or watch for next. A thing to do or watch, in their words. Never praise ('great', 'very clear', 'excellent') and never a judgement." },
     },
     required: ['summary'],
   },
@@ -925,7 +925,8 @@ export class ConversationService {
       const readerName = (checkIn as any).participant?.user?.firstName ?? null;
       const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
       this.knownForThisTurn.delete(checkIn.id);
-      let screened = screen(stripped.text, known, readerName);
+      const conversationSoFar = turns.map((t) => t.content ?? '');
+      let screened = screen(stripped.text, known, readerName, conversationSoFar);
       if (screened.hits.length) {
         /* Nothing has been shown yet on this path, so the whole reply can be asked for again with
            the hit named. One time. If the second try is clean it replaces the first; if not, the
@@ -1060,7 +1061,7 @@ export class ConversationService {
       for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
       return null;
     }
-    const screened = screen(withoutQuotesTheyDidNotSay(forHumans(second), theirWords), known, readerName);
+    const screened = screen(withoutQuotesTheyDidNotSay(forHumans(second), theirWords), known, readerName, history.map((h) => h.content));
     const clean = screened.hits.length === 0 && !!screened.text;
     for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, clean ? 'regenerated, clean' : 'regenerated, still hit'));
     if (!clean) {
@@ -1202,7 +1203,7 @@ export class ConversationService {
       const streamKnown = streamPersonWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
       this.knownForThisTurn.delete(checkIn.id);
       const streamReaderName = (checkIn as any).participant?.user?.firstName ?? null;
-      const gate = new SentenceGate(streamKnown, streamReaderName);
+      const gate = new SentenceGate(streamKnown, streamReaderName, turns.map((t) => t.content ?? ''));
       let shown = '';
 
       /*
@@ -3545,10 +3546,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
+        /* "November 12 2026" came back typed COMMITMENT and sat under Commitments on the shared
+           report. A line that is nothing but a date is a timeframe, whatever the extractor called it. */
+        const bareDate = /^\s*(?:by |on |until |before |from )?(?:\d{1,2}(?:st|nd|rd|th)?\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?(?:\s+\d{1,2}(?:st|nd|rd|th)?)?,?(?:\s+\d{4})?\s*\.?\s*$/i.test(e.text) || /^\s*(?:by |on |until |before )?\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}\s*$/.test(e.text);
         return {
           participantId,
           checkInId,
-          type: e.type as RecordEntryType,
+          type: (bareDate ? 'TIMEFRAME' : e.type) as RecordEntryType,
           text: `[VERIFIABILITY:${v}] ${e.text.trim()}`,
         };
       }),
