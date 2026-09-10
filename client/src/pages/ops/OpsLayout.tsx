@@ -226,6 +226,14 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
         }
       `}</style>
       <nav aria-label="Back office" className="gw-ops-rail">
+        {/* THE WAY OUT, AT THE TOP. It was at the foot of the rail, under twenty links, which on any
+            normal screen is below the fold: "i need to get out of this place too". */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+          <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Groundwork</Link>
+          {isPlatformAdmin && (
+            <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>← Platform console</Link>
+          )}
+        </div>
         <p style={{ ...LABEL, fontSize: 10, marginBottom: 14 }}>{me.data?.displayName ?? '—'}</p>
 
         {GROUPS.map((group) => {
@@ -260,16 +268,6 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
             </div>
           )
         })}
-        <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--gw-border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {isPlatformAdmin && (
-            <Link to="/admin" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
-              ← Platform console
-            </Link>
-          )}
-          <Link to="/grounds" style={{ fontSize: 12, color: 'var(--gw-sub)', textDecoration: 'none' }}>
-            ← Groundwork
-          </Link>
-        </div>
       </nav>
 
       {/* THE WAY BACK, WHICH THERE WAS NOT.
