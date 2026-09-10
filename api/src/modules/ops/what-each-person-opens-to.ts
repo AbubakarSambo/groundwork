@@ -100,6 +100,7 @@ export const BOARDS: BoardDefinition[] = [
     answers: 'What have we shipped, whose use case are we not supporting, and what is blocked?',
     metrics: [
       'product.use_cases_supported',
+      'product.session_minutes_median',
       'product.roadmap_completed',
       'tech.open_client_blockers',
       'deployment.blocked',

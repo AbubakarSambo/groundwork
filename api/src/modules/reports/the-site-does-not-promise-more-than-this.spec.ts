@@ -53,7 +53,15 @@ function everyPage(): { page: string; text: string }[] {
 const ACCEPTED_OVERCLAIMS: { page: string; sentence: RegExp; leavesOpen: string }[] = [
   { page: 'how-it-works.astro', sentence: /Groundwork never shows anyone's raw answers/, leavesOpen: 'P6B-001: a lead can be shown a paraphrase of a party (fix plan A3); raw turns are not shown' },
   { page: 'pricing.astro', sentence: /no one sees anyone else's raw answers/, leavesOpen: 'P6B-001, the same sentence on the pricing page' },
+  /* A noun the product abandoned. There is no object called a Ground in the UI; the copy is frozen. */
+  { page: 'how-it-works.astro', sentence: /the rest of the Ground is measured against/, leavesOpen: 'P6B-005: "Ground" as a noun, which the product no longer uses (fix plan F10)' },
+  { page: 'how-it-works.astro', sentence: /the complete history of the Ground/, leavesOpen: 'P6B-005, the same noun' },
+  { page: 'how-it-works.astro', sentence: /The closed Ground stays on record/, leavesOpen: 'P6B-005, the same noun' },
+  { page: 'pricing.astro', sentence: /run Grounds on the free plan/, leavesOpen: 'P6B-005, the same noun on the pricing page' },
 ];
+
+/** "Ground" as a noun, not the product's name. The product says check-in. */
+const A_NOUN_THE_PRODUCT_ABANDONED = /\bGrounds?\b(?!work)/;
 
 describe('what the page promises about individual answers', () => {
   it('does not claim answers are never shared, because they are', () => {
@@ -79,6 +87,16 @@ describe('and the same two regressions on every other page', () => {
       for (const claim of claims) {
         const accepted = ACCEPTED_OVERCLAIMS.find((a) => a.page === page && a.sentence.test(claim));
         if (!accepted) throw new Error(`${page} makes a raw-answers promise that is not on the accepted list: "${claim.trim()}"`);
+      }
+    }
+  });
+
+  it('"Ground" as a noun appears only where it is already accepted, and nowhere new', () => {
+    for (const { page, text } of everyPage()) {
+      const claims = text.match(/[^.]*\bGrounds?\b(?!work)[^.]*\./g) ?? [];
+      for (const claim of claims.filter((c) => A_NOUN_THE_PRODUCT_ABANDONED.test(c))) {
+        const accepted = ACCEPTED_OVERCLAIMS.find((a) => a.page === page && a.sentence.test(claim));
+        if (!accepted) throw new Error(`${page} says "Ground" as a noun, which the product no longer does: "${claim.trim()}"`);
       }
     }
   });
