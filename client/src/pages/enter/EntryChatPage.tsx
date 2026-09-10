@@ -2109,6 +2109,13 @@ export function EntryChatPage() {
       if (res.draftToken) {
         setDraftToken(res.draftToken)
         try { localStorage.setItem('gw_draft_token', res.draftToken) } catch { /* */ }
+      } else {
+        /* No token means the address already has an account and the server wrote nothing for it - by
+           design, since this request is unauthenticated. Post-email edits stay in localStorage and
+           travel with the same-browser commit; a token left over from an earlier session must not be
+           used to patch a draft this address no longer has. */
+        setDraftToken(null)
+        try { localStorage.removeItem('gw_draft_token') } catch { /* */ }
       }
       try { localStorage.setItem('gw_commit_payload', JSON.stringify(commitPayload)) } catch { /* */ }
     } catch (err: any) {

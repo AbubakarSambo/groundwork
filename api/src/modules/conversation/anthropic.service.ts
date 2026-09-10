@@ -1,4 +1,5 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, ServiceUnavailableException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { whyThisModelIsNotAllowed } from './a-preview-model-has-no-data-terms';
@@ -143,7 +144,7 @@ const THINKING_BUDGET = 2048;
 const CONVERSATION_THINKING_BUDGET = 256;
 
 @Injectable()
-export class AnthropicService {
+export class AnthropicService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AnthropicService.name);
   private client: GoogleGenAI;
   private model: string;
@@ -229,13 +230,56 @@ export class AnthropicService {
   }
 
   /**
+   * THE PROBE RUNS FROM INSIDE, ON A CLOCK, AND WRITES DOWN WHAT IT SAW.
+   *
+   * /health/ai used to make the real call on every request. That kept the lesson below and opened
+   * the model budget to anyone on the internet, because the route sits outside every guard. Now the
+   * same call happens here every five minutes - and once at boot, so a monitor is not told "no
+   * probe yet" for the first five minutes of every deploy - and the route reads the record.
+   */
+  private lastProbe: { ok: boolean; at: Date; latencyMs: number; error?: string } | null = null;
+  private static readonly PROBE_EVERY_MS = 5 * 60_000;
+
+  onApplicationBootstrap() {
+    this.probeTheEngine().catch((err) => this.logger.warn(`First engine probe failed to run: ${err?.message}`));
+  }
+
+  @Cron('*/5 * * * *', { timeZone: 'UTC' })
+  async probeTheEngine(): Promise<void> {
+    const result = await this.healthCheck();
+    this.lastProbe = { ok: result.ok, at: new Date(), latencyMs: result.latencyMs, ...(result.error ? { error: result.error } : {}) };
+    if (!result.ok) this.logger.error(`Engine probe failed: ${result.error ?? 'empty response'}`);
+  }
+
+  /**
+   * What the last probe saw, for /health/ai. Not ok when the probe failed, has not run, or is more
+   * than two intervals old - a stale "ok" is the exact thing the original incident taught us not to
+   * trust.
+   */
+  lastProbeOutcome(): { ok: boolean; probedAt: Date | null; ageMs: number | null; latencyMs: number | null; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string } {
+    const common = { model: this.model, models: this.modelsInUse(), lastRebuildAt: this.lastRebuildAt };
+    if (!this.lastProbe) return { ok: false, probedAt: null, ageMs: null, latencyMs: null, ...common, error: 'no probe has completed yet' };
+    const ageMs = Date.now() - this.lastProbe.at.getTime();
+    const stale = ageMs > 2 * AnthropicService.PROBE_EVERY_MS;
+    return {
+      ok: this.lastProbe.ok && !stale,
+      probedAt: this.lastProbe.at,
+      ageMs,
+      latencyMs: this.lastProbe.latencyMs,
+      ...common,
+      ...(stale ? { error: `last probe is ${Math.round(ageMs / 60_000)} minutes old` } : this.lastProbe.error ? { error: this.lastProbe.error } : {}),
+    };
+  }
+
+  /**
    * Is the engine actually reachable RIGHT NOW, from THIS process?
    *
    * Deliberately makes a real call. A health check that does not touch the model
    * cannot tell you the model is unreachable, which is exactly how this went
-   * unnoticed.
+   * unnoticed. Called by the probe above and nothing else: an inbound request
+   * must never be what triggers a model call on an unguarded route.
    */
-  async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string }> {
+  private async healthCheck(): Promise<{ ok: boolean; latencyMs: number; model: string; models: { conversation: string; reports: string }; lastRebuildAt: Date | null; error?: string }> {
     const started = Date.now();
     try {
       const res = await this.client.models.generateContent({

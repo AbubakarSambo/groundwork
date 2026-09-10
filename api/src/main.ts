@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { Resend } from 'resend';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
@@ -170,49 +169,32 @@ async function bootstrap() {
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req: unknown, res: ExpressResponse) => res.status(200).send('ok'));
 
-  // A health check that never touches the model cannot tell you the model is
-  // unreachable. In a live run every AI call from the running process failed
-  // for the best part of an hour while /health kept returning "ok" - nothing
-  // would have alerted. This one makes a real call, and returns 503 when the
-  // engine is actually down, so a monitor can see it.
+  /*
+   * A HEALTH CHECK THAT NEVER TOUCHES THE MODEL CANNOT TELL YOU THE MODEL IS UNREACHABLE. In a live
+   * run every AI call from the running process failed for the best part of an hour while /health
+   * kept returning "ok" - nothing would have alerted. So this route used to make a real model call
+   * per request. That kept the lesson and opened a second door: it sits on the raw adapter, outside
+   * every guard and the throttler, so anyone on the internet could spend the model budget at
+   * request rate, no account needed.
+   *
+   * The probe has moved, not gone. AnthropicService makes the same real call on a schedule from
+   * inside the process and records what happened; this route reports that record and returns 503
+   * when the last probe failed, is missing, or is stale. A monitor still sees the engine go down
+   * within one probe interval, and a stranger hitting this URL costs us a hash lookup.
+   *
+   * /health/email is gone outright. It sent real mail from our domain to any address in a query
+   * string, unauthenticated and unthrottled - an open relay whose cost was the reputation every
+   * invitation and magic link depends on. Its comment said "safe to leave in". The same answer is
+   * on the Resend dashboard.
+   */
   httpAdapter.get('/health/ai', async (_req: any, res: any) => {
     try {
       const { AnthropicService } = await import('./modules/conversation/anthropic.service');
       const svc = app.get(AnthropicService, { strict: false });
-      const result = await svc.healthCheck();
-      res.status(result.ok ? 200 : 503).json(result);
+      const probe = svc.lastProbeOutcome();
+      res.status(probe.ok ? 200 : 503).json(probe);
     } catch (err: any) {
       res.status(503).json({ ok: false, error: String(err?.message ?? err).slice(0, 300) });
-    }
-  });
-
-  // Email diagnostic - call GET /health/email?to=you@example.com on the production
-  // server to see exactly what Resend returns. Safe to leave in: no auth bypass,
-  // no data exposure, just a test send to an explicit address.
-  httpAdapter.get('/health/email', async (req: any, res: any) => {
-    const to = req.query?.to;
-    if (!to || !String(to).includes('@')) {
-      return res.status(400).json({ error: 'Pass ?to=your@email.com' });
-    }
-    const apiKey = process.env.RESEND_API_KEY ?? '';
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Groundwork <noreply@myground.work>';
-    if (!apiKey || apiKey.startsWith('re_...')) {
-      return res.status(200).json({ status: 'dev_mode', message: 'RESEND_API_KEY is the placeholder - emails are suppressed and logged only.' });
-    }
-    try {
-      const resend = new Resend(apiKey);
-      const { data, error } = await resend.emails.send({
-        from: fromEmail,
-        to: [String(to)],
-        subject: 'Groundwork email diagnostic',
-        html: '<p>This is a test email from the Groundwork health check endpoint. If you received this, email delivery is working.</p>',
-      });
-      if (error) {
-        return res.status(200).json({ status: 'resend_error', error });
-      }
-      return res.status(200).json({ status: 'sent', id: data?.id, from: fromEmail, to });
-    } catch (err: any) {
-      return res.status(200).json({ status: 'exception', message: err.message });
     }
   });
 

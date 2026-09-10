@@ -63,7 +63,7 @@ describe('the entry-flow signup no longer slugs anything itself', () => {
   const ENTRY_SAVE = (() => {
     const i = SRC.indexOf('async entrySave');
     expect(i).toBeGreaterThan(-1);
-    return SRC.slice(i, SRC.indexOf('// Existing user saving a (new) anonymous session', i));
+    return SRC.slice(i, SRC.indexOf('AN ADDRESS THAT ALREADY HAS AN ACCOUNT GETS EXACTLY ONE EFFECT', i));
   })();
 
   it('computes no slug on the unverified path', () => {

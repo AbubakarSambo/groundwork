@@ -568,17 +568,25 @@ export class AuthService {
 
       await this.emailService.sendMagicLinkEmail(lower, firstName, token);
     } else {
-      // Existing user saving a (new) anonymous session: last save wins. The
-      // token rotates so only the most recent entry page can update the draft,
-      // and a previously consumed draft becomes commit-able again.
-      if (draft) {
-        draftToken = crypto.randomBytes(32).toString('hex');
-        await this.prisma.entryDraft.upsert({
-          where: { userId: user.id },
-          create: { userId: user.id, draftToken, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any },
-          update: { draftToken, payload: (draft.payload ?? {}) as any, history: (draft.history ?? []) as any, consumedAt: null, groundId: null },
-        });
-      }
+      /**
+       * AN ADDRESS THAT ALREADY HAS AN ACCOUNT GETS EXACTLY ONE EFFECT: THE LINK IS EMAILED.
+       *
+       * This branch used to do "last save wins": it upserted the account's EntryDraft with whatever
+       * payload and history the caller sent, cleared consumedAt and groundId so a consumed draft
+       * became commit-able again, and handed the freshly minted draftToken back to the caller. The
+       * caller is unauthenticated - this route is @Public() - so anyone who knew a customer's email
+       * address could overwrite that customer's unsubmitted session and keep editing it through
+       * PATCH /entry/draft. The same call mailed the customer a magic link; opening it committed the
+       * attacker's payload, which renames the organisation from `orgName` and invites whoever the
+       * payload named, from the customer's organisation. One known address, and a company was
+       * renamed and sending invitations on a stranger's say-so.
+       *
+       * Nothing about an account changes on the word of somebody who has not signed in to it. The
+       * session this browser is holding is attached after the link is opened, from the browser that
+       * holds it (MagicVerifyPage commits what localStorage has), not from this request. A person
+       * returning on a new device with a session in hand signs in first. That is a smaller
+       * convenience lost than a customer's organisation. `draft` is deliberately unread here.
+       */
       // If a fresh unused token was created in the last 60 seconds, reuse it to prevent
       // double-tap from invalidating a link the user has not yet clicked.
       const recentToken = await this.prisma.emailVerificationToken.findFirst({
@@ -591,7 +599,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (recentToken) {
-        return { message, email: lower, draftToken };
+        return { message, email: lower };
       }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -604,7 +612,8 @@ export class AuthService {
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
 
-    return { message, email: lower, draftToken };
+    /* The key is absent, not undefined, when there is no token: a body that names it says the address had no account. */
+    return { message, email: lower, ...(draftToken ? { draftToken } : {}) };
   }
 
   async teamInvite(inviterOrgName: string, inviteeEmail: string, inviterOrganizationId?: string): Promise<{ message: string }> {
