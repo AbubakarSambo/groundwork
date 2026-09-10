@@ -24,10 +24,6 @@ class EntryChatDto {
   @IsOptional()
   @IsString()
   groundLabel?: string;
-
-  @IsOptional()
-  @IsString()
-  joinToken?: string;
 }
 
 class EntryOnboardDto {
@@ -284,8 +280,8 @@ export class EntryController {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, dto.joinToken, (text) => write({ type: 'delta', text }));
-      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply) });
+      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }));
+      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
     } catch (err: any) {
       write({ type: 'error', message: err?.message ?? 'stream failed' });
     } finally {
@@ -295,8 +291,8 @@ export class EntryController {
   }
 
 
-  private sessionCompleteFrom(reply: string): boolean {
-    const markerClosed = this.service.didLastReplyClose();
+  /* `closed` travels with the reply it belongs to (entry.service#chat) - never read off the service. */
+  private sessionCompleteFrom(reply: string, markerClosed: boolean): boolean {
     const r = reply.toLowerCase();
     const sessionComplete =
       markerClosed ||
@@ -309,8 +305,8 @@ export class EntryController {
         return sessionComplete;
   }
 
-  private chatResponse(reply: string) {
-    const sessionComplete = this.sessionCompleteFrom(reply);
+  private chatResponse(reply: string, closed: boolean) {
+    const sessionComplete = this.sessionCompleteFrom(reply, closed);
     return { reply, sessionComplete };
   }
 
@@ -331,7 +327,7 @@ export class EntryController {
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
-    const reply = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, dto.joinToken);
+    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel);
     /**
      * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
      *
@@ -340,7 +336,7 @@ export class EntryController {
      * signal was never consulted, and whether a session closed depended on the assistant happening
      * to use one of six wordings.
      */
-    return this.chatResponse(reply);
+    return this.chatResponse(reply, closed);
   }
 
   @Public()

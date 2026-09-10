@@ -61,7 +61,9 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
     expect(screen.queryByText(/we couldn't find your session/i)).not.toBeInTheDocument()
   })
 
-  it('a genuine initiator (has local entry intent) hitting COMMIT_IN_PROGRESS sees the honest lost-session state, not the wrong-flow error', async () => {
+  /* Re-pinned under fix plan D11: a save still running is "still being saved", never the lost-session
+     screen, which offers to start over and discard a draft that is intact on the server. */
+  it('a genuine initiator (has local entry intent) hitting COMMIT_IN_PROGRESS sees that the save is still running, not the lost-session state', async () => {
     localStorage.setItem('gw_commit_payload', JSON.stringify({ groundLabel: 'My ground', history: [{ role: 'user', content: 'hi' }], contributors: [] }))
     vi.mocked(authApi.verifyEmail).mockResolvedValue({
       user: { id: 'u2', email: 'initiator@x.com', role: 'ADMIN', jobTitle: null } as any,
@@ -71,7 +73,8 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
 
     renderPage('tok-initiator-race')
 
-    await waitFor(() => expect(screen.getByText(/we couldn't find your session on this device/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/your check-in is still being saved/i)).toBeInTheDocument())
+    expect(screen.queryByText(/we couldn't find your session on this device/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/the check-in wasn't saved/i)).not.toBeInTheDocument()
   })
 

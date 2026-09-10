@@ -158,7 +158,6 @@ export const entryApi = {
     modeOrMessages: EntryMode | ChatTurn[],
     messagesOrScenario?: ChatTurn[] | string,
     groundLabel?: string,
-    joinToken?: string,
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
     typeof modeOrMessages === 'string'
       ? apiClient.post<{ reply: string; sessionComplete: boolean }>(
@@ -167,7 +166,7 @@ export const entryApi = {
         ).then(r => r.data)
       : apiClient.post<{ reply: string }>(
           '/entry/chat',
-          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel, joinToken },
+          { messages: modeOrMessages, scenario: messagesOrScenario as string | undefined, groundLabel },
         ).then(r => r.data),
 
   onboard: (messages: ChatTurn[], scenario?: string, moment?: string): Promise<OnboardResult> =>
@@ -191,9 +190,9 @@ export const entryApi = {
     scenario: string | undefined,
     groundLabel: string | undefined,
     onDelta: (text: string) => void,
-    joinToken?: string,
   ): Promise<{ reply: string; sessionComplete?: boolean }> =>
-    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel, joinToken }, onDelta),
+    /* No joinToken: the branch it reached served the organiser's brief to whoever supplied one (fix plan D10). */
+    readEntryStream('/entry/chat/stream', { messages, scenario, groundLabel }, onDelta),
 
   classifyIntent: (description: string, mode?: string) =>
     /* Null below the confidence bar: the flow keeps the card the person chose rather than a guess. */

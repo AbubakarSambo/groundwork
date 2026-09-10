@@ -42,7 +42,8 @@ describe('the reply on screen', () => {
   it('gives her word back', async () => {
     // THE LIVE CASE, on the path she was on.
     const { service } = makeService('I have the client name: Microchip Solutions.');
-    const out = await service.chat(HERS as any, 'PIP', 'A ground');
+    /* chat returns the reply beside whether it closed (one-visitors-close-is-not-anothers.spec.ts). */
+    const out = (await service.chat(HERS as any, 'PIP', 'A ground')).reply;
     expect(out).toMatch(/microchipshit/);
     expect(out).not.toMatch(/Microchip Solutions/);
   });
@@ -50,7 +51,7 @@ describe('the reply on screen', () => {
   it('leaves an ordinary reply exactly alone', async () => {
     const reply = 'What was the outcome of that call?';
     const { service } = makeService(reply);
-    expect(await service.chat(HERS as any, 'PIP', 'A ground')).toBe(reply);
+    expect((await service.chat(HERS as any, 'PIP', 'A ground')).reply).toBe(reply);
   });
 
   it('guards the FAQ branch as well, which is a different exit', async () => {
@@ -58,10 +59,10 @@ describe('the reply on screen', () => {
     // the restore on it - which is exactly how this got missed the first time. All
     // of them go through one helper now.
     const { service } = makeService('That would be Microchip Solutions.');
-    const out = await service.chat(
+    const out = (await service.chat(
       [{ role: 'user', content: 'what is microchipshit doing here?' }] as any,
       'PIP', 'A ground',
-    );
+    )).reply;
     expect(out).toMatch(/microchipshit/);
   });
 });

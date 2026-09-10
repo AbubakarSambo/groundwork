@@ -34,7 +34,7 @@ describe('the token', () => {
   it('that nobody issued, or that has been used, is refused with the invitation’s own sentence', async () => {
     const { s, written } = svc(null);
     await expect(s.uploadByInviteToken('gone', file)).rejects.toBeInstanceOf(NotFoundException);
-    await expect(s.uploadByInviteToken('gone', file)).rejects.toThrow(/already been used, or it is not a link we recognise/);
+    await expect(s.uploadByInviteToken('gone', file)).rejects.toThrow(/not a link we recognise/);
     expect(written).toHaveLength(0);
   });
 

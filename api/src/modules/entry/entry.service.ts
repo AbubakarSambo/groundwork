@@ -910,48 +910,30 @@ from finishing at all.`;
     return { reply, extracted, ready, needsPeople };
   }
 
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, joinToken?: string, onDelta?: (text: string) => void): Promise<string> {
+  /**
+   * THE BRIEF IS NOT SERVED TO A STRANGER. This took a `joinToken` from the body of a public route,
+   * looked the ground up by it and put the organiser's own brief into the system prompt for whoever
+   * supplied it. No client passed it any more - the join flow goes through join-confirm - so the
+   * branch was reachable only by somebody who was not meant to reach it. Deleted; a broadcast-join
+   * chat, if wanted again, belongs behind the join-confirm session like every other check-in.
+   *
+   * ONE VISITOR'S CLOSE IS NOT ANOTHER'S. Whether the reply closed the session used to be stashed on
+   * this singleton and read by the controller after an await, so two visitors finishing in the same
+   * tick could decide each other's close. It travels with the reply now.
+   */
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
-
-    // Join participant path: the person scanned a QR code and is responding to a specific ground question.
-    // Use a participant-aware prompt that includes the ground context and explains what they're doing.
-    if (joinToken) {
-      const ground = await this.prisma.ground.findUnique({
-        where: { joinToken },
-        select: { label: true, scenario: true, brief: true },
-      });
-      if (ground) {
-        const joinScenario = resolveScenario(ground.scenario);
-        const briefLine = ground.brief ? `Ground context from the organiser:\n${ground.brief}\n\n` : '';
-        const joinPrompt = `# BROADCAST CHECK-IN - PARTICIPANT MODE
-You are receiving a check-in from someone who joined via a shared link. They are a participant, not the person who created this check-in.
-
-Check-in: ${ground.label}
-${briefLine}YOUR ROLE: capture this participant's own perspective and put it on record.
-
-STRICT RULES:
-- NEVER ask "What is this check-in about for you?" - that is already set.
-- NEVER ask who opened it or why the check-in was created.
-- Your first message MUST reflect back what they just said before asking anything.
-- Ask only about their own view: what they think, what they have seen, what they would want on record.
-- When you have a clear account of their perspective, say exactly: "Your record is here." followed by a 2-sentence plain summary of what is now on their record.
-- Off-topic or very brief first messages: name that gently and redirect - "This check-in is to get your perspective on ${ground.label}. In a sentence or two, what would you want on record?"
-
-` + buildEntrySystemPrompt(joinScenario, ground.label, PartyType.PARTICIPANT);
-        return this.guardedReply(joinPrompt, messages, onDelta);
-      }
-    }
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
     // Only route to FAQ on the very first user message (conversationStarted guard)
     // and only for short messages - long context blocks from startCheckin are never FAQ questions.
     const conversationStarted = messages.filter(m => m.role === 'user').length > 1;
     if (!conversationStarted && lastUser && lastUser.content.length <= 200 && isLikelyQuestion(lastUser.content)) {
-      return this.guardedReply(FAQ_PROMPT, messages, onDelta);
+      return this.guardedReplyWithClose(FAQ_PROMPT, messages, onDelta);
     }
 
     const mapped = resolveScenario(scenario);
-    return this.guardedReply(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages, onDelta);
+    return this.guardedReplyWithClose(buildEntrySystemPrompt(mapped, groundLabel || scenario || ''), messages, onDelta);
   }
 
 
@@ -976,7 +958,17 @@ STRICT RULES:
    * that is kept is still the whole one, screened whole. What streams is a preview; what stands is
    * what always stood.
    */
+  /** The reply alone, for the paths that never close anything (FAQ, onboarding). */
   private async guardedReply(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<string> {
+    return (await this.guardedReplyWithClose(system, messages, onDelta)).reply;
+  }
+
+  /**
+   * The reply and whether it closed the session, together. The close marker is stripped before the
+   * text reaches a person, so the fact has to travel beside the reply - never on the service, which is
+   * one instance serving every concurrent visitor to a public route.
+   */
+  private async guardedReplyWithClose(system: string, messages: ChatTurn[], onDelta?: (text: string) => void): Promise<{ reply: string; closed: boolean }> {
     const personSaid = messages.filter((m) => m.role === 'user').map((m) => m.content ?? '');
     const reply = onDelta
       ? await this.spokenAsItComes(this.anthropic.respondStream(system, messages), personSaid, onDelta)
@@ -1018,12 +1010,7 @@ STRICT RULES:
      * what the model actually said. Cleaning the text first would have them inspect a string the
      * model did not produce.
      */
-    /**
-     * The marker is stripped here, so whether it was there has to travel separately.
-     * `lastReplyHadCloseMarker` is read by the controller immediately after this call.
-     */
-    this.lastReplyHadCloseMarker = hadCloseMarker(restored);
-    return forHumans(restored);
+    return { reply: forHumans(restored), closed: hadCloseMarker(restored) };
   }
 
   /**
@@ -1056,23 +1043,6 @@ STRICT RULES:
     return raw;
   }
 
-  /**
-   * DID THE LAST REPLY CARRY THE CLOSE MARKER.
-   *
-   * The entry controller decided "is this session over" by string-matching phrases in the reply
-   * ("your record is here", "your contribution is saved"). It never matched the marker the model is
-   * actually instructed to emit - it looks for "[session complete]" with a space, and the marker is
-   * "[[SESSION_COMPLETE]]" with an underscore - so the authoritative signal was unused and a
-   * rephrased closer silently failed to close anything.
-   *
-   * Stripping the marker at the boundary made that worse rather than better: the one reliable
-   * signal was being removed before the only code that could have used it. So it is captured on the
-   * way through. The phrase list stays as a backstop for older replies.
-   */
-  private lastReplyHadCloseMarker = false;
-  didLastReplyClose(): boolean {
-    return this.lastReplyHadCloseMarker;
-  }
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string): Promise<EntryReport | null> {
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');

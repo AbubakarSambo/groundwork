@@ -66,9 +66,10 @@ const CHECKED_AND_FINE = new Set([
   'modules/ops/the-door-into-the-ops-system.ts:userId',
   'modules/entry/entry.service.ts:email',           // the request body's email, before a user exists
   /*
-   * The REQUEST BODY's join token, checked before anything is looked up. It collides on the name
-   * with `PendingJoin.joinToken`, which is non-nullable precisely because a row is only ever
-   * created once the caller supplied one — which is what this check enforces.
+   * The REQUEST BODY's join token in askToJoin, checked before anything is looked up. It collides on
+   * the name with `PendingJoin.joinToken`, which is non-nullable precisely because a row is only ever
+   * created once the caller supplied one - which is what this check enforces. (The chat route's
+   * joinToken branch, which served the brief to a stranger, is gone: fix plan D10.)
    */
   'modules/entry/entry.service.ts:joinToken',
   'modules/entry/entry.service.ts:userId',          // GroundParticipant.userId, which IS nullable
