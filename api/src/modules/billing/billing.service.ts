@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
@@ -507,7 +508,8 @@ export class BillingService {
     // rather than building one ad hoc on every checkout.
     const priceId = await this.pricing.getOrCreateStripePrice(plan);
     const base = this.config.get<string>('stripe.callbackUrl') || 'http://localhost:5173/billing/callback';
-    const session = await this.stripe.stripe.checkout.sessions.create({
+    const session = await this.stripe.stripe.checkout.sessions.create(
+      {
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
@@ -519,7 +521,11 @@ export class BillingService {
       metadata: { organizationId, plan, type: 'subscription' },
       success_url: `${base}?status=success&type=subscription&plan=${plan}`,
       cancel_url: `${base}?status=cancelled`,
-    });
+      },
+      /* Two tabs, one payment. Stripe replays the same session for the same key within a day, so a
+         second press cannot create a second subscription that overwrites the first and orphans it. */
+      { idempotencyKey: `sub_${organizationId}_${plan}` },
+    );
 
     return { checkoutUrl: session.url! };
   }
@@ -965,6 +971,57 @@ export class BillingService {
   }
 
   /** Handle Stripe webhook events. */
+  /**
+   * AN EVENT WE COULD NOT HANDLE IS KEPT, NOT LOST.
+   *
+   * Called by the webhook when handleStripeEvent throws. The event and the error are written down,
+   * Stripe is answered 200 so it stops retrying a deterministic failure for ever, and the retry below
+   * works from this record. An event already kept just counts another attempt.
+   */
+  async recordStripeEventFailure(event: Stripe.Event, err: unknown): Promise<void> {
+    const error = String((err as any)?.message ?? err).slice(0, 2000);
+    this.logger.error(`Stripe event ${event.id} (${event.type}) could not be handled and is kept for retry: ${error}`);
+    await this.prisma.stripeEventFailure.upsert({
+      where: { eventId: event.id },
+      create: { eventId: event.id, eventType: event.type, error, payload: event as any },
+      update: { error, attempts: { increment: 1 }, lastTriedAt: new Date() },
+    });
+  }
+
+  /** The kept failures a platform admin can see. Unresolved first, newest first. */
+  async stripeEventFailures() {
+    return this.prisma.stripeEventFailure.findMany({
+      where: { resolvedAt: null },
+      orderBy: { lastTriedAt: 'desc' },
+      take: 100,
+      select: { id: true, eventId: true, eventType: true, error: true, attempts: true, lastTriedAt: true, createdAt: true },
+    });
+  }
+
+  /** Six tries over six hours, then it stays on the list for a person. */
+  static readonly STRIPE_RETRY_ATTEMPTS = 6;
+
+  @Cron('15 * * * *', { timeZone: 'UTC' })
+  async retryStripeEventsWeCouldNotHandle(): Promise<void> {
+    const due = await this.prisma.stripeEventFailure.findMany({
+      where: { resolvedAt: null, attempts: { lt: BillingService.STRIPE_RETRY_ATTEMPTS } },
+      orderBy: { lastTriedAt: 'asc' },
+      take: 50,
+    });
+    for (const f of due) {
+      try {
+        await this.handleStripeEvent(f.payload as unknown as Stripe.Event);
+        await this.prisma.stripeEventFailure.update({ where: { id: f.id }, data: { resolvedAt: new Date() } });
+        this.logger.log(`Stripe event ${f.eventId} (${f.eventType}) handled on retry ${f.attempts + 1}`);
+      } catch (err: any) {
+        await this.prisma.stripeEventFailure.update({
+          where: { id: f.id },
+          data: { attempts: { increment: 1 }, lastTriedAt: new Date(), error: String(err?.message ?? err).slice(0, 2000) },
+        });
+      }
+    }
+  }
+
   async handleStripeEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -975,33 +1032,40 @@ export class BillingService {
           const qty = parseInt(session.metadata?.quantity ?? '1', 10) || 1;
           const stripeInvoiceId = (session.payment_intent as string | null) ?? event.id;
           if (organizationId && groundId) {
-            // Idempotency guard: skip if we've already processed this payment intent.
-            const existing = await this.prisma.billingEvent.findFirst({ where: { stripeInvoiceId } });
-            if (existing) {
-              this.logger.warn(`Duplicate webhook for ${stripeInvoiceId} - skipping`);
-              break;
-            }
+            /*
+             * THE CONSTRAINT DECIDES, NOT A PRIOR READ. This checked findFirst then wrote, against a
+             * column that is uniquely indexed for exactly this race (see the schema comment on
+             * stripe_invoice_id). Two concurrent deliveries both found nothing, both wrote, and the
+             * loser's P2002 came out of the webhook as a 500 - so Stripe retried a payment that had
+             * been processed, for ever. The same shape recordInvoiceOnce already uses: the credit and
+             * the row are one transaction, and a unique violation on the row IS the duplicate signal.
+             */
             const now = new Date();
-            await this.prisma.$transaction([
-              this.prisma.ground.update({
-                where: { id: groundId },
-                data: { sessionsBalance: { increment: qty } },
-              }),
-              this.prisma.billingEvent.create({
-                data: {
-                  organizationId,
-                  groundId,
-                  type: BillingEventType.SESSION_FEE,
-                  amountCents: 500 * qty,
-                  currency: 'USD',
-                  status: BillingEventStatus.PAID,
-                  periodStart: now,
-                  periodEnd: now,
-                  stripeInvoiceId,
-                },
-              }),
-            ]);
-            this.logger.log(`Session fee paid: ${qty} session(s) added to ground ${groundId} (org ${organizationId})`);
+            try {
+              await this.prisma.$transaction([
+                this.prisma.ground.update({
+                  where: { id: groundId },
+                  data: { sessionsBalance: { increment: qty } },
+                }),
+                this.prisma.billingEvent.create({
+                  data: {
+                    organizationId,
+                    groundId,
+                    type: BillingEventType.SESSION_FEE,
+                    amountCents: 500 * qty,
+                    currency: 'USD',
+                    status: BillingEventStatus.PAID,
+                    periodStart: now,
+                    periodEnd: now,
+                    stripeInvoiceId,
+                  },
+                }),
+              ]);
+              this.logger.log(`Session fee paid: ${qty} session(s) added to ground ${groundId} (org ${organizationId})`);
+            } catch (err: any) {
+              if (err?.code !== 'P2002') throw err;
+              this.logger.log(`Duplicate delivery for ${stripeInvoiceId} - already credited, nothing written`);
+            }
           }
           break;
         }
@@ -1011,8 +1075,13 @@ export class BillingService {
           const { organizationId: orgId, plan } = session.metadata ?? {};
           const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
           if (orgId && plan && subId) {
-            const sub = await this.stripe.stripe.subscriptions.retrieve(subId);
-            const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+            /* Activate from what the session carries - the plan in its metadata and the subscription
+               id on the session itself - and only ENRICH from Stripe. A retrieve that threw used to
+               leave the customer paid and inactive, with nothing to try again. */
+            const periodEnd = await this.stripe.stripe.subscriptions
+              .retrieve(subId)
+              .then((sub) => (sub.current_period_end ? new Date(sub.current_period_end * 1000) : null))
+              .catch((err: any) => { this.logger.warn(`Could not read subscription ${subId} after checkout: ${err?.message}`); return null; });
             await this.prisma.organization.update({
               where: { id: orgId },
               data: {
@@ -1105,8 +1174,28 @@ export class BillingService {
         if (!customerId) break;
         const paidOrg = await this.prisma.organization.findFirst({
           where: { stripeCustomerId: customerId },
-          select: { id: true, email: true, subscriptionPlan: true, subscriptionPeriodEnd: true },
+          select: { id: true, email: true, subscriptionPlan: true, subscriptionPeriodEnd: true, subscriptionStripeId: true },
         });
+        /*
+         * A SECOND CHANCE TO ACTIVATE, NOT ONLY AN EMAIL. If the checkout event was lost or failed,
+         * the organisation has a plan on record and money taken and no subscription id - and this
+         * event, which arrives on every payment, was writing a ledger row and mailing a receipt to a
+         * customer the product still treated as unpaid.
+         */
+        const invoiceSubId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+        if (paidOrg && paidOrg.subscriptionPlan && !paidOrg.subscriptionStripeId && invoiceSubId) {
+          await this.prisma.organization.update({
+            where: { id: paidOrg.id },
+            data: {
+              subscriptionStripeId: invoiceSubId,
+              subscriptionStatus: 'active' satisfies SubscriptionStatus,
+              subscriptionPeriodEnd: invoice.period_end ? new Date(invoice.period_end * 1000) : paidOrg.subscriptionPeriodEnd,
+            },
+          });
+          this.logger.warn(`Org ${paidOrg.id} activated from a paid invoice: the checkout event never landed`);
+        } else if (paidOrg && !paidOrg.subscriptionPlan && invoiceSubId) {
+          this.logger.error(`Org ${paidOrg.id} paid invoice ${invoice.id} for subscription ${invoiceSubId} and has no plan on record`);
+        }
         if (paidOrg?.email && paidOrg.subscriptionPlan) {
           const amountCents = invoice.amount_paid ?? 0;
           await this.email.sendSubscriptionRenewal(paidOrg.email, paidOrg.subscriptionPlan, amountCents, paidOrg.subscriptionPeriodEnd).catch(() => undefined);

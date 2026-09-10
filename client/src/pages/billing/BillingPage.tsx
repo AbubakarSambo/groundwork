@@ -191,7 +191,9 @@ export function BillingPage() {
   const createSubscriptionMut = useMutation({
     mutationFn: (plan: SubscriptionPlan) => billingApi.createSubscription(plan),
     onSuccess: r => { if (r.checkoutUrl) window.location.href = r.checkoutUrl },
-    onError: () => toast.error('Could not start checkout. Try again.'),
+    /* The server's own sentence when billing is not set up on this deployment - "no card was touched" -
+       was swallowed into this generic toast. Say it when it is there. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not start checkout. Try again.'),
   })
 
   const changePlanMut = useMutation({

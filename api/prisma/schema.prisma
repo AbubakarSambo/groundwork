@@ -2027,6 +2027,25 @@ model ApiCredential {
 /// a well-behaved integration retries a push it cannot confirm - and without this, a retried bulk
 /// import is a second import. The key is theirs, the window is 24 hours, and the stored response is
 /// replayed verbatim so a retry is indistinguishable from the original call.
+/// A STRIPE EVENT WE COULD NOT HANDLE, KEPT SO IT IS NOT LOST. The webhook used to let a throw become
+/// a non-2xx, so a deterministic failure stuck for ever with Stripe retrying and nobody told. Now the
+/// event is written here with what went wrong, Stripe is answered 200, and the hourly retry works
+/// from this record. `resolvedAt` is set when a retry succeeds; a platform admin can list the rest.
+model StripeEventFailure {
+  id          String    @id @default(uuid())
+  eventId     String    @unique @map("event_id")
+  eventType   String    @map("event_type")
+  error       String    @db.Text
+  payload     Json
+  attempts    Int       @default(1)
+  lastTriedAt DateTime  @default(now()) @map("last_tried_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([resolvedAt, lastTriedAt])
+  @@map("stripe_event_failures")
+}
+
 model IdempotencyRecord {
   id                 String   @id @default(uuid())
   organizationId     String   @map("organization_id")

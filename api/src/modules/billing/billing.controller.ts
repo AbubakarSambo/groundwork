@@ -285,9 +285,29 @@ export class BillingController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stripe webhook (raw body - verified by signature)' })
   async webhook(@Req() req: any, @Headers('stripe-signature') signature: string) {
-    // main.ts enables rawBody so signature verification works.
+    // main.ts enables rawBody so signature verification works. A bad signature still throws: an
+    // event we cannot trust is not an event we keep.
     const event = this.stripe.constructEvent(req.rawBody, signature);
-    await this.billing.handleStripeEvent(event);
-    return { received: true, type: event.type };
+    try {
+      await this.billing.handleStripeEvent(event);
+      return { received: true, type: event.type };
+    } catch (err) {
+      /*
+       * A THROW HERE USED TO BE A NON-2XX, and a deterministic failure then stuck for ever: Stripe
+       * retried on its schedule, every retry failed the same way, and no operator was told. The
+       * event is kept with what went wrong, Stripe is answered 200 so it stops, and the retry runs
+       * from our record - where a person can also see it (GET /billing/stripe-failures).
+       */
+      await this.billing.recordStripeEventFailure(event, err);
+      return { received: true, type: event.type, held: true };
+    }
+  }
+
+  @Get('stripe-failures')
+  @ApiBearerAuth()
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Stripe events we could not handle and have not yet handled on retry (platform admin only)' })
+  async stripeFailures() {
+    return this.billing.stripeEventFailures();
   }
 }
