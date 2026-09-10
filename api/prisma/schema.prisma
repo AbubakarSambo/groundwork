@@ -1914,6 +1914,26 @@ model WhatsAppConnection {
 /// engine's drafts to the model for wording on every read, and the same drafts came back the same
 /// way ten seconds later. Keyed by a hash of the style, the instruction and the draft, so an
 /// unchanged record costs one lookup and a changed one costs one model call.
+/// WHAT AN ACCOUNT SHOWS, MADE ONCE AND KEPT. One row per completed check-in per source hash: the
+/// lead's read of that account against the check-in's purpose. Derived, never their words, never
+/// evidence - see conversation/what-an-account-shows.ts. A changed transcript is a new hash and a
+/// new read; an unchanged one is this row.
+model WhatAnAccountShows {
+  id            String   @id @default(uuid())
+  checkInId     String   @map("check_in_id")
+  groundId      String   @map("ground_id")
+  participantId String   @map("participant_id")
+  sourceHash    String   @map("source_hash")
+  text          String   @db.Text
+  withheld      Int      @default(0)
+  derived       Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([checkInId, sourceHash])
+  @@index([groundId])
+  @@map("what_an_account_shows")
+}
+
 model WordedLine {
   key       String   @id
   text      String   @db.Text

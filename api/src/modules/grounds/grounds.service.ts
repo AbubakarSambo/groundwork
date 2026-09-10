@@ -4214,45 +4214,6 @@ export class GroundsService {
     };
   }
 
-  /**
-   * GET /grounds/:id/conversation - returns all participant conversation transcripts
-   * grouped by participant. Accessible to the ground initiator only.
-   */
-  async getConversation(groundId: string, requestingUserId: string) {
-    const ground = await this.prisma.ground.findFirst({
-      where: { id: groundId, initiatorId: requestingUserId },
-      select: { id: true, label: true },
-    });
-    if (!ground) throw new ForbiddenException('Only the lead of this check-in can view conversation transcripts');
-
-    const participants = await this.prisma.groundParticipant.findMany({
-      where: { groundId },
-      select: { id: true, email: true, partyType: true },
-    });
-
-    const results = await Promise.all(
-      participants.map(async (p) => {
-        const checkIns = await this.prisma.checkIn.findMany({
-          where: { participantId: p.id },
-          orderBy: { sessionNumber: 'asc' },
-          select: { id: true, sessionNumber: true, status: true, completedAt: true },
-        });
-        const sessions = await Promise.all(
-          checkIns.map(async (ci) => {
-            const turns = await this.prisma.conversationTurn.findMany({
-              where: { checkInId: ci.id },
-              orderBy: { createdAt: 'asc' },
-              select: { id: true, role: true, content: true, createdAt: true },
-            });
-            return { ...ci, turns };
-          }),
-        );
-        return { participantId: p.id, email: p.email, partyType: p.partyType, sessions };
-      }),
-    );
-
-    return { groundId, groundLabel: ground.label, participants: results };
-  }
 
   /**
    * Pause a ground - marks status = PAUSED, stamps pausedAt. Typically called

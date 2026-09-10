@@ -592,10 +592,15 @@ export class GroundsController {
     return this.conversation.getMyGroundTranscript(id, userId);
   }
 
+  /**
+   * NOT THE TRANSCRIPTS. This returned every participant's raw turns to the lead - the one thing the
+   * product is sold on never doing. It returns what each completed account SHOWS against what the
+   * check-in asks: derived, screened at the read, never their words. See what-an-account-shows.ts.
+   */
   @Get(':id/conversation')
-  @ApiOperation({ summary: 'Get participant conversation transcripts grouped by party (initiator only)' })
-  async getConversation(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.grounds.getConversation(id, userId);
+  @ApiOperation({ summary: 'What each completed account shows against what this check-in asks (lead only). Never the words themselves.' })
+  async whatTheAccountsShow(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.conversation.whatTheAccountsShow(id, userId);
   }
 
   @Get(':id/my-solo-report')

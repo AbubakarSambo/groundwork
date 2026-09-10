@@ -22,6 +22,7 @@ import { VOCABULARY_RULE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHE
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
+import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 
 /** `CheckIn.closedReason` when the sweep, not the person, ended the session. The schema's own example is `willingness_declined`. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
@@ -5305,6 +5306,82 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * is exactly where a person would expect to see other people talking, and here
    * they never will.
    */
+  /**
+   * WHAT EACH ACCOUNT SHOWS, FOR THE LEAD. See what-an-account-shows.ts for the decision and the
+   * three rules. Lead only, as the raw route it replaces was. Completed sessions only: an account
+   * still being given is not one to read yet, and reading half of it would mislead.
+   */
+  async whatTheAccountsShow(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, initiatorId: requestingUserId },
+      select: {
+        id: true, label: true, scenario: true, brief: true,
+        objectives: { select: { name: true, target: true }, orderBy: { sortOrder: 'asc' } },
+        participants: {
+          select: {
+            id: true, email: true, partyType: true, roleAsDescribed: true,
+            checkIns: {
+              where: { status: CheckInStatus.COMPLETED },
+              orderBy: { sessionNumber: 'asc' },
+              select: { id: true, sessionNumber: true, completedAt: true },
+            },
+          },
+        },
+      },
+    });
+    if (!ground) throw new ForbiddenException('Only the lead of this check-in can read what the accounts show');
+
+    const asks: WhatItAsks = { label: ground.label, scenario: ground.scenario as any, brief: ground.brief, objectives: ground.objectives };
+
+    const participants = await Promise.all(
+      ground.participants.map(async (p) => {
+        const sessions = await Promise.all(
+          p.checkIns.map(async (ci) => {
+            const read = await this.readOfOneAccount(ci.id, ground.id, p.id, asks, p.partyType, p.roleAsDescribed);
+            return { checkInId: ci.id, sessionNumber: ci.sessionNumber, completedAt: ci.completedAt, ...read, derived: true as const };
+          }),
+        );
+        return { participantId: p.id, email: p.email, partyType: p.partyType, sessions };
+      }),
+    );
+
+    return { groundId: ground.id, groundLabel: ground.label, whatItAsks: asks, meaning: A_READ_IS_DERIVED, participants };
+  }
+
+  /** Made once per account and kept; screened at the read every time, cached or not. */
+  private async readOfOneAccount(
+    checkInId: string, groundId: string, participantId: string, asks: WhatItAsks, partyType: string, roleAsDescribed: string | null,
+  ): Promise<{ shows: string | null; withheld: number }> {
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId, role: TurnRole.PERSON },
+      orderBy: { createdAt: 'asc' },
+      select: { content: true },
+    });
+    const theirs = turns.map((t) => t.content ?? '').filter((t) => t.trim());
+    if (theirs.length === 0) return { shows: null, withheld: 0 };
+    const sourceHash = sourceHashOf(theirs);
+
+    const kept = await this.prisma.whatAnAccountShows
+      .findUnique({ where: { checkInId_sourceHash: { checkInId, sourceHash } }, select: { text: true } })
+      .catch(() => null);
+    const raw = kept?.text ?? (await this.anthropic.respond(theInstruction(asks, partyType, roleAsDescribed), [
+      { role: 'user', content: theirs.join('\n\n') },
+    ]));
+
+    /* The screen runs on what is returned, kept or fresh: a line that would be withheld is withheld the same way. */
+    const screened = withoutTheirWords(forHumans(raw), theirs);
+    if (!kept && raw?.trim()) {
+      await this.prisma.whatAnAccountShows
+        .upsert({
+          where: { checkInId_sourceHash: { checkInId, sourceHash } },
+          create: { checkInId, groundId, participantId, sourceHash, text: raw, withheld: screened.withheld },
+          update: {},
+        })
+        .catch(() => undefined);
+    }
+    return { shows: screened.text || null, withheld: screened.withheld };
+  }
+
   async getMyGroundTranscript(groundId: string, requestingUserId: string) {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, userId: requestingUserId },
