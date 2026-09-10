@@ -9,6 +9,8 @@ export interface JwtPayload {
   email: string;
   organizationId: string;
   role: string;
+  /** How the session was made: password, link or google. Absent on tokens from before 10 Sep 2026. */
+  via?: string;
 }
 
 @Injectable()
@@ -42,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       firstName: user.firstName,
       lastName: user.lastName,
       isPlatformAdmin: user.isPlatformAdmin,
+      signedInVia: payload.via ?? null,
     };
   }
 }

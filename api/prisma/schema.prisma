@@ -4847,6 +4847,10 @@ model OpsPerson {
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  /// FURTHER ACCOUNTS THAT OPEN THE BACK OFFICE AS THIS PERSON. `userId` is the first; one human
+  /// with a work address and a personal one is still one person here, not two.
+  accounts OpsPersonAccount[]
+
   grants             OpsGrant[]               @relation("OpsGrantHolder")
   attributions       OpsAttribution[]         @relation("OpsAttributionContributor")
   positioning        OpsPositioningRecord[]   @relation("OpsPositioningContributor")
@@ -4855,6 +4859,32 @@ model OpsPerson {
 
   @@index([active])
   @@map("ops_people")
+}
+
+model OpsPersonAccount {
+  id       String    @id @default(uuid())
+  personId String    @map("person_id")
+  userId   String    @unique @map("user_id")
+  addedAt  DateTime  @default(now()) @map("added_at")
+  person   OpsPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([personId])
+  @@map("ops_person_accounts")
+}
+
+/// THE BACK OFFICE HAS A DOOR. Signing in opens the product; opening /ops or /admin also needs a
+/// code sent to the signed-in email, good for a week, unless the session came from Google, which
+/// already did the second check. One row per user, replaced on each verification.
+model BackOfficePass {
+  userId     String   @id @map("user_id")
+  via        String
+  verifiedAt DateTime @default(now()) @map("verified_at")
+  expiresAt  DateTime @map("expires_at")
+  /// The code in flight, hashed, and when it stops being accepted. Cleared on verification.
+  codeHash      String?   @map("code_hash")
+  codeExpiresAt DateTime? @map("code_expires_at")
+
+  @@map("back_office_passes")
 }
 
 /// One capability held by one person. A role suggests a set; this table decides.

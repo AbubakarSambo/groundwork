@@ -837,7 +837,7 @@ export class AuthService {
             include: { organization: true },
           });
           if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-          return { token: this.generateToken(user), isNewUser, needsOrgName: false };
+          return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName: false };
         }
 
         // Nobody is expecting them. Make an organisation so they have somewhere
@@ -869,7 +869,7 @@ export class AuthService {
     }
 
     if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-    return { token: this.generateToken(user), isNewUser, needsOrgName };
+    return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName };
   }
 
   async validateToken(token: string, type: string): Promise<{ valid: boolean; email?: string; firstName?: string }> {
@@ -1226,8 +1226,13 @@ export class AuthService {
     };
   }
 
-  private generateToken(user: { id: string; email: string; organizationId: string; role: string }) {
-    return this.jwtService.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
+  /**
+   * `via` says how the session was made. The back office reads it: a Google sign-in has already had
+   * its second check and walks through the door; a password or link session is asked for a code.
+   * See ops/the-back-office-has-a-door.ts.
+   */
+  private generateToken(user: { id: string; email: string; organizationId: string; role: string }, via: 'password' | 'link' | 'google' = 'password') {
+    return this.jwtService.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role, via });
   }
 
   private async generateUniqueSlug(name: string): Promise<string> {

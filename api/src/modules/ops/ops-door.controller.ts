@@ -58,7 +58,7 @@ export class OpsDoorController {
   @Post(':personKey/account/remove')
   @HttpCode(200)
   @ApiOperation({ summary: 'Disconnect an account. The person stays; only the way in goes.' })
-  unlink(@Param('personKey') personKey: string) {
-    return this.door.unlink(personKey);
+  unlink(@Param('personKey') personKey: string, @Body() body?: { email?: string }) {
+    return this.door.unlink(personKey, body?.email);
   }
 }

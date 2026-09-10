@@ -87,7 +87,9 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (error.response?.status === 403 && !error.config?.skipForbiddenToast) {
+    /* The back office door: the page draws it, a toast would only be noise on top. */
+    const shutDoor = error.response?.status === 403 && (error.response?.data as { code?: string } | undefined)?.code === 'BACK_OFFICE_CODE_REQUIRED'
+    if (error.response?.status === 403 && !error.config?.skipForbiddenToast && !shutDoor) {
       toast.error('Access denied', {
         description: 'You do not have permission to perform this action',
       })

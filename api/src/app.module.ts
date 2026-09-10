@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BackOfficeDoorGuard } from './modules/back-office/back-office-door.guard';
+import { BackOfficeModule } from './modules/back-office/back-office.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from './config';
 import { PrismaModule } from './modules/prisma';
@@ -74,6 +76,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     EntryModule,
     AdminModule,
     OpsModule,
+    BackOfficeModule,
     WorkspaceModule,
     AlignmentModule,
   ],
@@ -87,6 +90,9 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     { provide: APP_GUARD, useClass: ASyncLoopIsNotABrowser },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    /* /ops and /admin need a code emailed to the signed-in address once a week, unless the session
+       came from Google. See ops/the-back-office-has-a-door.ts. */
+    { provide: APP_GUARD, useClass: BackOfficeDoorGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],

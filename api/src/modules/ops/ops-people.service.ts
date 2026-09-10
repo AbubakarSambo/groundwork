@@ -93,10 +93,16 @@ export class OpsPeopleService implements OnModuleInit {
   async identify(account: SignedInAccount | undefined): Promise<OpsIdentity | null> {
     if (!account?.id) return null;
 
-    const person = await this.prisma.opsPerson.findUnique({
-      where: { userId: account.id },
-      include: { grants: true },
-    });
+    const person =
+      (await this.prisma.opsPerson.findUnique({
+        where: { userId: account.id },
+        include: { grants: true },
+      })) ??
+      /* A second address of the same human. See OpsPersonAccount. */
+      (await this.prisma.opsPersonAccount.findUnique({
+        where: { userId: account.id },
+        include: { person: { include: { grants: true } } },
+      }))?.person ?? null;
 
     if (!person) {
       /* A platform admin is on this team by definition. See the note in

@@ -91,6 +91,8 @@ interface OpsDoorState {
     functionalRole: string
     active: boolean
     linkedAccount: string | null
+    /** Further addresses that open the back office as the same person. */
+    otherAccounts: string[]
   }>
 }
 
@@ -146,8 +148,8 @@ const adminApi = {
   setUpOps: (): Promise<OpsDoorState> => apiClient.post<OpsDoorState>('/admin/ops/setup').then(r => r.data),
   linkOpsAccount: (personKey: string, email: string): Promise<OpsDoorState> =>
     apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account`, { email }).then(r => r.data),
-  unlinkOpsAccount: (personKey: string): Promise<OpsDoorState> =>
-    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account/remove`).then(r => r.data),
+  unlinkOpsAccount: (personKey: string, email?: string): Promise<OpsDoorState> =>
+    apiClient.post<OpsDoorState>(`/admin/ops/${personKey}/account/remove`, email ? { email } : undefined).then(r => r.data),
 }
 
 // ── OTP Challenge Modal ───────────────────────────────────────────────────────
@@ -752,7 +754,7 @@ function OpsAccessSection() {
              because a team where nobody but the admins can get in is worth
              seeing. */
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12 }}>
-            None of the seeded team has an account connected yet. Yours opens it regardless.
+            Nobody on the team has an account connected yet. Yours opens it regardless.
           </div>
         )}
 
@@ -765,18 +767,29 @@ function OpsAccessSection() {
                   {!p.active && <span style={{ fontWeight: 400, color: 'var(--gw-sub)' }}> · not active</span>}
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                  {p.functionalRole.replace(/_/g, ' ').toLowerCase()} ·{' '}
-                  {p.linkedAccount ?? 'no account connected'}
+                  {p.functionalRole.replace(/_/g, ' ').toLowerCase()}
+                  {!p.linkedAccount && ' · no account connected'}
                 </div>
+                {/* ONE PERSON, SEVERAL ADDRESSES. Each one is its own way in and comes off on its own. */}
+                {[p.linkedAccount, ...(p.otherAccounts ?? [])].filter((a): a is string => !!a).map(a => (
+                  <div key={a} style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                    <span>{a}</span>
+                    <button
+                      onClick={() => run(() => adminApi.unlinkOpsAccount(p.key, a))}
+                      disabled={busy}
+                      style={{ fontSize: 11, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+                    >
+                      disconnect
+                    </button>
+                  </div>
+                ))}
               </div>
               <button
-                onClick={() =>
-                  p.linkedAccount ? run(() => adminApi.unlinkOpsAccount(p.key)) : setLinking(p.key)
-                }
+                onClick={() => setLinking(p.key)}
                 disabled={busy}
                 style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                {p.linkedAccount ? 'Disconnect' : 'Connect an account'}
+                {p.linkedAccount ? 'Connect another' : 'Connect an account'}
               </button>
             </div>
 

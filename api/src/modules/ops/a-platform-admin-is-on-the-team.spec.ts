@@ -50,6 +50,7 @@ const serviceOver = (people: Array<Record<string, unknown>>) => {
   const created: Record<string, unknown>[] = [];
   const linked: Record<string, unknown>[] = [];
   const service = new OpsPeopleService({
+    opsPersonAccount: { findUnique: async () => null },
     opsPerson: {
       findUnique: async ({ where }: never) => {
         const w = where as { userId?: string; key?: string };

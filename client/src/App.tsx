@@ -47,6 +47,7 @@ import {
   OpsCommercialPipelinePage,
 } from '@/pages/ops/OpsContributionPages'
 import { OpsLayout } from '@/pages/ops/OpsLayout'
+import { RequireBackOffice } from '@/pages/ops/TheBackOfficeHasADoor'
 import { OpsWhatWeArePage } from '@/pages/ops/OpsWhatWeArePage'
 import { OpsEverybodyPage } from '@/pages/ops/OpsEverybodyPage'
 import { OpsResourcesPage } from '@/pages/ops/OpsResourcesPage'
@@ -143,7 +144,8 @@ function RequirePlatformAdmin({ children }: { children: JSX.Element }) {
       </div>
     )
   }
-  return children
+  /* The platform console is a back office too: a code to the email once a week, unless Google. */
+  return <RequireBackOffice>{children}</RequireBackOffice>
 }
 
 /** An org created before it has a contact email can't run check-ins yet - only the admin who
@@ -455,38 +457,38 @@ export default function App() {
               * somebody signed in who is not on this team gets a page that says so rather than six
               * failing requests.
               */}
-            <Route path="/ops" element={<RequireAuth><OpsLayout><OpsBoardPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/target-companies" element={<RequireAuth><OpsLayout><OpsTargetCompaniesPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/companies/:key" element={<RequireAuth><OpsLayout><OpsCompanyPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/commitments" element={<RequireAuth><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/spend" element={<RequireAuth><OpsLayout><OpsSpendPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/overview" element={<RequireAuth><OpsLayout><OpsOverviewPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/pipeline" element={<RequireAuth><OpsLayout><OpsCommercialPipelinePage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops" element={<RequireBackOffice><OpsLayout><OpsBoardPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/target-companies" element={<RequireBackOffice><OpsLayout><OpsTargetCompaniesPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/companies/:key" element={<RequireBackOffice><OpsLayout><OpsCompanyPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/commitments" element={<RequireBackOffice><OpsLayout><OpsCommitmentsPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/spend" element={<RequireBackOffice><OpsLayout><OpsSpendPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/overview" element={<RequireBackOffice><OpsLayout><OpsOverviewPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/pipeline" element={<RequireBackOffice><OpsLayout><OpsCommercialPipelinePage /></OpsLayout></RequireBackOffice>} />
             {/* The old address, kept as a redirect: it is in people's history and
                 a silent 404 on a page somebody used daily reads as an outage. */}
             <Route path="/ops/sales" element={<Navigate to="/ops/pipeline" replace />} />
-            <Route path="/ops/contribution" element={<RequireAuth><OpsLayout><OpsContributionPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/positioning" element={<RequireAuth><OpsLayout><OpsPositioningPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/attribution" element={<RequireAuth><OpsLayout><OpsAttributionPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/marketing" element={<RequireAuth><OpsLayout><OpsMarketingPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/deployment" element={<RequireAuth><OpsLayout><OpsDeploymentPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/roadmap" element={<RequireAuth><OpsLayout><OpsRoadmapPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/moat" element={<RequireAuth><OpsLayout><OpsMoatPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/readiness" element={<RequireAuth><OpsLayout><OpsReadinessPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/tech" element={<RequireAuth><OpsLayout><OpsTechPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/ux" element={<RequireAuth><OpsLayout><OpsUXPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/workplan" element={<RequireAuth><OpsLayout><OpsWorkplanPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/resources" element={<RequireAuth><OpsLayout><OpsResourcesPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/everybody" element={<RequireAuth><OpsLayout><OpsEverybodyPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/quarter" element={<RequireAuth><OpsLayout><OpsQuarterPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/what-we-are" element={<RequireAuth><OpsLayout><OpsWhatWeArePage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/requests" element={<RequireAuth><OpsLayout><OpsRequestsPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/decisions" element={<RequireAuth><OpsLayout><OpsDecisionsPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/approvals" element={<RequireAuth><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/fundraise" element={<RequireAuth><OpsLayout><OpsFundraisePage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/strategy" element={<RequireAuth><OpsLayout><OpsStrategyPage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/people" element={<RequireAuth><OpsLayout><OpsPeoplePage /></OpsLayout></RequireAuth>} />
-            <Route path="/ops/integration" element={<RequireAuth><OpsLayout><OpsIntegrationPage /></OpsLayout></RequireAuth>} />
+            <Route path="/ops/contribution" element={<RequireBackOffice><OpsLayout><OpsContributionPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/positioning" element={<RequireBackOffice><OpsLayout><OpsPositioningPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/attribution" element={<RequireBackOffice><OpsLayout><OpsAttributionPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/marketing" element={<RequireBackOffice><OpsLayout><OpsMarketingPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/deployment" element={<RequireBackOffice><OpsLayout><OpsDeploymentPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/roadmap" element={<RequireBackOffice><OpsLayout><OpsRoadmapPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/moat" element={<RequireBackOffice><OpsLayout><OpsMoatPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/readiness" element={<RequireBackOffice><OpsLayout><OpsReadinessPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/tech" element={<RequireBackOffice><OpsLayout><OpsTechPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/ux" element={<RequireBackOffice><OpsLayout><OpsUXPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/workplan" element={<RequireBackOffice><OpsLayout><OpsWorkplanPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/resources" element={<RequireBackOffice><OpsLayout><OpsResourcesPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/everybody" element={<RequireBackOffice><OpsLayout><OpsEverybodyPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/quarter" element={<RequireBackOffice><OpsLayout><OpsQuarterPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/what-we-are" element={<RequireBackOffice><OpsLayout><OpsWhatWeArePage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/requests" element={<RequireBackOffice><OpsLayout><OpsRequestsPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/decisions" element={<RequireBackOffice><OpsLayout><OpsDecisionsPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/approvals" element={<RequireBackOffice><OpsLayout><OpsApprovalsPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/fundraise" element={<RequireBackOffice><OpsLayout><OpsFundraisePage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/strategy" element={<RequireBackOffice><OpsLayout><OpsStrategyPage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/people" element={<RequireBackOffice><OpsLayout><OpsPeoplePage /></OpsLayout></RequireBackOffice>} />
+            <Route path="/ops/integration" element={<RequireBackOffice><OpsLayout><OpsIntegrationPage /></OpsLayout></RequireBackOffice>} />
             <Route path="/admin/prompts" element={<RequirePlatformAdmin><PromptVersioningPage /></RequirePlatformAdmin>} />
             <Route path="/admin/prompts/test" element={<RequirePlatformAdmin><PromptTestPage /></RequirePlatformAdmin>} />
             <Route path="/prompts" element={<Navigate to="/admin/prompts" replace />} />

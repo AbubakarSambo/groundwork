@@ -51,13 +51,18 @@ const doorOver = (
 ) => {
   const writes: Array<Record<string, unknown>> = [];
   const service = new OpsDoorService({
+    /* A person may have further accounts (OpsPersonAccount). These fixtures have none. */
+    opsPersonAccount: {
+      findUnique: async () => null,
+      create: async ({ data }: never) => { writes.push(data as Record<string, unknown>); return {}; },
+      deleteMany: async () => ({ count: 0 }),
+    },
     opsPerson: {
-      findMany: async () => people,
+      findMany: async () => people.map((p) => ({ ...p, accounts: [] })),
       findUnique: async ({ where }: never) => {
         const w = where as { key?: string; userId?: string };
-        return (
-          people.find((p) => (w.key ? p.key === w.key : p.userId === w.userId)) ?? null
-        );
+        const found = people.find((p) => (w.key ? p.key === w.key : p.userId === w.userId)) ?? null;
+        return found ? { ...found, accounts: [] } : null;
       },
       update: async ({ data }: never) => {
         writes.push(data as Record<string, unknown>);

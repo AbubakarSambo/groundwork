@@ -21,6 +21,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let errors: any = null;
+    /* A machine-readable reason, where a route gives one (e.g. BACK_OFFICE_CODE_REQUIRED). */
+    let code: string | null = null;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -32,6 +34,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const responseObj = exceptionResponse as Record<string, any>;
         message = responseObj.message || message;
         errors = responseObj.errors || null;
+        code = typeof responseObj.code === 'string' ? responseObj.code : null;
       }
     } else if (exception instanceof Error) {
       /**
@@ -89,6 +92,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       errors,
+      ...(code ? { code } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });
