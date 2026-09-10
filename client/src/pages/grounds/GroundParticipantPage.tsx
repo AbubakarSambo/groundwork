@@ -322,6 +322,13 @@ export function GroundParticipantPage() {
    * The same question the other page asks to decide whether somebody may run this.
    */
   const canRunThisCheckIn = isInitiator || user?.role === 'ADMIN'
+  /*
+   * WHO CAN PRESS THE BUTTONS ON THE PAYWALL. Both routes behind them - the free extension and the
+   * subscription - are admin-only on the server. The overlay offered them to any initiator, and an
+   * organisation where anyone may open a check-in makes non-admins initiators routinely, so a blocked
+   * person was shown two buttons that could only 403. Same rule as the server, one const, used twice.
+   */
+  const canPayHere = isInitiator && user?.role === 'ADMIN'
 
   if (!myParticipant) {
     return (
@@ -771,16 +778,15 @@ export function GroundParticipantPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
 
-            {myParticipant?.partyType === 'INITIATOR' ? (
+            {canPayHere ? (
               <>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>Your session is complete.</div>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>
                   Did Groundwork help your team move forward? Choose what works best for you.
                 </div>
 
-                {/* Tier 1: Free extension. The route is admin-only, so the button is too: a blocked
-                    participant pressing it got "try again" for a refusal that would never change. */}
-                {paywallFreeExtensionAvailable && user?.role === 'ADMIN' && (
+                {/* Tier 1: Free extension. */}
+                {paywallFreeExtensionAvailable && (
                   <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
                     <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
@@ -793,12 +799,6 @@ export function GroundParticipantPage() {
                     >
                       {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
                     </button>
-                  </div>
-                )}
-
-                {paywallFreeExtensionAvailable && user?.role !== 'ADMIN' && (
-                  <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-                    An admin of your organisation can add one free session to this check-in, or move the organisation to a plan.
                   </div>
                 )}
 
@@ -829,9 +829,13 @@ export function GroundParticipantPage() {
               </>
             ) : (
               <>
+                {/* THE TRUE FACT AND NOTHING MORE. This said "Your initiator has been notified" - and nothing
+                    notified the initiator; the sentence was the only occurrence of the idea in the repository.
+                    The server does tell the organisation's admins when the gate refuses (tellAnAdminToAddACard),
+                    and they are the people who can act, so that is what is said. */}
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Session needed to continue</div>
                 <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>
-                  Your initiator has been notified. Once they add a session, you will be able to check in.
+                  Only an organisation admin can add sessions. We have told them you are waiting.
                 </div>
               </>
             )}
@@ -839,7 +843,7 @@ export function GroundParticipantPage() {
             {/* Access code: an admin/lead instrument for bypassing a
                 payment block. It used to render for everyone, sending plain
                 participants hunting for a code they were never issued. */}
-            {myParticipant?.partyType === 'INITIATOR' && (
+            {canPayHere && (
             <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8 }}>Have an access code?</div>
               <div style={{ display: 'flex', gap: 8 }}>
