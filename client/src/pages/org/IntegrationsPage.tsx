@@ -114,6 +114,31 @@ export function IntegrationsPage() {
   const firstClientId = (creds.data ?? []).find(c => !c.revokedAt)?.clientId ?? null
   const events = useQuery({ queryKey: ['integrations', 'events'], queryFn: integrationsApi.webhookEvents, enabled: isAdmin })
   const endpoints = useQuery({ queryKey: ['integrations', 'endpoints'], queryFn: integrationsApi.listEndpoints, enabled: isAdmin })
+  const whatsapp = useQuery({ queryKey: ['integrations', 'whatsapp'], queryFn: integrationsApi.whatsapp, enabled: isAdmin })
+  const [waNumberId, setWaNumberId] = useState('')
+  const [waBusinessId, setWaBusinessId] = useState('')
+  const [waDisplay, setWaDisplay] = useState('')
+  const [waToken, setWaToken] = useState('')
+  const [waSecret, setWaSecret] = useState('')
+  const [waTestTo, setWaTestTo] = useState('')
+  const connectWa = useMutation({
+    mutationFn: () => integrationsApi.connectWhatsapp({ phoneNumberId: waNumberId, businessAccountId: waBusinessId || undefined, displayNumber: waDisplay || undefined, accessToken: waToken || undefined, appSecret: waSecret || undefined }),
+    onSuccess: () => { setWaToken(''); setWaSecret(''); qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Connected. Now point Meta at the webhook address below.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not connect.'),
+  })
+  const toggleWa = useMutation({
+    mutationFn: (enabled: boolean) => integrationsApi.setWhatsappEnabled(enabled),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }),
+  })
+  const testWa = useMutation({
+    mutationFn: () => integrationsApi.testWhatsapp(waTestTo),
+    onSuccess: () => toast.success('Sent. Check that phone.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta refused it.'),
+  })
+  const disconnectWa = useMutation({
+    mutationFn: () => integrationsApi.disconnectWhatsapp(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['integrations', 'whatsapp'] }); toast.success('Removed.') },
+  })
 
   /*
    * ASKING FOR A CALL. Read first so the page can say "we will be in touch" rather than offering
@@ -685,6 +710,58 @@ export function IntegrationsPage() {
           </div>
         </div>
       ))}
+
+      {/* ---------------------------------------------------------------- whatsapp */}
+      <div style={S.sec}>Your WhatsApp number</div>
+      <div style={S.card}>
+        <div style={S.h3}>{whatsapp.data?.connection ? `Connected${whatsapp.data.connection.displayNumber ? `: ${whatsapp.data.connection.displayNumber}` : ''}` : 'Check in by WhatsApp, on your own number'}</div>
+        <p style={S.body}>
+          Your people reply to a message on your organisation's WhatsApp number and that reply is their check-in, exactly as if typed here. With no check-in open, the same message goes to the assistant: what is due, what they committed to, a note for their list. Phone numbers come from your roster: SCIM <span style={S.mono}>phoneNumbers[]</span>, <span style={S.mono}>phone</span> on <span style={S.mono}>POST /people</span>, or what each person enters under Settings.
+        </p>
+        {whatsapp.data?.connection ? (
+          <>
+            <div style={{ ...S.row, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
+                Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
+                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${new Date(whatsapp.data.connection.lastInboundAt).toLocaleString()}` : ' · nothing received yet'}
+                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${new Date(whatsapp.data.connection.lastOutboundAt).toLocaleString()}` : ''}
+              </div>
+              <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
+            </div>
+            <div style={{ marginTop: 12, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>In Meta Business, under WhatsApp, Configuration, set the webhook to</div>
+              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{API_ORIGIN}{whatsapp.data.webhookPath}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, margin: '10px 0 6px' }}>with this verify token, and subscribe to messages</div>
+              <div style={{ ...S.mono, wordBreak: 'break-all' }}>{whatsapp.data.connection.verifyToken}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input style={{ ...S.input, maxWidth: 220 }} placeholder="+2348012345678" value={waTestTo} onChange={e => setWaTestTo(e.target.value)} aria-label="Number to send a test to" />
+              <button style={S.btn} onClick={() => testWa.mutate()} disabled={!waTestTo.trim() || testWa.isPending}>{testWa.isPending ? 'Sending…' : 'Send a test message'}</button>
+              <button style={S.ghost} onClick={() => toggleWa.mutate(!whatsapp.data!.connection!.enabled)}>{whatsapp.data.connection.enabled ? 'Switch off' : 'Switch on'}</button>
+              <button style={S.ghost} onClick={() => { if (window.confirm('Remove the WhatsApp connection? Nothing sent or received is deleted.')) disconnectWa.mutate() }}>Remove</button>
+            </div>
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ fontSize: 12.5, cursor: 'pointer', color: 'var(--gw-navy)' }}>Change the number id or rotate the token</summary>
+              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                <input style={S.input} placeholder="Phone number id (digits)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
+                <input style={S.input} placeholder="New permanent access token (leave blank to keep)" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
+                <input style={S.input} placeholder="New app secret (leave blank to keep)" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
+                <button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || connectWa.isPending}>Save</button>
+              </div>
+            </details>
+          </>
+        ) : (
+          <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
+            <p style={{ ...S.body, marginBottom: 0 }}>You need a Meta Business account with a WhatsApp number and a Meta app. From WhatsApp, API Setup, copy the phone number id and a permanent system-user token; from the app's Basic Settings, the App Secret. Paste them here, then set the webhook Meta asks for with the address and token this page shows next.</p>
+            <input style={S.input} placeholder="Phone number id (digits, from API Setup)" value={waNumberId} onChange={e => setWaNumberId(e.target.value)} aria-label="Phone number id" />
+            <input style={S.input} placeholder="WhatsApp Business Account id (optional)" value={waBusinessId} onChange={e => setWaBusinessId(e.target.value)} aria-label="Business account id" />
+            <input style={S.input} placeholder="The number, as people will see it (optional)" value={waDisplay} onChange={e => setWaDisplay(e.target.value)} aria-label="Display number" />
+            <input style={S.input} placeholder="Permanent access token" value={waToken} onChange={e => setWaToken(e.target.value)} aria-label="Access token" type="password" />
+            <input style={S.input} placeholder="App secret" value={waSecret} onChange={e => setWaSecret(e.target.value)} aria-label="App secret" type="password" />
+            <div><button style={S.btn} onClick={() => connectWa.mutate()} disabled={!waNumberId.trim() || !waToken.trim() || !waSecret.trim() || connectWa.isPending}>{connectWa.isPending ? 'Connecting…' : 'Connect'}</button></div>
+          </div>
+        )}
+      </div>
 
       {/* ---------------------------------------------------------------- delivery log */}
       <div style={S.sec}>Every message we tried to send</div>

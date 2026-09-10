@@ -112,6 +112,7 @@ export const THE_PANEL = {
     'GET /reports/my-people',
     'POST /chat  { message }',
   ],
+  whatsapp: 'PUT /integrations/whatsapp from Connect with your Meta number id, token and app secret; point Meta\'s webhook at /api/v1/webhooks/whatsapp/{organizationId} with the verify token shown; send phoneNumbers[] on SCIM users or phone on POST /people. A person then does their check-in by replying on WhatsApp, and asks the assistant the same way.',
   says: "The panel runs the check-in in place. A check-in that becomes open fires checkin.opened to your webhooks, with the person's own id, so you can tell them in your channel.",
 } as const;
 

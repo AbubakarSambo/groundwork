@@ -6,6 +6,7 @@ import { WebhooksService } from './webhooks.service';
 import { GroundworkEvents, RoundCompletedEvent, CheckInCompletedEvent, CheckInOpenedEvent, BlockerEvent, HandoverReadyEvent, ScenarioProposedEvent } from '../../common/events';
 import { roundCompletedPayload, checkInCompletedPayload, checkInOpenedPayload, blockerPayload, handoverReadyPayload, scenarioProposedPayload } from './what-a-webhook-may-carry';
 import { WorkspaceNotifierService } from '../workspace/workspace-notifier.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 /**
  * WHERE `round.completed` FINALLY REACHES SOMEBODY.
@@ -28,6 +29,7 @@ export class WebhooksListener {
     private readonly config: ConfigService,
     /* A connected Slack or Teams channel. An escalated blocker is the notice that most wants one. */
     private readonly workspace: WorkspaceNotifierService,
+    private readonly whatsapp: WhatsAppService,
   ) {}
 
   /*
@@ -81,8 +83,25 @@ export class WebhooksListener {
   @OnEvent(GroundworkEvents.CHECK_IN_OPENED)
   async onCheckInOpened(e: CheckInOpenedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true } });
+      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { organizationId: true, label: true } });
       if (!ground) return;
+      /*
+       * AND ON WHATSAPP, WHEN THE ORGANISATION HAS ITS OWN NUMBER. The person replies to this message
+       * and the reply is their first answer. Best effort: a message that could not go is logged, and
+       * the webhook below still fires.
+       */
+      if (e.personExternalId) {
+        const person = await this.prisma.person.findFirst({
+          where: { organizationId: ground.organizationId, externalId: e.personExternalId },
+          select: { phone: true },
+        });
+        const connected = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: ground.organizationId }, select: { enabled: true } }).catch(() => null);
+        if (person?.phone && connected?.enabled) {
+          const which = e.sessionNumber === 1 ? 'Your first check-in' : `Check-in ${e.sessionNumber}`;
+          await this.whatsapp.sendFor(ground.organizationId, person.phone, `${which} on "${ground.label}" is open. Reply here to do it: about ten minutes, and what you say is released with everybody else's, not before.`)
+            .catch((err) => this.logger.warn(`WhatsApp opening notice failed for ${e.checkInId}: ${err?.message}`));
+        }
+      }
       await this.webhooks.emit(
         ground.organizationId,
         'checkin.opened',

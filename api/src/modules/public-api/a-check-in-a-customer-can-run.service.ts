@@ -390,7 +390,7 @@ export class ACheckInACustomerCanRunService {
   async addAPerson(
     organizationId: string,
     personId: string,
-    dto: { email?: string; displayName?: string; externalId?: string },
+    dto: { email?: string; displayName?: string; externalId?: string; phone?: string },
   ) {
     /* Refuses for the same reason every other panel route does: a session that cannot be resolved
        to a person is a session that may not act in this organisation at all. */
@@ -411,6 +411,7 @@ export class ACheckInACustomerCanRunService {
       userName: email,
       name: { givenName, familyName: rest.join(' ') || undefined },
       emails: [{ value: email, primary: true }],
+      ...(dto?.phone?.trim() ? { phoneNumbers: [{ value: dto.phone.trim(), primary: true }] } : {}),
       active: true,
     } as never);
   }

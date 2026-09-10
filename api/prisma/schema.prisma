@@ -415,6 +415,7 @@ model Organization {
   quietPeriods        DetectionQuietPeriod[]
   webhookEndpoints    WebhookEndpoint[]
   embedConfig         EmbedConfig?
+  whatsappConnection  WhatsAppConnection?
   commitments         Commitment[]
   todos       Todo[]
   assistantTurns      AssistantTurn[]
@@ -1826,6 +1827,42 @@ model EmbedConfig {
   @@map("embed_configs")
 }
 
+/// AN ORGANISATION'S OWN WHATSAPP NUMBER.
+///
+/// WhatsApp used to be one number for the whole platform, set in our environment and switched on by
+/// us. A customer wants their sales team to check in on the organisation's own number, set up by
+/// their admin at Connect. This is that connection: Meta's Cloud API ids and tokens for one org, the
+/// secret their inbound webhooks are signed with, and the verify token Meta's subscribe handshake
+/// answers. One per organisation; the platform number stays as the fallback for organisations
+/// without one.
+model WhatsAppConnection {
+  id             String @id @default(uuid())
+  organizationId String @unique @map("organization_id")
+
+  /// Meta's id for the phone number messages are sent from.
+  phoneNumberId     String  @map("phone_number_id")
+  /// The WhatsApp Business Account the number belongs to. Kept for the admin's reference.
+  businessAccountId String? @map("business_account_id")
+  /// The number itself, as the admin reads it. Display only.
+  displayNumber     String? @map("display_number")
+  /// The permanent system-user token Meta issued. Sends messages; never shown back after saving.
+  accessToken       String  @map("access_token")
+  /// The app secret inbound webhooks are signed with. Verified on every POST.
+  appSecret         String  @map("app_secret")
+  /// What Meta's subscribe handshake must echo. Ours to generate, theirs to paste into Meta.
+  verifyToken       String  @map("verify_token")
+
+  enabled        Boolean   @default(true)
+  connectedAt    DateTime  @default(now()) @map("connected_at")
+  lastInboundAt  DateTime? @map("last_inbound_at")
+  lastOutboundAt DateTime? @map("last_outbound_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_connections")
+}
+
 /// ONE CREDENTIAL PAIR PER INTEGRATION, SO ONE CAN BE REVOKED WITHOUT KILLING THE OTHERS.
 ///
 /// A customer connecting their OKR tool, their HRIS and a script somebody wrote gets three of
@@ -2894,6 +2931,10 @@ model Person {
   /// sent. Resolved at read; unresolved is reported rather than hidden.
   managerExternalId String? @map("manager_external_id")
 
+  /// The number they message from, E.164, from SCIM phoneNumbers[] or the people route. Matched
+  /// before any number a person typed into Settings, because the roster is the customer's truth.
+  phone String?
+
   /// SCIM's own signal, kept as it arrives. `deactivatedAt` is the moment it first became false.
   active        Boolean   @default(true)
   deactivatedAt DateTime? @map("deactivated_at")
@@ -2917,6 +2958,7 @@ model Person {
   @@unique([organizationId, sourceSystem, externalId])
   @@index([organizationId, active])
   @@index([organizationId, managerExternalId])
+  @@index([organizationId, phone])
   @@map("people")
 }
 

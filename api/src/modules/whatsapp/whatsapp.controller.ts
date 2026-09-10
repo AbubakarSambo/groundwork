@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Logger, ForbiddenException, Req, Res } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common';
 import { ConfigService } from '@nestjs/config';
@@ -33,15 +33,18 @@ export class WhatsAppController {
     private conversation: ConversationService,
   ) {}
 
+  /* Bare text, not the { success, data } envelope: Meta compares the body to the challenge byte for byte. Found 10 Sep 2026. */
   @Get()
   verify(
     @Query('hub.mode') mode: string,
     @Query('hub.verify_token') token: string,
     @Query('hub.challenge') challenge: string,
-  ): string {
+    @Res() res: Response,
+  ): void {
     const expected = this.config.get<string>('whatsapp.verifyToken');
     if (mode === 'subscribe' && expected && token === expected) {
-      return challenge;
+      res.status(200).type('text/plain').send(challenge);
+      return;
     }
     throw new ForbiddenException('Webhook verification failed');
   }

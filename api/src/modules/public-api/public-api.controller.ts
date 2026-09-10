@@ -701,7 +701,7 @@ export class PublicApiController {
   @ApiOperation({ summary: 'Register a person, from the panel. They are queued when they accept anything.' })
   async addPersonFromPanel(
     @Req() req: { panel: PanelCaller },
-    @Body() dto: { email?: string; displayName?: string; externalId?: string },
+    @Body() dto: { email?: string; displayName?: string; externalId?: string; phone?: string },
   ) {
     return this.checkIns.addAPerson(req.panel.organizationId, req.panel.personId, dto);
   }

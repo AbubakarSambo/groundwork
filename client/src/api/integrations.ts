@@ -69,7 +69,30 @@ export interface ImportDetail extends Omit<ImportJobSummary, 'id' | 'kind'> {
   detectionQuietUntil: string | null
 }
 
+export interface WhatsAppConnection {
+  phoneNumberId: string
+  businessAccountId: string | null
+  displayNumber: string | null
+  verifyToken: string
+  enabled: boolean
+  connectedAt: string
+  lastInboundAt: string | null
+  lastOutboundAt: string | null
+  tokenEndsWith: string
+}
+
 export const integrationsApi = {
+  /* The organisation's own WhatsApp number. Secrets go in and are never read back. */
+  whatsapp: () =>
+    apiClient.get<{ connection: WhatsAppConnection | null; webhookPath: string }>('/integrations/whatsapp').then(r => r.data),
+  connectWhatsapp: (body: { phoneNumberId: string; businessAccountId?: string; displayNumber?: string; accessToken?: string; appSecret?: string }) =>
+    apiClient.put<{ connection: WhatsAppConnection; webhookPath: string }>('/integrations/whatsapp', body).then(r => r.data),
+  setWhatsappEnabled: (enabled: boolean) =>
+    apiClient.post<{ connection: WhatsAppConnection }>('/integrations/whatsapp/enabled', { enabled }).then(r => r.data),
+  testWhatsapp: (to: string) =>
+    apiClient.post<{ sent: boolean }>('/integrations/whatsapp/test', { to }).then(r => r.data),
+  disconnectWhatsapp: () =>
+    apiClient.delete<{ disconnected: boolean }>('/integrations/whatsapp').then(r => r.data),
   // credentials
   /** Whether this organisation has been let in, and what is left if not. */
   myApiAccess: () =>
