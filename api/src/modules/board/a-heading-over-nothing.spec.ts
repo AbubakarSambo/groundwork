@@ -22,7 +22,8 @@ import { join } from 'path';
  * three lines higher that it is never a verdict.
  */
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const SERVICE = strip(readFileSync(join(__dirname, 'board.service.ts'), 'utf8'));
+/* The tiles live with their counts now, in one builder both surfaces call (what-this-session-holds.ts). */
+const SERVICE = strip(readFileSync(join(__dirname, '..', 'reports', 'what-this-session-holds.ts'), 'utf8'));
 const CARD = strip(
   readFileSync(
     join(__dirname, '..', '..', '..', '..', 'client', 'src', 'components', 'gw', 'SessionReportCard.tsx'),
@@ -43,10 +44,10 @@ describe('the quick read', () => {
   it('and every tile says in a whole clause what its number is of', () => {
     /* The sub-line used to be a fragment - "differences between accounts", "across targets this
        session" - which is a caption on a number nobody could read. */
-    expect(SERVICE).toContain('still open between people');
+    expect(SERVICE).toContain('still open, as the written report reads it');
     expect(SERVICE).toContain('no target moved this session');
     expect(SERVICE).toContain('nobody named anything holding work up');
-    expect(SERVICE).toContain('of it is backed by a document');
+    expect(SERVICE).toContain('of what was said is anchored to a document');
   });
 
   it('and none of them reads as a verdict on a person', () => {

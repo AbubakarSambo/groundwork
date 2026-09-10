@@ -96,7 +96,8 @@ describe('the four reads', () => {
   it('and does not call one person\'s side "no differences"', () => {
     /* Nothing to compare with is not agreement. */
     expect(read(theSessionReport(base), 'Differences').value).toBe('Nothing to compare yet');
-    expect(read(theSessionReport({ ...base, divergences: [{}, {}] }), 'Differences').value).toBe('2');
+    /* Two named differences, since an unnamed one is not on the list the count sits above. */
+    expect(read(theSessionReport({ ...base, divergences: [{ topic: 'Scope' }, { topic: 'Dates' }] }), 'Differences').value).toBe('2');
   });
 
   it('counts what is document-backed rather than describing it', () => {

@@ -1417,10 +1417,29 @@ model GroundObjective {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  ground    Ground                    @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  snapshots GroundObjectiveSnapshot[]
 
   @@index([groundId])
   @@map("ground_objectives")
+}
+
+/// AN OBJECTIVE'S COUNT AS IT STOOD WHEN A ROUND CLOSED. Written by recordRoundCompletion, one row per
+/// objective per round. "Moved this session" is the difference between two of these; with only one it
+/// is not known, and says so, rather than reporting the lifetime total as this session's movement.
+model GroundObjectiveSnapshot {
+  id            String   @id @default(uuid())
+  groundId      String   @map("ground_id")
+  objectiveId   String   @map("objective_id")
+  sessionNumber Int      @map("session_number")
+  count         Int
+  takenAt       DateTime @default(now()) @map("taken_at")
+
+  objective GroundObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@unique([objectiveId, sessionNumber])
+  @@index([groundId, sessionNumber])
+  @@map("ground_objective_snapshots")
 }
 
 enum DependencyStatus {

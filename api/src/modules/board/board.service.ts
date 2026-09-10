@@ -42,6 +42,8 @@ import {
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-library';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
+import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
+import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -579,60 +581,26 @@ export class BoardService {
         'No targets set yet, so there is nothing for this board to measure progress against. Add two or three things this ground is aiming for.';
     }
 
-    if (has('quickRead') && sessionShape?.atAGlance?.length) {
-      /* The same four tiles as the report, over every session. */
-      out.quickRead = sessionShape.atAGlance;
-    } else if (has('quickRead')) {
-      const blockers = ground.dependencies.filter((d) => d.status === DependencyStatus.BLOCKING).length;
-      const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
-      const movedTotal = ground.objectives.reduce((s, o) => s + (o.count - o.prevCount), 0);
-      const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
-      out.quickRead = [
-        /*
-         * THE LABELS WERE QUESTIONS AND THE VALUES DID NOT ANSWER THEM.
-         *
-         * Read off a live board: "ALIGNED? 1 open". "MOVING? no change". "STUCK? clear". "SOLID?
-         * moderate". Reported as "board and report have aligned, moving etc, but it is not clear
-         * what it means, 1 misalignment etc" - and it is not clear, because none of the four is an
-         * answer to the question above it. "1 open" does not say whether anybody is aligned. "clear"
-         * against "Stuck?" reads as confirming that they are. "moderate" answers nothing at all.
-         *
-         * A question-mark label also forces the value to be a verdict, and this board is explicitly
-         * not a verdict - its own panel says so three lines above. So the label is a plain noun for
-         * the thing being counted, the value is the count, and the sub-line is a whole clause saying
-         * what the count is of. Nothing has to be decoded and nothing is judged.
-         */
-        {
-          label: 'Differences',
-          value: divCount ? `${divCount}` : 'None',
-          sub: divCount
-            ? 'still open between people'
-            : 'nobody disagrees anywhere yet',
-          tone: divCount ? 'warn' : 'good',
-        },
-        {
-          label: 'Movement',
-          value: movedTotal > 0 ? `+${movedTotal}` : 'None',
-          sub: movedTotal > 0 ? 'targets moved this session' : 'no target moved this session',
-          tone: movedTotal > 0 ? 'good' : 'flat',
-        },
-        {
-          label: 'Blockers',
-          value: blockers ? `${blockers}` : 'None',
-          sub: blockers ? 'named as holding work up' : 'nobody named anything holding work up',
-          tone: blockers ? 'bad' : 'good',
-        },
-        {
-          /* Two different things used to share this tile: a word for how much was said, and a
-             percentage for how much of it had a document behind it. The label named neither. */
-          label: 'How much was said',
-          value: eng.coverage ?? 'unknown',
-          sub: eng.documentBackedPct != null
-            ? `${eng.documentBackedPct}% of it is backed by a document`
-            : 'nothing yet says how much is backed by a document',
-          tone: eng.coverage === 'thin' ? 'warn' : 'good',
-        },
-      ];
+    if (has('quickRead')) {
+      /*
+       * THE SAME FOUR TILES AS THE REPORT, FROM THE SAME BUILDER. This recomputed them a second way
+       * when the engine returned nothing, and three of the four differed from the report's - the
+       * engine's own header says the two surfaces must agree. The counts come from the one owner
+       * (what-this-session-holds.ts) and the tiles from the one builder; there is no second copy to
+       * drift. The comment that used to sit here about question-mark labels moved with the builder.
+       */
+      if (sessionShape?.atAGlance?.length) {
+        out.quickRead = sessionShape.atAGlance;
+      } else {
+        const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+        const divCount = Array.isArray(reportSafe?.divergences) ? (reportSafe!.divergences as any[]).length : 0;
+        const agreedCount = Array.isArray(reportSafe?.agreements) ? (reportSafe!.agreements as any[]).length : 0;
+        const eng = (reportSafe?.engagement ?? {}) as Record<string, any>;
+        out.quickRead = atAGlanceTiles({
+          agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
+          backedPct: eng.documentBackedPct ?? null, numberWasSaid: false,
+        });
+      }
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these
@@ -1277,7 +1245,11 @@ export class BoardService {
     const labels = labelsForParties(ground.participants as any);
     const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A teammate') : null);
     const report = ground.report ?? {};
-    const answered = ground.participants.filter((p: any) => !p.managingOnly && completed.some((c) => c.participantId === p.id));
+    /* Who answered THIS round, against the one definition of who is expected (how-many-have-answered.ts). */
+    const whoAnswered = await howManyHaveAnswered(this.prisma, groundId, openRound);
+    const waiting = new Set(whoAnswered.waitingOn);
+    const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
+    const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
     const shape = theSessionReport({
       sessionNumber: openRound,
       closed: !!report.releasedAt,
@@ -1292,19 +1264,20 @@ export class BoardService {
       specificityLevel: null,
       recallConfidence: null,
       centralQuestion: report.centralQuestion ?? null,
-      movedOnTargets: ground.objectives?.some((o: any) => o.target != null) ? ground.objectives.filter((o: any) => o.target != null).reduce((s: number, o: any) => s + (o.count - o.prevCount), 0) : null,
-      blocked: deps.filter((d) => d.status === 'BLOCKING').length,
-      waiting: deps.filter((d) => d.status === 'WAITING').length,
+      /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
+      movedOnTargets: held.movedOnTargets,
+      blocked: held.blocked,
+      waiting: held.waiting,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
-      peopleInAll: ground.participants.filter((p: any) => !p.managingOnly).length,
+      peopleInAll: whoAnswered.expected,
     });
     const question = draftTheQuestion({
       functions: ground.participants.map((p: any) => ({ fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null })),
       blockers: deps.map((d) => ({ what: d.what, kind: (d.blockerKind as any) ?? null })),
     });
-    /* The tile grammar says "this session"; on the board it is every session. */
-    const atAGlance = (shape.atAGlance ?? []).map((t: any) => ({ ...t, sub: String(t.sub ?? '').replace(/this session/g, 'across every session').replace(/moved this session/g, 'moved so far') }));
-    return { ...shape, atAGlance, theConversationWorthHaving: question?.text ?? null };
+    /* The tiles are counted over the round in play, so "this session" is now true on the board too;
+       the rewrite to "across every session" that used to sit here was papering over lifetime counts. */
+    return { ...shape, theConversationWorthHaving: question?.text ?? null };
   }
 
 }

@@ -77,6 +77,8 @@ import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
+import { whatThisSessionHolds } from './what-this-session-holds';
+import { howManyHaveAnswered } from './how-many-have-answered';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -2100,17 +2102,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const answeredIds = new Set(answered.map((c) => c.participantId));
 
     /*
-     * MOVEMENT AND BLOCKERS, read from the rows the board reads. `objectives` carries the count
-     * and the count as it stood at the previous session; `dependencies` carries what somebody said
-     * they are waiting on and whether it is still hard-blocking.
+     * MOVEMENT AND BLOCKERS, OVER THIS SESSION, FROM THE ONE OWNER. This read every dependency on the
+     * ground and every objective's lifetime delta under a heading that said "this session". See
+     * what-this-session-holds.ts. And the confidence read is given the WHOLE session's line counts,
+     * not this reader's slice of them (P3-010).
      */
-    const [targets, blockedCount, waitingCount] = await Promise.all([
-      this.prisma.groundObjective.findMany({
-        where: { groundId, target: { not: null } },
-        select: { count: true, prevCount: true },
-      }),
-      this.prisma.groundDependency.count({ where: { groundId, status: 'BLOCKING' } }),
-      this.prisma.groundDependency.count({ where: { groundId, status: 'WAITING' } }),
+    const [held, saidInAll, documentedInAll, whoAnswered] = await Promise.all([
+      whatThisSessionHolds(this.prisma, groundId, sessionNumber),
+      this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber } } }),
+      this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),
+      howManyHaveAnswered(this.prisma, groundId, sessionNumber),
     ]);
 
     const shape = theSessionReport({
@@ -2156,14 +2157,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * reads them, from the same rows, so the two surfaces cannot disagree about how many things
        * are blocked - which is worse than one of them not saying.
        */
-      movedOnTargets: targets.length
-        ? targets.reduce((sum, o) => sum + (o.count - o.prevCount), 0)
-        : null,
-      blocked: blockedCount,
-      waiting: waitingCount,
-      /* Everybody the session counts, not only those who answered: the confidence read is about
-         how much basis there is, and somebody who has not answered is the largest gap there is. */
-      peopleInAll: ground.participants.filter((p) => !p.managingOnly).length,
+      movedOnTargets: held.movedOnTargets,
+      blocked: held.blocked,
+      waiting: held.waiting,
+      saidInAll,
+      documentedInAll,
+      /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the
+         confidence read is about how much basis there is, and somebody who has not answered is the
+         largest gap there is. */
+      peopleInAll: whoAnswered.expected,
       /*
        * A COMMITMENT WITH A NAME AND A DATE ON IT IS A DIFFERENT OBJECT FROM ONE WITHOUT.
        *
@@ -2450,8 +2452,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
               topic: String(d.topic),
               sides: (d.perspectives as any[]).slice(0, 3).map((p) => ({ who: nameByLabel.get(String(p.participantLabel ?? '')) ?? String(p.participantLabel ?? 'somebody'), says: String(p.view ?? '') })),
             })),
-          answered: answered.length,
-          ofPeople: ground.participants.filter((p: any) => !p.managingOnly).length,
+          answered: whoAnswered.answered,
+          ofPeople: whoAnswered.expected,
           confidence: shape.confidence,
           tiles: shape.atAGlance,
           patterns: patternsForPage,

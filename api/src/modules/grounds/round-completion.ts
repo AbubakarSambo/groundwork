@@ -74,6 +74,25 @@ export async function recordRoundCompletion(
     return false;
   }
 
+  /*
+   * THE OBJECTIVES, AS THEY STOOD WHEN THE ROUND CLOSED. Movement used to be `count - prevCount`,
+   * and prevCount defaults to 0, so an objective never edited reported its whole lifetime as this
+   * session's movement. A snapshot per objective per round makes "moved this session" the difference
+   * between two rows, and nothing at all when there is only one (what-this-session-holds.ts).
+   * Best-effort: a round closes whether or not its snapshot is written.
+   */
+  try {
+    const objectives = await prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true } });
+    if (objectives.length) {
+      await prisma.groundObjectiveSnapshot.createMany({
+        data: objectives.map((o) => ({ groundId, objectiveId: o.id, sessionNumber: roundNumber, count: o.count })),
+        skipDuplicates: true,
+      });
+    }
+  } catch {
+    /* A missing snapshot reads as "movement not known", which is honest; a failed round close is not. */
+  }
+
   events.emit(GroundworkEvents.ROUND_COMPLETED, {
     groundId,
     roundNumber,
