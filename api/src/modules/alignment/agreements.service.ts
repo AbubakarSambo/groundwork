@@ -88,6 +88,63 @@ export class AgreementsService {
    * The version it replaces is closed the day before, so no day has two answers
    * and no day has none.
    */
+  /**
+   * THE AGREEMENT THEY UPLOADED BECOMES TERMS.
+   *
+   * Nobody types their contract into a form. They upload it, paste it into the context, or describe
+   * the offer in the conversation - and `AgreementTerm.state` has defaulted to the string
+   * 'read from the document' since the day it was written, a state nothing in the product could
+   * produce. This produces it.
+   *
+   * IDEMPOTENT BY THE VERSION IT WRITES INTO. Re-uploading the same file must not double every
+   * clause, and a second DIFFERENT document on the same ground is an amendment rather than a new
+   * agreement - so this only ever fills a version that has no terms yet, and says so when it
+   * declines. Amending is a person's act and stays one; what changed is not ours to infer.
+   *
+   * IT NEVER SIGNS ANYTHING. A version arrives unagreed, every term arrives checked by nobody, and
+   * the readings are still missing - which is correct, because the reading belongs to the people
+   * and the disagreement between two of them is the whole finding.
+   */
+  async fromADocument(
+    organizationId: string,
+    groundId: string,
+    says: string,
+    terms: { says: string; reads: string; clause: string | null }[],
+    inForceFrom = new Date(),
+  ) {
+    if (!terms.length) return { wrote: 0, why: 'no terms found in the document' };
+
+    const existing = await this.prisma.agreement.findFirst({
+      where: { organizationId, groundId },
+      include: { versions: { orderBy: { number: 'desc' }, take: 1, include: { terms: { select: { id: true }, take: 1 } } } },
+    });
+
+    if (existing) {
+      const latest = existing.versions[0];
+      if (latest?.terms.length) {
+        /* Already read. A different document is an amendment somebody makes deliberately. */
+        return { wrote: 0, why: 'this agreement already has terms; amending is a person\'s act' };
+      }
+      if (latest) {
+        await this.prisma.agreementTerm.createMany({
+          data: terms.map((t) => ({ versionId: latest.id, says: t.says, reads: t.reads, clause: t.clause, checkedBy: [] })),
+        });
+        return { wrote: terms.length, agreementId: existing.id, versionId: latest.id };
+      }
+    }
+
+    const started = existing
+      ? { id: existing.id }
+      : await this.prisma.agreement.create({ data: { organizationId, groundId, says } });
+    const version = await this.prisma.agreementVersion.create({
+      data: { agreementId: started.id, number: 1, inForceFrom, agreedBy: [] },
+    });
+    await this.prisma.agreementTerm.createMany({
+      data: terms.map((t) => ({ versionId: version.id, says: t.says, reads: t.reads, clause: t.clause, checkedBy: [] })),
+    });
+    return { wrote: terms.length, agreementId: started.id, versionId: version.id };
+  }
+
   async amend(organizationId: string, groundId: string, agreementId: string, inForceFrom: Date) {
     const agreement = await this.prisma.agreement.findFirst({
       where: { id: agreementId, organizationId, groundId },
