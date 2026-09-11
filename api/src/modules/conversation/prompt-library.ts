@@ -1,4 +1,5 @@
 import { alreadyEstablished } from './setup-already-asked-this';
+import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
 import { GroundScenario, PartyType, GroundMoment } from '@prisma/client';
 import { ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { whereInTheRun } from './where-in-the-run';
@@ -92,6 +93,8 @@ export const VOCABULARY_RULE = [
   'hospitals, schools, charities and councils as often as in startups. Use the person\'s name if you',
   'have it, their stated role if you have that, and otherwise plain description: "the person running',
   'this check-in", "the other person here". Never a job title nobody gave you.',
+  /* And never open by telling somebody their plan is a good one. See the module. */
+  NOTHING_HERE_IS_PLEASED_WITH_YOU,
 ].join(' ');
 
 export const SESSION_CLOSE_MARKER = '[[SESSION_COMPLETE]]';

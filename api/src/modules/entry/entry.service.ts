@@ -10,6 +10,7 @@ import { Injectable, Logger, BadRequestException, ForbiddenException, Unauthoriz
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
+import { withHeadingsThatReadAsHeadings } from './a-heading-is-a-noun-phrase';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
@@ -257,7 +258,17 @@ const ENTRY_REPORT_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            title: { type: 'string' },
+            title: {
+              type: 'string',
+              /*
+               * A LIVE REPORT TITLED A CARD "expect not shared", and another "Feedback channel is
+               * undefined". They are rendered as headings in a column beside each other, so a
+               * fragment lifted out of the middle of a sentence reads as a fault in the page. The
+               * sibling field below already says this; it was the one that had been read back.
+               */
+              description:
+                'A short noun phrase naming what is unresolved, two to five words, sentence case. It is rendered as a card heading beside others like "Ownership of the board update" and "Escalation path not adopted", so it must read as a heading on its own. Never a fragment lifted out of a sentence: a live report produced "expect not shared", which tells the reader nothing.',
+            },
             observation: { type: 'string', description: 'What is unclear or unstated.' },
             whyItMatters: { type: 'string', description: 'Why leaving this unresolved causes problems.' },
             recommendedMove: { type: 'string', description: 'One practical next step.' },
@@ -325,8 +336,8 @@ export interface EntryReport {
   yourRole?: string | null;
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
   alignmentBasis: string;
-  areasRequiringAlignment: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[];
-  alignmentReached: { title: string; note: string }[];
+  areasRequiringAlignment: { title?: string; observation: string; whyItMatters: string; recommendedMove: string }[];
+  alignmentReached: { title?: string; note: string }[];
   honestClose: { aligned: string; open: string; revisit: string; risk: string };
   mentionedPeople: { name: string; context: string }[];
   suggestedParties: { role: string; reason: string }[];
@@ -1141,6 +1152,13 @@ from finishing at all.`;
      */
     /* "Tunde's" came back as somebody's name on a live run. See a-name-is-not-a-possessive.ts. */
     const split = splitMentions(namesWithoutPossessives(report.mentionedPeople ?? []));
+
+    /*
+     * AND A CARD HEADED "expect not yet shared" LOSES ITS HEADING, NOT ITS CONTENT.
+     * See a-heading-is-a-noun-phrase.ts. The schema asks for a noun phrase; asking is not enough.
+     */
+    report.areasRequiringAlignment = withHeadingsThatReadAsHeadings(report.areasRequiringAlignment ?? []) as any;
+    report.alignmentReached = withHeadingsThatReadAsHeadings(report.alignmentReached ?? []) as any;
 
     /**
      * W2 REACHES THE REPORT TOO, and this is where she actually read it: her

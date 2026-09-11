@@ -140,7 +140,8 @@ export function TheReportYouSawAtTheEnd({
             <Sec title={`What's still open`} />
             {report.areasRequiringAlignment.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>
+                {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
+                {a.title && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
                 <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
                 <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: '7px 9px', fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
@@ -157,7 +158,7 @@ export function TheReportYouSawAtTheEnd({
             <Sec title="Clear from what you said" />
             {report.alignmentReached.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: '11px 13px', marginBottom: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>
+                {a.title && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{a.note}</div>
               </div>
             ))}

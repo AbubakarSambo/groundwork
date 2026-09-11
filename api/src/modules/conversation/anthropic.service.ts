@@ -599,6 +599,14 @@ export class AnthropicService implements OnApplicationBootstrap {
      */
     const first = withoutTheEmptyOnes(args as T);
     if (first.dropped === 0) return first.value;
+    /*
+     * Only when cleaning took a whole array with it. A stray empty item among real ones costs the
+     * reader nothing once it is gone, and this retry is a second call to the slowest step there is.
+     */
+    if (!first.emptiedAnArray) {
+      this.logger.warn(`extract(): dropped ${first.dropped} empty item(s) from ${tool.name}; the rest stand.`);
+      return first.value;
+    }
 
     this.logger.warn(
       `extract(): tool ${tool.name} returned ${first.dropped} item(s) with nothing in them. Asking once more.`,

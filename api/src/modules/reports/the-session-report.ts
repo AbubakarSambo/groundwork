@@ -377,6 +377,8 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const atAGlance: AGlanceRead[] = atAGlanceTiles({
     agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
     backedPct, numberWasSaid: aNumberWasSaid(input),
+    /* So the Differences tile stops saying somebody has not answered when everybody has. */
+    stillToAnswer: Math.max(0, (input.peopleInAll ?? input.answeredThisSession.length) - input.answeredThisSession.length),
   });
 
   /**

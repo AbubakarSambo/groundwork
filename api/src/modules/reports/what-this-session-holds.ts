@@ -83,6 +83,19 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
 export function atAGlanceTiles(a: {
   agreed: number; stillOpen: number; movedOnTargets: number | null; blocked: number; waiting: number;
   backedPct: number | null; numberWasSaid: boolean;
+  /**
+   * WHETHER ANYBODY IS STILL TO ANSWER, because the Differences tile was guessing.
+   *
+   * With nothing agreed and nothing open it said "one side has answered so far", on a card whose
+   * own next line read "2 of 2 answered". Read live, 11 September: two people had both answered and
+   * the page told the reader one of them had not.
+   *
+   * There are two reasons the tile can have nothing to compare and they are not the same fact.
+   * Somebody has not answered yet, so there is nothing to compare them with. Or everybody answered
+   * and the written report named no agreement and no gap, which is a statement about the round and
+   * not about who turned up. The tile could not tell them apart because it was never told.
+   */
+  stillToAnswer?: number;
 }): AGlanceRead[] {
   return [
     {
@@ -95,7 +108,9 @@ export function atAGlanceTiles(a: {
        */
       sub: a.stillOpen
         ? 'still open, as the written report reads it'
-        : a.agreed ? 'no disagreement, as the written report reads it' : 'one side has answered so far',
+        : a.agreed ? 'no disagreement, as the written report reads it'
+          : a.stillToAnswer === 0 ? 'everybody answered, and the written report names no agreement and no gap yet'
+            : 'not everybody has answered yet',
       tone: a.stillOpen ? 'warn' : a.agreed ? 'good' : 'flat',
     },
     {

@@ -45,8 +45,17 @@ export function nothingInIt(value: unknown): boolean {
  * string. Only an item with no content anywhere inside it goes, because that is the only item a
  * page can do nothing with.
  */
-export function withoutTheEmptyOnes<T>(value: T): { value: T; dropped: number } {
+export function withoutTheEmptyOnes<T>(value: T): { value: T; dropped: number; emptiedAnArray: boolean } {
   let dropped = 0;
+  /*
+   * AND WHETHER CLEANING TOOK A WHOLE ARRAY WITH IT.
+   *
+   * The difference matters because asking the model again is the most expensive thing this seam can
+   * do - it is the slowest step in the entry report and a second call doubles it. One stray empty
+   * item among six real ones costs the reader nothing once it is dropped. An array that had three
+   * items and now has none is the failure this was written for, and the only case worth paying for.
+   */
+  let emptiedAnArray = false;
 
   const walk = (node: any): any => {
     if (Array.isArray(node)) {
@@ -55,6 +64,7 @@ export function withoutTheEmptyOnes<T>(value: T): { value: T; dropped: number } 
         if (nothingInIt(item)) { dropped += 1; continue; }
         kept.push(walk(item));
       }
+      if (node.length > 0 && kept.length === 0) emptiedAnArray = true;
       return kept;
     }
     if (node && typeof node === 'object') {
@@ -65,5 +75,5 @@ export function withoutTheEmptyOnes<T>(value: T): { value: T; dropped: number } 
     return node;
   };
 
-  return { value: walk(value) as T, dropped };
+  return { value: walk(value) as T, dropped, emptiedAnArray };
 }
