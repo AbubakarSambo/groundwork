@@ -1150,8 +1150,7 @@ from finishing at all.`;
      * invitation. So the two lists are separated here, where it is arithmetic.
      * Nothing is dropped - everything the extractor found is still on the page.
      */
-    /* "Tunde's" came back as somebody's name on a live run. See a-name-is-not-a-possessive.ts. */
-    const split = splitMentions(namesWithoutPossessives(report.mentionedPeople ?? []));
+    const split = splitMentions(report.mentionedPeople ?? []);
 
     /*
      * AND A CARD HEADED "expect not yet shared" LOSES ITS HEADING, NOT ITS CONTENT.
@@ -1182,12 +1181,29 @@ from finishing at all.`;
       return v;
     };
 
-    return restore({
+    /*
+     * THE POSSESSIVE COMES OFF AFTER THE RESTORE, NOT BEFORE IT.
+     *
+     * It was stripped before, and `restoreTheirWords` put it straight back: the lead typed
+     * "Segun's", so a name reading "Segun" looks to that pass like one of their own words that has
+     * been shortened, and its whole job is to undo that. The two were fighting and the restore won,
+     * live, on two separate runs - the log says it plainly: `Shortened one of their own words on
+     * the entry path: adaeze (they typed "adaeze's")`.
+     *
+     * The restore is right about sentences and wrong about this one field. A name is not a quotation
+     * of what somebody typed; it is who to send an invitation to, and "Segun's" is not a person.
+     */
+    const restored = restore({
       ...report,
       mentionedPeople: split.couldBeAdded,
       alsoCameUp: split.alsoCameUp,
       alsoCameUpNote: split.note,
     });
+    return {
+      ...restored,
+      mentionedPeople: namesWithoutPossessives(restored.mentionedPeople ?? []),
+      alsoCameUp: namesWithoutPossessives(restored.alsoCameUp ?? []),
+    };
   }
 
   /**

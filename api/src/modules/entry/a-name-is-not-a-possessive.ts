@@ -29,3 +29,17 @@ export function theNameWithoutThePossessive(name: string): string {
 export function namesWithoutPossessives<T extends { name: string }>(people: T[]): T[] {
   return (people ?? []).map((p) => ({ ...p, name: theNameWithoutThePossessive(p.name) }));
 }
+
+/**
+ * WHY THE ORDER MATTERS, written down because it cost two runs.
+ *
+ * `restoreTheirWords` exists to undo the model shortening or altering what a person typed, and it is
+ * right to. But it cannot tell the difference between a sentence and a name: the lead typed
+ * "Segun's name on the close pack", so a name field reading "Segun" looks to it like a word that has
+ * been cut short, and it puts the apostrophe back. It won twice, on two different runs, and the log
+ * said so each time - `Shortened one of their own words on the entry path: adaeze (they typed
+ * "adaeze's")`.
+ *
+ * So this runs AFTER the restore, on the name field only. A name is not a quotation of what somebody
+ * typed; it is who an invitation is addressed to.
+ */
