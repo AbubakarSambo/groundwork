@@ -39,7 +39,7 @@ describe('GW-BEHAVIOR-ENTRY-C: the assembled entry prompt carries the entry rule
 
   it('keeps the exact entry completion phrase authored in the addendum', () => {
     // this is the phrase the AI must say to end an entry session (ties to D below)
-    expect(entryPrompt).toContain('Your record is here.');
+    expect(entryPrompt).toContain('Here is what you shared.');
   });
 
   it('FAQ mode answers plainly and states the free-first-session fact', () => {
@@ -81,7 +81,7 @@ describe('GW-BEHAVIOR-END-D: end-detection is locked AND its cross-path inconsis
   });
 
   // THE LATENT BUG (surfaced, not hidden): the ENTRY flow and the AUTH flow use different
-  // phrase sets for the SAME signal. The AI's authored entry closing "Your record is here."
+  // phrase sets for the SAME signal. The AI's authored entry closing "Here is what you shared."
   // ends an ENTRY session but is INVISIBLE to the auth detector. If these are ever unified
   // to one source (task_35534866), this test flips red and must be updated to the unified set.
   it('SURFACES the divergence: entry completion phrases the AUTH detector fails to recognise', () => {
