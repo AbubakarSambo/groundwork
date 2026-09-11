@@ -275,6 +275,40 @@ export function isACrop(s: Crop | NotAReport): s is Crop {
 }
 
 /**
+ * WHAT HAS TO BE TRUE BEFORE THE DEAD BODY CAN GO.
+ *
+ * `ReportBody` is 983 lines in `client/src/pages/report/ReportPage.tsx` with no importers. The
+ * plan called for deleting it last, and the first look said it was the easy part: nothing renders
+ * it, so nothing is lost.
+ *
+ * That is wrong, and it is worth being exact about why. Ten specs read that file and assert against
+ * its contents - some of them heavily. It is not dead code with a few stale tests attached. It is
+ * the ENFORCEMENT SITE for ten product rules, several of which were written after something went
+ * wrong on a real check-in. Delete the body and every one of those specs has to be retired, which
+ * means the rules stop being enforced anywhere at all, on the day the code that broke them last is
+ * removed.
+ *
+ * So the deletion is not the last step of the overhaul. It is the last step of the SURFACING work:
+ * each rule below has to hold on a surface somebody can open before the file that holds it now can
+ * go. Until then the dead body is doing one useful job - it is where these rules are true.
+ *
+ * The list is the checklist. An entry comes off it when the rule holds on a live surface and its
+ * spec asserts against that surface instead.
+ */
+export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
+  { rule: 'A panel with nothing to say is a line, and staleness is never conditional on being settled', spec: 'a-panel-with-nothing-to-say-is-a-line' },
+  { rule: 'The report that opens is the report they read, and each half says whose it is', spec: 'the-report-you-saw-is-the-one-that-opens' },
+  { rule: 'A label is not a person: the on-record row resolves it rather than printing it', spec: 'a-label-is-not-a-person' },
+  { rule: 'The sharp part first: what is open, then what is agreed, then the prose', spec: 'the-sharp-part-first' },
+  { rule: 'One report, not two: no page carries a second report body', spec: 'one-report-not-two' },
+  { rule: 'A report that exists is never announced as absent, or as empty', spec: 'a-report-that-exists-does-not-say-it-does-not' },
+  { rule: 'No grades on the shared page, and the person still gets their own specificity privately', spec: 'no-grades-on-the-shared-page' },
+  { rule: 'The finding comes before the method, and the legend is a closed disclosure', spec: 'the-finding-comes-before-the-method' },
+  { rule: 'What the server already knew reaches the page, lead-only, worded about the record', spec: 'what-the-server-already-knew' },
+  { rule: 'Nothing was lost when the body went: the three orphans each have a home', spec: 'nothing-was-lost-when-the-body-went' },
+];
+
+/**
  * THE CHECK THAT KEEPS THE MAP HONEST.
  *
  * Given the keys a payload actually carries, say which are placed nowhere. The spec runs this

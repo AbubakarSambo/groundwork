@@ -1,7 +1,10 @@
+import { readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
 import {
   EVERY_CELL, WHERE_IT_BELONGS, theFieldsOf, whichCell, whatThisSurfaceShows,
   placedNowhere, isYourOwn, readsARun, WHAT_A_SESSION_CELL_MAY_NOT_HOLD, NOT_REPORT_CONTENT,
   REACHES_NO_SCREEN, THE_ORDER, RUN_BLOCKS, EVERY_SURFACE, isAnIndex, isANotification, isACrop,
+  BEFORE_THE_DEAD_BODY_CAN_GO,
 } from './the-four-reports';
 import { RUN_ONLY_FIELDS } from './a-read-needs-a-run';
 
@@ -209,5 +212,30 @@ describe('every field belongs to one of the four', () => {
     expect(NOT_REPORT_CONTENT).toContain('sessionNumber');
     expect(placedNowhere(['sessionNumber'])).toEqual([]);
     expect(placedNowhere(['sessionThing'])).toEqual(['sessionThing']);
+  });
+});
+
+describe('the dead body is where ten rules are true', () => {
+  const REPORT_SPECS = join(__dirname, '../../../../client/src/pages/report');
+
+  it('names a real spec for every rule that has to survive it', () => {
+    /* The list rots the moment a spec is renamed and nothing notices, and a rotten checklist is
+       worse than none: it reads as done. */
+    for (const { rule, spec } of BEFORE_THE_DEAD_BODY_CAN_GO) {
+      expect(rule.length).toBeGreaterThan(30);
+      const found = readdirSync(REPORT_SPECS).some((f) => f.startsWith(`${spec}.spec.`));
+      expect(found).toBe(true);
+    }
+  });
+
+  it('and the body is still there, because none of them has a live home yet', () => {
+    /*
+     * This asserts the presence of dead code, which is not something to be comfortable with. It is
+     * here because the alternative is deleting ten enforced rules on the day the code that broke
+     * them last comes out. When the last entry leaves the list, this test and the file go together.
+     */
+    const body = readFileSync(join(REPORT_SPECS, 'ReportPage.tsx'), 'utf8');
+    expect(body).toContain('export function ReportBody(');
+    expect(BEFORE_THE_DEAD_BODY_CAN_GO.length).toBeGreaterThan(0);
   });
 });
