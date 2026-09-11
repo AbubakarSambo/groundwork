@@ -39,7 +39,7 @@ const SURFACES: [string, string][] = [
 const ELSEWHERE: [string, string][] = [
   ["a party's shared report", '../../components/gw/SharedReportForAParty.tsx'],
   ["the session's shared report", '../../components/gw/TheSessionsReport.tsx'],
-  ['the end-of-session card', '../../components/gw/SessionReportCard.tsx'],
+  ['the end-of-session card', '../../components/gw/TheCheckInYouJustFinished.tsx'],
 ]
 
 describe('nothing stands between a released report and the person it is for', () => {

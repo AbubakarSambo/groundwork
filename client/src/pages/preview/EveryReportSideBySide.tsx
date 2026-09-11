@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
-import { SessionReportCard } from '@/components/gw/SessionReportCard'
+import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFinished'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { conversationApi } from '@/api/conversation'
@@ -251,10 +251,10 @@ export default function EveryReportSideBySide() {
             n={4}
             name="The end of a signed-in check-in"
             cell="A · session"
-            note="Not rebuilt yet, and the first report anybody ever sees. Still carries the alignment status word and the honest-close block the template retires."
+            note="Rebuilt and ported. A · session and nothing else: the objective and your part of it, your own rows, the lines taken from what you said with the press that takes one back beside it, what is still open, what you carry with the private note inside it, and how much you gave it folded last. The shared picture is a door rather than a copy."
           >
             {checkInId
-              ? <SessionReportCard checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} isInitiator={!!close.data?.isInitiator} />
+              ? <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
               : <p style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>You have no sitting of your own on this one.</p>}
           </Surface>
 
