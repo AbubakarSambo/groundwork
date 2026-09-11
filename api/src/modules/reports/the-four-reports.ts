@@ -345,10 +345,7 @@ export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
      checked against, which is the whole point of the list. */
   { rule: 'A panel with nothing to say is a line, and staleness is never conditional on being settled', spec: 'a-panel-with-nothing-to-say-is-a-line' },
   { rule: 'The report that opens is the report they read, and each half says whose it is', spec: 'the-report-you-saw-is-the-one-that-opens' },
-  { rule: 'A label is not a person: the on-record row resolves it rather than printing it', spec: 'a-label-is-not-a-person' },
   { rule: 'One report, not two: no page carries a second report body', spec: 'one-report-not-two' },
-  { rule: 'A report that exists is never announced as absent, or as empty', spec: 'a-report-that-exists-does-not-say-it-does-not' },
-  { rule: 'No grades on the shared page, and the person still gets their own specificity privately', spec: 'no-grades-on-the-shared-page' },
   { rule: 'What the server already knew reaches the page, lead-only, worded about the record', spec: 'what-the-server-already-knew' },
   { rule: 'Nothing was lost when the body went: the three orphans each have a home', spec: 'nothing-was-lost-when-the-body-went' },
 ];

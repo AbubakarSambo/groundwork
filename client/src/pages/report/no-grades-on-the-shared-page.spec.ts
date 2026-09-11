@@ -22,27 +22,48 @@ import { join } from 'path'
  * something to act on rather than a mark their colleagues can read. Who checked in and how many
  * sessions they are on stays: that is participation, not judgement.
  */
-const REPORT = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8')
+/**
+ * THE SHARED PAGES PEOPLE OPEN, RATHER THAN THE ONE THAT NO LONGER HAS IMPORTERS.
+ *
+ * This read `ReportPage.tsx`, where the On-record list was when the badge came off it. The shared
+ * surfaces are the session report's lower half, a party's report view, and the board - so the rule
+ * is checked against all three, which is stronger than checking it against one. A grade appearing
+ * on any of them is the failure this file exists to catch.
+ */
+const strip = (t: string) => t
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+const SHARED: Record<string, string> = {
+  'the session report': strip(readFileSync(join(__dirname, '../../components/gw/TheSessionsReport.tsx'), 'utf8')),
+  "a party's report": strip(readFileSync(join(__dirname, '../../components/gw/SharedReportForAParty.tsx'), 'utf8')),
+  'the board': strip(readFileSync(join(__dirname, '../board/BoardPage.tsx'), 'utf8')),
+}
 const MY_RECORD = readFileSync(join(__dirname, '../../components/gw/MyRecord.tsx'), 'utf8')
 
 describe('no grades on the shared page', () => {
   it('reads the real files, so an empty one cannot pass', () => {
-    expect(REPORT.length).toBeGreaterThan(5000)
+    for (const [name, src] of Object.entries(SHARED)) {
+      expect(src.length, `${name} is empty`).toBeGreaterThan(3000)
+    }
     expect(MY_RECORD.length).toBeGreaterThan(1000)
   })
 
-  it('the shared report does not label how specific a named person was', () => {
-    expect(REPORT).not.toContain('specificityLabel')
-    expect(REPORT).not.toMatch(/specificity</)
+  it('no shared page labels how specific a named person was', () => {
+    for (const [name, src] of Object.entries(SHARED)) {
+      expect(src, `${name} carries a specificity label`).not.toContain('specificityLabel')
+      expect(src, `${name} carries a specificity label`).not.toMatch(/specificity</)
+    }
   })
 
-  it('but it still says who is on record and how many sessions they are on', () => {
-    /* Participation is a fact about the check-in. Removing the grade must not remove this too. */
-    expect(REPORT).toContain('On record')
-    expect(REPORT).toMatch(/session\$\{/)
-  })
+  /*
+   * THE HALF THIS FILE NO LONGER CHECKS, AND WHERE IT WENT.
+   *
+   * "But it still says who is on record and how many sessions they are on" read the On-record list
+   * in the body, which nothing imports. Participation is still shown, on the reveal row, and
+   * `the-reveal-row-names-who-you-are-waiting-on` asserts it there in more detail than this ever
+   * did - it names people rather than a count, says which one is you, and refuses to count somebody
+   * who was never going to answer. Checking the same thing in two places is how two copies drift.
+   */
 
   it('and the person still gets their own specificity, privately', () => {
     /*
