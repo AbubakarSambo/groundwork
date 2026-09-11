@@ -59,6 +59,22 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   'what-setup-never-asked-for.ts': 'G37/G23 questions, awaiting the context chat surface',
   'an-interview-not-a-longer-setup.ts': 'G21/G22, awaiting the post-setup interview surface',
   'role-clarity-is-not-a-score.ts': 'G20/G36, awaiting the contribution record surface',
+  /**
+   * PHASE 1 OF THE REPORT OVERHAUL, AND UNWIRED IS THE POINT OF IT.
+   *
+   * It places every field a report can carry into one of the four - two readers, two scopes - so
+   * that eight surfaces stop each having an opinion about what belongs on them. Nothing computes
+   * anything: every read it names is already built.
+   *
+   * It is deliberately not wired to a surface yet. Phase 1 was "the map, and no behaviour change",
+   * so that the map could be argued with before anything moved. Its spec runs it against the real
+   * payload and fails on a field nobody has placed, which is the mechanism - the exemption is for
+   * the surfaces, not for the checking.
+   *
+   * This exemption comes out when the first surface assembles from it. If it is still here after
+   * the phases finish, the overhaul stopped halfway and this line is the evidence.
+   */
+  'the-four-reports.ts': 'report overhaul phase 1: the map, argued with before anything moved. Comes out when the first surface assembles from it.',
   'a-hypothesis-is-not-a-finding.ts': "the lead-context corroboration rules, stated as a boundary and asserted by its spec. The behaviour it describes is now enforced by a-lead-note-is-not-evidence.ts, which does the arithmetic on real findings - so this stays as the statement of the rule rather than its implementation.",
 };
 
