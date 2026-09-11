@@ -39,6 +39,7 @@ import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel } from '@/lib/scenario-catalog'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
+import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 
 /**
  * THE THIRD COPY OF THE SITUATION NAMES, DELETED.
@@ -837,6 +838,23 @@ export function GroundAdminPage() {
     for (const line of sentencesFor(whyNotInvited(rows))) toast.info(line)
     for (const line of refused) toast.error(line)
   }
+
+  /*
+   * THE SETUP WRITES GO THROUGH useMutation LIKE EVERY OTHER WRITER ON THIS PAGE. Five of them called
+   * the API as a raw promise from onClick, disabled only by value equality, so a double click before
+   * the response fired two identical PATCHes - and timeframe and cadence regenerate the session plan,
+   * so a double submit there reshaped the run twice.
+   */
+  const saveSetup = useMutation({
+    mutationFn: (patch: Record<string, unknown>) => groundsApi.update(id!, patch as any),
+    onSuccess: () => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not change - what you typed is still here, try again.'),
+  })
+  const setWorkTogether = useMutation({
+    mutationFn: (v: boolean) => groundsApi.setPeopleWorkTogether(id!, v),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) },
+    onError: () => toast.error('Not saved. What you typed is still here — try again.'),
+  })
 
   const addParticipantMut = useMutation({
     mutationFn: () => groundsApi.addParticipant(id!, { email: newParticipantEmail.trim(), note: newParticipantNote.trim() || undefined, department: newParticipantDepartment.trim() || undefined }),
@@ -2013,12 +2031,12 @@ export function GroundAdminPage() {
                             type="email"
                             value={fixingEmailValue}
                             onChange={e => setFixingEmailValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && fixingEmailValue.includes('@')) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
+                            onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(fixingEmailValue)) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
                             placeholder="corrected@email.com"
                             style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gw-red-b-soft)', outline: 'none', fontFamily: 'inherit', width: 240 }}
                           />
                           <button
-                            disabled={fixEmail.isPending || !fixingEmailValue.includes('@')}
+                            disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
                             onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
                             style={{ fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', opacity: fixEmail.isPending ? 0.6 : 1 }}
                           >
@@ -2480,8 +2498,8 @@ export function GroundAdminPage() {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => addParticipantMut.mutate()}
-                  disabled={!newParticipantEmail.includes('@') || addParticipantMut.isPending}
-                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                  disabled={!looksLikeAnAddress(newParticipantEmail) || addParticipantMut.isPending}
+                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: looksLikeAnAddress(newParticipantEmail) ? 1 : 0.4 }}
                 >
                   {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
                 </button>
@@ -2502,14 +2520,14 @@ export function GroundAdminPage() {
                 <button
                   onClick={() => {
                     const email = newParticipantEmail.trim().toLowerCase()
-                    if (!email.includes('@')) return
+                    if (!looksLikeAnAddress(email)) return
                     if (queuedToAdd.some((q) => q.email === email)) return
                     setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
                     setNewParticipantEmail('')
                     setNewParticipantNote('')
                   }}
-                  disabled={!newParticipantEmail.includes('@')}
-                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: newParticipantEmail.includes('@') ? 1 : 0.4 }}
+                  disabled={!looksLikeAnAddress(newParticipantEmail)}
+                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: looksLikeAnAddress(newParticipantEmail) ? 1 : 0.4 }}
                 >
                   + Add another
                 </button>
@@ -2650,9 +2668,7 @@ export function GroundAdminPage() {
                         tabIndex={selected || (current == null && o.v) ? 0 : -1}
                         aria-label={`${o.label}. ${o.sub}`}
                         onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
-                        onClick={() => groundsApi.setPeopleWorkTogether(id!, o.v)
-                          .then(() => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                          .catch(() => toast.error('Not saved. What you typed is still here — try again.'))}
+                        onClick={() => { if (!setWorkTogether.isPending) setWorkTogether.mutate(o.v) }}
                         className={`cg-sit-card${selected ? ' selected' : ''}`}
                         style={{ cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2772,10 +2788,8 @@ export function GroundAdminPage() {
                   it empty to open the check-in as soon as people are added.
                 </div>
                 <button
-                  disabled={startsAtDraft === startsAtOnRecord}
-                  onClick={() => groundsApi.update(id!, { startsAt: startsAtDraft || undefined })
-                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                    .catch((e: any) => toast.error(e?.response?.data?.message ?? 'The start date did not change - try again.'))}
+                  disabled={startsAtDraft === startsAtOnRecord || saveSetup.isPending}
+                  onClick={() => saveSetup.mutate({ startsAt: startsAtDraft || undefined })}
                   style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: startsAtDraft === startsAtOnRecord ? 0.4 : 1 }}
                 >
                   Save start date
@@ -2818,10 +2832,8 @@ export function GroundAdminPage() {
                   answer you agree.
                 </div>
                 <button
-                  disabled={timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence}
-                  onClick={() => groundsApi.update(id!, { timelineDays: timelineDaysDraft, cadence: cadenceDraft })
-                    .then(() => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['ground', id] }) })
-                    .catch(() => toast.error('The length did not change — try again.'))}
+                  disabled={(timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence) || saveSetup.isPending}
+                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft })}
                   style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
                 >
                   Save timeframe
@@ -2835,7 +2847,7 @@ export function GroundAdminPage() {
               <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
               <button
                 disabled={!groundLabel.trim() || groundLabel === ground.label}
-                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label) groundsApi.update(id!, { label: groundLabel.trim() }).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The name did not change — try again.')) }}
+                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label && !saveSetup.isPending) saveSetup.mutate({ label: groundLabel.trim() }) }}
                 style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
               >
                 Save name
@@ -2865,7 +2877,7 @@ export function GroundAdminPage() {
               </select>
               <button
                 disabled={!groundScenario || groundScenario === ground.scenario}
-                onClick={() => { if (groundScenario && groundScenario !== ground.scenario) groundsApi.update(id!, { scenario: groundScenario } as any).then(() => qc.invalidateQueries({ queryKey: ['ground', id] })).catch(() => toast.error('The situation did not change — try again.')) }}
+                onClick={() => { if (groundScenario && groundScenario !== ground.scenario && !saveSetup.isPending) saveSetup.mutate({ scenario: groundScenario }) }}
                 style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
               >
                 Save scenario

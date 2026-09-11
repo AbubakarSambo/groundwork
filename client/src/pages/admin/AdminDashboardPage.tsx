@@ -159,9 +159,11 @@ interface OtpModalProps {
   description: string
   onConfirm: (otp: string) => Promise<void>
   onClose: () => void
+  /** Only when onConfirm resolved. onClose fires on Cancel too, and callers were clearing their form in it. */
+  onSuccess?: () => void
 }
 
-function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
+function OtpModal({ title, description, onConfirm, onClose, onSuccess }: OtpModalProps) {
   const [step, setStep] = useState<'request' | 'enter'>('request')
   const [otp, setOtp] = useState('')
   const [error, setError] = useState('')
@@ -186,6 +188,7 @@ function OtpModal({ title, description, onConfirm, onClose }: OtpModalProps) {
     setError('')
     try {
       await onConfirm(otp.trim())
+      onSuccess?.()
       onClose()
     } catch (e: any) {
       setError(e.message ?? 'Action failed')
@@ -621,7 +624,9 @@ function AdminManagementSection({
           title="Add platform admin"
           description={`${email} will see every organisation, every usage figure and the pricing. You can take them off again here.`}
           onConfirm={otp => onAdd(email, otp)}
-          onClose={() => { setShowOtp(false); setEmail(''); admins.refetch() }}
+          /* The address is cleared when the promotion happened, not when the modal closed for any reason. */
+          onSuccess={() => setEmail('')}
+          onClose={() => { setShowOtp(false); admins.refetch() }}
         />
       )}
 

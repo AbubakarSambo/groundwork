@@ -77,6 +77,9 @@ export function ChoosePasswordPage() {
   })
 
   function submit() {
+    /* Enter in the confirm field was not disabled while the button was; against a single-use token the
+       second call came back "invalid or expired" over the success of the first. */
+    if (save.isPending) return
     setError('')
     if (!token) { setError('Invalid link - no token.'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }

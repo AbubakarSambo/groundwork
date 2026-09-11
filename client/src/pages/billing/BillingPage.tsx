@@ -682,7 +682,10 @@ export function BillingPage() {
                     disabled={createSubscriptionMut.isPending || changePlanMut.isPending}
                     style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: (createSubscriptionMut.isPending || changePlanMut.isPending) ? 0.7 : 1 }}
                   >
-                    {createSubscriptionMut.isPending || changePlanMut.isPending ? '...' : isSubscribed ? 'Switch' : 'Subscribe'}
+                    {/* Mid-flight the page says WHICH plan is being bought; the other five keep their word. */}
+                    {(createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
+                      ? (isSubscribed ? 'Switching…' : 'Subscribing…')
+                      : isSubscribed ? 'Switch' : 'Subscribe'}
                   </button>
                 )}
               </div>

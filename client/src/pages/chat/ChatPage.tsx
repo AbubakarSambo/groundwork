@@ -342,6 +342,9 @@ export function ChatPage() {
       return documentsApi.upload(groundId, file)
     },
     onSuccess: async (doc, { ctx }) => {
+      /* Now that it has landed, the sheet can go. */
+      setDocContextMode(false); setPendingDoc(null); setDocContext('')
+      setPasteMode(false); setPasteText(''); setPasteLabel('')
       const contextLine = ctx.trim() ? ` Context you gave: ${ctx.trim()}.` : ''
       const newMsgs: Msg[] = [{
         id: `doc-note-${Date.now()}`,
@@ -610,25 +613,22 @@ export function ChatPage() {
     e.currentTarget.value = ''
   }
 
+  /* The sheet used to close and clear the moment the mutation was fired, so a failed upload left
+     nothing to retry and a slow one (this path runs a model assessment) looked like nothing happened.
+     It closes in uploadDoc.onSuccess now, and the commit button is disabled while it runs. */
   function submitDocWithContext() {
-    if (!pendingDoc) return
+    if (!pendingDoc || uploadDoc.isPending) return
     if (!groundId) { toast.error('Context missing. Please open this session from your check-in page.'); return }
     uploadDoc.mutate({ file: pendingDoc, ctx: docContext })
-    setDocContextMode(false)
-    setPendingDoc(null)
-    setDocContext('')
   }
 
   function submitPaste() {
     const text = pasteText.trim()
-    if (!text || !groundId) return
+    if (!text || !groundId || uploadDoc.isPending) return
     const label = pasteLabel.trim() || 'pasted-note.txt'
     const fileName = label.endsWith('.txt') ? label : label + '.txt'
     const file = new File([text], fileName, { type: 'text/plain' })
     uploadDoc.mutate({ file, ctx: '' })
-    setPasteMode(false)
-    setPasteText('')
-    setPasteLabel('')
   }
 
   const privacyLabel = isFinalSession
@@ -1321,9 +1321,9 @@ export function ChatPage() {
                 style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Cancel
               </button>
-              <button onClick={submitPaste} disabled={!pasteText.trim()}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: pasteText.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: pasteText.trim() ? 1 : 0.5 }}>
-                Add to session
+              <button onClick={submitPaste} disabled={!pasteText.trim() || uploadDoc.isPending}
+                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: pasteText.trim() && !uploadDoc.isPending ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: pasteText.trim() && !uploadDoc.isPending ? 1 : 0.5 }}>
+                {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
               </button>
             </div>
           </div>
@@ -1352,9 +1352,9 @@ export function ChatPage() {
                 style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Cancel
               </button>
-              <button onClick={submitDocWithContext}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Add to session
+              <button onClick={submitDocWithContext} disabled={uploadDoc.isPending}
+                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: uploadDoc.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: uploadDoc.isPending ? 0.6 : 1 }}>
+                {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
               </button>
             </div>
           </div>
