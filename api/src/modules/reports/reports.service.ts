@@ -12,6 +12,7 @@ import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-le
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
+import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
@@ -2357,6 +2358,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })),
     });
 
+    /*
+     * WHAT THIS SITS UNDER, IF ANYTHING SITS ABOVE IT.
+     *
+     * The same read the board runs, on the same page as the objective it qualifies. A cascade is a
+     * fact about the objective rather than a section of its own, so it travels beside
+     * `againstSuccess` and renders above it: a reader who does not know what this work is FOR cannot
+     * read a single line of movement underneath it correctly.
+     *
+     * Evidence only - the situation picked at setup never carries this on its own. See
+     * is-this-a-cascade.ts for why, and for why the no answer is still worth printing.
+     */
+    /* Fetched rather than read off `ground`: this query selects neither the scenario nor the
+       targets, and reading an undefined off it would silently answer "no cascade" forever. */
+    const forCascade = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { scenario: true, objectives: { select: { name: true } } },
+    });
+    const cascade = forCascade
+      ? isThisACascade({
+        scenario: forCascade.scenario,
+        objectiveNames: forCascade.objectives.map((o) => o.name),
+        importedWithParents: [],
+        entries: everyEntrySoFar.map((e) => ({ participantId: e.participantId, text: cleanText(e.text) })),
+      })
+      : null;
+
     const window = await this.correctionWindowDays();
     const canCorrect = whetherItCanStillBeCorrected({
       releasedAt: (ground.report?.releasedAt as Date | null) ?? null,
@@ -2441,6 +2468,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     return {
       ...wordedShape,
       againstSuccess,
+      cascade: cascade && (cascade.isCascade || cascade.basis.includes('DECLARED')) ? cascade : null,
       /* For the page that says what the check-in still needs: the date this person gave, and the
          brief's own number, so neither is asked for as if nobody had said it. */
       myTimeframe: me ? (entries.filter((e) => e.participantId === me.id && e.type === RecordEntryType.TIMEFRAME).map((e) => cleanText(e.text)).pop() ?? null) : null,
