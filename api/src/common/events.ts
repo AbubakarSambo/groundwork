@@ -116,9 +116,18 @@ export interface ApiAccessAskedEvent {
   whatFor: string;
 }
 
+/**
+ * One event for "somebody asked to talk to us", whichever door they came through. A signed-in
+ * request carries the organisation and the user; a request from the public talk-to-us page carries
+ * neither, only a name, an address and the organisation name they typed. Widened rather than given
+ * a sibling (fix plan F12): a second event for the same fact is how a coaching request came to be
+ * written to a table nobody was told about.
+ */
 export interface CallAskedEvent {
-  organizationId: string;
-  askedByUserId: string;
+  organizationId: string | null;
+  askedByUserId: string | null;
+  /** Who asked, when there is no account to look up. */
+  requester?: { name: string; email: string; orgName: string } | null;
   /** CALL, COACHING, HANDS_ON or INTEGRATION. */
   subject: string;
   note: string | null;

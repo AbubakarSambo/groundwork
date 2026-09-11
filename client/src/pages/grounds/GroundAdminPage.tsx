@@ -27,7 +27,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { Sec } from '@/components/gw/kit'
+import { Sec, TextAction } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
@@ -1357,6 +1357,8 @@ export function GroundAdminPage() {
               {plannedSessions != null && (
                 <span style={{ fontWeight: 700 }}>Session {Math.min(sessionsDone + 1, plannedSessions)} of {plannedSessions}</span>
               )}
+              {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
+              {sessionsDone === 0 && <TextAction onClick={() => navigate('/org/guide')} size={12}>How to run one</TextAction>}
               {ground.daysLeft != null && ground.daysLeft <= 3 ? (
                 <span style={{ fontWeight: 700, color: 'var(--gw-red-t)' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
               ) : null}

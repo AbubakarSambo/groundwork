@@ -71,14 +71,17 @@ export class TheTeamIsToldService {
   @OnEvent(GroundworkEvents.CALL_ASKED)
   async onCallAsked(e: CallAskedEvent) {
     try {
+      /* A public request has no account or organisation row to read; it names itself. */
       const [org, who] = await Promise.all([
-        this.prisma.organization.findUnique({ where: { id: e.organizationId }, select: { name: true } }),
-        this.prisma.user.findUnique({ where: { id: e.askedByUserId }, select: { email: true } }),
+        e.organizationId ? this.prisma.organization.findUnique({ where: { id: e.organizationId }, select: { name: true } }) : null,
+        e.askedByUserId ? this.prisma.user.findUnique({ where: { id: e.askedByUserId }, select: { email: true } }) : null,
       ]);
+      const orgName = org?.name ?? e.requester?.orgName ?? 'an organisation';
+      const whoAsked = who?.email ?? (e.requester ? `${e.requester.name} (${e.requester.email})` : 'Somebody');
       const about = WHAT_A_CALL_IS_ABOUT[e.subject] ?? e.subject.toLowerCase();
       await this.tell(
-        `Asked for ${about}: ${org?.name ?? 'an organisation'}`,
-        [`${who?.email ?? 'Somebody'} at ${org?.name ?? 'an organisation'} asked for ${about}.`, ...(e.note ? [`They wrote: "${e.note}"`] : [])],
+        `Asked for ${about}: ${orgName}`,
+        [`${whoAsked} at ${orgName} asked for ${about}.`, ...(e.note ? [`They wrote: "${e.note}"`] : [])],
         { label: 'See requests', url: this.app('/ops/requests') },
       );
     } catch (err: any) { this.logger.warn(`call.asked alert failed: ${err?.message}`); }

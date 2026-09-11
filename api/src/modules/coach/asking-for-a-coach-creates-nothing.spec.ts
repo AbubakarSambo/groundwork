@@ -43,7 +43,7 @@ const makeService = (over: Record<string, any> = {}) => {
       emailed.push({ to, name });
     }),
   };
-  return { service: new CoachService(prisma, email), prisma, email, created, updated, emailed };
+  return { service: new CoachService(prisma, email, { emit: jest.fn() } as any), prisma, email, created, updated, emailed };
 };
 
 describe('asking to speak to a coach', () => {

@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { HOW_TO_STEPS } from '@/components/gw/how-a-check-in-is-run'
+import { TextAction } from '@/components/gw/kit'
+import { copy } from '@/components/gw/copying-can-fail'
 
 /**
  * THE PAGE AN ADMIN SENDS THEIR LEADS BEFORE A ROLLOUT.
@@ -19,6 +23,21 @@ import { HOW_TO_STEPS } from '@/components/gw/how-a-check-in-is-run'
  */
 export function LeadsGuidePage() {
   const navigate = useNavigate()
+  const [copied, setCopied] = useState(false)
+
+  /**
+   * "SEND THIS LINK TO YOUR TEAM" WAS AN INSTRUCTION WITH NO CONTROL. The page told you to send it and
+   * gave you nothing to send it with, and it was linked from one admin-only screen, so the leads it
+   * was written for could not find it either (fix plan F12). The page does what it says now.
+   */
+  async function copyTheLink() {
+    if (await copy(window.location.href)) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      toast.error('Copying is not available here. Select the address bar and copy it yourself.')
+    }
+  }
 
   return (
     <div style={{ padding: '40px 32px', maxWidth: 720 }}>
@@ -35,7 +54,8 @@ export function LeadsGuidePage() {
         Running a check-in
       </h1>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', marginBottom: 32, lineHeight: 1.6 }}>
-        For anybody about to lead one. Four things about how it works, and what you can see as the person who set it up. Send this link to your team.
+        For anybody about to lead one. Four things about how it works, and what you can see as the person who set it up. Send this link to your team.{' '}
+        <TextAction onClick={copyTheLink} strong>{copied ? 'Copied ✓' : 'Copy the link'}</TextAction>
       </p>
 
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 12 }}>How to run one</div>
