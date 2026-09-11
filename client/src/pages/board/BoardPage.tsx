@@ -581,7 +581,16 @@ export function BoardPage() {
             )}
             <Card>
               {b.objectives.map((o, i) => {
-                const pct = o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0
+                /*
+                  A MEASURE THAT GOES DOWN IS STILL GOING WELL.
+
+                  This was count/target, so a ceiling - "first response under four hours", "no more
+                  than two stock-outs" - filled backwards: a team getting faster watched their bar
+                  shrink. The server now sends the journey, worked out from where it started rather
+                  than from a column anybody has to set. The old arithmetic is the fallback for a
+                  board whose rounds predate any snapshot.
+                */
+                const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
                   <Row key={o.id} first={i === 0}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -600,8 +609,12 @@ export function BoardPage() {
                           <div style={{ width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 64, textAlign: 'right' }}>
-                            <b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}
+                          {/* Three numbers a person can check, rather than a share of a target that
+                              means the opposite thing on a ceiling. */}
+                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 96, textAlign: 'right' }}>
+                            {o.journey?.start != null
+                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` · from ${o.journey.start}, said ${o.target}`}</>)
+                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}</>)}
                           </div>
                           <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
                             {o.delta > 0 ? `+${o.delta} this session` : 'no change'}

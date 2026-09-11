@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Sec } from './kit'
+import { WhatSuccessLooksLikeFor } from './WhatSuccessLooksLike'
 import { TheSharedPictureAPartyReads } from './the-shared-picture-a-party-reads'
 import { howCheckable } from './how-checkable-was-that-session'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -35,8 +36,9 @@ export interface SharedReportForAPartyProps {
 }
 
 export function SharedReportForAParty({
-  /* `groundId` stays on the props so callers do not change; nothing in here needs it any more,
-     which is what removing the reveal took out. */
+  /* `groundId` had stayed on the props only so callers would not change, which is what removing
+     the reveal took out. It is read again now: the against-what-was-said band fetches by it. */
+  groundId,
   report,
   ground,
   onOpenBoard,
@@ -64,6 +66,17 @@ export function SharedReportForAParty({
 
   return (
     <>
+          {/*
+            WHERE IT STANDS AGAINST WHAT WAS SAID, FIRST, ON BOTH REPORT TABS.
+
+            The objective is the thing the product asks for at setup and the thing it never showed
+            anybody against. This read existed and reached the board, the Context tab and the
+            session report - not either Report tab, which is where a party goes to find out how the
+            whole run is going. Every line below means something different depending on what it was
+            in service of, so it goes above them.
+          */}
+          <WhatSuccessLooksLikeFor groundId={groundId} />
+
           {/*
             * THE BOARD IS THE FIRST DOOR ON THIS VIEW, AS IT IS ON THE LEAD'S.
             *
