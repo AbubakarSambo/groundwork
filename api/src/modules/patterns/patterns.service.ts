@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { whatWasSeenLastPeriod, lastPeriodBlockFor } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
@@ -89,9 +90,30 @@ export class PatternsService {
       );
     }
 
+    /**
+     * WHAT WAS SEEN LAST PERIOD, SO THE SAME THING IS RECOGNISABLE AS THE SAME THING.
+     *
+     * The detector read one period in isolation and was never told what it saw last time, so it
+     * labelled fresh every period from thirty codes with overlapping signals - and a behaviour that
+     * genuinely persisted came back under a different code, which resets the streak. Every
+     * behavioural detection in the database sits at periodsObserved = 1, with last periods as high
+     * as 20; the only code that ever reaches three is the deterministic scorer, which cannot
+     * relabel itself because it is a measurement rather than a label.
+     *
+     * The three-period rule does not move. See the module next door for why this is not a way
+     * round it, and for the guardrail, which is the one already used twice in this codebase.
+     */
+    const lastPeriod = await this.prisma.patternDetection
+      .findMany({
+        where: { participantId: checkIn.participantId, lastPeriodNumber: checkIn.sessionNumber - 1 },
+        select: { code: true, observationText: true, lastPeriodNumber: true },
+      })
+      .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
+    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, checkIn.sessionNumber));
+
     try {
       const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
-        PATTERN_DETECTION_PROMPT,
+        PATTERN_DETECTION_PROMPT + recogniseBlock,
         [{ role: 'user', content }],
         PATTERN_DETECTION_SCHEMA,
       );
