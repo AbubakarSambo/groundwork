@@ -5049,6 +5049,10 @@ model BackOfficePass {
   /// The code in flight, hashed, and when it stops being accepted. Cleared on verification.
   codeHash      String?   @map("code_hash")
   codeExpiresAt DateTime? @map("code_expires_at")
+  /// Wrong guesses against the code in flight. A six-digit code is a million guesses; without a
+  /// counter, an attacker with a session on a staff account could simply try them. Reset whenever a
+  /// new code is sent, and the code is destroyed when this passes the ceiling.
+  wrongGuesses  Int       @default(0) @map("wrong_guesses")
 
   @@map("back_office_passes")
 }

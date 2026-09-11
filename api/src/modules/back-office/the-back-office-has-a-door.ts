@@ -12,6 +12,17 @@
 export const A_WEEK_MS = 7 * 24 * 3600_000;
 export const CODE_LIFETIME_MS = 10 * 60_000;
 
+/**
+ * How many wrong codes before the code in flight is destroyed.
+ *
+ * Five. A six-digit code is a million possibilities and nothing counted the attempts, so the only
+ * thing in front of the back office was how fast guesses could be posted - by somebody who already
+ * holds a session on a staff account, which is the case this second factor exists for. The code is
+ * destroyed rather than the person locked out: asking again is one click and resets the count, so a
+ * flood costs the attacker the code and costs the owner an email.
+ */
+export const GUESSES_ALLOWED = 5;
+
 export interface DoorFacts {
   path: string;
   /** Nobody signed in: a public route, and not this door's business. */

@@ -807,7 +807,9 @@ export class AdminService implements OnApplicationBootstrap {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`User ${userId} not found`);
 
-    const plainOtp = String(Math.floor(100000 + Math.random() * 900000));
+    /* The platform's CSPRNG, not Math.random - this is the whole of the second factor in front of
+       a platform-admin action. See GUESSES_ALLOWED for the other half. */
+    const plainOtp = String(crypto.randomInt(100000, 1000000));
     const hash = await bcrypt.hash(plainOtp, 10);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
 
