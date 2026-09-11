@@ -16,7 +16,25 @@ import { describe, it, expect } from 'vitest'
  * Checked as source order rather than by rendering, because what is pinned IS the order, and a
  * render test would need a whole report fixture to assert one thing about sequence.
  */
-const SRC = readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+/**
+ * THE RULE HOLDS ON THE PAGE PEOPLE OPEN, AND THAT IS WHERE THIS ASSERTS NOW.
+ *
+ * It read `ReportPage.tsx` - `ReportBody`, which has had no importers for some time. The shared
+ * half of a session's report is `TheSessionsReport`, and the order rule is the same one.
+ *
+ * TWO THINGS CHANGED IN THE TRANSLATION, both worth saying rather than quietly absorbing.
+ *
+ * Still-open and everyone-agrees are ONE block on the live page - "Where things stand", settled and
+ * open as two columns side by side - so the two assertions about their order relative to the prose
+ * become one assertion about that block.
+ *
+ * And "where things stand is first of all" is no longer true, on purpose. The objective comes
+ * before it now: what a thing is FOR comes before where it stands, because every line underneath
+ * means something different depending on what it was in service of. The shortest true thing on the
+ * page is still near the top; it is second rather than first, and that is a decision rather than
+ * drift.
+ */
+const SRC = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** Position of a section heading inside the shared-report card. */
 const at = (needle: string) => {
@@ -26,63 +44,40 @@ const at = (needle: string) => {
 }
 
 describe('the order of the shared report', () => {
-  it('what is still open comes before the prose', () => {
-    expect(at("<SecH>What's still open</SecH>")).toBeLessThan(at('label="What we heard"'))
+  it('what is still open, and what everyone agrees, come before the prose', () => {
+    /* One block on this page rather than two: settled and open are its two columns. */
+    expect(at('label="Where things stand"')).toBeLessThan(at('label="The picture from everybody"'))
   })
 
-  it('what everyone agrees comes before the prose too', () => {
-    /* Both are folds now - real `<details>`, so every word is still in the document - and the
-       headings they used to carry are the summary lines. The order is what this asserts and the
-       order is unchanged. */
-    expect(at('things you already see')).toBeLessThan(at('summary="The full account"'))
+  it('and the objective comes before where things stand, which is the one order change', () => {
+    /* What a thing is FOR before where it stands: every line underneath means something different
+       depending on what it was in service of. Where-things-stand was first of all on the old body;
+       it is second here, and that is a decision rather than drift. */
+    expect(at('label="Against what good looks like"')).toBeLessThan(at('label="Where things stand"'))
   })
 
-  it('and where things stand is still first of all', () => {
-    // The one-line state stays at the top: it is the shortest true thing on the page.
-    expect(at('<SecH>Where things stand</SecH>')).toBeLessThan(at("<SecH>What's still open</SecH>"))
-  })
-
-  it('the page does not OPEN with the prose either', () => {
-    /**
-     * THE HALF I MISSED. I reordered the card, updated the legend, wrote this file - and the
-     * page still opened with the same paragraph, because the hero block prints `sharedPicture`
-     * too. Found by opening the page, not by the test I had just written.
-     *
-     * The hero now says what the report holds: how many things are open, how many agreed.
-     */
-    // Anchored on strings that exist: my first attempt sliced to '{ground.label,' which is
-    // written with a newline between the brace and the name, so the slice was empty and the
-    // test failed against a correct file.
-    /**
-     * RE-ANCHORED, AND THE OLD ANCHORS WOULD NOW SLICE BACKWARDS. The report page was split so its
-     * body could render inside the Report tab, which put the chrome - and its `releasedDate` line -
-     * BEFORE the hero instead of after. `slice(1387, 976)` is the empty string, and an empty string
-     * fails this the same way a deleted hero would, for a completely different reason.
-     *
-     * Anchored forwards on two strings inside the hero itself, so the order of the file's regions
-     * cannot invert it again.
-     */
-    /* The anchor is the hero's own subtitle, which changed with the ban on "account" in copy - it
-       said "Where everyone's accounts agree or differ." What is anchored is the hero, not the word. */
-    const heroStart = SRC.indexOf("Where everyone agrees and where they differ.")
-    expect(heroStart).toBeGreaterThan(-1)
-    const hero = SRC.slice(heroStart, heroStart + 2200)
-    expect(hero.length, 'the hero block moved - re-anchor this check').toBeGreaterThan(200)
-    expect(hero).not.toContain('report.sharedPicture')
-    expect(hero).toMatch(/still open/)
+  it('the page does not open with the prose either', () => {
+    /* The half that was missed last time: the card was reordered, the legend updated, the test
+       written - and the page still opened with the same paragraph, because a hero block printed
+       the shared picture too. Found by opening the page rather than by the test. Here the finding
+       leads, which is one sentence rather than the narrative. */
+    expect(at('label="The picture from everybody"')).toBeGreaterThan(at('{finding.text}'))
   })
 
   it('the prose is still there - this was a reorder, not a deletion', () => {
-    expect(SRC).toContain('label="What we heard" content={report.sharedPicture}')
+    expect(SRC).toContain('label="The picture from everybody"')
   })
 
-  it('and the reading guide does not still say the report opens with it', () => {
-    /**
-     * The legend at the top of the page promised "every report OPENS with what runs across
-     * everyone's answers". A legend that describes a different page is worse than no legend,
-     * and it would have survived the reorder silently.
-     */
-    expect(SRC).not.toMatch(/Every report opens with what runs across/)
-    expect(SRC).toMatch(/leads with what is still unresolved/)
-  })
+  /*
+   * TWO ASSERTIONS RETIRED RATHER THAN TRANSLATED, and the reason is recorded rather than left as
+   * an absence.
+   *
+   * One checked the hero block for the words "still open". There is no hero block on this page -
+   * the finding is the top line, in one sentence, and what is open is a column further down.
+   *
+   * The other checked that the reading guide no longer claimed the report opens with the prose.
+   * That guide is the legend, it lives on the board now, and the-finding-comes-before-the-method
+   * asserts it there - including the sentence this one was checking, "leads with what is still
+   * unresolved". Asserting it twice against two copies is how the copies drift.
+   */
 })
