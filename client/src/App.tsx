@@ -33,6 +33,7 @@ import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
+import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import { BoardPage } from '@/pages/board/BoardPage'
 import { BillingPage } from '@/pages/billing/BillingPage'
 import { PricingPage } from '@/pages/billing/PricingPage'
@@ -401,6 +402,14 @@ export default function App() {
             <Route path="/grounds/:id/p" element={<RequireOrgSetup><GroundParticipantPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/report" element={<RequireOrgSetup><ReportPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
+            {/*
+              EVERY REPORT SURFACE ON ONE PAGE, while the rebuild runs.
+              
+              Signed in like every other route, and it fetches nothing of its own: each surface
+              calls the endpoint it always calls with the reader's own token, so this adds no route
+              to any data. Nothing links to it. It goes when the last surface is ported.
+            */}
+            <Route path="/preview/reports" element={<RequireOrgSetup><EveryReportSideBySide /></RequireOrgSetup>} />
             {/* One round's report, for a lead or org admin with no session of their own on it. */}
             <Route path="/grounds/:id/session/:sessionNumber" element={<RequireOrgSetup><RoundReportPage /></RequireOrgSetup>} />
             {/*
