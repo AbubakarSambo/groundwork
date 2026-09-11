@@ -869,8 +869,13 @@ export function groupOf(card: { cardKey: string; scenario: string }): string {
 export const THE_OPENING_QUESTION =
   /* The words followed the picker. "Scroll for the full list" and "describe your own at the bottom"
      were both true of a long scrolling list with the catch-all last, and both wrong the moment it
-     became one group at a time with describing your own at the top. */
-  'What brings you here? Describe it in your own words, or pick the situation that fits.'
+     became one group at a time with describing your own at the top.
+  
+     Then they followed the job. "Pick the situation that fits" asked somebody to classify
+     themselves, which is a question about us, and left them guessing what picking one would do.
+     What a situation actually does is set the context for what the people they invite will be
+     asked about - so the sentence says that, and the choice becomes a means rather than a label. */
+  'What brings you here? Describe it in your own words, or choose a situation to set the context for what you want people to check in on or provide updates about.'
 
 /*
  * THE GROUPS SOMEBODY PICKS BETWEEN, which is not all of them.
