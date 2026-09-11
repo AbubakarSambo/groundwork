@@ -2514,7 +2514,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
             detectedFunction: p.detectedFunction ?? null, detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
           })),
           checkIns: everyAnswered.map((c) => ({ participantId: c.participantId, sessionNumber: c.sessionNumber, status: CheckInStatus.COMPLETED })),
-          entries: everyEntry.map((e) => ({ participantId: e.participantId, sessionNumber: e.checkIn?.sessionNumber ?? sessionNumber, text: cleanText(e.text) })),
+          /*
+           * THE RAW TEXT, MARKER AND ALL, AND THIS WAS A REAL FAULT.
+           *
+           * `cleanText` strips the `[VERIFIABILITY:HIGH]` prefix the extraction stamps on every
+           * row. These reads decide how checkable somebody's account is by reading exactly that
+           * prefix, so stripping it first made every entry unverifiable, for everybody, always.
+           *
+           * Read live on 11 September: a person who had given five dates, three names, a count of
+           * twenty three items and two documents was told on the shared picture "1 check-in on
+           * record. Nothing named so far could be checked by anyone else - no named people,
+           * organisations, numbers or dates." The board says the opposite about the same rows,
+           * because the board passes them through untouched.
+           *
+           * The reads strip the marker themselves before showing anything (see `body` in
+           * reads.ts), so nothing reaches a reader with machinery on the front of it.
+           */
+          entries: everyEntry.map((e) => ({ participantId: e.participantId, sessionNumber: e.checkIn?.sessionNumber ?? sessionNumber, text: e.text })),
           mentions: mentionRows,
           dependencies: currentDeps.map((d: any) => ({
             fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId, onLabel: d.onLabel,
