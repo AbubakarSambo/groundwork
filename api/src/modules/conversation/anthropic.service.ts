@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { whyThisModelIsNotAllowed } from './a-preview-model-has-no-data-terms';
+import { withoutTheEmptyOnes } from './an-item-the-model-left-empty-is-not-an-item';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -585,7 +586,44 @@ export class AnthropicService implements OnApplicationBootstrap {
       this.logger.warn(`extract(): tool ${tool.name} returned null/undefined args`);
       return null;
     }
-    return args as T;
+
+    /*
+     * AND ITEMS WITH NOTHING IN THEM ARE NOT ITEMS. See
+     * an-item-the-model-left-empty-is-not-an-item.ts for the live report this was found on: three
+     * headed cards on somebody's own report with no words under any of them.
+     *
+     * Asked again once when it happens, because the same request answered correctly on every
+     * reproduction - so a second attempt is likely to have the content, and the count is the only
+     * signal there is that the first one did not. Then whichever answer we keep is cleaned, so a
+     * page can never be handed an item it has to draw and has nothing to draw.
+     */
+    const first = withoutTheEmptyOnes(args as T);
+    if (first.dropped === 0) return first.value;
+
+    this.logger.warn(
+      `extract(): tool ${tool.name} returned ${first.dropped} item(s) with nothing in them. Asking once more.`,
+    );
+    try {
+      const cleaner = await this.client.models.generateContent({
+        model: this.model,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: 8192,
+          tools: [{ functionDeclarations: [this.convertTool(tool)] }],
+          toolConfig: { functionCallingConfig: { mode: 'ANY' as any, allowedFunctionNames: [tool.name] } },
+        },
+      });
+      const retryArgs = cleaner.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall)?.functionCall?.args;
+      if (retryArgs) {
+        const second = withoutTheEmptyOnes(retryArgs as T);
+        /* The better of the two, not simply the newer: a retry that is emptier is not an improvement. */
+        if (second.dropped < first.dropped) return second.value;
+      }
+    } catch (err: any) {
+      this.logger.warn(`extract(): the retry for empty items failed: ${err?.message ?? err}`);
+    }
+    return first.value;
   }
 
   private convertTool(tool: { name: string; description: string; input_schema: any }) {

@@ -112,7 +112,15 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       const mid = (n: string) => (n === 'You' ? 'you' : n);
       /* "Zainab Bello and You are waiting": the reader's label is only capitalised when it opens the sentence. */
       const whoSaid = who.length ? andList(who.map((n, i) => (i === 0 ? n : mid(n)))) : 'Somebody';
-      const head = `${whoSaid} ${who.length > 1 ? 'are' : 'is'} waiting${on.length ? ` on ${andList(on.map(mid))}` : ''} for ${items}${escalated ? `, ${escalated === bs.length ? 'and has escalated it' : `and ${escalated} of ${bs.length} has been escalated`}` : ', with no escalation on record'}.`;
+      /*
+       * "YOU IS WAITING ON RUNA" - read off a live report, 11 September.
+       *
+       * The verb agreed with how many people were waiting, which is right for every name and wrong
+       * for the one subject that is a pronoun. "You" takes a plural verb however many of you there
+       * are, so the subject decides it and the count only decides the rest.
+       */
+      const subjectIsYou = who.length === 1 && who[0] === 'You';
+      const head = `${whoSaid} ${who.length > 1 || subjectIsYou ? 'are' : 'is'} waiting${on.length ? ` on ${andList(on.map(mid))}` : ''} for ${items}${escalated ? `, ${escalated === bs.length ? (who.length > 1 || subjectIsYou ? 'and have escalated it' : 'and has escalated it') : `and ${escalated} of ${bs.length} has been escalated`}` : ', with no escalation on record'}.`;
       const tail = kind ? ` ${WHAT_IT_MEANS[kind as Kind]} ${WHO_CAN_MOVE_IT[kind as Kind]}` : '';
       out.push({
         key: `block-${kind || 'unkinded'}`,

@@ -9,6 +9,7 @@ import {
 import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
+import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
@@ -1138,7 +1139,8 @@ from finishing at all.`;
      * invitation. So the two lists are separated here, where it is arithmetic.
      * Nothing is dropped - everything the extractor found is still on the page.
      */
-    const split = splitMentions(report.mentionedPeople ?? []);
+    /* "Tunde's" came back as somebody's name on a live run. See a-name-is-not-a-possessive.ts. */
+    const split = splitMentions(namesWithoutPossessives(report.mentionedPeople ?? []));
 
     /**
      * W2 REACHES THE REPORT TOO, and this is where she actually read it: her
