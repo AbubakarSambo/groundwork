@@ -7,6 +7,9 @@ import { conversationApi } from '@/api/conversation'
 import { Folded } from './two-accounts-side-by-side'
 import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 import { HowSpecificThisSessionWas } from './HowSpecificThisSessionWas'
+import { TheFiveThingsThatMakeItCheckable } from './TheFiveThingsThatMakeItCheckable'
+import { groundsApi } from '@/api/grounds'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE END OF A SIGNED-IN CHECK-IN, REBUILT AS A · SESSION.
@@ -98,11 +101,14 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
   const gone = !!row.disputedAt
   return (
     <div style={{ display: 'grid', gap: 4 }}>
+      {/* A quote, because it is one: these are this person's own words, lifted. Set as plain
+          body text they read as the product's prose about them, which is the opposite of true. */}
       <p style={{
-        margin: 0, fontSize: 13.5, color: gone ? 'var(--gw-muted)' : 'var(--gw-text)',
+        margin: 0, fontSize: 13.5, fontStyle: 'italic',
+        color: gone ? 'var(--gw-muted)' : 'var(--gw-text)',
         textDecoration: gone ? 'line-through' : undefined, ...PROSE,
       }}>
-        {row.text}
+        “{row.text}”
       </p>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
@@ -143,6 +149,22 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
 const STILL_OPEN = ['ASK', 'WORRY', 'TENSION', 'OPERATING_DIFFERENCE']
 const AGAINST_IT = ['SUCCESS_DEFINITION', 'TIMEFRAME', 'TOLERANCE']
 
+/**
+ * THE THREE WORDS A ROW IS ALLOWED TO BE, AND WHY THE COLOUR IS NOT ONE OF THEM.
+ *
+ * This drew a coloured dot and nothing else, which is a code with no key: green, clay and grey
+ * against three states somebody has to already know. The template shows the word beside the row
+ * and the colour only carries it.
+ *
+ * "Met" is deliberately not among them - whether a condition has been satisfied is a judgement
+ * about the world, and committing to do a thing is not the thing being done.
+ */
+const SAYS: Record<string, { word: string; dot: string }> = {
+  moving: { word: 'moving', dot: 'var(--gw-green-t)' },
+  stuck: { word: 'stuck', dot: 'var(--gw-clay)' },
+  unspoken: { word: 'not spoken to', dot: 'var(--gw-border)' },
+}
+
 export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }: {
   checkInId: string
   groundId: string
@@ -173,6 +195,22 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
     queryKey: ['artifact', checkInId],
     queryFn: () => conversationApi.artifact(checkInId),
     enabled: !!checkInId,
+    retry: false,
+  })
+
+  /* The check-in itself, for two things the template's sheet carries and this had neither of: the
+     date this sitting happened, and the five dimensions behind block 6. Both are already on the
+     ground payload; nothing new is computed for either. */
+  const ground = useQuery({
+    queryKey: ['ground', groundId],
+    queryFn: () => groundsApi.get(groundId),
+    enabled: !!groundId,
+    retry: false,
+  })
+  const mySpecificity = useQuery({
+    queryKey: ['my-specificity', groundId],
+    queryFn: () => groundsApi.getMySpecificity(groundId),
+    enabled: !!groundId,
     retry: false,
   })
 
@@ -208,6 +246,9 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
   const mySuccess: string | null = ((d?.againstSuccess?.definitions ?? []) as any[])
     .filter(x => x.who == null || (yourName && x.who === yourName))
     .map(x => x.text).pop() ?? null
+  /* This sitting's own row on the ground, for the date in the masthead and the five dimensions. */
+  const thisSitting: any = ((ground.data as any)?.checkIns ?? []).find((c: any) => c.id === checkInId)
+    ?? ((ground.data as any)?.checkIns ?? []).find((c: any) => c.sessionNumber === sessionNumber)
 
   if (session.isLoading && whole.isLoading && artifact.isLoading) return null
 
@@ -227,8 +268,11 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         <div style={{ marginTop: 4, fontFamily: MONO, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
           {[
             `check-in ${sessionNumber}${d?.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
+            /* The date this sitting happened. A report with no date on it is a report somebody
+               cannot place against anything else that was going on that week. */
+            thisSitting?.completedAt ? whenItWas(thisSitting.completedAt, 'dayAndMonth') : '',
             'yours · nobody else reads this half',
-          ].join(' · ')}
+          ].filter(Boolean).join(' · ')}
         </div>
       </div>
 
@@ -259,6 +303,17 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
                 </p>
               </>
             )}
+          {/*
+            AND WHICH OF IT IS YOURS, which is the second half of this block on the template's own
+            sheet and was missing entirely. The objective without it is a statement about the team;
+            with it, it is a statement about what this person is answerable for - which is the only
+            reason their own half opens with it.
+          */}
+          {yours.length > 0 && (
+            <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
+              <b>Your part:</b> {yours.map((c: any) => c.text).join('; ')}.
+            </p>
+          )}
         </Block>
       )}
 
@@ -266,21 +321,29 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       {yours.length > 0 && (
         <Block n={next()} label="Where you are against it" note="your rows only">
           <div style={{ display: 'grid', gap: 8 }}>
-            {yours.map((c: any, i: number) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'start' }}>
-                <span aria-hidden style={{
-                  marginTop: 6, width: 6, height: 6, borderRadius: 3,
-                  background: c.state === 'moving' ? 'var(--gw-green-t)' : c.state === 'stuck' ? 'var(--gw-clay)' : 'var(--gw-border)',
-                }} />
-                <div>
-                  <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{c.text}</p>
-                  {/* No score and no on-track label. Each row says what it says, and says what it
-                      was read off, so a reader who thinks the match is wrong can see that it is. */}
-                  {c.why && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--gw-sub)', ...PROSE }}>“{c.why}”</p>}
+            {yours.map((c: any, i: number) => {
+              const says = SAYS[c.state as string] ?? SAYS.unspoken
+              return (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr auto', gap: 10, alignItems: 'start' }}>
+                  <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: says.dot }} />
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{c.text}</p>
+                    {/* The match is shown, never just asserted: a row is put in a state by a line
+                        somebody actually wrote, and that line is printed under it, so a reader who
+                        thinks the match is wrong can see that it is wrong. */}
+                    {c.why && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--gw-sub)', ...PROSE }}>“{c.why}”</p>}
+                  </div>
+                  <span style={{
+                    fontFamily: MONO, fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase',
+                    color: 'var(--gw-sub)', whiteSpace: 'nowrap', marginTop: 3,
+                  }}>{says.word}</span>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
+          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+            No score, and no on-track label. Each row says what it says.
+          </p>
         </Block>
       )}
 
@@ -320,6 +383,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           {/* The session's own sentence, not a row echoed from block 3 - see the note on the
               type lists above. */}
           {carry && <p style={{ margin: 0, fontSize: 14, color: 'var(--gw-text)', fontWeight: 600, ...PROSE }}>{carry}</p>}
+          {/* NAMED AND DATED, which is the note on this block and half of what it was missing.
+              The date is the one this person gave for the work, not one invented here - so where
+              they never gave one, the block says a thing with no date on it rather than a date. */}
+          {d?.myTimeframe && (
+            <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>
+              By when, in your words: {d.myTimeframe}
+            </p>
+          )}
           {/*
             THE PRIVATE NOTE LIVES IN HERE AND NEVER BECOMES A SECTION OF ITS OWN.
             Given its own heading it reads as an assessment filed about somebody. Inside the block
@@ -346,6 +417,15 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         <div style={{ padding: '0 20px', borderTop: '1px solid var(--gw-border)' }}>
           <Folded summary="How much you gave this one">
             <HowSpecificThisSessionWas level={d.howClearThisWas.level} spots={r?.mySoftSpots ?? null} />
+            {/* The bar says how much; these five say of WHAT, which is the difference between a
+                reading somebody can act on and a mark they cannot. Same read as the one on the
+                run-long page, scoped to this sitting rather than across every one. */}
+            <TheFiveThingsThatMakeItCheckable
+              dimensions={thisSitting?.specificityDimensions ?? null}
+              sessionNumber={sessionNumber}
+              mostUseful={mySpecificity.data?.mostUseful ?? null}
+              strongest={mySpecificity.data?.strongest ?? null}
+            />
             <p style={{ margin: 0, fontSize: 12, color: 'var(--gw-sub)', ...PROSE }}>
               Yours alone. It is a read of how checkable this sitting is, not a mark on you.
             </p>
