@@ -320,7 +320,16 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         {d.againstSuccess && (
           <Row label="Against what good looks like">
             {/* The definitions render folded below, once; the component's own copy of them is switched off. */}
-            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} dense />
+            {/*
+              THE FULL BAND, NOT THE ONE-LINE VERSION.
+
+              `WhatSuccessLooksLike`'s own header says the full band renders "where there is room to
+              work in it: the board, and each session's report" - and this, the session's report,
+              was passing `dense`, which drops the per-condition standing and the counts and keeps a
+              single sentence. So the one read built to answer "where are we against what we said"
+              printed one line on the page most people actually open.
+            */}
+            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} />
             {definitions.length > 0 && (
               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                 {definitions.map((def, i) => {

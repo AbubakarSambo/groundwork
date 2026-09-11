@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
+import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { groundTabs } from './ground-tabs'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
@@ -2313,6 +2314,14 @@ export function GroundAdminPage() {
                 <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
               </div>
             )}
+            {/*
+              WHERE IT STANDS AGAINST WHAT WAS SAID, ABOVE THE SESSIONS.
+
+              Same read the participant's tab now carries, and the same reason: the objective is
+              what the product asks for at setup and what it showed nobody against. A list of
+              sessions with no statement of what they are for is a list.
+            */}
+            <div style={{ marginBottom: 12 }}><WhatSuccessLooksLikeFor groundId={ground.id} /></div>
             <TheReportIsAListOfSessions
               rows={sessionRows}
               boardRenders={!!(ground as any).boardRenders}
