@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost } from '@/components/gw/kit'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 
 /**
  * The delivery board.
@@ -102,6 +103,8 @@ export function BoardPage() {
     onError: () => toast.error('That count did not change — try again.'),
   })
 
+  /* A second press before a target is gone. See a-second-press-before-it-is-gone.tsx. */
+  const sureAboutTarget = useAreYouSure<string>()
   const removeObjective = useMutation({
     mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
     onSuccess: invalidate,
@@ -480,23 +483,31 @@ export function BoardPage() {
                         <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
-                            disabled={bumpObjective.isPending || o.count === 0}
+                            disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
                             title="Move this count down"
                             style={miniBtn}
                           >-</button>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
-                            disabled={bumpObjective.isPending}
+                            disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                             title="Move this count up"
                             style={miniBtn}
                           >+</button>
                           <button
-                            onClick={() => removeObjective.mutate(o.id)}
+                            onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
                             title="Remove this target"
+                            aria-label={`Remove target: ${o.name}`}
                             style={{ ...miniBtn, color: 'var(--gw-clay)' }}
                           >x</button>
                         </span>
+                      )}
+                      {sureAboutTarget.isArmed(o.id) && (
+                        <Confirm
+                          saying={`Remove the target "${o.name}"? Its count and history go with it.`}
+                          confirmLabel="Remove it" keepLabel="Keep it" pending={removeObjective.isPending} pendingLabel="Removing…"
+                          onConfirm={() => removeObjective.mutate(o.id)} onKeep={sureAboutTarget.disarm}
+                        />
                       )}
                     {/* The record suggests, the lead decides. Never auto-applied:
                         a number a person set is theirs until they change it. */}
@@ -507,7 +518,7 @@ export function BoardPage() {
                         </span>
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
-                          disabled={bumpObjective.isPending}
+                          disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                           style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 11, border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           Use {o.suggestedCount}

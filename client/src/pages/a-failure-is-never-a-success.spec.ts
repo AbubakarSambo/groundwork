@@ -48,8 +48,7 @@ function mutationsIn(src: string): { name: string; block: string }[] {
 const NOT_YET_REVIEWED = new Set([
   'settings/SettingsPage.tsx#savePhone', 'settings/SettingsPage.tsx#toggleNotif',
   'auth/LinkSentPanel.tsx#resend',
-  'org/IntegrationsPage.tsx#askForAccess', 'org/IntegrationsPage.tsx#revoke', 'org/IntegrationsPage.tsx#rotate',
-  'org/IntegrationsPage.tsx#removeEndpoint', 'org/IntegrationsPage.tsx#replay',
+  'org/IntegrationsPage.tsx#askForAccess', 'org/IntegrationsPage.tsx#replay',
   'admin/AdminPage.tsx#toggle', 'admin/AdminPage.tsx#markAnswered', 'admin/AdminPage.tsx#markRead',
   'admin/ApiAccessPage.tsx#clearFlag',
   'ops/OpsResourcesPage.tsx#recheck', 'ops/OpsCompanyPages.tsx#open', 'ops/OpsCompanyPages.tsx#decide',

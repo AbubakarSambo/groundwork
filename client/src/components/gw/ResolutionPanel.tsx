@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { resolutionApi } from '@/api/resolution'
 import { toast } from 'sonner'
+import { Confirm } from './a-second-press-before-it-is-gone'
 
 /**
  * HOW A GROUND ENDS.
@@ -36,6 +37,7 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
 }) {
   const qc = useQueryClient()
   const [picked, setPicked] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['resolution', groundId],
@@ -53,6 +55,7 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       qc.invalidateQueries({ queryKey: ['grounds'] })
       setPicked(null)
+      setConfirming(false)
       toast.success(
         state?.resolution?.closedAt
           ? 'Everyone chose the same outcome. This check-in is closed.'
@@ -144,9 +147,9 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
             ))}
           </div>
 
-          {canChoose && (
+          {canChoose && !confirming && (
           <button
-            onClick={() => picked && proposeMut.mutate(picked)}
+            onClick={() => picked && setConfirming(true)}
             disabled={!picked || proposeMut.isPending}
             style={{
               padding: '10px 18px', borderRadius: 7, border: 'none', fontFamily: 'inherit',
@@ -158,6 +161,18 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
           >
             {proposeMut.isPending ? 'Recording…' : myChoiceExists ? 'Change my answer' : 'This is my answer'}
           </button>
+          )}
+          {/*
+            THE CONSEQUENCES, THEN THE PRESS. The options include ending the engagement, and this was
+            one click. Same shape as the decline confirm on the check-in page: what happens is listed,
+            and the second press records it.
+          */}
+          {canChoose && confirming && picked && (
+            <Confirm danger={false}
+              saying={`Record "${options.find(o => o.value === picked)?.label ?? picked}" as your answer? It is kept on the record with your name against it. ${leadDecides ? 'As the lead, your answer closes this check-in.' : 'This check-in closes only when everyone picks the same outcome, and nobody closes it alone.'} Everybody's accounts stay on the record whichever way it goes.`}
+              confirmLabel="Yes, record it" keepLabel="Not yet" pending={proposeMut.isPending} pendingLabel="Recording…"
+              onConfirm={() => proposeMut.mutate(picked)} onKeep={() => setConfirming(false)}
+            />
           )}
         </>
       )}

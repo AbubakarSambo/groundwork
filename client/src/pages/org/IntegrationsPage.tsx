@@ -4,6 +4,7 @@ import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { integrationsApi } from '@/api/integrations'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
+import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 
 /**
  * WHERE AN ADMIN CONNECTS THEIR OWN SYSTEMS, WITHOUT TALKING TO US FIRST.
@@ -227,8 +228,11 @@ export function IntegrationsPage() {
   })
   const revoke = useMutation({
     mutationFn: integrationsApi.revokeCredential,
-    onSuccess: () => { toast.success('Revoked.'); qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] }) },
+    onSuccess: () => { toast.success('Revoked.'); sure.disarm(); qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not revoke it. The key still works.'),
   })
+  /* One armed control at a time, keyed on what it would destroy. See a-second-press-before-it-is-gone.tsx. */
+  const sure = useAreYouSure<string>()
 
   /**
    * REPLACING ONE IS WHAT ROTATING ACTUALLY IS.
@@ -257,7 +261,9 @@ export function IntegrationsPage() {
   })
   const rotate = useMutation({
     mutationFn: integrationsApi.rotateSecret,
-    onSuccess: r => { setFreshHookSecret(r.secret); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
+    onSuccess: r => { setFreshHookSecret(r.secret); sure.disarm(); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
+    /* A failed rotate used to look identical to a successful one. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not rotate the secret. The old one is unchanged.'),
   })
   const reactivate = useMutation({
     mutationFn: integrationsApi.reactivateEndpoint,
@@ -266,7 +272,8 @@ export function IntegrationsPage() {
   })
   const removeEndpoint = useMutation({
     mutationFn: integrationsApi.removeEndpoint,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }),
+    onSuccess: () => { sure.disarm(); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not remove it. It is still registered.'),
   })
   const replay = useMutation({
     mutationFn: integrationsApi.replay,
@@ -414,7 +421,7 @@ export function IntegrationsPage() {
               <button
                 type="button"
                 onClick={() => askForAccess.mutate()}
-                disabled={askForAccess.isPending || !acceptedTerms}
+                disabled={askForAccess.isPending || !acceptedTerms || whatFor.trim().length < 20}
                 style={{ marginTop: 8, fontSize: 13, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {askForAccess.isPending ? 'Asking…' : 'Ask for access'}
@@ -600,8 +607,17 @@ export function IntegrationsPage() {
                     Replace
                   </button>
                 )}
-                <button style={S.ghost} onClick={() => revoke.mutate(c.clientId)}>Revoke</button>
+                {/* Red, so it is not visually identical to Replace beside it; and a second press, because
+                    the secret is hashed at issue and this cannot be brought back. */}
+                <button style={{ ...S.ghost, color: 'var(--gw-red-t)' }} onClick={() => sure.arm(`revoke:${c.clientId}`)} disabled={revoke.isPending}>Revoke</button>
               </div>
+            )}
+            {sure.isArmed(`revoke:${c.clientId}`) && (
+              <Confirm
+                saying={`Revoke "${c.name}"? Anything using it stops working immediately, and it cannot be brought back.`}
+                confirmLabel="Revoke it" keepLabel="Keep it" pending={revoke.isPending} pendingLabel="Revoking…"
+                onConfirm={() => revoke.mutate(c.clientId)} onKeep={sure.disarm}
+              />
             )}
           </div>
         </div>
@@ -747,10 +763,24 @@ export function IntegrationsPage() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {!e.active && <button style={S.ghost} onClick={() => reactivate.mutate(e.id)} disabled={reactivate.isPending}>Switch back on</button>}
-              <button style={S.ghost} onClick={() => rotate.mutate(e.id)}>Rotate secret</button>
-              <button style={S.ghost} onClick={() => removeEndpoint.mutate(e.id)}>Remove</button>
+              <button style={S.ghost} onClick={() => sure.arm(`rotate:${e.id}`)} disabled={rotate.isPending}>Rotate secret</button>
+              <button style={{ ...S.ghost, color: 'var(--gw-red-t)' }} onClick={() => sure.arm(`remove:${e.id}`)} disabled={removeEndpoint.isPending}>Remove</button>
             </div>
           </div>
+          {sure.isArmed(`rotate:${e.id}`) && (
+            <Confirm danger={false}
+              saying={`Rotate the signing secret for ${e.url}? The old one keeps working until the next rotation; the new one is shown once.`}
+              confirmLabel="Rotate it" keepLabel="Keep the current one" pending={rotate.isPending} pendingLabel="Rotating…"
+              onConfirm={() => rotate.mutate(e.id)} onKeep={sure.disarm}
+            />
+          )}
+          {sure.isArmed(`remove:${e.id}`) && (
+            <Confirm
+              saying={`Remove ${e.url}? Nothing more is delivered to it, and its delivery log stays.`}
+              confirmLabel="Remove it" keepLabel="Keep it" pending={removeEndpoint.isPending} pendingLabel="Removing…"
+              onConfirm={() => removeEndpoint.mutate(e.id)} onKeep={sure.disarm}
+            />
+          )}
         </div>
       ))}
 
@@ -889,7 +919,7 @@ export function IntegrationsPage() {
                   {d.nextAttemptAt && ` · next try ${new Date(d.nextAttemptAt).toLocaleTimeString()}`}
                 </div>
               </div>
-              <button style={S.ghost} onClick={() => replay.mutate(d.id)}>Send again</button>
+              <button style={S.ghost} onClick={() => replay.mutate(d.id)} disabled={replay.isPending && replay.variables === d.id}>{replay.isPending && replay.variables === d.id ? 'Sending…' : 'Send again'}</button>
             </div>
           ))}
         </div>
