@@ -125,7 +125,7 @@ export function TalkToUsPage() {
           {COACHING_PRICE.hourly}, or {COACHING_PRICE.retained}. {COACHING_PRICE.note}
         </p>
 
-        {said && said !== 'sent' && <p className="gw-er" style={{ fontSize: 13, marginBottom: 12 }}>{said}</p>}
+        {said && said !== 'sent' && <p className="gw-er" role="alert" style={{ fontSize: 13, marginBottom: 12 }}>{said}</p>}
 
         <button
           type="submit"
