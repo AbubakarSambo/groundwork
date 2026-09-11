@@ -172,6 +172,47 @@ class EntryLeadDto {
  * Every key the client's EntryReport has is declared here, because forbidNonWhitelisted turns an
  * undeclared key into a 400 (which is how this DTO came to exist in the first place).
  */
+/**
+ * THE ITEMS INSIDE THE REPORT'S ARRAYS, DECLARED - AND THIS WAS THE BUG.
+ *
+ * The arrays below were `@IsOptional() @IsArray()` with no item type. The global pipe runs with
+ * `whitelist: true`, which strips every property it was not told about - and with no `@Type()` on
+ * the item, it was told about none of them. So each `{title, observation, whyItMatters,
+ * recommendedMove}` arrived, passed validation, and was written to the database with nothing left
+ * in it.
+ *
+ * WHAT THAT LOOKED LIKE. The report the person read at the end of their session was complete: it
+ * comes straight back from `POST /entry/report` and never passes through this pipe. The copy stored
+ * on their check-in went through here, so when they opened the same report a minute later from
+ * Report, it was three cards headed "What we noticed", "Why it matters" and "What to do next" with
+ * no words under any of them. Reported four times as "the report looks nothing like what I got at
+ * the end". It looked nothing like it because half of it had been stripped off in the doorway.
+ *
+ * Every array on this DTO gets its item type for the same reason. An `@IsArray()` with no `@Type()`
+ * under a whitelisting pipe is not a loose check - it is a silent delete.
+ */
+class AreaRequiringAlignmentDto {
+  @IsOptional() @IsString() @MaxLength(300) title?: string;
+  @IsString() @MaxLength(4000) observation: string;
+  @IsString() @MaxLength(4000) whyItMatters: string;
+  @IsString() @MaxLength(4000) recommendedMove: string;
+}
+
+class AlignmentReachedDto {
+  @IsOptional() @IsString() @MaxLength(300) title?: string;
+  @IsString() @MaxLength(4000) note: string;
+}
+
+class PersonMentionedDto {
+  @IsString() @MaxLength(300) name: string;
+  @IsOptional() @IsString() @MaxLength(2000) context?: string;
+}
+
+class SuggestedPartyDto {
+  @IsString() @MaxLength(300) role: string;
+  @IsOptional() @IsString() @MaxLength(2000) reason?: string;
+}
+
 class EntryReportSummaryDto {
   @IsIn(['Unresolved', 'Mixed', 'Emerging', 'Clear', 'Aligned'])
   alignmentStatus: 'Unresolved' | 'Mixed' | 'Emerging' | 'Clear' | 'Aligned';
@@ -186,25 +227,30 @@ class EntryReportSummaryDto {
   alignmentBasis?: string;
 
   @IsOptional() @IsArray() @ArrayMaxSize(50)
-  areasRequiringAlignment?: { title: string; observation: string; whyItMatters: string; recommendedMove: string }[];
+  @ValidateNested({ each: true }) @Type(() => AreaRequiringAlignmentDto)
+  areasRequiringAlignment?: AreaRequiringAlignmentDto[];
 
   @IsOptional() @IsArray() @ArrayMaxSize(50)
-  alignmentReached?: { title: string; note: string }[];
+  @ValidateNested({ each: true }) @Type(() => AlignmentReachedDto)
+  alignmentReached?: AlignmentReachedDto[];
 
   @IsOptional() @IsObject()
   honestClose?: { aligned: string; open: string; revisit: string; risk: string };
 
   @IsOptional() @IsArray() @ArrayMaxSize(100)
-  mentionedPeople?: { name: string; context: string }[];
+  @ValidateNested({ each: true }) @Type(() => PersonMentionedDto)
+  mentionedPeople?: PersonMentionedDto[];
 
   @IsOptional() @IsArray() @ArrayMaxSize(100)
-  alsoCameUp?: { name: string; context: string }[];
+  @ValidateNested({ each: true }) @Type(() => PersonMentionedDto)
+  alsoCameUp?: PersonMentionedDto[];
 
   @IsOptional() @IsString() @MaxLength(2000)
   alsoCameUpNote?: string | null;
 
   @IsOptional() @IsArray() @ArrayMaxSize(50)
-  suggestedParties?: { role: string; reason: string }[];
+  @ValidateNested({ each: true }) @Type(() => SuggestedPartyDto)
+  suggestedParties?: SuggestedPartyDto[];
 }
 
 export class EntryDocumentDto {
