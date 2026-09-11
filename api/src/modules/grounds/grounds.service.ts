@@ -1861,8 +1861,11 @@ export class GroundsService {
     })).filter(o => mayBeReadAgainst({
       participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
     })).length;
+    const targetCount = await this.prisma.groundObjective.count({ where: { groundId } });
 
     const gaps = contextGaps({
+      targetCount,
+      scenario: ground.scenario,
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
@@ -2025,7 +2028,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true,
+        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true, scenario: true,
         timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true } },
         objectives: { select: { id: true } },
@@ -2043,7 +2046,10 @@ export class GroundsService {
     })).filter(o => mayBeReadAgainst({
       participantId: o.participantId, text: o.text, authoredBy: o.authoredBy as any, seenBySubject: o.seenBySubject,
     })).length;
+    const targetCount = await this.prisma.groundObjective.count({ where: { groundId } });
     const gaps = contextGaps({
+      targetCount,
+      scenario: ground.scenario,
       /**
        * `null` here means "nobody chose this", not "the column is empty" - the column cannot be
        * empty. Passing the raw value made the duration question unaskable, which is the one thing
@@ -2116,6 +2122,28 @@ export class GroundsService {
     }
 
     /*
+     * THE MEASURES, WRITTEN ONLY ON A YES.
+     *
+     * A document does not have to set the bar, and it does not set it here either: the lead reads
+     * a proposal that names every measure it took and whether a number was found for each, and
+     * says yes. A target written without that is a bar nobody set, appearing on a board people are
+     * then read against - and unlike a wrong timeline it cannot be recognised as wrong by looking
+     * at it, because a plausible number looks exactly like an agreed one.
+     *
+     * `sortOrder` keeps the order they were named in: that is usually the order they matter in,
+     * and re-sorting reads as the product having an opinion about which comes first.
+     */
+    if (proposal.kind === 'targets') {
+      const existing = await this.prisma.groundObjective.count({ where: { groundId } });
+      await this.prisma.groundObjective.createMany({
+        data: proposal.targets.map((t, i) => ({
+          groundId, name: t.name, target: t.target, sortOrder: existing + i,
+        })),
+      });
+      return { changed: 'targets', say: proposal.say };
+    }
+
+    /*
      * WHAT DOING WELL LOOKS LIKE GOES WHERE WHAT DOING WELL LOOKS LIKE LIVES.
      *
      * This wrote `ground.brief`. The chat says "I will record that as what doing well looks like"
@@ -2131,6 +2159,11 @@ export class GroundsService {
      * effort toward the old one stays real and nobody is retroactively behind. Conditions carry
      * forward untouched - restating the goal is not a claim about them.
      */
+    /* An explicit branch rather than the last thing the method falls through to. It was the only
+       kind left when there were four; with five it has to say which one it is. */
+    if (proposal.kind !== 'success') {
+      throw new BadRequestException('That one is not something this conversation changes on its own.');
+    }
     const latestBaseline = await this.prisma.groundBaseline.findFirst({
       where: { groundId },
       orderBy: { version: 'desc' },
