@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Controller, Delete, Get, Patch, Post, Req, Param, Headers, HttpCode, HttpStatus, Logger, Body, Query, ForbiddenException, GoneException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
@@ -286,6 +287,8 @@ export class BillingController {
   }
 
   @Public()
+  /* Stripe retries on failure and sends bursts on a busy day; the limit is a ceiling against a flood, not a pace (A9). */
+  @Throttle({ global: { limit: 240, ttl: 60_000 } })
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Stripe webhook (raw body - verified by signature)' })

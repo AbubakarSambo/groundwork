@@ -21,7 +21,7 @@ function guard(claims: any, requiredScope?: string) {
   const req: any = { headers: { authorization: 'Bearer t' } };
   const ctx: any = { switchToHttp: () => ({ getRequest: () => req }), getHandler: () => null, getClass: () => null };
   /* Every call is written down and counted (the-api-is-watched.ts); neither is what this spec is about. */
-  const prisma: any = { apiCall: { count: jest.fn(async () => 0), create: jest.fn(() => Promise.resolve()) } };
+  const prisma: any = { apiCall: { count: jest.fn(async () => 0), create: jest.fn(() => Promise.resolve()) }, apiCredential: { findUnique: jest.fn(async () => ({ revokedAt: null })) } };
   return { g: new MachineTokenGuard(jwt, reflector, prisma), ctx, req };
 }
 

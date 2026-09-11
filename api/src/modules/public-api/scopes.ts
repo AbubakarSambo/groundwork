@@ -69,9 +69,22 @@ export function resolveGrantedScopes(held: string[], requested?: string | null):
  */
 const IMPLIED: Record<string, string[]> = {
   'graph:read': ['graph:write'],
+  /*
+   * A GRACE, NOT A RULE. POST findings/run was annotated findings:read and wrote proposals; it is
+   * proposals:write now (fix plan A11, 12 September 2026). Integrations calling it with a read-only
+   * credential would stop dead, so for one release findings:read still opens it, and the guard
+   * logs every credential relying on this line. Delete this entry in the release after.
+   */
+  'proposals:write': ['findings:read'],
 };
 
 export function holdsScope(held: readonly string[], required: string): boolean {
-  if (held.includes(required)) return true;
-  return (IMPLIED[required] ?? []).some((wider) => held.includes(wider));
+  return heldBy(held, required) !== null;
+}
+
+/** How a required scope is satisfied: directly, or through a scope that implies it. Null: not held. */
+export function heldBy(held: readonly string[], required: string): { how: 'directly' } | { how: 'implied'; by: string } | null {
+  if (held.includes(required)) return { how: 'directly' };
+  const wider = (IMPLIED[required] ?? []).find((w) => held.includes(w));
+  return wider ? { how: 'implied', by: wider } : null;
 }

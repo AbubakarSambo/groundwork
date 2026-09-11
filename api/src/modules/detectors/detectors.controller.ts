@@ -92,7 +92,10 @@ export class DetectorsController {
   @Post('findings/run')
   @HttpCode(200)
   @UseGuards(MachineTokenGuard)
-  @RequiresScope('findings:read')
+  /* It writes Recommendation rows, so it is the write scope the accept and decline routes already
+     carry. A read-only credential was writing proposals with it (fix plan A11). For one release a
+     credential holding only findings:read is still let through, and logged - see scopes.ts IMPLIED. */
+  @RequiresScope('proposals:write')
   @ApiOperation({ summary: 'Run the detectors now, and propose any conversation they imply' })
   async run(@Req() req: { machine: MachineCaller }) {
     const found = await this.detectors.run(req.machine.organizationId);

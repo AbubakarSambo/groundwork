@@ -98,7 +98,7 @@ export class WhatsAppForAnOrganisationController {
   @Post('webhooks/whatsapp/:organizationId')
   @HttpCode(200)
   @ApiExcludeEndpoint()
-  @Throttle({ default: { limit: 240, ttl: 60_000 } })
+  @Throttle({ global: { limit: 240, ttl: 60_000 } })
   async receive(@Param('organizationId') organizationId: string, @Req() req: RawBodyRequest<Request>): Promise<{ received: true }> {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     /* Unknown organisation: acknowledge, so Meta does not retry forever - but SAY SO. This returned 200 with

@@ -90,6 +90,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ global: { limit: 10, ttl: 60000 } })
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify email with token' })

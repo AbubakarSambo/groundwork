@@ -39,7 +39,8 @@ import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL } from './what-y
 import { SENDABLE_EVENTS } from '../webhooks/events-we-can-actually-send';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
-const TOKEN_TTL_SECONDS = 900;
+/* Five minutes, from fifteen: the guard now refuses a revoked credential at once, and a short life is the second line (A10). */
+const TOKEN_TTL_SECONDS = 300;
 
 /**
  * THE INTEGRATION SURFACE, DELIBERATELY SEPARATE FROM EVERYTHING INTERNAL.

@@ -173,9 +173,9 @@ function MayOpenCheckIns({ children }: { children: React.ReactNode }) {
   return <ADoorYouCannotOpen may={user?.mayOpenCheckIns !== false} what="open a check-in">{children}</ADoorYouCannotOpen>
 }
 
-function AdminsOnly({ children }: { children: React.ReactNode }) {
+function AdminsOnly({ children, what = 'add people to your organisation' }: { children: React.ReactNode; what?: 'add people to your organisation' | 'connect your systems' }) {
   const { user } = useAuthStore()
-  return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what="add people to your organisation">{children}</ADoorYouCannotOpen>
+  return <ADoorYouCannotOpen may={user?.role === 'ADMIN'} what={what}>{children}</ADoorYouCannotOpen>
 }
 
 function RequireOrgSetup({ children }: { children: JSX.Element }) {
@@ -503,9 +503,11 @@ export default function App() {
               */}
             <Route path="/org/guide" element={<LeadsGuidePage />} />
             {/* RequireOrgSetup rather than RequirePlatformAdmin: this is a CUSTOMER's admin connecting
-                their own systems, not Groundwork staff. The page itself refuses a non-admin, and
-                every endpoint behind it is admin-gated on the server. */}
-            <Route path="/org/integrations" element={<RequireOrgSetup><IntegrationsPage /></RequireOrgSetup>} />
+                their own systems, not Groundwork staff. Every endpoint behind it is admin-gated on the
+                server, and since A12 the door is at the route: AdminsOnly, the same gate /org/members
+                has, rather than the page mounting and refusing - the pattern RequirePlatformAdmin's
+                note above was written to remove. */}
+            <Route path="/org/integrations" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
             <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />

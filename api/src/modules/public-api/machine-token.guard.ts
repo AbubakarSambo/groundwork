@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CALLS_PER_MINUTE } from './the-api-is-watched';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { holdsScope } from './scopes';
+import { heldBy } from './scopes';
 
 export const REQUIRED_SCOPE = 'required_scope';
 /** Declares what a public route needs. A route with none is a mistake, and the guard says so. */
@@ -92,14 +92,31 @@ export class MachineTokenGuard implements CanActivate {
       );
     }
 
+    /*
+     * REVOKED MEANS NOW. The token is signed and unexpired for up to its TTL after an admin presses
+     * revoke, and nothing here read the credential row, so a leaked credential kept working for the
+     * rest of that window with the leak known (fix plan A10). One indexed read; the two above are
+     * the pace and the record, this is the door.
+     */
+    const credential = await this.prisma.apiCredential.findUnique({ where: { clientId }, select: { revokedAt: true } });
+    if (!credential || credential.revokedAt) {
+      throw new UnauthorizedException('This credential has been revoked.');
+    }
+
     const required = this.reflector.getAllAndOverride<string>(REQUIRED_SCOPE, [ctx.getHandler(), ctx.getClass()]);
     if (!required) {
       throw new ForbiddenException('This endpoint has no declared scope and cannot be called.');
     }
     const scopes: string[] = claims.scopes ?? [];
-    /* `holdsScope`, not `includes`: a caller holding graph:write may read the graph. See scopes.ts. */
-    if (!holdsScope(scopes, required)) {
+    /* `heldBy`, not `includes`: a caller holding graph:write may read the graph. See scopes.ts. */
+    const held = heldBy(scopes, required);
+    if (!held) {
       throw new ForbiddenException(`This token does not hold the ${required} scope.`);
+    }
+    /* The grace period's evidence: which credentials are relying on an implied scope, so the
+       IMPLIED entry can be deleted when nobody is. */
+    if (held.how === 'implied' && held.by !== 'graph:write') {
+      this.logger.warn(`Credential ${clientId} called a ${required} route holding only ${held.by}; that grace ends next release.`);
     }
 
     req.machine = {

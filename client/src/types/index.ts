@@ -152,6 +152,13 @@ export interface LeadContextNote {
 export interface Ground {
   id: string
   initiatorId: string
+  /**
+   * WHO THE VIEWER IS TO THIS CHECK-IN, from the side that enforces it. The client rebuilt these
+   * from initiatorId and role in three places and disagreed with the server at the edges (A12).
+   * Optional only because a list row does not carry them; the ground read always does.
+   */
+  viewerIsInitiator?: boolean
+  viewerRunsThisGround?: boolean
   label: string
   scenario: GroundScenario
   moment: GroundMoment

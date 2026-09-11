@@ -795,7 +795,12 @@ export function ContextPage({
                           running this check-in" is a chair rather than a person: it stays readable
                           if the lead changes or an org admin steps in. That is the whole of the
                           difference from "Only me" and the only thing worth saying on the row. */}
-                      <option value="CLOSED">Whoever runs this check-in</option>
+                      {/* The server lets the initiator alone set this (documents.service, CLOSED). An admin
+                          who is not the lead was offered it and refused on press (A12): offered now only
+                          to the one who can use it, shown read-only where a document already has it. */}
+                      {(isTheLead || (doc as any).visibility === 'CLOSED') && (
+                        <option value="CLOSED" disabled={!isTheLead}>Whoever runs this check-in</option>
+                      )}
                     </select>
                   ) : (
                     <button

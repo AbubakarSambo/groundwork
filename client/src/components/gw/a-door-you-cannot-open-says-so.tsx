@@ -27,7 +27,7 @@ export function ADoorYouCannotOpen({
   /** Whether this person may use what is behind the door. */
   may: boolean
   /** What they were trying to do, in their words rather than the route's. */
-  what: 'open a check-in' | 'add people to your organisation'
+  what: 'open a check-in' | 'add people to your organisation' | 'connect your systems'
   children: ReactNode
 }) {
   const navigate = useNavigate()

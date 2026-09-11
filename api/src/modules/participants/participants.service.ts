@@ -1,3 +1,5 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { sessionClaims } from '../auth/a-session-token';
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { isASecondOrganisation, GUEST_ROLE } from './joining-a-second-organisation';
 import { JwtService } from '@nestjs/jwt';
@@ -117,7 +119,7 @@ export class ParticipantsService {
         await this.prisma.emailVerificationToken.create({
           data: {
             userId: user.id,
-            token: magicToken,
+            token: hashed(magicToken),
             // Same kind of token the returning-user sign-in link uses, so this
             // lands on the existing magic-link route rather than a new one.
             type: TokenType.EMAIL_VERIFICATION,
@@ -280,7 +282,7 @@ export class ParticipantsService {
       await this.prisma.emailVerificationToken.create({
         data: {
           userId: user.id,
-          token: setupToken,
+          token: hashed(setupToken),
           type: TokenType.PASSWORD_SETUP,
           expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
         },
@@ -347,7 +349,8 @@ export class ParticipantsService {
       }
     }
 
-    const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
+    /* The same claims every session token carries - see a-session-token.ts for why not a hand-copied payload. */
+    const accessToken = this.jwt.sign(sessionClaims(user, 'link'));
 
     return {
       accessToken,

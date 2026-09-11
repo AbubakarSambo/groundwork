@@ -50,7 +50,7 @@ export class WhatsAppController {
   }
 
   @Post()
-  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @Throttle({ global: { limit: 120, ttl: 60_000 } })
   async receive(@Req() req: RawBodyRequest<Request>): Promise<{ received: true }> {
     /**
      * SIGNATURE FIRST, BEFORE A SINGLE FIELD OF THE BODY IS READ.

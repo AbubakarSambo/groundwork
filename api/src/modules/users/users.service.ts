@@ -1,3 +1,4 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { Injectable, Logger, Inject, forwardRef, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { alreadyOpen, Subject } from './what-a-call-is-about';
 import * as crypto from 'crypto';
@@ -406,7 +407,7 @@ export class UsersService {
 
       const token = crypto.randomBytes(32).toString('hex');
       await tx.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+        data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
       });
 
       return { user, token };
@@ -500,7 +501,7 @@ export class UsersService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+      data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
     });
 
     await this.emailService.sendUserInvite(user.email, user.firstName, token, user.organization.name);

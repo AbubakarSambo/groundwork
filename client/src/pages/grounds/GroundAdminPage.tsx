@@ -490,7 +490,8 @@ export function GroundAdminPage() {
    */
   const startsAtOnRecord = (ground as any)?.startsAt ? String((ground as any).startsAt).slice(0, 10) : ''
 
-  const isInitiator = !!ground && user?.id === ground.initiatorId
+  /* The server's answer, which is what its routes test. The local formula stays only for the moment before the read lands. */
+  const isInitiator = (ground as any)?.viewerIsInitiator ?? (!!ground && user?.id === ground.initiatorId)
 
   /**
    * WHO GETS THE ADMIN VIEW. Her decision: the lead of that ground, and org admins
@@ -508,7 +509,7 @@ export function GroundAdminPage() {
    * rendering for somebody it was not built for.
    */
   const isOrgAdmin = user?.role === 'ADMIN'
-  const canRunThisGround = isInitiator || isOrgAdmin
+  const canRunThisGround = (ground as any)?.viewerRunsThisGround ?? (isInitiator || isOrgAdmin)
   /**
    * AND WHETHER THEY ARE IN IT, WHICH IS A DIFFERENT QUESTION.
    *

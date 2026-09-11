@@ -53,6 +53,7 @@ export class ParticipantsController {
 
   @Public()
   @OptionalAuth()
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
   @Post('accept')
   @ApiOperation({ summary: 'Accept an invite - returns an auth token and the check-in to enter' })
   async accept(@Body() dto: AcceptInviteDto, @Req() req: any) {

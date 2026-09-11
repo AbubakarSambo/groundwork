@@ -65,7 +65,8 @@ describe('and the guard asks holdsScope rather than includes', () => {
     .replace(/^\s*\/\/.*$/gm, '');
 
   it('consults the implication table', () => {
-    expect(src).toContain('holdsScope(scopes, required)');
+    /* `heldBy` since A11: the same table, and it also says HOW the scope was held, so the guard can log a credential relying on a grace. */
+    expect(src).toContain('heldBy(scopes, required)');
     expect(src).not.toMatch(/scopes\.includes\(required\)/);
   });
 });

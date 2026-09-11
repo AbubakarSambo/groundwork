@@ -1,3 +1,4 @@
+import { Throttle } from '@nestjs/throttler';
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { IsISO8601, IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
@@ -70,6 +71,7 @@ export class CoachController {
    * one their problem is. Requiring an account first would remove the only path they have.
    */
   @Public()
+  @Throttle({ global: { limit: 10, ttl: 60_000 } })
   @Post('request')
   @ApiOperation({ summary: 'Ask to speak to a coach. Creates no ground and invites nobody.' })
   async request(@Body() dto: CoachRequestDto) {

@@ -27,7 +27,7 @@ export class UnsubscribeController {
   @HttpCode(200)
   /* Slower than a normal route on purpose. The token is long and random, so guessing is not worth
      attempting - but nothing should be able to sit and try. */
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
   async unsubscribe(@Param('token') token: string) {
     return this.digests.unsubscribe(token);
   }

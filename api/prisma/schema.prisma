@@ -530,6 +530,11 @@ model User {
   awaitingOrgApproval Boolean  @default(false) @map("awaiting_org_approval")
   isEmailVerified     Boolean  @default(false) @map("is_email_verified")
   isPlatformAdmin     Boolean  @default(false) @map("is_platform_admin")
+  /// Minted into every session token and compared on every request. Bumped by a password reset, so
+  /// the sessions that prompted the reset end with it (fix plan A10 / B16). Tokens from before the
+  /// column carry no epoch and read as 0, which is every existing row's value: nobody is signed out
+  /// by the deploy.
+  tokenEpoch          Int      @default(0) @map("token_epoch")
   googleId            String?  @unique @map("google_id")
   emailNotifications  Boolean  @default(true) @map("email_notifications")
   // E.164 format (e.g. "+2348012345678"). Global uniqueness - one Groundwork

@@ -15,7 +15,7 @@ export class ResendWebhookController {
   constructor(private delivery: DeliveryService) {}
 
   @Public()
-  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @Throttle({ global: { limit: 120, ttl: 60_000 } })
   @Post('resend')
   async resend(@Req() req: RawBodyRequest<Request>) {
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));

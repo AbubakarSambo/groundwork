@@ -1,3 +1,5 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { sessionClaims } from '../auth/a-session-token';
 import {
   A_JOIN_LINK_LASTS_HOURS,
   WhatWeSay,
@@ -1723,6 +1725,9 @@ from finishing at all.`;
      */
     const pending = await this.prisma.pendingSignup.findUnique({ where: { draftToken } });
     if (pending) {
+      /* The same test the EntryDraft branch below and the pendingJoin path run. A leaked or logged
+         draft token was valid for ever on this branch alone (fix plan A10). */
+      if (pending.expiresAt < new Date()) throw new NotFoundException('Draft not found');
       const mergedPending = { ...((pending.payload ?? {}) as Record<string, any>), ...payload };
       const typedOrgName = typeof payload.orgName === 'string' ? payload.orgName.trim().slice(0, 120) : undefined;
       await this.prisma.pendingSignup.update({
@@ -2006,7 +2011,7 @@ from finishing at all.`;
     if (!existingAccount) {
       const setupToken = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+        data: { userId: user.id, token: hashed(setupToken), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
       });
       this.email.sendAddPasswordEmail(email, user.firstName, setupToken).catch(() => null);
     }
@@ -2024,7 +2029,8 @@ from finishing at all.`;
        there: that is what keeps their own grounds reachable. The check-in they just joined is owned
        by their participant row, not by the token's organisation, and jwt.strategy re-reads the
        organisation from the user row on every request in any case. */
-    const accessToken = this.jwt.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role });
+    /* The same claims every session token carries - see a-session-token.ts for why not a hand-copied payload. */
+    const accessToken = this.jwt.sign(sessionClaims(user, 'link'));
     this.logger.log(`join-confirm: ${email} joined ground ${ground.id} -> check-in ${checkIn.id} (new user: ${!existingAccount}, queued: ${queuedForApproval})`);
     return {
       groundId: ground.id, checkInId: checkIn.id, accessToken, userId: user.id, existingAccount,

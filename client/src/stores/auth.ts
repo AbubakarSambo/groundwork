@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { posthog } from '@/lib/posthog'
 import { markSignedIn, clearSignedIn } from '@/lib/signed-in-flag'
 import { takeItAllWithYou } from '@/lib/what-signing-out-takes-with-it'
+import { queryClient } from '@/lib/queryClient'
 import type { User } from '@/types'
 
 interface AuthState {
@@ -18,7 +19,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -54,9 +55,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       updateUser: (userData) => {
+        /* A role that changed changes what every list and button on the page may show. The store
+           learned it; the query cache was still answering from the old role (A12). */
+        const roleChanged = userData.role !== undefined && userData.role !== get().user?.role
         set((state) => ({
           user: state.user ? { ...state.user, ...userData } : null,
         }))
+        if (roleChanged) void queryClient.invalidateQueries()
       },
     }),
     {

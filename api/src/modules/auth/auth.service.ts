@@ -1,3 +1,5 @@
+import { hashed } from './a-token-is-stored-as-its-hash';
+import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
 import {
   Injectable,
   ConflictException,
@@ -226,7 +228,7 @@ export class AuthService {
       if (user.googleId) {
         const token = crypto.randomBytes(32).toString('hex');
         await this.prisma.emailVerificationToken.create({
-          data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
+          data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
         });
         this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
           this.logger.error(`Failed to send add-password email to ${user.email}: ${err.message}`),
@@ -237,7 +239,7 @@ export class AuthService {
       // link so they can get back in without needing to contact anyone.
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
       });
       this.emailService.sendAddPasswordEmail(user.email, user.firstName, token).catch((err) =>
         this.logger.error(`Failed to send password setup email to ${user.email}: ${err.message}`),
@@ -607,7 +609,7 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
@@ -660,7 +662,7 @@ export class AuthService {
         if (!inviterOrganizationId) await theFirstAdminHoldsIt(tx, organizationId, u.id);
         const token = crypto.randomBytes(32).toString('hex');
         await tx.emailVerificationToken.create({
-          data: { userId: u.id, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from a team invitation') },
+          data: { userId: u.id, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from a team invitation') },
         });
         return { firstName, token };
       });
@@ -705,7 +707,7 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('sign in from a team invitation') },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }
@@ -731,7 +733,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
+      data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
     });
 
     const result = await this.emailService.sendSignInLinkEmail(email, user.firstName, token).catch((err) => {
@@ -750,7 +752,7 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       /* A fifth window (24h) sat here, distinct from the other three PASSWORD_SETUP ones for no
          stated reason. It is an emailed setup link like the others, so it uses their window. */
-      data: { userId, token, type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
+      data: { userId, token: hashed(token), type: TokenType.PASSWORD_SETUP, expiresAt: expiresAtFor('set a password from an email') },
     });
     return { token };
   }
@@ -767,7 +769,7 @@ export class AuthService {
 
     const token = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId: user.id, token, type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
+      data: { userId: user.id, token: hashed(token), type: TokenType.PASSWORD_RESET, expiresAt: expiresAtFor('reset a password') },
     });
 
     const result = await this.emailService.sendPasswordResetEmail(user.email, user.firstName, token).catch((err) => {
@@ -782,9 +784,15 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash } });
+      /*
+       * THE OTHER SESSIONS END HERE. Whoever prompted this reset is holding a token that stays valid
+       * for its full seven days unless something invalidates it; the epoch does (A10 / B16). The
+       * session minted below is from the UPDATED row, so it carries the new epoch and is the one
+       * that survives.
+       */
+      const updated = await tx.user.update({ where: { id: tokenRecord.userId }, data: { passwordHash, tokenEpoch: { increment: 1 } } });
       await tx.emailVerificationToken.update({ where: { id: tokenRecord.id }, data: { usedAt: new Date() } });
-      return tokenRecord.user;
+      return { ...tokenRecord.user, ...updated };
     });
 
     return await this.buildAuthResponse(user as unknown as UserWithOrg);
@@ -896,15 +904,19 @@ export class AuthService {
     return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName };
   }
 
-  async validateToken(token: string, type: string): Promise<{ valid: boolean; email?: string; firstName?: string }> {
+  /**
+   * VALID, AND NOTHING ELSE. This returned the address and first name behind an unused set-password
+   * link, so a forwarded or logged link disclosed whose it was before anybody set anything (A10).
+   */
+  async validateToken(token: string, type: string): Promise<{ valid: boolean }> {
     const tokenType =
       type === 'PASSWORD_SETUP' ? TokenType.PASSWORD_SETUP : type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.EMAIL_VERIFICATION;
 
-    const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token }, include: { user: true } });
+    const tokenRecord = await this.prisma.emailVerificationToken.findUnique({ where: { token: hashed(token) }, select: { usedAt: true, expiresAt: true, type: true } });
     if (!tokenRecord || tokenRecord.usedAt || tokenRecord.expiresAt < new Date() || tokenRecord.type !== tokenType) {
       return { valid: false };
     }
-    return { valid: true, email: tokenRecord.user.email, firstName: tokenRecord.user.firstName };
+    return { valid: true };
   }
 
   /**
@@ -946,7 +958,7 @@ export class AuthService {
     await this.prisma.emailVerificationToken.create({
       data: {
         userId,
-        token,
+        token: hashed(token),
         type: TokenType.PASSWORD_SETUP,
         /** Short: this is handed straight to the screen in front of them, not emailed. Named in
             how-long-a-link-lasts.ts so the difference from the emailed one is a decision on
@@ -1076,7 +1088,7 @@ export class AuthService {
 
   private async consumeToken(token: string, expectedType: TokenType, opts: { allowExpiredMessage: string }) {
     const tokenRecord = await this.prisma.emailVerificationToken.findUnique({
-      where: { token },
+      where: { token: hashed(token) },
       include: { user: { include: { organization: true } } },
     });
     /**
@@ -1263,8 +1275,8 @@ export class AuthService {
    * its second check and walks through the door; a password or link session is asked for a code.
    * See ops/the-back-office-has-a-door.ts.
    */
-  private generateToken(user: { id: string; email: string; organizationId: string; role: string }, via: 'password' | 'link' | 'google' = 'password') {
-    return this.jwtService.sign({ sub: user.id, email: user.email, organizationId: user.organizationId, role: user.role, via });
+  private generateToken(user: ASessionHolder, via: SignedInVia = 'password') {
+    return this.jwtService.sign(sessionClaims(user, via));
   }
 
   private async generateUniqueSlug(name: string): Promise<string> {

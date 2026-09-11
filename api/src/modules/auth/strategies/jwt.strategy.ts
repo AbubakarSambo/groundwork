@@ -11,6 +11,8 @@ export interface JwtPayload {
   role: string;
   /** How the session was made: password, link or google. Absent on tokens from before 10 Sep 2026. */
   via?: string;
+  /** See User.tokenEpoch. Absent on tokens minted before the column; read as 0. */
+  epoch?: number;
 }
 
 @Injectable()
@@ -34,6 +36,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user || !user.isActive || user.deletedAt) {
       throw new UnauthorizedException('User not found or inactive');
+    }
+    /*
+     * A TOKEN ASSERTS A FACT THAT WAS TRUE WHEN IT WAS MINTED. A password reset bumps the epoch;
+     * every token minted before it stops here, which is the point of resetting (A10 / B16).
+     */
+    if ((payload.epoch ?? 0) !== user.tokenEpoch) {
+      throw new UnauthorizedException('You were signed out when the password changed. Sign in again.');
     }
 
     return {

@@ -1,3 +1,4 @@
+import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, POSITIVE_CODES, isPositiveCode } from '../patterns/pattern-library';
 import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -880,7 +881,7 @@ export class GroundsService {
   private async buildPasswordSetupUrl(userId: string, next?: string): Promise<string> {
     const setupToken = crypto.randomBytes(32).toString('hex');
     await this.prisma.emailVerificationToken.create({
-      data: { userId, token: setupToken, type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
+      data: { userId, token: hashed(setupToken), type: TokenType.PASSWORD_SETUP, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) },
     });
     const base = `${this.config.get<string>('resend.frontendUrl') ?? ''}/set-password?token=${setupToken}`;
     return next ? `${base}&next=${encodeURIComponent(next)}` : base;
@@ -1684,6 +1685,15 @@ export class GroundsService {
        */
       peersVisibleEffective: peersVisible,
       peersDefaultVisible: !evaluative,
+      /*
+       * WHO THE VIEWER IS TO THIS CHECK-IN, said by the side that enforces it. The client rebuilt
+       * these two from initiatorId and role in three places and disagreed with the server on the
+       * edges - an org admin offered a control only the initiator may use (fix plan A12). Two plain
+       * booleans, in the spirit of the note above: not a capability list, the two facts the routes
+       * actually test.
+       */
+      viewerIsInitiator,
+      viewerRunsThisGround,
       alignment,
       daysLeft,
       brief,

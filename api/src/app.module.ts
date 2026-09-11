@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { THE_THROTTLER } from './common/the-throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BackOfficeDoorGuard } from './modules/back-office/back-office-door.guard';
 import { BackOfficeModule } from './modules/back-office/back-office.module';
@@ -57,7 +58,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
      * (@nestjs/throttler accepts one) and delete this comment. Said here rather than left to be
      * discovered, the way the old exchange-code Map said it (fix plan B15).
      */
-    ThrottlerModule.forRoot([{ name: 'global', ttl: 60000, limit: 60 }]),
+    ThrottlerModule.forRoot([{ name: THE_THROTTLER, ttl: 60000, limit: 60 }]),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     PrismaModule,

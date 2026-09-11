@@ -46,7 +46,8 @@ describe('who opted in', () => {
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('the invite-accept route did; the Google callback did not', () => {
     const participants = strip(readFileSync(join(__dirname, '..', '..', 'modules', 'participants', 'participants.controller.ts'), 'utf8'));
-    expect(participants).toMatch(/@Public\(\)\s*@OptionalAuth\(\)\s*@Post\('accept'\)/);
+    /* A limit of its own sits in the stack since A9; the two decorators that matter are still both there, in order. */
+    expect(participants).toMatch(/@Public\(\)\s*@OptionalAuth\(\)\s*(?:@Throttle\([^)]*\)\s*)?@Post\('accept'\)/);
     const auth = strip(readFileSync(join(__dirname, '..', '..', 'modules', 'auth', 'auth.controller.ts'), 'utf8'));
     expect(auth).not.toContain('@OptionalAuth()');
   });
