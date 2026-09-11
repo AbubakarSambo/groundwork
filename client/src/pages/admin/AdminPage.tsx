@@ -280,7 +280,8 @@ function PricingRow({ row }: { row: PricingPlanRow }) {
     onSuccess: rows => {
       qc.setQueryData(['admin-pricing'], rows)
       setEditing(false)
-      toast.success(`${row.label} updated. Existing subscribers keep their current price until they change plans.`)
+      /* The public pricing page is built from fixed figures and is frozen; the table and the page disagree until it is rebuilt (A15). */
+      toast.success(`${row.label} updated. Existing subscribers keep their current price until they change plans. The public pricing page still shows the figure it was built with until the site is rebuilt.`)
     },
     onError: () => toast.error('The price did not change — try again.'),
   })

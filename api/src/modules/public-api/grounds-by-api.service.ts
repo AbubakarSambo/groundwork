@@ -355,7 +355,13 @@ export class GroundsByApiService {
     if (!ground) throw new NotFoundException('No such check-in.');
     if (!items?.length) throw new BadRequestException('Send at least one objective.');
 
-    const out: { externalId: string; id: string; kind: string | null }[] = [];
+    /*
+     * THE WHOLE BATCH IS CHECKED BEFORE ANY OF IT IS WRITTEN (fix plan F14). This threw on the first
+     * bad item with every earlier item already upserted, so a caller with a 400 could not tell
+     * whether nothing, some or nearly all of their objectives had landed. Every check runs first,
+     * every write runs inside one transaction: a rejected batch wrote nothing.
+     */
+    const checked: { item: SeedInput; participantId: string; owedToId: string | null }[] = [];
     for (const item of items) {
       if (!item.externalId) throw new BadRequestException('Each objective needs an externalId of its own.');
       if (!item.text?.trim()) {
@@ -384,50 +390,58 @@ export class GroundsByApiService {
       const owedTo = item.owedToPersonExternalId
         ? await this.participantFor(groundId, organizationId, item.owedToPersonExternalId)
         : null;
-      const shape = normalise(item);
-
-      const row = await this.prisma.personObjective.upsert({
-        where: {
-          groundId_sourceSystem_externalId: {
-            groundId, sourceSystem: 'api', externalId: item.externalId,
-          },
-        },
-        create: {
-          groundId,
-          participantId: participant.id,
-          text: item.text.trim(),
-          ...shape,
-          dueSaid: item.dueSaid ?? null,
-          whyThisNumber: item.whyThisNumber?.trim() || null,
-          owedToParticipantId: owedTo?.id ?? null,
-          /*
-           * Not the acting user's id. `authoredBy` answers "who set this", and for a seeded
-           * agreement the honest answer is the customer's system - which is what makes the intake
-           * block able to say "your organisation records this" rather than "the lead said this".
-           */
-          authoredBy: 'lovedida',
-          sourceSystem: 'api',
-          externalId: item.externalId,
-          approvedByExternalId: item.approvedByExternalId ?? null,
-          effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
-          seenBySubject: item.seenBySubject === true,
-          trackedUrl: item.trackedUrl ?? null,
-        },
-        update: {
-          text: item.text.trim(),
-          ...shape,
-          dueSaid: item.dueSaid ?? null,
-          whyThisNumber: item.whyThisNumber?.trim() || null,
-          owedToParticipantId: owedTo?.id ?? null,
-          approvedByExternalId: item.approvedByExternalId ?? null,
-          effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
-          seenBySubject: item.seenBySubject === true,
-          trackedUrl: item.trackedUrl ?? null,
-        },
-        select: { id: true, kind: true },
-      });
-      out.push({ externalId: item.externalId, id: row.id, kind: String(row.kind) });
+      checked.push({ item, participantId: participant.id, owedToId: owedTo?.id ?? null });
     }
+
+    const out = await this.prisma.$transaction(async (tx) => {
+      const rows: { externalId: string; id: string; kind: string | null }[] = [];
+      for (const { item, participantId, owedToId } of checked) {
+        const shape = normalise(item);
+
+        const row = await tx.personObjective.upsert({
+          where: {
+            groundId_sourceSystem_externalId: {
+              groundId, sourceSystem: 'api', externalId: item.externalId,
+            },
+          },
+          create: {
+            groundId,
+            participantId,
+            text: item.text.trim(),
+            ...shape,
+            dueSaid: item.dueSaid ?? null,
+            whyThisNumber: item.whyThisNumber?.trim() || null,
+            owedToParticipantId: owedToId,
+            /*
+             * Not the acting user's id. `authoredBy` answers "who set this", and for a seeded
+             * agreement the honest answer is the customer's system - which is what makes the intake
+             * block able to say "your organisation records this" rather than "the lead said this".
+             */
+            authoredBy: 'lovedida',
+            sourceSystem: 'api',
+            externalId: item.externalId,
+            approvedByExternalId: item.approvedByExternalId ?? null,
+            effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
+            seenBySubject: item.seenBySubject === true,
+            trackedUrl: item.trackedUrl ?? null,
+          },
+          update: {
+            text: item.text.trim(),
+            ...shape,
+            dueSaid: item.dueSaid ?? null,
+            whyThisNumber: item.whyThisNumber?.trim() || null,
+            owedToParticipantId: owedToId,
+            approvedByExternalId: item.approvedByExternalId ?? null,
+            effectiveFrom: item.effectiveFrom ? new Date(item.effectiveFrom) : null,
+            seenBySubject: item.seenBySubject === true,
+            trackedUrl: item.trackedUrl ?? null,
+          },
+          select: { id: true, kind: true },
+        });
+        rows.push({ externalId: item.externalId, id: row.id, kind: String(row.kind) });
+      }
+      return rows;
+    });
 
     this.logger.log(`Seeded ${out.length} agreed objective(s) onto ground ${groundId}.`);
     return { seeded: out };

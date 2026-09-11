@@ -1045,6 +1045,10 @@ model GroundParticipant {
   whatWorked                 WhatWorked[]
   id                         String         @id @default(uuid())
   groundId                   String         @map("ground_id")
+  /// The SHA-256 of the lower-cased address this link had before the account was erased. Erasure
+  /// rewrites `email` to a deleted-... placeholder, which was the only key the retention sweep had,
+  /// so an erased person's raw turns outlived the window (fix plan A16). The sweep matches this too.
+  erasedFrom                 String?        @map("erased_from")
   userId                     String?        @map("user_id") // null until they accept the invite
   email                      String
   partyType                  PartyType
@@ -4192,6 +4196,8 @@ enum UsageEventType {
   ORG_CREATED
   SUBSCRIPTION_STARTED
   SUBSCRIPTION_CANCELLED
+  /// A model call made for nobody signed in: the /start page's FAQ and classifier (fix plan F13).
+  ANONYMOUS_MODEL_CALL
 }
 
 model UsageEvent {

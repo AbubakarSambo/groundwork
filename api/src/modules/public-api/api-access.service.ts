@@ -142,6 +142,10 @@ export class ApiAccessService {
       note: r.note,
       acceptedTermsAt: r.acceptedTermsAt,
       termsVersion: r.termsVersion,
+      /* Nothing compared the stamped version with the current one, so a bump left every approved
+         organisation on a stale acceptance no screen flagged (fix plan F15). What is done about it
+         is the terms owner's call; that it is so is shown. */
+      termsOutOfDate: !!r.acceptedTermsAt && r.termsVersion !== API_TERMS_VERSION,
       lastDay: lastDayByOrg.get(r.organizationId) ?? null,
       flags: flagsByOrg.get(r.organizationId) ?? [],
     }));

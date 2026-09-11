@@ -656,11 +656,12 @@ export class UsersService {
 
     // Anonymise each participant link individually to avoid unique-email conflicts
     // across multiple grounds.
-    const links = await this.prisma.groundParticipant.findMany({ where: { userId }, select: { id: true } });
+    const links = await this.prisma.groundParticipant.findMany({ where: { userId }, select: { id: true, email: true } });
     for (const link of links) {
       await this.prisma.groundParticipant.update({
         where: { id: link.id },
-        data: { email: `deleted-${link.id}@deleted`, roleAsDescribed: null },
+        /* The address goes; its hash stays, so the retention sweep can still find these turns (A16). */
+        data: { email: `deleted-${link.id}@deleted`, erasedFrom: link.email ? hashed(link.email.toLowerCase()) : null, roleAsDescribed: null },
       });
     }
 

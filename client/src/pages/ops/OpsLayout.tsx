@@ -77,6 +77,8 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const signedInAs = useAuthStore(state => state.user?.email)
   const logout = useAuthStore(state => state.logout)
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
+  /* Once per visit, after the read has said who this is: take the seat. A GET does not write the roster (A15). */
+  useEffect(() => { if (me.isSuccess) Promise.resolve().then(() => opsApi.enter()).catch(() => undefined) }, [me.isSuccess])
   /* ABOVE EVERY EARLY RETURN. Called after them it is a conditional hook: the refusal path renders
      fewer hooks than the ordinary one and React throws, which is how a guard for one silent
      failure produced a louder one. */

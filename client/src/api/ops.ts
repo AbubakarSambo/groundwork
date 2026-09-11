@@ -576,6 +576,8 @@ export interface OpsCommercialOverview {
 
 export const opsApi = {
   me: () => apiClient.get<OpsIdentity>('/ops/me', QUIET).then((r) => r.data),
+  /* Walking in is the write: a read of the back office no longer puts a platform admin on the roster; this does (A15). */
+  enter: () => apiClient.post<{ onTheRoster: boolean; as: string | null }>('/admin/ops/enter', undefined, QUIET).then((r) => r.data),
   boards: () => apiClient.get<OpsBoardListing>('/ops/boards', QUIET).then((r) => r.data),
   /** What Groundwork has told us: the webhooks that arrived, and the ones that did not verify. */
   groundworkEvents: () =>

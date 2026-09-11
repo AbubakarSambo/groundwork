@@ -1,5 +1,6 @@
 import { AMessageIntoACheckInDto } from '../../common/dto';
-import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Res, HttpStatus, UseGuards, HttpCode, Logger } from '@nestjs/common';
+import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { Response } from 'express';
@@ -31,6 +32,7 @@ class WhatWorkedDto {
 @UseGuards(JwtAuthGuard)
 @Controller('check-ins')
 export class ConversationController {
+  private readonly logger = new Logger(ConversationController.name);
   constructor(
     private readonly conversation: ConversationService,
     private readonly remind: RemindService,
@@ -92,7 +94,9 @@ export class ConversationController {
         write(evt);
       }
     } catch (err: any) {
-      write({ type: 'error', message: err?.message ?? 'stream failed' });
+      /* The wire gets a stable code and a safe sentence; the internal text goes to the log (F14). */
+      this.logger.warn(`Stream on check-in ${id} failed: ${err?.message}`);
+      write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
     } finally {
       res.write('data: [DONE]\n\n');
       res.end();

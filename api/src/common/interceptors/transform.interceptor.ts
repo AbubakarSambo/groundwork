@@ -1,3 +1,4 @@
+import { isPublished } from '../published-surfaces';
 import {
   Injectable,
   NestInterceptor,
@@ -35,7 +36,6 @@ export interface ApiResponse<T> {
  * the console to say why. Exactly the OAuth envelope bug again: an envelope added for our own
  * convenience, breaking a contract somebody else parses.
  */
-const PUBLISHED = [/^\/api\/org\/v1/, /^\/embed\.js/, /^\/embed\/panel/];
 
 @Injectable()
 export class TransformInterceptor<T>
@@ -46,7 +46,7 @@ export class TransformInterceptor<T>
     next: CallHandler,
   ): Observable<ApiResponse<T> | T> {
     const url: string = context.switchToHttp().getRequest()?.url ?? '';
-    if (PUBLISHED.some((p) => p.test(url))) return next.handle();
+    if (isPublished(url)) return next.handle();
 
     return next.handle().pipe(
       map((data) => ({

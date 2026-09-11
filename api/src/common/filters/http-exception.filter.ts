@@ -1,3 +1,4 @@
+import { isPublished } from '../published-surfaces';
 import {
   ExceptionFilter,
   Catch,
@@ -32,8 +33,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         message = exceptionResponse;
       } else if (typeof exceptionResponse === 'object') {
         const responseObj = exceptionResponse as Record<string, any>;
-        message = responseObj.message || message;
-        errors = responseObj.errors || null;
+        /*
+         * `message` IS A STRING, ALWAYS. class-validator hands the pipe an array of sentences and
+         * they landed here as `message`, so a caller got a string from every hand-thrown error and
+         * an array from the pipe (fix plan F14). The array is what `errors` was for.
+         */
+        if (Array.isArray(responseObj.message)) {
+          errors = responseObj.message;
+          message = summariseValidation(responseObj.message);
+        } else {
+          message = responseObj.message || message;
+          errors = responseObj.errors || null;
+        }
         code = typeof responseObj.code === 'string' ? responseObj.code : null;
       }
     } else if (exception instanceof Error) {
@@ -87,6 +98,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message = message.replace(/^[A-Z]\w*(Exception|Error):\s*/, '');
     }
 
+    /*
+     * A PUBLISHED SURFACE GETS A RAW BODY ON FAILURE AS IT DOES ON SUCCESS. One shape: the machine
+     * API's parser learns `{ error: { code, message, details } }` once. Same list the success
+     * interceptor reads. (F14)
+     */
+    if (isPublished(request.url)) {
+      response.status(status).json({
+        error: { code: code ?? codeFor(status), message, details: errors },
+      });
+      return;
+    }
+
     response.status(status).json({
       success: false,
       statusCode: status,
@@ -96,5 +119,29 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+  }
+}
+
+/** One sentence for a pipe failure; the sentences themselves travel as `errors` / `details`. */
+export function summariseValidation(sentences: string[]): string {
+  const fields = [...new Set(sentences.map((s) => String(s).split(' ')[0]).filter(Boolean))];
+  if (!fields.length) return 'The request did not validate.';
+  return fields.length === 1
+    ? `The request did not validate: ${sentences[0]}`
+    : `${fields.length} fields did not validate: ${fields.join(', ')}.`;
+}
+
+/** A stable word for the status when the exception carried no code of its own. */
+export function codeFor(status: number): string {
+  switch (status) {
+    case 400: return 'bad_request';
+    case 401: return 'unauthorized';
+    case 403: return 'forbidden';
+    case 404: return 'not_found';
+    case 409: return 'conflict';
+    case 410: return 'gone';
+    case 422: return 'unprocessable';
+    case 429: return 'too_many_requests';
+    default: return status >= 500 ? 'server_error' : 'error';
   }
 }

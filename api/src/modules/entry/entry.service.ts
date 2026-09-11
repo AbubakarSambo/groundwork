@@ -8,7 +8,7 @@ import {
 } from './a-join-link-is-not-a-password';
 import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType } from '@prisma/client';
+import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
 import { splitMentions } from './a-client-is-not-a-colleague';
 import { theSetupPackFor } from './the-first-question-for-this-situation';
 import { aDirectiveAboutRepeatingYourself } from './asked-twice-is-a-loop';
@@ -485,9 +485,21 @@ export class EntryService {
   }
 
   async faq(question: string): Promise<string> {
+    this.anonymousModelCall('faq', question.length);
     /* Prose, to a person, containing whatever they typed - so it needs the same guard as every
        other reply. It was the fourth path found without one. */
     return this.guardedReply(FAQ_PROMPT, [{ role: 'user', content: question }]);
+  }
+
+  /**
+   * ANONYMOUS MODEL SPEND IS WRITTEN DOWN. Two public routes reach the model for nobody signed in
+   * and recorded nothing, so the only way to know the budget was being spent was the bill (F13).
+   * Best-effort: the write never delays or fails the answer.
+   */
+  private anonymousModelCall(route: 'faq' | 'classify-intent', chars: number): void {
+    void this.prisma.usageEvent
+      .create({ data: { type: UsageEventType.ANONYMOUS_MODEL_CALL, meta: { route, chars } } })
+      .catch((err: any) => this.logger.warn(`Could not record an anonymous model call on ${route}: ${err?.message}`));
   }
 
   /**
@@ -496,6 +508,7 @@ export class EntryService {
    * card the person chose rather than a guess.
    */
   async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+    this.anonymousModelCall('classify-intent', description.length);
     const prompt = theClassifierPrompt(description, mode);
     try {
       /*

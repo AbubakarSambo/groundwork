@@ -122,7 +122,8 @@ describe('what a browser fetches is not wrapped in our envelope', () => {
      * the OAuth envelope bug a few days earlier: an envelope added for our convenience, breaking a
      * contract somebody else parses.
      */
-    const SRC = readFileSync(join(__dirname, '../../common/interceptors/transform.interceptor.ts'), 'utf8')
+    /* The list moved to one module both the interceptor and the exception filter read (F14). */
+    const SRC = readFileSync(join(__dirname, '../../common/published-surfaces.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
     expect(SRC).toMatch(/embed\\\.js/);

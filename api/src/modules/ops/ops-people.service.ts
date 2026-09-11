@@ -34,6 +34,9 @@ export interface SignedInAccount {
   isPlatformAdmin?: boolean | null;
 }
 
+/** The person id of an identity held in memory for a read. Nothing is written under it. */
+export const NOT_YET_ON_THE_ROSTER = 'not-yet-on-the-roster';
+
 export interface OpsIdentity {
   personId: string;
   key: string;
@@ -90,8 +93,9 @@ export class OpsPeopleService implements OnModuleInit {
    * membership. `OpsPerson.userId` remains the single link, and it is still a
    * plain column with no foreign key.
    */
-  async identify(account: SignedInAccount | undefined): Promise<OpsIdentity | null> {
+  async identify(account: SignedInAccount | undefined, opts: { admit?: boolean } = {}): Promise<OpsIdentity | null> {
     if (!account?.id) return null;
+    const admit = opts.admit !== false;
 
     const person =
       (await this.prisma.opsPerson.findUnique({
@@ -108,6 +112,14 @@ export class OpsPeopleService implements OnModuleInit {
       /* A platform admin is on this team by definition. See the note in
          `a-platform-admin-is-on-the-team.ts` for why that is not an escalation. */
       if (!account.isPlatformAdmin) return null;
+      /*
+       * A READ DOES NOT WRITE THE ROSTER (fix plan A15, as corrected by the audit). The 2026-09-05
+       * decision stands: a platform admin is on the team, and is admitted with the CEO grants. What
+       * changes is WHEN the row is written. A GET answers with the same identity held in memory; the
+       * first request that changes anything, and the door's own setup, write the row. So opening
+       * the back office to look does not put somebody on the roster who never did anything in it.
+       */
+      if (!admit) return this.whoTheyWouldBe(account);
       return this.admitThePlatformAdmin(account);
     }
 
@@ -135,6 +147,26 @@ export class OpsPeopleService implements OnModuleInit {
    * why the key is checked as well. Somebody taken off the team on purpose stays
    * off, and gets the ordinary refusal.
    */
+  /** The identity a platform admin with no row would be given, without giving it. */
+  private async whoTheyWouldBe(account: SignedInAccount): Promise<OpsIdentity | null> {
+    const key = keyForAccount(account.email ?? '');
+    const already =
+      (account.email
+        ? await this.prisma.opsPerson.findUnique({ where: { email: account.email.toLowerCase() }, include: { grants: true } })
+        : null) ?? (await this.prisma.opsPerson.findUnique({ where: { key }, include: { grants: true } }));
+    if (already) {
+      if (!already.active) return null;
+      return { personId: already.id, key: already.key, displayName: already.displayName, functionalRole: already.functionalRole, capabilities: already.grants.map((g) => g.capability) };
+    }
+    return {
+      personId: NOT_YET_ON_THE_ROSTER,
+      key,
+      displayName: [account.firstName, account.lastName].filter(Boolean).join(' ') || account.email || key,
+      functionalRole: ROLE_FOR_A_PLATFORM_ADMIN,
+      capabilities: [...GRANTS_FOR_A_PLATFORM_ADMIN],
+    };
+  }
+
   private async admitThePlatformAdmin(account: SignedInAccount): Promise<OpsIdentity | null> {
     const key = keyForAccount(account.email ?? '');
 

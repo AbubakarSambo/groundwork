@@ -1,11 +1,21 @@
-import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, UnauthorizedException, Res, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { Public, CurrentUser, CurrentUserData } from '../../common';
 import { ATurnDto, A_HISTORY_MAX_TURNS, A_MESSAGE_MAX } from '../../common/dto';
+import { A_STREAM_FAILED } from '../../common/published-surfaces';
 import { EntryService } from './entry.service';
 import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested, ArrayMaxSize, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
+
+/**
+ * THE POSTURE OF THIS CONTROLLER, STATED ONCE. Every handler here is anonymous. Each one therefore
+ * has all three of: a DTO class (the pipe cannot see an inline type), a @Throttle naming the one
+ * registered throttler, and - where it reaches the model - a usage event, so anonymous spend is
+ * visible. Five handlers had five different answers to those three questions before this was
+ * written down (fix plan B14, F13); a guard in common/dto enumerates the handlers rather than
+ * listing them, so the next one added inherits the answer.
+ */
 
 /**
  * THE HISTORY IS CLIENT-SUPPLIED AND REPLAYED TO THE MODEL, so `role` is load-bearing: a bare string
@@ -281,6 +291,7 @@ export class EntryCommitDto {
 
 @Controller('entry')
 export class EntryController {
+  private readonly logger = new Logger(EntryController.name);
   constructor(private service: EntryService) {}
 
   /** Pre-auth update of the server-side entry draft, authorized by the bearer
@@ -319,7 +330,8 @@ export class EntryController {
       const out = await this.service.onboard(dto.messages, dto.scenario, dto.moment, (text) => write({ type: 'delta', text }));
       write({ type: 'done', ...out });
     } catch (err: any) {
-      write({ type: 'error', message: err?.message ?? 'stream failed' });
+      this.logger.warn(`Entry stream failed: ${err?.message}`);
+      write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
     } finally {
       res.write('data: [DONE]\n\n');
       res.end();
@@ -336,7 +348,8 @@ export class EntryController {
       const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }));
       write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
     } catch (err: any) {
-      write({ type: 'error', message: err?.message ?? 'stream failed' });
+      this.logger.warn(`Entry stream failed: ${err?.message}`);
+      write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
     } finally {
       res.write('data: [DONE]\n\n');
       res.end();

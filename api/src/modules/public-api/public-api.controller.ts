@@ -11,6 +11,7 @@ import { SubjectsService, SubjectPush } from '../subjects/subjects.service';
 import { ApprovedOrMachineGuard } from './approved-or-machine.guard';
 import { MachineTokenGuard, RequiresScope, MachineCaller } from './machine-token.guard';
 import { IdempotencyService } from './idempotency.service';
+import { IdempotencyInterceptor } from './idempotency.interceptor';
 import { resolveGrantedScopes } from './scopes';
 import { SubjectType } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
@@ -35,7 +36,7 @@ import { CommitmentsByApiService } from './commitments-by-api.service';
 import { TodosByApiService } from './todos-by-api.service';
 import { ReportsForMyPeopleService } from '../reports/reports-for-my-people.service';
 import { ReviewsComingUpService } from '../reports/reviews-coming-up.service';
-import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL } from './what-you-need-to-know-before-you-start';
+import { THE_SEQUENCE, VOCABULARY, WORDS_THAT_DIFFER, THE_PANEL, THE_ERROR_SHAPE } from './what-you-need-to-know-before-you-start';
 import { SENDABLE_EVENTS } from '../webhooks/events-we-can-actually-send';
 
 /** Short, because a leaked one should stop working before anybody has finished reading the log. */
@@ -68,6 +69,7 @@ const TOKEN_TTL_SECONDS = 300;
  */
 @Public()
 @Controller('api/org/v1')
+@UseInterceptors(IdempotencyInterceptor)
 export class PublicApiController {
   constructor(
     private readonly jwt: JwtService,
@@ -165,6 +167,7 @@ export class PublicApiController {
       wordsThatDiffer: WORDS_THAT_DIFFER,
       webhookEvents: SENDABLE_EVENTS,
       thePanel: THE_PANEL,
+      errors: THE_ERROR_SHAPE,
       says: 'Six calls. One of them is a person signing in, which nothing else will tell you.',
     };
   }

@@ -83,7 +83,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
 
       <div style={{ ...small, marginTop: 8 }}>
         {request.acceptedTermsAt
-          ? `Terms ${request.termsVersion} accepted ${new Date(request.acceptedTermsAt).toLocaleDateString()}.`
+          ? `Terms ${request.termsVersion} accepted ${new Date(request.acceptedTermsAt).toLocaleDateString()}.${request.termsOutOfDate ? ' - terms have changed since.' : ''}`
           : 'Asked before the terms existed; no version accepted.'}
         {request.decidedAt && (
           <> {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on {new Date(request.decidedAt).toLocaleDateString()}{request.note ? ` — ${request.note}` : ''}.</>

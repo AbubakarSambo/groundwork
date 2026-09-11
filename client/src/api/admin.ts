@@ -75,6 +75,8 @@ export interface ApiAccessRequest {
   note: string | null
   acceptedTermsAt: string | null
   termsVersion: string | null
+  /** The version accepted is not the version in force. Shown; what to do about it is the terms owner's call. */
+  termsOutOfDate: boolean
   /** The last 24 hours of machine calls, when there were any. */
   lastDay: { calls: number; reads: number; writes: number } | null
   /** What the watch noticed and nobody has cleared. See the-api-is-watched.ts. */
