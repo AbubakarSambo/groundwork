@@ -64,38 +64,71 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
  * the darker of the two. The same rule took the unfilled specificity step off --gw-bg.
  */
 const SHEET = `
-.gw-close { --pad: 20px; }
-.gw-close .gw-blk { padding: 15px var(--pad); border-top: 1px solid var(--gw-border); }
-.gw-close .gw-head { padding: 15px var(--pad) 13px; }
+.gw-close { --pad: 20px; --gap: 15px; --lead: 1.6; }
+.gw-close .gw-blk  { padding: var(--gap) var(--pad); border-top: 1px solid var(--gw-border); }
+.gw-close .gw-head { padding: var(--gap) var(--pad) 13px; }
 .gw-close .gw-foot { padding: 13px var(--pad); border-top: 1px solid var(--gw-border); display: grid; gap: 9px; }
+
+.gw-close .gw-title { font-size: 15px; font-weight: 800; color: var(--gw-text); line-height: 1.3; }
+.gw-close .gw-stamp { font-family: ${MONO}; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
 .gw-close .gw-lbl {
-  font-family: ${MONO}; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--gw-sub-d); margin-bottom: 9px;
+  margin-bottom: 9px;
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap;
 }
-.gw-close .gw-lbl .gw-note { color: var(--gw-sub); text-transform: none; letter-spacing: 0; font-weight: 400; }
+/*
+  THE NUMBER AND THE NAME ARE MONO. THE NOTE IS NOT, AND WAS.
+
+  The note inherited the label's monospace and its uppercase reset, so "yours to take back" came
+  out as spaced-out typewriter text under a heading in the same face - two lines that look like
+  one, and the second one looks like code. It is a sentence about what the block is for, so it is
+  set as a sentence.
+*/
+.gw-close .gw-lbl .gw-name {
+  font-family: ${MONO}; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gw-sub-d);
+}
+.gw-close .gw-lbl .gw-note { color: var(--gw-sub); font-size: 11.5px; line-height: 1.45; }
 .gw-close .gw-n { color: var(--gw-muted); margin-right: 7px; }
-/* Rows: text, then the word. On a phone the word drops under the text rather than into a gutter. */
+
+.gw-close .gw-big   { font-size: 14px;   line-height: 1.5; font-weight: 600; }
+.gw-close .gw-p     { font-size: 13px;   line-height: var(--lead); }
+.gw-close .gw-said  { font-size: 13px;   line-height: var(--lead); }
+.gw-close .gw-small { font-size: 12px;   line-height: 1.55; }
+.gw-close .gw-mini  { font-size: 11.5px; line-height: 1.5; }
+.gw-close .gw-link  { font-size: 12.5px; }
+.gw-close .gw-quotes { display: grid; gap: 13px; }
+
+/* Rows: dot, text, then the state word. */
 .gw-close .gw-row { display: grid; grid-template-columns: 9px 1fr auto; gap: 9px; align-items: start; }
-.gw-close .gw-said { font-size: 13px; line-height: 1.6; }
-.gw-close .gw-p { font-size: 13px; line-height: 1.6; }
-.gw-close .gw-big { font-size: 14px; line-height: 1.5; font-weight: 600; }
-.gw-close .gw-small { font-size: 12px; line-height: 1.55; }
-.gw-close .gw-stamp { font-family: ${MONO}; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+
+/*
+  A PHONE GETS BIGGER TYPE, NOT SMALLER, WHICH IS WHAT THIS SAID FIRST TIME AND HAD BACKWARDS.
+
+  The first pass read "make it fit" and took every size DOWN at 640px - 12.5px body, 9.5px labels -
+  which is the opposite of what a smaller screen needs. A phone is held further from nothing, in
+  worse light, one-handed, and the column is already narrow enough to keep the line length honest
+  without shrinking the letters. So the desktop sizes above are the floor and everything goes UP
+  here, with more air between blocks and a looser line, while the side gutters come IN because that
+  is the one measurement a narrow screen genuinely cannot spare.
+*/
 @media (max-width: 640px) {
-  .gw-close { --pad: 14px; }
-  .gw-close .gw-row { grid-template-columns: 9px 1fr; }
-  /* The state word moves to its own line under the row it belongs to, indented to line up. */
-  .gw-close .gw-state { grid-column: 2; margin-top: 3px; }
-  /* THE NOTE STACKS THE SAME WAY EVERY TIME, which it did not. Justified apart and allowed to
-     wrap, a short note sat right-aligned on the label's line and a long one dropped to its own
-     line on the left - so three blocks in a row put the same element in two different places.
-     On a phone there is no room for a second column anyway: it goes underneath, always. */
-  .gw-close .gw-lbl { font-size: 9.5px; margin-bottom: 8px; flex-direction: column; gap: 3px; }
-  .gw-close .gw-lbl .gw-note { font-size: 11px; }
-  .gw-close .gw-said, .gw-close .gw-p { font-size: 12.5px; }
-  .gw-close .gw-big { font-size: 13.5px; }
-  .gw-close .gw-small { font-size: 11.5px; }
+  .gw-close { --pad: 16px; --gap: 20px; --lead: 1.65; }
+  .gw-close .gw-title { font-size: 18px; }
+  .gw-close .gw-stamp { font-size: 11px; }
+  .gw-close .gw-lbl   { margin-bottom: 11px; flex-direction: column; gap: 4px; }
+  .gw-close .gw-lbl .gw-name { font-size: 11px; letter-spacing: .09em; }
+  .gw-close .gw-lbl .gw-note { font-size: 13.5px; }
+  .gw-close .gw-big   { font-size: 17px; line-height: 1.45; }
+  .gw-close .gw-p     { font-size: 15.5px; }
+  .gw-close .gw-said  { font-size: 15.5px; }
+  .gw-close .gw-small { font-size: 14px; line-height: 1.6; }
+  .gw-close .gw-mini  { font-size: 13px; line-height: 1.55; }
+  .gw-close .gw-link  { font-size: 15px; }
+  .gw-close .gw-quotes { gap: 20px; }
+  .gw-close .gw-foot  { padding: 16px; gap: 14px; }
+  /* The state word moves under the row it belongs to, indented to line up with it. */
+  .gw-close .gw-row { grid-template-columns: 9px 1fr; gap: 10px; }
+  .gw-close .gw-state { grid-column: 2; margin-top: 4px; }
 }
 `
 
@@ -109,7 +142,7 @@ function Block({ n, label, note, children }: {
   return (
     <div className="gw-blk">
       <div className="gw-lbl">
-        <span>
+        <span className="gw-name">
           {/* The space is real, not a margin: a screen reader announces the number and the name as
               two things only if there is one between them. */}
           <span className="gw-n">{String(n).padStart(2, '0')}{' '}</span>
@@ -161,16 +194,17 @@ function Row({ row, onTakeBack, busy }: { row: MyRow; onTakeBack: () => void; bu
           {row.type.replace(/_/g, ' ').toLowerCase()}{row.documented ? ' · from a document' : ''}
         </span>
         {gone
-          ? <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>You said this is not what you said. It counts toward nothing.</span>
+          ? <span className="gw-mini" style={{ color: 'var(--gw-sub)' }}>You said this is not what you said. It counts toward nothing.</span>
           : (
             <button
               onClick={onTakeBack}
               disabled={busy}
+              className="gw-mini"
               style={{
-                background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)',
+                background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)',
                 cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
                 /* A press on a phone needs somewhere to land that is not four pixels tall. */
-                minHeight: 28, display: 'inline-flex', alignItems: 'center',
+                minHeight: 32, display: 'inline-flex', alignItems: 'center',
               }}
             >
               This is not what I said
@@ -311,7 +345,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
 
       {/* ── The masthead. What it is, whose it is, and where in the run it sits. */}
       <div className="gw-head">
-        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.3 }}>
+        <div className="gw-title">
           {closed ? 'Where this ended, in your own words' : 'What you said this time'}
         </div>
         <div className="gw-stamp" style={{ marginTop: 4, color: 'var(--gw-sub)' }}>
@@ -399,7 +433,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
           <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             These were taken from what you wrote, not typed by you. If one is wrong, say so.
           </p>
-          <div style={{ display: 'grid', gap: 13 }}>
+          <div className="gw-quotes">
             {said.map(row => (
               <Row
                 key={row.id}
@@ -494,10 +528,11 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       <div className="gw-foot">
         <button
           onClick={() => navigate(`/grounds/${groundId}/session/${sessionNumber}`)}
+          className="gw-link"
           style={{
-            background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)',
+            background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)',
             cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', justifySelf: 'start',
-            minHeight: 32, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
+            minHeight: 36, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
           }}
         >
           {/* The shared half is a different report and it lives on its own page. It is not copied
@@ -519,22 +554,23 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             <button
               onClick={() => correct.mutate()}
               disabled={correct.isPending}
+              className="gw-link"
               style={{
-                background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)',
+                background: 'none', border: 'none', padding: 0, color: 'var(--gw-navy)',
                 cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline',
-                minHeight: 32, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
+                minHeight: 36, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
               }}
             >
               {correct.isPending ? 'Opening…' : 'Something here is wrong - correct it'}
             </button>
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 2, maxWidth: '68ch' }}>
+            <div className="gw-mini" style={{ color: 'var(--gw-sub)', marginTop: 3, maxWidth: '68ch' }}>
               This opens a short session to correct or add to what you said. Nothing is overwritten -
               the change is shown alongside the original.
             </div>
           </div>
         )}
         {/* Everyone reads the same report - true at two people and at twelve. */}
-        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, maxWidth: '68ch' }}>
+        <div className="gw-mini" style={{ color: 'var(--gw-sub)', maxWidth: '68ch' }}>
           {r?.releasedAt
             ? 'The shared picture is open, and everyone reads the same report.'
             : 'This half is yours. The shared picture opens to everybody at the same moment.'}
