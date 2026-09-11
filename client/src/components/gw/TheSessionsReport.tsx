@@ -80,10 +80,39 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
   )
 }
 
-function Row({ label, children, style }: { label?: string; children: React.ReactNode; style?: React.CSSProperties }) {
+/**
+ * ONE BLOCK OF THE SHARED REPORT, NUMBERED AND ANNOTATED LIKE THE TEMPLATE.
+ *
+ * The template's signature is that every block carries three things on one line: its number, its
+ * name, and a short note on the right saying what the block is FOR. The page had only the name, so
+ * seven blocks read as seven headings rather than as a report with a shape - and a reader could not
+ * tell that "where things stand" is the second of seven rather than something that happened to be
+ * next.
+ *
+ * The number is the block's position in `THE_ORDER` on the server, written here because the page
+ * draws them in that order. `note` is the right-hand half and is never decoration: it says what the
+ * block is for, which is the thing a first-time reader does not have.
+ */
+function Row({ n, label, note, children, style }: {
+  n?: number
+  label?: string
+  note?: string
+  children: React.ReactNode
+  style?: React.CSSProperties
+}) {
   return (
     <div style={{ ...ROW, ...style }}>
-      {label && <div style={LABEL}>{label}</div>}
+      {label && (
+        <div style={{ ...LABEL, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <span>
+            {/* The space is real, not a margin: a screen reader announces "zero two against what
+                good looks like" only if there is one. */}
+            {n != null && <span style={{ color: 'var(--gw-muted)', marginRight: 8 }}>{String(n).padStart(2, '0')}{' '}</span>}
+            {label}
+          </span>
+          {note && <span style={{ color: 'var(--gw-sub)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{note}</span>}
+        </div>
+      )}
       {children}
     </div>
   )
@@ -117,6 +146,17 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
   const picture: { key: string; text: string }[] = d.picture ?? ((d.pictureLines as string[] | undefined) ?? []).map((text, i) => ({ key: `line-${i}`, text }))
   const finding: { key: string; text: string; basis: string | null; wouldHaveSurfaced?: string | null } | null = d.finding ?? null
   const rest = picture.filter((l) => l.key !== 'basis' && l.key !== 'reads' && l.key !== 'written' && l.key !== finding?.key)
+  /**
+   * THE NUMBERS COUNT WHAT IS DRAWN, NOT WHAT COULD BE.
+   *
+   * Fixed numbers skip: a session with nothing above its objective showed 02, 04, 05, which reads
+   * as pieces missing rather than as a report with six blocks. The template numbers 1..7 because it
+   * draws all seven; a real page draws what it has. Incremented in render order, which is the order
+   * the blocks appear in the JSX below and the order the server declares.
+   */
+  let step = 0
+  const next = () => (step += 1)
+
   const settled: string[] = d.whereThingsStand?.settled ?? []
   const open: string[] = d.whereThingsStand?.open ?? []
   const definitions: { who: string | null; text: string }[] = d.againstSuccess?.definitions ?? []
@@ -232,7 +272,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           check-in, not an empty state.
         */}
         {d.cascade && (
-          <Row label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+          <Row n={next()} note="what the objective serves" label={d.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
             {d.cascade.parentNamed && (
               <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
             )}
@@ -241,7 +281,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         )}
 
         {d.againstSuccess && (
-          <Row label="Against what good looks like">
+          <Row n={next()} note="the objective, and each person's own version of it" label="Against what good looks like">
             {/* The definitions render folded below, once; the component's own copy of them is switched off. */}
             {/*
               THE FULL BAND, NOT THE ONE-LINE VERSION.
@@ -252,7 +292,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
               single sentence. So the one read built to answer "where are we against what we said"
               printed one line on the page most people actually open.
             */}
-            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} />
+            <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
             {definitions.length > 0 && (
               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                 {definitions.map((def, i) => {
@@ -286,7 +326,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
             </div>
           </div>
         ) : d.whereThingsStand?.saying ? (
-          <Row label="Where things stand">
+          <Row n={next()} note="settled, and still open" label="Where things stand">
             <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-sub)', ...PROSE }}>{d.whereThingsStand.saying}</p>
           </Row>
         ) : null}
@@ -300,7 +340,12 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         {themed.length > 0 && (
           <Row>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-              <div style={LABEL}>What people said this session</div>
+              {/* Numbered like its neighbours; the grouping control takes the right-hand slot the
+                  other blocks give to their note. */}
+              <div style={LABEL}>
+                <span style={{ color: 'var(--gw-muted)', marginRight: 8 }}>{String(next()).padStart(2, '0')}{' '}</span>
+                What people said this session
+              </div>
               <button
                 onClick={() => setByPerson(v => !v)}
                 style={{
@@ -359,7 +404,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
         {/* The rest of the picture, one claim per line. */}
         {rest.length > 0 && (
-          <Row label="The picture from everybody">
+          <Row n={next()} note="the long read of the finding above" label="The picture from everybody">
             <div style={{ display: 'grid', gap: 8 }}>
               {rest.map((l) => (
                 <p key={l.key} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{l.text}</p>
@@ -380,7 +425,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
           has produced the sentence since 11 September; nothing rendered it until now.
         */}
         {d.whatWentQuiet && (
-          <Row label="Not raised again">
+          <Row n={next()} note="waiting on somebody, and gone quiet" label="Not raised again">
             <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
           </Row>
         )}
@@ -415,7 +460,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
             <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '60ch' }}>{d.theConversationWorthHaving}</p>
           </div>
         ) : d.whyNoQuestion ? (
-          <Row label="The conversation worth having now">
+          <Row n={next()} note="the one thing to settle first" label="The conversation worth having now">
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', ...PROSE }}>{d.whyNoQuestion}</p>
           </Row>
         ) : null}
@@ -427,7 +472,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
         {/* The documents, when there are any. When there are none it is a reason under confidence. */}
         {restsOn.length > 0 && restsOn[0].items.length > 0 && (
-          <Row label="What this rests on">
+          <Row n={next()} note="how solid this is, and what it is built from" label="What this rests on">
             <Quotes items={restsOn[0].items} yourName={yourName} />
           </Row>
         )}

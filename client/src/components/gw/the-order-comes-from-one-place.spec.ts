@@ -16,8 +16,14 @@ import { describe, it, expect } from 'vitest'
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const REPORT = strip(readFileSync(join(__dirname, 'TheSessionsReport.tsx'), 'utf8'))
 
-/** The labels this page draws, in the order it draws them. */
-const drawn = [...REPORT.matchAll(/<Row label=(?:"([^"]+)"|\{[^}]*?'([^']+)'[^}]*?\})/g)]
+/**
+ * The labels this page draws, in the order it draws them.
+ *
+ * Matched anywhere inside the opening tag rather than immediately after `<Row`: the blocks carry a
+ * number and a note now, and an extraction that depends on attribute ORDER silently finds nothing
+ * the first time somebody adds one. Which is what happened.
+ */
+const drawn = [...REPORT.matchAll(/<Row\b[^>]*?label=(?:"([^"]+)"|\{[^}]*?'([^']+)'[^}]*?\})/g)]
   .map((m) => m[1] ?? m[2])
 
 const at = (label: string) => drawn.findIndex((l) => l === label)
