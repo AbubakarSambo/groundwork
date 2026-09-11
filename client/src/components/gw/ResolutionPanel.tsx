@@ -107,11 +107,11 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
               longer asked to agree to his own exit. */}
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
             {!leadDecides ? (
-              <>Each person picks the outcome they think the record supports. The check-in closes only when
-              everyone picks the same one, and nobody closes it alone.</>
+              <>Each person picks the outcome they think what everybody shared supports. The check-in closes
+              only when everyone picks the same one, and nobody closes it alone.</>
             ) : viewerIsLead ? (
               <>This one is yours to decide. Everyone in the check-in can see the possible outcomes and
-              where things stand, and their accounts stay on the record whichever way you go.</>
+              where things stand, and what each person shared stays whichever way you go.</>
             ) : (
               <>These are the outcomes this check-in can reach. Your lead decides which one it is. Your
               account stays on the record either way, and you can still correct or add to it.</>

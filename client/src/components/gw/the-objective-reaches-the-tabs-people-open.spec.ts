@@ -19,12 +19,28 @@ describe('the objective reaches the tabs people open', () => {
     expect(tag).not.toContain('dense')
   })
 
-  it("a party's Report tab carries it, above the sessions", () => {
-    expect(strip(read('components', 'gw', 'SharedReportForAParty.tsx'))).toContain('<WhatSuccessLooksLikeFor')
+  it('and neither Report tab carries it, which reverses an earlier decision', () => {
+    /*
+      IT WAS ON BOTH TABS AND IT CAME OFF BOTH, 11 SEPTEMBER.
+
+      The argument for putting it there was sound - the objective is what the product asks for at
+      setup and never showed anybody against. What settled it was reading the unset state on a real
+      check-in: no standard set, so the band printed a paragraph saying nothing is being read
+      against anything, then five near-identical sentences from one person about what they think
+      success is. The material the report is built from, printed above the report, on the tab whose
+      only job is to get somebody to the right session.
+
+      The band still renders where it can say something: the board, each session's report, and
+      Context, where the standard is set. This asserts the absence so the next person with the
+      original argument reads why it lost before making it again.
+    */
+    expect(strip(read('components', 'gw', 'SharedReportForAParty.tsx'))).not.toContain('<WhatSuccessLooksLikeFor')
+    expect(strip(read('pages', 'grounds', 'GroundAdminPage.tsx'))).not.toContain('<WhatSuccessLooksLikeFor')
   })
 
-  it("the lead's Report tab carries it too, and the same one", () => {
-    expect(strip(read('pages', 'grounds', 'GroundAdminPage.tsx'))).toContain('<WhatSuccessLooksLikeFor')
+  it('and it still reaches the places that can work with it', () => {
+    expect(strip(read('pages', 'board', 'BoardPage.tsx'))).toContain('<WhatSuccessLooksLikeFor')
+    expect(strip(read('components', 'gw', 'ExpectationsPanel.tsx'))).toContain('<WhatSuccessLooksLikeFor')
   })
 
   it('and My record still keeps no copy, which is a decision rather than a gap', () => {

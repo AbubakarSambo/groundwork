@@ -54,7 +54,24 @@ export interface CoverageFacts {
   roundsFinished: number
 }
 
-interface Row { can: boolean; says: string; because?: string }
+interface Row {
+  can: boolean
+  says: string
+  because?: string
+  /**
+   * THE BAR'S OWN NAME, BECAUSE A NUMBER UNDER IT WAS A LIE ABOUT WHAT THE ROW IS.
+   *
+   * These five bars were numbered 1 to 5, which reads as a sequence somebody is working through -
+   * so "3 of 5" above bars filled at 1, 2 and 5 looked like a meter that had skipped two steps and
+   * drawn the last one anyway. Reported as exactly that: the screen is not accurate.
+   *
+   * Nothing was wrong with the data. The bars are five DIFFERENT things a full report says, in no
+   * order, and any three of them can be the three that are true. The numbers were the only thing
+   * claiming otherwise, and the names were where nobody could read them - in a hover title and in
+   * one run-on sentence underneath restating all five.
+   */
+  short: string
+}
 
 /**
  * The rows, in the order somebody would ask them: what is mine, what is ours, what holds up, what is
@@ -78,11 +95,13 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
   const rows: Row[] = [
     {
       can: f.iHaveCheckedIn,
+      short: 'what you said',
       says: 'What you said happened',
       because: 'Not until you have checked in',
     },
     {
       can: others > 0 && f.answered > 1,
+      short: 'differences',
       says: others === 1 ? 'Where the two of you see it differently' : 'Where people see it differently',
       because: others === 0
         ? 'Nobody else is on this check-in yet'
@@ -90,6 +109,7 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
     },
     {
       can: (f.corroborated?.checked ?? 0) > 0,
+      short: 'what lines up',
       says: 'Which parts line up with what someone else said',
       because: f.corroborated?.total
         ? `${f.corroborated.checked} of ${f.corroborated.total} so far`
@@ -97,11 +117,13 @@ export function whatItCanSay(f: CoverageFacts): { rows: Row[]; headline: string 
     },
     {
       can: (f.documentBackedPct ?? 0) > 0,
+      short: 'backed up',
       says: 'Which parts have a document behind them',
       because: 'Nothing attached yet',
     },
     {
       can: f.roundsFinished >= 2,
+      short: "what's changed",
       says: 'How this has changed since last time',
       because: 'Needs a second round',
     },
@@ -142,7 +164,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 34 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
         {rows.map((r, i) => (
           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
             <div
@@ -157,25 +179,21 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
                 <div style={{ position: 'absolute', inset: 0, background: 'var(--gw-navy)' }} />
               )}
             </div>
-            <div style={{ fontSize: 9.5, color: 'var(--gw-muted)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</div>
+            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>{r.short}</div>
           </div>
         ))}
       </div>
 
       {/*
-        ONE SENTENCE, AND THE HEADLINE IS GONE.
+        AND THE SENTENCE LISTING ALL FIVE HAS GONE WITH THE NUMBERS.
 
-        "It can say what you said. It cannot compare anything until one more person answers" was the
-        bars restated in prose directly under the bars. The count says how many, the sentence says
-        what each one is, and a dashed bar names its own reason on hover. A third telling was the
-        thing this card was built to stop.
-
-        "Account" is out of the list too - it is the login word, and here it meant somebody's side
-        of what happened, which is what it says instead.
+        It existed to tell somebody which bar was which, because the bars were numbered. Each bar
+        says its own name now, so the sentence was the fifth telling of the same five things. What
+        is left is the one fact the labels cannot carry: a dashed bar is a thing the report cannot
+        say yet, not a thing it failed at.
       */}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 7, lineHeight: 1.5 }}>
-        Each bar is one thing a full report says: what you said, where you differ, what lines up,
-        what a document backs, and what has changed. Dashed ones it cannot say yet.
+      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>
+        Dashed ones it cannot say yet. Hover one to see what it is waiting for.
       </div>
     </div>
   )

@@ -84,7 +84,7 @@ describe('no grades on the shared page', () => {
       join(__dirname, '..', '..', 'components', 'gw', 'WhatYourRecordCanSupport.tsx'),
       'utf8',
     )
-    expect(AT_THE_TOP).toContain('Where your record stands')
+    expect(AT_THE_TOP).toContain('Where what you have shared stands')
     /* And the read itself, which is the point: how specific each session was, in bars a person can
        act on because the sentence under them names what fills one. */
     expect(AT_THE_TOP).toContain('How specific each session was')
