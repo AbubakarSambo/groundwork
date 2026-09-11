@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * WHERE AN ADMIN CONNECTS THEIR OWN SYSTEMS, WITHOUT TALKING TO US FIRST.
@@ -598,7 +599,7 @@ export function IntegrationsPage() {
               <div style={{ fontSize: 13, fontWeight: 700 }}>{c.name} {c.revokedAt && <Pill tone="bad">revoked</Pill>}</div>
               <div style={{ ...S.mono, color: 'var(--gw-muted)', marginTop: 2 }}>{c.clientId}</div>
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
-                {c.scopes.join(', ')} · {c.lastUsedAt ? `last used ${new Date(c.lastUsedAt).toLocaleString()}` : 'never used'}
+                {c.scopes.join(', ')} · {c.lastUsedAt ? `last used ${whenItWas(c.lastUsedAt, 'dayAndTime')}` : 'never used'}
               </div>
               {/* THE SYSTEM IT SPEAKS FOR, said on screen because the roster is keyed on it and
                   nothing used to show it. Two credentials with different source systems are two
@@ -652,7 +653,7 @@ export function IntegrationsPage() {
             <div style={{ ...S.card, background: 'var(--gw-bg)' }}>
               <p style={S.body}>
                 Your import started a quiet period, so Groundwork will not raise findings until{' '}
-                <b>{new Date(imports.data.detectionQuietUntil).toLocaleDateString()}</b>. A first sync
+                <b>{whenItWas(imports.data.detectionQuietUntil, 'day')}</b>. A first sync
                 trips every check at once about work nobody has discussed yet, which is noise rather
                 than news. Check-ins and reports carry on as normal.
               </p>
@@ -672,7 +673,7 @@ export function IntegrationsPage() {
                         : j.state === 'ABANDONED' ? <Pill tone="bad">stopped</Pill> : <Pill tone="ok">all in</Pill>}
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
-                      {j.succeeded} of {j.total} stored · {new Date(j.createdAt).toLocaleString()}
+                      {j.succeeded} of {j.total} stored · {whenItWas(j.createdAt, 'dayAndTime')}
                       {j.error ? ` · ${j.error}` : ''}
                     </div>
                   </div>
@@ -771,7 +772,7 @@ export function IntegrationsPage() {
             <div>
               <div style={{ ...S.mono, fontWeight: 600, wordBreak: 'break-all' }}>{e.url}</div>
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 3 }}>
-                {e.events.join(', ')}{e.rotatedAt ? ` · secret rotated ${new Date(e.rotatedAt).toLocaleDateString()}` : ''}
+                {e.events.join(', ')}{e.rotatedAt ? ` · secret rotated ${whenItWas(e.rotatedAt, 'day')}` : ''}
                 {/* Switched off by us after seven failed attempts, and said so here rather than left looking live. */}
                 {!e.active && <span style={{ color: 'var(--gw-amber-t)', fontWeight: 600 }}> · switched off: we could not reach it</span>}
               </div>
@@ -809,7 +810,7 @@ export function IntegrationsPage() {
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{n.kind === 'SLACK' ? 'Slack' : 'Teams'}{n.channelSaid ? ` · ${n.channelSaid}` : ''} <Pill tone={n.enabled ? 'ok' : 'flat'}>{n.enabled ? 'on' : 'off'}</Pill></div>
               <div style={{ fontSize: 11.5, color: n.lastError ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 3 }}>
-                {n.lastError ? `Last post failed: ${n.lastError}` : n.lastPostedAt ? `Last posted ${new Date(n.lastPostedAt).toLocaleDateString()}` : 'Nothing posted yet'}
+                {n.lastError ? `Last post failed: ${n.lastError}` : n.lastPostedAt ? `Last posted ${whenItWas(n.lastPostedAt, 'day')}` : 'Nothing posted yet'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
@@ -901,8 +902,8 @@ export function IntegrationsPage() {
             <div style={{ ...S.row, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
                 Number id <span style={S.mono}>{whatsapp.data.connection.phoneNumberId}</span> · token ending <span style={S.mono}>{whatsapp.data.connection.tokenEndsWith}</span>
-                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${new Date(whatsapp.data.connection.lastInboundAt).toLocaleString()}` : ' · nothing received yet'}
-                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${new Date(whatsapp.data.connection.lastOutboundAt).toLocaleString()}` : ''}
+                {whatsapp.data.connection.lastInboundAt ? ` · last message in ${whenItWas(whatsapp.data.connection.lastInboundAt, 'dayAndTime')}` : ' · nothing received yet'}
+                {whatsapp.data.connection.lastOutboundAt ? ` · last sent ${whenItWas(whatsapp.data.connection.lastOutboundAt, 'dayAndTime')}` : ''}
               </div>
               <Pill tone={whatsapp.data.connection.enabled ? 'ok' : 'warn'}>{whatsapp.data.connection.enabled ? 'on' : 'off'}</Pill>
             </div>
@@ -959,7 +960,7 @@ export function IntegrationsPage() {
                   {d.attempts} attempt{d.attempts === 1 ? '' : 's'}
                   {d.responseCode != null && ` · your server said ${d.responseCode}`}
                   {d.responseBody ? ` · ${d.responseBody.slice(0, 80)}` : ''}
-                  {d.nextAttemptAt && ` · next try ${new Date(d.nextAttemptAt).toLocaleTimeString()}`}
+                  {d.nextAttemptAt && ` · next try ${whenItWas(d.nextAttemptAt, 'time')}`}
                 </div>
               </div>
               <button style={S.ghost} onClick={() => replay.mutate(d.id)} disabled={replay.isPending && replay.variables === d.id}>{replay.isPending && replay.variables === d.id ? 'Sending…' : 'Send again'}</button>

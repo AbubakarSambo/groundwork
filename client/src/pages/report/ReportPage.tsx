@@ -20,6 +20,7 @@ import { participantRequestsApi } from '@/api/participantRequests'
 import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 type ViewTab = 'shared' | 'own'
 
@@ -1031,7 +1032,7 @@ export function ReportBody({
 
   const solo = report.soloArtifact
   const releasedDate = report.releasedAt
-    ? new Date(report.releasedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? whenItWas(report.releasedAt, 'full')
     : null
 
   /**
@@ -1433,7 +1434,7 @@ export function ReportBody({
                     <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
                       <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
                         {personLabel(u)} updated what they said
-                        {u.completedAt ? ` on ${new Date(u.completedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+                        {u.completedAt ? ` on ${whenItWas(u.completedAt, 'full')}` : ''}
                       </div>
                       {u.isPostSignOff && (
                         <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>

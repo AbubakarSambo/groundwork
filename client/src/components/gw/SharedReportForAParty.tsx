@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Sec } from './kit'
 import { howCheckable } from './how-checkable-was-that-session'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE SHARED REPORT, AS A PARTY READS IT.
@@ -123,7 +124,7 @@ export function SharedReportForAParty({
                     <span>
                       <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
                       <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt ? `Finished ${new Date(ci.completedAt).toLocaleDateString()}` : 'Finished'}
+                        {ci.completedAt ? `Finished ${whenItWas(ci.completedAt, 'day')}` : 'Finished'}
                         {howCheckable(specificityBySession?.[ci.sessionNumber])}
                       </span>
                     </span>

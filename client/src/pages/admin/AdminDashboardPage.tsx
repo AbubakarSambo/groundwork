@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
 import { patternAccuracyApi } from '@/api/prompts'
 import { apiClient } from '@/api/client'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ── Design tokens (mirrors AdminPage) ────────────────────────────────────────
 
@@ -343,8 +344,8 @@ function CodeManagementSection({ codes, onDisable }: { codes: AdminCode[]; onDis
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--gw-border)', background: !c.active ? 'rgba(0,0,0,0.02)' : 'white' }}>
                   <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--gw-navy)', fontFamily: 'monospace', fontSize: 13 }}>{c.code}</td>
                   <td style={{ padding: '8px 10px', color: 'var(--gw-text)' }}>{c.creatorEmail}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{new Date(c.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
-                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
+                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{whenItWas(c.createdAt, 'day')}</td>
+                  <td style={{ padding: '8px 10px', color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{c.expiresAt ? whenItWas(c.expiresAt, 'day') : '-'}</td>
                   <td style={{ padding: '8px 10px', fontWeight: 600, color: expired ? 'var(--gw-danger)' : dl === '∞' ? 'var(--gw-muted)' : Number(dl) <= 7 ? 'var(--gw-amber-b)' : 'var(--gw-text)' }}>{dl}</td>
                   <td style={{ padding: '8px 10px' }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: c.active ? 'var(--gw-green-bg)' : 'var(--gw-bg)', color: c.active ? 'var(--gw-green-t)' : 'var(--gw-muted)', border: '1px solid var(--gw-border)' }}>
@@ -699,7 +700,7 @@ function WritersSection() {
                 <td style={{ padding: '5px 6px', fontFamily: 'ui-monospace, Menlo, monospace', color: r.flagged ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>{r.table}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.writer}{r.error ? ` · ${r.error}` : ''}</td>
                 <td style={{ padding: '5px 6px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: r.flagged ? 700 : 400 }}>{r.count ?? '?'}</td>
-                <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.lastWrite ? new Date(r.lastWrite).toLocaleDateString() : r.flagged ? 'never' : ''}</td>
+                <td style={{ padding: '5px 6px', color: 'var(--gw-sub)' }}>{r.lastWrite ? whenItWas(r.lastWrite, 'day') : r.flagged ? 'never' : ''}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-muted)' }}>{r.shippedAt ?? ''}</td>
                 <td style={{ padding: '5px 6px', color: 'var(--gw-muted)', maxWidth: 280 }}>{r.needs ?? (r.flagged ? 'nothing named - worth a look' : '')}</td>
               </tr>

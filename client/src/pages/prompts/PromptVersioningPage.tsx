@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { promptsApi, PromptVersion, ChatTurn } from '@/api/prompts'
 import { useAuthStore } from '@/stores/auth'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ─── Protected-section detection ────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ function sortKeys(keys: string[]): string[] {
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '-'
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return whenItWas(iso, 'day')
 }
 
 // ─── Simple line diff ────────────────────────────────────────────────────────

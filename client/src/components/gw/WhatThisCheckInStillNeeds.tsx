@@ -1,4 +1,5 @@
 import { SELECTABLE_CADENCES } from '@/lib/cadence'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE TWO SETUP ANSWERS NOBODY IS EVER ASKED FOR.
@@ -134,7 +135,7 @@ export function WhatThisCheckInStillNeeds({
         <div style={{ marginBottom: 13 }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>When is the next one?</div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-            Your next session opens on {new Date(nextOpens).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}. The rhythm is set on Setup.
+            Your next session opens on {whenItWas(nextOpens, 'dayAndMonthLong')}. The rhythm is set on Setup.
           </div>
         </div>
       )}

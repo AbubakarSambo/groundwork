@@ -5,6 +5,7 @@ import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { Prisma } from '@prisma/client';
 import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
  * The moat. Every prompt is versioned; every change is versioned against
@@ -474,12 +475,12 @@ export class PromptsService implements OnModuleInit {
     const dayBuckets: Record<string, number> = {};
     for (let i = 13; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const key = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const key = whenItWas(d, 'dayAndMonth');
       dayBuckets[key] = 0;
     }
     for (const ci of checkInsByDay) {
       if (!ci.completedAt) continue;
-      const key = new Date(ci.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const key = whenItWas(ci.completedAt, 'dayAndMonth');
       if (key in dayBuckets) dayBuckets[key]++;
     }
 

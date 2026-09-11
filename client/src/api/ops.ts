@@ -34,6 +34,8 @@ export interface OpsIdentity {
   displayName: string
   functionalRole: string
   capabilities: string[]
+  /** The clock the boards date themselves by; set into the date formatter once known (B10). */
+  displayTimezone?: string
 }
 
 export interface OpsNumber {

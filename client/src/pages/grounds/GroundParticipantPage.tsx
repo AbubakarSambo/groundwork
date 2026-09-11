@@ -23,6 +23,7 @@ import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsT
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 
 
@@ -481,7 +482,7 @@ export function GroundParticipantPage() {
                       apart, and this line numbered the not-yet-due session as current anyway. When it
                       opens later, the date is the news; the total is printed only when it is known. */}
                   {opensLater ? (
-                    <span>· Next session opens {new Date(openAvailableFrom).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}</span>
+                    <span>· Next session opens {whenItWas(openAvailableFrom, 'dayAndMonthLong')}</span>
                   ) : totalSessions != null ? (
                     <span>· Session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}</span>
                   ) : (

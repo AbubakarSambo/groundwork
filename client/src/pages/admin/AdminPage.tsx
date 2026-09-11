@@ -9,6 +9,7 @@ import { coachApi, type CoachRequestRow } from '@/api/coach'
 import { feedbackApi } from '@/api/feedback'
 import { formatMonthlyPrice, type SubscriptionPlan } from '@/api/billing'
 import { SectionFailed } from './a-section-that-failed-says-so'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -828,7 +829,7 @@ function OrgsTab({ orgs }: { orgs: OrgListItem[] }) {
                 {org.billingActive ? 'Billing active' : 'Free'}
               </span>
               <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>
-                {new Date(org.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {whenItWas(org.createdAt, 'day')}
               </span>
             </div>
           </div>
@@ -1120,7 +1121,7 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
                 * "asked for" and never "booked" - nothing has been agreed with anybody yet.
                 */}
               {r.preferredAt && chip(
-                `asked for ${new Date(r.preferredAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+                `asked for ${whenItWas(r.preferredAt, 'dayAndTime')}`,
                 new Date(r.preferredAt) < new Date() ? 'var(--gw-red-bg)' : 'var(--gw-blue-bg)',
                 new Date(r.preferredAt) < new Date() ? 'var(--gw-red-t)' : 'var(--gw-navy)',
               )}
@@ -1136,7 +1137,7 @@ function CoachTab({ rows, onChanged }: { rows: CoachRequestRow[]; onChanged: () 
             <a href={`mailto:${r.email}`} style={{ color: 'var(--gw-navy)' }}>{r.email}</a>
             {r.triedAlready === true && <span> &middot; has already tried opening a check-in</span>}
             {r.triedAlready === false && <span> &middot; has not tried the product yet</span>}
-            <span> &middot; {new Date(r.createdAt).toLocaleDateString()}</span>
+            <span> &middot; {whenItWas(r.createdAt, 'day')}</span>
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{r.intention}</div>
           {NEXT[r.status] && NEXT[r.status].length > 0 && (
@@ -1200,7 +1201,7 @@ function InboxTab({ data, onRead }: {
                 {m.subject?.trim() || '(no subject)'}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
-                {new Date(m.receivedAt).toLocaleString()}
+                {whenItWas(m.receivedAt, 'dayAndTime')}
               </div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7 }}>
@@ -1275,7 +1276,7 @@ function CallRequestsTab({ data, onAnswered }: {
                 {WHAT_IT_IS_ABOUT[r.about] ?? 'Something else'}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', whiteSpace: 'nowrap' }}>
-                {new Date(r.askedAt).toLocaleString()}
+                {whenItWas(r.askedAt, 'dayAndTime')}
               </div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7 }}>

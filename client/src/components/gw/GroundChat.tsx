@@ -7,6 +7,7 @@ import { documentsApi } from '@/api/documents'
 import { conversationApi } from '@/api/conversation'
 import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * A GROUND, READ AS A CONVERSATION.
@@ -268,7 +269,7 @@ function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   isCorrection: boolean
   correctionOf: number | null
 }) {
-  const when = new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const when = whenItWas(date, 'day')
   const label = isCorrection
     ? `Added to session ${correctionOf ?? sessionNumber}`
     : `Session ${sessionNumber}`
@@ -468,7 +469,7 @@ function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, n
         */}
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
           {nextOpensAt
-            ? `Your next check-in opens ${new Date(nextOpensAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}. `
+            ? `Your next check-in opens ${whenItWas(nextOpensAt, 'dayAndMonthLong')}. `
             : 'No check-in is open right now. '}
           {/* And for the person who can move it, that it can be moved. A lead who wants the next
               round sooner had no way to find out one was two clicks away. */}

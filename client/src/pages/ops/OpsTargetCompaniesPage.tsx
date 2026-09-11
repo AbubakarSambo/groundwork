@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { opsApi } from '@/api/ops'
 import { Adder } from './OpsForm'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * Target companies: every company, how far it has got, and what is in the way.
@@ -32,7 +33,7 @@ const readStage = (s: string) => s.replace(/_/g, ' ').toLowerCase()
 /* Dates come back as plain days. Read as UTC so a target list starting on the 1st
    does not render as the 31st for anybody west of the clock the boards use. */
 const readDay = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  whenItWas(iso, 'day', 'UTC')
 
 export default function OpsTargetCompaniesPage() {
   /*

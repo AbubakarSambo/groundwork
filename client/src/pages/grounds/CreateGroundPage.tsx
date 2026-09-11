@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { STAGE, stepsThisPersonSees, stepAfter, stepBefore } from './the-steps-this-person-sees'
 import { theWordsForPickingASituation } from './whose-situation-is-it'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 interface ScenarioCard {
   // Unique per CARD, not per scenario: two cards can map to the same scenario
@@ -455,7 +456,7 @@ export /**
 function runDates(startsOn: string, timelineDays: number): string {
   const start = startsOn ? new Date(`${startsOn}T09:00:00`) : new Date()
   const end = new Date(start.getTime() + timelineDays * 86_400_000)
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  const fmt = (d: Date) => whenItWas(d, 'day')
   /* "starting today to 27 Nov" was the first wording and reads as a mistake out loud. */
   return startsOn ? `from ${fmt(start)} to ${fmt(end)}` : `starting today, ending ${fmt(end)}`
 }

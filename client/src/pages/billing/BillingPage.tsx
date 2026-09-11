@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { scrollToId } from '@/lib/scroll-to'
 import { Stat, Pill } from '@/components/gw/kit'
 import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS', 'SCALE', 'ENTERPRISE']
 
@@ -229,7 +230,7 @@ export function BillingPage() {
    */
   const [confirming, setConfirming] = useState<'cancel' | 'pause' | null>(null)
   const sayTheDate = (d: string | Date | null | undefined) =>
-    d ? new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : 'the end of the paid period'
+    d ? whenItWas(d, 'full') : 'the end of the paid period'
   const cancelSubscriptionMut = useMutation({
     mutationFn: () => billingApi.cancelSubscription(),
     onSuccess: (res) => {
@@ -379,7 +380,7 @@ export function BillingPage() {
             {(isSubscribed || isPaused) && <Stat
               label={isPaused ? 'Paused since' : 'Renews'}
               value={orgSub?.periodEnd
-                ? new Date(orgSub.periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                ? whenItWas(orgSub.periodEnd, 'dayAndMonth')
                 : 'Not set'}
               /**
                * IT POINTED AT SOMETHING THAT IS NOT ON THE PAGE. W-UX-5.

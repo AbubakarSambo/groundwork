@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 export interface CodeShareCardProps {
   code: string
@@ -20,7 +21,7 @@ export function CodeShareCard({ code, expiresAt, daysRemaining, note, allowCodeC
   const [codeCopied, setCodeCopied] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
 
-  const formattedExpiry = new Date(expiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formattedExpiry = whenItWas(expiresAt, 'day')
   const color = expiryColor(daysRemaining)
 
   async function handleCopyCode() {

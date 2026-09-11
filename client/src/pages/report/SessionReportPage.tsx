@@ -14,6 +14,7 @@ import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
 import { copy } from '@/components/gw/copying-can-fail'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
@@ -130,7 +131,7 @@ export default function SessionReportPage() {
       */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
         {data?.finishedAt
-          ? `Everything about this session, on ${new Date(data.finishedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}. Yours first, then everybody's.`
+          ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Yours first, then everybody's.`
           : "Everything about this session. Yours first, then everybody's."}
       </div>
 

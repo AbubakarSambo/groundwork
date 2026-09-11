@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
 import { opsApi } from '@/api/ops'
+import { setDisplayTimezone } from '@/lib/a-date-reads-the-same-everywhere'
 import { pagesFor, whyThisIsNotYours, GROUPS } from './what-you-can-open'
 import { useAuthStore } from '@/stores/auth'
 import { TheAssistantAsACustomerSeesIt } from './TheAssistantAsACustomerSeesIt'
@@ -79,6 +80,8 @@ export function OpsLayout({ children }: { children: React.ReactNode }) {
   const me = useQuery({ queryKey: ['ops', 'me'], queryFn: opsApi.me, retry: false })
   /* Once per visit, after the read has said who this is: take the seat. A GET does not write the roster (A15). */
   useEffect(() => { if (me.isSuccess) Promise.resolve().then(() => opsApi.enter()).catch(() => undefined) }, [me.isSuccess])
+  /* Every date in the back office reads in the company's zone, whoever is looking (B10). */
+  useEffect(() => { if (me.data?.displayTimezone) setDisplayTimezone(me.data.displayTimezone) }, [me.data?.displayTimezone])
   /* ABOVE EVERY EARLY RETURN. Called after them it is a conditional hook: the refusal path renders
      fewer hooks than the ordinary one and React throws, which is how a guard for one silent
      failure produced a louder one. */

@@ -15,6 +15,7 @@ import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * The delivery board.
@@ -40,7 +41,7 @@ import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-canno
 
 
 const dshort = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'
+  iso ? whenItWas(iso, 'dayAndMonth') : '—'
 
 // ---------------------------------------------------------------- page
 

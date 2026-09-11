@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi, type ApiAccessRequest } from '@/api/admin'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /** "1 writes" was read daily by staff. */
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -58,7 +59,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline' }}>
         <strong style={{ fontSize: 15 }}>{request.organization.name}</strong>
         <span style={small}>{SAID[request.status]}</span>
-        <span style={small}>asked by {request.requestedBy} on {new Date(request.requestedAt).toLocaleDateString()}</span>
+        <span style={small}>asked by {request.requestedBy} on {whenItWas(request.requestedAt, 'day')}</span>
       </div>
 
       {/* WHAT THEY SAID THEY WOULD BUILD, which is the whole basis for the decision. In full. */}
@@ -72,7 +73,7 @@ function Row({ request }: { request: ApiAccessRequest }) {
           {request.flags.map((f) => (
             <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 6, padding: '8px 10px', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-bd)', borderRadius: 6 }}>
               <div style={{ flex: 1, color: 'var(--gw-amber-t)' }}>
-                <strong>{f.kind.replace(/-/g, ' ')}</strong> · {new Date(f.raisedAt).toLocaleString()}
+                <strong>{f.kind.replace(/-/g, ' ')}</strong> · {whenItWas(f.raisedAt, 'dayAndTime')}
                 <div style={{ color: 'var(--gw-text)' }}>{f.detail}</div>
               </div>
               <button type="button" onClick={() => clearFlag.mutate(f.id)} disabled={clearFlag.isPending} style={btn}>Looked at</button>
@@ -83,10 +84,10 @@ function Row({ request }: { request: ApiAccessRequest }) {
 
       <div style={{ ...small, marginTop: 8 }}>
         {request.acceptedTermsAt
-          ? `Terms ${request.termsVersion} accepted ${new Date(request.acceptedTermsAt).toLocaleDateString()}.${request.termsOutOfDate ? ' - terms have changed since.' : ''}`
+          ? `Terms ${request.termsVersion} accepted ${whenItWas(request.acceptedTermsAt, 'day')}.${request.termsOutOfDate ? ' - terms have changed since.' : ''}`
           : 'Asked before the terms existed; no version accepted.'}
         {request.decidedAt && (
-          <> {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on {new Date(request.decidedAt).toLocaleDateString()}{request.note ? ` — ${request.note}` : ''}.</>
+          <> {SAID[request.status]} by {request.decidedBy ?? 'somebody'} on {whenItWas(request.decidedAt, 'day')}{request.note ? ` — ${request.note}` : ''}.</>
         )}
       </div>
 
