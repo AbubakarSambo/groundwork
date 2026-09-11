@@ -237,7 +237,7 @@ export function replyHasQuestion(text: string): boolean {
  * What replaces it points at the derived summary rather than competing with it.
  */
 export const ONBOARD_READY_CLOSER =
-  'That is the setup questions done. Here is what is on the record so far.'
+  'That is the setup questions done. Here is what you have told us so far.'
 // The reply to actually display: when the endpoint signals ready but the reply
 // still asks a question, show the clean closer instead so no question is
 // stranded. Otherwise show the reply verbatim.
@@ -2863,7 +2863,7 @@ export function EntryChatPage() {
                           ))}
                           {sum.missing.length > 0 && (
                             <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 6, color: 'var(--gw-amber-t)' }}>
-                              <span style={{ fontWeight: 700 }}>Not on the record: </span>
+                              <span style={{ fontWeight: 700 }}>Not said yet: </span>
                               {sum.missing.join(', ')}. You can add it in your check-in.
                             </div>
                           )}
@@ -3357,8 +3357,8 @@ export function EntryChatPage() {
                 }
                 onRecordLine={
                   uploadedDoc
-                    ? `On record: ${uploadedDoc.name}. Nobody else has attached anything yet.`
-                    : 'On record: what you said this session. No documents uploaded yet.'
+                    ? `Built from what you said today, and ${uploadedDoc.name}. Nobody else has attached anything yet.`
+                    : 'Built from what you said today. Nothing attached yet.'
                 }
                 renderAdd={(key, label) =>
                   queuedFromSuggestion.has(key) ? (

@@ -93,6 +93,23 @@ export const VOCABULARY_RULE = [
   'hospitals, schools, charities and councils as often as in startups. Use the person\'s name if you',
   'have it, their stated role if you have that, and otherwise plain description: "the person running',
   'this check-in", "the other person here". Never a job title nobody gave you.',
+  /*
+   * AND THE TWO WORDS THE PRODUCT STOPPED USING TO PEOPLE'S FACES.
+   *
+   * Her brief: what one person builds is "what you shared", the collective is "the shared picture",
+   * and the internal names for these things stay exactly as they are - models, tables, columns,
+   * variables. This is the presentation layer, and a reply is presentation.
+   *
+   * Read on a live run, in the second sentence of somebody's own check-in: "This record is for your
+   * contribution, and it's built from your perspective." Every noun in that sentence belongs to a
+   * filing cabinet. The person is telling a colleague what is going on, and the product answers in
+   * the register of an HR system.
+   */
+  'AND TWO WORDS YOU DO NOT USE TO THEM. Never call what they are telling you their "record", their',
+  '"contribution", their "submission" or their "entry", and never say it is "on the record" or being',
+  '"logged", "captured" or "filed". Say "what you shared", or just say it plainly: "what you have',
+  'told me", "what you said today". The picture everybody builds together is "the shared picture".',
+  'This is about the words you say to them, not about what anything is called anywhere else.',
   /* And never open by telling somebody their plan is a good one. See the module. */
   NOTHING_HERE_IS_PLEASED_WITH_YOU,
 ].join(' ');

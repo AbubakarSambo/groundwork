@@ -278,7 +278,7 @@ export function TheReportYouSawAtTheEnd({
                 {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
                 {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 13, lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
               </div>
-            : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing settled or in dispute yet. That arrives once more than one person has checked in.</div>}
+            : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
           <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 8 }}>
             {onRecordLine}
           </div>
