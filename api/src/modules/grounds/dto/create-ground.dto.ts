@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsInt, Min, IsOptional, MaxLength, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsInt, Min, Max, IsArray, IsOptional, MaxLength, IsBoolean } from 'class-validator';
 import { GroundScenario, GroundMoment, Cadence, GroundMode } from '@prisma/client';
 
 
@@ -42,6 +42,14 @@ export class CreateGroundDto {
   @IsInt()
   @Min(0)
   cadenceAnchorDay?: number;
+
+  /**
+   * Which days this team works, 0=Sun..6=Sat. Empty or absent means nobody said, and the date
+   * maths leaves every date where the cadence put it. Never defaulted to Monday-Friday: that is
+   * not a fact about the world, it is one region's office week.
+   */
+  @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
+  workingDays?: number[];
 
   @ApiPropertyOptional({ description: 'Start date: when the first scheduled check-in opens (ISO)' })
   @IsOptional()

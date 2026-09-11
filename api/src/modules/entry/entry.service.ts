@@ -1234,6 +1234,7 @@ from finishing at all.`;
       cadence?: string;
       cadenceChosen?: boolean;
       cadenceAnchorDay?: number;
+      workingDays?: number[];
       checkInBy?: string;
       lastCheckInBy?: string;
       // Coordinator/lead path: the onboarding context (used as the brief) and
@@ -1458,6 +1459,7 @@ from finishing at all.`;
            service records an absent cadence as unstated and takes the scenario's recommendation. */
         cadence: chosenCadence,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+        workingDays: dto.workingDays ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
         // -> startsAt/endsAt) - the admin's chosen dates were previously
         // collected on the client and silently dropped here; the lead ended
@@ -1538,6 +1540,7 @@ from finishing at all.`;
         moment: RECOMMENDED_MOMENT[scenario],
       cadence: chosenCadence,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
+      workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,
       endsAt: dto.lastCheckInBy || undefined,
       brief,

@@ -12,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { contextGaps, contextChatPrompt } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -388,7 +389,8 @@ export class GroundsService {
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
-        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        workingDays: workingDaysOf(dto.workingDays),
+        startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
         /**
          * AN ORG ADMIN ACCEPTS A GROUND BEFORE ANYBODY IS INVITED TO IT.
@@ -496,7 +498,7 @@ export class GroundsService {
           /* Everyone does a first check-in, managing-only or not. What managingOnly changes is that no later
              session is created for them (see createNextIfAbsent). */
           isSetup: false,
-          availableFrom: dto.startsAt ? new Date(dto.startsAt) : null,
+          availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
         },
       });
 
@@ -592,7 +594,8 @@ export class GroundsService {
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
-          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          workingDays: workingDaysOf(dto.workingDays),
+          startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
           endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
           /* OPEN FROM THE START. There is no lead page any more (10 Sep 2026): nobody sets a check-in
              up for somebody else to confirm. A ground made through the API with people on it waits
@@ -616,7 +619,7 @@ export class GroundsService {
         },
       });
       await tx.checkIn.create({
-        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        data: { groundId: ground.id, participantId: leadRow.id, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays) },
       });
 
       // Pre-added participants (e.g. the whole cohort), created alongside the
@@ -3156,6 +3159,18 @@ export class GroundsService {
   }
 
   /** A user's department is on the Person linked to them, when there is one. Null for most of a roster, and that is normal. */
+  /**
+   * THE FIRST CHECK-IN LANDS ON A DAY THEY WORK, LIKE EVERY ONE AFTER IT.
+   *
+   * `startsAt` is the one date a person types rather than the product computing it, and a date
+   * picker will happily hand back a Sunday. Rolling it forward here means the rule holds for the
+   * first session as well as the recurring ones - otherwise a weekdays-only ground still opens on
+   * a weekend exactly once, on the day it matters most.
+   */
+  private theFirstDayTheyWork(startsAt: Date | null, workingDays: number[] | null | undefined): Date | null {
+    return startsAt ? theNextDayTheyWork(startsAt, workingDays ?? []) : null;
+  }
+
   private async departmentOf(userId: string, organizationId: string): Promise<string | null> {
     const person = await this.prisma.person.findFirst({ where: { linkedUserId: userId, organizationId }, select: { department: true } });
     return person?.department?.trim() || null;
@@ -3529,7 +3544,7 @@ export class GroundsService {
     if (dto.startsAt !== undefined) {
       await this.prisma.checkIn.updateMany({
         where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-        data: { availableFrom: dto.startsAt ? new Date(dto.startsAt) : null },
+        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, (ground as any)?.workingDays) },
       });
     }
 

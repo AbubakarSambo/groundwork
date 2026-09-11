@@ -60,6 +60,9 @@ describe('changing when a check-in starts', () => {
     /* Writing the date on the check-in and leaving `availableFrom` on the old day gives somebody a
        check-in that says it opens on the 22nd and lets them in on the 15th. */
     expect(updateTimeline).toContain('sessionNumber: 1, status: CheckInStatus.NOT_STARTED');
-    expect(updateTimeline).toContain('availableFrom: dto.startsAt');
+    /* The date still comes from `dto.startsAt`; it now passes through the working-days roll so a
+       weekdays-only ground does not open session 1 on a Sunday. Asserted on the intent rather than
+       the old spelling, which is what made this fail when the roll was added. */
+    expect(updateTimeline).toMatch(/availableFrom: this\.theFirstDayTheyWork\(dto\.startsAt/);
   });
 });
