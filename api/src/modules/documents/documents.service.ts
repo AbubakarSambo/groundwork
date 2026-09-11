@@ -18,6 +18,11 @@ import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
+import { familyFor, BoardFamily } from '../board/board-families';
+import { AgreementsService } from '../alignment/agreements.service';
+import {
+  TERMS_IN_A_DOCUMENT_PROMPT, TERMS_IN_A_DOCUMENT_SCHEMA, theTermsInIt,
+} from '../alignment/the-agreement-arrives-as-a-document';
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 
 const ALLOWED_MIME = [
@@ -147,6 +152,9 @@ export class DocumentsService {
     private config: ConfigService,
     @Inject(forwardRef(() => ConversationService))
     private conversation: ConversationService,
+    /* Last on purpose: the four before it are bound positionally in two specs, and moving any of
+       them would rebind a mock to the wrong parameter silently. */
+    private readonly agreements: AgreementsService,
   ) {}
 
   /**
@@ -226,6 +234,38 @@ export class DocumentsService {
   }
 
   /** Ask Gemini for a short "what this suggests / what we will do with it" read. */
+  /**
+   * Read the terms out of an uploaded agreement, on a ground that is about one.
+   *
+   * ONLY ON AN AGREEMENT GROUND. Every situation has documents in it, and a brief, a plan or a job
+   * description is not a contract. Reading terms out of one would put clause numbers next to
+   * sentences nobody agreed to.
+   *
+   * A document with no terms in it is the common case even here - a covering email, a schedule of
+   * figures, a signed page. `theTermsInIt` returns nothing and nothing is written.
+   */
+  private async readTheAgreementInIt(groundId: string, content: string) {
+    if (!content?.trim()) return;
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { scenario: true, organizationId: true, label: true },
+    });
+    if (!ground || familyFor(ground.scenario) !== BoardFamily.AGREEMENT) return;
+
+    const said = await this.anthropic.extract<{ terms?: unknown }>(
+      TERMS_IN_A_DOCUMENT_PROMPT,
+      [{ role: 'user', content: content.slice(0, 60_000) }],
+      TERMS_IN_A_DOCUMENT_SCHEMA as any,
+    );
+    const terms = theTermsInIt(said ?? null, content);
+    if (!terms.length) return;
+
+    const out = await this.agreements.fromADocument(
+      ground.organizationId, groundId, ground.label ?? 'The agreement', terms,
+    );
+    this.logger?.log?.(`Read ${out.wrote} term(s) from a document on ${groundId}${out.why ? ` (${out.why})` : ''}.`);
+  }
+
   private async assessDocument(content: string, fileName: string): Promise<{ suggests: string[]; willDo: string[] } | null> {
     if (weCouldNotReadIt(content)) return null;
     try {
@@ -319,6 +359,19 @@ export class DocumentsService {
          everything except who is about to see it. */
       select: { id: true, fileName: true, mimeType: true, createdAt: true, assessment: true, uploaderNote: true, visibility: true, participantId: true },
     });
+
+    /**
+     * AN AGREEMENT UPLOADED TO AN AGREEMENT GROUND BECOMES ITS TERMS.
+     *
+     * Nobody types a contract into a form - they upload it, or paste it into the context. The
+     * terms table has defaulted every row to the state 'read from the document' since it was
+     * written, and nothing in the product could produce that state. This is the path that does.
+     *
+     * Fire-and-forget, like the claims extraction below and for the same reason: a failure here
+     * must never be why somebody could not attach a file.
+     */
+    this.readTheAgreementInIt(groundId, content).catch((err) =>
+      this.logger?.warn?.(`Could not read the agreement in ${doc.fileName}: ${err?.message}`));
 
     // Extract structured claims from the document content and write them as
     // RecordEntry rows so they flow into the report corpus automatically.

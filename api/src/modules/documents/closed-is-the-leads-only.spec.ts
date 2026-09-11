@@ -26,7 +26,10 @@ function makeService(opts: { initiatorId: string; participantId?: string; doc?: 
   /* Context on, because with it off every one of these refuses for a different reason. */
   const config: any = { get: jest.fn((k: string) => (k === 'app.contextEnabled' ? true : 'test-key')) };
   const anthropic: any = { extract: jest.fn() };
-  return { service: new DocumentsService(prisma, anthropic, config, { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) } as any), prisma };
+  return { service: new DocumentsService(prisma, anthropic, config, { anchorRecordToDocuments: async () => ({ backed: 0, of: 0 }) } as any,
+      /* The agreement reader. Never reached here: these grounds are not agreement-family. */
+      { fromADocument: async () => ({ wrote: 0 }) } as any,
+    ), prisma };
 }
 
 describe('CLOSED is the lead\'s only', () => {
