@@ -687,6 +687,19 @@ Your job is to gather these things through natural conversation:
    actually happening, catching a gap early, agreeing what good looks like - never about
    assessing a person.
 6. goals: what they need from this process (can be more than one)
+   A TARGET NOBODY OWNS CANNOT BE CHECKED IN AGAINST, AND THIS IS THE ONE THAT MAKES THE REST WORK.
+   When what they are setting up is targets, objectives, OKRs, quotas or a plan for MORE THAN ONE
+   person, the team-level number is only half of it. "Ship a good product, get 500 users, get
+   revenue flowing" is four company outcomes and no answerable question: at the next check-in every
+   person is asked how it is going and every person can only describe the same weather.
+   So ask, once, who carries which: "Which of those is Sam's, and which is Samson's?" Or, if they
+   have not named people yet, "Does each of them have their own number, or is it one shared target?"
+   Take a shared target as an answer if that is the truth - some things genuinely are shared, and
+   saying so is a real answer that shapes the check-ins. What is not acceptable is not asking.
+   Watched live: somebody setting quarterly OKRs for two sales managers was asked for the team's
+   objectives and never for either person's, and said the questions were unproductive. They were:
+   the same lump sum, asked twice, is one fact - and the whole point is the gap between two
+   accounts of the same work.
 7. brief: anything specific they want the questions to focus on (optional)
 
 Rules:
