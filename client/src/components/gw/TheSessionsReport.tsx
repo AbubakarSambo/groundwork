@@ -182,7 +182,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
         </div>
         <div style={{ marginTop: 4, fontFamily: MONO, fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)' }}>
           {[
-            ofPeople ? `${ofPeople} account${ofPeople === 1 ? '' : 's'}` : '',
+            ofPeople ? `${ofPeople} ${ofPeople === 1 ? 'person' : 'people'}` : '',
             `check-in ${d.sessionNumber}${d.plannedSessions ? ` of ${d.plannedSessions}` : ''}`,
             final ? 'closed' : answered >= ofPeople && ofPeople > 0 ? 'everyone answered' : `still forming · ${answered} of ${ofPeople} answered`,
           ].filter(Boolean).join(' · ')}
@@ -192,7 +192,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
       {/*
         WHO IS COUNTED, AND WHICH OF THEM IS YOU.
         
-        Part of the masthead rather than a numbered block: the header says how many accounts, and
+        Part of the masthead rather than a numbered block: the header says how many people, and
         this says whose. It names people rather than printing a number, says which one the reader
         is, and never counts somebody who was never going to answer - all three are the rule this
         row exists for, and I dropped the whole row in the rebuild before a spec caught it.
