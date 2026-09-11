@@ -53,17 +53,30 @@ plan. Read-only: every verdict below comes from the code as it stands, not from 
    re-mails everybody, and `extract()` still has no timeout while its sibling has ninety seconds -
    now worse, because a retry was added around it.
 
-5. **A10, WhatsApp secrets.** The access token and app secret columns are still plain text and no
+5. **A decline does not close its own round.** Not a plan item — a gap opened by the work itself.
+   `decline()` writes DECLINED and returns. It never records the round and emits no event. The
+   readers were taught that a decline counts as an answer, but the write site was not, so when the
+   last outstanding person declines the round stays open until the 4am backstop sweeps it. Up to a
+   day's delay on a report that is ready. Verified directly in the code.
+
+6. **A10, WhatsApp secrets.** The access token and app secret columns are still plain text and no
    encryption helper exists.
 
-6. **B2, the willingness gate.** Half-removed and half-unbuilt: the column is gone, the board chip
+7. **B2, the willingness gate.** Half-removed and half-unbuilt: the column is gone, the board chip
    that names the state survives, and nothing is wired to `decline()`.
 
-7. **B16, Google sign-in.** Linking an unrecognised Google id to an existing account still forces
+8. **B16, Google sign-in.** Linking an unrecognised Google id to an existing account still forces
    `isEmailVerified: true`, and that flag is what opens the back-office Google exemption.
 
-8. **B9**, the second platform console is still routed, though it no longer miscounts.
-   **B6**, one screen still defaults a numerator rather than showing no total.
+9. **B9**, the second platform console is still routed, though it no longer miscounts.
+   **B6**, one screen still defaults a numerator rather than showing no total. **B12**, three
+   models are still written and never read, kept with an argument rather than a reader or a
+   deletion. **B11** landed only its error-state step.
+
+10. **A token still authenticates against the wrong organisation.** Membership is checked against
+   the person's current organisation rather than the one named in the token, so a token minted
+   before an organisation switch still authenticates as the current one. Small, and it is the exact
+   class the batch exists to close.
 
 ## Two things that need a decision, not code
 
