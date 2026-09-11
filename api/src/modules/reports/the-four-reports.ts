@@ -1,0 +1,218 @@
+import { RUN_ONLY_FIELDS } from './a-read-needs-a-run';
+
+/**
+ * THE FOUR REPORTS, NAMED ONCE.
+ *
+ * Eight surfaces show a report and each one decided for itself what belonged on it. That is why the
+ * same content renders in up to four places, why two of those places disagree about the objective,
+ * and why a read that needs several sessions could appear on a page about one. Nothing here
+ * computes anything: every read named below is already built. This says which of the four things
+ * each one belongs to, in one file, so the surfaces stop each having an opinion.
+ *
+ * TWO READERS AND TWO SCOPES, WHICH IS FOUR AND NOT EIGHT.
+ *
+ *   A · session   what one person said this time, private to them
+ *   A · run       that person's own account across the whole thing
+ *   B · session   the shared picture of one sitting
+ *   B · run       the shared picture across the whole thing - which is the board
+ *
+ * THE SCOPE RULE IS NOT NEW AND IS NOT DUPLICATED HERE. `a-read-needs-a-run` already removes what a
+ * single round cannot support, and `own-reads-only` already removes what a reader may not see. This
+ * composes those two rather than restating them: a rule stated twice is a rule that will disagree
+ * with itself, and these two are the ones that must not.
+ *
+ * WHAT THE MAP IS FOR. Every field a surface can render is placed. A field in no cell is a field
+ * nobody decided about, and the spec next door fails on one - which is the whole mechanism. The map
+ * is the thing that gets argued with; the assembly is arithmetic over it.
+ */
+
+export type Cell = 'A_SESSION' | 'A_RUN' | 'B_SESSION' | 'B_RUN';
+
+export const EVERY_CELL: Cell[] = ['A_SESSION', 'A_RUN', 'B_SESSION', 'B_RUN'];
+
+export const WHAT_EACH_CELL_IS: Record<Cell, string> = {
+  A_SESSION: 'What you said this time. Private to you.',
+  A_RUN: 'Your own account, across the whole thing. Private to you.',
+  B_SESSION: 'The shared picture of one sitting.',
+  B_RUN: 'The shared picture across the whole thing.',
+};
+
+/** Whether a cell is one person's own half. Decides the reader wall, never the scope. */
+export const isYourOwn = (cell: Cell) => cell === 'A_SESSION' || cell === 'A_RUN';
+/** Whether a cell reads across sessions. Decides the scope rule, never the wall. */
+export const readsARun = (cell: Cell) => cell === 'A_RUN' || cell === 'B_RUN';
+
+/**
+ * WHERE EVERY FIELD BELONGS.
+ *
+ * One cell each. A field that genuinely belongs to two is a field that is two things - the shared
+ * picture and somebody's own account of the same session are different objects with the same
+ * subject - and splitting it is the work, not widening the map.
+ *
+ * `leadOnly` is orthogonal to the cell. A lead-only field still belongs to one of the four; it is
+ * removed for other readers by `own-reads-only`, which is the only thing entitled to decide that.
+ */
+export interface Placed {
+  cell: Cell;
+  /** Removed for anybody but whoever runs the check-in. Enforced elsewhere; recorded here. */
+  leadOnly?: true;
+  /** Why it is where it is, where that is not obvious from the name. */
+  because?: string;
+}
+
+export const WHERE_IT_BELONGS: Record<string, Placed> = {
+  // ── What this is for. The objective leads every cell that has one.
+  againstSuccess: { cell: 'B_SESSION', because: 'The stated objective and each condition\'s standing. The run version is the board\'s.' },
+  cascade: { cell: 'B_SESSION', because: 'What the objective sits under. It qualifies the objective, so it travels with it.' },
+  whereThingsStand: { cell: 'B_SESSION' },
+  atAGlance: { cell: 'B_SESSION', because: 'Four reads of one sitting. The run-scope version is the board\'s own.' },
+
+  // ── The shared picture of one sitting.
+  sharedPicture: { cell: 'B_SESSION' },
+  pictureLines: { cell: 'B_SESSION' },
+  writtenPicture: { cell: 'B_SESSION' },
+  pictureBasis: { cell: 'B_SESSION' },
+  divergences: { cell: 'B_SESSION', because: 'A difference is a fact about one sitting. It becomes a pattern only if it survives.' },
+  agreements: { cell: 'B_SESSION' },
+  centralQuestion: { cell: 'B_SESSION' },
+  theConversationWorthHaving: { cell: 'B_SESSION' },
+  whatEachPersonSaid: { cell: 'B_SESSION', because: 'Each person\'s own work, folded. Never what anybody said about anybody.' },
+  counting: { cell: 'B_SESSION' },
+  confidence: { cell: 'B_SESSION', because: 'How much there is to go on. A reading on the document, not on a person.' },
+  restsOn: { cell: 'B_SESSION' },
+  inferences: { cell: 'B_SESSION' },
+  parties: { cell: 'B_SESSION' },
+
+  // ── Lead-only, and still shared-picture rather than anybody's own half.
+  concernFlags: { cell: 'B_RUN', leadOnly: true, because: 'Reads a run - see RUN_ONLY_FIELDS - and is raised with a person, never delivered to them.' },
+  hiddenContributors: { cell: 'B_RUN', leadOnly: true, because: 'Reads a run. Who has been carrying work quietly is not visible in one sitting.' },
+  leadershipGaps: { cell: 'B_RUN', leadOnly: true },
+  probes: { cell: 'B_SESSION', leadOnly: true },
+  softSpots: { cell: 'B_SESSION', leadOnly: true },
+
+  // ── One person's own half, this session.
+  myRows: { cell: 'A_SESSION', because: 'The lines taken from what they said, as rows, theirs to dispute.' },
+  howClearThisWas: { cell: 'A_SESSION', because: 'Specificity is per session and sits on the session - two-reads-not-one-grade.' },
+  mySoftSpots: { cell: 'A_SESSION' },
+  coaching: { cell: 'A_SESSION', because: 'Written for one person about one sitting. Across a run it becomes a standing judgement.' },
+  postReportGuide: { cell: 'A_SESSION' },
+  correctable: { cell: 'A_SESSION' },
+  whyNotCorrectable: { cell: 'A_SESSION' },
+  startSelfCorrection: { cell: 'A_SESSION' },
+  startClarification: { cell: 'A_SESSION' },
+
+  // ── One person's own half, across the run.
+  rounds: { cell: 'A_RUN', because: 'Their own sessions, listed once, as the thing they can act from.' },
+  iHaveShownMine: { cell: 'A_RUN' },
+
+  // ── Placed after running the map over forty real reports, which is what it is for.
+  //
+  // Every one of these was stored and rendered by nobody, or by one dead component. Placing them
+  // does not light them up - it records the decision so the next surface that spreads the payload
+  // does not get to make it by accident.
+  documentBacked: { cell: 'B_SESSION', because: 'How much of the record has a document behind it. The Solid? reading.' },
+  documentBackedPct: { cell: 'B_SESSION' },
+  coverageBand: { cell: 'B_SESSION', because: 'The band the document-backed share and the turn counts produce together.' },
+  pictureConfidence: { cell: 'B_SESSION' },
+  sessionCounts: { cell: 'B_SESSION', because: 'Turns per party. Counted, never shown as a ranking.' },
+  difficultyDisclosures: { cell: 'B_SESSION' },
+  currentBestReading: { cell: 'B_SESSION' },
+  specificityNotes: { cell: 'A_SESSION', because: 'Own row only. Specificity is per session and stays on the person it is about.' },
+  specificityCauses: { cell: 'A_SESSION' },
+  specificitySignal: { cell: 'A_SESSION' },
+  recallNotes: { cell: 'A_SESSION', because: 'Own row only, filtered by label in own-reads-only.' },
+  whatCouldBeChecked: { cell: 'A_SESSION' },
+  session2Focus: { cell: 'A_SESSION', because: 'What to carry into the next one, written at the end of this one.' },
+  postReportGuides: { cell: 'A_SESSION', because: 'The map is stripped for everybody; the owner gets their one guide as postReportGuide.' },
+  arcSignals: { cell: 'B_RUN', leadOnly: true, because: 'Reads the whole arc, and never leaves the admin surface.' },
+
+  // ── The shared picture across the run. This is the board.
+  patterns: { cell: 'B_RUN', because: 'Two periods minimum. One observation is not a pattern.' },
+  contribution: { cell: 'B_RUN', because: 'Needs several sessions before it says anything. It cannot exist in a session cell.' },
+  coverage: { cell: 'B_RUN' },
+  dependencies: { cell: 'B_RUN' },
+  whoOwnsWhat: { cell: 'B_RUN' },
+  objectives: { cell: 'B_RUN', because: 'Movement against each measure, which is a journey rather than a moment.' },
+  phaseSpine: { cell: 'B_RUN' },
+  checkInGrid: { cell: 'B_RUN' },
+  startingState: { cell: 'B_RUN' },
+  decisions: { cell: 'B_RUN' },
+  release: { cell: 'B_RUN', leadOnly: true },
+  everybodyHasShownTheirs: { cell: 'B_RUN' },
+  showsEverybody: { cell: 'B_RUN' },
+};
+
+/** Everything that belongs to one cell, in the order the map declares it. */
+export function theFieldsOf(cell: Cell, opts: { leadOnly?: boolean } = {}): string[] {
+  return Object.entries(WHERE_IT_BELONGS)
+    .filter(([, p]) => p.cell === cell && (opts.leadOnly === undefined || !!p.leadOnly === opts.leadOnly))
+    .map(([k]) => k);
+}
+
+export function whichCell(field: string): Placed | null {
+  return WHERE_IT_BELONGS[field] ?? null;
+}
+
+/**
+ * WHAT A SURFACE IS, SAID AS A CROP RATHER THAN AS A LIST.
+ *
+ * A surface names its cell and which of that cell's fields it leaves out, with a reason. Nothing
+ * names fields it wants: a surface that lists what it takes silently stops taking anything added
+ * later, which is how a section ends up rendering on five pages and not the sixth.
+ */
+export interface Crop {
+  cell: Cell;
+  /** Fields of the cell this surface does not show, each with why. */
+  without?: Record<string, string>;
+}
+
+export function whatThisSurfaceShows(crop: Crop, opts: { leadOnly?: boolean } = {}): string[] {
+  const out = new Set(theFieldsOf(crop.cell, opts));
+  for (const field of Object.keys(crop.without ?? {})) out.delete(field);
+  return [...out];
+}
+
+/**
+ * THE CHECK THAT KEEPS THE MAP HONEST.
+ *
+ * Given the keys a payload actually carries, say which are placed nowhere. The spec runs this
+ * against the real payload, so a field added to a report without anybody deciding where it goes
+ * fails a test rather than rendering in whichever surface happened to spread the object.
+ *
+ * `known` is for the handful that are not report content at all - ids, flags, the plumbing a client
+ * needs - which are listed rather than pattern-matched, because a pattern is how the next unplaced
+ * field slips through.
+ */
+export const NOT_REPORT_CONTENT = [
+  'id', 'groundId', 'checkInId', 'sessionNumber', 'title', 'state', 'activated', 'allActivated',
+  'released', 'releasedAt', 'takenAt', 'amendedAt', 'amendedNote', 'answered', 'stillToAnswer',
+  'sessionReport', 'sections', 'items', 'get', 'saying', 'about', 'whyNoQuestion',
+  'createdAt', 'updatedAt', 'promptVersionId', 'docStatus', 'note',
+  /* Containers rather than content: their own keys are placed individually above. */
+  'engagement', 'finalSynthesis',
+];
+
+/**
+ * WHAT IS PLACED AND STILL REACHES NOBODY.
+ *
+ * Running the map over forty real reports found twenty-two fields nobody had placed, and most of
+ * them turned out to be stored, computed every run, and rendered by nothing - or rendered only
+ * inside `ReportBody`, 983 lines of a client file that no longer has a single importer.
+ *
+ * This list is not a to-do. It is the honest state, recorded next to the map so that "where does
+ * this go" and "does anybody see it" are answered in the same place. A field leaving this list is
+ * a surface gaining a section; a field joining it is a regression.
+ */
+export const REACHES_NO_SCREEN = [
+  'concernFlags', 'hiddenContributors', 'softSpots', 'arcSignals',
+  'coverageBand', 'currentBestReading', 'difficultyDisclosures', 'pictureConfidence',
+  'recallNotes', 'session2Focus', 'specificityNotes',
+] as const;
+
+export function placedNowhere(keys: string[]): string[] {
+  const skip = new Set<string>(NOT_REPORT_CONTENT);
+  return keys.filter((k) => !skip.has(k) && !WHERE_IT_BELONGS[k]);
+}
+
+/** The scope rule, borrowed rather than restated. A session cell may hold none of these. */
+export const WHAT_A_SESSION_CELL_MAY_NOT_HOLD: readonly string[] = RUN_ONLY_FIELDS;
