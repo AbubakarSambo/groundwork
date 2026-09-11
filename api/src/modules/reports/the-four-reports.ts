@@ -339,15 +339,29 @@ export const THE_VARIANTS: { situation: string; change: string; state: 'already 
  * spec asserts against that surface instead.
  */
 export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
-  /* Two are off. `the-sharp-part-first` asserts the order on `TheSessionsReport`, which is the
-     shared half people open; `the-finding-comes-before-the-method` asserts the legend on the board,
-     where the second copy of it lives and is drawn. Neither rule changed - only which copy it is
-     checked against, which is the whole point of the list. */
+  /*
+   * TWO LEFT, AND THE LIST STARTED AT EIGHT RATHER THAN TEN.
+   *
+   * The count came from grepping for specs that read `ReportPage.tsx`, and that matched
+   * `SessionReportPage.tsx` as a substring. Two of the ten - `the-report-you-saw-is-the-one-that-
+   * opens` and `nothing-was-lost-when-the-body-went` - never touched the dead body at all. They
+   * read the live session page, the board, a party's view and the walk-in-with card. Off the list
+   * as a correction to my own arithmetic rather than as progress.
+   *
+   * `one-report-not-two` is off for a real reason: its rule - no page carries a second report body
+   * - is a negative sweep over the lead and participant pages, both live. Three of its assertions
+   * describe the body itself (that it is a component, that the old route redirects) and those
+   * retire WITH the file rather than before it. That is expected, not a gap.
+   *
+   * Five more came off by pointing them at the copy people see. The two that remain are the ones
+   * where the rule genuinely has no live home, and both need a surface rather than a repoint.
+   */
+  /* The live `ResolutionPanel` returns null when the run is not near its end - so resolution is
+     ABSENT rather than one line, which is the opposite of what this rule asks for. Real work. */
   { rule: 'A panel with nothing to say is a line, and staleness is never conditional on being settled', spec: 'a-panel-with-nothing-to-say-is-a-line' },
-  { rule: 'The report that opens is the report they read, and each half says whose it is', spec: 'the-report-you-saw-is-the-one-that-opens' },
-  { rule: 'One report, not two: no page carries a second report body', spec: 'one-report-not-two' },
+  /* The weigh section and the soft spots render only inside the body. This is the same work as
+     giving the risk reads a surface, and it is the larger of the two. */
   { rule: 'What the server already knew reaches the page, lead-only, worded about the record', spec: 'what-the-server-already-knew' },
-  { rule: 'Nothing was lost when the body went: the three orphans each have a home', spec: 'nothing-was-lost-when-the-body-went' },
 ];
 
 /**
