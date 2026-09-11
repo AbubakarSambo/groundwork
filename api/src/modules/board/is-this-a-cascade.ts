@@ -97,7 +97,26 @@ const A_TEAM_IS_NAMED =
 const NOT_A_TEAM_NAME = new Set([
   'the', 'a', 'an', 'this', 'that', 'our', 'my', 'your', 'their', 'his', 'her', 'its',
   'whole', 'entire', 'same', 'other', 'another', 'one', 'each', 'every', 'no', 'any', 'some',
+  'for', 'with', 'on', 'in', 'to', 'of', 'at', 'by', 'from', 'and', 'or', 'but',
+  'both', 'all', 'is', 'was', 'been', 'being', 'doing', 'shadowing', 'joined', 'joining',
 ]);
+
+/**
+ * THE PHRASE HAS TO NAME AN OBJECTIVE, NOT ANY NOUN AT ALL.
+ *
+ * Found by probing the read with nine ordinary sentences from situations that have no cascade in
+ * them. Five fired. "I did my part of the onboarding checklist", "it feeds into the same problem we
+ * had last month", "my half of the handover is done" - each one put a fabricated parent objective
+ * at the top of a board, which is worse than showing nothing by a wide margin, and worse still on a
+ * new-hire or a crisis ground where the whole frame is wrong.
+ *
+ * The relationship word was never enough on its own, because English uses under, part of and feeds
+ * into for everything. So the thing named must ALSO read as an objective. That makes the read
+ * strict: it will miss a cascade somebody described without using any of these words, and it will
+ * not invent one. Missing it costs a section; inventing it costs the reader's trust in the page.
+ */
+const READS_AS_AN_OBJECTIVE =
+  /\b(?:objectives?|goals?|okrs?|kpis?|targets?|priority|priorities|mission|strategy|strategic|ambition|north star|outcome)\b/i;
 
 const AN_OBJECTIVE_ABOVE =
   /\b(?:company|org(?:anisation|anization)?|group|exec(?:utive)?|board|top[- ]level|overarching|parent)\s+(?:objective|goal|okrs?|target|priority)\b/i;
@@ -145,6 +164,7 @@ export function isThisACascade(input: CascadeInput): CascadeRead {
       if (!m) continue;
       const named = tidy(m[1] ?? '');
       if (!looksLikeAName(named)) continue;
+      if (!READS_AS_AN_OBJECTIVE.test(named)) continue;
       saidItSitsUnder = true;
       // The first person to say it is the one quoted. A later restatement is the same fact.
       if (!parentNamed) parentNamed = named;
@@ -155,9 +175,14 @@ export function isThisACascade(input: CascadeInput): CascadeRead {
       /* "the sales team AND the engineering team" - the connector is part of the match, never part
          of the name. Stripped here rather than in the pattern so the pattern stays readable. */
       const t = tidy((m[1] ?? '').replace(/^(?:and|or|&|with|plus)\s+/i, '').replace(/^(?:the|our)\s+/i, ''));
-      if (t.length >= 3 && t.split(/\s+/).length <= 3 && !NOT_A_TEAM_NAME.has(t.toLowerCase())) {
-        teams.add(t.toLowerCase());
-      }
+      /* "for the ops", "shadowing the support" - a capture carrying a preposition or a verb is a
+         fragment of a sentence, not a department. Two words is the ceiling: "customer success" is a
+         team, "whole thing for the ops" is not. */
+      const words = t.toLowerCase().split(/\s+/);
+      const clean = words.length <= 2
+        && words.every((w) => !NOT_A_TEAM_NAME.has(w))
+        && t.length >= 3;
+      if (clean) teams.add(t.toLowerCase());
     }
   }
 
@@ -166,10 +191,17 @@ export function isThisACascade(input: CascadeInput): CascadeRead {
   if (teamsNamed.length >= 2) basis.push('SEVERAL_TEAMS_NAMED');
 
   /*
-   * THE RULE, IN ONE LINE. Evidence, not posture. DECLARED never carries this on its own.
+   * THE RULE. Something ABOVE this has to have been named. Two of the four kinds of basis can do
+   * that and two cannot:
+   *
+   * DECLARED is a dropdown, and a dropdown is a statement of intent.
+   *
+   * SEVERAL_TEAMS_NAMED is cross-team WORK, which is a different fact. "She worked with the ops
+   * team and the sales team" is a recognition check-in describing what somebody carried, and
+   * reading it as a hierarchy would put an OKR frame over a conversation about one person. It
+   * corroborates a cascade and never establishes one.
    */
-  const evidenced = basis.some((b) => b !== 'DECLARED');
-  const isCascade = evidenced;
+  const isCascade = basis.includes('SAID_IN_THE_CHAT') || basis.includes('A_PARENT_IS_RECORDED');
 
   return { isCascade, basis, parentNamed, teamsNamed, why: sayWhy({ declared, isCascade, parentNamed, teamsNamed }) };
 }

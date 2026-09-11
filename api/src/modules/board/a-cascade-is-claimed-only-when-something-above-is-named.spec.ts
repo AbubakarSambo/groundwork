@@ -54,7 +54,35 @@ describe('a cascade is claimed only when something above is named', () => {
     });
     expect(r.teamsNamed.sort()).toEqual(['engineering', 'sales']);
     expect(r.basis).toContain('SEVERAL_TEAMS_NAMED');
-    expect(r.isCascade).toBe(true);
+  });
+
+  it('does not read two teams working together as a hierarchy', () => {
+    const r = isThisACascade({
+      ...base,
+      scenario: GroundScenario.RECOGNITION,
+      entries: [said('She carried the whole thing for the ops team and the sales team.')],
+    });
+    expect(r.isCascade).toBe(false);
+  });
+
+  describe('ordinary sentences from situations with no cascade in them', () => {
+    const quiet = [
+      'I did my part of the onboarding checklist this week.',
+      'Shadowing the support team and picking up tickets.',
+      'It feeds into the same problem we had last month.',
+      'This all rolls up to whether the client stays.',
+      'My half of the handover is done, hers is not.',
+      'The design sits under the brief we agreed in January.',
+      'I am on the team that owns billing.',
+      'Our objective this month is to cut response time.',
+    ];
+    quiet.forEach((text) => {
+      it(`stays quiet: ${text}`, () => {
+        const r = isThisACascade({ ...base, entries: [said(text)] });
+        expect(r.isCascade).toBe(false);
+        expect(r.parentNamed).toBeNull();
+      });
+    });
   });
 
   it('does not name a team called "the"', () => {
