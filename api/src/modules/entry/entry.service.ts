@@ -45,6 +45,7 @@ import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 import { theSetupHasStoppedAsking, whatSetupNeverGot } from './a-gate-that-can-never-open-is-shut';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
+import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -793,7 +794,18 @@ Rules:
      * standing warning about a thing that is usually not occurring.
      */
     const repeating = aDirectiveAboutRepeatingYourself(messages as { role: string; content: string }[]);
-    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput);
+    /*
+     * LOOKING BACK OR SETTING UP. Read from what the person has actually typed, not from the card
+     * they clicked - somebody who picks "describe your own situation" and then tells you about a
+     * handover that already went wrong is not setting anything up. See this-already-happened.ts.
+     */
+    const theirWords = (messages as { role: string; content: string }[])
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content ?? '')
+      .join(' ');
+    const lookingBack = thisAlreadyHappened(theirWords);
+    const setupPrompt = buildSetupPrompt(ONBOARD_SYSTEM, scenarioInput, momentInput)
+      + (lookingBack ? `\n\n${LOOK_BACK_INSTEAD}` : '');
     /*
      * THE REPLY AND THE EXTRACTION RUN SIDE BY SIDE. The extraction reads what the person said, and
      * they have already said it; the reply being composed at the same time is a question, and a

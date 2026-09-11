@@ -2459,9 +2459,9 @@ export function EntryChatPage() {
         /* "Hand-off to your lead" named a step that no longer exists - handing the context to
            somebody else was removed on 7 September. Somebody who picks "I set this check-in up only"
            was being promised a hand-off screen they would never reach. */
-        const labels = ['Describe the situation', 'Your check-in', 'Save & invite']
+        const labels = ['What is going on', 'Your check-in', 'Save & invite']
         const hints = [
-          "You're describing the situation. Nothing is saved yet.",
+          "You are telling us what is going on. Nothing is saved yet.",
           "You're saying how you see it.",
           'Save this and invite the people involved.',
         ]
@@ -2611,9 +2611,9 @@ export function EntryChatPage() {
             {onboardingHistory.length <= 1 && (
               <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '12px 20px', flexShrink: 0 }}>
                 <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Set this up</h1>
+                  <h1 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-navy)', margin: '0 0 3px', letterSpacing: '-.01em' }}>Tell us what is going on</h1>
                   <div style={{ fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-                    Answer a few questions about the situation. You get a private summary now; a shared report follows once the other people check in.
+                    A few questions to work out what this is. You get something just for you now, and a shared picture once everybody else has checked in.
                   </div>
                 </div>
               </div>

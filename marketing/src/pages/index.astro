@@ -81,7 +81,18 @@ section{padding:72px 0}
 /* ── hero ─────────────────────────────────────────────────────────────────
    The dark ground is the one place the page raises its voice. Everything after
    it is paper, so the eye has somewhere to land. */
-.hero{background:var(--gw-dark);color:#fff;padding:76px 0 84px}
+/* THE PICTURE UNDER THE BLUE.
+   The hero is a flat dark field; the illustration sits behind it at low opacity so it reads as
+   texture rather than a photograph somebody has to look at. `background-blend-mode` rather than a
+   positioned <img> so there is no element to sit in front of the text, nothing to shift the layout
+   while it loads, and the dark stays the dark on any screen where the image does not arrive.
+   `position:relative` so the content keeps its own stacking context above it. */
+.hero{background:var(--gw-dark);color:#fff;padding:76px 0 84px;position:relative;
+  background-image:url('/hero-teamwork.jpg');background-size:cover;background-position:center;
+  background-blend-mode:luminosity;}
+.hero::after{content:'';position:absolute;inset:0;background:var(--gw-dark);opacity:.88;pointer-events:none}
+.hero > .w{position:relative;z-index:1}
+@media (prefers-reduced-motion:no-preference){}
 .hero .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
                color:var(--gw-amber-b);margin:0 0 18px}
 .hero h1{font-size:46px;line-height:1.08;letter-spacing:-.03em;margin:0 0 18px}
